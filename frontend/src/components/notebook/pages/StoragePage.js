@@ -726,18 +726,19 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
   };
 
   // Render storage status tag
-  const renderStorageTag = (sample) => {
-    if (sample.status === "COMPLETED" && sample.storageLocation) {
+  const renderStorageTag = (value, sample) => {
+    const s = sample || value;
+    if (s?.status === "COMPLETED" && s?.storageLocation) {
       return (
         <Tag type="green" renderIcon={Checkmark}>
-          {sample.storageLocation}
+          {s.storageLocation}
         </Tag>
       );
     }
-    if (sample.storageLocation) {
+    if (s?.storageLocation) {
       return (
         <Tag type="cyan" renderIcon={Archive}>
-          {sample.storageLocation}
+          {s.storageLocation}
         </Tag>
       );
     }
@@ -752,8 +753,9 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
   };
 
   // Render condition tag
-  const renderConditionTag = (sample) => {
-    if (!sample.storageCondition) return null;
+  const renderConditionTag = (value, sample) => {
+    const s = sample || value;
+    if (!s?.storageCondition) return null;
 
     const conditionLabels = {
       REFRIGERATED: "2-8°C",
@@ -765,7 +767,7 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
 
     return (
       <Tag type="cool-gray" renderIcon={Temperature} size="sm">
-        {conditionLabels[sample.storageCondition] || sample.storageCondition}
+        {conditionLabels[s.storageCondition] || s.storageCondition}
       </Tag>
     );
   };
@@ -803,12 +805,15 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
         id: "notebook.column.storage",
         defaultMessage: "Storage Status",
       }),
-      render: (sample) => (
-        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-          {renderStorageTag(sample)}
-          {renderConditionTag(sample)}
-        </div>
-      ),
+      render: (value, sample) => {
+        const s = sample || value;
+        return (
+          <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+            {renderStorageTag(value, s)}
+            {renderConditionTag(value, s)}
+          </div>
+        );
+      },
     },
     {
       key: "retentionExpiry",
@@ -816,12 +821,14 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
         id: "notebook.column.expiry",
         defaultMessage: "Retention Expiry",
       }),
-      render: (sample) =>
-        sample.retentionExpiry ? (
-          <span>{sample.retentionExpiry}</span>
+      render: (value, sample) => {
+        const s = sample || value;
+        return s?.retentionExpiry ? (
+          <span>{s.retentionExpiry}</span>
         ) : (
           <span className="text-muted">-</span>
-        ),
+        );
+      },
     },
   ];
 

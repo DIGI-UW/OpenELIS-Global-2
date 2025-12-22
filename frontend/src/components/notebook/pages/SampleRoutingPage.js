@@ -7,6 +7,7 @@ import {
   InlineNotification,
   Modal,
   TextInput,
+  TextArea,
   DatePicker,
   DatePickerInput,
   Tag,
@@ -15,6 +16,10 @@ import {
   Tab,
   TabPanels,
   TabPanel,
+  Select,
+  SelectItem,
+  Accordion,
+  AccordionItem,
 } from "@carbon/react";
 import { Chemistry, SendAlt, Archive, Renew } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -76,6 +81,12 @@ function SampleRoutingPage({
   const [selectedBox, setSelectedBox] = useState(null);
   const [externalLabName, setExternalLabName] = useState("");
   const [shipmentDate, setShipmentDate] = useState(null);
+  // Additional external lab fields
+  const [chainOfCustodyNotes, setChainOfCustodyNotes] = useState("");
+  const [packagingRequirements, setPackagingRequirements] = useState("");
+  const [shipmentStatus, setShipmentStatus] = useState("PENDING");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [externalLabContact, setExternalLabContact] = useState("");
 
   // Box layout state
   const [selectedBoxForLayout, setSelectedBoxForLayout] = useState(null);
@@ -95,6 +106,12 @@ function SampleRoutingPage({
   const [loadingStorageLayout, setLoadingStorageLayout] = useState(false);
   // Well assignments for storage preview (sampleId -> wellCoord)
   const [storageWellAssignments, setStorageWellAssignments] = useState({});
+
+  // Additional storage fields
+  const [storagePurpose, setStoragePurpose] = useState("SHORT_TERM");
+  const [storageTemperature, setStorageTemperature] = useState("");
+  const [retrievalDate, setRetrievalDate] = useState(null);
+  const [storageNotes, setStorageNotes] = useState("");
 
   // Assay plate state (for Internal Analysis - NOT connected to storage hierarchy)
   const [assayPlates, setAssayPlates] = useState([]);
@@ -170,6 +187,10 @@ function SampleRoutingPage({
               routingStatus: sample.destinationType ? "ROUTED" : "UNROUTED",
               destinationType: sample.destinationType,
               wellCoordinate: sample.wellCoordinate,
+              // Aliquot data from child sample creation (stored in data JSONB)
+              volume: sample.data?.volume,
+              volumeUnit: sample.data?.volumeUnit || "uL",
+              initialVolume: sample.data?.initialVolume,
             }));
             setSamples(transformedSamples);
           } else {
@@ -213,6 +234,19 @@ function SampleRoutingPage({
       setRouteDestination(destination);
       // Clear any previous storage well assignments when opening modal
       setStorageWellAssignments({});
+      // Reset external lab fields
+      setExternalLabName("");
+      setExternalLabContact("");
+      setShipmentDate(null);
+      setChainOfCustodyNotes("");
+      setPackagingRequirements("");
+      setShipmentStatus("PENDING");
+      setTrackingNumber("");
+      // Reset storage fields
+      setStoragePurpose("SHORT_TERM");
+      setStorageTemperature("");
+      setRetrievalDate(null);
+      setStorageNotes("");
       setRouteModalOpen(true);
     },
     [selectedSampleIds],
@@ -254,13 +288,26 @@ function SampleRoutingPage({
       };
     } else if (routeDestination.id === "EXTERNAL_LAB") {
       if (!externalLabName.trim()) {
-        setError("Please enter the external lab name.");
+        setError("Please enter the destination laboratory name.");
         setRouting(false);
         return;
       }
       routeRequest.externalLabName = externalLabName;
+      if (externalLabContact) {
+        routeRequest.externalLabContact = externalLabContact;
+      }
       if (shipmentDate) {
         routeRequest.shipmentDate = shipmentDate;
+      }
+      if (chainOfCustodyNotes) {
+        routeRequest.chainOfCustodyNotes = chainOfCustodyNotes;
+      }
+      if (packagingRequirements) {
+        routeRequest.packagingRequirements = packagingRequirements;
+      }
+      routeRequest.shipmentStatus = shipmentStatus;
+      if (trackingNumber) {
+        routeRequest.trackingNumber = trackingNumber;
       }
     } else if (routeDestination.id === "STORAGE") {
       // Box is REQUIRED for storage to create proper storage assignment
@@ -285,7 +332,10 @@ function SampleRoutingPage({
         sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
         boxId: selectedBox.id,
         wellAssignments: storageWellAssignments,
-        condition: "REFRIGERATED", // Default condition for routing page
+        condition: storageTemperature || "REFRIGERATED",
+        storagePurpose: storagePurpose,
+        retrievalDate: retrievalDate,
+        storageNotes: storageNotes,
         retentionYears: 5, // Default retention
         pageId: pageData?.id,
       };
@@ -343,7 +393,16 @@ function SampleRoutingPage({
     hasRealPageId,
     selectedBox,
     externalLabName,
+    externalLabContact,
     shipmentDate,
+    chainOfCustodyNotes,
+    packagingRequirements,
+    shipmentStatus,
+    trackingNumber,
+    storagePurpose,
+    storageTemperature,
+    retrievalDate,
+    storageNotes,
     notebookId,
     pageData?.id,
     assayPlates,
@@ -466,16 +525,18 @@ function SampleRoutingPage({
   );
 
   // Render routing status tag (Routed/Unrouted)
-  const renderRoutingStatusTag = (sample) => {
-    if (!sample.destinationType) {
+  const renderRoutingStatusTag = (value, sample) => {
+    const s = sample || value;
+    if (!s?.destinationType) {
       return <Tag type="gray">Unrouted</Tag>;
     }
     return <Tag type="green">Routed</Tag>;
   };
 
   // Render destination tag
-  const renderDestinationTag = (sample) => {
-    if (!sample.destinationType) {
+  const renderDestinationTag = (value, sample) => {
+    const s = sample || value;
+    if (!s?.destinationType) {
       return <span style={{ color: "#8d8d8d" }}>-</span>;
     }
 
@@ -492,9 +553,9 @@ function SampleRoutingPage({
     };
 
     return (
-      <Tag type={tagTypes[sample.destinationType] || "gray"}>
-        {labels[sample.destinationType] || sample.destinationType}
-        {sample.wellCoordinate && ` (${sample.wellCoordinate})`}
+      <Tag type={tagTypes[s.destinationType] || "gray"}>
+        {labels[s.destinationType] || s.destinationType}
+        {s.wellCoordinate && ` (${s.wellCoordinate})`}
       </Tag>
     );
   };
@@ -689,13 +750,37 @@ function SampleRoutingPage({
                 loading={loading}
                 additionalColumns={[
                   {
+                    key: "volume",
+                    header: intl.formatMessage({
+                      id: "notebook.grid.extractedVolume",
+                      defaultMessage: "Extracted Vol.",
+                    }),
+                    render: (value, sample) =>
+                      value ? `${value} ${sample.volumeUnit || "uL"}` : "-",
+                  },
+                  {
+                    key: "initialVolume",
+                    header: intl.formatMessage({
+                      id: "notebook.grid.remainingVolume",
+                      defaultMessage: "Remaining Vol.",
+                    }),
+                    render: (value, sample) =>
+                      value ? `${value} ${sample.volumeUnit || "uL"}` : "-",
+                  },
+                  {
                     key: "routingStatus",
-                    header: "Routing Status",
+                    header: intl.formatMessage({
+                      id: "notebook.grid.routingStatus",
+                      defaultMessage: "Routing Status",
+                    }),
                     render: renderRoutingStatusTag,
                   },
                   {
                     key: "destination",
-                    header: "Destination",
+                    header: intl.formatMessage({
+                      id: "notebook.grid.destination",
+                      defaultMessage: "Destination",
+                    }),
                     render: renderDestinationTag,
                   },
                 ]}
@@ -836,163 +921,465 @@ function SampleRoutingPage({
 
         {/* External Lab Fields */}
         {routeDestination?.id === "EXTERNAL_LAB" && (
-          <div>
-            <TextInput
-              id="external-lab-name"
-              labelText={intl.formatMessage({
-                id: "notebook.routing.modal.labName",
-                defaultMessage: "External Lab Name",
-              })}
-              value={externalLabName}
-              onChange={(e) => setExternalLabName(e.target.value)}
-              style={{ marginBottom: "1rem" }}
-            />
-            <DatePicker
-              datePickerType="single"
-              onChange={([date]) =>
-                setShipmentDate(date?.toISOString().split("T")[0])
-              }
-            >
-              <DatePickerInput
-                id="shipment-date"
-                labelText={intl.formatMessage({
-                  id: "notebook.routing.modal.shipmentDate",
-                  defaultMessage: "Shipment Date (Optional)",
-                })}
-                placeholder="mm/dd/yyyy"
+          <div className="external-lab-fields">
+            <p style={{ marginBottom: "1rem", color: "#525252" }}>
+              <FormattedMessage
+                id="notebook.routing.modal.externalLabInfo"
+                defaultMessage="Prepare samples for external shipment. Complete the chain of custody documentation and packaging requirements."
               />
-            </DatePicker>
+            </p>
+
+            <Accordion>
+              {/* Destination Laboratory Section */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.routing.external.destinationSection",
+                  defaultMessage: "Destination Laboratory",
+                })}
+                open
+              >
+                <Grid narrow>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="external-lab-name"
+                      labelText={intl.formatMessage({
+                        id: "notebook.routing.modal.labName",
+                        defaultMessage: "Laboratory Name *",
+                      })}
+                      value={externalLabName}
+                      onChange={(e) => setExternalLabName(e.target.value)}
+                      required
+                    />
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="external-lab-contact"
+                      labelText={intl.formatMessage({
+                        id: "notebook.routing.modal.labContact",
+                        defaultMessage: "Contact Person / Email",
+                      })}
+                      value={externalLabContact}
+                      onChange={(e) => setExternalLabContact(e.target.value)}
+                      placeholder="e.g., Dr. Smith / lab@example.com"
+                    />
+                  </Column>
+                </Grid>
+              </AccordionItem>
+
+              {/* Chain of Custody Section */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.routing.external.custodySection",
+                  defaultMessage: "Chain of Custody Documentation",
+                })}
+                open
+              >
+                <TextArea
+                  id="chain-of-custody-notes"
+                  labelText={intl.formatMessage({
+                    id: "notebook.routing.modal.custodyNotes",
+                    defaultMessage: "Chain of Custody Notes",
+                  })}
+                  value={chainOfCustodyNotes}
+                  onChange={(e) => setChainOfCustodyNotes(e.target.value)}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.routing.modal.custodyNotesPlaceholder",
+                    defaultMessage:
+                      "Document sample handling, transfer records, and any special custody requirements...",
+                  })}
+                  rows={3}
+                />
+              </AccordionItem>
+
+              {/* Packaging Requirements Section */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.routing.external.packagingSection",
+                  defaultMessage: "Packaging Requirements",
+                })}
+                open
+              >
+                <TextArea
+                  id="packaging-requirements"
+                  labelText={intl.formatMessage({
+                    id: "notebook.routing.modal.packagingRequirements",
+                    defaultMessage: "Packaging & Shipping Requirements",
+                  })}
+                  value={packagingRequirements}
+                  onChange={(e) => setPackagingRequirements(e.target.value)}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.routing.modal.packagingPlaceholder",
+                    defaultMessage:
+                      "e.g., Triple packaging, dry ice required, temperature range -20°C to -80°C, UN3373 compliant...",
+                  })}
+                  rows={3}
+                />
+              </AccordionItem>
+
+              {/* Shipment Status Section */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.routing.external.shipmentSection",
+                  defaultMessage: "Shipment Status & Tracking",
+                })}
+                open
+              >
+                <Grid narrow>
+                  <Column lg={8} md={4} sm={4}>
+                    <DatePicker
+                      datePickerType="single"
+                      onChange={([date]) =>
+                        setShipmentDate(date?.toISOString().split("T")[0])
+                      }
+                    >
+                      <DatePickerInput
+                        id="shipment-date"
+                        labelText={intl.formatMessage({
+                          id: "notebook.routing.modal.shipmentDate",
+                          defaultMessage: "Planned Shipment Date",
+                        })}
+                        placeholder="mm/dd/yyyy"
+                      />
+                    </DatePicker>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <Select
+                      id="shipment-status"
+                      labelText={intl.formatMessage({
+                        id: "notebook.routing.modal.shipmentStatus",
+                        defaultMessage: "Shipment Status",
+                      })}
+                      value={shipmentStatus}
+                      onChange={(e) => setShipmentStatus(e.target.value)}
+                    >
+                      <SelectItem value="PENDING" text="Pending Preparation" />
+                      <SelectItem
+                        value="PREPARED"
+                        text="Prepared for Shipment"
+                      />
+                      <SelectItem value="SHIPPED" text="Shipped" />
+                      <SelectItem value="IN_TRANSIT" text="In Transit" />
+                      <SelectItem value="DELIVERED" text="Delivered" />
+                    </Select>
+                  </Column>
+                  <Column lg={16} md={8} sm={4}>
+                    <TextInput
+                      id="tracking-number"
+                      labelText={intl.formatMessage({
+                        id: "notebook.routing.modal.trackingNumber",
+                        defaultMessage: "Tracking Number / Reference",
+                      })}
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder="Enter courier tracking number when available"
+                    />
+                  </Column>
+                </Grid>
+              </AccordionItem>
+            </Accordion>
           </div>
         )}
 
         {/* Storage Fields */}
         {routeDestination?.id === "STORAGE" && (
-          <div>
-            <p style={{ marginBottom: "1rem" }}>
+          <div className="storage-routing-fields">
+            <p style={{ marginBottom: "1rem", color: "#525252" }}>
               <FormattedMessage
                 id="notebook.routing.modal.storageInfo"
-                defaultMessage="Samples will be routed to long-term storage. Select storage location using the hierarchy below."
+                defaultMessage="Store samples for future analysis. Record storage location, temperature, and retrieval schedule."
               />
             </p>
-            <StorageHierarchySelector
-              onSelectionChange={(selection) => {
-                setStorageSelection(selection);
-                // Clear pending well assignments when box changes
-                setStorageWellAssignments({});
-                if (selection.box) {
-                  setSelectedBox(selection.box);
-                  // Load box layout to show current occupancy
-                  setLoadingStorageLayout(true);
-                  getFromOpenElisServer(
-                    `/rest/notebook/${notebookId}/box/${selection.box.id}/layout?includeGlobal=true`,
-                    (response) => {
-                      setLoadingStorageLayout(false);
-                      if (response && response.wells) {
-                        setStorageModalBoxLayout(response.wells);
-                      } else {
-                        setStorageModalBoxLayout({});
-                      }
-                    },
-                  );
-                } else {
-                  setSelectedBox(null);
-                  setStorageModalBoxLayout({});
-                }
-              }}
-              entryId={entryId}
-              showPath={true}
-            />
 
-            {/* Box Layout Preview with Auto-Populate */}
-            {selectedBox && (
-              <div style={{ marginTop: "1rem" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "0.5rem",
+            <Accordion>
+              {/* Storage Purpose Section */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.routing.storage.purposeSection",
+                  defaultMessage: "Storage Purpose",
+                })}
+                open
+              >
+                <Grid narrow>
+                  <Column lg={8} md={4} sm={4}>
+                    <Select
+                      id="storage-purpose"
+                      labelText={intl.formatMessage({
+                        id: "notebook.routing.storage.purpose",
+                        defaultMessage: "Storage Purpose *",
+                      })}
+                      value={storagePurpose}
+                      onChange={(e) => setStoragePurpose(e.target.value)}
+                    >
+                      <SelectItem
+                        value="SHORT_TERM"
+                        text={intl.formatMessage({
+                          id: "notebook.routing.storage.shortTerm",
+                          defaultMessage: "Designated Short-Term Storage",
+                        })}
+                      />
+                      <SelectItem
+                        value="FUTURE_ANALYSIS"
+                        text={intl.formatMessage({
+                          id: "notebook.routing.storage.futureAnalysis",
+                          defaultMessage: "Store for Future Analysis",
+                        })}
+                      />
+                      <SelectItem
+                        value="ARCHIVAL"
+                        text={intl.formatMessage({
+                          id: "notebook.routing.storage.archival",
+                          defaultMessage: "Archival / Long-Term Retention",
+                        })}
+                      />
+                      <SelectItem
+                        value="QUALITY_CONTROL"
+                        text={intl.formatMessage({
+                          id: "notebook.routing.storage.qc",
+                          defaultMessage: "Quality Control Reference",
+                        })}
+                      />
+                    </Select>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <Select
+                      id="storage-temperature"
+                      labelText={intl.formatMessage({
+                        id: "notebook.routing.storage.temperature",
+                        defaultMessage: "Storage Temperature *",
+                      })}
+                      value={storageTemperature}
+                      onChange={(e) => setStorageTemperature(e.target.value)}
+                    >
+                      <SelectItem value="" text="Select temperature..." />
+                      <SelectItem
+                        value="ROOM_TEMP"
+                        text="Room Temperature (15-25°C)"
+                      />
+                      <SelectItem
+                        value="REFRIGERATED"
+                        text="Refrigerated (2-8°C)"
+                      />
+                      <SelectItem
+                        value="FROZEN_MINUS20"
+                        text="Frozen (-20°C)"
+                      />
+                      <SelectItem
+                        value="FROZEN_MINUS80"
+                        text="Ultra-Low (-80°C)"
+                      />
+                      <SelectItem
+                        value="LIQUID_NITROGEN"
+                        text="Liquid Nitrogen (-196°C)"
+                      />
+                    </Select>
+                  </Column>
+                </Grid>
+              </AccordionItem>
+
+              {/* Storage Location Section */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.routing.storage.locationSection",
+                  defaultMessage:
+                    "Storage Location (Room → Freezer → Rack → Box → Position)",
+                })}
+                open
+              >
+                <StorageHierarchySelector
+                  onSelectionChange={(selection) => {
+                    setStorageSelection(selection);
+                    // Clear pending well assignments when box changes
+                    setStorageWellAssignments({});
+                    if (selection.box) {
+                      setSelectedBox(selection.box);
+                      // Load box layout to show current occupancy
+                      setLoadingStorageLayout(true);
+                      getFromOpenElisServer(
+                        `/rest/notebook/${notebookId}/box/${selection.box.id}/layout?includeGlobal=true`,
+                        (response) => {
+                          setLoadingStorageLayout(false);
+                          if (response && response.wells) {
+                            setStorageModalBoxLayout(response.wells);
+                          } else {
+                            setStorageModalBoxLayout({});
+                          }
+                        },
+                      );
+                    } else {
+                      setSelectedBox(null);
+                      setStorageModalBoxLayout({});
+                    }
                   }}
-                >
-                  <h5>
-                    <FormattedMessage
-                      id="notebook.routing.modal.boxLayoutPreview"
-                      defaultMessage="Box Layout Preview"
-                    />
-                  </h5>
-                  <Button
-                    kind="tertiary"
-                    size="sm"
-                    renderIcon={Renew}
-                    onClick={handleAutoPopulateStorage}
-                    disabled={selectedSampleIds.length === 0}
+                  entryId={entryId}
+                  showPath={true}
+                />
+
+                {/* Display selected path */}
+                {storageSelection.room && (
+                  <div
+                    style={{
+                      marginTop: "0.5rem",
+                      padding: "0.5rem",
+                      backgroundColor: "#f4f4f4",
+                      borderRadius: "4px",
+                      fontSize: "0.875rem",
+                    }}
                   >
-                    <FormattedMessage
-                      id="notebook.routing.storage.autoPopulate"
-                      defaultMessage="Auto-Populate"
-                    />
-                  </Button>
-                </div>
-                <p
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "#525252",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  <FormattedMessage
-                    id="notebook.routing.modal.boxLayoutPreviewDescription"
-                    defaultMessage="Click Auto-Populate to preview well assignments. Pending assignments shown in yellow."
-                  />
-                </p>
-                {loadingStorageLayout ? (
-                  <p style={{ fontStyle: "italic", color: "#8d8d8d" }}>
-                    <FormattedMessage
-                      id="notebook.routing.modal.loadingLayout"
-                      defaultMessage="Loading box layout..."
-                    />
-                  </p>
-                ) : (
-                  <BoxLayoutViewer
-                    boxId={selectedBox.id}
-                    layout={getCombinedStorageLayout()}
-                    rows={selectedBox.rows || 8}
-                    columns={selectedBox.columns || 12}
-                  />
+                    <strong>
+                      <FormattedMessage
+                        id="notebook.routing.storage.selectedPath"
+                        defaultMessage="Selected Location:"
+                      />
+                    </strong>{" "}
+                    {storageSelection.room?.name || "-"}
+                    {storageSelection.device &&
+                      ` → ${storageSelection.device.name}`}
+                    {storageSelection.shelf &&
+                      ` → ${storageSelection.shelf.name}`}
+                    {storageSelection.rack &&
+                      ` → ${storageSelection.rack.name}`}
+                    {storageSelection.box && ` → ${storageSelection.box.name}`}
+                  </div>
                 )}
 
-                {/* Assignment Summary */}
-                <div
-                  style={{
-                    marginTop: "0.5rem",
-                    fontSize: "0.875rem",
-                    color: "#525252",
-                  }}
-                >
-                  <FormattedMessage
-                    id="notebook.routing.storage.assignmentSummary"
-                    defaultMessage="{assigned} of {total} samples assigned to wells"
-                    values={{
-                      assigned: Object.keys(storageWellAssignments).length,
-                      total: selectedSampleIds.length,
-                    }}
+                {/* Box Layout Preview with Auto-Populate */}
+                {selectedBox && (
+                  <div style={{ marginTop: "1rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <h5>
+                        <FormattedMessage
+                          id="notebook.routing.modal.boxLayoutPreview"
+                          defaultMessage="Box Layout Preview"
+                        />
+                      </h5>
+                      <Button
+                        kind="tertiary"
+                        size="sm"
+                        renderIcon={Renew}
+                        onClick={handleAutoPopulateStorage}
+                        disabled={selectedSampleIds.length === 0}
+                      >
+                        <FormattedMessage
+                          id="notebook.routing.storage.autoPopulate"
+                          defaultMessage="Auto-Populate"
+                        />
+                      </Button>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="notebook.routing.modal.boxLayoutPreviewDescription"
+                        defaultMessage="Click Auto-Populate to preview well assignments. Pending assignments shown in yellow."
+                      />
+                    </p>
+                    {loadingStorageLayout ? (
+                      <p style={{ fontStyle: "italic", color: "#8d8d8d" }}>
+                        <FormattedMessage
+                          id="notebook.routing.modal.loadingLayout"
+                          defaultMessage="Loading box layout..."
+                        />
+                      </p>
+                    ) : (
+                      <BoxLayoutViewer
+                        boxId={selectedBox.id}
+                        layout={getCombinedStorageLayout()}
+                        rows={selectedBox.rows || 8}
+                        columns={selectedBox.columns || 12}
+                      />
+                    )}
+
+                    {/* Assignment Summary */}
+                    <div
+                      style={{
+                        marginTop: "0.5rem",
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="notebook.routing.storage.assignmentSummary"
+                        defaultMessage="{assigned} of {total} samples assigned to wells"
+                        values={{
+                          assigned: Object.keys(storageWellAssignments).length,
+                          total: selectedSampleIds.length,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </AccordionItem>
+
+              {/* Retrieval Schedule Section */}
+              <AccordionItem
+                title={intl.formatMessage({
+                  id: "notebook.routing.storage.retrievalSection",
+                  defaultMessage: "Retrieval Schedule (Optional)",
+                })}
+              >
+                <Grid narrow>
+                  <Column lg={8} md={4} sm={4}>
+                    <DatePicker
+                      datePickerType="single"
+                      onChange={([date]) =>
+                        setRetrievalDate(date?.toISOString().split("T")[0])
+                      }
+                    >
+                      <DatePickerInput
+                        id="retrieval-date"
+                        labelText={intl.formatMessage({
+                          id: "notebook.routing.storage.retrievalDate",
+                          defaultMessage: "Scheduled Retrieval Date",
+                        })}
+                        placeholder="mm/dd/yyyy"
+                      />
+                    </DatePicker>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <p
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#525252",
+                        marginTop: "1.5rem",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="notebook.routing.storage.retrievalInfo"
+                        defaultMessage="Set a retrieval date if samples are scheduled for future processing or analysis."
+                      />
+                    </p>
+                  </Column>
+                </Grid>
+                <div style={{ marginTop: "1rem" }}>
+                  <TextArea
+                    id="storage-notes"
+                    labelText={intl.formatMessage({
+                      id: "notebook.routing.storage.notes",
+                      defaultMessage: "Storage Notes",
+                    })}
+                    value={storageNotes}
+                    onChange={(e) => setStorageNotes(e.target.value)}
+                    placeholder={intl.formatMessage({
+                      id: "notebook.routing.storage.notesPlaceholder",
+                      defaultMessage:
+                        "Additional notes about storage requirements, special handling, or retrieval instructions...",
+                    })}
+                    rows={3}
                   />
                 </div>
-              </div>
-            )}
-
-            <p
-              style={{
-                marginTop: "0.5rem",
-                fontSize: "0.875rem",
-                color: "#525252",
-              }}
-            >
-              <FormattedMessage
-                id="notebook.routing.modal.storageBoxHelp"
-                defaultMessage="Select a box and click Auto-Populate to preview assignments before routing."
-              />
-            </p>
+              </AccordionItem>
+            </Accordion>
           </div>
         )}
       </Modal>

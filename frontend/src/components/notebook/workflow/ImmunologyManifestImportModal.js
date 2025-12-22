@@ -23,106 +23,108 @@ import config from "../../../config.json";
 import "./NotebookWorkflow.css";
 
 /**
- * Expected dataPoints for Pharmaceutical Sample Import Manifest.
- * Aligned with Liquibase schema: 012-pharmaceuticals-notebook-template.xml
- * Note: sampleType.validValues is now fetched dynamically from the backend API
+ * Expected dataPoints for Immunology Sample Reception Manifest.
+ * Aligned with the immunology workflow reception metadata requirements.
  */
 const EXPECTED_DATA_POINTS = {
   required: [
     {
-      key: "sampleName",
-      label: "Sample Name",
-      description: "Name/description of the sample",
-      example: "Paracetamol 500mg Tablets",
-    },
-    {
-      key: "lotBatchNumber",
-      label: "Lot/Batch Number",
-      description: "Manufacturing lot or batch identifier",
-      example: "LOT-2024-001",
-    },
-    {
-      key: "dateOfManufacture",
-      label: "Date of Manufacture",
-      description: "Manufacturing date (YYYY-MM-DD)",
-      example: "2024-01-15",
-    },
-    {
-      key: "expiryRetestDate",
-      label: "Expiry/Re-test Date",
-      description: "Expiration or re-test date (YYYY-MM-DD)",
-      example: "2027-01-14",
-    },
-    {
-      key: "storageCondition",
-      label: "Storage Condition",
+      key: "uniqueParentSampleId",
+      label: "Unique Parent Sample Identifier",
       description:
-        "Required storage temperature/conditions (Controlled Room Temp, Refrigerated, Frozen, Deep Frozen, Liquid Nitrogen, Ambient, Other)",
-      example: "Controlled Room Temp (15-25C)",
+        "Unique identifier assigned at reception (can be auto-generated if not provided)",
+      example: "IMM-2024-001-A",
     },
     {
-      key: "ownerRequester",
-      label: "Owner/Requester",
-      description: "Organization or individual requesting analysis",
-      example: "ABC Pharmaceuticals Ltd",
+      key: "projectNameId",
+      label: "Project Name/ID",
+      description: "Study or project identifier",
+      example: "PROJ-VAC-2024",
+    },
+    {
+      key: "deliveryManifestReference",
+      label: "Delivery Manifest Reference",
+      description: "Reference number from the delivery manifest",
+      example: "DM-2024-12-001",
+    },
+    {
+      key: "collectionDateTime",
+      label: "Collection Date & Time",
+      description: "Date and time of sample collection (YYYY-MM-DD HH:MM)",
+      example: "2024-01-15 09:30",
+    },
+    {
+      key: "receptionDateTime",
+      label: "Reception Date & Time",
+      description:
+        "Date and time of sample reception (YYYY-MM-DD HH:MM or 'now')",
+      example: "2024-01-16 14:00",
+    },
+    {
+      key: "sourceOrigin",
+      label: "Source/Origin",
+      description: "Facility or study site where sample was collected",
+      example: "Addis Ababa Health Center",
     },
   ],
   sampleType: {
     key: "sampleType",
     label: "Sample Type",
     description:
-      "Type of pharmaceutical sample (validated against Pharmaceutical lab types)",
-    example: "Tablets, Capsules, API, Injections, etc.",
+      "Type of immunology sample (validated against Immunology lab types)",
+    example: "Whole Blood, PBMC, Serum, Plasma, etc.",
   },
   optional: [
     {
-      key: "alphanumericCode",
-      label: "Alphanumeric Code",
-      description: "External reference code (sponsor code, internal ID)",
-      example: "PAR-500-001",
+      key: "sampleVolume",
+      label: "Sample Volume/Quantity",
+      description: "Volume or quantity of the sample (with units)",
+      example: "5 mL, 2x10^6 cells",
     },
     {
-      key: "chemicalIupacName",
-      label: "Chemical/IUPAC Name",
-      description: "Systematic chemical nomenclature",
-      example: "N-(4-hydroxyphenyl)acetamide",
+      key: "storageConditionOnArrival",
+      label: "Storage Condition on Arrival",
+      description:
+        "Storage condition when received (Ambient, Refrigerated, Frozen, Dry Ice, Liquid Nitrogen)",
+      example: "Refrigerated (2-8C)",
     },
     {
-      key: "gradeSpecification",
-      label: "Grade/Specification",
-      description: "Purity grade or quality specification",
-      example: "USP, BP, IP, Ph.Eur.",
+      key: "transportTemperature",
+      label: "Transport Temperature",
+      description: "Temperature during transport (in Celsius)",
+      example: "4C, -20C, -80C",
     },
     {
-      key: "chainOfCustodyDetails",
-      label: "Chain of Custody Details",
-      description: "Custody transfer history and handling notes",
-      example: "Received from warehouse at 09:00 AM",
+      key: "receivingPersonnelName",
+      label: "Receiving Personnel Name",
+      description: "Name of person who received the sample",
+      example: "Dr. Sarah Bekele",
+    },
+    {
+      key: "manifestVerificationStatus",
+      label: "Delivery Manifest Verification Status",
+      description:
+        "Status of manifest verification (Verified, Pending, Discrepancy)",
+      example: "Verified",
     },
     {
       key: "patientId",
-      label: "Patient ID",
-      description: "For clinical samples only",
-      example: "PT-12345",
+      label: "Patient/Subject ID",
+      description: "Patient or study subject identifier (if applicable)",
+      example: "SUBJ-001",
     },
     {
-      key: "clinicalTrialNumber",
-      label: "Clinical Trial Number",
-      description: "Protocol or trial identifier (e.g., NCT number)",
-      example: "NCT04567890",
-    },
-    {
-      key: "consentStatus",
-      label: "Consent Status",
-      description: "Consent status for clinical samples",
-      example: "Obtained, Pending, Waived, Not Applicable",
+      key: "notes",
+      label: "Notes/Comments",
+      description: "Additional notes or observations",
+      example: "Sample received in good condition",
     },
   ],
   autoGenerated: [
     {
-      key: "uniqueSampleId",
-      label: "Unique Sample ID",
-      description: "System-generated unique identifier",
+      key: "accessionNumber",
+      label: "Accession Number",
+      description: "System-generated laboratory accession number",
     },
     {
       key: "barcodeQrCode",
@@ -133,10 +135,10 @@ const EXPECTED_DATA_POINTS = {
 };
 
 /**
- * PharmaManifestImportModal - CSV import modal for Pharmaceuticals workflow.
- * Supports mapping pharma-specific columns aligned with the updated dataPoints schema.
+ * ImmunologyManifestImportModal - CSV import modal for Immunology workflow.
+ * Supports mapping immunology-specific reception metadata columns.
  */
-function PharmaManifestImportModal({
+function ImmunologyManifestImportModal({
   open,
   onClose,
   entryId,
@@ -149,22 +151,22 @@ function PharmaManifestImportModal({
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [columnMapping, setColumnMapping] = useState({
     // Required fields
-    sampleNameColumn: "",
-    lotBatchNumberColumn: "",
-    dateOfManufactureColumn: "",
-    expiryRetestDateColumn: "",
-    storageConditionColumn: "",
-    ownerRequesterColumn: "",
-    // Sample type (validated against Pharmaceutical lab types)
+    uniqueParentSampleIdColumn: "",
+    projectNameIdColumn: "",
+    deliveryManifestReferenceColumn: "",
+    collectionDateTimeColumn: "",
+    receptionDateTimeColumn: "",
+    sourceOriginColumn: "",
+    // Sample type (validated against Immunology lab types)
     sampleTypeColumn: "",
     // Optional fields
-    alphanumericCodeColumn: "",
-    chemicalIupacNameColumn: "",
-    gradeSpecificationColumn: "",
-    chainOfCustodyDetailsColumn: "",
+    sampleVolumeColumn: "",
+    storageConditionOnArrivalColumn: "",
+    transportTemperatureColumn: "",
+    receivingPersonnelNameColumn: "",
+    manifestVerificationStatusColumn: "",
     patientIdColumn: "",
-    clinicalTrialNumberColumn: "",
-    consentStatusColumn: "",
+    notesColumn: "",
   });
 
   const [step, setStep] = useState(1);
@@ -181,7 +183,7 @@ function PharmaManifestImportModal({
   useEffect(() => {
     if (open) {
       setIsSampleTypesLoading(true);
-      fetch(`${config.serverBaseUrl}/rest/notebook/pharma/sample-types`, {
+      fetch(`${config.serverBaseUrl}/rest/notebook/immunology/sample-types`, {
         method: "GET",
         credentials: "include",
         headers: {
@@ -212,37 +214,64 @@ function PharmaManifestImportModal({
   const autoMapColumns = useCallback((headers) => {
     // Map of expected column keys to their form field names
     const columnKeyToField = {
-      samplename: "sampleNameColumn",
-      lotbatchnumber: "lotBatchNumberColumn",
-      dateofmanufacture: "dateOfManufactureColumn",
-      expiryretestdate: "expiryRetestDateColumn",
-      storagecondition: "storageConditionColumn",
-      ownerrequester: "ownerRequesterColumn",
+      uniqueparentsampleid: "uniqueParentSampleIdColumn",
+      uniqueparentsampleidentifier: "uniqueParentSampleIdColumn",
+      sampleid: "uniqueParentSampleIdColumn",
+      projectnameid: "projectNameIdColumn",
+      projectname: "projectNameIdColumn",
+      projectid: "projectNameIdColumn",
+      project: "projectNameIdColumn",
+      deliverymanifestreference: "deliveryManifestReferenceColumn",
+      manifestreference: "deliveryManifestReferenceColumn",
+      manifestref: "deliveryManifestReferenceColumn",
+      collectiondatetime: "collectionDateTimeColumn",
+      collectiondate: "collectionDateTimeColumn",
+      receptiondatetime: "receptionDateTimeColumn",
+      receptiondate: "receptionDateTimeColumn",
+      receiveddate: "receptionDateTimeColumn",
+      sourceorigin: "sourceOriginColumn",
+      source: "sourceOriginColumn",
+      origin: "sourceOriginColumn",
+      facility: "sourceOriginColumn",
+      studysite: "sourceOriginColumn",
       sampletype: "sampleTypeColumn",
-      alphanumericcode: "alphanumericCodeColumn",
-      chemicaliupacname: "chemicalIupacNameColumn",
-      gradespecification: "gradeSpecificationColumn",
-      chainofcustodydetails: "chainOfCustodyDetailsColumn",
+      type: "sampleTypeColumn",
+      samplevolume: "sampleVolumeColumn",
+      volume: "sampleVolumeColumn",
+      quantity: "sampleVolumeColumn",
+      storageconditiononarrival: "storageConditionOnArrivalColumn",
+      storagecondition: "storageConditionOnArrivalColumn",
+      storage: "storageConditionOnArrivalColumn",
+      transporttemperature: "transportTemperatureColumn",
+      temperature: "transportTemperatureColumn",
+      temp: "transportTemperatureColumn",
+      receivingpersonnelname: "receivingPersonnelNameColumn",
+      receivedby: "receivingPersonnelNameColumn",
+      receiver: "receivingPersonnelNameColumn",
+      manifestverificationstatus: "manifestVerificationStatusColumn",
+      verificationstatus: "manifestVerificationStatusColumn",
+      verified: "manifestVerificationStatusColumn",
       patientid: "patientIdColumn",
-      clinicaltrialnumber: "clinicalTrialNumberColumn",
-      consentstatus: "consentStatusColumn",
+      subjectid: "patientIdColumn",
+      notes: "notesColumn",
+      comments: "notesColumn",
     };
 
     const newMapping = {
-      sampleNameColumn: "",
-      lotBatchNumberColumn: "",
-      dateOfManufactureColumn: "",
-      expiryRetestDateColumn: "",
-      storageConditionColumn: "",
-      ownerRequesterColumn: "",
+      uniqueParentSampleIdColumn: "",
+      projectNameIdColumn: "",
+      deliveryManifestReferenceColumn: "",
+      collectionDateTimeColumn: "",
+      receptionDateTimeColumn: "",
+      sourceOriginColumn: "",
       sampleTypeColumn: "",
-      alphanumericCodeColumn: "",
-      chemicalIupacNameColumn: "",
-      gradeSpecificationColumn: "",
-      chainOfCustodyDetailsColumn: "",
+      sampleVolumeColumn: "",
+      storageConditionOnArrivalColumn: "",
+      transportTemperatureColumn: "",
+      receivingPersonnelNameColumn: "",
+      manifestVerificationStatusColumn: "",
       patientIdColumn: "",
-      clinicalTrialNumberColumn: "",
-      consentStatusColumn: "",
+      notesColumn: "",
     };
 
     headers.forEach((header) => {
@@ -269,7 +298,7 @@ function PharmaManifestImportModal({
       if (!addedFile.name.endsWith(".csv")) {
         setFileError(
           intl.formatMessage({
-            id: "notebook.pharma.manifest.error.invalidFileType",
+            id: "notebook.immunology.manifest.error.invalidFileType",
             defaultMessage: "Please upload a CSV file",
           }),
         );
@@ -303,23 +332,20 @@ function PharmaManifestImportModal({
     setFile(null);
     setCsvHeaders([]);
     setColumnMapping({
-      // Required fields
-      sampleNameColumn: "",
-      lotBatchNumberColumn: "",
-      dateOfManufactureColumn: "",
-      expiryRetestDateColumn: "",
-      storageConditionColumn: "",
-      ownerRequesterColumn: "",
-      // Sample type (validated against Pharmaceutical lab types)
+      uniqueParentSampleIdColumn: "",
+      projectNameIdColumn: "",
+      deliveryManifestReferenceColumn: "",
+      collectionDateTimeColumn: "",
+      receptionDateTimeColumn: "",
+      sourceOriginColumn: "",
       sampleTypeColumn: "",
-      // Optional fields
-      alphanumericCodeColumn: "",
-      chemicalIupacNameColumn: "",
-      gradeSpecificationColumn: "",
-      chainOfCustodyDetailsColumn: "",
+      sampleVolumeColumn: "",
+      storageConditionOnArrivalColumn: "",
+      transportTemperatureColumn: "",
+      receivingPersonnelNameColumn: "",
+      manifestVerificationStatusColumn: "",
       patientIdColumn: "",
-      clinicalTrialNumberColumn: "",
-      consentStatusColumn: "",
+      notesColumn: "",
     });
     setPreviewData(null);
     setPreviewErrors([]);
@@ -332,12 +358,12 @@ function PharmaManifestImportModal({
 
   // All 6 required fields must be mapped
   const requiredColumnsMapped =
-    columnMapping.sampleNameColumn &&
-    columnMapping.lotBatchNumberColumn &&
-    columnMapping.dateOfManufactureColumn &&
-    columnMapping.expiryRetestDateColumn &&
-    columnMapping.storageConditionColumn &&
-    columnMapping.ownerRequesterColumn;
+    columnMapping.uniqueParentSampleIdColumn &&
+    columnMapping.projectNameIdColumn &&
+    columnMapping.deliveryManifestReferenceColumn &&
+    columnMapping.collectionDateTimeColumn &&
+    columnMapping.receptionDateTimeColumn &&
+    columnMapping.sourceOriginColumn;
 
   const buildFormData = () => {
     const formData = new FormData();
@@ -355,7 +381,7 @@ function PharmaManifestImportModal({
     setPreviewErrors([]);
 
     try {
-      const endpoint = `${config.serverBaseUrl}/rest/notebook/pharma/entry/${entryId}/samples/preview-manifest`;
+      const endpoint = `${config.serverBaseUrl}/rest/notebook/immunology/entry/${entryId}/samples/preview-manifest`;
       const response = await fetch(endpoint, {
         method: "POST",
         body: buildFormData(),
@@ -396,7 +422,7 @@ function PharmaManifestImportModal({
     setPreviewErrors([]);
 
     try {
-      const endpoint = `${config.serverBaseUrl}/rest/notebook/pharma/entry/${entryId}/samples/create-from-manifest`;
+      const endpoint = `${config.serverBaseUrl}/rest/notebook/immunology/entry/${entryId}/samples/create-from-manifest`;
       const response = await fetch(endpoint, {
         method: "POST",
         body: buildFormData(),
@@ -456,8 +482,8 @@ function PharmaManifestImportModal({
       open={open}
       onRequestClose={handleClose}
       modalHeading={intl.formatMessage({
-        id: "notebook.pharma.manifest.title",
-        defaultMessage: "Import Pharmaceutical Samples from Manifest",
+        id: "notebook.immunology.manifest.title",
+        defaultMessage: "Import Immunology Samples from Delivery Manifest",
       })}
       primaryButtonText={
         step === 1
@@ -494,8 +520,8 @@ function PharmaManifestImportModal({
           <div className="upload-step">
             <p className="step-description">
               <FormattedMessage
-                id="notebook.pharma.manifest.step1"
-                defaultMessage="Upload a CSV file with pharmaceutical sample metadata. Review the expected data points below before uploading."
+                id="notebook.immunology.manifest.step1"
+                defaultMessage="Upload a CSV file with immunology sample reception metadata. Review the expected data points below before uploading."
               />
             </p>
 
@@ -506,7 +532,7 @@ function PharmaManifestImportModal({
                   <span className="accordion-title">
                     <Information size={16} />
                     <FormattedMessage
-                      id="notebook.pharma.manifest.expectedColumns"
+                      id="notebook.immunology.manifest.expectedColumns"
                       defaultMessage="Expected CSV Columns & Data Points"
                     />
                   </span>
@@ -518,7 +544,7 @@ function PharmaManifestImportModal({
                   <div className="datapoints-section">
                     <h5 className="section-title required-title">
                       <FormattedMessage
-                        id="notebook.pharma.manifest.requiredFields"
+                        id="notebook.immunology.manifest.requiredFields"
                         defaultMessage="Required Fields"
                       />
                       <Tag type="red" size="sm">
@@ -572,7 +598,7 @@ function PharmaManifestImportModal({
                   <div className="datapoints-section">
                     <h5 className="section-title sampletype-title">
                       <FormattedMessage
-                        id="notebook.pharma.manifest.sampleTypeField"
+                        id="notebook.immunology.manifest.sampleTypeField"
                         defaultMessage="Sample Type (Validated)"
                       />
                       <Tag type="purple" size="sm">
@@ -596,7 +622,7 @@ function PharmaManifestImportModal({
                           </StructuredListCell>
                           <StructuredListCell head>
                             <FormattedMessage
-                              id="notebook.pharma.manifest.validValues"
+                              id="notebook.immunology.manifest.validValues"
                               defaultMessage="Valid Values"
                             />
                           </StructuredListCell>
@@ -633,7 +659,7 @@ function PharmaManifestImportModal({
                               ) : (
                                 <span className="no-sample-types">
                                   <FormattedMessage
-                                    id="notebook.pharma.manifest.noSampleTypes"
+                                    id="notebook.immunology.manifest.noSampleTypes"
                                     defaultMessage="No sample types configured. Contact administrator."
                                   />
                                 </span>
@@ -649,7 +675,7 @@ function PharmaManifestImportModal({
                   <div className="datapoints-section">
                     <h5 className="section-title optional-title">
                       <FormattedMessage
-                        id="notebook.pharma.manifest.optionalFields"
+                        id="notebook.immunology.manifest.optionalFields"
                         defaultMessage="Optional Fields"
                       />
                       <Tag type="blue" size="sm">
@@ -703,7 +729,7 @@ function PharmaManifestImportModal({
                   <div className="datapoints-section">
                     <h5 className="section-title auto-title">
                       <FormattedMessage
-                        id="notebook.pharma.manifest.autoGeneratedFields"
+                        id="notebook.immunology.manifest.autoGeneratedFields"
                         defaultMessage="Auto-Generated Fields (Do not include in CSV)"
                       />
                       <Tag type="green" size="sm">
@@ -751,7 +777,7 @@ function PharmaManifestImportModal({
                 <FileUploaderDropContainer
                   accept={[".csv"]}
                   labelText={intl.formatMessage({
-                    id: "notebook.pharma.manifest.dropzone",
+                    id: "notebook.immunology.manifest.dropzone",
                     defaultMessage:
                       "Drag and drop a CSV file here or click to upload",
                   })}
@@ -780,8 +806,8 @@ function PharmaManifestImportModal({
           <div className="mapping-step">
             <p className="step-description">
               <FormattedMessage
-                id="notebook.pharma.manifest.step2"
-                defaultMessage="Map your CSV columns to the expected sample metadata fields. All required fields (marked with *) must be mapped."
+                id="notebook.immunology.manifest.step2"
+                defaultMessage="Map your CSV columns to the expected reception metadata fields. All required fields (marked with *) must be mapped."
               />
             </p>
 
@@ -789,7 +815,7 @@ function PharmaManifestImportModal({
             <div className="mapping-section">
               <h5 className="mapping-section-title">
                 <FormattedMessage
-                  id="notebook.pharma.manifest.requiredMappings"
+                  id="notebook.immunology.manifest.requiredMappings"
                   defaultMessage="Required Fields"
                 />
                 <Tag type="red" size="sm">
@@ -799,43 +825,43 @@ function PharmaManifestImportModal({
               <div className="mapping-grid">
                 <div className="mapping-field required">
                   {mappingField(
-                    "sampleNameColumn",
-                    "notebook.pharma.manifest.column.sampleName",
+                    "uniqueParentSampleIdColumn",
+                    "notebook.immunology.manifest.column.uniqueParentSampleId",
                   )}
                   <span className="required-marker">*</span>
                 </div>
                 <div className="mapping-field required">
                   {mappingField(
-                    "lotBatchNumberColumn",
-                    "notebook.pharma.manifest.column.lotBatchNumber",
+                    "projectNameIdColumn",
+                    "notebook.immunology.manifest.column.projectNameId",
                   )}
                   <span className="required-marker">*</span>
                 </div>
                 <div className="mapping-field required">
                   {mappingField(
-                    "dateOfManufactureColumn",
-                    "notebook.pharma.manifest.column.dateOfManufacture",
+                    "deliveryManifestReferenceColumn",
+                    "notebook.immunology.manifest.column.deliveryManifestReference",
                   )}
                   <span className="required-marker">*</span>
                 </div>
                 <div className="mapping-field required">
                   {mappingField(
-                    "expiryRetestDateColumn",
-                    "notebook.pharma.manifest.column.expiryRetestDate",
+                    "collectionDateTimeColumn",
+                    "notebook.immunology.manifest.column.collectionDateTime",
                   )}
                   <span className="required-marker">*</span>
                 </div>
                 <div className="mapping-field required">
                   {mappingField(
-                    "storageConditionColumn",
-                    "notebook.pharma.manifest.column.storageCondition",
+                    "receptionDateTimeColumn",
+                    "notebook.immunology.manifest.column.receptionDateTime",
                   )}
                   <span className="required-marker">*</span>
                 </div>
                 <div className="mapping-field required">
                   {mappingField(
-                    "ownerRequesterColumn",
-                    "notebook.pharma.manifest.column.ownerRequester",
+                    "sourceOriginColumn",
+                    "notebook.immunology.manifest.column.sourceOrigin",
                   )}
                   <span className="required-marker">*</span>
                 </div>
@@ -846,7 +872,7 @@ function PharmaManifestImportModal({
             <div className="mapping-section">
               <h5 className="mapping-section-title">
                 <FormattedMessage
-                  id="notebook.pharma.manifest.sampleTypeMappings"
+                  id="notebook.immunology.manifest.sampleTypeMappings"
                   defaultMessage="Sample Type (Validated)"
                 />
                 <Tag type="purple" size="sm">
@@ -855,14 +881,14 @@ function PharmaManifestImportModal({
               </h5>
               <p className="mapping-section-info">
                 <FormattedMessage
-                  id="notebook.pharma.manifest.sampleTypeInfo"
-                  defaultMessage="Sample type must match one of the valid Pharmaceutical lab types. Invalid types will be rejected during validation."
+                  id="notebook.immunology.manifest.sampleTypeInfo"
+                  defaultMessage="Sample type must match one of the valid Immunology lab types. Invalid types will be rejected during validation."
                 />
               </p>
               <div className="mapping-grid">
                 {mappingField(
                   "sampleTypeColumn",
-                  "notebook.pharma.manifest.column.sampleType",
+                  "notebook.immunology.manifest.column.sampleType",
                 )}
               </div>
             </div>
@@ -871,7 +897,7 @@ function PharmaManifestImportModal({
             <div className="mapping-section">
               <h5 className="mapping-section-title">
                 <FormattedMessage
-                  id="notebook.pharma.manifest.optionalMappings"
+                  id="notebook.immunology.manifest.optionalMappings"
                   defaultMessage="Optional Fields"
                 />
                 <Tag type="blue" size="sm">
@@ -880,32 +906,32 @@ function PharmaManifestImportModal({
               </h5>
               <div className="mapping-grid">
                 {mappingField(
-                  "alphanumericCodeColumn",
-                  "notebook.pharma.manifest.column.alphanumericCode",
+                  "sampleVolumeColumn",
+                  "notebook.immunology.manifest.column.sampleVolume",
                 )}
                 {mappingField(
-                  "chemicalIupacNameColumn",
-                  "notebook.pharma.manifest.column.chemicalIupacName",
+                  "storageConditionOnArrivalColumn",
+                  "notebook.immunology.manifest.column.storageConditionOnArrival",
                 )}
                 {mappingField(
-                  "gradeSpecificationColumn",
-                  "notebook.pharma.manifest.column.gradeSpecification",
+                  "transportTemperatureColumn",
+                  "notebook.immunology.manifest.column.transportTemperature",
                 )}
                 {mappingField(
-                  "chainOfCustodyDetailsColumn",
-                  "notebook.pharma.manifest.column.chainOfCustodyDetails",
+                  "receivingPersonnelNameColumn",
+                  "notebook.immunology.manifest.column.receivingPersonnelName",
+                )}
+                {mappingField(
+                  "manifestVerificationStatusColumn",
+                  "notebook.immunology.manifest.column.manifestVerificationStatus",
                 )}
                 {mappingField(
                   "patientIdColumn",
-                  "notebook.pharma.manifest.column.patientId",
+                  "notebook.immunology.manifest.column.patientId",
                 )}
                 {mappingField(
-                  "clinicalTrialNumberColumn",
-                  "notebook.pharma.manifest.column.clinicalTrialNumber",
-                )}
-                {mappingField(
-                  "consentStatusColumn",
-                  "notebook.pharma.manifest.column.consentStatus",
+                  "notesColumn",
+                  "notebook.immunology.manifest.column.notes",
                 )}
               </div>
             </div>
@@ -998,8 +1024,8 @@ function PharmaManifestImportModal({
             </h3>
             <p>
               <FormattedMessage
-                id="notebook.manifest.success.message"
-                defaultMessage="Samples have been created and linked to the notebook entry."
+                id="notebook.immunology.manifest.success.message"
+                defaultMessage="Immunology samples have been created and linked to the notebook entry with reception metadata."
               />
             </p>
           </div>
@@ -1009,4 +1035,4 @@ function PharmaManifestImportModal({
   );
 }
 
-export default PharmaManifestImportModal;
+export default ImmunologyManifestImportModal;

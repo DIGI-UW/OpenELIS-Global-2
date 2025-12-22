@@ -35,5 +35,8 @@
     <include file="liquibase/3.4.x.x/020-notebook-inventory-instruments.xml"/>
     <include file="liquibase/3.4.x.x/021-mntd-department-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/022-notebook-entry-temperature-log.xml"/>
+    <include file="liquibase/3.4.x.x/021-immunology-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/022-add-rejected-status.xml"/>
+    <include file="liquibase/3.4.x.x/023-notebook-page-data.xml"/>
 
 </databaseChangeLog>

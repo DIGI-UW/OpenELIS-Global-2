@@ -399,6 +399,160 @@ public class NotebookSampleEntryController extends BaseRestController {
         return sampleMap;
     }
 
+    // ================== ASSAY RUN MANAGEMENT ENDPOINTS ==================
+
+    /**
+     * Get assay runs for a page. GET /notebook/page/{pageId}/assay-runs
+     *
+     * Assay runs are stored in the page's data field under the key "assayRuns".
+     *
+     * @param pageId the page ID
+     * @return list of assay run configurations
+     */
+    @GetMapping(value = "/page/{pageId}/assay-runs", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getAssayRuns(@PathVariable("pageId") Integer pageId) {
+        NoteBookPage page = noteBookService.getPage(pageId);
+        if (page == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> pageData = page.getData();
+        if (pageData == null || !pageData.containsKey("assayRuns")) {
+            return ResponseEntity.ok(new java.util.ArrayList<>());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> assayRuns = (List<Map<String, Object>>) pageData.get("assayRuns");
+        return ResponseEntity.ok(assayRuns != null ? assayRuns : new java.util.ArrayList<>());
+    }
+
+    /**
+     * Save/update an assay run for a page. POST /notebook/page/{pageId}/assay-runs
+     *
+     * Creates or updates an assay run configuration.
+     *
+     * @param pageId      the page ID
+     * @param assayRun    the assay run configuration
+     * @param httpRequest for getting user session
+     * @return success or error response
+     */
+    @PostMapping(value = "/page/{pageId}/assay-runs", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> saveAssayRun(@PathVariable("pageId") Integer pageId,
+            @RequestBody Map<String, Object> assayRun, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User not authenticated");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        NoteBookPage page = noteBookService.getPage(pageId);
+        if (page == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Page not found");
+            return ResponseEntity.notFound().build();
+        }
+
+        String assayRunId = (String) assayRun.get("assayRunId");
+        if (assayRunId == null || assayRunId.isBlank()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "assayRunId is required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            // Get or initialize page data
+            Map<String, Object> pageData = page.getData();
+            if (pageData == null) {
+                pageData = new HashMap<>();
+            }
+
+            // Get or initialize assay runs list
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> assayRuns = (List<Map<String, Object>>) pageData.get("assayRuns");
+            if (assayRuns == null) {
+                assayRuns = new java.util.ArrayList<>();
+            }
+
+            // Check if this is an update or new
+            boolean found = false;
+            for (int i = 0; i < assayRuns.size(); i++) {
+                Map<String, Object> existing = assayRuns.get(i);
+                if (assayRunId.equals(existing.get("assayRunId"))) {
+                    // Update existing
+                    assayRuns.set(i, assayRun);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                // Add new assay run
+                assayRuns.add(assayRun);
+            }
+
+            // Save back to page
+            pageData.put("assayRuns", assayRuns);
+            page.setData(pageData);
+            page.setSysUserId(sysUserId);
+            noteBookPageService.update(page);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("assayRunId", assayRunId);
+            result.put("message", found ? "Assay run updated" : "Assay run created");
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "saveAssayRun",
+                    "Error saving assay run for page " + pageId + ": " + e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to save assay run: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * Get a specific assay run by ID. GET
+     * /notebook/page/{pageId}/assay-runs/{assayRunId}
+     *
+     * @param pageId     the page ID
+     * @param assayRunId the assay run ID
+     * @return the assay run configuration
+     */
+    @GetMapping(value = "/page/{pageId}/assay-runs/{assayRunId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getAssayRun(@PathVariable("pageId") Integer pageId,
+            @PathVariable("assayRunId") String assayRunId) {
+
+        NoteBookPage page = noteBookService.getPage(pageId);
+        if (page == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Map<String, Object> pageData = page.getData();
+        if (pageData == null || !pageData.containsKey("assayRuns")) {
+            return ResponseEntity.notFound().build();
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> assayRuns = (List<Map<String, Object>>) pageData.get("assayRuns");
+        if (assayRuns == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        for (Map<String, Object> run : assayRuns) {
+            if (assayRunId.equals(run.get("assayRunId"))) {
+                return ResponseEntity.ok(run);
+            }
+        }
+
+        return ResponseEntity.notFound().build();
+    }
+
     /**
      * Create a notebook instance from a template.
      *
@@ -475,9 +629,34 @@ public class NotebookSampleEntryController extends BaseRestController {
         String prefix = request.getExternalIdPrefix() != null ? request.getExternalIdPrefix() : "CHILD";
         Integer pageId = request.getPageId(); // Optional: page where child samples should appear
 
+        // Convert AliquotData to Map for storing in JSONB data field
+        Map<String, Object> aliquotDataMap = null;
+        if (request.getAliquotData() != null) {
+            aliquotDataMap = new HashMap<>();
+            AliquotData ad = request.getAliquotData();
+            if (ad.getAliquotType() != null) {
+                aliquotDataMap.put("aliquotType", ad.getAliquotType());
+            }
+            if (ad.getVolume() != null) {
+                aliquotDataMap.put("volume", ad.getVolume());
+            }
+            if (ad.getInitialVolume() != null) {
+                aliquotDataMap.put("initialVolume", ad.getInitialVolume());
+            }
+            if (ad.getVolumeUnit() != null) {
+                aliquotDataMap.put("volumeUnit", ad.getVolumeUnit());
+            }
+            if (ad.getDbsSpots() != null) {
+                aliquotDataMap.put("dbsSpots", ad.getDbsSpots());
+            }
+            if (ad.getNotes() != null) {
+                aliquotDataMap.put("notes", ad.getNotes());
+            }
+        }
+
         try {
             List<SampleItem> children = sampleEntryService.createChildSamplesForPage(notebookId, pageId,
-                    request.getParentSampleIds(), childCount, prefix, sysUserId);
+                    request.getParentSampleIds(), childCount, prefix, sysUserId, aliquotDataMap);
 
             List<SampleDisplayBean> displayBeans = children.stream().map(noteBookService::convertSampleToDisplayBean)
                     .collect(Collectors.toList());
@@ -990,14 +1169,11 @@ public class NotebookSampleEntryController extends BaseRestController {
                         }
 
                         if (nps != null) {
-                            // If request came from Routing page, mark as COMPLETED (storage assigned)
-                            // Otherwise mark as IN_PROGRESS (for Storage page workflow)
-                            if (request.getPageId() != null) {
-                                nps.setStatus(
-                                        org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.COMPLETED);
-                                nps.setCompletedAt(new java.sql.Timestamp(System.currentTimeMillis()));
-                            } else if (nps
-                                    .getStatus() == org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING) {
+                            // Samples routed to storage should NOT be marked as COMPLETED
+                            // They stay on the routing page as IN_PROGRESS (storage assigned but not moving
+                            // forward)
+                            // Only mark as IN_PROGRESS if currently PENDING
+                            if (nps.getStatus() == org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING) {
                                 nps.setStatus(
                                         org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS);
                             }
@@ -1184,6 +1360,382 @@ public class NotebookSampleEntryController extends BaseRestController {
         return ResponseEntity.ok(new java.util.ArrayList<>());
     }
 
+    // ================== IMMUNOLOGY POST-ANALYSIS ENDPOINTS ==================
+
+    /**
+     * Update volume and status for samples. POST
+     * /notebook/{id}/samples/update-volume
+     *
+     * Used in post-analysis handling to track remaining volume and sample status
+     * (analyzed, partially used, exhausted).
+     *
+     * @param notebookId  the notebook ID
+     * @param request     volume update request
+     * @param httpRequest for getting user session
+     * @return update result
+     */
+    @PostMapping(value = "/{notebookId}/samples/update-volume", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> updateSampleVolume(@PathVariable("notebookId") Integer notebookId,
+            @RequestBody UpdateVolumeRequest request, HttpServletRequest httpRequest) {
+
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            int updatedCount = 0;
+
+            for (Integer sampleId : request.getSampleIds()) {
+                // Find the NotebookPageSample for this sample (look in Post-Analysis page)
+                NoteBookPage postAnalysisPage = findPostAnalysisPageForNotebook(notebook);
+                if (postAnalysisPage == null) {
+                    // Try Storage page as fallback
+                    postAnalysisPage = findStoragePageForNotebook(notebook);
+                }
+
+                if (postAnalysisPage != null) {
+                    org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
+                            .getByPageIdAndSampleItemId(postAnalysisPage.getId(), sampleId);
+
+                    if (nps != null) {
+                        Map<String, Object> data = nps.getData() != null ? new HashMap<>(nps.getData())
+                                : new HashMap<>();
+
+                        // Update volume and status
+                        if (request.getSampleStatus() != null) {
+                            data.put("sampleStatus", request.getSampleStatus());
+                        }
+                        if (request.getRemainingVolume() != null) {
+                            data.put("remainingVolume", request.getRemainingVolume());
+                        }
+                        if (request.getVolumeUnit() != null) {
+                            data.put("volumeUnit", request.getVolumeUnit());
+                        }
+                        if (request.getVolumeNotes() != null) {
+                            data.put("volumeNotes", request.getVolumeNotes());
+                        }
+
+                        nps.setData(data);
+                        nps.setSysUserId(sysUserId);
+                        notebookPageSampleService.update(nps);
+                        updatedCount++;
+                    }
+                }
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("updatedCount", updatedCount);
+            result.put("notebookId", notebookId);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "updateSampleVolume",
+                    "Error updating sample volume: " + e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to update sample volume: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * Add quality flag to samples. POST /notebook/{id}/samples/quality-flag
+     *
+     * Used in post-analysis handling and result compilation to flag samples with
+     * quality issues.
+     *
+     * @param notebookId  the notebook ID
+     * @param request     quality flag request
+     * @param httpRequest for getting user session
+     * @return flag result
+     */
+    @PostMapping(value = "/{notebookId}/samples/quality-flag", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> addQualityFlag(@PathVariable("notebookId") Integer notebookId,
+            @RequestBody QualityFlagRequest request, HttpServletRequest httpRequest) {
+
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getFlagType() == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Flag type is required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            int updatedCount = 0;
+
+            for (Integer sampleId : request.getSampleIds()) {
+                // Find the NotebookPageSample for this sample
+                NoteBookPage targetPage = findPostAnalysisPageForNotebook(notebook);
+                if (targetPage == null) {
+                    targetPage = findStoragePageForNotebook(notebook);
+                }
+                if (targetPage == null) {
+                    targetPage = findResultCompilationPageForNotebook(notebook);
+                }
+
+                if (targetPage != null) {
+                    org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
+                            .getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
+
+                    if (nps != null) {
+                        Map<String, Object> data = nps.getData() != null ? new HashMap<>(nps.getData())
+                                : new HashMap<>();
+
+                        // Get or create quality flags list
+                        @SuppressWarnings("unchecked")
+                        List<String> qualityFlags = (List<String>) data.get("qualityFlags");
+                        if (qualityFlags == null) {
+                            qualityFlags = new java.util.ArrayList<>();
+                        }
+
+                        // Add the new flag if not already present
+                        if (!qualityFlags.contains(request.getFlagType())) {
+                            qualityFlags.add(request.getFlagType());
+                        }
+                        data.put("qualityFlags", qualityFlags);
+
+                        // Store flag metadata
+                        if (request.getCategory() != null) {
+                            data.put("flagCategory", request.getCategory());
+                        }
+                        if (request.getReason() != null) {
+                            data.put("flagReason", request.getReason());
+                        }
+                        if (request.getNotes() != null) {
+                            data.put("qualityNotes", request.getNotes());
+                        }
+                        if (request.isRequiresRepeatTesting()) {
+                            data.put("requiresRepeatTesting", true);
+                        }
+                        if (request.isRequiresInvestigation()) {
+                            data.put("requiresInvestigation", true);
+                        }
+
+                        nps.setData(data);
+                        nps.setSysUserId(sysUserId);
+                        notebookPageSampleService.update(nps);
+                        updatedCount++;
+                    }
+                }
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("updatedCount", updatedCount);
+            result.put("notebookId", notebookId);
+            result.put("flagType", request.getFlagType());
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "addQualityFlag",
+                    "Error adding quality flag: " + e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to add quality flag: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * Get QC summary for a notebook. GET /notebook/{id}/qc-summary
+     *
+     * Returns summary of QC controls (passed/failed) for immunology workflows.
+     *
+     * @param notebookId the notebook ID
+     * @return QC summary
+     */
+    @GetMapping(value = "/{notebookId}/qc-summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getQCSummary(@PathVariable("notebookId") Integer notebookId) {
+
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            // Count QC controls from assay runs stored in page data
+            int controlsPassed = 0;
+            int controlsFailed = 0;
+            int totalControls = 0;
+
+            // Look for assay runs in the Analysis page (typically page 6)
+            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebookId);
+            for (NoteBookPage page : pages) {
+                Map<String, Object> pageData = page.getData();
+                if (pageData != null && pageData.containsKey("assayRuns")) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> assayRuns = (List<Map<String, Object>>) pageData.get("assayRuns");
+                    if (assayRuns != null) {
+                        for (Map<String, Object> run : assayRuns) {
+                            // Count controls from each run
+                            Object passedObj = run.get("controlsPassed");
+                            Object failedObj = run.get("controlsFailed");
+                            Object totalObj = run.get("totalControls");
+
+                            if (passedObj instanceof Number) {
+                                controlsPassed += ((Number) passedObj).intValue();
+                            }
+                            if (failedObj instanceof Number) {
+                                controlsFailed += ((Number) failedObj).intValue();
+                            }
+                            if (totalObj instanceof Number) {
+                                totalControls += ((Number) totalObj).intValue();
+                            }
+                        }
+                    }
+                }
+
+                // Also check for QC data in page's qcSummary field
+                if (pageData != null && pageData.containsKey("qcSummary")) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> qcSummary = (Map<String, Object>) pageData.get("qcSummary");
+                    if (qcSummary != null) {
+                        Object passedObj = qcSummary.get("controlsPassed");
+                        Object failedObj = qcSummary.get("controlsFailed");
+                        Object totalObj = qcSummary.get("totalControls");
+
+                        if (passedObj instanceof Number) {
+                            controlsPassed += ((Number) passedObj).intValue();
+                        }
+                        if (failedObj instanceof Number) {
+                            controlsFailed += ((Number) failedObj).intValue();
+                        }
+                        if (totalObj instanceof Number) {
+                            totalControls += ((Number) totalObj).intValue();
+                        }
+                    }
+                }
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("controlsPassed", controlsPassed);
+            result.put("controlsFailed", controlsFailed);
+            result.put("totalControls", totalControls);
+            result.put("notebookId", notebookId);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getQCSummary", "Error getting QC summary: " + e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to get QC summary: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
+    /**
+     * Find the Post-Analysis page for a notebook (typically page 7 for immunology).
+     */
+    private NoteBookPage findPostAnalysisPageForNotebook(NoteBook notebook) {
+        if (notebook == null) {
+            return null;
+        }
+
+        try {
+            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebook.getId());
+            if (pages == null || pages.isEmpty()) {
+                return null;
+            }
+
+            // First try to find by title containing "post-analysis" or "post analysis"
+            for (NoteBookPage page : pages) {
+                String title = page.getTitle();
+                if (title != null) {
+                    String lowerTitle = title.toLowerCase();
+                    if (lowerTitle.contains("post-analysis") || lowerTitle.contains("post analysis")) {
+                        return page;
+                    }
+                }
+            }
+
+            // Fallback: find page with order = 7 (Immunology Post-Analysis)
+            for (NoteBookPage page : pages) {
+                if (page.getOrder() != null && page.getOrder() == 7) {
+                    return page;
+                }
+            }
+
+            return null;
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "findPostAnalysisPageForNotebook",
+                    "Error finding post-analysis page: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Find the Result Compilation page for a notebook (typically page 8 for
+     * immunology).
+     */
+    private NoteBookPage findResultCompilationPageForNotebook(NoteBook notebook) {
+        if (notebook == null) {
+            return null;
+        }
+
+        try {
+            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebook.getId());
+            if (pages == null || pages.isEmpty()) {
+                return null;
+            }
+
+            // First try to find by title containing "result" or "compilation"
+            for (NoteBookPage page : pages) {
+                String title = page.getTitle();
+                if (title != null) {
+                    String lowerTitle = title.toLowerCase();
+                    if (lowerTitle.contains("result") || lowerTitle.contains("compilation")) {
+                        return page;
+                    }
+                }
+            }
+
+            // Fallback: find page with order = 8 (Immunology Result Compilation)
+            for (NoteBookPage page : pages) {
+                if (page.getOrder() != null && page.getOrder() == 8) {
+                    return page;
+                }
+            }
+
+            return null;
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "findResultCompilationPageForNotebook",
+                    "Error finding result compilation page: " + e.getMessage());
+            return null;
+        }
+    }
+
     /**
      * Request body for linking samples.
      */
@@ -1339,6 +1891,12 @@ public class NotebookSampleEntryController extends BaseRestController {
         private int retentionYears;
         private boolean reassign; // Flag to allow reassignment of already-assigned samples
         private Integer pageId; // Notebook page ID for routing context
+        private boolean postAnalysisStorage; // Flag for post-analysis storage (immunology workflow)
+
+        // Additional storage fields
+        private String storagePurpose;
+        private String retrievalDate;
+        private String storageNotes;
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -1433,6 +1991,39 @@ public class NotebookSampleEntryController extends BaseRestController {
         public void setPageId(Integer pageId) {
             this.pageId = pageId;
         }
+
+        public boolean isPostAnalysisStorage() {
+            return postAnalysisStorage;
+        }
+
+        public void setPostAnalysisStorage(boolean postAnalysisStorage) {
+            this.postAnalysisStorage = postAnalysisStorage;
+        }
+
+        // Additional storage field getters/setters
+        public String getStoragePurpose() {
+            return storagePurpose;
+        }
+
+        public void setStoragePurpose(String storagePurpose) {
+            this.storagePurpose = storagePurpose;
+        }
+
+        public String getRetrievalDate() {
+            return retrievalDate;
+        }
+
+        public void setRetrievalDate(String retrievalDate) {
+            this.retrievalDate = retrievalDate;
+        }
+
+        public String getStorageNotes() {
+            return storageNotes;
+        }
+
+        public void setStorageNotes(String storageNotes) {
+            this.storageNotes = storageNotes;
+        }
     }
 
     /**
@@ -1490,6 +2081,19 @@ public class NotebookSampleEntryController extends BaseRestController {
         private String shipmentDate;
         private Integer storageAssignmentId;
         private AssayPlateInfo assayPlate; // For Internal Analysis - temporary assay plates
+
+        // Additional external lab fields
+        private String externalLabContact;
+        private String chainOfCustodyNotes;
+        private String packagingRequirements;
+        private String shipmentStatus;
+        private String trackingNumber;
+
+        // Additional storage fields
+        private String storagePurpose;
+        private String storageTemperature;
+        private String retrievalDate;
+        private String storageNotes;
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -1563,6 +2167,200 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setPageId(Integer pageId) {
             this.pageId = pageId;
+        }
+
+        // External lab additional getters/setters
+        public String getExternalLabContact() {
+            return externalLabContact;
+        }
+
+        public void setExternalLabContact(String externalLabContact) {
+            this.externalLabContact = externalLabContact;
+        }
+
+        public String getChainOfCustodyNotes() {
+            return chainOfCustodyNotes;
+        }
+
+        public void setChainOfCustodyNotes(String chainOfCustodyNotes) {
+            this.chainOfCustodyNotes = chainOfCustodyNotes;
+        }
+
+        public String getPackagingRequirements() {
+            return packagingRequirements;
+        }
+
+        public void setPackagingRequirements(String packagingRequirements) {
+            this.packagingRequirements = packagingRequirements;
+        }
+
+        public String getShipmentStatus() {
+            return shipmentStatus;
+        }
+
+        public void setShipmentStatus(String shipmentStatus) {
+            this.shipmentStatus = shipmentStatus;
+        }
+
+        public String getTrackingNumber() {
+            return trackingNumber;
+        }
+
+        public void setTrackingNumber(String trackingNumber) {
+            this.trackingNumber = trackingNumber;
+        }
+
+        // Storage additional getters/setters
+        public String getStoragePurpose() {
+            return storagePurpose;
+        }
+
+        public void setStoragePurpose(String storagePurpose) {
+            this.storagePurpose = storagePurpose;
+        }
+
+        public String getStorageTemperature() {
+            return storageTemperature;
+        }
+
+        public void setStorageTemperature(String storageTemperature) {
+            this.storageTemperature = storageTemperature;
+        }
+
+        public String getRetrievalDate() {
+            return retrievalDate;
+        }
+
+        public void setRetrievalDate(String retrievalDate) {
+            this.retrievalDate = retrievalDate;
+        }
+
+        public String getStorageNotes() {
+            return storageNotes;
+        }
+
+        public void setStorageNotes(String storageNotes) {
+            this.storageNotes = storageNotes;
+        }
+    }
+
+    /**
+     * Request body for updating sample volume.
+     */
+    public static class UpdateVolumeRequest {
+        private List<Integer> sampleIds;
+        private String sampleStatus; // ANALYZED, PARTIALLY_USED, EXHAUSTED
+        private Double remainingVolume;
+        private String volumeUnit; // µL, mL
+        private String volumeNotes;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getSampleStatus() {
+            return sampleStatus;
+        }
+
+        public void setSampleStatus(String sampleStatus) {
+            this.sampleStatus = sampleStatus;
+        }
+
+        public Double getRemainingVolume() {
+            return remainingVolume;
+        }
+
+        public void setRemainingVolume(Double remainingVolume) {
+            this.remainingVolume = remainingVolume;
+        }
+
+        public String getVolumeUnit() {
+            return volumeUnit;
+        }
+
+        public void setVolumeUnit(String volumeUnit) {
+            this.volumeUnit = volumeUnit;
+        }
+
+        public String getVolumeNotes() {
+            return volumeNotes;
+        }
+
+        public void setVolumeNotes(String volumeNotes) {
+            this.volumeNotes = volumeNotes;
+        }
+    }
+
+    /**
+     * Request body for adding quality flags.
+     */
+    public static class QualityFlagRequest {
+        private List<Integer> sampleIds;
+        private String flagType; // INSUFFICIENT_VOLUME, QUALITY_ISSUE, UNEXPECTED_RESULTS, etc.
+        private String category; // SAMPLE, INSTRUMENT, RESULT
+        private String reason;
+        private String notes; // Additional notes about the flag
+        private boolean requiresRepeatTesting;
+        private boolean requiresInvestigation;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getFlagType() {
+            return flagType;
+        }
+
+        public void setFlagType(String flagType) {
+            this.flagType = flagType;
+        }
+
+        public String getCategory() {
+            return category;
+        }
+
+        public void setCategory(String category) {
+            this.category = category;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public void setReason(String reason) {
+            this.reason = reason;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
+
+        public boolean isRequiresRepeatTesting() {
+            return requiresRepeatTesting;
+        }
+
+        public void setRequiresRepeatTesting(boolean requiresRepeatTesting) {
+            this.requiresRepeatTesting = requiresRepeatTesting;
+        }
+
+        public boolean isRequiresInvestigation() {
+            return requiresInvestigation;
+        }
+
+        public void setRequiresInvestigation(boolean requiresInvestigation) {
+            this.requiresInvestigation = requiresInvestigation;
         }
     }
 }

@@ -15,11 +15,16 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.type.JsonMapType;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
 @Entity
 @Table(name = "notebook_page")
+@TypeDef(name = "jsonb-map", typeClass = JsonMapType.class)
 public class NoteBookPage extends BaseObject<Integer> {
 
     @Id
@@ -63,6 +68,10 @@ public class NoteBookPage extends BaseObject<Integer> {
 
     @Column(name = "completed")
     private Boolean completed;
+
+    @Type(type = "jsonb-map")
+    @Column(name = "data", columnDefinition = "jsonb")
+    private Map<String, Object> data;
 
     public Integer getId() {
         return id;
@@ -148,6 +157,14 @@ public class NoteBookPage extends BaseObject<Integer> {
 
     public void setPanels(List<Integer> panels) {
         this.panels = panels;
+    }
+
+    public Map<String, Object> getData() {
+        return data;
+    }
+
+    public void setData(Map<String, Object> data) {
+        this.data = data;
     }
 
 }
