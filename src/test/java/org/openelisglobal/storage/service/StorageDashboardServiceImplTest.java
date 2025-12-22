@@ -4,7 +4,6 @@ import static org.junit.Assert.*;
 
 import java.util.List;
 import java.util.Map;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -93,8 +92,7 @@ public class StorageDashboardServiceImplTest extends BaseWebContextSensitiveTest
 
     @Test
     public void filterDevices_shouldReturnDevicesMatchingTypeRoomAndStatus_whenAllAreProvided() throws Exception {
-        List<StorageDevice> result = storageDashboardService.filterDevices(
-                StorageDevice.DeviceType.FREEZER, 1, true);
+        List<StorageDevice> result = storageDashboardService.filterDevices(StorageDevice.DeviceType.FREEZER, 1, true);
 
         assertNotNull(result);
         assertEquals(2, result.size());
@@ -108,8 +106,8 @@ public class StorageDashboardServiceImplTest extends BaseWebContextSensitiveTest
 
     @Test
     public void filterDevices_shouldReturnDevicesMatchingType_whenOnlyTypeIsProvided() throws Exception {
-        List<StorageDevice> result = storageDashboardService.filterDevices(
-                StorageDevice.DeviceType.REFRIGERATOR, null, null);
+        List<StorageDevice> result = storageDashboardService.filterDevices(StorageDevice.DeviceType.REFRIGERATOR, null,
+                null);
 
         assertNotNull(result);
         assertEquals(3, result.size());
@@ -246,8 +244,7 @@ public class StorageDashboardServiceImplTest extends BaseWebContextSensitiveTest
 
     @Test
     public void filterDevices_shouldReturnEmptyList_whenNoDevicesMatchFilters() throws Exception {
-        List<StorageDevice> result = storageDashboardService.filterDevices(
-                StorageDevice.DeviceType.FREEZER, 999, true);
+        List<StorageDevice> result = storageDashboardService.filterDevices(StorageDevice.DeviceType.FREEZER, 999, true);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
