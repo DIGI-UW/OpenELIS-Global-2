@@ -132,17 +132,41 @@ export const postToOpenElisServerFormDataJson = (
     body: formData,
   })
     .then((response) => {
+      const contentType = response.headers.get("content-type");
+      const isJson = contentType && contentType.includes("application/json");
+
       if (!response.ok) {
-        return response.json().then((errorJson) => {
+        if (isJson) {
+          return response.json().then((errorJson) => {
+            return {
+              ...errorJson,
+              status: response.status,
+              statusCode: response.status,
+              statusText: response.statusText,
+            };
+          });
+        } else {
+          // Non-JSON error response (e.g., HTML error page)
           return {
-            ...errorJson,
+            error: `Server error: ${response.status} ${response.statusText}`,
             status: response.status,
             statusCode: response.status,
             statusText: response.statusText,
           };
+        }
+      }
+
+      if (isJson) {
+        return response.json();
+      } else {
+        // Unexpected non-JSON success response
+        return response.text().then((text) => {
+          return {
+            error: "Server returned non-JSON response",
+            rawResponse: text.substring(0, 200),
+          };
         });
       }
-      return response.json();
     })
     .then((json) => {
       callback(json, extraParams);

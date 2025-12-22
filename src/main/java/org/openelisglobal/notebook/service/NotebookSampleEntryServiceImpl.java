@@ -269,6 +269,59 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
         return createdChildren;
     }
 
+    @Override
+    @Transactional
+    public List<SampleItem> createChildSamplesForPage(Integer notebookId, Integer pageId, List<Integer> parentSampleIds,
+            int childCountPerParent, String externalIdPrefix, String sysUserId, Map<String, Object> aliquotData) {
+        // Create the children using the base method
+        List<SampleItem> children = createChildSamplesForPage(notebookId, pageId, parentSampleIds, childCountPerParent,
+                externalIdPrefix, sysUserId);
+
+        // If aliquot data is provided, store it in each child's page sample record
+        if (aliquotData != null && !aliquotData.isEmpty() && !children.isEmpty()) {
+            // Find the page where children were created (or use first page if not
+            // specified)
+            Integer targetPageId = pageId;
+            if (targetPageId == null) {
+                NoteBook notebook = noteBookService.get(notebookId);
+                if (notebook != null && notebook.getPages() != null && !notebook.getPages().isEmpty()) {
+                    // Get the first page by order
+                    List<NoteBookPage> pages = new ArrayList<>(notebook.getPages());
+                    pages.sort((p1, p2) -> {
+                        Integer o1 = p1.getOrder() != null ? p1.getOrder() : Integer.MAX_VALUE;
+                        Integer o2 = p2.getOrder() != null ? p2.getOrder() : Integer.MAX_VALUE;
+                        return o1.compareTo(o2);
+                    });
+                    targetPageId = pages.get(0).getId();
+                }
+            }
+
+            // Update the NotebookPageSample records with aliquot data
+            if (targetPageId != null) {
+                for (SampleItem child : children) {
+                    Integer childId = Integer.parseInt(child.getId());
+                    NotebookPageSample nps = notebookPageSampleDAO.getByPageIdAndSampleItemId(targetPageId, childId);
+                    if (nps != null) {
+                        // Merge aliquot data with any existing data
+                        Map<String, Object> existingData = nps.getData();
+                        if (existingData == null) {
+                            existingData = new HashMap<>();
+                        }
+                        existingData.putAll(aliquotData);
+                        nps.setData(existingData);
+                        notebookPageSampleService.update(nps);
+
+                        LogEvent.logInfo(this.getClass().getName(), "createChildSamplesForPage",
+                                "Stored aliquot data for child sample " + childId + " on page " + targetPageId + ": "
+                                        + aliquotData);
+                    }
+                }
+            }
+        }
+
+        return children;
+    }
+
     /**
      * Create a child NotebookPageSample record, inheriting COMPLETED status based
      * on how far parent has progressed in the workflow.

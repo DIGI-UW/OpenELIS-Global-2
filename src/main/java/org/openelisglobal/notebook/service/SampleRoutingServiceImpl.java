@@ -176,30 +176,28 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
     @Transactional
     public SampleRouting routeToStorage(Integer notebookId, Integer sampleItemId, Integer storageAssignmentId,
             String userId) {
+        // Use allowRerouting=true since samples may have been routed to internal
+        // analysis first
+        SampleRouting routing = createOrGetBaseRouting(notebookId, sampleItemId, userId, true);
+        boolean isUpdate = routing.getId() != null;
+
         // If storageAssignmentId is provided, use existing assignment
         if (storageAssignmentId != null) {
             SampleStorageAssignment assignment = storageAssignmentDAO.get(storageAssignmentId).orElse(null);
             if (assignment == null) {
                 throw new IllegalArgumentException("StorageAssignment not found: " + storageAssignmentId);
             }
-
-            SampleRouting routing = createBaseRouting(notebookId, sampleItemId, userId);
-            routing.setDestinationType(DestinationType.STORAGE);
             routing.setStorageAssignment(assignment);
-
-            Integer id = insert(routing);
-            routing.setId(id);
-            return routing;
         }
 
-        // If no assignment ID, just create a STORAGE routing record without assignment
-        // The actual storage assignment can be done later via the Storage Management
-        // page
-        SampleRouting routing = createBaseRouting(notebookId, sampleItemId, userId);
         routing.setDestinationType(DestinationType.STORAGE);
 
-        Integer id = insert(routing);
-        routing.setId(id);
+        if (isUpdate) {
+            update(routing);
+        } else {
+            Integer id = insert(routing);
+            routing.setId(id);
+        }
         return routing;
     }
 
@@ -213,18 +211,28 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
             throw new IllegalArgumentException("StorageBox not found: " + boxId);
         }
 
-        // Check well availability (using notebook context for storage)
-        if (!isWellAvailable(notebookId, boxId, wellCoordinate)) {
+        // Use allowRerouting=true since samples may have been routed to internal
+        // analysis first
+        SampleRouting routing = createOrGetBaseRouting(notebookId, sampleItemId, userId, true);
+        boolean isUpdate = routing.getId() != null;
+
+        // Check well availability (skip if updating same sample to same well)
+        boolean sameWell = isUpdate && boxId.equals(routing.getBox() != null ? routing.getBox().getId() : null)
+                && wellCoordinate.equals(routing.getWellCoordinate());
+        if (!sameWell && !isWellAvailable(notebookId, boxId, wellCoordinate)) {
             throw new IllegalStateException("Well " + wellCoordinate + " is already assigned in box " + boxId);
         }
 
-        SampleRouting routing = createBaseRouting(notebookId, sampleItemId, userId);
         routing.setDestinationType(DestinationType.STORAGE);
         routing.setBox(box);
         routing.setWellCoordinate(wellCoordinate);
 
-        Integer id = insert(routing);
-        routing.setId(id);
+        if (isUpdate) {
+            update(routing);
+        } else {
+            Integer id = insert(routing);
+            routing.setId(id);
+        }
         return routing;
     }
 
@@ -327,9 +335,33 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
     }
 
     private SampleRouting createBaseRouting(Integer notebookId, Integer sampleItemId, String userId) {
+        return createOrGetBaseRouting(notebookId, sampleItemId, userId, false);
+    }
+
+    /**
+     * Creates a new routing or returns existing one for re-routing scenarios. In
+     * immunology workflow, samples may be routed to internal analysis first, then
+     * later re-routed to storage. This method supports both scenarios.
+     *
+     * @param notebookId     the notebook ID
+     * @param sampleItemId   the sample item ID
+     * @param userId         the user ID performing the routing
+     * @param allowRerouting if true, returns existing routing for update; if false,
+     *                       throws error if routing exists
+     * @return SampleRouting - new or existing routing record
+     */
+    private SampleRouting createOrGetBaseRouting(Integer notebookId, Integer sampleItemId, String userId,
+            boolean allowRerouting) {
         // Check if routing already exists
         SampleRouting existing = getByNotebookIdAndSampleItemId(notebookId, sampleItemId);
         if (existing != null) {
+            if (allowRerouting) {
+                // Return existing routing for update (re-routing scenario)
+                LogEvent.logInfo(this.getClass().getName(), "createOrGetBaseRouting",
+                        "Re-routing sample " + sampleItemId + " in notebook " + notebookId + " from "
+                                + existing.getDestinationType() + " to new destination");
+                return existing;
+            }
             throw new IllegalStateException("Sample " + sampleItemId + " is already routed in notebook " + notebookId);
         }
 
@@ -492,13 +524,20 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
             assignment = storageAssignmentDAO.get(assignmentId).orElse(null);
         }
 
-        // Create the routing record
-        SampleRouting routing = createBaseRouting(notebookId, sampleItemId, userId);
+        // Use allowRerouting=true since samples may have been routed to internal
+        // analysis first
+        SampleRouting routing = createOrGetBaseRouting(notebookId, sampleItemId, userId, true);
+        boolean isUpdate = routing.getId() != null;
+
         routing.setDestinationType(DestinationType.STORAGE);
         routing.setStorageAssignment(assignment);
 
-        Integer id = insert(routing);
-        routing.setId(id);
+        if (isUpdate) {
+            update(routing);
+        } else {
+            Integer id = insert(routing);
+            routing.setId(id);
+        }
         return routing;
     }
 

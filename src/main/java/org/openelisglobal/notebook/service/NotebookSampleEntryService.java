@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
@@ -87,6 +88,22 @@ public interface NotebookSampleEntryService {
      */
     List<SampleItem> createChildSamplesForPage(Integer notebookId, Integer pageId, List<Integer> parentSampleIds,
             int childCountPerParent, String externalIdPrefix, String sysUserId);
+
+    /**
+     * Create child samples from parent samples, linking them to a specific page,
+     * with aliquot-specific data (volume, type, etc.).
+     *
+     * @param notebookId          the notebook ID for linking children
+     * @param pageId              the page ID where child samples should appear
+     * @param parentSampleIds     list of parent sample item IDs
+     * @param childCountPerParent number of children to create per parent
+     * @param externalIdPrefix    prefix for generated external IDs
+     * @param sysUserId           the system user ID for audit trail
+     * @param aliquotData         optional aliquot-specific data to store
+     * @return list of created child SampleItem entities
+     */
+    List<SampleItem> createChildSamplesForPage(Integer notebookId, Integer pageId, List<Integer> parentSampleIds,
+            int childCountPerParent, String externalIdPrefix, String sysUserId, Map<String, Object> aliquotData);
 
     /**
      * Get child samples for a parent sample.
