@@ -19,12 +19,13 @@ import {
   Tag,
   Modal,
 } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import { Add, Upload } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import InventoryItemForm from "./InventoryItemForm";
+import InventoryImportModal from "./InventoryImportModal";
 
 const InventoryCatalog = () => {
   const intl = useIntl();
@@ -61,6 +62,7 @@ const InventoryCatalog = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
   const [itemToDeactivate, setItemToDeactivate] = useState(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const statusOptions = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
@@ -317,6 +319,17 @@ const InventoryCatalog = () => {
                 />
 
                 <Button
+                  renderIcon={Upload}
+                  kind="secondary"
+                  onClick={() => setImportModalOpen(true)}
+                >
+                  <FormattedMessage
+                    id="inventory.import.button"
+                    defaultMessage="Import from Excel"
+                  />
+                </Button>
+
+                <Button
                   renderIcon={Add}
                   onClick={() => {
                     setSelectedItem(null);
@@ -491,6 +504,28 @@ const InventoryCatalog = () => {
           </li>
         </ul>
       </Modal>
+
+      {importModalOpen && (
+        <InventoryImportModal
+          open={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          onImportComplete={(result) => {
+            setImportModalOpen(false);
+            fetchItems();
+            notify({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "notification.success" }),
+              subtitle: intl.formatMessage(
+                { id: "inventory.import.success" },
+                {
+                  items: result.successfulItems,
+                  lots: result.successfulLots,
+                },
+              ),
+            });
+          }}
+        />
+      )}
     </>
   );
 };

@@ -444,3 +444,121 @@ export const ReportsAPI = {
     });
   },
 };
+
+/**
+ * Inventory Import API
+ */
+export const InventoryImportAPI = {
+  /**
+   * Parse an Excel file and return structure info
+   * @param {File} file - The Excel file to parse
+   * @returns {Promise} Parse result with sheets, headers, and sample data
+   */
+  parseFile: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+      `${config.serverBaseUrl}${BASE_PATH}/import/parse`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error || `Failed to parse file: HTTP ${response.status}`,
+      );
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Preview import with column mapping
+   * @param {File} file - The Excel file
+   * @param {string} sheet - Selected sheet name
+   * @param {Object} columnMapping - Column mapping configuration
+   * @returns {Promise} Preview result with validation
+   */
+  previewImport: async (file, sheet, columnMapping) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("sheet", sheet);
+
+    // Add column mapping fields
+    Object.entries(columnMapping).forEach(([key, value]) => {
+      if (value) {
+        formData.append(key, value);
+      }
+    });
+
+    const response = await fetch(
+      `${config.serverBaseUrl}${BASE_PATH}/import/preview`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error || `Failed to preview import: HTTP ${response.status}`,
+      );
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Execute the import
+   * @param {File} file - The Excel file
+   * @param {string} sheet - Selected sheet name
+   * @param {Object} columnMapping - Column mapping configuration
+   * @returns {Promise} Import result
+   */
+  executeImport: async (file, sheet, columnMapping) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("sheet", sheet);
+
+    // Add column mapping fields
+    Object.entries(columnMapping).forEach(([key, value]) => {
+      if (value) {
+        formData.append(key, value);
+      }
+    });
+
+    const response = await fetch(
+      `${config.serverBaseUrl}${BASE_PATH}/import/execute`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error || `Failed to execute import: HTTP ${response.status}`,
+      );
+    }
+
+    return response.json();
+  },
+};

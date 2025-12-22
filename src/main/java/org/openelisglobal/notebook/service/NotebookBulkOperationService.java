@@ -176,13 +176,13 @@ public interface NotebookBulkOperationService {
             String instrumentName, String userId);
 
     /**
-     * Parse CSV raw data file and apply results to samples by matching
-     * externalId (primary) or accessionNumber (fallback). The CSV must contain a
-     * header row with column names that map to sample data fields.
+     * Parse CSV raw data file and apply results to samples by matching externalId
+     * (primary) or accessionNumber (fallback). The CSV must contain a header row
+     * with column names that map to sample data fields.
      *
-     * Matching Priority:
-     * 1. externalId - primary matching key from SampleItem.externalId
-     * 2. accessionNumber - fallback if externalId doesn't match
+     * Matching Priority: 1. externalId - primary matching key from
+     * SampleItem.externalId 2. accessionNumber - fallback if externalId doesn't
+     * match
      *
      * Supported columns: externalId, accessionNumber, testResult, ctValue,
      * concentration, absorbance, runId, kitLot, operator, machineType,
