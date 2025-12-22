@@ -619,15 +619,16 @@ public void testGetLocation_ReturnsLocation() {
 - Use `create()` static method for fluent API
 - Use `build()` to create entity instance
 
-#### DBUnit (Legacy Pattern)
+#### DBUnit (Backend Integration Tests)
 
-**Use when**: Complex test data requiring multiple related entities.
+**Use when**: Complex test data requiring multiple related entities in **backend
+integration tests**.
 
 **When to Use**:
 
 - Existing tests using `BaseWebContextSensitiveTest`
 - Complex test data with many relationships
-- Reusable test datasets
+- Reusable test datasets for backend integration tests
 
 **Pattern**:
 
@@ -646,10 +647,54 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 **Key Points**:
 
 - Use for complex test data (multiple related entities)
-- XML datasets in `src/test/resources/`
+- XML datasets in `src/test/resources/testdata/*.xml`
 - Load via `executeDataSetWithStateManagement()`
 - No extra manual cleanup should be needed for tables included in the dataset
   (the helper truncates/refreshes them)
+
+#### Generated SQL (E2E Tests)
+
+**Use when**: E2E tests (Cypress) need to load DBUnit XML fixtures **without
+Java/Maven dependencies**.
+
+**Problem**: E2E CI (`frontend-qa.yml`) doesn't have Maven/Java, but needs same
+fixtures as backend tests.
+
+**Solution**: Generate SQL on-demand from authoritative DBUnit XML:
+
+- **Authoritative Source**: `testdata/storage-e2e.xml` (DBUnit XML)
+- **Generated Output**: `testdata/storage-e2e.generated.sql` (never committed,
+  see `.gitignore`)
+- **Converter**: `testdata/xml-to-sql.py` (Python 3 script)
+- **Loading**: `load-test-fixtures.sh` generates SQL then loads via `psql`
+
+**Pattern (Cypress)**:
+
+```javascript
+// frontend/cypress/support/commands.js
+Cypress.Commands.add("loadStorageFixtures", () => {
+  cy.task("loadStorageTestData"); // Calls load-test-fixtures.sh
+});
+
+// Test file
+before(() => {
+  cy.login("admin", "adminADMIN!");
+  cy.loadStorageFixtures(); // Auto-generates SQL from XML, loads via psql
+});
+```
+
+**Key Points**:
+
+- **Single source of truth**: DBUnit XML (edit XML, SQL auto-generated)
+- **No drift**: SQL regenerated every test run
+- **No Maven in CI**: Only needs Python 3 + psql (both pre-installed in GitHub
+  Actions)
+- **Never commit generated SQL**: `.gitignore` blocks `*.generated.sql` files
+- **Same data across test types**: Backend (XML) and E2E (generated SQL) use
+  identical fixtures
+
+**Reference**:
+[specs/001-sample-storage/test-fixtures-implementation.md](../../specs/001-sample-storage/test-fixtures-implementation.md)
 
 #### JdbcTemplate (Direct Database Operations)
 

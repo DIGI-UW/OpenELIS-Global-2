@@ -10,7 +10,7 @@ public class StorageBoxResponse {
     private Integer columns;
     private Integer capacity;
     private String positionSchemaHint;
-    private String shortCode;
+    private String code;
     private Boolean active;
     private Boolean occupied;
     private Map<String, Map<String, String>> occupiedCoordinates;
@@ -85,12 +85,12 @@ public class StorageBoxResponse {
         this.positionSchemaHint = positionSchemaHint;
     }
 
-    public String getShortCode() {
-        return shortCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Boolean getActive() {

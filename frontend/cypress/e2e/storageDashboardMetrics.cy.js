@@ -28,8 +28,8 @@ describe("Storage Locations Metric Card", function () {
       "getLocationCounts",
     );
     cy.visit("/Storage");
-    cy.wait("@getLocationCounts", { timeout: 10000 });
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.wait("@getLocationCounts", { timeout: 3000 });
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
   });
 
   beforeEach(() => {
@@ -43,14 +43,14 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_DisplaysFormattedBreakdown", function () {
     // Find the Storage Locations metric card (4th tile)
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
         // Verify the metric card title
         cy.get("h3").should("contain.text", "Storage Locations");
 
         // Verify formatted breakdown with pills exists
-        cy.get(".location-counts-breakdown", { timeout: 5000 }).should(
+        cy.get(".location-counts-breakdown", { timeout: 3000 }).should(
           "be.visible",
         );
 
@@ -79,12 +79,12 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_ColorCodesByType", function () {
     // Find the Storage Locations metric card
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
         // Verify pill elements exist with color classes
         cy.get(".location-count-pill.location-count-rooms", {
-          timeout: 5000,
+          timeout: 3000,
         }).should("be.visible");
         cy.get(".location-count-pill.location-count-devices").should(
           "be.visible",
@@ -147,22 +147,23 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_ShowsOnlyActiveLocations", function () {
     // Wait for metric card to load (API call happens during page load in beforeEach)
-    cy.get(".storage-dashboard", { timeout: 10000 }).should("be.visible");
+    cy.get(".storage-dashboard", { timeout: 3000 }).should("be.visible");
 
     // Verify metric card displays formatted counts
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
-        cy.get(".location-counts-breakdown", { timeout: 10000 })
+        cy.get(".location-counts-breakdown", { timeout: 3000 })
           .should("be.visible")
           .then(($div) => {
             const text = $div.text();
 
-            // Extract counts from displayed text (numbers and labels are in separate spans within pills)
-            const roomsMatch = text.match(/(\d+).*rooms?/i);
-            const devicesMatch = text.match(/(\d+).*devices?/i);
-            const shelvesMatch = text.match(/(\d+).*shelves?/i);
-            const racksMatch = text.match(/(\d+).*racks?/i);
+            // Extract counts from displayed text - use non-greedy match
+            // Text format is like "0rooms3devices2shelves5racks" or "0 rooms 3 devices..."
+            const roomsMatch = text.match(/(\d+)\s*rooms?/i);
+            const devicesMatch = text.match(/(\d+)\s*devices?/i);
+            const shelvesMatch = text.match(/(\d+)\s*shelves?/i);
+            const racksMatch = text.match(/(\d+)\s*racks?/i);
 
             // Verify all counts are present and are valid numbers
             expect(roomsMatch).to.not.be.null;
@@ -207,7 +208,7 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testTabs_HaveMatchingSubtleAccentColors", function () {
     // Verify tab elements exist
-    cy.get('button[role="tab"]', { timeout: 10000 }).should(
+    cy.get('button[role="tab"]', { timeout: 3000 }).should(
       "have.length.at.least",
       5,
     );
@@ -268,7 +269,7 @@ describe("Storage Locations Metric Card", function () {
    */
   it("testMetricCard_ColorblindAccessible", function () {
     // Find the Storage Locations metric card
-    cy.get(".cds--tile", { timeout: 10000 })
+    cy.get(".cds--tile", { timeout: 3000 })
       .eq(3)
       .within(() => {
         // Verify all location types have distinct color classes in pill format

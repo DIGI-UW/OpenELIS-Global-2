@@ -95,6 +95,9 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
 
+        <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
+        <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />

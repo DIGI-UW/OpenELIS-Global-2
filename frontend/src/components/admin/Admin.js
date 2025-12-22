@@ -65,7 +65,6 @@ import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
 import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry.js";
 import TestOrderability from "./testManagementConfigMenu/TestOrderability.js";
-import MethodManagement from "./testManagementConfigMenu/MethodManagement.js";
 import MethodCreate from "./testManagementConfigMenu/MethodCreate.js";
 import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement.js";
 import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate.js";

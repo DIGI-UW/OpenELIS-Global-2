@@ -29,7 +29,12 @@ import { getFromOpenElisServer } from "../../../utils/Utils.js";
 import { NotificationContext } from "../../../layout/Layout.js";
 import { extractAgeRangeParts } from "./TestFormData.js";
 
-export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
+export const TestStepForm = ({
+  initialData,
+  mode = "add",
+  postCall,
+  cancelCall,
+}) => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -539,6 +544,7 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       setLabUnitList={setLabUnitList}
       selectedLabUnitId={selectedLabUnitList}
       setSelectedLabUnitList={setSelectedLabUnitList}
+      cancelCall={cancelCall}
     />,
     <StepTwoTestPanelAndUom
       key="step-2"
@@ -698,6 +704,7 @@ export const StepOneTestNameAndTestSection = ({
   setLabUnitList,
   selectedLabUnitId,
   setSelectedLabUnitList,
+  cancelCall,
 }) => {
   const handleSubmit = (values) => {
     handleNextStep(values, true);
@@ -898,7 +905,11 @@ export const StepOneTestNameAndTestSection = ({
                   </Button>{" "}
                   <Button
                     onClick={() => {
-                      window.location.reload();
+                      if (cancelCall) {
+                        cancelCall();
+                      } else {
+                        window.location.reload();
+                      }
                     }}
                     kind="tertiary"
                     type="button"

@@ -55,8 +55,8 @@ public class StorageBox extends BaseObject<Integer> {
     @Column(name = "POSITION_SCHEMA_HINT", length = 50)
     private String positionSchemaHint; // e.g., "letter-number" for "A1" format
 
-    @Column(name = "SHORT_CODE", length = 10)
-    private String shortCode;
+    @Column(name = "CODE", length = 10, nullable = false)
+    private String code;
 
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
@@ -126,12 +126,12 @@ public class StorageBox extends BaseObject<Integer> {
         this.positionSchemaHint = positionSchemaHint;
     }
 
-    public String getShortCode() {
-        return shortCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public Boolean getActive() {

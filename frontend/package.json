@@ -54,6 +54,7 @@
     "test:unit": "react-scripts test",
     "eject": "react-scripts eject",
     "cy:run": "cypress run --headless --browser chrome",
+    "cy:unset-run": "unset ELECTRON_RUN_AS_NODE; cypress run --headless --browser chrome",
     "cy:open": "cypress open --browser chrome",
     "test:e2e:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
     "test:e2e:full": "cypress run --headless --browser chrome",

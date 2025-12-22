@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- County Entries -->
+    <!-- Note: region_id references the region table -->
+
+    <county id="2001" county="Greenfield"
+        lastupdated="2023-10-01 12:00:00.000" region_id="1" />
+
+    <county id="2002" county="Marryland"
+        lastupdated="2024-06-10 11:45:00.000" region_id="1" />
+</dataset>

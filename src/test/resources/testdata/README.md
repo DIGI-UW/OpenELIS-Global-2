@@ -177,6 +177,33 @@ XML (`storage-e2e.xml`) as part of the test data strategy remediation:
   - Better test isolation
   - Consistent loading across test types
 
+## Generated SQL Files (E2E Tests Only)
+
+For E2E tests (Cypress) that don't have access to Java/DBUnit, we generate SQL
+on-demand from the authoritative DBUnit XML:
+
+- **Authoritative Source**: `storage-e2e.xml` (DBUnit XML)
+- **Generated Output**: `storage-e2e.generated.sql` (never committed to git)
+- **Converter**: `xml-to-sql.py` (Python script)
+- **How**: `load-test-fixtures.sh` generates SQL on-the-fly before loading
+
+**IMPORTANT**: The `*.generated.sql` files are **NEVER committed** to git (see
+`.gitignore`). They are generated on-demand during test runs to avoid
+source-of-truth fragmentation.
+
+**Workflow**:
+
+1. Backend tests → Load `storage-e2e.xml` via DBUnit (Java)
+2. E2E tests → Load `storage-e2e.xml` via generated SQL (Python + psql)
+3. Manual testing → Load `storage-e2e.xml` via generated SQL (Python + psql)
+
+**Why generated SQL?**
+
+- E2E CI (`frontend-qa.yml`) doesn't have Maven/Java dependencies
+- Keeps E2E tests fast (no Maven compilation)
+- Maintains single source of truth (XML is authoritative)
+- Prevents accidental divergence (SQL regenerated every run)
+
 ## Related Documentation
 
 - [Test Data Strategy Guide](../../../../.specify/guides/test-data-strategy.md) -
