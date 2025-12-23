@@ -224,7 +224,11 @@ public class ManifestImportServiceImpl implements ManifestImportService {
         if (!createdSamples.isEmpty()) {
             List<Integer> createdIds = createdSamples.stream().map(s -> Integer.parseInt(s.getId()))
                     .collect(Collectors.toList());
-            notebookSampleEntryService.linkSamplesToNotebook(entryId, createdIds);
+            // Use notebook ID from entry, not entry ID
+            Integer notebookId = entry.getNotebook() != null ? entry.getNotebook().getId() : null;
+            if (notebookId != null) {
+                notebookSampleEntryService.linkSamplesToNotebook(notebookId, createdIds);
+            }
         }
 
         return new ManifestImportResult(totalRequested, createdSamples.size(), createdSamples, errors);

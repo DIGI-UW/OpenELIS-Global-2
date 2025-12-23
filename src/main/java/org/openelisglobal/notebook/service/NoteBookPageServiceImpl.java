@@ -102,4 +102,23 @@ public class NoteBookPageServiceImpl extends AuditableBaseObjectServiceImpl<Note
             throw new IllegalArgumentException("Invalid JSON content: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public void evict(NoteBookPage page) {
+        if (page != null) {
+            baseObjectDAO.evict(page);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getPageIdByNotebookIdAndOrder(Integer notebookId, Integer pageOrder) {
+        return baseObjectDAO.getPageIdByNotebookIdAndOrder(notebookId, pageOrder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getPageIdByNotebookIdAndTitlePattern(Integer notebookId, String titlePattern) {
+        return baseObjectDAO.getPageIdByNotebookIdAndTitlePattern(notebookId, titlePattern);
+    }
 }

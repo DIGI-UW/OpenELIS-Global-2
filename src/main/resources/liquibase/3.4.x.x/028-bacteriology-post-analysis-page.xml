@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Bacteriology Post-Analysis Page (Page 6)
+
+    This changelog creates the Post-Analysis Storage page for the Bacteriology workflow.
+
+    Features:
+    1. Remaining Volume Tracking - Record remaining sample volume after processing
+    2. Type of Sample Aliquots:
+       - Isolates: Pure bacterial cultures (agar slants, glycerol stocks)
+       - DNA: Extracted genomic DNA
+       - RNA: If applicable (rare in bacteriology)
+       - Primary Sample: Residual original specimen
+    3. Storage Media for Isolates:
+       - STGG (Skim Milk-Tryptone-Glucose-Glycerol): Long-term storage
+       - Glycerol stocks: 15-20% glycerol in broth, stored at -80°C
+       - Bead systems, lyophilized cultures
+    4. Storage Containers: Tube, Vial (cryovial), Slide, Plate, Other
+    5. Storage Hierarchy: Room → Freezer/Refrigerator → Drawer → Rack → Sample Box
+    6. Storage Methods:
+       - Freezer (-20°C, -80°C for isolates, DNA)
+       - Refrigerator (2-8°C for short-term cultures)
+       - Slide cabinet (room temp for stained slides)
+    7. Environmental Monitoring:
+       - Temperature checks (twice daily or automated)
+       - Logged with date, time, temp, staff initials
+    -->
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- Add Post-Analysis Storage page (Page 6) to Bacteriology notebook template -->
+    <changeSet id="028-1-add-bacteriology-post-analysis-page" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Post-Analysis Storage page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Post-Analysis Storage"/>
+            <column name="instructions" value="Select samples to assign to post-analysis storage. Choose aliquot type (isolate, DNA, primary sample), storage media (STGG, glycerol stock, bead system), container type, and storage conditions. Record environmental temperature logs twice daily."/>
+            <column name="content" value="{&quot;description&quot;:&quot;Store processed samples (isolates, DNA, primary samples) with appropriate storage conditions and environmental monitoring.&quot;,&quot;sections&quot;:[{&quot;id&quot;:&quot;sampleStorage&quot;,&quot;title&quot;:&quot;Sample Storage&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;aliquotType&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Aliquot Type&quot;,&quot;required&quot;:true,&quot;options&quot;:[&quot;ISOLATE&quot;,&quot;DNA&quot;,&quot;RNA&quot;,&quot;PRIMARY_SAMPLE&quot;,&quot;GLYCEROL_STOCK&quot;,&quot;LYOPHILIZED&quot;]},{&quot;name&quot;:&quot;storageMedia&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Storage Media&quot;,&quot;options&quot;:[&quot;STGG&quot;,&quot;GLYCEROL_15&quot;,&quot;GLYCEROL_20&quot;,&quot;BEAD_SYSTEM&quot;,&quot;AGAR_SLANT&quot;,&quot;BROTH_CULTURE&quot;,&quot;LYOPHILIZED&quot;,&quot;TE_BUFFER&quot;,&quot;RNASE_FREE_WATER&quot;,&quot;NONE&quot;]},{&quot;name&quot;:&quot;containerType&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Container Type&quot;,&quot;options&quot;:[&quot;CRYOVIAL&quot;,&quot;TUBE_1_5ML&quot;,&quot;TUBE_2ML&quot;,&quot;SCREW_CAP_TUBE&quot;,&quot;AGAR_PLATE&quot;,&quot;AGAR_SLANT_TUBE&quot;,&quot;SLIDE&quot;,&quot;PCR_STRIP&quot;,&quot;OTHER&quot;]},{&quot;name&quot;:&quot;storageMethod&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Storage Method&quot;,&quot;options&quot;:[&quot;FREEZER_MINUS20&quot;,&quot;FREEZER_MINUS80&quot;,&quot;REFRIGERATOR&quot;,&quot;SLIDE_CABINET&quot;,&quot;INCUBATOR&quot;,&quot;LIQUID_NITROGEN_TANK&quot;]},{&quot;name&quot;:&quot;storageCondition&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Storage Condition&quot;,&quot;required&quot;:true,&quot;options&quot;:[&quot;ROOM_TEMP&quot;,&quot;REFRIGERATED&quot;,&quot;FROZEN_MINUS20&quot;,&quot;FROZEN_MINUS80&quot;,&quot;LIQUID_NITROGEN&quot;]},{&quot;name&quot;:&quot;organismIdentified&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Organism Identified&quot;},{&quot;name&quot;:&quot;storageBox&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Storage Box&quot;},{&quot;name&quot;:&quot;storageWell&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Well Position&quot;},{&quot;name&quot;:&quot;retentionYears&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Retention Period (Years)&quot;,&quot;default&quot;:5}]},{&quot;id&quot;:&quot;volumeTracking&quot;,&quot;title&quot;:&quot;Volume Tracking&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;remainingVolume&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Remaining Volume&quot;},{&quot;name&quot;:&quot;volumeUnit&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Unit&quot;,&quot;options&quot;:[&quot;µL&quot;,&quot;mL&quot;],&quot;default&quot;:&quot;µL&quot;},{&quot;name&quot;:&quot;sampleStatus&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Sample Status&quot;,&quot;options&quot;:[&quot;ANALYZED&quot;,&quot;PARTIALLY_USED&quot;,&quot;EXHAUSTED&quot;,&quot;STORED_ISOLATE&quot;,&quot;STORED_DNA&quot;]}]},{&quot;id&quot;:&quot;qualityFlags&quot;,&quot;title&quot;:&quot;Quality Flags&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;qualityFlags&quot;,&quot;type&quot;:&quot;multiselect&quot;,&quot;label&quot;:&quot;Quality Flags&quot;,&quot;options&quot;:[&quot;INSUFFICIENT_VOLUME&quot;,&quot;CONTAMINATION&quot;,&quot;MIXED_CULTURE&quot;,&quot;NO_GROWTH&quot;,&quot;ATYPICAL_MORPHOLOGY&quot;,&quot;VIABILITY_CONCERN&quot;,&quot;STORAGE_TEMP_DEVIATION&quot;,&quot;UNEXPECTED_RESULTS&quot;]},{&quot;name&quot;:&quot;qualityNotes&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;label&quot;:&quot;Quality Notes&quot;},{&quot;name&quot;:&quot;requiresInvestigation&quot;,&quot;type&quot;:&quot;checkbox&quot;,&quot;label&quot;:&quot;Requires Investigation&quot;}]},{&quot;id&quot;:&quot;environmentalMonitoring&quot;,&quot;title&quot;:&quot;Environmental Monitoring&quot;,&quot;description&quot;:&quot;Temperature monitoring log - record twice daily or from automated systems&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;temperatureLogDate&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Date&quot;},{&quot;name&quot;:&quot;temperatureLogTime&quot;,&quot;type&quot;:&quot;time&quot;,&quot;label&quot;:&quot;Time&quot;},{&quot;name&quot;:&quot;temperature&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Temperature&quot;},{&quot;name&quot;:&quot;temperatureUnit&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Unit&quot;,&quot;options&quot;:[&quot;C&quot;,&quot;F&quot;],&quot;default&quot;:&quot;C&quot;},{&quot;name&quot;:&quot;storageLocationChecked&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Storage Location&quot;},{&quot;name&quot;:&quot;staffInitials&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Staff Initials&quot;},{&quot;name&quot;:&quot;monitoringNotes&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Notes&quot;}]}]}"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template entry for Post-Analysis page -->
+    <changeSet id="028-2-add-bacteriology-post-analysis-template" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM workflow_page_template WHERE id = 206
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="206"/>
+            <column name="name" value="Post-Analysis Storage"/>
+            <column name="display_key" value="workflow.page.bacteriology.postAnalysis"/>
+            <column name="description" value="Store processed samples (isolates, DNA, primary samples) with appropriate storage conditions and environmental monitoring."/>
+            <column name="default_instructions" value="Select samples to assign to post-analysis storage. Choose aliquot type (isolate, DNA, primary sample), storage media (STGG, glycerol stock, bead system), container type, and storage conditions. Record environmental temperature logs twice daily."/>
+            <column name="default_content" value="Post-Analysis Storage - Manage aliquots, storage locations, and environmental monitoring"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
