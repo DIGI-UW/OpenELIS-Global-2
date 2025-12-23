@@ -1174,15 +1174,6 @@ const NoteBookInstanceEntryForm = () => {
                 .includes("malaria and neglected tropical disease") && (
                 <MNTDWorkflowTab notebookId={noteBookData.id} />
               )}
-            {/* Detect Pathology workflow based on notebook title */}
-            {noteBookData?.isTemplate !== true &&
-              noteBookData?.id &&
-              noteBookData?.title
-                ?.toLowerCase()
-                .includes("pathology laboratory") && (
-                <PathologyWorkflowTab notebookId={noteBookData.id} />
-              )}
-            {/* Default workflow for other notebooks */}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
               noteBookData?.title?.toLowerCase().includes("pharmaceutical") && (
@@ -1203,15 +1194,18 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("pathology") && (
+                <PathologyWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
               !noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("malaria and neglected tropical disease") &&
               !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
               !noteBookData?.title?.toLowerCase().includes("bacteriology") &&
-              !noteBookData?.title
-                ?.toLowerCase()
-                .includes("pathology laboratory") && (
+              !noteBookData?.title?.toLowerCase().includes("pathology") && (
                 <NotebookWorkflowTab notebookId={noteBookData.id} />
               )}
             {/* Use accordion view for templates or when no ID is available */}

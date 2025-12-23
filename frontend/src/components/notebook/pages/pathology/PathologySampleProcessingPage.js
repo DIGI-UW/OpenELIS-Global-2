@@ -48,7 +48,6 @@ function PathologySampleProcessingPage({
   entryId,
   pageData,
   onProgressUpdate,
-  notebookId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -77,9 +76,6 @@ function PathologySampleProcessingPage({
   const [selectedParentForView, setSelectedParentForView] = useState(null);
   const [parentChildren, setParentChildren] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
-
-  // Advance to next page state
-  const [advancing, setAdvancing] = useState(false);
 
   // Processing form state
   const [processingData, setProcessingData] = useState({
@@ -439,81 +435,6 @@ function PathologySampleProcessingPage({
     intl,
   ]);
 
-  // Advance completed samples to next page (Page 4: Testing, Staining & Microscopy)
-  const handleAdvanceToNextPage = useCallback(() => {
-    const completedSamples = samples.filter((s) => s.status === "COMPLETED");
-    if (completedSamples.length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "pathology.processing.error.noCompletedSamples",
-          defaultMessage:
-            "No completed samples to advance. Please mark samples as completed first.",
-        }),
-      );
-      return;
-    }
-
-    if (!hasRealPageId || !notebookId) {
-      setError(
-        intl.formatMessage({
-          id: "pathology.processing.error.pageNotInitialized",
-          defaultMessage:
-            "Cannot advance samples: Page not properly initialized. Please refresh the page.",
-        }),
-      );
-      return;
-    }
-
-    setAdvancing(true);
-    setError(null);
-
-    const completedSampleIds = completedSamples.map((s) => parseInt(s.id, 10));
-
-    postToOpenElisServerJsonResponse(
-      `/rest/notebook/${notebookId}/samples/advance`,
-      JSON.stringify({
-        sampleIds: completedSampleIds,
-        fromPageId: pageData?.id,
-        toPageIndex: 4, // Page 4: Testing, Staining & Microscopy
-      }),
-      (response) => {
-        setAdvancing(false);
-        if (response && response.success) {
-          setSuccess(
-            intl.formatMessage(
-              {
-                id: "pathology.processing.advanceSuccess",
-                defaultMessage:
-                  "Successfully advanced {count} samples to Testing & Microscopy.",
-              },
-              { count: response.advancedCount || completedSampleIds.length },
-            ),
-          );
-          loadPageSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
-          }
-        } else {
-          setError(
-            response?.error ||
-              intl.formatMessage({
-                id: "pathology.processing.error.advanceFailed",
-                defaultMessage: "Failed to advance samples to next page.",
-              }),
-          );
-        }
-      },
-    );
-  }, [
-    samples,
-    hasRealPageId,
-    notebookId,
-    pageData?.id,
-    loadPageSamples,
-    onProgressUpdate,
-    intl,
-  ]);
-
   // Calculate stats
   const processedCount = samples.filter((s) => s.status === "COMPLETED").length;
   const inProgressCount = samples.filter(
@@ -670,22 +591,6 @@ function PathologySampleProcessingPage({
             defaultMessage="Refresh"
           />
         </Button>
-
-        {processedCount > 0 && (
-          <Button
-            kind="primary"
-            size="sm"
-            renderIcon={ArrowRight}
-            onClick={handleAdvanceToNextPage}
-            disabled={advancing}
-          >
-            <FormattedMessage
-              id="pathology.page.processing.advanceToNext"
-              defaultMessage="Advance to Testing ({count})"
-              values={{ count: processedCount }}
-            />
-          </Button>
-        )}
       </div>
 
       {/* Notifications */}

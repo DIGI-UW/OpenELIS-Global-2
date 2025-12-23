@@ -2,14 +2,21 @@ package org.openelisglobal.notebook.service;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.notebook.form.PathologyManifestImportForm;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
  * Service for importing Pathology Laboratory samples from manifest CSV files.
- * Handles pathology-specific data points including clinical metadata (patient
- * ID, requesting clinician, clinical details) and research metadata (study ID,
- * PI name, participant/animal ID, ethical approval reference).
+ * Handles pathology-specific data points including:
+ *
+ * Patient Identification: - First Name (MANDATORY - primary name field for
+ * order acceptance) - Surname/Last Name (OPTIONAL) - National ID (OPTIONAL)
+ *
+ * Clinical metadata: Patient ID, requesting clinician, clinical details,
+ * specimen type/site, collection date/time Research metadata: Study ID, PI
+ * name, participant/animal ID, ethical approval reference All samples:
+ * Receiving date/time, receiving staff name, source facility
  */
 public interface PathologyManifestImportService {
 
@@ -22,29 +29,30 @@ public interface PathologyManifestImportService {
     /**
      * A single row from the Pathology manifest CSV with all pathology-specific
      * fields.
+     *
+     * Patient Identification: - firstName: MANDATORY - primary name field for order
+     * acceptance - surname: OPTIONAL - not required for order acceptance -
+     * nationalId: OPTIONAL - not required for order acceptance
      */
-    record PathologyManifestRow(int rowNumber, String groupId, String sampleType, int numOfSamples,
-            String collectionDate, String sampleCategory, String sourceFacility, String specimenSite,
-            // Clinical metadata
-            String patientId, String requestingClinician, String clinicalDetails,
-            // Research metadata
-            String studyId, String piName, String participantAnimalId, String ethicalApprovalRef,
-            // Notes
-            String notes) {
+    record PathologyManifestRow(int rowNumber, String firstName, String surname, String nationalId,
+            String sampleCategory, String receivedDateTime, String receivedBy, String sourceFacility,
+            String specimenType, String specimenSite, String collectionDateTime, String patientId,
+            String requestingClinician, String clinicalDetails, String studyId, String piName,
+            String participantAnimalId, String ethicalApprovalRef, String remarks) {
+    }
 
-        /**
-         * Check if this is a clinical sample based on sample category.
-         */
-        public boolean isClinical() {
-            return sampleCategory != null && sampleCategory.toLowerCase().contains("clinical");
-        }
+    /**
+     * Check if a manifest row is a clinical sample based on sample category.
+     */
+    static boolean isClinical(PathologyManifestRow row) {
+        return row.sampleCategory() != null && row.sampleCategory().toLowerCase().contains("clinical");
+    }
 
-        /**
-         * Check if this is a research sample based on sample category.
-         */
-        public boolean isResearch() {
-            return sampleCategory != null && sampleCategory.toLowerCase().contains("research");
-        }
+    /**
+     * Check if a manifest row is a research sample based on sample category.
+     */
+    static boolean isResearch(PathologyManifestRow row) {
+        return row.sampleCategory() != null && row.sampleCategory().toLowerCase().contains("research");
     }
 
     /**
@@ -63,11 +71,14 @@ public interface PathologyManifestImportService {
     /**
      * Parse a Pathology manifest CSV file.
      *
-     * @param csvInput      the CSV input stream
-     * @param columnMapping the Pathology column mapping configuration
+     * @param csvInput       the CSV input stream
+     * @param columnMapping  the Pathology column mapping configuration
+     * @param sampleCategory the sample category ("Clinical diagnostic" or
+     *                       "Research") determined by the import type, not from CSV
      * @return parsed manifest with rows and any parsing errors
      */
-    ParsedManifest parseManifestCsv(InputStream csvInput, PathologyManifestImportForm columnMapping);
+    ParsedManifest parseManifestCsv(InputStream csvInput, PathologyManifestImportForm columnMapping,
+            String sampleCategory);
 
     /**
      * Validate sample types in a parsed manifest against TypeOfSample records.
@@ -79,15 +90,18 @@ public interface PathologyManifestImportService {
 
     /**
      * Validate clinical and research samples have appropriate metadata fields.
+     * Validates that: - First Name is present (MANDATORY for all samples) -
+     * Clinical samples have patient ID, requesting clinician, clinical details -
+     * Research samples have study ID, PI name, participant/animal ID, ethical
+     * approval ref - All samples have receiving date/time and receiving staff name
      *
      * @param manifest the parsed manifest to validate
-     * @return list of validation warnings for missing metadata
+     * @return list of validation errors for missing required metadata
      */
     List<ParseError> validateCategoryMetadata(ParsedManifest manifest);
 
     /**
      * Create SampleItem records from a Pathology manifest for a notebook entry.
-     * Each row with numOfSamples > 1 creates multiple SampleItem records.
      * Pathology-specific data is stored in sample metadata based on sample
      * category.
      *
@@ -99,12 +113,22 @@ public interface PathologyManifestImportService {
     PathologyManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId);
 
     /**
-     * Generate external ID for a Pathology sample based on group ID and sequence
-     * number. Format: {groupId}-{sequenceNumber padded to 3 digits}
+     * Generate external ID for a Pathology sample based on first name, specimen
+     * type, and sequence number. Format:
+     * {firstName}-{specimenTypeAbbrev}-{sequenceNumber padded to 3 digits}
      *
-     * @param groupId        the group identifier from manifest
-     * @param sequenceNumber the sequence number within the group (1-based)
+     * @param firstName      the patient/participant first name
+     * @param specimenType   the specimen type
+     * @param sequenceNumber the sequence number (1-based)
      * @return the formatted external ID
      */
-    String generateExternalId(String groupId, int sequenceNumber);
+    String generateExternalId(String firstName, String specimenType, int sequenceNumber);
+
+    /**
+     * Get valid sample types for the Pathology laboratory. Returns sample types
+     * that are configured for pathology workflows.
+     *
+     * @return List of maps containing sample type info (id, description)
+     */
+    List<Map<String, String>> getValidPathologySampleTypes();
 }

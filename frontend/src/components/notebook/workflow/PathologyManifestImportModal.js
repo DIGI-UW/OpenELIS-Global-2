@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Modal,
   FileUploaderDropContainer,
@@ -15,28 +15,138 @@ import {
   TableCell,
   Loading,
   Tag,
-  Accordion,
-  AccordionItem,
+  Button,
 } from "@carbon/react";
-import { Checkmark } from "@carbon/react/icons";
+import { Checkmark, Download } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
 import "../workflow/NotebookWorkflow.css";
 
 /**
  * PathologyManifestImportModal - Modal for importing pathology samples from CSV manifest files.
- * Uses pathology-specific field mappings matching the PathologySampleCreationPage form.
+ * Supports two manifest types:
  *
- * @param {Object} props
- * @param {boolean} props.open - Whether the modal is open
- * @param {function} props.onClose - Callback when modal is closed
- * @param {number} props.entryId - The notebook entry ID to import samples to
- * @param {function} props.onImportSuccess - Callback when import is successful
+ * 1. CLINICAL MANIFEST - For clinical diagnostic samples:
+ *    Required: firstName, patientId, requestingClinician, specimenType, collectionDateTime,
+ *              clinicalDetails, receivedDateTime, receivedBy
+ *    Optional: surname, specimenSite, sourceFacility
+ *
+ * 2. RESEARCH MANIFEST - For research samples:
+ *    Required: firstName, studyId, piName, participantAnimalId, specimenType,
+ *              collectionDateTime, ethicalApprovalRef, receivedDateTime, receivedBy
+ *    Optional: specimenSite, sourceFacility
+ *
+ * Common fields for ALL samples:
+ *    - firstName (MANDATORY)
+ *    - specimenType
+ *    - collectionDateTime
+ *    - receivedDateTime
+ *    - receivedBy
  */
+
+// Clinical manifest column definitions
+const CLINICAL_COLUMNS = {
+  required: [
+    { key: "firstNameColumn", label: "First Name", csvHeader: "firstName" },
+    { key: "patientIdColumn", label: "Patient ID", csvHeader: "patientId" },
+    {
+      key: "requestingClinicianColumn",
+      label: "Requesting Clinician",
+      csvHeader: "requestingClinician",
+    },
+    {
+      key: "specimenTypeColumn",
+      label: "Specimen Type",
+      csvHeader: "specimenType",
+    },
+    {
+      key: "collectionDateTimeColumn",
+      label: "Collection Date & Time",
+      csvHeader: "collectionDateTime",
+    },
+    {
+      key: "clinicalDetailsColumn",
+      label: "Clinical Details/Indication",
+      csvHeader: "clinicalDetails",
+    },
+    {
+      key: "receivedDateTimeColumn",
+      label: "Received Date & Time",
+      csvHeader: "receivedDateTime",
+    },
+    { key: "receivedByColumn", label: "Received By", csvHeader: "receivedBy" },
+  ],
+  optional: [
+    { key: "surnameColumn", label: "Surname/Last Name", csvHeader: "surname" },
+    {
+      key: "specimenSiteColumn",
+      label: "Specimen Site",
+      csvHeader: "specimenSite",
+    },
+    {
+      key: "sourceFacilityColumn",
+      label: "Source Facility",
+      csvHeader: "sourceFacility",
+    },
+  ],
+};
+
+// Research manifest column definitions
+const RESEARCH_COLUMNS = {
+  required: [
+    { key: "firstNameColumn", label: "First Name", csvHeader: "firstName" },
+    { key: "studyIdColumn", label: "Study ID", csvHeader: "studyId" },
+    {
+      key: "piNameColumn",
+      label: "Principal Investigator (PI)",
+      csvHeader: "piName",
+    },
+    {
+      key: "participantAnimalIdColumn",
+      label: "Participant/Animal ID",
+      csvHeader: "participantAnimalId",
+    },
+    {
+      key: "specimenTypeColumn",
+      label: "Specimen Type",
+      csvHeader: "specimenType",
+    },
+    {
+      key: "collectionDateTimeColumn",
+      label: "Collection Date & Time",
+      csvHeader: "collectionDateTime",
+    },
+    {
+      key: "ethicalApprovalRefColumn",
+      label: "Ethical Approval Reference",
+      csvHeader: "ethicalApprovalRef",
+    },
+    {
+      key: "receivedDateTimeColumn",
+      label: "Received Date & Time",
+      csvHeader: "receivedDateTime",
+    },
+    { key: "receivedByColumn", label: "Received By", csvHeader: "receivedBy" },
+  ],
+  optional: [
+    {
+      key: "specimenSiteColumn",
+      label: "Specimen Site",
+      csvHeader: "specimenSite",
+    },
+    {
+      key: "sourceFacilityColumn",
+      label: "Source Facility",
+      csvHeader: "sourceFacility",
+    },
+  ],
+};
+
 function PathologyManifestImportModal({
   open,
   onClose,
   entryId,
+  manifestType, // "clinical" or "research" - passed from parent
   onImportSuccess,
 }) {
   const intl = useIntl();
@@ -45,32 +155,9 @@ function PathologyManifestImportModal({
   const [file, setFile] = useState(null);
   const [fileError, setFileError] = useState(null);
 
-  // State for column mapping - pathology-specific fields
+  // State for column mapping
   const [csvHeaders, setCsvHeaders] = useState([]);
-  const [columnMapping, setColumnMapping] = useState({
-    // Required fields
-    groupIdColumn: "",
-    sampleTypeColumn: "",
-    numOfSamplesColumn: "",
-    collectionDateColumn: "",
-    // Sample Identity
-    sampleCategoryColumn: "",
-    // Sample Source
-    sourceFacilityColumn: "",
-    specimenSiteColumn: "",
-    // Clinical metadata
-    patientIdColumn: "",
-    requestingClinicianColumn: "",
-    clinicalDetailsColumn: "",
-    // Research metadata
-    studyIdColumn: "",
-    piNameColumn: "",
-    participantAnimalIdColumn: "",
-    ethicalApprovalRefColumn: "",
-    // Notes
-    notesColumn: "",
-    dateFormat: "yyyy-MM-dd",
-  });
+  const [columnMapping, setColumnMapping] = useState({});
 
   // State for preview
   const [previewData, setPreviewData] = useState(null);
@@ -78,15 +165,34 @@ function PathologyManifestImportModal({
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Steps: 1 = Upload, 2 = Map Columns, 3 = Preview, 4 = Import
+  // Steps: 1 = Upload, 2 = Map Columns, 3 = Preview, 4 = Success
   const [step, setStep] = useState(1);
+
+  // Get current column definitions based on manifest type
+  const getColumnDefs = useCallback(() => {
+    return manifestType === "clinical" ? CLINICAL_COLUMNS : RESEARCH_COLUMNS;
+  }, [manifestType]);
+
+  // Initialize column mapping when manifest type changes or modal opens
+  useEffect(() => {
+    if (open && manifestType) {
+      const defs = getColumnDefs();
+      const initialMapping = {};
+      [...defs.required, ...defs.optional].forEach((col) => {
+        initialMapping[col.key] = "";
+      });
+      initialMapping.dateFormat = "yyyy-MM-dd HH:mm";
+      // Note: sampleCategory is determined by the endpoint (clinical vs research),
+      // not sent in the form data
+      setColumnMapping(initialMapping);
+    }
+  }, [open, manifestType, getColumnDefs]);
 
   const handleFileAdded = useCallback(
     (event, { addedFiles }) => {
       const addedFile = addedFiles[0];
       if (!addedFile) return;
 
-      // Validate file type
       if (!addedFile.name.endsWith(".csv")) {
         setFileError(
           intl.formatMessage({
@@ -111,130 +217,33 @@ function PathologyManifestImportModal({
         setCsvHeaders(headers);
 
         // Auto-map columns based on header names
+        const defs = getColumnDefs();
         const autoMapping = { ...columnMapping };
+
         headers.forEach((header) => {
-          const lowerHeader = header.toLowerCase();
-          if (
-            lowerHeader.includes("groupid") ||
-            lowerHeader.includes("group_id")
-          ) {
-            autoMapping.groupIdColumn = header;
-          } else if (
-            lowerHeader.includes("sampletype") ||
-            lowerHeader.includes("sample_type") ||
-            lowerHeader === "sampletype"
-          ) {
-            autoMapping.sampleTypeColumn = header;
-          } else if (
-            lowerHeader.includes("numofsamples") ||
-            lowerHeader.includes("num_of_samples") ||
-            lowerHeader.includes("quantity")
-          ) {
-            autoMapping.numOfSamplesColumn = header;
-          } else if (
-            lowerHeader.includes("collectiondate") ||
-            lowerHeader.includes("collection_date")
-          ) {
-            autoMapping.collectionDateColumn = header;
-          } else if (
-            lowerHeader.includes("samplecategory") ||
-            lowerHeader.includes("sample_category") ||
-            lowerHeader.includes("category")
-          ) {
-            autoMapping.sampleCategoryColumn = header;
-          } else if (
-            lowerHeader.includes("sourcefacility") ||
-            lowerHeader.includes("source_facility") ||
-            lowerHeader.includes("facility")
-          ) {
-            autoMapping.sourceFacilityColumn = header;
-          } else if (
-            lowerHeader.includes("specimensite") ||
-            lowerHeader.includes("specimen_site") ||
-            lowerHeader.includes("site")
-          ) {
-            autoMapping.specimenSiteColumn = header;
-          } else if (
-            lowerHeader.includes("patientid") ||
-            lowerHeader.includes("patient_id")
-          ) {
-            autoMapping.patientIdColumn = header;
-          } else if (
-            lowerHeader.includes("requestingclinician") ||
-            lowerHeader.includes("requesting_clinician") ||
-            lowerHeader.includes("clinician")
-          ) {
-            autoMapping.requestingClinicianColumn = header;
-          } else if (
-            lowerHeader.includes("clinicaldetails") ||
-            lowerHeader.includes("clinical_details")
-          ) {
-            autoMapping.clinicalDetailsColumn = header;
-          } else if (
-            lowerHeader.includes("studyid") ||
-            lowerHeader.includes("study_id")
-          ) {
-            autoMapping.studyIdColumn = header;
-          } else if (
-            lowerHeader.includes("piname") ||
-            lowerHeader.includes("pi_name") ||
-            lowerHeader === "pi"
-          ) {
-            autoMapping.piNameColumn = header;
-          } else if (
-            lowerHeader.includes("participantanimalid") ||
-            lowerHeader.includes("participant_animal_id") ||
-            lowerHeader.includes("participant") ||
-            lowerHeader.includes("animal_id")
-          ) {
-            autoMapping.participantAnimalIdColumn = header;
-          } else if (
-            lowerHeader.includes("ethicalapprovalref") ||
-            lowerHeader.includes("ethical_approval") ||
-            lowerHeader.includes("irb") ||
-            lowerHeader.includes("iacuc")
-          ) {
-            autoMapping.ethicalApprovalRefColumn = header;
-          } else if (
-            lowerHeader.includes("notes") ||
-            lowerHeader.includes("comments")
-          ) {
-            autoMapping.notesColumn = header;
-          }
+          const lowerHeader = header.toLowerCase().replace(/[\s_-]/g, "");
+
+          [...defs.required, ...defs.optional].forEach((col) => {
+            const expectedHeader = col.csvHeader.toLowerCase();
+            if (lowerHeader === expectedHeader) {
+              autoMapping[col.key] = header;
+            }
+          });
         });
 
         setColumnMapping(autoMapping);
-        setStep(2);
+        setStep(2); // Go to column mapping step
       };
       reader.readAsText(addedFile);
     },
-    [intl, columnMapping],
+    [intl, getColumnDefs, columnMapping],
   );
 
   const handleRemoveFile = () => {
     setFile(null);
     setCsvHeaders([]);
-    setColumnMapping({
-      groupIdColumn: "",
-      sampleTypeColumn: "",
-      numOfSamplesColumn: "",
-      collectionDateColumn: "",
-      sampleCategoryColumn: "",
-      sourceFacilityColumn: "",
-      specimenSiteColumn: "",
-      patientIdColumn: "",
-      requestingClinicianColumn: "",
-      clinicalDetailsColumn: "",
-      studyIdColumn: "",
-      piNameColumn: "",
-      participantAnimalIdColumn: "",
-      ethicalApprovalRefColumn: "",
-      notesColumn: "",
-      dateFormat: "yyyy-MM-dd",
-    });
     setPreviewData(null);
     setPreviewErrors([]);
-    setStep(1);
   };
 
   const handleMappingChange = (field, value) => {
@@ -244,23 +253,15 @@ function PathologyManifestImportModal({
     }));
   };
 
-  const handlePreview = async () => {
-    if (!file) {
-      console.error("PathologyManifestImportModal: No file selected");
-      return;
-    }
+  const handleDownloadTemplate = () => {
+    window.open(
+      `${config.serverBaseUrl}/rest/notebook/pathology/manifest-template/${manifestType}`,
+      "_blank",
+    );
+  };
 
-    if (!entryId) {
-      console.error("PathologyManifestImportModal: No entryId provided");
-      setPreviewErrors([
-        {
-          rowNumber: 0,
-          column: "system",
-          message: "Entry ID is not available. Please try again.",
-        },
-      ]);
-      return;
-    }
+  const handlePreview = async () => {
+    if (!file || !entryId) return;
 
     setIsPreviewLoading(true);
     setPreviewErrors([]);
@@ -272,7 +273,7 @@ function PathologyManifestImportModal({
       new Blob([JSON.stringify(columnMapping)], { type: "application/json" }),
     );
 
-    const endpoint = `${config.serverBaseUrl}/rest/notebook/pathology/entry/${entryId}/samples/preview-manifest`;
+    const endpoint = `${config.serverBaseUrl}/rest/notebook/pathology/entry/${entryId}/samples/preview-manifest/${manifestType}`;
 
     try {
       const response = await fetch(endpoint, {
@@ -289,7 +290,7 @@ function PathologyManifestImportModal({
       if (response.ok) {
         setPreviewData(data);
         setPreviewErrors(data.errors || []);
-        setStep(3);
+        setStep(3); // Go to preview step
       } else {
         setPreviewErrors([
           {
@@ -300,7 +301,6 @@ function PathologyManifestImportModal({
         ]);
       }
     } catch (error) {
-      console.error("PathologyManifestImportModal: Preview error:", error);
       setPreviewErrors([
         { rowNumber: 0, column: "file", message: error.message },
       ]);
@@ -321,7 +321,7 @@ function PathologyManifestImportModal({
       new Blob([JSON.stringify(columnMapping)], { type: "application/json" }),
     );
 
-    const endpoint = `${config.serverBaseUrl}/rest/notebook/pathology/entry/${entryId}/samples/create-from-manifest`;
+    const endpoint = `${config.serverBaseUrl}/rest/notebook/pathology/entry/${entryId}/samples/create-from-manifest/${manifestType}`;
 
     try {
       const response = await fetch(endpoint, {
@@ -336,7 +336,7 @@ function PathologyManifestImportModal({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setStep(4);
+        setStep(4); // Go to success step
         if (onImportSuccess) {
           onImportSuccess(data);
         }
@@ -357,46 +357,87 @@ function PathologyManifestImportModal({
   };
 
   const handleClose = () => {
-    handleRemoveFile();
+    setFile(null);
+    setCsvHeaders([]);
+    setColumnMapping({});
+    setPreviewData(null);
+    setPreviewErrors([]);
+    setStep(1);
     onClose();
   };
 
-  const requiredColumnsMapped =
-    columnMapping.groupIdColumn &&
-    columnMapping.sampleTypeColumn &&
-    columnMapping.numOfSamplesColumn;
+  // Check if required columns are mapped
+  const requiredColumnsMapped = useCallback(() => {
+    if (!manifestType) return false;
+    const defs = getColumnDefs();
+    return defs.required.every((col) => columnMapping[col.key]);
+  }, [manifestType, getColumnDefs, columnMapping]);
 
-  const renderColumnMappingSelect = (field, label, required = false) => (
-    <div className="mapping-field-container">
-      <Select
-        id={`mapping-${field}`}
-        labelText={label + (required ? " *" : "")}
-        value={columnMapping[field]}
-        onChange={(e) => handleMappingChange(field, e.target.value)}
-        size="sm"
-      >
-        <SelectItem
-          value=""
-          text={intl.formatMessage({
-            id: "label.select",
-            defaultMessage: "Select column...",
-          })}
-        />
-        {csvHeaders.map((header) => (
-          <SelectItem key={header} value={header} text={header} />
-        ))}
-      </Select>
-    </div>
-  );
+  // Count auto-mapped columns
+  const autoMappedCount = Object.entries(columnMapping).filter(
+    ([key, value]) => value && key !== "dateFormat" && key !== "sampleCategory",
+  ).length;
+
+  const renderColumnMappingSelect = (col, required = false) => {
+    const isMapped = columnMapping[col.key] && columnMapping[col.key] !== "";
+    return (
+      <div key={col.key} className="mapping-field-container">
+        <Select
+          id={`mapping-${col.key}`}
+          labelText={
+            col.label + (required ? " *" : "") + (isMapped ? " ✓" : "")
+          }
+          value={columnMapping[col.key] || ""}
+          onChange={(e) => handleMappingChange(col.key, e.target.value)}
+          size="sm"
+        >
+          <SelectItem value="" text="Select column..." />
+          {csvHeaders.map((header) => (
+            <SelectItem key={header} value={header} text={header} />
+          ))}
+        </Select>
+      </div>
+    );
+  };
+
+  // Get preview table headers based on manifest type
+  const getPreviewHeaders = () => {
+    if (manifestType === "clinical") {
+      return [
+        { key: "firstName", header: "First Name" },
+        { key: "patientId", header: "Patient ID" },
+        { key: "specimenType", header: "Specimen Type" },
+        { key: "requestingClinician", header: "Clinician" },
+        { key: "receivedBy", header: "Received By" },
+      ];
+    } else {
+      return [
+        { key: "firstName", header: "First Name" },
+        { key: "studyId", header: "Study ID" },
+        { key: "specimenType", header: "Specimen Type" },
+        { key: "participantAnimalId", header: "Participant/Animal ID" },
+        { key: "receivedBy", header: "Received By" },
+      ];
+    }
+  };
+
+  // Get modal heading based on manifest type
+  const getModalHeading = () => {
+    const typeLabel = manifestType === "clinical" ? "Clinical" : "Research";
+    return intl.formatMessage(
+      {
+        id: "pathology.manifest.title.typed",
+        defaultMessage: "Import {type} Samples from Manifest",
+      },
+      { type: typeLabel },
+    );
+  };
 
   return (
     <Modal
       open={open}
       onRequestClose={handleClose}
-      modalHeading={intl.formatMessage({
-        id: "pathology.manifest.title",
-        defaultMessage: "Import Pathology Samples from Manifest",
-      })}
+      modalHeading={getModalHeading()}
       primaryButtonText={
         step === 1
           ? intl.formatMessage({
@@ -432,10 +473,17 @@ function PathologyManifestImportModal({
         else if (step === 3) handleImport();
         else handleClose();
       }}
-      onSecondarySubmit={() => setStep(step - 1)}
+      onSecondarySubmit={() => {
+        if (step === 2) {
+          handleRemoveFile();
+          setStep(1);
+        } else {
+          setStep(step - 1);
+        }
+      }}
       primaryButtonDisabled={
         (step === 1 && !file) ||
-        (step === 2 && !requiredColumnsMapped) ||
+        (step === 2 && !requiredColumnsMapped()) ||
         (step === 3 && previewErrors.length > 0) ||
         isPreviewLoading ||
         isImporting
@@ -449,9 +497,31 @@ function PathologyManifestImportModal({
             <p className="step-description">
               <FormattedMessage
                 id="pathology.manifest.uploadDescription"
-                defaultMessage="Upload a CSV file containing pathology sample information. The file should include columns for Group ID, Sample Type, Number of Samples, and optionally Sample Category, Source Facility, Patient ID (for clinical samples), or Study ID (for research samples)."
+                defaultMessage="Upload a CSV file containing {type} sample information."
+                values={{
+                  type:
+                    manifestType === "clinical"
+                      ? "clinical diagnostic"
+                      : "research",
+                }}
               />
             </p>
+
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Download}
+              onClick={handleDownloadTemplate}
+              style={{ marginBottom: "1rem" }}
+            >
+              <FormattedMessage
+                id="pathology.manifest.downloadTemplate"
+                defaultMessage="Download {type} CSV Template"
+                values={{
+                  type: manifestType === "clinical" ? "Clinical" : "Research",
+                }}
+              />
+            </Button>
 
             {!file ? (
               <FileUploaderDropContainer
@@ -481,7 +551,6 @@ function PathologyManifestImportModal({
             )}
 
             <div
-              className="template-info"
               style={{
                 marginTop: "1rem",
                 padding: "1rem",
@@ -490,24 +559,7 @@ function PathologyManifestImportModal({
               }}
             >
               <p style={{ marginBottom: "0.5rem" }}>
-                <strong>Required CSV columns (exact names):</strong>
-              </p>
-              <ul style={{ fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-                <li>
-                  <strong>GroupID</strong> - Batch identifier (e.g.,
-                  PATH-2025-001)
-                </li>
-                <li>
-                  <strong>SampleType</strong> - Must match system sample type
-                  (e.g., FFPE tissue block)
-                </li>
-                <li>
-                  <strong>NumOfSamples</strong> - Number only: 1, 2, 3, etc.
-                  (NOT text!)
-                </li>
-              </ul>
-              <p style={{ marginBottom: "0.5rem" }}>
-                <strong>Optional columns:</strong>
+                <strong>Expected CSV columns:</strong>
               </p>
               <code
                 style={{
@@ -515,11 +567,12 @@ function PathologyManifestImportModal({
                   display: "block",
                   backgroundColor: "#e0e0e0",
                   padding: "0.5rem",
+                  overflowX: "auto",
                 }}
               >
-                CollectionDate, SampleCategory, SourceFacility, SpecimenSite,
-                PatientID, RequestingClinician, ClinicalDetails, StudyID,
-                PIName, ParticipantAnimalID, EthicalApprovalRef, Notes
+                {[...getColumnDefs().required, ...getColumnDefs().optional]
+                  .map((col) => col.csvHeader)
+                  .join(", ")}
               </code>
             </div>
           </div>
@@ -531,11 +584,37 @@ function PathologyManifestImportModal({
             <p className="step-description">
               <FormattedMessage
                 id="pathology.manifest.mappingDescription"
-                defaultMessage="Map columns from your CSV to pathology fields. Auto-mapped columns are pre-selected."
+                defaultMessage="Map columns from your CSV to the required fields. Fields marked with * are required."
               />
             </p>
 
-            {/* Show detected CSV columns */}
+            {/* Auto-mapping summary */}
+            <div
+              style={{
+                marginBottom: "1rem",
+                padding: "0.75rem",
+                backgroundColor: autoMappedCount > 0 ? "#defbe6" : "#fff1f1",
+                borderRadius: "4px",
+                border:
+                  autoMappedCount > 0
+                    ? "1px solid #24a148"
+                    : "1px solid #da1e28",
+              }}
+            >
+              {autoMappedCount > 0 ? (
+                <span style={{ color: "#24a148", fontWeight: 500 }}>
+                  Auto-mapped {autoMappedCount} column(s). Fields marked with ✓
+                  are mapped.
+                </span>
+              ) : (
+                <span style={{ color: "#da1e28", fontWeight: 500 }}>
+                  No columns were auto-mapped. Please manually select CSV
+                  columns.
+                </span>
+              )}
+            </div>
+
+            {/* Detected columns */}
             <div
               style={{
                 marginBottom: "1rem",
@@ -552,7 +631,7 @@ function PathologyManifestImportModal({
               </span>
             </div>
 
-            {/* Required Fields - Always visible, highlighted */}
+            {/* Required Fields */}
             <div
               style={{
                 padding: "1rem",
@@ -562,182 +641,42 @@ function PathologyManifestImportModal({
                 backgroundColor: "#edf5ff",
               }}
             >
-              <h5 style={{ marginBottom: "0.5rem", color: "#0f62fe" }}>
+              <h5 style={{ marginBottom: "1rem", color: "#0f62fe" }}>
                 Required Fields *
               </h5>
-              <p
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#525252",
-                  marginBottom: "1rem",
-                }}
-              >
-                IMPORTANT: NumOfSamples column must contain numbers only (1, 2,
-                3...)
-              </p>
               <div className="mapping-grid">
-                {renderColumnMappingSelect(
-                  "groupIdColumn",
-                  "Group ID (batch identifier) *",
-                  true,
-                )}
-                {renderColumnMappingSelect(
-                  "sampleTypeColumn",
-                  "Sample Type *",
-                  true,
-                )}
-                {renderColumnMappingSelect(
-                  "numOfSamplesColumn",
-                  "Number of Samples (numbers only!) *",
-                  true,
-                )}
-                {renderColumnMappingSelect(
-                  "collectionDateColumn",
-                  "Collection Date",
+                {getColumnDefs().required.map((col) =>
+                  renderColumnMappingSelect(col, true),
                 )}
               </div>
             </div>
 
-            <Accordion>
-              {/* Sample Identity */}
-              <AccordionItem
-                title={intl.formatMessage({
-                  id: "pathology.manifest.section.identity",
-                  defaultMessage: "Sample Identity",
-                })}
-              >
-                <div className="mapping-grid">
-                  {renderColumnMappingSelect(
-                    "sampleCategoryColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.sampleCategory",
-                      defaultMessage: "Sample Category",
-                    }),
-                  )}
-                  {renderColumnMappingSelect(
-                    "sourceFacilityColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.sourceFacility",
-                      defaultMessage: "Source Facility",
-                    }),
-                  )}
-                  {renderColumnMappingSelect(
-                    "specimenSiteColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.specimenSite",
-                      defaultMessage: "Specimen Site",
-                    }),
-                  )}
-                </div>
-              </AccordionItem>
-
-              {/* Clinical Metadata */}
-              <AccordionItem
-                title={intl.formatMessage({
-                  id: "pathology.manifest.section.clinical",
-                  defaultMessage: "Clinical Metadata",
-                })}
-              >
-                <div className="mapping-grid">
-                  {renderColumnMappingSelect(
-                    "patientIdColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.patientId",
-                      defaultMessage: "Patient ID",
-                    }),
-                  )}
-                  {renderColumnMappingSelect(
-                    "requestingClinicianColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.requestingClinician",
-                      defaultMessage: "Requesting Clinician",
-                    }),
-                  )}
-                  {renderColumnMappingSelect(
-                    "clinicalDetailsColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.clinicalDetails",
-                      defaultMessage: "Clinical Details",
-                    }),
-                  )}
-                </div>
-              </AccordionItem>
-
-              {/* Research Metadata */}
-              <AccordionItem
-                title={intl.formatMessage({
-                  id: "pathology.manifest.section.research",
-                  defaultMessage: "Research Metadata",
-                })}
-              >
-                <div className="mapping-grid">
-                  {renderColumnMappingSelect(
-                    "studyIdColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.studyId",
-                      defaultMessage: "Study ID",
-                    }),
-                  )}
-                  {renderColumnMappingSelect(
-                    "piNameColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.piName",
-                      defaultMessage: "PI Name",
-                    }),
-                  )}
-                  {renderColumnMappingSelect(
-                    "participantAnimalIdColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.participantAnimalId",
-                      defaultMessage: "Participant/Animal ID",
-                    }),
-                  )}
-                  {renderColumnMappingSelect(
-                    "ethicalApprovalRefColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.ethicalApprovalRef",
-                      defaultMessage: "Ethical Approval Reference",
-                    }),
-                  )}
-                </div>
-              </AccordionItem>
-
-              {/* Notes */}
-              <AccordionItem
-                title={intl.formatMessage({
-                  id: "pathology.manifest.section.notes",
-                  defaultMessage: "Notes",
-                })}
-              >
-                <div className="mapping-grid">
-                  {renderColumnMappingSelect(
-                    "notesColumn",
-                    intl.formatMessage({
-                      id: "pathology.manifest.column.notes",
-                      defaultMessage: "Notes",
-                    }),
-                  )}
-                </div>
-              </AccordionItem>
-            </Accordion>
+            {/* Optional Fields */}
+            <div
+              style={{
+                padding: "1rem",
+                border: "1px solid #e0e0e0",
+                borderRadius: "4px",
+              }}
+            >
+              <h5 style={{ marginBottom: "1rem", color: "#525252" }}>
+                Optional Fields
+              </h5>
+              <div className="mapping-grid">
+                {getColumnDefs().optional.map((col) =>
+                  renderColumnMappingSelect(col, false),
+                )}
+              </div>
+            </div>
 
             {isPreviewLoading && (
-              <Loading
-                withOverlay={false}
-                description={intl.formatMessage({
-                  id: "notebook.manifest.loading",
-                  defaultMessage: "Loading preview...",
-                })}
-              />
+              <Loading withOverlay={false} description="Loading preview..." />
             )}
 
             {previewErrors.length > 0 && (
               <InlineNotification
                 kind="error"
-                title={intl.formatMessage({
-                  id: "notebook.manifest.validationErrors",
-                  defaultMessage: "Error",
-                })}
+                title="Validation Error"
                 subtitle={
                   <ul className="error-list">
                     {previewErrors.map((error, idx) => (
@@ -761,10 +700,7 @@ function PathologyManifestImportModal({
             {previewErrors.length > 0 && (
               <InlineNotification
                 kind="error"
-                title={intl.formatMessage({
-                  id: "notebook.manifest.validationErrors",
-                  defaultMessage: "Validation Errors",
-                })}
+                title="Validation Errors"
                 subtitle={
                   <ul className="error-list">
                     {previewErrors.map((error, idx) => (
@@ -783,19 +719,13 @@ function PathologyManifestImportModal({
             {previewData && previewErrors.length === 0 && (
               <>
                 <div className="preview-summary">
-                  <Tag type="blue">
-                    <FormattedMessage
-                      id="notebook.manifest.preview.rows"
-                      defaultMessage="{count} rows"
-                      values={{ count: previewData.totalRows }}
-                    />
-                  </Tag>
+                  <Tag type="blue">{previewData.totalRows} rows</Tag>
                   <Tag type="green">
-                    <FormattedMessage
-                      id="notebook.manifest.preview.samples"
-                      defaultMessage="{count} samples to create"
-                      values={{ count: previewData.totalSamples }}
-                    />
+                    {previewData.totalSamples} samples to create
+                  </Tag>
+                  <Tag type="purple">
+                    {manifestType === "clinical" ? "Clinical" : "Research"}{" "}
+                    samples
                   </Tag>
                 </div>
 
@@ -804,43 +734,7 @@ function PathologyManifestImportModal({
                     id: String(idx),
                     ...row,
                   }))}
-                  headers={[
-                    {
-                      key: "groupId",
-                      header: intl.formatMessage({
-                        id: "pathology.manifest.column.groupId",
-                        defaultMessage: "Group ID",
-                      }),
-                    },
-                    {
-                      key: "sampleType",
-                      header: intl.formatMessage({
-                        id: "pathology.manifest.column.sampleType",
-                        defaultMessage: "Sample Type",
-                      }),
-                    },
-                    {
-                      key: "numOfSamples",
-                      header: intl.formatMessage({
-                        id: "pathology.manifest.column.numOfSamples",
-                        defaultMessage: "# Samples",
-                      }),
-                    },
-                    {
-                      key: "sampleCategory",
-                      header: intl.formatMessage({
-                        id: "pathology.manifest.column.sampleCategory",
-                        defaultMessage: "Category",
-                      }),
-                    },
-                    {
-                      key: "sourceFacility",
-                      header: intl.formatMessage({
-                        id: "pathology.manifest.column.sourceFacility",
-                        defaultMessage: "Facility",
-                      }),
-                    },
-                  ]}
+                  headers={getPreviewHeaders()}
                   size="sm"
                 >
                   {({
@@ -881,13 +775,7 @@ function PathologyManifestImportModal({
             )}
 
             {isImporting && (
-              <Loading
-                withOverlay={false}
-                description={intl.formatMessage({
-                  id: "notebook.manifest.importing",
-                  defaultMessage: "Creating samples...",
-                })}
-              />
+              <Loading withOverlay={false} description="Creating samples..." />
             )}
           </div>
         )}
@@ -905,7 +793,10 @@ function PathologyManifestImportModal({
             <p>
               <FormattedMessage
                 id="pathology.manifest.success.message"
-                defaultMessage="Pathology samples have been created and linked to the notebook entry."
+                defaultMessage="{type} samples have been created and linked to the notebook entry."
+                values={{
+                  type: manifestType === "clinical" ? "Clinical" : "Research",
+                }}
               />
             </p>
           </div>

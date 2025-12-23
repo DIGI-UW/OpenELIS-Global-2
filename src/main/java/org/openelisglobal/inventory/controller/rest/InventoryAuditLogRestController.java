@@ -189,12 +189,15 @@ public class InventoryAuditLogRestController extends BaseRestController {
 
     private String generateChangeSummary(Map<String, Map<String, String>> changes, String activity, String entityType) {
         if (changes.isEmpty()) {
-            return switch (activity) {
-            case "I" -> "Created new " + entityType.toLowerCase();
-            case "U" -> "Updated " + entityType.toLowerCase() + " (no field details available)";
-            case "D" -> "Deleted " + entityType.toLowerCase();
-            default -> activity + " " + entityType.toLowerCase();
-            };
+            if ("I".equals(activity)) {
+                return "Created new " + entityType.toLowerCase();
+            } else if ("U".equals(activity)) {
+                return "Updated " + entityType.toLowerCase() + " (no field details available)";
+            } else if ("D".equals(activity)) {
+                return "Deleted " + entityType.toLowerCase();
+            } else {
+                return activity + " " + entityType.toLowerCase();
+            }
         }
 
         String primaryChange = getKeyChangeDescription(changes, entityType);

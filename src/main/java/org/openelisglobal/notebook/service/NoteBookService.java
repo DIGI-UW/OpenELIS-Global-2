@@ -104,6 +104,16 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     boolean isRoutingPage(Integer pageId);
 
     /**
+     * Check if a page is a storage page (by title pattern). Storage pages should
+     * skip to Disposal & Archiving when marked complete, bypassing the Reporting
+     * page.
+     *
+     * @param pageId the page ID
+     * @return true if this is a storage page
+     */
+    boolean isStoragePage(Integer pageId);
+
+    /**
      * Attach a file to a notebook for audit trail purposes. Creates a NoteBookFile
      * record linked to the notebook.
      *

@@ -16,8 +16,10 @@ import org.openelisglobal.notebook.service.NotebookSampleEntryService;
 import org.openelisglobal.notebook.service.SampleRoutingService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.SampleRouting;
 import org.openelisglobal.notebook.valueholder.SampleRouting.DestinationType;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.StorageBoxDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
@@ -61,6 +63,9 @@ public class NotebookSampleEntryController extends BaseRestController {
 
     @Autowired
     private NoteBookPageService noteBookPageService;
+
+    @Autowired
+    private SampleItemService sampleItemService;
 
     /**
      * Search for samples to add to a notebook. T035: GET
@@ -243,7 +248,7 @@ public class NotebookSampleEntryController extends BaseRestController {
             }
         }
 
-        // Second pass: for each parent sample on the page, also include its children
+// Second pass: for each parent sample on the page, also include its children
         // ONLY if the children have their own NotebookPageSample record for this page
         // This prevents children from appearing on pages they haven't been explicitly
         // added to
@@ -283,6 +288,29 @@ public class NotebookSampleEntryController extends BaseRestController {
             }
         }
         sampleMaps.addAll(childMaps);
+
+        // Repeat for newly added children (recursive - one level deep for children of
+        // children)
+        List<Map<String, Object>> grandchildMaps = new java.util.ArrayList<>();
+        for (Map<String, Object> childMap : childMaps) {
+            String childId = String.valueOf(childMap.get("id"));
+            try {
+                List<SampleItem> grandchildren = sampleEntryService.getChildSamples(Integer.parseInt(childId));
+                for (SampleItem grandchild : grandchildren) {
+                    if (!includedSampleIds.contains(grandchild.getId())) {
+                        org.openelisglobal.notebook.valueholder.NotebookPageSample grandchildNps = notebookPageSampleService
+                                .getByPageIdAndSampleItemId(pageId, Integer.parseInt(grandchild.getId()));
+                        Map<String, Object> grandchildMap = buildSampleMap(grandchild, grandchildNps);
+                        grandchildMaps.add(grandchildMap);
+                        includedSampleIds.add(grandchild.getId());
+                    }
+                }
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
+                        "Could not load grandchild samples for " + childId + ": " + e.getMessage());
+            }
+        }
+        sampleMaps.addAll(grandchildMaps);
 
         // Third pass: count children for each parent
         Map<String, Integer> childCountMap = new HashMap<>();
@@ -1233,8 +1261,8 @@ public class NotebookSampleEntryController extends BaseRestController {
                         org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
                                 .getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
 
-                        // Auto-create if doesn't exist (only for Storage page, not Routing page)
-                        if (nps == null && request.getPageId() == null) {
+                        // Auto-create if doesn't exist - this is needed to store storage data
+                        if (nps == null) {
                             notebookPageSampleService.createPageSampleForPage(targetPage.getId(), sampleId,
                                     org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS);
                             nps = notebookPageSampleService.getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
@@ -1303,6 +1331,9 @@ public class NotebookSampleEntryController extends BaseRestController {
                                         data.put("storageLocation", "Box " + request.getBoxId());
                                     }
                                 }
+LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                                        "Set storageLocation for sample " + sampleId + ": "
+                                                + data.get("storageLocation"));
                             } else if (request.getLocationId() != null) {
                                 // Shelf-level storage (no box/wells)
                                 String locationType = request.getLocationType() != null ? request.getLocationType()
@@ -1329,6 +1360,9 @@ public class NotebookSampleEntryController extends BaseRestController {
                                     } else {
                                         data.put("storageLocation", "Shelf Storage");
                                     }
+                                    LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                                            "Set storageLocation for sample " + sampleId + " (location-based): "
+                                                    + data.get("storageLocation"));
                                 } catch (Exception e) {
                                     LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
                                             "Error retrieving storage path for sample " + sampleId + ": "
@@ -1338,32 +1372,23 @@ public class NotebookSampleEntryController extends BaseRestController {
                             }
 
                             nps.setData(data);
-
-                            // If NOT marking as COMPLETED (no pageId), set IN_PROGRESS status directly
-                            if (request.getPageId() == null && nps
-                                    .getStatus() == org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.PENDING) {
-                                nps.setStatus(
-                                        org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS);
-                            }
+                            LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                                    "NPS ID=" + nps.getId() + " data set with storageLocation="
+                                            + data.get("storageLocation") + ", status=" + nps.getStatus());
 
                             notebookPageSampleService.update(nps);
+                            LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage", "Updated NPS ID="
+                                    + nps.getId() + " for pageId=" + targetPage.getId() + " sampleId=" + sampleId);
                         }
                     } catch (Exception e) {
                         LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
                                 "Error updating NotebookPageSample for sample " + sampleId + ": " + e.getMessage());
                     }
                 }
-
-                // T150: Use bulkUpdateStatus to trigger propagation to next page when marking
-                // COMPLETED
-                // This is critical - direct update() calls do NOT trigger T150 propagation
-                if (request.getPageId() != null && !request.getSampleIds().isEmpty()) {
-                    notebookPageSampleService.bulkUpdateStatus(targetPage.getId(), request.getSampleIds(),
-                            org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.COMPLETED, sysUserId);
-                    LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
-                            "T150: Triggered propagation for " + request.getSampleIds().size() + " samples from page "
-                                    + targetPage.getId() + " to next page");
-                }
+                // Note: We do NOT auto-mark samples as COMPLETED here.
+                // Storage assignment sets samples to IN_PROGRESS (lines 1263-1266).
+                // The user must explicitly click "Mark Complete" to mark samples COMPLETED,
+                // which uses the /bulk/page/{pageId}/samples/status endpoint.
             }
 
             Map<String, Object> result = new HashMap<>();
@@ -1482,6 +1507,71 @@ public class NotebookSampleEntryController extends BaseRestController {
         // TODO: Implement report history storage
         // For now, return empty list to prevent frontend errors
         return ResponseEntity.ok(new java.util.ArrayList<>());
+    }
+
+    /**
+     * Get storage logbook entries for a page. GET
+     * /notebook/page/{pageId}/storage-logbook
+     *
+     * Returns storage assignment history for samples on this page.
+     *
+     * @param pageId the notebook page ID
+     * @return list of storage logbook entries
+     */
+    @GetMapping(value = "/page/{pageId}/storage-logbook", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getStorageLogbook(@PathVariable("pageId") Integer pageId) {
+        List<Map<String, Object>> logbook = new java.util.ArrayList<>();
+
+        try {
+            // Get all samples for this page and extract storage history from their data
+            List<NotebookPageSample> pageSamples = notebookPageSampleService.getByPageId(pageId);
+
+            for (NotebookPageSample sample : pageSamples) {
+                if (sample.getData() != null) {
+                    Map<String, Object> data = sample.getData();
+
+                    // Check if sample has storage assignment
+                    if (data.containsKey("storageLocation") || data.containsKey("boxId")
+                            || data.containsKey("wellCoordinate") || data.containsKey("storagePath")) {
+
+                        Map<String, Object> entry = new HashMap<>();
+
+                        // Look up SampleItem via service using the stored ID
+                        String sampleItemId = sample.getSampleItemId();
+                        SampleItem sampleItem = null;
+                        if (sampleItemId != null && !sampleItemId.isEmpty()) {
+                            sampleItem = sampleItemService.getData(sampleItemId);
+                        }
+
+                        entry.put("sampleId", sampleItem != null ? sampleItem.getId() : null);
+
+                        // Get accession number
+                        if (sampleItem != null && sampleItem.getSample() != null) {
+                            entry.put("accessionNumber", sampleItem.getSample().getAccessionNumber());
+                        }
+
+                        entry.put("storageLocation", data.get("storageLocation"));
+                        entry.put("storagePath", data.get("storagePath"));
+                        entry.put("storageCondition", data.get("storageCondition"));
+                        entry.put("boxId", data.get("boxId"));
+                        entry.put("wellCoordinate", data.get("wellCoordinate"));
+                        entry.put("dateStored", data.get("dateStored"));
+                        entry.put("retentionExpiry", data.get("retentionExpiry"));
+                        entry.put("dateRetrieved", data.get("dateRetrieved"));
+                        entry.put("retrievedBy", data.get("retrievedBy"));
+                        entry.put("status", sample.getStatus() != null ? sample.getStatus().name() : "PENDING");
+
+                        logbook.add(entry);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Return empty list on error to prevent frontend errors
+            return ResponseEntity.ok(new java.util.ArrayList<>());
+        }
+
+        return ResponseEntity.ok(logbook);
     }
 
     // ================== IMMUNOLOGY POST-ANALYSIS ENDPOINTS ==================
@@ -1899,6 +1989,9 @@ public class NotebookSampleEntryController extends BaseRestController {
         private String externalIdPrefix;
         private Integer pageId; // Optional: page ID where child samples should appear
         private AliquotData aliquotData; // Optional: aliquot-specific data
+        private String childSampleType; // Optional: type of child sample (slide, aliquot, cell_block, etc.)
+        private String processingType; // "histopathology" or "cytopathology"
+        private PathologyProcessingData processingData; // Pathology-specific processing data
 
         public List<Integer> getParentSampleIds() {
             return parentSampleIds;
@@ -1938,6 +2031,303 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setAliquotData(AliquotData aliquotData) {
             this.aliquotData = aliquotData;
+        }
+
+        public String getChildSampleType() {
+            return childSampleType;
+        }
+
+        public void setChildSampleType(String childSampleType) {
+            this.childSampleType = childSampleType;
+        }
+
+        public String getProcessingType() {
+            return processingType;
+        }
+
+        public void setProcessingType(String processingType) {
+            this.processingType = processingType;
+        }
+
+        public PathologyProcessingData getProcessingData() {
+            return processingData;
+        }
+
+        public void setProcessingData(PathologyProcessingData processingData) {
+            this.processingData = processingData;
+        }
+    }
+
+    /**
+     * Pathology-specific processing data for grossing/aliquoting.
+     */
+    public static class PathologyProcessingData {
+        private String processingType; // "histopathology" or "cytopathology"
+
+        // Histopathology - Gross Description
+        private String grossExamBy;
+        private String grossExamDate;
+        private String specimenSize;
+        private String specimenColor;
+        private String specimenConsistency;
+        private String lesionsIdentified;
+        private String grossDescriptionNarrative;
+
+        // Sectioning
+        private boolean sectioningDone;
+        private int numberOfSections;
+        private String sectionOrientation;
+        private boolean representativeSections;
+
+        // Embedding
+        private boolean embeddingDone;
+        private String embeddingMedium;
+
+        // Microtomy
+        private boolean microtomyDone;
+        private int microtomyThickness;
+
+        // Cytopathology - Aliquot Purposes
+        private boolean aliquotForLBC;
+        private boolean aliquotForCellBlock;
+        private boolean aliquotForMolecularTesting;
+        private boolean aliquotForBiobanking;
+
+        // Aliquot Details
+        private String lbcVolume;
+        private String cellBlockVolume;
+        private String molecularTestingVolume;
+        private String biobankingVolume;
+        private String preservativeUsed;
+
+        // Common Fields
+        private String processingDate;
+        private String staffInitials;
+        private String processingNotes;
+
+        // Getters and setters
+        public String getProcessingType() {
+            return processingType;
+        }
+
+        public void setProcessingType(String processingType) {
+            this.processingType = processingType;
+        }
+
+        public String getGrossExamBy() {
+            return grossExamBy;
+        }
+
+        public void setGrossExamBy(String grossExamBy) {
+            this.grossExamBy = grossExamBy;
+        }
+
+        public String getGrossExamDate() {
+            return grossExamDate;
+        }
+
+        public void setGrossExamDate(String grossExamDate) {
+            this.grossExamDate = grossExamDate;
+        }
+
+        public String getSpecimenSize() {
+            return specimenSize;
+        }
+
+        public void setSpecimenSize(String specimenSize) {
+            this.specimenSize = specimenSize;
+        }
+
+        public String getSpecimenColor() {
+            return specimenColor;
+        }
+
+        public void setSpecimenColor(String specimenColor) {
+            this.specimenColor = specimenColor;
+        }
+
+        public String getSpecimenConsistency() {
+            return specimenConsistency;
+        }
+
+        public void setSpecimenConsistency(String specimenConsistency) {
+            this.specimenConsistency = specimenConsistency;
+        }
+
+        public String getLesionsIdentified() {
+            return lesionsIdentified;
+        }
+
+        public void setLesionsIdentified(String lesionsIdentified) {
+            this.lesionsIdentified = lesionsIdentified;
+        }
+
+        public String getGrossDescriptionNarrative() {
+            return grossDescriptionNarrative;
+        }
+
+        public void setGrossDescriptionNarrative(String grossDescriptionNarrative) {
+            this.grossDescriptionNarrative = grossDescriptionNarrative;
+        }
+
+        public boolean isSectioningDone() {
+            return sectioningDone;
+        }
+
+        public void setSectioningDone(boolean sectioningDone) {
+            this.sectioningDone = sectioningDone;
+        }
+
+        public int getNumberOfSections() {
+            return numberOfSections;
+        }
+
+        public void setNumberOfSections(int numberOfSections) {
+            this.numberOfSections = numberOfSections;
+        }
+
+        public String getSectionOrientation() {
+            return sectionOrientation;
+        }
+
+        public void setSectionOrientation(String sectionOrientation) {
+            this.sectionOrientation = sectionOrientation;
+        }
+
+        public boolean isRepresentativeSections() {
+            return representativeSections;
+        }
+
+        public void setRepresentativeSections(boolean representativeSections) {
+            this.representativeSections = representativeSections;
+        }
+
+        public boolean isEmbeddingDone() {
+            return embeddingDone;
+        }
+
+        public void setEmbeddingDone(boolean embeddingDone) {
+            this.embeddingDone = embeddingDone;
+        }
+
+        public String getEmbeddingMedium() {
+            return embeddingMedium;
+        }
+
+        public void setEmbeddingMedium(String embeddingMedium) {
+            this.embeddingMedium = embeddingMedium;
+        }
+
+        public boolean isMicrotomyDone() {
+            return microtomyDone;
+        }
+
+        public void setMicrotomyDone(boolean microtomyDone) {
+            this.microtomyDone = microtomyDone;
+        }
+
+        public int getMicrotomyThickness() {
+            return microtomyThickness;
+        }
+
+        public void setMicrotomyThickness(int microtomyThickness) {
+            this.microtomyThickness = microtomyThickness;
+        }
+
+        public boolean isAliquotForLBC() {
+            return aliquotForLBC;
+        }
+
+        public void setAliquotForLBC(boolean aliquotForLBC) {
+            this.aliquotForLBC = aliquotForLBC;
+        }
+
+        public boolean isAliquotForCellBlock() {
+            return aliquotForCellBlock;
+        }
+
+        public void setAliquotForCellBlock(boolean aliquotForCellBlock) {
+            this.aliquotForCellBlock = aliquotForCellBlock;
+        }
+
+        public boolean isAliquotForMolecularTesting() {
+            return aliquotForMolecularTesting;
+        }
+
+        public void setAliquotForMolecularTesting(boolean aliquotForMolecularTesting) {
+            this.aliquotForMolecularTesting = aliquotForMolecularTesting;
+        }
+
+        public boolean isAliquotForBiobanking() {
+            return aliquotForBiobanking;
+        }
+
+        public void setAliquotForBiobanking(boolean aliquotForBiobanking) {
+            this.aliquotForBiobanking = aliquotForBiobanking;
+        }
+
+        public String getLbcVolume() {
+            return lbcVolume;
+        }
+
+        public void setLbcVolume(String lbcVolume) {
+            this.lbcVolume = lbcVolume;
+        }
+
+        public String getCellBlockVolume() {
+            return cellBlockVolume;
+        }
+
+        public void setCellBlockVolume(String cellBlockVolume) {
+            this.cellBlockVolume = cellBlockVolume;
+        }
+
+        public String getMolecularTestingVolume() {
+            return molecularTestingVolume;
+        }
+
+        public void setMolecularTestingVolume(String molecularTestingVolume) {
+            this.molecularTestingVolume = molecularTestingVolume;
+        }
+
+        public String getBiobankingVolume() {
+            return biobankingVolume;
+        }
+
+        public void setBiobankingVolume(String biobankingVolume) {
+            this.biobankingVolume = biobankingVolume;
+        }
+
+        public String getPreservativeUsed() {
+            return preservativeUsed;
+        }
+
+        public void setPreservativeUsed(String preservativeUsed) {
+            this.preservativeUsed = preservativeUsed;
+        }
+
+        public String getProcessingDate() {
+            return processingDate;
+        }
+
+        public void setProcessingDate(String processingDate) {
+            this.processingDate = processingDate;
+        }
+
+        public String getStaffInitials() {
+            return staffInitials;
+        }
+
+        public void setStaffInitials(String staffInitials) {
+            this.staffInitials = staffInitials;
+        }
+
+        public String getProcessingNotes() {
+            return processingNotes;
+        }
+
+        public void setProcessingNotes(String processingNotes) {
+            this.processingNotes = processingNotes;
         }
     }
 
@@ -2021,6 +2411,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         private String storagePurpose;
         private String retrievalDate;
         private String storageNotes;
+        private String dateStored;
 
         // Bacteriology post-analysis storage fields
         private String aliquotType;
@@ -2276,6 +2667,14 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setRequiresInvestigation(Boolean requiresInvestigation) {
             this.requiresInvestigation = requiresInvestigation;
+        }
+
+        public String getDateStored() {
+            return dateStored;
+        }
+
+        public void setDateStored(String dateStored) {
+            this.dateStored = dateStored;
         }
     }
 

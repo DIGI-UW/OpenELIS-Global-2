@@ -275,13 +275,11 @@ function SampleGrid({
         },
       ];
 
-  // Add additional column headers (only when not using custom columns)
-  const additionalHeaders = columns
-    ? []
-    : additionalColumns.map((col) => ({
-        key: col.key,
-        header: col.header,
-      }));
+  // Add additional column headers (always include additionalColumns)
+  const additionalHeaders = additionalColumns.map((col) => ({
+    key: col.key,
+    header: col.header,
+  }));
 
   const headers = [
     ...baseHeaders,
@@ -444,13 +442,23 @@ function SampleGrid({
                   )}
                   {/* Render custom columns if provided */}
                   {customColumns.length > 0 ? (
-                    customColumns.map((col) => (
-                      <TableCell key={col.key}>
-                        {col.render
-                          ? col.render(row._original[col.key], row._original)
-                          : row._original[col.key] || row[col.key] || "-"}
-                      </TableCell>
-                    ))
+                    <>
+                      {customColumns.map((col) => (
+                        <TableCell key={col.key}>
+                          {col.render
+                            ? col.render(row._original[col.key], row._original)
+                            : row._original[col.key] || row[col.key] || "-"}
+                        </TableCell>
+                      ))}
+                      {/* Also render additional columns when using custom columns */}
+                      {additionalColumns.map((col) => (
+                        <TableCell key={col.key}>
+                          {col.render
+                            ? col.render(row._original[col.key], row._original)
+                            : row._original[col.key] || "-"}
+                        </TableCell>
+                      ))}
+                    </>
                   ) : (
                     /* Default column rendering */
                     <>

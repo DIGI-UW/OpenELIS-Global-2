@@ -140,12 +140,70 @@ function PathologyDisposalArchivingPage({
               isRetentionSample: sample.data?.isRetentionSample || false,
               isClosed: sample.data?.isClosed || false,
             }));
-            setSamples(transformedSamples);
-            calculateSummary(transformedSamples);
+
+            // Fetch storage locations from the storage system for samples that don't have one
+            const samplesWithoutStorage = transformedSamples.filter(
+              (s) => !s.storageLocation,
+            );
+
+            if (samplesWithoutStorage.length > 0) {
+              // Fetch storage locations in parallel
+              const storagePromises = samplesWithoutStorage.map(
+                (sample) =>
+                  new Promise((resolve) => {
+                    getFromOpenElisServer(
+                      `/rest/storage/sample-items/${sample.id}`,
+                      (storageResponse) => {
+                        if (storageResponse && storageResponse.location) {
+                          resolve({
+                            id: sample.id,
+                            storageLocation: storageResponse.location,
+                          });
+                        } else if (
+                          storageResponse &&
+                          storageResponse.hierarchicalPath
+                        ) {
+                          resolve({
+                            id: sample.id,
+                            storageLocation: storageResponse.hierarchicalPath,
+                          });
+                        } else {
+                          resolve({ id: sample.id, storageLocation: null });
+                        }
+                      },
+                    );
+                  }),
+              );
+
+              Promise.all(storagePromises).then((storageResults) => {
+                // Create a map of sample ID to storage location
+                const storageMap = {};
+                storageResults.forEach((result) => {
+                  if (result.storageLocation) {
+                    storageMap[result.id] = result.storageLocation;
+                  }
+                });
+
+                // Update samples with storage locations
+                const updatedSamples = transformedSamples.map((sample) => ({
+                  ...sample,
+                  storageLocation:
+                    sample.storageLocation || storageMap[sample.id] || null,
+                }));
+
+                setSamples(updatedSamples);
+                calculateSummary(updatedSamples);
+                setLoading(false);
+              });
+            } else {
+              setSamples(transformedSamples);
+              calculateSummary(transformedSamples);
+              setLoading(false);
+            }
           } else {
             setSamples([]);
+            setLoading(false);
           }
-          setLoading(false);
         }
       },
     );
@@ -326,20 +384,31 @@ function PathologyDisposalArchivingPage({
       (response) => {
         if (componentMounted.current) {
           if (response && !response.error) {
-            setSuccess(
-              intl.formatMessage(
-                {
-                  id: "pathology.disposal.markedRetention",
-                  defaultMessage: "Marked {count} samples as retention samples",
-                },
-                { count: selectedIds.length },
-              ),
+            // Mark samples as COMPLETED after marking as retention
+            postToOpenElisServer(
+              `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+              JSON.stringify({
+                sampleIds: numericIds,
+                status: "COMPLETED",
+              }),
+              () => {
+                setSuccess(
+                  intl.formatMessage(
+                    {
+                      id: "pathology.disposal.markedRetention",
+                      defaultMessage:
+                        "Marked {count} samples as retention samples",
+                    },
+                    { count: selectedIds.length },
+                  ),
+                );
+                setSelectedIds([]);
+                loadSamples();
+                if (onProgressUpdate) {
+                  onProgressUpdate();
+                }
+              },
             );
-            setSelectedIds([]);
-            loadSamples();
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
           } else {
             setError(response?.error || "Failed to mark samples");
           }
@@ -348,32 +417,77 @@ function PathologyDisposalArchivingPage({
     );
   };
 
-  // Render disposal status tag
-  const renderDisposalTag = (sample) => {
-    if (sample.isClosed) {
+  // Render page status tag with color coding (PENDING/IN_PROGRESS/COMPLETED)
+  // SampleGrid render signature: (value, row) => JSX
+  const renderStatusTag = (statusValue) => {
+    const status = statusValue || "PENDING";
+    switch (status) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm">
+            Completed
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm">
+            In Progress
+          </Tag>
+        );
+      case "PENDING":
+      default:
+        return (
+          <Tag type="gray" size="sm">
+            Pending
+          </Tag>
+        );
+    }
+  };
+
+  // Render disposal/retention status tag - this is the "Final Status" showing whether sample is disposed or retained
+  // SampleGrid render signature: (value, row) => JSX - use row (second arg) for the full sample
+  const renderFinalStatusTag = (value, sample) => {
+    // If closed with disposal date = DISPOSED
+    if (sample?.isClosed && sample?.disposalDate) {
+      return (
+        <Tag type="red" renderIcon={TrashCan} size="sm">
+          Disposed
+        </Tag>
+      );
+    }
+    // If marked as retention sample = RETAINED
+    if (sample?.isRetentionSample) {
+      return (
+        <Tag type="teal" renderIcon={Archive} size="sm">
+          Retained
+        </Tag>
+      );
+    }
+    // If closed but no disposal date (just closed without disposal)
+    if (sample?.isClosed) {
       return (
         <Tag type="purple" renderIcon={Locked} size="sm">
           Closed
         </Tag>
       );
     }
-    if (sample.disposalDate) {
-      return (
-        <Tag type="green" renderIcon={TrashCan} size="sm">
-          Disposed
-        </Tag>
-      );
-    }
-    if (sample.isRetentionSample) {
-      return (
-        <Tag type="cyan" renderIcon={Archive} size="sm">
-          Retention
-        </Tag>
-      );
-    }
+    // Active/Pending disposal
     return (
       <Tag type="gray" size="sm">
-        Active
+        Pending
+      </Tag>
+    );
+  };
+
+  // Render storage location - show from previous workflow pages
+  const renderStorageLocation = (value, sample) => {
+    const location = sample?.storageLocation || value;
+    if (!location) {
+      return <span style={{ color: "#8d8d8d" }}>—</span>;
+    }
+    return (
+      <Tag type="blue" size="sm">
+        {location}
       </Tag>
     );
   };
@@ -536,17 +650,28 @@ function PathologyDisposalArchivingPage({
             { key: "externalId", header: "Sample ID" },
             { key: "specimenType", header: "Specimen Type" },
             { key: "blockId", header: "Block ID" },
-            { key: "storageLocation", header: "Storage" },
-            { key: "status", header: "Status" },
+            {
+              key: "storageLocation",
+              header: intl.formatMessage({
+                id: "pathology.disposal.storageLocation",
+                defaultMessage: "Storage Location",
+              }),
+              render: renderStorageLocation,
+            },
+            {
+              key: "status",
+              header: "Page Status",
+              render: renderStatusTag,
+            },
           ]}
           additionalColumns={[
             {
-              key: "disposalStatus",
+              key: "finalStatus",
               header: intl.formatMessage({
-                id: "pathology.disposal.disposalStatus",
-                defaultMessage: "Disposal Status",
+                id: "pathology.disposal.finalStatus",
+                defaultMessage: "Final Status",
               }),
-              render: renderDisposalTag,
+              render: renderFinalStatusTag,
             },
           ]}
         />

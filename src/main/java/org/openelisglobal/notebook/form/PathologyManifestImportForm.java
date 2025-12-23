@@ -4,37 +4,64 @@ import org.openelisglobal.validation.annotations.SafeHtml;
 
 /**
  * Form bean for Pathology Laboratory manifest CSV import operations. Contains
- * pathology-specific data points including clinical and research sample
- * metadata.
+ * Pathology-specific data points that align with the enhanced metadata capture
+ * requirements:
+ *
+ * Patient Identification: - First Name is MANDATORY (primary name field for
+ * order acceptance) - Surname/Last Name is OPTIONAL (not required for order
+ * acceptance) - National ID is OPTIONAL (not required for order acceptance)
+ *
+ * Clinical Samples: Patient ID, Requesting Clinician, Collection DateTime,
+ * Specimen Type/Site, Clinical Details Research Samples: Study ID, PI Name,
+ * Participant/Animal ID, Ethical Approval Ref All Samples: Receiving DateTime,
+ * Receiving Staff Name, Source Facility
+ *
+ * Field naming convention: uses camelCase with "Column" suffix to indicate CSV
+ * column mapping. Field names match the frontend
+ * PathologyManifestImportModal.js columnMapping state.
  */
 public class PathologyManifestImportForm {
 
     private Integer notebookId;
 
-    // Required fields
+    // ========== PATIENT IDENTIFICATION COLUMNS ==========
+    // First Name is MANDATORY (primary name field for order acceptance)
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String groupIdColumn; // Group ID / Batch identifier
+    private String firstNameColumn;
+
+    // Surname/Last Name is OPTIONAL (not required for order acceptance)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String surnameColumn;
+
+    // National ID is OPTIONAL (not required for order acceptance)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String nationalIdColumn;
+
+    // ========== SAMPLE CATEGORY COLUMN ==========
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String sampleCategoryColumn; // "Clinical diagnostic" or "Research"
+
+    // ========== RECEIVING INFO COLUMNS (ALL SAMPLES) ==========
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String receivedDateTimeColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String sampleTypeColumn;
-
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String numOfSamplesColumn;
-
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String collectionDateColumn;
-
-    // Sample Identity
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String sampleCategoryColumn; // Clinical diagnostic or Research
+    private String receivedByColumn; // Receiving staff name
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sourceFacilityColumn;
 
+    // ========== SPECIMEN INFO COLUMNS ==========
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String specimenSiteColumn;
+    private String specimenTypeColumn;
 
-    // Clinical metadata (used when sampleCategory is "Clinical diagnostic")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String specimenSiteColumn; // e.g., "liver biopsy", "lung FNA"
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String collectionDateTimeColumn;
+
+    // ========== CLINICAL SAMPLE COLUMNS ==========
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String patientIdColumn;
 
@@ -44,12 +71,12 @@ public class PathologyManifestImportForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String clinicalDetailsColumn;
 
-    // Research metadata (used when sampleCategory is "Research")
+    // ========== RESEARCH SAMPLE COLUMNS ==========
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String studyIdColumn;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String piNameColumn;
+    private String piNameColumn; // Principal Investigator
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String participantAnimalIdColumn;
@@ -57,13 +84,15 @@ public class PathologyManifestImportForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String ethicalApprovalRefColumn;
 
-    // Notes
+    // ========== OPTIONAL COLUMNS ==========
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String notesColumn;
+    private String remarksColumn;
 
-    // Date format for parsing collection dates
+    // Date format for parsing dates
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String dateFormat;
+
+    // ========== GETTERS AND SETTERS ==========
 
     public Integer getNotebookId() {
         return notebookId;
@@ -73,36 +102,28 @@ public class PathologyManifestImportForm {
         this.notebookId = notebookId;
     }
 
-    public String getGroupIdColumn() {
-        return groupIdColumn;
+    public String getFirstNameColumn() {
+        return firstNameColumn;
     }
 
-    public void setGroupIdColumn(String groupIdColumn) {
-        this.groupIdColumn = groupIdColumn;
+    public void setFirstNameColumn(String firstNameColumn) {
+        this.firstNameColumn = firstNameColumn;
     }
 
-    public String getSampleTypeColumn() {
-        return sampleTypeColumn;
+    public String getSurnameColumn() {
+        return surnameColumn;
     }
 
-    public void setSampleTypeColumn(String sampleTypeColumn) {
-        this.sampleTypeColumn = sampleTypeColumn;
+    public void setSurnameColumn(String surnameColumn) {
+        this.surnameColumn = surnameColumn;
     }
 
-    public String getNumOfSamplesColumn() {
-        return numOfSamplesColumn;
+    public String getNationalIdColumn() {
+        return nationalIdColumn;
     }
 
-    public void setNumOfSamplesColumn(String numOfSamplesColumn) {
-        this.numOfSamplesColumn = numOfSamplesColumn;
-    }
-
-    public String getCollectionDateColumn() {
-        return collectionDateColumn;
-    }
-
-    public void setCollectionDateColumn(String collectionDateColumn) {
-        this.collectionDateColumn = collectionDateColumn;
+    public void setNationalIdColumn(String nationalIdColumn) {
+        this.nationalIdColumn = nationalIdColumn;
     }
 
     public String getSampleCategoryColumn() {
@@ -113,6 +134,22 @@ public class PathologyManifestImportForm {
         this.sampleCategoryColumn = sampleCategoryColumn;
     }
 
+    public String getReceivedDateTimeColumn() {
+        return receivedDateTimeColumn;
+    }
+
+    public void setReceivedDateTimeColumn(String receivedDateTimeColumn) {
+        this.receivedDateTimeColumn = receivedDateTimeColumn;
+    }
+
+    public String getReceivedByColumn() {
+        return receivedByColumn;
+    }
+
+    public void setReceivedByColumn(String receivedByColumn) {
+        this.receivedByColumn = receivedByColumn;
+    }
+
     public String getSourceFacilityColumn() {
         return sourceFacilityColumn;
     }
@@ -121,12 +158,28 @@ public class PathologyManifestImportForm {
         this.sourceFacilityColumn = sourceFacilityColumn;
     }
 
+    public String getSpecimenTypeColumn() {
+        return specimenTypeColumn;
+    }
+
+    public void setSpecimenTypeColumn(String specimenTypeColumn) {
+        this.specimenTypeColumn = specimenTypeColumn;
+    }
+
     public String getSpecimenSiteColumn() {
         return specimenSiteColumn;
     }
 
     public void setSpecimenSiteColumn(String specimenSiteColumn) {
         this.specimenSiteColumn = specimenSiteColumn;
+    }
+
+    public String getCollectionDateTimeColumn() {
+        return collectionDateTimeColumn;
+    }
+
+    public void setCollectionDateTimeColumn(String collectionDateTimeColumn) {
+        this.collectionDateTimeColumn = collectionDateTimeColumn;
     }
 
     public String getPatientIdColumn() {
@@ -185,12 +238,12 @@ public class PathologyManifestImportForm {
         this.ethicalApprovalRefColumn = ethicalApprovalRefColumn;
     }
 
-    public String getNotesColumn() {
-        return notesColumn;
+    public String getRemarksColumn() {
+        return remarksColumn;
     }
 
-    public void setNotesColumn(String notesColumn) {
-        this.notesColumn = notesColumn;
+    public void setRemarksColumn(String remarksColumn) {
+        this.remarksColumn = remarksColumn;
     }
 
     public String getDateFormat() {

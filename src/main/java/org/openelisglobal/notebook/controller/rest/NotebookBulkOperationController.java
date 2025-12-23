@@ -411,9 +411,9 @@ public class NotebookBulkOperationController extends BaseRestController {
         result.put("invalid", summary.invalid());
         result.put("inconclusive", summary.inconclusive());
         result.put("pending", summary.pending());
-        result.put("validPercentage", summary.validPercentage());
-        result.put("invalidPercentage", summary.invalidPercentage());
-        result.put("inconclusivePercentage", summary.inconclusivePercentage());
+        result.put("validPercentage", ResultCompilationService.validPercentage(summary));
+        result.put("invalidPercentage", ResultCompilationService.invalidPercentage(summary));
+        result.put("inconclusivePercentage", ResultCompilationService.inconclusivePercentage(summary));
 
         return ResponseEntity.ok(result);
     }
@@ -1968,5 +1968,91 @@ public class NotebookBulkOperationController extends BaseRestController {
         response.setHeader("Content-Disposition", "attachment; filename=mntd-test-results-template.csv");
         response.getOutputStream().write(template.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         response.getOutputStream().flush();
+    }
+
+    // ========================================
+    // PROCESSING ENDPOINTS
+    // ========================================
+
+    /**
+     * Bulk save processing data for multiple samples. POST
+     * /notebook/bulk/page/{pageId}/samples/processing
+     *
+     * Used by pathology and other workflows to save lab processing steps (tissue
+     * processing, embedding, microtomy, staining, etc.) for multiple samples at
+     * once.
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds and processingData to save
+     * @param httpRequest for getting user session
+     * @return result with updated count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/processing", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkSaveProcessing(@PathVariable("pageId") Integer pageId,
+            @RequestBody BulkProcessingRequest request, HttpServletRequest httpRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User session not found");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            response.put("success", false);
+            response.put("error", "No samples specified");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        if (request.getProcessingData() == null || request.getProcessingData().isEmpty()) {
+            response.put("success", false);
+            response.put("error", "No processing data provided");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            // Apply processing data to all selected samples
+            int updatedCount = bulkOperationService.bulkApplyValues(pageId, request.getSampleIds(),
+                    request.getProcessingData(), sysUserId);
+
+            response.put("success", true);
+            response.put("message", String.format("Processing data saved for %d samples", updatedCount));
+            response.put("updatedCount", updatedCount);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "bulkSaveProcessing",
+                    "Failed to save processing data: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to save processing data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Request object for bulk processing operations.
+     */
+    public static class BulkProcessingRequest {
+        private List<Integer> sampleIds;
+        private Map<String, Object> processingData;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Map<String, Object> getProcessingData() {
+            return processingData;
+        }
+
+        public void setProcessingData(Map<String, Object> processingData) {
+            this.processingData = processingData;
+        }
     }
 }

@@ -1040,9 +1040,31 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return null;
         }
 
-        // Return the page with the highest order (last page / archiving page)
-        return pages.stream().filter(p -> p.getOrder() != null).max((p1, p2) -> p1.getOrder().compareTo(p2.getOrder()))
+        // Find the archiving page by title (Disposal & Archiving)
+        // This is where samples go after Storage or when routed to external/storage
+        NoteBookPage archivingPage = pages.stream()
+                .filter(p -> p.getTitle() != null
+                        && (p.getTitle().toLowerCase().contains("disposal")
+                                || p.getTitle().toLowerCase().contains("archiving")))
+                .findFirst().orElse(null);
+
+        if (archivingPage != null) {
+            return archivingPage;
+        }
+
+        // Fallback: Return page with order 7 (standard archiving page position)
+        NoteBookPage order7Page = pages.stream().filter(p -> p.getOrder() != null && p.getOrder() == 7).findFirst()
                 .orElse(null);
+
+        if (order7Page != null) {
+            return order7Page;
+        }
+
+        // Final fallback: Return the page with the highest order
+        // (excluding Reference & SOP Module which is typically order 8)
+        return pages.stream().filter(p -> p.getOrder() != null)
+                .filter(p -> p.getTitle() == null || !p.getTitle().toLowerCase().contains("reference"))
+                .max((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
     }
 
     @Override
@@ -1086,6 +1108,33 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     return true;
                 }
             }
+        }
+
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isStoragePage(Integer pageId) {
+        if (pageId == null) {
+            return false;
+        }
+
+        NoteBookPage page = noteBookPageDAO.get(pageId).orElse(null);
+        if (page == null) {
+            return false;
+        }
+
+        // Check if the page title indicates it's a storage page
+        String title = page.getTitle() != null ? page.getTitle().toLowerCase() : "";
+        if (title.contains("storage") || title.contains("inventory")) {
+            return true;
+        }
+
+        // Check by page order - order 5 is typically the Storage & Inventory page
+        // for Pathology and Pharmaceutical workflows
+        if (page.getOrder() != null && page.getOrder() == 5) {
+            return true;
         }
 
         return false;

@@ -76,7 +76,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional(readOnly = true)
     public PageProgress getPageProgress(Integer pageId) {
         Map<Status, Long> counts = baseObjectDAO.getStatusCountsByPageId(pageId);
-        return PageProgress.from(counts);
+        return NotebookPageSampleService.createPageProgress(counts);
     }
 
     @Override
@@ -152,34 +152,67 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                                             : "null"));
                 }
 
-                // Check if this is a routing page
+                // Check if this is a routing page or storage page
                 boolean isRoutingPage = noteBookService.isRoutingPage(pageId);
-                LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                        "T150: pageId=" + pageId + " isRoutingPage=" + isRoutingPage);
+                boolean isStoragePage = noteBookService.isStoragePage(pageId);
+                LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus", "T150: pageId=" + pageId
+                        + " isRoutingPage=" + isRoutingPage + " isStoragePage=" + isStoragePage);
                 NoteBookPage archivingPage = null;
                 Integer notebookId = null;
 
-                if (isRoutingPage && page == null) {
-                    page = noteBookService.getPage(pageId);
-                }
-                if (isRoutingPage && page != null) {
-                    // Initialize lazy-loaded notebook reference
-                    org.hibernate.Hibernate.initialize(page.getNotebook());
-                    if (page.getNotebook() != null) {
-                        notebookId = page.getNotebook().getId();
-                        archivingPage = noteBookService.getLastPage(notebookId);
-                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                                "Routing page detected: pageId=" + pageId + ", notebookId=" + notebookId
-                                        + ", archivingPageId="
-                                        + (archivingPage != null ? archivingPage.getId() : "null"));
+                // For both routing pages and storage pages, we need the archiving page
+                // Always ensure page is loaded for routing/storage pages
+                if (isRoutingPage || isStoragePage) {
+                    if (page == null) {
+                        page = noteBookService.getPage(pageId);
+                    }
+                    if (page != null) {
+                        // Initialize lazy-loaded notebook reference
+                        org.hibernate.Hibernate.initialize(page.getNotebook());
+                        if (page.getNotebook() != null) {
+                            notebookId = page.getNotebook().getId();
+
+                            // Log notebook pages for debugging
+                            org.hibernate.Hibernate.initialize(page.getNotebook().getPages());
+                            java.util.List<NoteBookPage> allPages = page.getNotebook().getPages();
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                    "Notebook " + notebookId + " has " + (allPages != null ? allPages.size() : 0) + " pages");
+                            if (allPages != null) {
+                                for (NoteBookPage p : allPages) {
+                                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                            "  Page: id=" + p.getId() + " order=" + p.getOrder() + " title='" + p.getTitle() + "'");
+                                }
+                            }
+
+                            archivingPage = noteBookService.getLastPage(notebookId);
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                    (isStoragePage ? "Storage" : "Routing") + " page detected: pageId=" + pageId
+                                            + ", notebookId=" + notebookId + ", archivingPageId="
+                                            + (archivingPage != null ? archivingPage.getId() : "null")
+                                            + ", archivingPageTitle="
+                                            + (archivingPage != null ? archivingPage.getTitle() : "null"));
+                        } else {
+                            LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatus",
+                                    "Page notebook reference is null for pageId=" + pageId);
+                        }
+                    } else {
+                        LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatus",
+                                "Could not load page for pageId=" + pageId);
                     }
                 }
 
                 for (Integer sampleId : batch) {
                     NoteBookPage targetPage = nextPage; // default to next page
 
+                    // For storage pages, always skip to archiving page (Disposal & Archiving)
+                    // Storage samples skip the Reporting page
+                    if (isStoragePage && archivingPage != null) {
+                        targetPage = archivingPage;
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                "Sample " + sampleId + " on storage page, skipping to archiving page");
+                    }
                     // For routing pages, check where the sample is routed
-                    if (isRoutingPage && notebookId != null) {
+                    else if (isRoutingPage && notebookId != null) {
                         SampleRouting routing = sampleRoutingService.getByNotebookIdAndSampleItemId(notebookId,
                                 sampleId);
                         if (routing != null) {

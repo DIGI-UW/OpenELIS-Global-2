@@ -138,15 +138,18 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
      * Progress information for a notebook page.
      */
     record PageProgress(int total, int pending, int inProgress, int completed, int skipped, double percentage) {
+    }
 
-        public static PageProgress from(Map<Status, Long> counts) {
-            int pending = counts.getOrDefault(Status.PENDING, 0L).intValue();
-            int inProgress = counts.getOrDefault(Status.IN_PROGRESS, 0L).intValue();
-            int completed = counts.getOrDefault(Status.COMPLETED, 0L).intValue();
-            int skipped = counts.getOrDefault(Status.SKIPPED, 0L).intValue();
-            int total = pending + inProgress + completed + skipped;
-            double percentage = total > 0 ? (completed * 100.0 / total) : 0.0;
-            return new PageProgress(total, pending, inProgress, completed, skipped, percentage);
-        }
+    /**
+     * Create PageProgress from status count map.
+     */
+    static PageProgress createPageProgress(Map<Status, Long> counts) {
+        int pending = counts.getOrDefault(Status.PENDING, 0L).intValue();
+        int inProgress = counts.getOrDefault(Status.IN_PROGRESS, 0L).intValue();
+        int completed = counts.getOrDefault(Status.COMPLETED, 0L).intValue();
+        int skipped = counts.getOrDefault(Status.SKIPPED, 0L).intValue();
+        int total = pending + inProgress + completed + skipped;
+        double percentage = total > 0 ? (completed * 100.0 / total) : 0.0;
+        return new PageProgress(total, pending, inProgress, completed, skipped, percentage);
     }
 }

@@ -13,7 +13,7 @@ import {
   DatePickerInput,
   Modal,
 } from "@carbon/react";
-import { Add, Checkmark, Print, Upload, TrashCan } from "@carbon/react/icons";
+import { Add, Checkmark, Printer, Upload, TrashCan } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -28,6 +28,23 @@ import "../../workflow/NotebookWorkflow.css";
  * PathologySampleCreationPage - Page 1 of the pathology workflow.
  * Purpose: Create the pathology sample and capture all metadata at once.
  * Who uses it: Data clerks / reception staff
+ *
+ * KEY METADATA FIELDS:
+ * Patient Identification:
+ *   - firstName: MANDATORY - primary name field for order acceptance
+ *   - surname: OPTIONAL - not required for order acceptance
+ *   - nationalId: OPTIONAL - not required for order acceptance
+ *
+ * Clinical Samples (sampleCategory = "Clinical diagnostic"):
+ *   - patientId, requestingClinician, clinicalDetails (all required)
+ *
+ * Research Samples (sampleCategory = "Research"):
+ *   - studyId, piName, participantAnimalId, ethicalApprovalRef (all required)
+ *
+ * All Samples:
+ *   - receivedDateTime, receivedBy (required)
+ *   - specimenType, specimenSite, collectionDateTime (required)
+ *   - sourceFacility (optional)
  */
 function PathologySampleCreationPage({
   entryId,
@@ -48,6 +65,7 @@ function PathologySampleCreationPage({
   // Modal state
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importManifestType, setImportManifestType] = useState(null); // "clinical" or "research"
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -57,10 +75,17 @@ function PathologySampleCreationPage({
 
   // New sample form state
   const [newSample, setNewSample] = useState({
+    // Patient Identification (First Name MANDATORY, others optional)
+    firstName: "",
+    surname: "",
+    nationalId: "",
+    // Sample Category
     sampleCategory: "",
+    // Receiving Info
     sourceFacility: "",
     receivedDateTime: "",
     receivedBy: "",
+    // Specimen Info
     specimenType: "",
     collectionDateTime: "",
     specimenSite: "",
@@ -117,13 +142,32 @@ function PathologySampleCreationPage({
               id: String(sample.id || sample.sampleItemId),
               externalId: sample.externalId || sample.accessionNumber,
               accessionNumber: sample.accessionNumber,
+              // Patient Identification
+              firstName: sample.firstName,
+              surname: sample.surname,
+              nationalId: sample.nationalId,
+              // Sample Category
               sampleCategory: sample.sampleCategory || "Clinical diagnostic",
+              // Receiving Info
               sourceFacility: sample.sourceFacility || "Alert Hospital",
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
-              collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              patientId: sample.patientId,
               receivedDateTime: sample.receivedDateTime,
+              receivedBy: sample.receivedBy,
+              // Specimen Info
+              sampleType: sample.sampleType || sample.typeOfSample?.description,
+              specimenSite: sample.specimenSite,
+              collectionDate:
+                sample.collectionDate || sample.collectionDateTime,
+              // Clinical metadata
+              patientId: sample.patientId,
+              requestingClinician: sample.requestingClinician,
+              clinicalDetails: sample.clinicalDetails,
+              // Research metadata
+              studyId: sample.studyId,
+              piName: sample.piName,
+              participantAnimalId: sample.participantAnimalId,
+              ethicalApprovalRef: sample.ethicalApprovalRef,
+              // Status
+              status: sample.pageStatus || "PENDING",
             }));
             setSamples(transformedSamples);
           } else {
@@ -158,16 +202,20 @@ function PathologySampleCreationPage({
     if (submitting) return;
 
     // Validate required fields
+    // First Name is MANDATORY (primary name field for order acceptance)
+    // Surname and National ID are OPTIONAL
     if (
+      !newSample.firstName ||
       !newSample.sampleCategory ||
-      !newSample.sourceFacility ||
-      !newSample.specimenType
+      !newSample.specimenType ||
+      !newSample.receivedDateTime ||
+      !newSample.receivedBy
     ) {
       setError(
         intl.formatMessage({
           id: "pathology.sampleCreation.error.requiredFields",
           defaultMessage:
-            "Please fill in all required fields: Sample Category, Source Facility, and Specimen Type",
+            "Please fill in all required fields: First Name (MANDATORY), Sample Category, Specimen Type, Received Date/Time, and Receiving Staff Name. Note: Surname and National ID are optional.",
         }),
       );
       return;
@@ -208,16 +256,25 @@ function PathologySampleCreationPage({
 
   const resetNewSampleForm = () => {
     setNewSample({
+      // Patient Identification (First Name MANDATORY, others optional)
+      firstName: "",
+      surname: "",
+      nationalId: "",
+      // Sample Category
       sampleCategory: "",
+      // Receiving Info
       sourceFacility: "",
       receivedDateTime: "",
       receivedBy: "",
+      // Specimen Info
       specimenType: "",
       collectionDateTime: "",
       specimenSite: "",
+      // Clinical metadata
       patientId: "",
       requestingClinician: "",
       clinicalDetails: "",
+      // Research metadata
       studyId: "",
       piName: "",
       participantAnimalId: "",
@@ -226,16 +283,20 @@ function PathologySampleCreationPage({
   };
 
   // Handle manifest import success
-  const handleImportSuccess = useCallback(
-    (result) => {
-      setImportModalOpen(false);
-      loadPageSamples();
-      if (onProgressUpdate) {
-        onProgressUpdate();
-      }
-    },
-    [loadPageSamples, onProgressUpdate],
-  );
+  const handleImportSuccess = useCallback(() => {
+    setImportModalOpen(false);
+    setImportManifestType(null);
+    loadPageSamples();
+    if (onProgressUpdate) {
+      onProgressUpdate();
+    }
+  }, [loadPageSamples, onProgressUpdate]);
+
+  // Open import modal for specific manifest type
+  const openImportModal = useCallback((manifestType) => {
+    setImportManifestType(manifestType);
+    setImportModalOpen(true);
+  }, []);
 
   // Check if page has a real database ID (not a default synthetic ID)
   const hasRealPageId =
@@ -386,7 +447,7 @@ function PathologySampleCreationPage({
         <p className="page-description">
           <FormattedMessage
             id="pathology.page.sampleCreation.description"
-            defaultMessage="Create pathology samples and capture all metadata. Import samples from a manifest file or create them individually. Mark samples as verified when received."
+            defaultMessage="Create pathology samples and capture all metadata. First Name is MANDATORY for order acceptance (Surname and National ID are optional). Clinical samples require Patient ID, Requesting Clinician, and Clinical Details. Research samples require Study ID, PI Name, Participant/Animal ID, and Ethical Approval Reference. All samples require Receiving Date/Time and Receiving Staff Name."
           />
         </p>
       </div>
@@ -426,17 +487,97 @@ function PathologySampleCreationPage({
         </Column>
       </Grid>
 
+      {/* Metadata Requirements Info */}
+      <div
+        style={{
+          padding: "1rem",
+          marginBottom: "1rem",
+          backgroundColor: "#e0f0ff",
+          borderRadius: "4px",
+          border: "1px solid #0f62fe",
+        }}
+      >
+        <h5 style={{ marginBottom: "0.5rem", color: "#0f62fe" }}>
+          <FormattedMessage
+            id="pathology.page.sampleCreation.metadataRequirements"
+            defaultMessage="Metadata Requirements for Sample Import/Creation"
+          />
+        </h5>
+        <div style={{ fontSize: "0.85rem", color: "#525252" }}>
+          <p style={{ marginBottom: "0.5rem" }}>
+            <strong>
+              <FormattedMessage
+                id="pathology.page.sampleCreation.patientIdNote"
+                defaultMessage="Patient Identification:"
+              />
+            </strong>{" "}
+            <FormattedMessage
+              id="pathology.page.sampleCreation.patientIdDetails"
+              defaultMessage="First Name is MANDATORY. Surname/Last Name and National ID are OPTIONAL."
+            />
+          </p>
+          <p style={{ marginBottom: "0.5rem" }}>
+            <strong>
+              <FormattedMessage
+                id="pathology.page.sampleCreation.clinicalNote"
+                defaultMessage="Clinical Samples:"
+              />
+            </strong>{" "}
+            <FormattedMessage
+              id="pathology.page.sampleCreation.clinicalDetails"
+              defaultMessage="Require Patient ID, Requesting Clinician, and Clinical Details/Indication."
+            />
+          </p>
+          <p style={{ marginBottom: "0.5rem" }}>
+            <strong>
+              <FormattedMessage
+                id="pathology.page.sampleCreation.researchNote"
+                defaultMessage="Research Samples:"
+              />
+            </strong>{" "}
+            <FormattedMessage
+              id="pathology.page.sampleCreation.researchDetails"
+              defaultMessage="Require Study ID, PI Name, Participant/Animal ID, and Ethical Approval Reference."
+            />
+          </p>
+          <p>
+            <strong>
+              <FormattedMessage
+                id="pathology.page.sampleCreation.allSamplesNote"
+                defaultMessage="All Samples:"
+              />
+            </strong>{" "}
+            <FormattedMessage
+              id="pathology.page.sampleCreation.allSamplesDetails"
+              defaultMessage="Require Receiving Date/Time, Receiving Staff Name, Specimen Type, Specimen Site, and Collection Date/Time."
+            />
+          </p>
+        </div>
+      </div>
+
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <Button
           kind="primary"
           size="sm"
           renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
+          onClick={() => openImportModal("clinical")}
         >
           <FormattedMessage
-            id="pathology.page.sampleCreation.importManifest"
-            defaultMessage="Import from Manifest"
+            id="pathology.page.sampleCreation.importClinicalManifest"
+            defaultMessage="Import Clinical Manifest"
+          />
+        </Button>
+
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Upload}
+          onClick={() => openImportModal("research")}
+        >
+          <FormattedMessage
+            id="pathology.page.sampleCreation.importResearchManifest"
+            defaultMessage="Import Research Manifest"
           />
         </Button>
 
@@ -469,7 +610,7 @@ function PathologySampleCreationPage({
             <Button
               kind="ghost"
               size="sm"
-              renderIcon={Print}
+              renderIcon={Printer}
               onClick={handlePrintLabels}
             >
               <FormattedMessage
@@ -543,12 +684,74 @@ function PathologySampleCreationPage({
         size="lg"
       >
         <Grid fullWidth>
-          {/* Sample Identity */}
+          {/* Patient Identification */}
           <Column lg={16} md={8} sm={4}>
             <h5 style={{ marginBottom: "1rem" }}>
               <FormattedMessage
+                id="pathology.modal.patientIdentification"
+                defaultMessage="Patient Identification"
+              />
+            </h5>
+            <p
+              style={{
+                fontSize: "0.85rem",
+                color: "#525252",
+                marginBottom: "1rem",
+              }}
+            >
+              <FormattedMessage
+                id="pathology.modal.patientIdentification.note"
+                defaultMessage="First Name is MANDATORY. Surname and National ID are optional."
+              />
+            </p>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="firstName"
+              name="firstName"
+              labelText={intl.formatMessage({
+                id: "pathology.field.firstName",
+                defaultMessage: "First Name (MANDATORY) *",
+              })}
+              value={newSample.firstName}
+              onChange={handleInputChange}
+              required
+            />
+          </Column>
+
+          <Column lg={4} md={4} sm={4}>
+            <TextInput
+              id="surname"
+              name="surname"
+              labelText={intl.formatMessage({
+                id: "pathology.field.surname",
+                defaultMessage: "Surname/Last Name (Optional)",
+              })}
+              value={newSample.surname}
+              onChange={handleInputChange}
+            />
+          </Column>
+
+          <Column lg={4} md={4} sm={4}>
+            <TextInput
+              id="nationalId"
+              name="nationalId"
+              labelText={intl.formatMessage({
+                id: "pathology.field.nationalId",
+                defaultMessage: "National ID (Optional)",
+              })}
+              value={newSample.nationalId}
+              onChange={handleInputChange}
+            />
+          </Column>
+
+          {/* Sample Identity */}
+          <Column lg={16} md={8} sm={4}>
+            <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
+              <FormattedMessage
                 id="pathology.modal.sampleIdentity"
-                defaultMessage="Sample Identity"
+                defaultMessage="Sample Category"
               />
             </h5>
           </Column>
@@ -582,43 +785,14 @@ function PathologySampleCreationPage({
             </Select>
           </Column>
 
-          {/* Sample Source */}
+          {/* Receiving Information */}
           <Column lg={16} md={8} sm={4}>
             <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
               <FormattedMessage
-                id="pathology.modal.sampleSource"
-                defaultMessage="Sample Source"
+                id="pathology.modal.receivingInfo"
+                defaultMessage="Receiving Information"
               />
             </h5>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="sourceFacility"
-              name="sourceFacility"
-              labelText={intl.formatMessage({
-                id: "pathology.field.sourceFacility",
-                defaultMessage: "Source Facility *",
-              })}
-              value={newSample.sourceFacility}
-              onChange={handleInputChange}
-            >
-              <SelectItem value="" text="" />
-              <SelectItem
-                value="Alert Hospital"
-                text={intl.formatMessage({
-                  id: "pathology.source.alertHospital",
-                  defaultMessage: "Alert Hospital",
-                })}
-              />
-              <SelectItem
-                value="Research project"
-                text={intl.formatMessage({
-                  id: "pathology.source.researchProject",
-                  defaultMessage: "Research project",
-                })}
-              />
-            </Select>
           </Column>
 
           <Column lg={8} md={4} sm={4}>
@@ -643,11 +817,54 @@ function PathologySampleCreationPage({
               name="receivedBy"
               labelText={intl.formatMessage({
                 id: "pathology.field.receivedBy",
-                defaultMessage: "Received By (Staff Name) *",
+                defaultMessage: "Receiving Staff Name *",
               })}
               value={newSample.receivedBy}
               onChange={handleInputChange}
             />
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="sourceFacility"
+              name="sourceFacility"
+              labelText={intl.formatMessage({
+                id: "pathology.field.sourceFacility",
+                defaultMessage: "Source Facility",
+              })}
+              value={newSample.sourceFacility}
+              onChange={handleInputChange}
+            >
+              <SelectItem value="" text="" />
+              <SelectItem
+                value="Alert Hospital"
+                text={intl.formatMessage({
+                  id: "pathology.source.alertHospital",
+                  defaultMessage: "Alert Hospital",
+                })}
+              />
+              <SelectItem
+                value="Research project"
+                text={intl.formatMessage({
+                  id: "pathology.source.researchProject",
+                  defaultMessage: "Research project",
+                })}
+              />
+              <SelectItem
+                value="External clinic"
+                text={intl.formatMessage({
+                  id: "pathology.source.externalClinic",
+                  defaultMessage: "External clinic",
+                })}
+              />
+              <SelectItem
+                value="Other"
+                text={intl.formatMessage({
+                  id: "pathology.source.other",
+                  defaultMessage: "Other",
+                })}
+              />
+            </Select>
           </Column>
 
           {/* Specimen Type */}
@@ -834,8 +1051,12 @@ function PathologySampleCreationPage({
       {/* Pathology Manifest Import Modal */}
       <PathologyManifestImportModal
         open={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
+        onClose={() => {
+          setImportModalOpen(false);
+          setImportManifestType(null);
+        }}
         entryId={entryId}
+        manifestType={importManifestType}
         onImportSuccess={handleImportSuccess}
       />
 

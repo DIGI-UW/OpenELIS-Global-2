@@ -6,4 +6,3 @@ export { default as PathologyTestingMicroscopyPage } from "./PathologyTestingMic
 export { default as PathologyStorageInventoryPage } from "./PathologyStorageInventoryPage";
 export { default as PathologyReportingPage } from "./PathologyReportingPage";
 export { default as PathologyDisposalArchivingPage } from "./PathologyDisposalArchivingPage";
-export { default as PathologyReferenceSopPage } from "./PathologyReferenceSopPage";

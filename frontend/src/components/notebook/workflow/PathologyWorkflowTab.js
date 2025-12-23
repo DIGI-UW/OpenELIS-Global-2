@@ -20,7 +20,6 @@ import {
   PathologyStorageInventoryPage,
   PathologyReportingPage,
   PathologyDisposalArchivingPage,
-  PathologyReferenceSopPage,
 } from "../pages/pathology";
 import "./NotebookWorkflow.css";
 
@@ -33,7 +32,6 @@ import "./NotebookWorkflow.css";
  * Page 5: Storage & Inventory Management
  * Page 6: Reporting & Performance Monitoring
  * Page 7: Disposal & Archiving
- * Page 8: Reference & SOP Module
  */
 const DEFAULT_PATHOLOGY_WORKFLOW_PAGES = [
   {
@@ -47,7 +45,6 @@ const DEFAULT_PATHOLOGY_WORKFLOW_PAGES = [
   { id: "default-5", order: 5, title: "Storage & Inventory Management" },
   { id: "default-6", order: 6, title: "Reporting & Performance Monitoring" },
   { id: "default-7", order: 7, title: "Disposal & Archiving" },
-  { id: "default-8", order: 8, title: "Reference & SOP Module" },
 ];
 
 /**
@@ -345,18 +342,6 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
         return (
           <PathologyDisposalArchivingPage
             key={`disposal-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-            notebookId={notebook?.id}
-          />
-        );
-      case 8:
-        // Page 8: Reference & SOP Module
-        return (
-          <PathologyReferenceSopPage
-            key={`sop-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}

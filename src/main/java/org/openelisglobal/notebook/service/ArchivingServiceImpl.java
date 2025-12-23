@@ -297,7 +297,7 @@ public class ArchivingServiceImpl implements ArchivingService {
 
         // Verify traceability before finalizing
         TraceabilityResult traceability = verifyTraceability(notebookId);
-        if (traceability.hasCriticalFailures()) {
+        if (ArchivingService.hasCriticalFailures(traceability)) {
             throw new IllegalStateException(
                     "Cannot finalize: Critical traceability checks failed. " + traceability.summary());
         }
@@ -319,7 +319,7 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Transactional(readOnly = true)
     public boolean canFinalize(Integer notebookId) {
         TraceabilityResult traceability = verifyTraceability(notebookId);
-        return !traceability.hasCriticalFailures();
+        return !ArchivingService.hasCriticalFailures(traceability);
     }
 
     @Override
