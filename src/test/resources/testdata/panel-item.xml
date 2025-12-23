@@ -131,8 +131,12 @@
 
     <panel_item id="1" panel_id="1" sort_order="1"
         test_local_abbrev="TLA1" method_name="therapy"
-        lastupdated="2025-03-26 10:00:00" test_name="Blood Test" test_id="1" />
+        lastupdated="2025-03-26 10:00:00" test_name="Blood Test" test_id="1"
+        panel_loinc_code="PL-123" />
     <panel_item id="2" panel_id="2" sort_order="2"
         test_local_abbrev="TLA2" method_name="imagining"
-        lastupdated="2025-03-26 11:00:00" test_name="Urine Test" test_id="1" />
+        lastupdated="2025-03-26 11:00:00" test_name="Urine Test" test_id="1"
+        panel_loinc_code="PL-456" />
+
+    <panel_lab_unit id="1" panel_id="1" lab_unit_id="1" />
 </dataset>

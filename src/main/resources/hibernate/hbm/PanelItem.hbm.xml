@@ -43,6 +43,9 @@
             <column name="METHOD_NAME" length="20" />
         </property>
 
+        <property name="panelLoincCode" type="java.lang.String">
+            <column name="PANEL_LOINC_CODE" length="20" />
+        </property>
 
     </class>
     <!-- <query name="panelitem.getNext"> -->

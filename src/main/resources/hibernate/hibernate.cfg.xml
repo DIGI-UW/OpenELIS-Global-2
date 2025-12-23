@@ -44,6 +44,8 @@
         <mapping resource="hibernate/hbm/Organization.hbm.xml" />
         <mapping resource="hibernate/hbm/Panel.hbm.xml" />
         <mapping resource="hibernate/hbm/PanelItem.hbm.xml" />
+        <mapping resource="hibernate/hbm/PanelLabUnit.hbm.xml" />
+        <mapping resource="hibernate/hbm/PanelImportLog.hbm.xml" />
         <mapping resource="hibernate/hbm/Patient.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientType.hbm.xml" />
         <mapping resource="hibernate/hbm/Person.hbm.xml" />

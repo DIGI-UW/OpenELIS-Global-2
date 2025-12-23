@@ -38,6 +38,8 @@ public class PanelItem extends EnumValueItemImpl {
 
     private String testName;
 
+    private String panelLoincCode;
+
     public PanelItem() {
         super();
         this.panel = new ValueHolder();
@@ -118,5 +120,13 @@ public class PanelItem extends EnumValueItemImpl {
 
     public void setTest(Test test) {
         this.test.setValue(test);
+    }
+
+    public String getPanelLoincCode() {
+        return this.panelLoincCode;
+    }
+
+    public void setPanelLoincCode(String panelLoincCode) {
+        this.panelLoincCode = panelLoincCode;
     }
 }

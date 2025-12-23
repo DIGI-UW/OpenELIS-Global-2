@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class dynamic-update="true"
+        name="org.openelisglobal.panelimport.valueholder.PanelImportLog"
+        table="panel_import_log">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">PANEL_IMPORT_LOG_SEQ</param>
+            </generator>
+        </id>
+
+        <version access="field" column="lastupdated" generated="never"
+            name="lastupdated" type="timestamp" />
+
+        <property column="import_date" generated="never" lazy="false"
+            name="importDate" type="timestamp" />
+        <property column="imported_by" generated="never" lazy="false"
+            name="importedBy"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+        <property column="file_name" generated="never" lazy="false"
+            name="fileName" type="string" />
+        <property column="panels_created" generated="never"
+            lazy="false" name="panelsCreated" type="integer" />
+        <property column="panels_updated" generated="never"
+            lazy="false" name="panelsUpdated" type="integer" />
+        <property column="panels_skipped" generated="never"
+            lazy="false" name="panelsSkipped" type="integer" />
+        <property column="warnings" generated="never" lazy="false"
+            name="warnings" type="string" />
+        <property column="import_data" generated="never" lazy="false"
+            name="importData"
+            type="org.openelisglobal.hibernate.type.JsonBinaryType" />
+    </class>
+</hibernate-mapping>
