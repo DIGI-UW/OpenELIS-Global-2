@@ -6,11 +6,11 @@ import {
   Checkbox,
   Button,
   Search,
+  Layer,
 } from "@carbon/react";
-import { TreeViewAlt, Close, Search as SearchIcon } from "@carbon/react/icons";
+import { Close } from "@carbon/react/icons";
 import type { FilterNodeProps, FilterLeafProps } from "./filter-types";
 import FilterContext from "./filter-context";
-//import styles from './filter-set.styles.scss';
 import "./filter-set.styles.scss";
 
 const isIndeterminate = (kids, checkboxes) => {
@@ -56,12 +56,14 @@ const FilterSet: React.FC<FilterSetProps> = ({
           </div>
         ) : (
           <div className="filterTreeSearchHeader">
-            <Search
-              size="sm"
-              value={searchTerm}
-              onChange={(evt) => setSearchTerm(evt.target.value)}
-              light
-            />
+            <Layer>
+              <Search
+                size="sm"
+                labelText=""
+                value={searchTerm}
+                onChange={(evt) => setSearchTerm(evt.target.value)}
+              />
+            </Layer>
             <Button kind="secondary" size="sm" onClick={() => {}}>
               {t("search", "Search")}
             </Button>
@@ -105,6 +107,8 @@ const FilterNode = ({ root, level, open }: FilterNodeProps) => {
             disabled={!root.hasData}
           />
         }
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error - AccordionItem doesn't accept style prop in types, but it works at runtime
         style={{ paddingLeft: `${level > 0 ? 1 : 0}rem` }}
         open={open ?? false}
       >

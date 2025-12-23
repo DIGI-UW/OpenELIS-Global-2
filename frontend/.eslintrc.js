@@ -61,5 +61,16 @@ module.exports = {
         "react/display-name": "off",
       },
     },
+    {
+      files: ["*.test.js", "*.test.jsx", "*.test.ts", "*.test.tsx"],
+      extends: ["plugin:jest/recommended"],
+      plugins: ["jest"],
+      env: {
+        jest: true,
+      },
+      rules: {
+        "jest/no-disabled-tests": "warn",
+      },
+    },
   ],
 };

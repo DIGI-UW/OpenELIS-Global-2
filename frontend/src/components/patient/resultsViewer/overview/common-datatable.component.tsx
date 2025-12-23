@@ -42,8 +42,6 @@ const CommonDataTable: React.FC<CommonDataTableProps> = ({
     NORMAL: "",
   };
 
-  const isTablet = useLayoutType() === "tablet";
-
   return (
     <DataTable rows={data} headers={tableHeaders} size="sm" useZebraStyles>
       {({
@@ -69,15 +67,32 @@ const CommonDataTable: React.FC<CommonDataTableProps> = ({
             </colgroup>
             <TableHead>
               <TableRow>
-                {headers.map((header) => (
-                  <TableHeader
-                    key={header.key}
-                    {...getHeaderProps({ header })}
-                    isSortable
-                  >
-                    {header.header}
-                  </TableHeader>
-                ))}
+                {headers.map((header) => {
+                  const headerProps = getHeaderProps({
+                    header,
+                  });
+                  const { onClick, ...restProps } = headerProps;
+                  return (
+                    <TableHeader
+                      key={header.key}
+                      {...restProps}
+                      {...getHeaderProps({ header })}
+                      onClick={
+                        onClick
+                          ? (e: React.MouseEvent<HTMLButtonElement>) => {
+                              // Carbon's type mismatch: getHeaderProps uses a native MouseEvent but TableHeader expects React.MouseEvent
+                              // This was fixed in v1.83.0: https://github.com/carbon-design-system/carbon/pull/19179
+                              const domEvent = e.nativeEvent as MouseEvent;
+                              onClick(domEvent);
+                            }
+                          : undefined
+                      }
+                      isSortable
+                    >
+                      {header.header}
+                    </TableHeader>
+                  );
+                })}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -111,9 +126,13 @@ const CommonDataTable: React.FC<CommonDataTableProps> = ({
   );
 };
 
-const TypedTableRow: React.FC<{
-  interpretation: OBSERVATION_INTERPRETATION;
-}> = ({ interpretation, ...props }) => {
+type TableRowComponentProps = React.ComponentProps<typeof TableRow>;
+
+const TypedTableRow: React.FC<
+  TableRowComponentProps & {
+    interpretation?: OBSERVATION_INTERPRETATION;
+  }
+> = ({ interpretation, ...props }) => {
   switch (interpretation) {
     case "OFF_SCALE_HIGH":
       return <TableRow {...props} className="off-scale-high" />;

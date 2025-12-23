@@ -1,14 +1,5 @@
 import React, { useState } from "react";
-import {
-  Button,
-  Search,
-  Tile,
-  Layer,
-  Grid,
-  Column,
-  Loading,
-  Tag,
-} from "@carbon/react";
+import { Button, Search, Grid, Column, Loading, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import SearchOutput from "./searchOutput";
 import { fetchPatientData, useAutocomplete } from "./searchService";
@@ -37,7 +28,7 @@ const SearchBar = (props) => {
 
   const handleClearSearch = () => {
     setSearchInput("");
-    setTextValue("");
+    setTextValue?.("");
     setPatientData([]);
   };
 

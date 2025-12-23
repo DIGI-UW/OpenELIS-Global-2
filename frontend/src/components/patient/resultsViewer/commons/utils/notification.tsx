@@ -15,8 +15,7 @@ export interface NotificationProps {
 }
 
 export interface NotificationDescriptor {
-  description: React.ReactNode;
-  action?: React.ReactNode;
+  description: string;
   kind?: InlineNotificationType;
   critical?: boolean;
   millis?: number;
@@ -32,11 +31,10 @@ export type InlineNotificationType =
   | "warning-alt";
 
 export const Notification: React.FC<NotificationProps> = ({ notification }) => {
-  const { description, action, kind, critical, title } = notification;
+  const { description, kind, critical, title } = notification;
 
   return (
     <InlineNotification
-      actions={action}
       kind={kind || "info"}
       lowContrast={critical}
       subtitle={description}

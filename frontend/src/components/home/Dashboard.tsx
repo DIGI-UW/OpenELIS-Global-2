@@ -19,7 +19,6 @@ import {
   Tab,
   Tabs,
   TabList,
-  Tag,
 } from "@carbon/react";
 import "./Dashboard.css";
 import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
@@ -102,7 +101,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const [pagination, setPagination] = useState(false);
   const [currentApiPage, setCurrentApiPage] = useState(null);
   const [totalApiPages, setTotalApiPages] = useState(null);
-  const [url, setUrl] = useState("");
   const { userSessionDetails } = useContext(
     UserSessionDetailsContext,
   ) as UserSessionDetails;
@@ -678,14 +676,33 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                           <Table {...getTableProps()}>
                             <TableHead>
                               <TableRow>
-                                {headers.map((header) => (
-                                  <TableHeader
-                                    key={header.key}
-                                    {...getHeaderProps({ header })}
-                                  >
-                                    {header.header}
-                                  </TableHeader>
-                                ))}
+                                {headers.map((header) => {
+                                  const headerProps = getHeaderProps({
+                                    header,
+                                  });
+                                  const { onClick, ...restProps } = headerProps;
+                                  return (
+                                    <TableHeader
+                                      key={header.key}
+                                      {...restProps}
+                                      onClick={
+                                        onClick
+                                          ? (
+                                              e: React.MouseEvent<HTMLButtonElement>,
+                                            ) => {
+                                              // Carbon's type mismatch: getHeaderProps uses a native MouseEvent but TableHeader expects React.MouseEvent
+                                              // This was fixed in v1.83.0: https://github.com/carbon-design-system/carbon/pull/19179
+                                              const domEvent =
+                                                e.nativeEvent as MouseEvent;
+                                              onClick(domEvent);
+                                            }
+                                          : undefined
+                                      }
+                                    >
+                                      {header.header}
+                                    </TableHeader>
+                                  );
+                                })}
                               </TableRow>
                             </TableHead>
                             <TableBody>

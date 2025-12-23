@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Tab, Tabs, TabList } from "@carbon/react";
+import { Tab, Tabs, TabList, Layer } from "@carbon/react";
 //import styles from './trendline.scss';
 import "./trendline.scss";
 
@@ -58,15 +58,17 @@ const RangeSelector: React.FC<{
   ];
 
   return (
-    <Tabs light selected={6} className="range-tabs">
-      <TabList aria-label="Trendline range tabs">
-        {ranges.map(([label, onClick], index) => (
-          <Tab onClick={onClick} key={index}>
-            {label}
-          </Tab>
-        ))}
-      </TabList>
-    </Tabs>
+    <Layer>
+      <Tabs selectedIndex={6}>
+        <TabList aria-label="Trendline range tabs">
+          {ranges.map(([label, onClick], index) => (
+            <Tab onClick={onClick} key={index}>
+              {label}
+            </Tab>
+          ))}
+        </TabList>
+      </Tabs>
+    </Layer>
   );
 };
 

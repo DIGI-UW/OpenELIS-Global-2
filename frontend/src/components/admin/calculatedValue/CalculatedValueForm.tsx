@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { useContext, useState, useEffect, useRef } from "react";
 import {
   Form,
@@ -669,9 +669,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         toggled={calculation.toggled}
                         aria-label="toggle button"
                         id={index + "_toggle"}
-                        labelText={
-                          <FormattedMessage id="rulebuilder.label.toggleRule" />
-                        }
+                        labelText={intl.formatMessage({
+                          id: "rulebuilder.label.toggleRule",
+                        })}
                         onToggle={(e) => toggleCalculation(e, index)}
                       />
                     </div>
@@ -852,15 +852,17 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                               <Column lg={2}>
                                 {operation.type !== "" && (
                                   <IconButton
-                                    renderIcon={Subtract}
                                     id={index + "_removeoperation"}
+                                    // @ts-expect-error - Carbon's types don't include "danger" but it works at runtime
                                     kind="danger"
                                     label=""
                                     size="sm"
                                     onClick={() =>
                                       removeOperation(index, operation_index)
                                     }
-                                  />
+                                  >
+                                    <Subtract size={18} />
+                                  </IconButton>
                                 )}
                               </Column>
                               <Column lg={4} md={2} sm={1}>
@@ -1035,23 +1037,24 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
           <div className="second-division">
             {calculationList.length !== 1 && (
               <ModalWrapper
-                modalLabel={
-                  <FormattedMessage id="label.button.confirmDelete" />
-                }
+                modalLabel={intl.formatMessage({
+                  id: "label.button.confirmDelete",
+                })}
                 handleSubmit={() => handleRuleRemove(index, calculation.id)}
-                primaryButtonText={
-                  <FormattedMessage id="label.button.confirm" />
-                }
-                secondaryButtonText={
-                  <FormattedMessage id="label.button.cancel" />
-                }
-                modalHeading={
-                  <FormattedMessage id="rulebuilder.label.confirmDelete" />
-                }
-                buttonTriggerText={
-                  <FormattedMessage id="rulebuilder.label.removeRule" />
-                }
-                size="md"
+                primaryButtonText={intl.formatMessage({
+                  id: "label.button.confirm",
+                })}
+                secondaryButtonText={intl.formatMessage({
+                  id: "label.button.cancel",
+                })}
+                modalHeading={intl.formatMessage({
+                  id: "rulebuilder.label.confirmDelete",
+                })}
+                buttonTriggerText={intl.formatMessage({
+                  id: "rulebuilder.label.removeRule",
+                })}
+                renderTriggerButtonIcon={undefined}
+                triggerButtonKind="tertiary"
               ></ModalWrapper>
             )}
           </div>
