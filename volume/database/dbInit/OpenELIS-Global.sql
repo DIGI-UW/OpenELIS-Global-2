@@ -10592,7 +10592,7 @@ COPY clinlims.menu (id, parent_id, presentation_order, element_id, action_url, c
 170	2	9	menu_sample_batch_entry	/SampleBatchEntrySetup.do	\N	banner.menu.sampleBatchEntry	banner.menu.sampleBatchEntry	f	t
 171	2	10	menu_sample_print_barcode	/PrintBarcode.do	\N	banner.menu.printBarcode	banner.menu.printBarcode	f	t
 89	62	40	menu_reports_export	\N	\N	reports.export.byDate	tooltip.reports.export.byDate	f	t
-174	2	5	menu_sample_eorder	/ElectronicOrders.do	\N	banner.menu.eorders	tooltip.bannner.menu.eorders	f	t
+174	2	5	menu_sample_eorder	/ElectronicOrders	\N	banner.menu.eorders	tooltip.bannner.menu.eorders	f	t
 175	38	1	menu_help_user_manual	/documentation/CI_Regional_fr.pdf	\N	banner.menu.help.usermanual	tooltip.bannner.menu.help.usermanual	t	t
 176	38	2	menu_help_documents	\N	\N	banner.menu.help.documents	tooltip.bannner.menu.help.documents	f	t
 177	176	1	menu_help_form_VL	/documentation/FICHE_DEMANDE_CHARGE_VIRALE_VF_25102016.pdf	\N	banner.menu.help.formVL	tooltip.bannner.menu.help.formVL	t	t

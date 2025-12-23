@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+>
+
+    <changeSet author="ai-assistant" id="update-electronic-orders-menu-url-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_sample_eorder'
+                AND action_url = '/ElectronicOrders.do'
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Updates Electronic Orders menu URL from old Struts route (/ElectronicOrders.do) to React route (/ElectronicOrders)</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/ElectronicOrders" />
+            <where>element_id = 'menu_sample_eorder'</where>
+        </update>
+    </changeSet>
+
+    <changeSet
+        author="ai-assistant"
+        id="update-study-electronic-orders-menu-url-2"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_study_sample_eorder'
+                AND action_url = '/StudyElectronicOrders'
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Updates Study Electronic Orders menu URL from /StudyElectronicOrders to React route (/ElectronicOrders)</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/ElectronicOrders" />
+            <where>element_id = 'menu_study_sample_eorder'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>
