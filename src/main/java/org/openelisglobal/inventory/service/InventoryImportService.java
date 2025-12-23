@@ -78,7 +78,14 @@ public interface InventoryImportService {
 
     /**
      * Execute the import
+     *
+     * @param parseResult     The parsed file result
+     * @param selectedSheet   Comma-separated list of sheets to import
+     * @param columnMapping   Column mapping configuration
+     * @param userId          User ID performing the import
+     * @param skipInvalidRows If true, skip invalid rows and continue. If false,
+     *                        stop on first invalid row.
      */
     ImportResult executeImport(ParseResult parseResult, String selectedSheet, ColumnMapping columnMapping,
-            String userId);
+            String userId, boolean skipInvalidRows);
 }

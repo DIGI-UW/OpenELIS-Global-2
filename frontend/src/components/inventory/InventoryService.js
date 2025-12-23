@@ -526,12 +526,14 @@ export const InventoryImportAPI = {
    * @param {File} file - The Excel file
    * @param {string} sheet - Selected sheet name
    * @param {Object} columnMapping - Column mapping configuration
+   * @param {boolean} skipInvalidRows - Whether to skip invalid rows
    * @returns {Promise} Import result
    */
-  executeImport: async (file, sheet, columnMapping) => {
+  executeImport: async (file, sheet, columnMapping, skipInvalidRows = true) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("sheet", sheet);
+    formData.append("skipInvalidRows", skipInvalidRows.toString());
 
     // Add column mapping fields
     Object.entries(columnMapping).forEach(([key, value]) => {

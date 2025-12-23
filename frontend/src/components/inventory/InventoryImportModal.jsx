@@ -1,21 +1,12 @@
-import React, { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   Modal,
   FileUploader,
   Dropdown,
   ProgressIndicator,
   ProgressStep,
-  DataTable,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
   Tag,
   InlineNotification,
-  Button,
   Grid,
   Column,
   Loading,
@@ -30,12 +21,12 @@ import {
   Toggle,
 } from "@carbon/react";
 import {
-  Upload,
   CheckmarkFilled,
   ErrorFilled,
+  WarningAltFilled,
   Information,
 } from "@carbon/icons-react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage } from "react-intl";
 import { InventoryImportAPI } from "./InventoryService";
 
 const STEPS = [
@@ -131,8 +122,6 @@ const LOT_FIELDS = {
 };
 
 const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
-  const intl = useIntl();
-
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -155,6 +144,9 @@ const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
   // Import result state
   const [importResult, setImportResult] = useState(null);
 
+  // Skip invalid rows option
+  const [skipInvalidRows, setSkipInvalidRows] = useState(true);
+
   const resetState = () => {
     setCurrentStep(0);
     setLoading(false);
@@ -167,6 +159,7 @@ const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
     setLotMapping({});
     setPreviewResult(null);
     setImportResult(null);
+    setSkipInvalidRows(true);
   };
 
   const handleClose = () => {
@@ -284,6 +277,7 @@ const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
         selectedFile,
         selectedSheets.join(","), // Send comma-separated list of sheets
         combinedMapping,
+        skipInvalidRows, // Pass skip invalid rows option
       );
       setImportResult(result);
 
@@ -342,18 +336,304 @@ const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
 
   const renderUploadStep = () => (
     <div style={{ padding: "1rem 0" }}>
+      {/* Instructions Section */}
+      <div
+        style={{
+          marginBottom: "1.5rem",
+          padding: "1rem",
+          backgroundColor: "#f4f4f4",
+          borderRadius: "8px",
+          border: "1px solid #e0e0e0",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <Information
+            size={20}
+            style={{ marginRight: "0.5rem", color: "#0f62fe" }}
+          />
+          <strong>
+            <FormattedMessage
+              id="inventory.import.instructions.title"
+              defaultMessage="File Requirements & Field Guide"
+            />
+          </strong>
+        </div>
+
+        <p
+          style={{
+            fontSize: "0.875rem",
+            color: "#525252",
+            marginBottom: "1rem",
+          }}
+        >
+          <FormattedMessage
+            id="inventory.import.instructions.description"
+            defaultMessage="Your file should have column headers in the first row. Use the table below to understand required and optional fields for each entity type."
+          />
+        </p>
+
+        {/* Requirements Table */}
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              fontSize: "0.8rem",
+              borderCollapse: "collapse",
+              backgroundColor: "#ffffff",
+            }}
+          >
+            <thead>
+              <tr style={{ backgroundColor: "#e0e0e0" }}>
+                <th
+                  style={{
+                    padding: "0.5rem",
+                    textAlign: "left",
+                    borderBottom: "2px solid #c6c6c6",
+                  }}
+                >
+                  Entity
+                </th>
+                <th
+                  style={{
+                    padding: "0.5rem",
+                    textAlign: "left",
+                    borderBottom: "2px solid #c6c6c6",
+                  }}
+                >
+                  Required Fields
+                </th>
+                <th
+                  style={{
+                    padding: "0.5rem",
+                    textAlign: "left",
+                    borderBottom: "2px solid #c6c6c6",
+                  }}
+                >
+                  Optional Fields
+                </th>
+                <th
+                  style={{
+                    padding: "0.5rem",
+                    textAlign: "left",
+                    borderBottom: "2px solid #c6c6c6",
+                  }}
+                >
+                  Notes
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{ backgroundColor: "#fff1f1" }}>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    fontWeight: "bold",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  Inventory Item
+                </td>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  <Tag type="red" size="sm">
+                    Item Name
+                  </Tag>
+                </td>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "0.25rem",
+                    }}
+                  >
+                    <Tag type="gray" size="sm">
+                      Category
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Manufacturer
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Catalog #
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Unit
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Storage Condition
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Concentration
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Remarks
+                    </Tag>
+                  </div>
+                </td>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    fontSize: "0.75rem",
+                    color: "#525252",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  Items with the same name are reused (not duplicated)
+                </td>
+              </tr>
+              <tr style={{ backgroundColor: "#e5f6ff" }}>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    fontWeight: "bold",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  Inventory Lot
+                </td>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "0.25rem",
+                    }}
+                  >
+                    <Tag type="red" size="sm">
+                      Item Name
+                    </Tag>
+                    <Tag type="blue" size="sm">
+                      Lot Number
+                    </Tag>
+                  </div>
+                </td>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "0.25rem",
+                    }}
+                  >
+                    <Tag type="gray" size="sm">
+                      Quantity
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Expiration Date
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Manufacturing Date
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Date Opened
+                    </Tag>
+                    <Tag type="gray" size="sm">
+                      Storage Location
+                    </Tag>
+                  </div>
+                </td>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    fontSize: "0.75rem",
+                    color: "#525252",
+                    verticalAlign: "top",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  Lot Number must be unique; duplicates are skipped. Quantity
+                  defaults to 1.
+                </td>
+              </tr>
+              <tr style={{ backgroundColor: "#defbe6" }}>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    fontWeight: "bold",
+                    verticalAlign: "top",
+                  }}
+                >
+                  Storage Location
+                </td>
+                <td style={{ padding: "0.5rem", verticalAlign: "top" }}>
+                  <Tag type="green" size="sm">
+                    Location Name
+                  </Tag>
+                </td>
+                <td style={{ padding: "0.5rem", verticalAlign: "top" }}>—</td>
+                <td
+                  style={{
+                    padding: "0.5rem",
+                    fontSize: "0.75rem",
+                    color: "#525252",
+                    verticalAlign: "top",
+                  }}
+                >
+                  Created automatically when Storage Location is mapped; new
+                  locations are created if not found
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          style={{
+            marginTop: "0.75rem",
+            fontSize: "0.75rem",
+            color: "#6f6f6f",
+          }}
+        >
+          <strong>Tips:</strong> Excel files with multiple sheets will import
+          each sheet as a separate category. Date formats like YYYY-MM-DD,
+          MM/DD/YYYY, or DD/MM/YYYY are auto-detected.
+        </div>
+      </div>
+
       <p style={{ marginBottom: "1rem" }}>
         <FormattedMessage
           id="inventory.import.upload.description"
-          defaultMessage="Upload an Excel file (.xlsx, .xls) containing your reagent inventory data. The file can contain multiple sheets - each sheet can be imported as a separate category."
+          defaultMessage="Upload an Excel or CSV file containing your reagent inventory data. Excel files can contain multiple sheets - each sheet can be imported as a separate category."
         />
       </p>
 
       <FileUploader
-        accept={[".xlsx", ".xls"]}
+        accept={[".xlsx", ".xls", ".csv"]}
         buttonLabel="Select file"
         filenameStatus="edit"
-        labelDescription="Supported formats: .xlsx, .xls (max 20MB)"
+        labelDescription="Supported formats: .xlsx, .xls, .csv (max 20MB)"
         labelTitle="Upload file"
         onChange={handleFileChange}
         size="lg"
@@ -436,12 +716,18 @@ const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
   ) => {
     const columnOptions = getColumnOptions();
 
+    // Get sample data to show mapped values
+    const sampleRows =
+      selectedSheets.length > 0
+        ? parseResult?.sheets?.[selectedSheets[0]]?.sampleRows || []
+        : [];
+
     return (
       <div style={{ padding: "1rem 0" }}>
         <h5 style={{ marginBottom: "0.5rem" }}>{title}</h5>
         <p
           style={{
-            marginBottom: "1.5rem",
+            marginBottom: "1rem",
             fontSize: "0.875rem",
             color: "#525252",
           }}
@@ -449,111 +735,233 @@ const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
           {description}
         </p>
 
-        <Grid narrow>
-          {Object.entries(fields).map(([field, config]) => (
-            <Column lg={8} md={4} sm={4} key={field}>
-              <div style={{ marginBottom: "1.5rem" }}>
-                <Dropdown
-                  id={`mapping-${field}`}
-                  titleText={
-                    <span>
-                      {config.label}
-                      {config.required && (
-                        <span style={{ color: "#da1e28" }}> *</span>
-                      )}
-                    </span>
-                  }
-                  label="Select column from your file"
-                  items={columnOptions}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={columnOptions.find(
-                    (c) => c.id === mapping[field],
-                  )}
-                  onChange={({ selectedItem }) =>
-                    onMappingChange(field, selectedItem?.id || "")
-                  }
-                  size="md"
-                />
-                <p
+        {/* Field Documentation Summary */}
+        <Accordion style={{ marginBottom: "1rem" }}>
+          <AccordionItem title="View field requirements and validation rules">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: "0.75rem",
+                padding: "0.5rem 0",
+              }}
+            >
+              {Object.entries(fields).map(([field, config]) => (
+                <div
+                  key={field}
                   style={{
-                    fontSize: "0.75rem",
-                    color: "#6f6f6f",
-                    marginTop: "0.25rem",
+                    padding: "0.75rem",
+                    backgroundColor: config.required ? "#fff1f1" : "#f4f4f4",
+                    borderRadius: "4px",
+                    borderLeft: `3px solid ${config.required ? "#da1e28" : "#0f62fe"}`,
                   }}
                 >
-                  {config.description}
-                </p>
-              </div>
-            </Column>
-          ))}
+                  <div
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: "0.875rem",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    {config.label}
+                    {config.required && (
+                      <Tag
+                        type="red"
+                        size="sm"
+                        style={{ marginLeft: "0.5rem" }}
+                      >
+                        Required
+                      </Tag>
+                    )}
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#525252",
+                      margin: 0,
+                    }}
+                  >
+                    {config.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </AccordionItem>
+        </Accordion>
+
+        <Grid narrow>
+          {Object.entries(fields).map(([field, config]) => {
+            const mappedColumn = mapping[field];
+            // Get sample value from first row
+            const sampleValue =
+              mappedColumn && sampleRows.length > 0
+                ? sampleRows[0][mappedColumn]
+                : null;
+
+            return (
+              <Column lg={8} md={4} sm={4} key={field}>
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <Dropdown
+                    id={`mapping-${field}`}
+                    titleText={
+                      <span>
+                        {config.label}
+                        {config.required && (
+                          <span style={{ color: "#da1e28" }}> *</span>
+                        )}
+                      </span>
+                    }
+                    label="Select column from your file"
+                    items={columnOptions}
+                    itemToString={(item) => (item ? item.text : "")}
+                    selectedItem={columnOptions.find(
+                      (c) => c.id === mapping[field],
+                    )}
+                    onChange={({ selectedItem }) =>
+                      onMappingChange(field, selectedItem?.id || "")
+                    }
+                    size="md"
+                  />
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6f6f6f",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {config.description}
+                  </div>
+                  {/* Show sample value when column is mapped */}
+                  {sampleValue && (
+                    <div
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#0f62fe",
+                        marginTop: "0.25rem",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      Sample: "{sampleValue}"
+                    </div>
+                  )}
+                </div>
+              </Column>
+            );
+          })}
         </Grid>
 
         {/* Sample data from first selected sheet */}
-        {selectedSheets.length > 0 &&
-          parseResult?.sheets?.[selectedSheets[0]]?.sampleRows && (
-            <Accordion>
-              <AccordionItem title="View sample data from file">
-                <div style={{ overflowX: "auto", maxHeight: "200px" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      fontSize: "0.75rem",
-                      borderCollapse: "collapse",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ backgroundColor: "#e0e0e0" }}>
-                        {parseResult.sheets[selectedSheets[0]].headers
-                          .filter((h) => h)
-                          .map((header, idx) => (
+        {selectedSheets.length > 0 && sampleRows.length > 0 && (
+          <Accordion>
+            <AccordionItem title="View sample data from file (first 5 rows)">
+              <div style={{ overflowX: "auto", maxHeight: "250px" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    fontSize: "0.75rem",
+                    borderCollapse: "collapse",
+                  }}
+                >
+                  <thead>
+                    <tr
+                      style={{
+                        backgroundColor: "#e0e0e0",
+                        position: "sticky",
+                        top: 0,
+                      }}
+                    >
+                      <th
+                        style={{
+                          padding: "0.5rem",
+                          textAlign: "left",
+                          whiteSpace: "nowrap",
+                          backgroundColor: "#d0d0d0",
+                        }}
+                      >
+                        #
+                      </th>
+                      {parseResult.sheets[selectedSheets[0]].headers
+                        .filter((h) => h)
+                        .map((header, idx) => {
+                          // Check if this header is mapped
+                          const isMapped =
+                            Object.values(mapping).includes(header);
+                          return (
                             <th
                               key={idx}
                               style={{
                                 padding: "0.5rem",
                                 textAlign: "left",
                                 whiteSpace: "nowrap",
+                                backgroundColor: isMapped
+                                  ? "#a6c8ff"
+                                  : "#e0e0e0",
                               }}
                             >
                               {header}
-                            </th>
-                          ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parseResult.sheets[selectedSheets[0]].sampleRows.map(
-                        (row, rowIdx) => (
-                          <tr
-                            key={rowIdx}
-                            style={{
-                              backgroundColor:
-                                rowIdx % 2 === 0 ? "#f4f4f4" : "#ffffff",
-                            }}
-                          >
-                            {parseResult.sheets[selectedSheets[0]].headers
-                              .filter((h) => h)
-                              .map((header, colIdx) => (
-                                <td
-                                  key={colIdx}
+                              {isMapped && (
+                                <CheckmarkFilled
+                                  size={12}
                                   style={{
-                                    padding: "0.5rem",
-                                    whiteSpace: "nowrap",
-                                    maxWidth: "150px",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
+                                    marginLeft: "0.25rem",
+                                    color: "#0f62fe",
                                   }}
-                                >
-                                  {row[header] || "-"}
-                                </td>
-                              ))}
-                          </tr>
-                        ),
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </AccordionItem>
-            </Accordion>
-          )}
+                                />
+                              )}
+                            </th>
+                          );
+                        })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sampleRows.map((row, rowIdx) => (
+                      <tr
+                        key={rowIdx}
+                        style={{
+                          backgroundColor:
+                            rowIdx % 2 === 0 ? "#f4f4f4" : "#ffffff",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: "0.5rem",
+                            color: "#6f6f6f",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {rowIdx + 1}
+                        </td>
+                        {parseResult.sheets[selectedSheets[0]].headers
+                          .filter((h) => h)
+                          .map((header, colIdx) => {
+                            const isMapped =
+                              Object.values(mapping).includes(header);
+                            return (
+                              <td
+                                key={colIdx}
+                                style={{
+                                  padding: "0.5rem",
+                                  whiteSpace: "nowrap",
+                                  maxWidth: "150px",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  backgroundColor: isMapped
+                                    ? "rgba(166, 200, 255, 0.2)"
+                                    : "transparent",
+                                }}
+                              >
+                                {row[header] || "-"}
+                              </td>
+                            );
+                          })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </AccordionItem>
+          </Accordion>
+        )}
       </div>
     );
   };
@@ -813,6 +1221,50 @@ const InventoryImportModal = ({ open, onClose, onImportComplete }) => {
             hideCloseButton
             style={{ marginBottom: "1rem" }}
           />
+        )}
+
+        {/* Skip Invalid Rows Option */}
+        {previewResult.invalidRows > 0 && (
+          <div
+            style={{
+              marginBottom: "1rem",
+              padding: "1rem",
+              backgroundColor: "#fff8e1",
+              borderRadius: "4px",
+              border: "1px solid #ffb300",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <WarningAltFilled
+                size={20}
+                style={{ color: "#ffb300", marginRight: "0.5rem" }}
+              />
+              <div>
+                <strong>{previewResult.invalidRows} invalid rows found</strong>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                  }}
+                >
+                  {skipInvalidRows
+                    ? "Invalid rows will be skipped during import."
+                    : "Import will stop if an invalid row is encountered."}
+                </p>
+              </div>
+            </div>
+            <Toggle
+              id="skip-invalid-toggle"
+              labelText="Skip invalid rows"
+              toggled={skipInvalidRows}
+              onToggle={(checked) => setSkipInvalidRows(checked)}
+              size="sm"
+            />
+          </div>
         )}
 
         {/* Preview table - show by sheet */}

@@ -186,7 +186,9 @@ public class InventoryImportRestController extends BaseRestController {
             @RequestParam(value = "experimentType", required = false) String experimentTypeColumn,
             @RequestParam(value = "manufacturer", required = false) String manufacturerColumn,
             @RequestParam(value = "catalogNumber", required = false) String catalogNumberColumn,
-            @RequestParam(value = "remarks", required = false) String remarksColumn, HttpServletRequest request) {
+            @RequestParam(value = "remarks", required = false) String remarksColumn,
+            @RequestParam(value = "skipInvalidRows", defaultValue = "true") boolean skipInvalidRows,
+            HttpServletRequest request) {
 
         try {
             if (file.isEmpty()) {
@@ -209,7 +211,8 @@ public class InventoryImportRestController extends BaseRestController {
                     catalogNumberColumn, remarksColumn);
 
             // Execute import
-            ImportResult result = importService.executeImport(parseResult, selectedSheet, columnMapping, userId);
+            ImportResult result = importService.executeImport(parseResult, selectedSheet, columnMapping, userId,
+                    skipInvalidRows);
 
             // Build response
             Map<String, Object> response = new HashMap<>();

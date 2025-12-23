@@ -1,7 +1,10 @@
 package org.openelisglobal.inventory.service;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -96,7 +99,132 @@ public class InventoryImportServiceImpl implements InventoryImportService {
     @Override
     public ParseResult parseFile(InputStream inputStream, String fileName) {
         FileFormat format = detectFileFormat(fileName);
+        if (format == FileFormat.CSV) {
+            return parseCsvFile(inputStream, fileName);
+        }
         return parseExcelFile(inputStream, format);
+    }
+
+    /**
+     * Parse a CSV file into the standard ParseResult format. CSV files are treated
+     * as having a single "sheet" named after the file.
+     */
+    private ParseResult parseCsvFile(InputStream inputStream, String fileName) {
+        List<String> sheetNames = new ArrayList<>();
+        Map<String, List<String>> headersBySheet = new LinkedHashMap<>();
+        Map<String, List<Map<String, String>>> rowsBySheet = new LinkedHashMap<>();
+        List<String> parseErrors = new ArrayList<>();
+        int totalRows = 0;
+
+        // Use filename (without extension) as the "sheet" name
+        String sheetName = fileName.replaceAll("\\.[^.]+$", "");
+        if (sheetName.isEmpty()) {
+            sheetName = "CSV Data";
+        }
+        sheetNames.add(sheetName);
+
+        List<String> headers = new ArrayList<>();
+        List<Map<String, String>> rows = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            String line;
+            boolean isFirstRow = true;
+            int rowCount = 0;
+
+            while ((line = reader.readLine()) != null) {
+                rowCount++;
+                if (rowCount > MAX_ROWS) {
+                    parseErrors.add("CSV file exceeds maximum row limit of " + MAX_ROWS);
+                    break;
+                }
+
+                // Skip empty lines
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+
+                String[] values = parseCsvLine(line);
+
+                if (isFirstRow) {
+                    // Header row
+                    for (String value : values) {
+                        headers.add(value != null ? value.trim() : "");
+                    }
+                    isFirstRow = false;
+                } else {
+                    // Data row
+                    Map<String, String> rowData = new LinkedHashMap<>();
+                    boolean hasData = false;
+
+                    for (int i = 0; i < headers.size(); i++) {
+                        String value = i < values.length ? values[i] : "";
+                        if (value != null && !value.trim().isEmpty()) {
+                            hasData = true;
+                        }
+                        String header = headers.get(i);
+                        if (header != null && !header.isEmpty()) {
+                            rowData.put(header, value != null ? value.trim() : "");
+                        }
+                    }
+
+                    // Only add rows that have at least some data
+                    if (hasData) {
+                        rows.add(rowData);
+                        totalRows++;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LogEvent.logError(this.getClass().getName(), "parseCsvFile", "Error parsing CSV: " + e.getMessage());
+            parseErrors.add("Failed to parse CSV file: " + e.getMessage());
+        }
+
+        headersBySheet.put(sheetName, headers);
+        rowsBySheet.put(sheetName, rows);
+
+        return new ParseResult(sheetNames, headersBySheet, rowsBySheet, FileFormat.CSV, totalRows, parseErrors);
+    }
+
+    /**
+     * Parse a single CSV line, handling quoted fields with commas and escaped
+     * quotes.
+     */
+    private String[] parseCsvLine(String line) {
+        List<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (inQuotes) {
+                if (c == '"') {
+                    // Check for escaped quote ("")
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        current.append('"');
+                        i++; // Skip the next quote
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    current.append(c);
+                }
+            } else {
+                if (c == '"') {
+                    inQuotes = true;
+                } else if (c == ',') {
+                    values.add(current.toString().trim());
+                    current = new StringBuilder();
+                } else {
+                    current.append(c);
+                }
+            }
+        }
+
+        // Add the last field
+        values.add(current.toString().trim());
+
+        return values.toArray(new String[0]);
     }
 
     private ParseResult parseExcelFile(InputStream inputStream, FileFormat format) {
@@ -459,7 +587,7 @@ public class InventoryImportServiceImpl implements InventoryImportService {
     @Override
     @Transactional
     public ImportResult executeImport(ParseResult parseResult, String selectedSheets, ColumnMapping columnMapping,
-            String userId) {
+            String userId, boolean skipInvalidRows) {
 
         List<Map<String, Object>> errors = new ArrayList<>();
         List<Map<String, Object>> createdItems = new ArrayList<>();
