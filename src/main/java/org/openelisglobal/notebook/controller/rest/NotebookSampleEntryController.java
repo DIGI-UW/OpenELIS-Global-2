@@ -1898,6 +1898,22 @@ public class NotebookSampleEntryController extends BaseRestController {
         private String retrievalDate;
         private String storageNotes;
 
+        // Bacteriology post-analysis storage fields
+        private String aliquotType;
+        private String storageMedia;
+        private String containerType;
+        private String storageMethod;
+        private String storageCondition;
+        private String organismIdentified;
+        private String storageBox;
+        private String storageWell;
+        private Double remainingVolume;
+        private String volumeUnit;
+        private String sampleStatus;
+        private List<String> qualityFlags;
+        private String qualityNotes;
+        private Boolean requiresInvestigation;
+
         public List<Integer> getSampleIds() {
             return sampleIds;
         }
@@ -2023,6 +2039,119 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setStorageNotes(String storageNotes) {
             this.storageNotes = storageNotes;
+        }
+
+        // Bacteriology post-analysis storage getters/setters
+        public String getAliquotType() {
+            return aliquotType;
+        }
+
+        public void setAliquotType(String aliquotType) {
+            this.aliquotType = aliquotType;
+        }
+
+        public String getStorageMedia() {
+            return storageMedia;
+        }
+
+        public void setStorageMedia(String storageMedia) {
+            this.storageMedia = storageMedia;
+        }
+
+        public String getContainerType() {
+            return containerType;
+        }
+
+        public void setContainerType(String containerType) {
+            this.containerType = containerType;
+        }
+
+        public String getStorageMethod() {
+            return storageMethod;
+        }
+
+        public void setStorageMethod(String storageMethod) {
+            this.storageMethod = storageMethod;
+        }
+
+        public String getStorageCondition() {
+            return storageCondition;
+        }
+
+        public void setStorageCondition(String storageCondition) {
+            this.storageCondition = storageCondition;
+        }
+
+        public String getOrganismIdentified() {
+            return organismIdentified;
+        }
+
+        public void setOrganismIdentified(String organismIdentified) {
+            this.organismIdentified = organismIdentified;
+        }
+
+        public String getStorageBox() {
+            return storageBox;
+        }
+
+        public void setStorageBox(String storageBox) {
+            this.storageBox = storageBox;
+        }
+
+        public String getStorageWell() {
+            return storageWell;
+        }
+
+        public void setStorageWell(String storageWell) {
+            this.storageWell = storageWell;
+        }
+
+        public Double getRemainingVolume() {
+            return remainingVolume;
+        }
+
+        public void setRemainingVolume(Double remainingVolume) {
+            this.remainingVolume = remainingVolume;
+        }
+
+        public String getVolumeUnit() {
+            return volumeUnit;
+        }
+
+        public void setVolumeUnit(String volumeUnit) {
+            this.volumeUnit = volumeUnit;
+        }
+
+        public String getSampleStatus() {
+            return sampleStatus;
+        }
+
+        public void setSampleStatus(String sampleStatus) {
+            this.sampleStatus = sampleStatus;
+        }
+
+        public List<String> getQualityFlags() {
+            return qualityFlags;
+        }
+
+        public void setQualityFlags(List<String> qualityFlags) {
+            this.qualityFlags = qualityFlags;
+        }
+
+        public String getQualityNotes() {
+            return qualityNotes;
+        }
+
+        public void setQualityNotes(String qualityNotes) {
+            this.qualityNotes = qualityNotes;
+        }
+
+        public Boolean getRequiresInvestigation() {
+            return requiresInvestigation;
+        }
+
+        public void setRequiresInvestigation(Boolean requiresInvestigation) {
+            this.requiresInvestigation = requiresInvestigation;
         }
     }
 

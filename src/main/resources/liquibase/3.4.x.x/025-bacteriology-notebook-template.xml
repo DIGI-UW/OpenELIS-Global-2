@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BACTERIOLOGY LABORATORY NOTEBOOK TEMPLATE                -->
+    <!-- Creates a predefined notebook template with workflow pages -->
+    <!-- for the Bacteriology Laboratory workflow                 -->
+    <!-- Sample Categories:                                        -->
+    <!--   - Clinical Samples (Human)                             -->
+    <!--   - Environmental Samples                                -->
+    <!--   - Food and Beverage Samples                            -->
+    <!--   - Veterinary Samples                                   -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-bacteriology-notebook-template" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Bacteriology Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Bacteriology Laboratory"/>
+            <column name="objective" value="Complete bacteriology workflow from sample reception to archiving"/>
+            <column name="protocol" value="Standard Bacteriology Laboratory Protocol"/>
+            <column name="content" value="Bacteriology Laboratory notebook template with workflow pages for clinical, environmental, food/beverage, and veterinary sample processing."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Bacteriology Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE RECEPTION                                 -->
+    <!-- Purpose: Import manifest and capture incoming samples     -->
+    <!-- Metadata Fields:                                          -->
+    <!--   - Project Name                                         -->
+    <!--   - Study ID                                             -->
+    <!--   - Participant ID (for clinical samples)                -->
+    <!--   - Barcode                                              -->
+    <!--   - Collection Site                                      -->
+    <!--   - Sample Type                                          -->
+    <!--   - Collection Date & Time                               -->
+    <!--   - Sample Received Date                                 -->
+    <!--   - Sample Arrival Time                                  -->
+    <!--   - Storage Container Type                               -->
+    <!--   - Storage Temperature on Arrival                       -->
+    <!--   - Received By (initial/signature)                      -->
+    <!--   - Consent Status (for clinical trials)                 -->
+    <!--   - CRF Status (Case Report Form)                        -->
+    <!--   - Sample Origin (Human, Animal, Environmental, Food)   -->
+    <!--   - Source Location/Facility                             -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bacteriology-page-1-sample-reception" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Reception page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Reception"/>
+            <column name="instructions" value="Import sample manifest and verify sample receipt. Check that all samples match the manifest. Inspect for damage, proper labeling, and temperature compliance. Capture all reception metadata including project information, participant details, collection data, storage conditions, and consent status."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Reception - Manifest Import and Verification&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;projectInformation&quot;: {
+      &quot;projectName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Project Name&quot;, &quot;required&quot;: true},
+      &quot;studyId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Study ID&quot;, &quot;required&quot;: true}
+    },
+    &quot;sampleIdentity&quot;: {
+      &quot;participantId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Participant ID&quot;, &quot;description&quot;: &quot;For clinical samples&quot;, &quot;required&quot;: false},
+      &quot;barcode&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Barcode&quot;, &quot;required&quot;: true}
+    },
+    &quot;collectionMetadata&quot;: {
+      &quot;collectionSite&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Collection Site&quot;, &quot;required&quot;: true},
+      &quot;sampleType&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Sample Type&quot;, &quot;source&quot;: &quot;type_of_sample&quot;, &quot;required&quot;: true},
+      &quot;collectionDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Collection Date &amp; Time&quot;, &quot;required&quot;: true}
+    },
+    &quot;receptionMetadata&quot;: {
+      &quot;sampleReceivedDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Sample Received Date&quot;, &quot;required&quot;: true},
+      &quot;sampleArrivalTime&quot;: {&quot;type&quot;: &quot;time&quot;, &quot;label&quot;: &quot;Sample Arrival Time&quot;, &quot;required&quot;: true},
+      &quot;receivedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Received By (initial/signature)&quot;, &quot;required&quot;: true}
+    },
+    &quot;storageConditions&quot;: {
+      &quot;storageContainerType&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Storage Container Type&quot;, &quot;required&quot;: true},
+      &quot;storageTemperatureOnArrival&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Storage Temperature on Arrival&quot;, &quot;unit&quot;: &quot;C&quot;, &quot;required&quot;: true}
+    },
+    &quot;complianceStatus&quot;: {
+      &quot;consentStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Consent Status&quot;, &quot;options&quot;: [&quot;Obtained&quot;, &quot;Pending&quot;, &quot;Not Required&quot;, &quot;Waived&quot;], &quot;description&quot;: &quot;For clinical trials&quot;, &quot;required&quot;: false},
+      &quot;crfStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;CRF Status&quot;, &quot;options&quot;: [&quot;Complete&quot;, &quot;Incomplete&quot;, &quot;Pending&quot;, &quot;Not Applicable&quot;], &quot;description&quot;: &quot;Case Report Form status&quot;, &quot;required&quot;: false}
+    },
+    &quot;sampleOriginTracking&quot;: {
+      &quot;sampleOrigin&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Origin&quot;, &quot;options&quot;: [&quot;Human&quot;, &quot;Animal&quot;, &quot;Environmental&quot;, &quot;Food/Beverage&quot;], &quot;required&quot;: true},
+      &quot;sourceLocationFacility&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Source Location/Facility&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;csvColumnMapping&quot;: {
+    &quot;projectNameColumn&quot;: &quot;project_name&quot;,
+    &quot;studyIdColumn&quot;: &quot;study_id&quot;,
+    &quot;participantIdColumn&quot;: &quot;participant_id&quot;,
+    &quot;barcodeColumn&quot;: &quot;barcode&quot;,
+    &quot;collectionSiteColumn&quot;: &quot;collection_site&quot;,
+    &quot;sampleTypeColumn&quot;: &quot;sample_type&quot;,
+    &quot;collectionDateTimeColumn&quot;: &quot;collection_date_time&quot;,
+    &quot;sampleReceivedDateColumn&quot;: &quot;sample_received_date&quot;,
+    &quot;sampleArrivalTimeColumn&quot;: &quot;sample_arrival_time&quot;,
+    &quot;storageContainerTypeColumn&quot;: &quot;storage_container_type&quot;,
+    &quot;storageTemperatureColumn&quot;: &quot;storage_temperature_on_arrival&quot;,
+    &quot;receivedByColumn&quot;: &quot;received_by&quot;,
+    &quot;consentStatusColumn&quot;: &quot;consent_status&quot;,
+    &quot;crfStatusColumn&quot;: &quot;crf_status&quot;,
+    &quot;sampleOriginColumn&quot;: &quot;sample_origin&quot;,
+    &quot;sourceLocationColumn&quot;: &quot;source_location_facility&quot;
+  },
+  &quot;systemActions&quot;: [&quot;Generate unique system ID&quot;, &quot;Validate barcode format&quot;, &quot;Set status: Received - Awaiting Verification&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;projectName&quot;, &quot;studyId&quot;, &quot;sampleReceivedDate&quot;, &quot;sampleArrivalTime&quot;, &quot;receivedBy&quot;, &quot;sampleOrigin&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Sample Verification&quot;
+}"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: LABORATORY RECEPTION & VERIFICATION              -->
+    <!-- Purpose: Quality assessment of received samples           -->
+    <!-- QC Criteria:                                              -->
+    <!--   - Temperature compliance (cold chain maintained)       -->
+    <!--   - Volume adequacy                                       -->
+    <!--   - Labeling correctness                                  -->
+    <!--   - Triple packaging integrity                            -->
+    <!--   - No contamination signs                                -->
+    <!--   - No leakage                                            -->
+    <!--   - Proper container type                                 -->
+    <!-- Rejection Reasons:                                        -->
+    <!--   - Mislabeling                                           -->
+    <!--   - Insufficient volume                                   -->
+    <!--   - Contaminated samples                                  -->
+    <!--   - Damaged container                                     -->
+    <!--   - Expired transport medium                              -->
+    <!--   - Temperature excursion                                 -->
+    <!--   - Other                                                 -->
+    <!-- Fail Actions:                                             -->
+    <!--   - Discard and notify researcher (sample will NOT proceed)-->
+    <!--   - Keep with remarks and proceed with flagged status    -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bacteriology-page-2-reception-verification" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Laboratory Reception and Verification page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Laboratory Reception &amp; Verification"/>
+            <column name="instructions" value="Confirm physical receipt and validate sample quality. Use the QC checklist to assess temperature compliance, volume, labeling, packaging integrity, contamination, leakage, and container type. Passed samples proceed to Temporary Storage Assignment. Failed samples can be discarded or kept with flagged status."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Laboratory Reception and Verification - Quality Control Assessment&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;receiptInformation&quot;: {
+      &quot;receivedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Received Date &amp; Time&quot;, &quot;required&quot;: true},
+      &quot;receivedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Received By (Staff Name)&quot;, &quot;required&quot;: true},
+      &quot;arrivalTemperature&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Temperature on Arrival&quot;, &quot;required&quot;: false},
+      &quot;conditionOnArrival&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Condition on Arrival&quot;, &quot;required&quot;: false}
+    },
+    &quot;qcChecklist&quot;: {
+      &quot;temperatureCompliance&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Temperature compliance (maintained cold chain)&quot;, &quot;required&quot;: true},
+      &quot;volumeAdequacy&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Volume adequacy&quot;, &quot;required&quot;: true},
+      &quot;labelingCorrectness&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Labeling correctness&quot;, &quot;required&quot;: true},
+      &quot;packagingIntegrity&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Triple packaging integrity&quot;, &quot;required&quot;: true},
+      &quot;noContamination&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;No contamination signs&quot;, &quot;required&quot;: true},
+      &quot;noLeakage&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;No leakage&quot;, &quot;required&quot;: true},
+      &quot;properContainer&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Proper container type&quot;, &quot;required&quot;: true}
+    },
+    &quot;qcResult&quot;: {
+      &quot;qcResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;QC Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;], &quot;description&quot;: &quot;Auto-calculated based on checklist&quot;, &quot;required&quot;: true},
+      &quot;rejectionReason&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Rejection Reason&quot;, &quot;options&quot;: [&quot;Mislabeling&quot;, &quot;Insufficient volume&quot;, &quot;Contaminated samples&quot;, &quot;Damaged container&quot;, &quot;Expired transport medium&quot;, &quot;Temperature excursion&quot;, &quot;Other&quot;], &quot;description&quot;: &quot;Required if QC fails&quot;, &quot;required&quot;: false},
+      &quot;failAction&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Action for Failed Sample&quot;, &quot;options&quot;: [&quot;discard&quot;, &quot;proceed_flagged&quot;], &quot;description&quot;: &quot;Discard: sample will NOT proceed. Proceed Flagged: keep with remarks.&quot;, &quot;required&quot;: false},
+      &quot;qcRemarks&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Remarks / Notes&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Update sample status based on QC result&quot;, &quot;Flag rejected samples&quot;, &quot;Mark discarded samples as SKIPPED&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;receivedDateTime&quot;, &quot;receivedBy&quot;, &quot;qcResult&quot;, &quot;rejectionReason&quot;, &quot;failAction&quot;]
+  },
+  &quot;previousPage&quot;: &quot;Sample Reception&quot;,
+  &quot;nextPage&quot;: &quot;Temporary Storage Assignment&quot;
+}"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: SAMPLE STORAGE ASSIGNMENT                        -->
+    <!-- Purpose: Assign samples to storage locations              -->
+    <!-- Storage Types:                                            -->
+    <!--   - Temporary Storage: For samples awaiting processing   -->
+    <!--   - Long-Term Storage: For processed samples, isolates   -->
+    <!-- Storage Hierarchy: Room → Device/Freezer → Shelf → Rack → Box → Well -->
+    <!-- Location recording is critical for sample retrieval      -->
+    <!-- Storage Temperatures:                                     -->
+    <!--   - Refrigerator: 2-8°C                                  -->
+    <!--   - Freezer: -20°C or -80°C                              -->
+    <!--   - Room temperature (for certain isolates on agar)      -->
+    <!--   - Liquid Nitrogen (-196°C)                             -->
+    <!--   - Incubator (37°C for cultures)                        -->
+    <!-- Environmental Monitoring:                                 -->
+    <!--   - Freezer temperature monitoring (twice daily AM/PM)   -->
+    <!--   - Logged with date, time, temperature, staff initials  -->
+    <!--   - Alerts for temperature excursions                    -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bacteriology-page-3-temporary-storage" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Temporary Storage Assignment page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Storage Assignment"/>
+            <column name="instructions" value="Assign samples to storage locations after QC. Select storage type (Temporary for awaiting processing, Long-Term for processed samples/isolates). Use hierarchy: Room → Device/Freezer → Shelf → Rack → Box → Well. Record exact placement for retrieval. Log temperature readings twice daily (AM/PM) with staff initials."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Storage Assignment - Storage and Environmental Monitoring&quot;,
+  &quot;storageTypes&quot;: {
+    &quot;TEMPORARY&quot;: {&quot;label&quot;: &quot;Temporary Storage&quot;, &quot;description&quot;: &quot;For samples awaiting processing after initial QC&quot;},
+    &quot;LONG_TERM&quot;: {&quot;label&quot;: &quot;Long-Term Storage&quot;, &quot;description&quot;: &quot;For processed samples, isolates, DNA/RNA&quot;}
+  },
+  &quot;dataPoints&quot;: {
+    &quot;storageType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Type&quot;, &quot;options&quot;: [&quot;TEMPORARY&quot;, &quot;LONG_TERM&quot;], &quot;default&quot;: &quot;TEMPORARY&quot;, &quot;required&quot;: true},
+    &quot;storageHierarchy&quot;: {
+      &quot;storageRoom&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Storage Room&quot;, &quot;source&quot;: &quot;storage_locations&quot;, &quot;level&quot;: &quot;ROOM&quot;, &quot;required&quot;: true},
+      &quot;storageFreezer&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Freezer/Device&quot;, &quot;source&quot;: &quot;storage_locations&quot;, &quot;level&quot;: &quot;DEVICE&quot;, &quot;required&quot;: true},
+      &quot;storageShelf&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Shelf&quot;, &quot;source&quot;: &quot;storage_locations&quot;, &quot;level&quot;: &quot;SHELF&quot;, &quot;required&quot;: false},
+      &quot;storageRack&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Rack&quot;, &quot;source&quot;: &quot;storage_locations&quot;, &quot;level&quot;: &quot;RACK&quot;, &quot;required&quot;: false},
+      &quot;storageBox&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Box&quot;, &quot;source&quot;: &quot;storage_locations&quot;, &quot;level&quot;: &quot;BOX&quot;, &quot;required&quot;: true},
+      &quot;storageWell&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Well/Position&quot;, &quot;description&quot;: &quot;e.g., A1, B3, H12&quot;, &quot;required&quot;: true}
+    },
+    &quot;storageConditions&quot;: {
+      &quot;storageCondition&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Temperature&quot;, &quot;options&quot;: [&quot;ROOM_TEMP&quot;, &quot;REFRIGERATED&quot;, &quot;FROZEN_MINUS20&quot;, &quot;FROZEN_MINUS80&quot;, &quot;LIQUID_NITROGEN&quot;, &quot;INCUBATOR_37&quot;], &quot;required&quot;: true, &quot;descriptions&quot;: {&quot;ROOM_TEMP&quot;: &quot;15-25C for isolates on agar&quot;, &quot;REFRIGERATED&quot;: &quot;2-8C standard&quot;, &quot;FROZEN_MINUS20&quot;: &quot;-20C freezer&quot;, &quot;FROZEN_MINUS80&quot;: &quot;-80C ultra-low&quot;, &quot;LIQUID_NITROGEN&quot;: &quot;-196C cryo&quot;, &quot;INCUBATOR_37&quot;: &quot;37C cultures&quot;}}
+    },
+    &quot;assignmentInfo&quot;: {
+      &quot;assignedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Assigned By (Staff Initials)&quot;, &quot;required&quot;: true},
+      &quot;assignedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Assigned Date/Time&quot;, &quot;required&quot;: true},
+      &quot;notes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Notes&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;environmentalMonitoring&quot;: {
+    &quot;frequency&quot;: &quot;Twice daily (AM/PM) or continuous if automated&quot;,
+    &quot;deviceId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Device/Equipment ID&quot;, &quot;required&quot;: true},
+    &quot;deviceType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Device Type&quot;, &quot;options&quot;: [&quot;Refrigerator&quot;, &quot;Freezer-20&quot;, &quot;Freezer-80&quot;, &quot;LN2Tank&quot;, &quot;Incubator&quot;, &quot;ColdRoom&quot;], &quot;required&quot;: true},
+    &quot;checkTime&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Check Time&quot;, &quot;options&quot;: [&quot;AM&quot;, &quot;PM&quot;], &quot;required&quot;: true},
+    &quot;temperatureValue&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Temperature Value&quot;, &quot;required&quot;: true},
+    &quot;temperatureUnit&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Unit&quot;, &quot;options&quot;: [&quot;C&quot;, &quot;F&quot;], &quot;default&quot;: &quot;C&quot;, &quot;required&quot;: true},
+    &quot;checkedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Checked By (Staff Initials)&quot;, &quot;required&quot;: true},
+    &quot;checkedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Checked Date/Time&quot;, &quot;required&quot;: true},
+    &quot;excursionNotes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Excursion Notes&quot;, &quot;description&quot;: &quot;Document any temperature deviations and corrective actions&quot;, &quot;required&quot;: false}
+  },
+  &quot;temperatureRanges&quot;: {
+    &quot;Refrigerator&quot;: {&quot;min&quot;: 2, &quot;max&quot;: 8, &quot;unit&quot;: &quot;C&quot;},
+    &quot;Freezer-20&quot;: {&quot;min&quot;: -25, &quot;max&quot;: -15, &quot;unit&quot;: &quot;C&quot;},
+    &quot;Freezer-80&quot;: {&quot;min&quot;: -85, &quot;max&quot;: -75, &quot;unit&quot;: &quot;C&quot;},
+    &quot;LN2Tank&quot;: {&quot;min&quot;: -200, &quot;max&quot;: -180, &quot;unit&quot;: &quot;C&quot;},
+    &quot;Incubator&quot;: {&quot;min&quot;: 35, &quot;max&quot;: 38, &quot;unit&quot;: &quot;C&quot;},
+    &quot;ColdRoom&quot;: {&quot;min&quot;: 2, &quot;max&quot;: 8, &quot;unit&quot;: &quot;C&quot;}
+  },
+  &quot;systemActions&quot;: [&quot;Assign samples to storage wells&quot;, &quot;Update box occupancy&quot;, &quot;Log temperature readings twice daily&quot;, &quot;Alert on out-of-range temperatures&quot;, &quot;Track storage type for workflow routing&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;autoPopulate&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;storageType&quot;, &quot;storageRoom&quot;, &quot;storageFreezer&quot;, &quot;storageShelf&quot;, &quot;storageRack&quot;, &quot;storageBox&quot;, &quot;storageCondition&quot;, &quot;assignedBy&quot;]
+  },
+  &quot;previousPage&quot;: &quot;Laboratory Reception &amp; Verification&quot;,
+  &quot;nextPage&quot;: &quot;Sample Processing&quot;
+}"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- BACTERIOLOGY WORKFLOW PAGE TEMPLATES                     -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-bacteriology-workflow-page-templates" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'BACTERIOLOGY'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert predefined Bacteriology workflow page templates</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="201"/>
+            <column name="name" value="Sample Reception"/>
+            <column name="display_key" value="workflow.page.bacteriology.sampleReception"/>
+            <column name="description" value="Import manifest and capture incoming samples with full reception metadata"/>
+            <column name="default_instructions" value="Import sample manifest (CSV/Excel) with: Project Name, Study ID, Participant ID, Barcode, Collection Site, Sample Type, Collection Date/Time, Received Date/Time, Storage Container, Temperature on Arrival, Received By, Consent Status, CRF Status, Sample Origin, Source Location/Facility. System validates and generates IDs."/>
+            <column name="default_content" value="Sample Reception - Manifest import and batch verification"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="202"/>
+            <column name="name" value="Laboratory Reception &amp; Verification"/>
+            <column name="display_key" value="workflow.page.bacteriology.receptionVerification"/>
+            <column name="description" value="Quality control assessment with checklist for temperature compliance, volume, labeling, packaging, contamination, leakage, and container type"/>
+            <column name="default_instructions" value="Confirm physical receipt and validate sample quality. Use QC checklist to assess all criteria. Pass samples proceed to storage. Failed samples: discard or keep with flagged status. Rejection reasons: Mislabeling, Insufficient volume, Contaminated samples, Damaged container, Expired transport medium, Temperature excursion, Other."/>
+            <column name="default_content" value="Laboratory Reception and Verification - Quality Control Assessment"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="203"/>
+            <column name="name" value="Temporary Storage Assignment"/>
+            <column name="display_key" value="workflow.page.bacteriology.temporaryStorage"/>
+            <column name="description" value="Assign samples to temporary storage locations with storage hierarchy and environmental monitoring"/>
+            <column name="default_instructions" value="Select storage hierarchy (Room → Freezer → Rack → Box → Well). Use auto-populate or manual well assignment. Choose storage condition (Room Temp, Refrigerated, Frozen -20°C, -80°C, Liquid Nitrogen, Incubator). Log environmental monitoring data (temperature checks AM/PM)."/>
+            <column name="default_content" value="Temporary Storage Assignment - Storage and Environmental Monitoring"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'BACTERIOLOGY'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- LINK BACTERIOLOGY NOTEBOOK TO DEPARTMENT                 -->
+    <!-- ======================================================== -->
+    <changeSet id="link-bacteriology-notebook-to-department" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_departments" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Bacteriology'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Bacteriology Laboratory' AND ts.name = 'Bacteriology'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Bacteriology Laboratory notebook template to Bacteriology department</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n, clinlims.test_section ts
+            WHERE n.title = 'Bacteriology Laboratory'
+              AND n.is_template = true
+              AND ts.name = 'Bacteriology';
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ENSURE BACTERIOLOGY NOTEBOOK HAS ALL ACTIVE ORGANIZATIONS -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-bacteriology-notebook-organizations" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure Bacteriology Laboratory notebook has all active organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.title = 'Bacteriology Laboratory'
+              AND n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

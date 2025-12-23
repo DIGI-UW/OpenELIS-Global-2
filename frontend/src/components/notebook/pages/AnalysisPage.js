@@ -2405,7 +2405,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
           </div>
         );
 
-      case 3:
+      case 3: {
         // Step 3: Column mapping with auto-detect
         const renderAutoMappedTag = (fieldName) => {
           if (autoMappedColumns[fieldName]) {
@@ -2601,6 +2601,7 @@ function AnalysisPage({ entryId, pageData, progress, onProgressUpdate }) {
             </Button>
           </div>
         );
+      }
 
       case 4:
         // Step 4: Preview

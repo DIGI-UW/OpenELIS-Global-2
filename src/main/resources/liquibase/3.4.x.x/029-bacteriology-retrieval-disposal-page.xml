@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Bacteriology Sample Retrieval, Archival, and Disposal Page (Page 7)
+
+    This changelog creates Stage 8 of the Bacteriology workflow:
+    Sample Retrieval, Archival, and Disposal
+
+    Features:
+    1. Sample Retrieval:
+       - Purpose: Shipping, Retesting, Research, QA
+       - Request/Approval workflow
+       - Retrieval logging (date, time, personnel, purpose)
+       - Status update
+
+    2. Transfer to Biorepository:
+       - Long-term archival for isolates, DNA
+       - Chain of custody documentation
+
+    3. Disposal Criteria:
+       - Expired: Beyond retention period
+       - Leakage: Container compromised
+       - Mislabeled: Cannot be reliably identified
+       - Storage shortage
+       - Exhaustion: Sample fully consumed
+       - Safety concerns: Contamination, biohazard
+       - Other
+
+    4. Disposal Methods:
+       - Autoclave: Standard for bacterial cultures, contaminated materials
+       - Incineration: For certain biohazard materials
+       - Chemical treatment: Disinfection before disposal
+       - Other
+
+    5. Disposal Documentation:
+       - Date of disposal
+       - Sample ID(s)
+       - Quantity
+       - Method used
+       - Reason for disposal
+       - Personnel performing disposal
+       - Supervisor sign-off
+    -->
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- Add Sample Retrieval, Archival, and Disposal page (Page 7) to Bacteriology notebook template -->
+    <changeSet id="029-1-add-bacteriology-retrieval-disposal-page" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Retrieval, Archival and Disposal page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Retrieval, Archival &amp; Disposal"/>
+            <column name="instructions" value="Manage sample lifecycle closure. Retrieve samples for shipping, retesting, or research with approval workflow. Transfer isolates and DNA to biorepository for long-term archival. Dispose samples using appropriate methods (autoclave, incineration, chemical treatment) with full documentation and supervisor sign-off."/>
+            <column name="content" value="{&quot;description&quot;:&quot;Final stage of sample lifecycle - retrieval, archival, and disposal with full documentation.&quot;,&quot;sections&quot;:[{&quot;id&quot;:&quot;sampleRetrieval&quot;,&quot;title&quot;:&quot;Sample Retrieval&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;retrievalPurpose&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Retrieval Purpose&quot;,&quot;required&quot;:true,&quot;options&quot;:[&quot;SHIPPING_REFERENCE_LAB&quot;,&quot;SHIPPING_COLLABORATOR&quot;,&quot;RETESTING_CONFIRMATION&quot;,&quot;RETESTING_INCONCLUSIVE&quot;,&quot;RESEARCH&quot;,&quot;QUALITY_ASSURANCE&quot;,&quot;PROFICIENCY_TESTING&quot;,&quot;OTHER&quot;]},{&quot;name&quot;:&quot;retrievalRequestedBy&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Requested By&quot;},{&quot;name&quot;:&quot;retrievalRequestDate&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Request Date&quot;},{&quot;name&quot;:&quot;retrievalApprovalRequired&quot;,&quot;type&quot;:&quot;checkbox&quot;,&quot;label&quot;:&quot;External/Sensitive - Approval Required&quot;},{&quot;name&quot;:&quot;retrievalApprovedBy&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Approved By&quot;},{&quot;name&quot;:&quot;retrievalApprovalDate&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Approval Date&quot;},{&quot;name&quot;:&quot;retrievalDate&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Retrieval Date&quot;},{&quot;name&quot;:&quot;retrievalTime&quot;,&quot;type&quot;:&quot;time&quot;,&quot;label&quot;:&quot;Retrieval Time&quot;},{&quot;name&quot;:&quot;retrievedBy&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Retrieved By&quot;},{&quot;name&quot;:&quot;retrievalDestination&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Destination&quot;},{&quot;name&quot;:&quot;retrievalNotes&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;label&quot;:&quot;Retrieval Notes&quot;}]},{&quot;id&quot;:&quot;biorepositoryTransfer&quot;,&quot;title&quot;:&quot;Biorepository Transfer&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;transferToBiorepository&quot;,&quot;type&quot;:&quot;checkbox&quot;,&quot;label&quot;:&quot;Transfer to Biorepository&quot;},{&quot;name&quot;:&quot;biorepositoryName&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Biorepository Name&quot;},{&quot;name&quot;:&quot;transferDate&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Transfer Date&quot;},{&quot;name&quot;:&quot;chainOfCustodyNumber&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Chain of Custody Number&quot;},{&quot;name&quot;:&quot;transferDocuments&quot;,&quot;type&quot;:&quot;multiselect&quot;,&quot;label&quot;:&quot;Documentation Included&quot;,&quot;options&quot;:[&quot;SAMPLE_MANIFEST&quot;,&quot;CHAIN_OF_CUSTODY_FORM&quot;,&quot;TEST_RESULTS&quot;,&quot;ISOLATION_RECORDS&quot;,&quot;IDENTIFICATION_REPORT&quot;,&quot;AST_RESULTS&quot;,&quot;MOLECULAR_DATA&quot;]},{&quot;name&quot;:&quot;transferConditions&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Transfer Conditions&quot;,&quot;options&quot;:[&quot;DRY_ICE&quot;,&quot;COLD_PACK&quot;,&quot;AMBIENT&quot;,&quot;LIQUID_NITROGEN&quot;]},{&quot;name&quot;:&quot;transferredBy&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Transferred By&quot;},{&quot;name&quot;:&quot;receivedBy&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Received By (Biorepository)&quot;},{&quot;name&quot;:&quot;biorepositoryAccessionNumber&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Biorepository Accession Number&quot;}]},{&quot;id&quot;:&quot;disposal&quot;,&quot;title&quot;:&quot;Sample Disposal&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;disposalCriteria&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Disposal Criteria&quot;,&quot;required&quot;:true,&quot;options&quot;:[&quot;EXPIRED&quot;,&quot;LEAKAGE&quot;,&quot;MISLABELED&quot;,&quot;STORAGE_SHORTAGE&quot;,&quot;EXHAUSTED&quot;,&quot;CONTAMINATION&quot;,&quot;BIOHAZARD&quot;,&quot;STUDY_COMPLETE&quot;,&quot;OTHER&quot;]},{&quot;name&quot;:&quot;disposalMethod&quot;,&quot;type&quot;:&quot;dropdown&quot;,&quot;label&quot;:&quot;Disposal Method&quot;,&quot;required&quot;:true,&quot;options&quot;:[&quot;AUTOCLAVE&quot;,&quot;INCINERATION&quot;,&quot;CHEMICAL_TREATMENT&quot;,&quot;CERTIFIED_WASTE_DISPOSAL&quot;,&quot;OTHER&quot;]},{&quot;name&quot;:&quot;disposalDate&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Disposal Date&quot;},{&quot;name&quot;:&quot;disposalTime&quot;,&quot;type&quot;:&quot;time&quot;,&quot;label&quot;:&quot;Disposal Time&quot;},{&quot;name&quot;:&quot;quantityDisposed&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Quantity Disposed&quot;},{&quot;name&quot;:&quot;disposedBy&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Disposed By&quot;},{&quot;name&quot;:&quot;supervisorSignOff&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Supervisor Sign-off&quot;,&quot;required&quot;:true},{&quot;name&quot;:&quot;biosafetyOfficerSignOff&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Biosafety Officer Sign-off&quot;},{&quot;name&quot;:&quot;disposalCertificateNumber&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Disposal Certificate Number&quot;},{&quot;name&quot;:&quot;disposalNotes&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;label&quot;:&quot;Disposal Notes&quot;}]},{&quot;id&quot;:&quot;archival&quot;,&quot;title&quot;:&quot;Record Archival&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;archiveRecords&quot;,&quot;type&quot;:&quot;checkbox&quot;,&quot;label&quot;:&quot;Archive Records&quot;},{&quot;name&quot;:&quot;archiveLocation&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Archive Location&quot;},{&quot;name&quot;:&quot;retentionPeriodYears&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Retention Period (Years)&quot;,&quot;default&quot;:5},{&quot;name&quot;:&quot;archivedDocuments&quot;,&quot;type&quot;:&quot;multiselect&quot;,&quot;label&quot;:&quot;Archived Documents&quot;,&quot;options&quot;:[&quot;RAW_DATA&quot;,&quot;FINAL_REPORTS&quot;,&quot;CULTURE_LOGS&quot;,&quot;AST_RESULTS&quot;,&quot;MOLECULAR_DATA&quot;,&quot;QC_RECORDS&quot;,&quot;AUDIT_TRAIL&quot;]},{&quot;name&quot;:&quot;archiveDate&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Archive Date&quot;},{&quot;name&quot;:&quot;archivedBy&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Archived By&quot;}]}]}"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template entry for Retrieval/Disposal page -->
+    <changeSet id="029-2-add-bacteriology-retrieval-disposal-template" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM workflow_page_template WHERE id = 207
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="207"/>
+            <column name="name" value="Sample Retrieval, Archival &amp; Disposal"/>
+            <column name="display_key" value="workflow.page.bacteriology.retrievalDisposal"/>
+            <column name="description" value="Final stage - retrieve samples for shipping/retesting, transfer to biorepository, or dispose with full documentation."/>
+            <column name="default_instructions" value="Manage sample lifecycle closure. Retrieve samples for shipping, retesting, or research with approval workflow. Transfer isolates and DNA to biorepository for long-term archival. Dispose samples using appropriate methods (autoclave, incineration, chemical treatment) with full documentation and supervisor sign-off."/>
+            <column name="default_content" value="Sample Retrieval, Archival and Disposal - Manage retrieval requests, biorepository transfers, and disposal with documentation"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

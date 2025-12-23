@@ -287,7 +287,7 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       // Normalize header: lowercase, remove spaces/underscores/hyphens/slashes
       const normalizedHeader = header
         .toLowerCase()
-        .replace(/[\s_\-\/]/g, "")
+        .replace(/[\s_\-/]/g, "")
         .trim();
 
       // Check if this normalized header matches any expected column key

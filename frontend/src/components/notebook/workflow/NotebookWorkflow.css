@@ -1022,6 +1022,98 @@
   margin-top: 1rem;
 }
 
+/* QC Decision Section */
+.qc-bulk-apply-modal .qc-decision-section {
+  background: var(--cds-layer-02);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1.5rem;
+}
+
+.qc-bulk-apply-modal .qc-decision-hint {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+  margin: 0 0 1rem 0;
+}
+
+.qc-bulk-apply-modal .qc-decision-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.qc-bulk-apply-modal .qc-decision-btn {
+  flex: 1;
+  min-height: 48px;
+  justify-content: center;
+}
+
+.qc-bulk-apply-modal .qc-decision-btn.pass:not(.selected) {
+  border: 2px solid var(--cds-support-success);
+  color: var(--cds-support-success);
+}
+
+.qc-bulk-apply-modal .qc-decision-btn.pass:not(.selected):hover {
+  background: var(--cds-support-success-container, rgba(36, 161, 72, 0.1));
+}
+
+.qc-bulk-apply-modal .qc-decision-btn.fail:not(.selected) {
+  border: 2px solid var(--cds-support-error);
+  color: var(--cds-support-error);
+}
+
+.qc-bulk-apply-modal .qc-decision-btn.fail:not(.selected):hover {
+  background: var(--cds-support-error-container, rgba(218, 30, 40, 0.1));
+}
+
+.qc-bulk-apply-modal .qc-result-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+.qc-bulk-apply-modal .qc-result-indicator.pass {
+  background: var(--cds-support-success-container, rgba(36, 161, 72, 0.1));
+  border: 1px solid var(--cds-support-success);
+}
+
+.qc-bulk-apply-modal .qc-result-indicator.fail {
+  background: var(--cds-support-error-container, rgba(218, 30, 40, 0.1));
+  border: 1px solid var(--cds-support-error);
+}
+
+.qc-bulk-apply-modal .qc-result-indicator .cds--tag {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+}
+
+/* QC Checklist Actions */
+.qc-bulk-apply-modal .qc-checklist-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.qc-bulk-apply-modal .qc-checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+.qc-bulk-apply-modal .qc-checklist-count {
+  font-weight: normal;
+  color: var(--cds-text-secondary);
+  margin-left: 0.5rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 672px) {
   .qc-bulk-apply-modal .qc-checklist {
@@ -1031,6 +1123,10 @@
   .qc-bulk-apply-modal .cds--radio-button-group[orientation="horizontal"] {
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .qc-bulk-apply-modal .qc-decision-buttons {
+    flex-direction: column;
   }
 }
 
