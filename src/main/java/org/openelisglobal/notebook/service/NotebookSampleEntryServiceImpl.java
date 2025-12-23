@@ -75,19 +75,30 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
                 continue;
             }
 
-            // Create NotebookPageSample records for all pages
-            if (pages != null) {
-                for (NoteBookPage page : pages) {
-                    // Check if record already exists
-                    NotebookPageSample existing = notebookPageSampleDAO.getByPageIdAndSampleItemId(page.getId(),
-                            sampleItemId);
-                    if (existing == null) {
-                        NotebookPageSample nps = new NotebookPageSample();
-                        nps.setNotebookPage(page);
-                        nps.setSampleItemId(sampleItem.getId());
-                        nps.setStatus(Status.PENDING);
-                        notebookPageSampleService.insert(nps);
-                    }
+            // Create NotebookPageSample record ONLY on the first page
+            // Samples should only appear on subsequent pages after completing the previous
+            // page
+            // (auto-progression is handled by bulkUpdateStatus when status changes to
+            // COMPLETED)
+            if (pages != null && !pages.isEmpty()) {
+                // Sort pages by order to find the first page
+                List<NoteBookPage> sortedPages = new ArrayList<>(pages);
+                sortedPages.sort((p1, p2) -> {
+                    Integer o1 = p1.getOrder() != null ? p1.getOrder() : Integer.MAX_VALUE;
+                    Integer o2 = p2.getOrder() != null ? p2.getOrder() : Integer.MAX_VALUE;
+                    return o1.compareTo(o2);
+                });
+                NoteBookPage firstPage = sortedPages.get(0);
+
+                // Check if record already exists on first page
+                NotebookPageSample existing = notebookPageSampleDAO.getByPageIdAndSampleItemId(firstPage.getId(),
+                        sampleItemId);
+                if (existing == null) {
+                    NotebookPageSample nps = new NotebookPageSample();
+                    nps.setNotebookPage(firstPage);
+                    nps.setSampleItemId(sampleItem.getId());
+                    nps.setStatus(Status.PENDING);
+                    notebookPageSampleService.insert(nps);
                 }
             }
             linkedCount++;

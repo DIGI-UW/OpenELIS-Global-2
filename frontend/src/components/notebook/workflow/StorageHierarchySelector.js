@@ -5,7 +5,15 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 
 /**
  * StorageHierarchySelector - Reusable component for hierarchical storage location selection.
- * Provides cascading dropdowns: Room → Device → Shelf → Rack → Box
+ * Provides cascading dropdowns: Room → Device/Freezer → Shelf → Rack → Box
+ *
+ * Storage Hierarchy:
+ * - Room: Physical room containing storage equipment
+ * - Device/Freezer: Refrigerator, Freezer (-20°C, -80°C), LN2 Tank, Incubator
+ * - Shelf: Physical shelf within the device
+ * - Rack: Storage rack within the shelf
+ * - Box: Storage box within the rack
+ * - Well: Individual position within the box (handled by BoxLayoutViewer)
  *
  * @param {Object} props
  * @param {function} props.onSelectionChange - Callback when selection changes, receives { room, device, shelf, rack, box }
@@ -250,11 +258,11 @@ function StorageHierarchySelector({
             id="device-dropdown"
             titleText={intl.formatMessage({
               id: "notebook.storage.device",
-              defaultMessage: "Device",
+              defaultMessage: "Freezer/Device",
             })}
             label={intl.formatMessage({
               id: "notebook.storage.selectDevice",
-              defaultMessage: "Select device...",
+              defaultMessage: "Select freezer/device...",
             })}
             items={devices}
             itemToString={(item) => (item ? item.label : "")}

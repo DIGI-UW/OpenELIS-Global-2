@@ -54,6 +54,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.openelisglobal.notebook.service.NoteBookPageService;
+import org.openelisglobal.notebook.service.NotebookPageSampleService;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping(value = "/rest/notebook")
@@ -82,6 +91,12 @@ public class NoteBookRestController extends BaseRestController {
 
     @Autowired
     private OrganizationService organizationService;
+
+    @Autowired
+    private NoteBookPageService noteBookPageService;
+
+    @Autowired
+    private NotebookPageSampleService notebookPageSampleService;
 
     @GetMapping(value = "/dashboard/entries", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -695,6 +710,242 @@ public class NoteBookRestController extends BaseRestController {
             return testSection.getLocalizedName();
         }
         return null;
+    }
+
+    /**
+     * Get summary statistics for a notebook (aggregated data across all pages).
+     * Used by the Reporting & Data Export page to show notebook-level summaries.
+     *
+     * @param notebookId the notebook ID
+     * @param request    HTTP request for user session
+     * @return summary statistics including total samples, QC pass rate, etc.
+     */
+    @GetMapping(value = "/{notebookId}/summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getNotebookSummary(@PathVariable("notebookId") Integer notebookId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Check permissions
+        boolean isAllowed = false;
+        if (Boolean.TRUE.equals(notebook.getIsTemplate())) {
+            isAllowed = notebookSecurityService.canViewTemplate(notebookId, sysUserId, loginLabUnit);
+        } else {
+            NoteBook parent = noteBookService.getParentTemplate(notebookId);
+            if (parent != null) {
+                isAllowed = notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
+            }
+        }
+
+        if (!isAllowed) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this notebook"));
+        }
+
+        // Calculate summary statistics across all pages
+        List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebookId);
+
+        int totalSamples = 0;
+        int completedSamples = 0;
+        int totalCultures = 0;
+        int positiveIsolates = 0;
+        int astCompleted = 0;
+        int mdrOrganisms = 0;
+
+        for (NoteBookPage page : pages) {
+            List<NotebookPageSample> samples = notebookPageSampleService.getByPageId(page.getId());
+            totalSamples += samples.size();
+
+            for (NotebookPageSample sample : samples) {
+                if (sample.getStatus() == NotebookPageSample.Status.COMPLETED) {
+                    completedSamples++;
+                }
+
+                // Check for bacteriology-specific data in the data JSON map
+                Map<String, Object> data = sample.getData();
+                if (data != null) {
+                    // Count cultures (samples with culture data)
+                    if (data.containsKey("cultureResult") || data.containsKey("inoculated")) {
+                        totalCultures++;
+                    }
+                    // Count positive isolates
+                    if ("POSITIVE".equals(data.get("cultureResult"))
+                            || "POSITIVE".equals(data.get("isolateStatus"))) {
+                        positiveIsolates++;
+                    }
+                    // Count AST completed
+                    if (data.containsKey("astCompleted") && Boolean.TRUE.equals(data.get("astCompleted"))) {
+                        astCompleted++;
+                    } else if (data.containsKey("susceptibilityResults")) {
+                        astCompleted++;
+                    }
+                    // Count MDR organisms
+                    if (Boolean.TRUE.equals(data.get("mdrOrganism"))
+                            || "MDR".equals(data.get("resistancePattern"))) {
+                        mdrOrganisms++;
+                    }
+                }
+            }
+        }
+
+        // Calculate QC pass rate
+        String qcPassRate = totalSamples > 0
+                ? String.format("%.0f%%", (completedSamples * 100.0) / totalSamples)
+                : "N/A";
+
+        Map<String, Object> summary = new java.util.HashMap<>();
+        summary.put("totalSamples", totalSamples);
+        summary.put("completedSamples", completedSamples);
+        summary.put("totalCultures", totalCultures > 0 ? totalCultures : totalSamples);
+        summary.put("positiveIsolates", positiveIsolates);
+        summary.put("astCompleted", astCompleted);
+        summary.put("mdrOrganisms", mdrOrganisms);
+        summary.put("qcPassRate", qcPassRate);
+
+        return ResponseEntity.ok(summary);
+    }
+
+    /**
+     * Generate and download a CSV report for all data points in a notebook.
+     * Used by the Reporting & Data Export page.
+     *
+     * @param notebookId   the notebook ID
+     * @param request      HTTP request for user session
+     * @param response     HTTP response for file download
+     */
+    @PostMapping(value = "/{notebookId}/generate-report")
+    public void generateNotebookReport(@PathVariable("notebookId") Integer notebookId,
+            @RequestBody(required = false) Map<String, Object> requestBody,
+            HttpServletRequest request, HttpServletResponse response) {
+
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        try {
+            NoteBook notebook = noteBookService.get(notebookId);
+            if (notebook == null) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Notebook not found\"}");
+                return;
+            }
+
+            // Check permissions
+            boolean isAllowed = false;
+            if (Boolean.TRUE.equals(notebook.getIsTemplate())) {
+                isAllowed = notebookSecurityService.canViewTemplate(notebookId, sysUserId, loginLabUnit);
+            } else {
+                NoteBook parent = noteBookService.getParentTemplate(notebookId);
+                if (parent != null) {
+                    isAllowed = notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
+                }
+            }
+
+            if (!isAllowed) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Access denied to this notebook\"}");
+                return;
+            }
+
+            // Generate CSV report
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
+
+            // Write CSV header
+            writer.println(
+                    "Sample ID,External ID,Accession Number,Sample Type,Collection Date,Page,Status,Culture Result,Organism,AST Result,MDR,QC Status,Notes");
+
+            // Get all pages and their samples
+            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebookId);
+
+            for (NoteBookPage page : pages) {
+                List<NotebookPageSample> samples = notebookPageSampleService.getByPageId(page.getId());
+
+                for (NotebookPageSample sample : samples) {
+                    Map<String, Object> data = sample.getData();
+
+                    // Build CSV row
+                    StringBuilder row = new StringBuilder();
+                    row.append(escapeCSV(sample.getSampleItemId())).append(",");
+                    // Get externalId, accessionNumber, sampleType, collectionDate from data map
+                    row.append(escapeCSV(data != null ? getStringValue(data, "externalId") : "")).append(",");
+                    row.append(escapeCSV(data != null ? getStringValue(data, "accessionNumber") : "")).append(",");
+                    row.append(escapeCSV(data != null ? getStringValue(data, "sampleType") : "")).append(",");
+                    row.append(escapeCSV(data != null ? getStringValue(data, "collectionDate") : "")).append(",");
+                    row.append(escapeCSV(page.getTitle())).append(",");
+                    row.append(escapeCSV(sample.getStatus() != null ? sample.getStatus().name() : "")).append(",");
+
+                    // Data fields
+                    if (data != null) {
+                        row.append(escapeCSV(getStringValue(data, "cultureResult"))).append(",");
+                        row.append(escapeCSV(getStringValue(data, "organismIdentified"))).append(",");
+                        row.append(escapeCSV(getStringValue(data, "susceptibilityResults"))).append(",");
+                        row.append(escapeCSV(data.get("mdrOrganism") != null
+                                ? String.valueOf(data.get("mdrOrganism"))
+                                : "")).append(",");
+                        row.append(escapeCSV(getStringValue(data, "qcResult"))).append(",");
+                        row.append(escapeCSV(getStringValue(data, "notes")));
+                    } else {
+                        row.append(",,,,,");
+                    }
+
+                    writer.println(row.toString());
+                }
+            }
+
+            writer.flush();
+            writer.close();
+
+            byte[] csvBytes = baos.toByteArray();
+
+            // Set response headers for file download
+            String filename = "Bacteriology_Notebook_Report_"
+                    + java.time.LocalDate.now().toString() + ".csv";
+            response.setContentType("text/csv; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(csvBytes.length);
+            response.getOutputStream().write(csvBytes);
+            response.getOutputStream().flush();
+
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(),
+                    "generateNotebookReport", "Error generating report: " + e.getMessage());
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Failed to generate report: " + e.getMessage() + "\"}");
+            } catch (Exception ignored) {
+                // Response may already be committed
+            }
+        }
+    }
+
+    /**
+     * Escape a value for CSV output.
+     */
+    private String escapeCSV(String value) {
+        if (value == null) {
+            return "";
+        }
+        // If value contains comma, quote, or newline, wrap in quotes and escape quotes
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    /**
+     * Get string value from a map, handling nulls.
+     */
+    private String getStringValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value != null ? value.toString() : "";
     }
 
 }

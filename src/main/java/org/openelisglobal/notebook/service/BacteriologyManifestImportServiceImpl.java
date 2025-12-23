@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
-import org.openelisglobal.notebook.form.MNTDManifestImportForm;
+import org.openelisglobal.notebook.form.BacteriologyManifestImportForm;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -26,27 +26,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementation of MNTDManifestImportService for MNTD-specific CSV manifest
- * processing. Handles MNTD data points: Sample ID, Sample Source, Project Name,
- * Collection Site, Collection DateTime, Collected By.
+ * Implementation of BacteriologyManifestImportService for Bacteriology-specific
+ * CSV manifest processing. Handles Bacteriology data points for clinical,
+ * environmental, food/beverage, and veterinary samples.
  */
 @Service
-public class MNTDManifestImportServiceImpl implements MNTDManifestImportService {
+public class BacteriologyManifestImportServiceImpl implements BacteriologyManifestImportService {
 
     /**
-     * Valid MNTD sample types. These are the sample types recognized for the MNTD
-     * (Malaria and Neglected Tropical Diseases) laboratory workflow. Includes
-     * parasite samples and vector samples.
+     * Valid Bacteriology sample types. These are the sample types recognized for
+     * the Bacteriology laboratory workflow. Includes clinical, environmental, food,
+     * and veterinary samples.
      */
-    private static final java.util.Set<String> VALID_MNTD_SAMPLE_TYPES = java.util.Set.of(
-            // Parasite Samples (Human/Animal)
-            "whole blood", "serum", "plasma", "dried blood spots (dbs)", "cell pellets", "cultured parasites",
-            "skin slit smear", "biopsy", "microbiopsy", "tissue aspirate", "dnashield", "rna protect", "cell culture",
-            "tissue in saline",
-            // Vector Samples
-            "colony mosquito", "wild mosquito", "mosquito head and thorax", "mosquito abdomen", "sandfly", "tsetse fly",
-            // Legacy/existing types that may be used
-            "cell pellet", "culture", "dna/rna preservative", "mosquito / sandfly / tsetsefly", "biopsy / microbiopsy");
+    private static final java.util.Set<String> VALID_BACTERIOLOGY_SAMPLE_TYPES = java.util.Set.of(
+            // Clinical Samples (Human)
+            "blood", "urine", "stool",
+            // Body Fluids
+            "csf (cerebrospinal fluid)", "pleural fluid", "peritoneal fluid", "pericardial fluid", "amniotic fluid",
+            "synovial fluid", "other body fluid",
+            // Isolates, Swabs, Tissue
+            "bacterial isolate", "swab", "tissue sample",
+            // Environmental Samples
+            "wastewater", "tap water", "farm water", "soil", "other environmental sample",
+            // Food and Beverage Samples
+            "vegetables", "dry foods", "dairy products", "poultry products", "canned foods", "fruits",
+            "packed/processed foods", "other food sample",
+            // Veterinary Samples
+            "animal stool", "animal tissue", "other animal specimen");
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;
@@ -67,8 +73,8 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
     private IStatusService statusService;
 
     @Override
-    public ParsedManifest parseManifestCsv(InputStream csvInput, MNTDManifestImportForm columnMapping) {
-        List<MNTDManifestRow> rows = new ArrayList<>();
+    public ParsedManifest parseManifestCsv(InputStream csvInput, BacteriologyManifestImportForm columnMapping) {
+        List<BacteriologyManifestRow> rows = new ArrayList<>();
         List<ParseError> errors = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvInput, StandardCharsets.UTF_8))) {
@@ -84,17 +90,25 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
                 columnIndex.put(headers[i].trim().toLowerCase(), i);
             }
 
-            // Get column indices from MNTD mapping (using new field names)
-            Integer sampleIdIdx = getColumnIndex(columnIndex, columnMapping.getSampleIdTagColumn());
-            Integer sampleSourceIdx = getColumnIndex(columnIndex, columnMapping.getSampleSourceLocationColumn());
+            // Get column indices from Bacteriology mapping
             Integer projectNameIdx = getColumnIndex(columnIndex, columnMapping.getProjectNameColumn());
+            Integer studyIdIdx = getColumnIndex(columnIndex, columnMapping.getStudyIdColumn());
+            Integer participantIdIdx = getColumnIndex(columnIndex, columnMapping.getParticipantIdColumn());
+            Integer barcodeIdx = getColumnIndex(columnIndex, columnMapping.getBarcodeColumn());
+            Integer collectionSiteIdx = getColumnIndex(columnIndex, columnMapping.getCollectionSiteColumn());
             Integer sampleTypeIdx = getColumnIndex(columnIndex, columnMapping.getSampleTypeColumn());
-            Integer collectionSiteIdx = getColumnIndex(columnIndex, columnMapping.getSampleSourceLocationColumn()); // Reuse
-                                                                                                                    // source
-                                                                                                                    // location
-            Integer collectionDateTimeIdx = getColumnIndex(columnIndex, columnMapping.getReceivedDateTimeColumn());
-            Integer collectedByIdx = getColumnIndex(columnIndex, columnMapping.getBroughtByColumn());
-            Integer numOfSamplesIdx = getColumnIndex(columnIndex, columnMapping.getNumberOfSamplesColumn());
+            Integer collectionDateTimeIdx = getColumnIndex(columnIndex, columnMapping.getCollectionDateTimeColumn());
+            Integer sampleReceivedDateIdx = getColumnIndex(columnIndex, columnMapping.getSampleReceivedDateColumn());
+            Integer sampleArrivalTimeIdx = getColumnIndex(columnIndex, columnMapping.getSampleArrivalTimeColumn());
+            Integer receivedByIdx = getColumnIndex(columnIndex, columnMapping.getReceivedByColumn());
+            Integer storageContainerTypeIdx = getColumnIndex(columnIndex,
+                    columnMapping.getStorageContainerTypeColumn());
+            Integer storageTemperatureIdx = getColumnIndex(columnIndex,
+                    columnMapping.getStorageTemperatureOnArrivalColumn());
+            Integer consentStatusIdx = getColumnIndex(columnIndex, columnMapping.getConsentStatusColumn());
+            Integer crfStatusIdx = getColumnIndex(columnIndex, columnMapping.getCrfStatusColumn());
+            Integer sampleOriginIdx = getColumnIndex(columnIndex, columnMapping.getSampleOriginColumn());
+            Integer sourceLocationIdx = getColumnIndex(columnIndex, columnMapping.getSourceLocationFacilityColumn());
 
             String line;
             int rowNumber = 1; // Header is row 1
@@ -106,19 +120,27 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
 
                 String[] values = parseCSVLine(line);
 
-                // Extract MNTD values
-                String sampleId = getValueAtIndex(values, sampleIdIdx);
-                String sampleSource = getValueAtIndex(values, sampleSourceIdx);
+                // Extract Bacteriology values
                 String projectName = getValueAtIndex(values, projectNameIdx);
-                String sampleType = getValueAtIndex(values, sampleTypeIdx);
+                String studyId = getValueAtIndex(values, studyIdIdx);
+                String participantId = getValueAtIndex(values, participantIdIdx);
+                String barcode = getValueAtIndex(values, barcodeIdx);
                 String collectionSite = getValueAtIndex(values, collectionSiteIdx);
+                String sampleType = getValueAtIndex(values, sampleTypeIdx);
                 String collectionDateTime = getValueAtIndex(values, collectionDateTimeIdx);
-                String collectedBy = getValueAtIndex(values, collectedByIdx);
-                String numOfSamplesStr = getValueAtIndex(values, numOfSamplesIdx);
+                String sampleReceivedDate = getValueAtIndex(values, sampleReceivedDateIdx);
+                String sampleArrivalTime = getValueAtIndex(values, sampleArrivalTimeIdx);
+                String receivedBy = getValueAtIndex(values, receivedByIdx);
+                String storageContainerType = getValueAtIndex(values, storageContainerTypeIdx);
+                String storageTemperature = getValueAtIndex(values, storageTemperatureIdx);
+                String consentStatus = getValueAtIndex(values, consentStatusIdx);
+                String crfStatus = getValueAtIndex(values, crfStatusIdx);
+                String sampleOrigin = getValueAtIndex(values, sampleOriginIdx);
+                String sourceLocation = getValueAtIndex(values, sourceLocationIdx);
 
                 // Validate required fields
-                if (sampleId == null || sampleId.isBlank()) {
-                    errors.add(new ParseError(rowNumber, "sampleId", "Sample ID is required"));
+                if (barcode == null || barcode.isBlank()) {
+                    errors.add(new ParseError(rowNumber, "barcode", "Barcode is required"));
                     continue;
                 }
 
@@ -127,17 +149,15 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
                     continue;
                 }
 
-                // Parse num_of_samples - extract leading number from strings like "10 tubes",
-                // "2 boxes"
-                int numOfSamples = parseNumberOfSamples(numOfSamplesStr);
-                if (numOfSamples <= 0) {
-                    errors.add(new ParseError(rowNumber, "numOfSamples",
-                            "Invalid number format (expected number or 'N units'): " + numOfSamplesStr));
+                if (sampleOrigin == null || sampleOrigin.isBlank()) {
+                    errors.add(new ParseError(rowNumber, "sampleOrigin", "Sample origin is required"));
                     continue;
                 }
 
-                rows.add(new MNTDManifestRow(rowNumber, sampleId.trim(), sampleSource, projectName, sampleType.trim(),
-                        collectionSite, collectionDateTime, collectedBy, numOfSamples));
+                rows.add(new BacteriologyManifestRow(rowNumber, projectName, studyId, participantId, barcode.trim(),
+                        collectionSite, sampleType.trim(), collectionDateTime, sampleReceivedDate, sampleArrivalTime,
+                        receivedBy, storageContainerType, storageTemperature, consentStatus, crfStatus,
+                        sampleOrigin.trim(), sourceLocation));
             }
 
         } catch (IOException e) {
@@ -152,7 +172,7 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
     public List<ParseError> validateSampleTypes(ParsedManifest manifest) {
         List<ParseError> errors = new ArrayList<>();
 
-        for (MNTDManifestRow row : manifest.rows()) {
+        for (BacteriologyManifestRow row : manifest.rows()) {
             TypeOfSample searchType = new TypeOfSample();
             searchType.setDescription(row.sampleType());
 
@@ -167,7 +187,8 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
 
     @Override
     @Transactional
-    public MNTDManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId) {
+    public BacteriologyManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest,
+            String sysUserId) {
         List<SampleItem> createdSamples = new ArrayList<>();
         List<String> createdAccessionNumbers = new ArrayList<>();
         List<ParseError> errors = new ArrayList<>();
@@ -176,19 +197,14 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
         Optional<NotebookEntry> optEntry = notebookEntryService.getMatch("id", entryId);
         if (optEntry.isEmpty()) {
             errors.add(new ParseError(0, "entry", "Notebook entry not found: " + entryId));
-            return new MNTDManifestImportResult(0, 0, createdSamples, createdAccessionNumbers, errors);
+            return new BacteriologyManifestImportResult(0, 0, createdSamples, createdAccessionNumbers, errors);
         }
 
         NotebookEntry entry = optEntry.get();
-        int totalRequested = 0;
+        int totalRequested = manifest.rows().size();
+        int sequenceNumber = 1;
 
-        for (MNTDManifestRow row : manifest.rows()) {
-            if (row.numOfSamples() <= 0) {
-                continue;
-            }
-
-            totalRequested += row.numOfSamples();
-
+        for (BacteriologyManifestRow row : manifest.rows()) {
             // Look up sample type
             TypeOfSample searchType = new TypeOfSample();
             searchType.setDescription(row.sampleType());
@@ -199,7 +215,7 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
                 continue;
             }
 
-            // Create a parent Sample record for this batch with generated accession number
+            // Create a parent Sample record with generated accession number
             Sample parentSample = new Sample();
             parentSample.setSysUserId(sysUserId);
             parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
@@ -213,32 +229,31 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
                 sampleEnteredStatusId = "20";
             }
 
-            // Create individual SampleItem records
-            for (int seq = 1; seq <= row.numOfSamples(); seq++) {
-                SampleItem item = new SampleItem();
-                item.setSample(parentSample);
-                item.setTypeOfSample(sampleType);
-                item.setExternalId(generateExternalId(row.sampleId(), seq));
-                item.setSortOrder(Integer.toString(seq));
-                item.setStatusId(sampleEnteredStatusId);
-                item.setSysUserId(sysUserId);
+            // Create SampleItem record
+            SampleItem item = new SampleItem();
+            item.setSample(parentSample);
+            item.setTypeOfSample(sampleType);
+            item.setExternalId(generateExternalId(row.barcode(), sequenceNumber));
+            item.setSortOrder(Integer.toString(sequenceNumber));
+            item.setStatusId(sampleEnteredStatusId);
+            item.setSysUserId(sysUserId);
 
-                // Set collection date from manifest row
-                if (row.collectionDateTime() != null && !row.collectionDateTime().isBlank()) {
-                    java.sql.Timestamp collectionTimestamp = parseCollectionDate(row.collectionDateTime());
-                    if (collectionTimestamp != null) {
-                        item.setCollectionDate(collectionTimestamp);
-                    }
+            // Set collection date from manifest row
+            if (row.collectionDateTime() != null && !row.collectionDateTime().isBlank()) {
+                java.sql.Timestamp collectionTimestamp = parseCollectionDate(row.collectionDateTime());
+                if (collectionTimestamp != null) {
+                    item.setCollectionDate(collectionTimestamp);
                 }
-
-                String itemId = sampleItemService.insert(item);
-                item.setId(itemId);
-                createdSamples.add(item);
-                createdAccessionNumbers.add(parentSample.getAccessionNumber());
-
-                // Add sample to entry
-                notebookEntryService.addSample(entryId, item, sysUserId);
             }
+
+            String itemId = sampleItemService.insert(item);
+            item.setId(itemId);
+            createdSamples.add(item);
+            createdAccessionNumbers.add(parentSample.getAccessionNumber());
+
+            // Add sample to entry
+            notebookEntryService.addSample(entryId, item, sysUserId);
+            sequenceNumber++;
         }
 
         if (!createdSamples.isEmpty()) {
@@ -251,13 +266,40 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
             }
         }
 
-        return new MNTDManifestImportResult(totalRequested, createdSamples.size(), createdSamples,
+        return new BacteriologyManifestImportResult(totalRequested, createdSamples.size(), createdSamples,
                 createdAccessionNumbers.stream().distinct().collect(Collectors.toList()), errors);
     }
 
     @Override
-    public String generateExternalId(String sampleId, int sequenceNumber) {
-        return String.format("%s-%03d", sampleId, sequenceNumber);
+    public String generateExternalId(String barcode, int sequenceNumber) {
+        return String.format("%s-%03d", barcode, sequenceNumber);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, String>> getValidBacteriologySampleTypes() {
+        List<Map<String, String>> result = new ArrayList<>();
+
+        for (String validType : VALID_BACTERIOLOGY_SAMPLE_TYPES) {
+            // Check if this type exists in the database
+            TypeOfSample searchType = new TypeOfSample();
+            // Use title case for database lookup since descriptions are stored that way
+            String titleCaseType = toTitleCase(validType);
+            searchType.setDescription(titleCaseType);
+            TypeOfSample found = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, true);
+
+            if (found != null) {
+                Map<String, String> typeMap = new HashMap<>();
+                typeMap.put("id", found.getId());
+                typeMap.put("description", found.getDescription());
+                result.add(typeMap);
+            }
+        }
+
+        // Sort by description for consistent ordering
+        result.sort((a, b) -> a.get("description").compareToIgnoreCase(b.get("description")));
+
+        return result;
     }
 
     /**
@@ -304,68 +346,6 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
         }
         String value = values[index];
         return value != null && !value.isBlank() ? value.trim() : null;
-    }
-
-    /**
-     * Parse number of samples from various formats. Accepts: "10", "10 tubes", "2
-     * boxes", "1 bag (50 specimens)", etc. Extracts the leading integer value.
-     *
-     * @param value the string to parse
-     * @return the extracted number, or 1 if null/blank, or -1 if invalid
-     */
-    private int parseNumberOfSamples(String value) {
-        if (value == null || value.isBlank()) {
-            return 1; // Default to 1 if not specified
-        }
-
-        String trimmed = value.trim();
-
-        // Try direct integer parse first
-        try {
-            return Integer.parseInt(trimmed);
-        } catch (NumberFormatException e) {
-            // Not a plain integer, try to extract leading number
-        }
-
-        // Extract leading digits using regex
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^(\\d+)");
-        java.util.regex.Matcher matcher = pattern.matcher(trimmed);
-        if (matcher.find()) {
-            try {
-                return Integer.parseInt(matcher.group(1));
-            } catch (NumberFormatException e) {
-                return -1;
-            }
-        }
-
-        return -1; // No valid number found
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Map<String, String>> getValidMntdSampleTypes() {
-        List<Map<String, String>> result = new ArrayList<>();
-
-        for (String validType : VALID_MNTD_SAMPLE_TYPES) {
-            // Check if this type exists in the database
-            TypeOfSample searchType = new TypeOfSample();
-            // Use title case for database lookup since descriptions are stored that way
-            String titleCaseType = toTitleCase(validType);
-            searchType.setDescription(titleCaseType);
-            TypeOfSample found = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, true);
-
-            if (found != null) {
-                Map<String, String> typeMap = new HashMap<>();
-                typeMap.put("id", found.getId());
-                typeMap.put("description", found.getDescription());
-                result.add(typeMap);
-            }
-        }
-
-        // Sort by description for consistent ordering
-        result.sort((a, b) -> a.get("description").compareToIgnoreCase(b.get("description")));
-
-        return result;
     }
 
     /**

@@ -38,5 +38,12 @@
     <include file="liquibase/3.4.x.x/021-immunology-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/022-add-rejected-status.xml"/>
     <include file="liquibase/3.4.x.x/023-notebook-page-data.xml"/>
+    <include file="liquibase/3.4.x.x/024-bacteriology-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/025-bacteriology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/026-bacteriology-processing-qc-page.xml"/>
+    <include file="liquibase/3.4.x.x/027-bacteriology-assay-test-execution-page.xml"/>
+    <include file="liquibase/3.4.x.x/028-bacteriology-post-analysis-page.xml"/>
+    <include file="liquibase/3.4.x.x/029-bacteriology-retrieval-disposal-page.xml"/>
+    <include file="liquibase/3.4.x.x/030-bacteriology-reporting-data-export-page.xml"/>
 
 </databaseChangeLog>

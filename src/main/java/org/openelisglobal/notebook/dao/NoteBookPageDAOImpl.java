@@ -30,4 +30,22 @@ public class NoteBookPageDAOImpl extends BaseDAOImpl<NoteBookPage, Integer> impl
         String hql = "FROM NoteBookPage p WHERE p.notebook.id = :notebookId ORDER BY p.order";
         return session.createQuery(hql, NoteBookPage.class).setParameter("notebookId", notebookId).getResultList();
     }
+
+    @Override
+    public Integer getPageIdByNotebookIdAndOrder(Integer notebookId, Integer pageOrder) {
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "SELECT p.id FROM NoteBookPage p WHERE p.notebook.id = :notebookId AND p.order = :pageOrder";
+        List<Integer> results = session.createQuery(hql, Integer.class).setParameter("notebookId", notebookId)
+                .setParameter("pageOrder", pageOrder).setMaxResults(1).getResultList();
+        return results.isEmpty() ? null : results.get(0);
+    }
+
+    @Override
+    public Integer getPageIdByNotebookIdAndTitlePattern(Integer notebookId, String titlePattern) {
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "SELECT p.id FROM NoteBookPage p WHERE p.notebook.id = :notebookId AND p.title LIKE :titlePattern";
+        List<Integer> results = session.createQuery(hql, Integer.class).setParameter("notebookId", notebookId)
+                .setParameter("titlePattern", "%" + titlePattern + "%").setMaxResults(1).getResultList();
+        return results.isEmpty() ? null : results.get(0);
+    }
 }

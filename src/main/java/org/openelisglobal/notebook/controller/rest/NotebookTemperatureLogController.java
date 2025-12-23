@@ -150,6 +150,7 @@ public class NotebookTemperatureLogController extends BaseRestController {
     /**
      * Temperature log request DTO.
      */
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     public static class TemperatureLogRequest {
         private String freezerId;
         private String checkTime; // AM or PM
@@ -158,6 +159,7 @@ public class NotebookTemperatureLogController extends BaseRestController {
         private String checkedBy;
         private String checkedDateTime;
         private String notes;
+        private String deviceType; // Refrigerator, Freezer, Incubator, etc.
 
         public String getFreezerId() {
             return freezerId;
@@ -213,6 +215,14 @@ public class NotebookTemperatureLogController extends BaseRestController {
 
         public void setNotes(String notes) {
             this.notes = notes;
+        }
+
+        public String getDeviceType() {
+            return deviceType;
+        }
+
+        public void setDeviceType(String deviceType) {
+            this.deviceType = deviceType;
         }
     }
 
