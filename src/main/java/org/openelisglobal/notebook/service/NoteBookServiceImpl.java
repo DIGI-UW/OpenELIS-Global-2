@@ -746,10 +746,15 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         // Copy pages
         if (template.getPages() != null) {
             for (NoteBookPage templatePage : template.getPages()) {
+                // Initialize lazy collections for this page
+                Hibernate.initialize(templatePage.getAllowedRoles());
+
                 NoteBookPage instancePage = new NoteBookPage();
                 instancePage.setTitle(templatePage.getTitle());
                 instancePage.setOrder(templatePage.getOrder());
                 instancePage.setContent(templatePage.getContent());
+                instancePage.setInstructions(templatePage.getInstructions());
+                instancePage.setSampleTypeId(templatePage.getSampleTypeId());
                 instancePage.setNotebook(instance);
 
                 // Copy panels and tests references
@@ -758,6 +763,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 }
                 if (templatePage.getTests() != null) {
                     instancePage.getTests().addAll(templatePage.getTests());
+                }
+
+                // Copy allowed roles for page-level access control
+                if (templatePage.getAllowedRoles() != null && !templatePage.getAllowedRoles().isEmpty()) {
+                    instancePage.getAllowedRoles().addAll(templatePage.getAllowedRoles());
                 }
 
                 instance.getPages().add(instancePage);
@@ -1067,11 +1077,16 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
 
             if (!existingOrders.contains(templateOrder)) {
+                // Initialize lazy collections for this page
+                Hibernate.initialize(templatePage.getAllowedRoles());
+
                 // This page is in template but not in instance - add it
                 NoteBookPage newPage = new NoteBookPage();
                 newPage.setTitle(templatePage.getTitle());
                 newPage.setOrder(templatePage.getOrder());
                 newPage.setContent(templatePage.getContent());
+                newPage.setInstructions(templatePage.getInstructions());
+                newPage.setSampleTypeId(templatePage.getSampleTypeId());
                 newPage.setNotebook(instance);
                 newPage.setCompleted(false);
 
@@ -1081,6 +1096,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 }
                 if (templatePage.getTests() != null) {
                     newPage.getTests().addAll(templatePage.getTests());
+                }
+
+                // Copy allowed roles for page-level access control
+                if (templatePage.getAllowedRoles() != null && !templatePage.getAllowedRoles().isEmpty()) {
+                    newPage.getAllowedRoles().addAll(templatePage.getAllowedRoles());
                 }
 
                 instance.getPages().add(newPage);

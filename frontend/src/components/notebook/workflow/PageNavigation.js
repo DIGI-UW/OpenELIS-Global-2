@@ -1,7 +1,7 @@
 import React from "react";
 import { FormattedMessage } from "react-intl";
-import { Tag } from "@carbon/react";
-import { Checkmark, InProgress, CircleDash } from "@carbon/react/icons";
+import { Tag, Tooltip } from "@carbon/react";
+import { Checkmark, InProgress, CircleDash, Locked } from "@carbon/react/icons";
 import "./NotebookWorkflow.css";
 
 /**
@@ -36,7 +36,10 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
     return Math.round((progress.completed / progress.total) * 100);
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status, hasAccess = true) => {
+    if (!hasAccess) {
+      return <Locked size={16} className="status-icon locked" />;
+    }
     switch (status) {
       case "complete":
         return <Checkmark size={16} className="status-icon complete" />;
@@ -91,32 +94,67 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
           const status = getProgressStatus(page.id);
           const percentage = getProgressPercentage(page.id);
           const isActive = index === activePage;
+          const hasAccess = page.hasAccess !== false; // Default to true if not specified
+          const isDisabled = !hasAccess;
 
-          return (
+          const pageItem = (
             <div
               key={page.id}
               role="button"
               aria-pressed={isActive}
-              className={`page-item ${isActive ? "active" : ""} ${status}`}
-              onClick={() => handlePageClick(index)}
+              aria-disabled={isDisabled}
+              className={`page-item ${isActive ? "active" : ""} ${status} ${isDisabled ? "disabled" : ""}`}
+              onClick={() => !isDisabled && handlePageClick(index)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+                if (!isDisabled && (e.key === "Enter" || e.key === " ")) {
                   e.preventDefault();
                   handlePageClick(index);
                 }
               }}
-              tabIndex={0}
+              tabIndex={isDisabled ? -1 : 0}
+              style={isDisabled ? { opacity: 0.5, cursor: "not-allowed" } : {}}
             >
-              <div className="page-status-cell">{getStatusIcon(status)}</div>
+              <div className="page-status-cell">
+                {getStatusIcon(status, hasAccess)}
+              </div>
               <div className="page-title-cell">
                 <span className="page-number">{index + 1}.</span>
                 <span className="page-title">{page.title}</span>
               </div>
               <div className="page-progress-cell">
-                {getStatusTag(status, percentage)}
+                {isDisabled ? (
+                  <Tag type="gray">
+                    <FormattedMessage
+                      id="notebook.page.restricted"
+                      defaultMessage="Restricted"
+                    />
+                  </Tag>
+                ) : (
+                  getStatusTag(status, percentage)
+                )}
               </div>
             </div>
           );
+
+          // Wrap disabled pages in Tooltip to explain why
+          if (isDisabled) {
+            return (
+              <Tooltip
+                key={page.id}
+                label={
+                  <FormattedMessage
+                    id="notebook.page.accessDenied"
+                    defaultMessage="You don't have the required role to access this page"
+                  />
+                }
+                align="right"
+              >
+                {pageItem}
+              </Tooltip>
+            );
+          }
+
+          return pageItem;
         })}
       </div>
 

@@ -348,9 +348,10 @@ const NoteBookEntryForm = () => {
     });
     // Set selected roles for the multiselect
     const existingRoles = page.allowedRoles || [];
-    setPageSelectedRoles(
-      availableRoles.filter((role) => existingRoles.includes(role.id)),
+    const matchedRoles = availableRoles.filter((role) =>
+      existingRoles.includes(role.id),
     );
+    setPageSelectedRoles(matchedRoles);
     // If page has sampleTypeId, fetch the tests for that sample type
     if (page.sampleTypeId) {
       getFromOpenElisServer(
@@ -1085,44 +1086,25 @@ const NoteBookEntryForm = () => {
                 <br />
               </Column>
               <Column lg={8} md={8} sm={4}>
-                <Select
+                <FilterableMultiSelect
+                  key={`departments-${selectedOrganizations.map((o) => o.id).join(",")}`}
                   id="organizations"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "notebook.label.organizations",
-                    defaultMessage: "Department",
+                    defaultMessage: "Locations/Organizations",
                   })}
-                  value={
-                    selectedOrganizations.length > 0
-                      ? selectedOrganizations[0].id
-                      : ""
-                  }
-                  onChange={(event) => {
-                    const selectedId = event.target.value;
-                    if (selectedId) {
-                      const selectedOrg = organizations.find(
-                        (org) => String(org.id) === String(selectedId),
-                      );
-                      setSelectedOrganizations(
-                        selectedOrg ? [selectedOrg] : [],
-                      );
-                      setDepartmentsLoaded(true);
-                    } else {
-                      setSelectedOrganizations([]);
-                      setDepartmentsLoaded(true);
-                    }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.label.selectDepartments",
+                    defaultMessage: "Select departments/units",
+                  })}
+                  items={organizations}
+                  itemToString={(item) => (item ? item.label : "")}
+                  initialSelectedItems={selectedOrganizations}
+                  onChange={({ selectedItems }) => {
+                    setSelectedOrganizations(selectedItems);
+                    setDepartmentsLoaded(true);
                   }}
-                >
-                  <SelectItem
-                    text={intl.formatMessage({
-                      id: "label.button.select",
-                      defaultMessage: "Select department",
-                    })}
-                    value=""
-                  />
-                  {organizations.map((org) => (
-                    <SelectItem key={org.id} text={org.label} value={org.id} />
-                  ))}
-                </Select>
+                />
               </Column>
               <Column lg={8} md={8} sm={4}>
                 <FilterableMultiSelect
@@ -1534,6 +1516,35 @@ const NoteBookEntryForm = () => {
                                         <></>
                                       );
                                     })}
+                                  </div>
+                                </Column>
+                              </>
+                            )}
+                          {page.allowedRoles &&
+                            Array.isArray(page.allowedRoles) &&
+                            page.allowedRoles.length > 0 && (
+                              <>
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    {intl.formatMessage({
+                                      id: "notebook.page.allowedRoles",
+                                      defaultMessage: "Access Roles",
+                                    })}
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  <div>
+                                    {page.allowedRoles.map(
+                                      (roleName, roleIndex) => (
+                                        <Tag
+                                          key={roleIndex}
+                                          type="purple"
+                                          size="sm"
+                                        >
+                                          {roleName}
+                                        </Tag>
+                                      ),
+                                    )}
                                   </div>
                                 </Column>
                               </>
@@ -2094,6 +2105,7 @@ const NoteBookEntryForm = () => {
           required
         />
         <FilterableMultiSelect
+          key={`pageRoles-${pageSelectedRoles.map((r) => r.id).join(",")}`}
           id="pageAllowedRoles"
           titleText={intl.formatMessage({
             id: "notebook.page.modal.roles.label",
@@ -2105,7 +2117,7 @@ const NoteBookEntryForm = () => {
           })}
           items={availableRoles}
           itemToString={(item) => (item ? item.label : "")}
-          selectedItems={pageSelectedRoles}
+          initialSelectedItems={pageSelectedRoles}
           onChange={({ selectedItems }) => setPageSelectedRoles(selectedItems)}
           helperText={intl.formatMessage({
             id: "notebook.page.modal.roles.helper",

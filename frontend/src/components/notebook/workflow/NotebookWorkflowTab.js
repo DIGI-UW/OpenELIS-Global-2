@@ -85,32 +85,40 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Use actual pages if available, otherwise use default workflow pages
-  // Filter pages based on user's role access (page-level RBAC)
-  const effectivePages = useMemo(() => {
-    let pagesToUse = DEFAULT_WORKFLOW_PAGES;
-    if (pages && pages.length > 0) {
-      pagesToUse = pages;
-    }
-
-    // Filter pages based on allowedRoles (page-level access control)
-    return pagesToUse.filter((page) => {
-      // Get allowedRoles, handling null/undefined and Set/Array types
+  // Helper function to check if user has access to a page
+  const hasPageAccess = useCallback(
+    (page) => {
       const pageRoles = page.allowedRoles
         ? Array.isArray(page.allowedRoles)
           ? page.allowedRoles
           : Array.from(page.allowedRoles)
         : [];
 
-      // No roles defined = no restriction = show page to everyone
+      // No roles defined = no restriction = allow everyone
       if (pageRoles.length === 0) {
         return true;
       }
 
       // Check if user has any of the page's required roles
       return hasRoleForCurrentLabUnit(pageRoles);
-    });
-  }, [pages, hasRoleForCurrentLabUnit]);
+    },
+    [hasRoleForCurrentLabUnit],
+  );
+
+  // Use actual pages if available, otherwise use default workflow pages
+  // Include access info for each page (for disabling in navigation)
+  const effectivePages = useMemo(() => {
+    let pagesToUse = DEFAULT_WORKFLOW_PAGES;
+    if (pages && pages.length > 0) {
+      pagesToUse = pages;
+    }
+
+    // Add hasAccess property to each page for navigation
+    return pagesToUse.map((page) => ({
+      ...page,
+      hasAccess: hasPageAccess(page),
+    }));
+  }, [pages, hasPageAccess]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -294,6 +302,10 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   };
 
   const handlePageChange = (pageIndex) => {
+    // Don't navigate to pages the user doesn't have access to
+    if (effectivePages[pageIndex] && !effectivePages[pageIndex].hasAccess) {
+      return;
+    }
     setActivePage(pageIndex);
   };
 
