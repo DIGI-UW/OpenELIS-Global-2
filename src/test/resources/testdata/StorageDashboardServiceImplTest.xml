@@ -20,6 +20,15 @@
         name="SampleDisposed" display_key="status.sample.disposed"
         is_active="Y" />
 
+    <!-- Minimal lookup rows to make sample_item inserts self-contained for
+        CI -->
+    <localization id="1" english="Blood" french="Sang" />
+
+    <type_of_sample id="1" description="whole blood"
+        domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev="blood"
+        is_active="true" sort_order="4" name_localization_id="1"
+        display_key="sample.type.Blood" />
+
     <!-- ===================== -->
     <!-- STORAGE ROOMS (3 active, 1 inactive) -->
     <!-- ===================== -->
