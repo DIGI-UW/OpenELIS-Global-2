@@ -93,7 +93,7 @@ const QuickNavFooter = () => {
       role="navigation"
       aria-label={intl.formatMessage({ id: "nav.quickAccess" })}
     >
-      <nav className="quick-nav-container" role="navigation">
+      <nav className="quick-nav-container">
         {filteredNavItems.map((item) => {
           const IconComponent = iconMap[item.icon] || WarningAlt;
           const isActive = location.pathname === item.path;
