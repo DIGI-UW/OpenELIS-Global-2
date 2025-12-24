@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
+import QuickNavFooter from "./QuickNavFooter";
 import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -66,9 +67,10 @@ export default function Layout(props) {
         <div className="d-flex flex-column min-vh-100">
           <Header onChangeLanguage={props.onChangeLanguage} />
           <Theme theme="white">
-            <Content>{children}</Content>
+            <Content className="quick-nav-content">{children}</Content>
           </Theme>
           <Footer />
+          <QuickNavFooter />
         </div>
       </NotificationContext.Provider>
     </ConfigurationContext.Provider>

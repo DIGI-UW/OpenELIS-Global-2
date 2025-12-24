@@ -1,0 +1,109 @@
+{
+  "navigationItems": [
+    {
+      "id": "home",
+      "labelKey": "nav.home",
+      "path": "/",
+      "roles": [],
+      "icon": "Home"
+    },
+    {
+      "id": "registerPatient",
+      "labelKey": "nav.registerPatient",
+      "path": "/PatientManagement",
+      "roles": ["Reception"],
+      "icon": "UserFollow"
+    },
+    {
+      "id": "addOrder",
+      "labelKey": "nav.addOrder",
+      "path": "/SamplePatientEntry",
+      "roles": ["Reception"],
+      "icon": "DocumentAdd"
+    },
+    {
+      "id": "printBarcode",
+      "labelKey": "nav.printBarcode",
+      "path": "/PrintBarcode",
+      "roles": ["Reception"],
+      "icon": "Barcode"
+    },
+    {
+      "id": "modifyOrder",
+      "labelKey": "nav.modifyOrder",
+      "path": "/SampleEdit",
+      "roles": ["Reception", "Results"],
+      "icon": "Edit"
+    },
+    {
+      "id": "results",
+      "labelKey": "nav.results",
+      "path": "/result",
+      "roles": ["Results", "Validator"],
+      "icon": "ChartLineData"
+    },
+    {
+      "id": "validation",
+      "labelKey": "nav.validation",
+      "path": "/validation",
+      "roles": ["Validator"],
+      "icon": "CheckmarkOutline"
+    },
+    {
+      "id": "reports",
+      "labelKey": "nav.reports",
+      "path": "/report",
+      "roles": ["Reception", "Results", "Validator"],
+      "icon": "Document"
+    },
+    {
+      "id": "workplan",
+      "labelKey": "nav.workplan",
+      "path": "/workplan",
+      "roles": ["Results"],
+      "icon": "TaskView"
+    },
+    {
+      "id": "storage",
+      "labelKey": "nav.storage",
+      "path": "/storage",
+      "roles": ["Storage"],
+      "icon": "Archive"
+    },
+    {
+      "id": "inventory",
+      "labelKey": "nav.inventory",
+      "path": "/inventory",
+      "roles": ["Inventory"],
+      "icon": "Package"
+    },
+    {
+      "id": "admin",
+      "labelKey": "nav.admin",
+      "path": "/admin",
+      "roles": ["Global Administrator"],
+      "icon": "Settings"
+    },
+    {
+      "id": "batchEntry",
+      "labelKey": "nav.batchEntry",
+      "path": "/batch",
+      "roles": ["Reception"],
+      "icon": "DocumentMultiple_01"
+    },
+    {
+      "id": "nonConform",
+      "labelKey": "nav.nonConform",
+      "path": "/NonConformityNotification",
+      "roles": ["Results", "Validator"],
+      "icon": "WarningAlt"
+    },
+    {
+      "id": "pathology",
+      "labelKey": "nav.pathology",
+      "path": "/PathologyDashboard",
+      "roles": ["Pathologist"],
+      "icon": "Microscope"
+    }
+  ]
+}

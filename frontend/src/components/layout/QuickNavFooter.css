@@ -1,0 +1,169 @@
+/* Quick Navigation Footer Styles - Carbon Design System Aligned */
+
+/* Add padding to content area to prevent footer overlap */
+.quick-nav-content {
+  padding-bottom: 80px !important; /* Height of footer + extra space */
+}
+
+.quick-nav-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--cds-background, #ffffff);
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.08);
+  z-index: 8000;
+  padding: var(--cds-spacing-03, 0.5rem) var(--cds-spacing-05, 1rem);
+}
+
+.quick-nav-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--cds-spacing-02, 0.25rem);
+  max-width: 1584px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+/* Override Carbon Button styles for footer navigation */
+.quick-nav-item.cds--btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cds-spacing-02, 0.25rem);
+  min-width: 64px;
+  padding: var(--cds-spacing-03, 0.5rem) var(--cds-spacing-04, 0.75rem);
+  min-height: unset;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.quick-nav-item.cds--btn:hover {
+  background-color: var(--cds-hover-primary, #0353e9);
+  color: var(--cds-text-on-color, #ffffff);
+  border: none;
+  outline: none;
+}
+
+.quick-nav-item.cds--btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.quick-nav-item.cds--btn:active {
+  border: none;
+  outline: none;
+}
+
+.quick-nav-item.cds--btn .cds--btn__icon {
+  margin: 0;
+  position: static;
+}
+
+/* Active state for current page */
+.quick-nav-item--active.cds--btn {
+  background-color: var(--cds-background-selected, #e0e0e0);
+  color: var(--cds-text-primary, #161616);
+  border: none;
+  outline: none;
+}
+
+.quick-nav-item--active.cds--btn:hover {
+  background-color: var(--cds-hover-primary, #0353e9);
+  color: var(--cds-text-on-color, #ffffff);
+  border: none;
+  outline: none;
+}
+
+.quick-nav-item.cds--btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.quick-nav-item.cds--btn .quick-nav-label {
+  font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--cds-body-compact-01-font-size, 0.875rem);
+  font-weight: var(--cds-body-compact-01-font-weight, 400);
+  line-height: var(--cds-body-compact-01-line-height, 1.28572);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing, 0.16px);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+/* Responsive Design */
+@media (max-width: 672px) {
+  .quick-nav-container {
+    gap: var(--cds-spacing-01, 0.125rem);
+  }
+
+  .quick-nav-item.cds--btn {
+    padding: var(--cds-spacing-02, 0.25rem) var(--cds-spacing-03, 0.5rem);
+    min-width: 56px;
+  }
+
+  .quick-nav-item.cds--btn .quick-nav-label {
+    font-size: 0.75rem;
+    max-width: 80px;
+  }
+}
+
+@media (max-width: 320px) {
+  .quick-nav-item.cds--btn {
+    min-width: 48px;
+  }
+
+  .quick-nav-item.cds--btn .quick-nav-label {
+    font-size: 0.6875rem;
+    max-width: 60px;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .quick-nav-footer {
+    border-top-width: 2px;
+  }
+
+  .quick-nav-item:focus {
+    outline-width: 3px;
+  }
+}
+
+/* Dark Mode Support (if enabled) */
+@media (prefers-color-scheme: dark) {
+  .quick-nav-footer {
+    background-color: var(--cds-background, #262626);
+    border-top-color: var(--cds-border-subtle-01, #525252);
+  }
+
+  .quick-nav-item {
+    color: var(--cds-text-primary, #f4f4f4);
+  }
+
+  .quick-nav-item:hover {
+    background-color: var(--cds-layer-hover-01, #353535);
+  }
+
+  .quick-nav-item:active {
+    background-color: var(--cds-layer-active-01, #525252);
+  }
+
+  .quick-nav-item svg {
+    fill: var(--cds-icon-primary, #f4f4f4);
+  }
+}
+
+/* Accessibility - Reduce Motion */
+@media (prefers-reduced-motion: reduce) {
+  .quick-nav-item {
+    transition: none;
+  }
+}
