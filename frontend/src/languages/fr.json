@@ -2355,7 +2355,6 @@
   "reports.format": "Format d'exportation",
   "reports.format.select": "Sélectionner un format",
   "reports.dateRange": "Intervalle de dates",
- feat/1882-quick-nav-footer
   "reports.startDate": "Start Date",
   "reports.endDate": "End Date",
   "reports.options": "Filter Options",
