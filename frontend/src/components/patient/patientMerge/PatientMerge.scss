@@ -1,0 +1,466 @@
+/* Progress Indicator - wider to prevent text cutoff */
+.patientMergeProgress {
+  margin: 1.5rem auto;
+  width: 70%;
+  max-width: 800px;
+}
+
+@media (max-width: 768px) {
+  .patientMergeProgress {
+    width: 100%;
+  }
+}
+
+/* Notifications */
+.patientMergeNotification {
+  margin: 1rem 0;
+}
+
+/* Navigation */
+.patientMergeNavigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.navigationLeft {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.navigationRight {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Patient Selection Step */
+.patientSelectionSection {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.patientSelectionSection h4 {
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+/* Search Form Grid - improved spacing */
+.searchFormGrid {
+  margin-bottom: 1rem;
+  row-gap: 1rem;
+}
+
+.searchFormGrid .cds--form-item {
+  margin-bottom: 0;
+}
+
+.searchButtons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+/* Search Results Section */
+.patientSearchResults {
+  margin-top: 1rem;
+}
+
+.patientResultsTable {
+  margin-top: 1rem;
+  background-color: white;
+}
+
+/* Change selection link */
+.changeSelectionButton {
+  margin-top: 1rem;
+}
+
+.selectedPatientCard {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.selectedPatientCard.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  color: #6f6f6f;
+  border-style: dashed;
+}
+
+.selectedPatientHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.selectedPatientHeader h5 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+/* Patient Card Sections */
+.patientCardSection {
+  margin-bottom: 0.75rem;
+}
+
+.patientCardSection .sectionLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Inline label-value rows */
+.patientDetailRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.patientDetailRow .label {
+  font-size: 0.875rem;
+  color: #6f6f6f;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.patientDetailRow .label::after {
+  content: ":";
+}
+
+.patientDetailRow .value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #161616;
+}
+
+/* Statistics Divider */
+.statisticsDivider {
+  margin: 0.75rem 0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Statistics Section */
+.patientStatistics {
+  display: flex;
+  gap: 2rem;
+  padding-top: 0.5rem;
+}
+
+.statisticItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.statisticItem .statisticValue {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0f62fe;
+}
+
+.statisticItem .statisticLabel {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+  margin-top: 0.125rem;
+}
+
+/* Legacy grid layout (kept for backward compatibility) */
+.patientDetailsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.patientDetailItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.patientDetailItem .label {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+}
+
+.patientDetailItem .value {
+  font-weight: 500;
+}
+
+/* Empty search results state */
+.emptySearchResults {
+  margin-top: 1rem;
+  padding: 2rem;
+}
+
+.emptyStateContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: #6f6f6f;
+}
+
+.emptyStateContent svg {
+  margin-bottom: 1rem;
+  color: #a8a8a8;
+}
+
+.emptyStateContent .emptyStateTitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #525252;
+  margin: 0 0 0.5rem 0;
+}
+
+.emptyStateContent .emptyStateDescription {
+  font-size: 0.875rem;
+  color: #6f6f6f;
+  margin: 0;
+}
+
+/* Primary Selection Step */
+.primarySelectionContainer {
+  padding: 1rem;
+}
+
+.warningBanner {
+  margin-bottom: 1.5rem;
+}
+
+.primarySelectionQuestion {
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.primarySelectionOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.patientOption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.patientAccordion {
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.demographicsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.demographicsItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.demographicsItem .label {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+  margin-bottom: 0.25rem;
+}
+
+.demographicsItem .value {
+  font-weight: 500;
+}
+
+.clinicalSummary {
+  padding: 1rem;
+}
+
+.clinicalSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.identifiersList {
+  padding: 1rem;
+}
+
+.identifierItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.identifierItem:last-child {
+  border-bottom: none;
+}
+
+/* Confirmation Step */
+.confirmationContainer {
+  padding: 1rem;
+}
+
+.criticalWarningBanner {
+  margin-bottom: 1.5rem;
+}
+
+.mergeSummarySection {
+  margin-bottom: 1.5rem;
+}
+
+.mergeSummarySection h4 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.summaryLabel {
+  color: #6f6f6f;
+}
+
+.summaryValue {
+  font-weight: 500;
+}
+
+.dataConsolidationSection {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.dataConsolidationSection h5 {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.dataConsolidationList {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.dataConsolidationList li {
+  margin-bottom: 0.25rem;
+}
+
+.identifiersPreserveSection {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.identifiersPreserveSection h5 {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.conflictingInfoSection {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #fff1f1;
+  border: 1px solid #da1e28;
+  border-radius: 4px;
+}
+
+.conflictingInfoSection h5 {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #da1e28;
+}
+
+.conflictingInfoList {
+  list-style: disc;
+  padding-left: 1.5rem;
+  color: #da1e28;
+}
+
+.conflictingInfoList li {
+  margin-bottom: 0.25rem;
+}
+
+.conflictNote {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #6f6f6f;
+}
+
+.reasonSection {
+  margin-bottom: 1.5rem;
+}
+
+.confirmationCheckbox {
+  margin-top: 1rem;
+}
+
+/* Data Table Customization */
+.patientSearchResults .cds--data-table {
+  background-color: white;
+}
+
+.dataSourceTag {
+  margin-left: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .patientMergeContainer {
+    padding: 1rem;
+  }
+
+  .patientDetailsGrid,
+  .demographicsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .patientStatistics {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .clinicalSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .patientMergeNavigation {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .navigationLeft,
+  .navigationRight {
+    width: 100%;
+    justify-content: center;
+  }
+}

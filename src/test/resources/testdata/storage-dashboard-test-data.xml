@@ -29,7 +29,7 @@
 
     <storage_box id="1000"
         fhir_uuid="10000000-0000-0000-0000-000000001004" label="Box1"
-        short_code="BOX1" type="plate" rows="8" columns="12" active="true"
+        code="BOX1" type="plate" rows="8" columns="12" active="true"
         parent_rack_id="1000" sys_user_id="1"
         last_updated="2025-01-01 12:00:00" />
 

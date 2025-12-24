@@ -35,8 +35,8 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
     @Transactional(readOnly = true)
     public StorageBox findByCoordinates(String coordinates) {
         try {
-            // Search by shortCode (the short identifier used in barcodes)
-            String hql = "FROM StorageBox b WHERE b.shortCode = :coordinates";
+            // Search by code (the identifier used in barcodes)
+            String hql = "FROM StorageBox b WHERE b.code = :coordinates";
             Query<StorageBox> query = entityManager.unwrap(Session.class).createQuery(hql, StorageBox.class);
             query.setParameter("coordinates", coordinates);
             List<StorageBox> results = query.list();
@@ -50,8 +50,8 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
     @Transactional(readOnly = true)
     public StorageBox findByCoordinatesAndParentRack(String coordinates, StorageRack parentRack) {
         try {
-            // Search by shortCode (the short identifier used in barcodes)
-            String hql = "FROM StorageBox b WHERE b.shortCode = :coordinates AND b.parentRack.id = :rackId";
+            // Search by code (the identifier used in barcodes)
+            String hql = "FROM StorageBox b WHERE b.code = :coordinates AND b.parentRack.id = :rackId";
             Query<StorageBox> query = entityManager.unwrap(Session.class).createQuery(hql, StorageBox.class);
             query.setParameter("coordinates", coordinates);
             query.setParameter("rackId", parentRack.getId());

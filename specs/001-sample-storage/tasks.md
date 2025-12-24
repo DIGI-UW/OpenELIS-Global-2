@@ -2,7 +2,7 @@
 
 **Branch**: `001-sample-storage`  
 **Date**: 2025-10-30  
-**Last Updated**: 2025-01-27 (Status update to reflect actual implementation)  
+**Last Updated**: 2025-12-16 (Status update to reflect remediation progress)  
 **Input**: Design documents from `/specs/001-sample-storage/`
 
 **POC Scope**: User Stories P1 (Basic Assignment), P2A (Search/Retrieval), P2B
@@ -45,7 +45,7 @@ actionable tasks. Each phase corresponds to an implementation phase in
 | Phase 9   | [COMPLETE]    | Expandable Row Functionality                    | All            | 0               |
 | Phase 9.5 | [COMPLETE]    | Capacity Calculation Logic                      | All            | 0               |
 | Phase 10  | [IN PROGRESS] | Barcode Workflow Implementation                 | All            | 0               |
-| Phase 11  | [NOT STARTED] | Polish & Cross-Cutting Concerns                 | 0              | All             |
+| Phase 11  | [IN PROGRESS] | Polish & Cross-Cutting Concerns                 | 3              | T137-T143l      |
 | Phase 12  | [NOT STARTED] | Constitution Compliance Verification            | 0              | All             |
 
 ---
@@ -1888,24 +1888,26 @@ assignment, frontend widgets, dashboard).
 
 ### Tests First - Frontend E2E Tests (Write BEFORE final verification)
 
-- [ ] T134 [P] Write Cypress E2E test
-      `frontend/cypress/e2e/storageLocationCRUD.cy.js` for Edit Location
-      operations: testEditRoom_UpdatesNameAndDescription (edit room name and
-      description), testEditDevice_UpdatesTypeAndCapacity (edit device type and
-      capacity), testEditLocation_CodeReadOnly (verify code field cannot be
-      edited), testEditLocation_ValidationErrors (verify duplicate code
-      validation)
+- [x] T134 [P] Write Cypress E2E test
+      `frontend/cypress/e2e/storageLocationCRUD-integration.cy.js` for Edit
+      Location operations: testEditRoom_UpdatesNameAndDescription (edit room
+      name and description), testEditDevice_UpdatesTypeAndCapacity (edit device
+      type and capacity), testEditLocation_CodeReadOnly (verify code field
+      cannot be edited), testEditLocation_ValidationErrors (verify duplicate
+      code validation)
 
-- [ ] T135 [P] Write Cypress E2E test
-      `frontend/cypress/e2e/storageLocationCRUD.cy.js` for Delete Location
-      operations: testDeleteRoom_WithDevices_ShowsError (attempt to delete room
-      with devices), testDeleteDevice_WithSamples_ShowsError (attempt to delete
-      device with samples), testDeleteLocation_NoConstraints_Deletes (delete
-      location with no constraints), testDeleteLocation_ConfirmationRequired
-      (verify confirmation dialog appears)
+- [x] T135 [P] Write Cypress E2E test
+      `frontend/cypress/e2e/storageLocationCRUD-integration.cy.js` for Delete
+      Location operations: testDeleteRoom_WithDevices_ShowsError (attempt to
+      delete room with devices), testDeleteDevice_WithSamples_ShowsError
+      (attempt to delete device with samples),
+      testDeleteLocation_NoConstraints_Deletes (delete location with no
+      constraints), testDeleteLocation_ConfirmationRequired (verify confirmation
+      dialog appears)
 
-- [ ] T136 Run Cypress E2E tests → Verify Location CRUD scenarios work:
-      `npm run cy:run -- --spec "cypress/e2e/storageLocationCRUD.cy.js"`
+- [x] T136 Run Cypress E2E tests → Verify Location CRUD scenarios work:
+      `npm run cy:run -- --spec "cypress/e2e/storageLocationCRUD-integration.cy.js"`
+      (5 tests passing)
 
 **Checkpoint**: Location CRUD Operations complete. Users can edit location
 fields (except Code and Parent which are read-only) via modal dialog, delete
@@ -2360,7 +2362,7 @@ capacities, but are not displayed when capacity cannot be determined.
 
 ---
 
-## Phase 11: Polish & Cross-Cutting Concerns [NOT STARTED]
+## Phase 11: Polish & Cross-Cutting Concerns [IN PROGRESS]
 
 **Purpose**: Final integration, optimization, and validation across all user
 stories
@@ -2384,6 +2386,107 @@ stories
       all pass
 - [ ] T143 Update documentation: Add any missing details to quickstart.md based
       on implementation learnings
+
+### C3 Remediation: Boxes/Plates CRUD Integration (User Testing Remediation)
+
+**Purpose**: Add Box/Plate CRUD controls **without breaking** the existing rack
+→ box → grid assignment workflow.
+
+**Reference**: `checklists/m2-frontend-remediation.md` (C3, CHK020–CHK028)
+
+- [x] T143i Integrate Box/Plate CRUD controls into Boxes tab **without replacing
+      grid UI**: - Add **Add Box/Plate** button, disabled until rack selected -
+      Show **Edit/Delete** overflow menu only when a box is selected - Files:
+      `frontend/src/components/storage/StorageDashboard.jsx`,
+      `frontend/src/components/storage/StorageDashboard/BoxCrudControls.jsx`
+
+- [x] T143j Wire Box modals + refresh behavior: - Render `EditBoxModal` +
+      `DeleteBoxModal` from `StorageDashboard.jsx` - On save/delete: refresh
+      rack boxes list (grid + dropdown) and show notification - Files:
+      `frontend/src/components/storage/StorageDashboard.jsx`,
+      `frontend/src/components/storage/LocationManagement/EditBoxModal.jsx`,
+      `frontend/src/components/storage/LocationManagement/DeleteBoxModal.jsx`
+
+- [x] T143k Add unit tests for Boxes CRUD controls: - Dashboard-level: add
+      button disabled until rack selected - Component-level: selected box shows
+      overflow menu - Files:
+      `frontend/src/components/storage/StorageDashboard.test.jsx`,
+      `frontend/src/components/storage/StorageDashboard/BoxCrudControls.test.jsx`
+
+- [x] T143l Write Cypress E2E tests for box CRUD workflow (C3 CHK028) ✅: -
+      Create box/plate under selected rack - Edit selected box/plate
+      (label/code) and verify persisted - Delete box/plate (including constraint
+      validation path) - Verify grid assignment workflow still works (select
+      rack → select box → grid renders) - File:
+      `frontend/cypress/e2e/storageLocationCRUD.cy.js` (extend) or a new focused
+      spec file `frontend/cypress/e2e/storageBoxCRUD.cy.js`
+
+### UX Polish & Visual Feedback (User Testing Remediation)
+
+**Purpose**: Address MEDIUM-severity UX issues discovered during user testing
+
+**Reference**: `checklists/m2-frontend-remediation.md`
+
+- [ ] T143a [P] **Visual feedback after edit/create**: Implement scroll-to-row
+      and highlight animation in `StorageDashboard.jsx` after location CRUD
+      operations. When a row is created/edited, scroll the table to show that
+      row and apply a temporary highlight animation (2-3 second fade) to help
+      users identify the changed row. Use CSS animation with Carbon color
+      tokens.
+
+- [ ] T143b [P] **Extended notification with location name**: Update success
+      notifications in `EditLocationModal.jsx` and create modals to: - Include
+      the specific location name in the message (e.g., "Room 'Main Lab' updated
+      successfully") - Extend notification duration from default (3s) to 5-7
+      seconds - Use Carbon InlineNotification with `hideCloseButton={false}` for
+      manual dismissal
+
+- [ ] T143c [P] **Context-specific form labels**: Update all location form
+      labels in `EditLocationModal.jsx` and `StorageLocationModal.jsx` to be
+      type-specific: - Room: "Room Name", "Room Code", "Room Description" -
+      Device: "Device Name", "Device Code", "Device Type" - Shelf: "Shelf
+      Label", "Shelf Code" - Rack: "Rack Label", "Rack Code" Update i18n message
+      keys in `en.json`, `fr.json`, `sw.json`: - `storage.room.name`,
+      `storage.device.name`, `storage.shelf.label`, `storage.rack.label` -
+      `storage.room.code`, `storage.device.code`, `storage.shelf.code`,
+      `storage.rack.code`
+
+- [ ] T143d [P] **Parent location read-only tooltip**: Add tooltip to disabled
+      Parent fields in `EditLocationModal.jsx` explaining why they are
+      read-only: "Parent location cannot be changed after creation. To move this
+      location, delete and recreate under the new parent." Use Carbon Tooltip
+      component.
+
+- [ ] T143e [P] **Sub-navigation hierarchy for Storage**: Add sub-menu items to
+      the Storage navigation in sidebar to provide direct links to dashboard
+      tabs: - Storage (parent menu item) - Sample Items - Rooms - Devices -
+      Shelves - Racks - Boxes Update
+      `frontend/src/components/layout/SideNav.jsx` or navigation config. Each
+      sub-item should navigate to `/storage?tab={tabName}` and highlight the
+      corresponding tab on the dashboard.
+
+- [ ] T143f [P] **Fix site banner configuration**: Document in deployment guide
+      that "Urine" header is caused by database configuration, not code: - Add
+      section to `docs/configuration.md` explaining BANNER_TEXT setting - Add
+      SQL fix command:
+      `UPDATE site_information SET value = 'OpenELIS Global' WHERE name = 'banner text';` -
+      Note: This is a site-specific configuration issue, not a code bug - The
+      `Header.js:451` correctly displays `configurationProperties?.BANNER_TEXT`
+
+- [ ] T143g Write unit tests for UX polish changes: - Test scroll-to-row
+      functionality - Test notification includes location name - Test form
+      labels are type-specific - Test tooltip displays on parent fields
+
+- [ ] T143h Write E2E test for visual feedback:
+      `frontend/cypress/e2e/storageLocationCRUD.cy.js` add: -
+      testEditRoom_ScrollsToAndHighlightsRow -
+      testCreateDevice_ScrollsToAndHighlightsRow -
+      testSuccessNotification_IncludesLocationName
+
+**Checkpoint**: Visual feedback after edit/create (scroll + highlight), extended
+notifications with location names, type-specific form labels, parent field
+tooltips, sub-navigation hierarchy for Storage, site banner configuration
+documented
 
 ### E2E Test Refactoring & Validation (Per Constitution V.5)
 

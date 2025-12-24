@@ -17,15 +17,10 @@ import {
   TableSelectRow,
   TableSelectAll,
   TableContainer,
-  Pagination,
-  Search,
   TextInput,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import {
