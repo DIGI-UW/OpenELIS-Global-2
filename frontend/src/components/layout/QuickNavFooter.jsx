@@ -95,7 +95,7 @@ const QuickNavFooter = () => {
     >
       <nav className="quick-nav-container" role="navigation">
         {filteredNavItems.map((item) => {
-          const IconComponent = iconMap[item.icon];
+          const IconComponent = iconMap[item.icon] || WarningAlt;
           const isActive = location.pathname === item.path;
           const label = intl.formatMessage({ id: item.labelKey });
 
