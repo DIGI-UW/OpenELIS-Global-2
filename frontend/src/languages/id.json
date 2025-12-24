@@ -3894,7 +3894,7 @@
   "nav.inventory": "Inventory",
   "nav.admin": "Admin",
   "nav.batchEntry": "Batch Entry",
-  "nav.nonConform": "Non-Conformity",
-  "nav.pathology": "Pathology",
-  "nav.quickAccess": "Quick Access Navigation"
+  "nav.nonConform": "Non-Konformitas",
+  "nav.pathology": "Patologi",
+  "nav.quickAccess": "Navigasi Akses Cepat"
 }
