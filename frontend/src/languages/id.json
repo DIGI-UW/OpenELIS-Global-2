@@ -2273,5 +2273,21 @@
   "reports.help.description": "Use these reports to analyze your inventory data:",
   "reports.help.tip1": "Use date ranges for trend analysis",
   "reports.help.tip2": "Group by type or location for better insights",
-  "reports.help.tip3": "Export to Excel for further analysis"
+  "reports.help.tip3": "Export to Excel for further analysis",
+  "nav.home": "Home",
+  "nav.registerPatient": "Register Patient",
+  "nav.addOrder": "Add Order",
+  "nav.printBarcode": "Print Barcode",
+  "nav.modifyOrder": "Modify Order",
+  "nav.results": "Results",
+  "nav.validation": "Validation",
+  "nav.reports": "Reports",
+  "nav.workplan": "Workplan",
+  "nav.storage": "Storage",
+  "nav.inventory": "Inventory",
+  "nav.admin": "Admin",
+  "nav.batchEntry": "Batch Entry",
+  "nav.nonConform": "Non-Conformity",
+  "nav.pathology": "Pathology",
+  "nav.quickAccess": "Quick Access Navigation"
 }

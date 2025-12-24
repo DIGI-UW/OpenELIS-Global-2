@@ -76,5 +76,21 @@
   "label.printHistory.unknownUser": "Haijulikani",
   "label.printHistory.viewAll": "Angalia Historia",
   "label.printHistory.byUser": "Na {user}",
-  "label.printHistory.count": "Lebo {count}"
+  "label.printHistory.count": "Lebo {count}",
+  "nav.home": "Nyumbani",
+  "nav.registerPatient": "Sajili Mgonjwa",
+  "nav.addOrder": "Ongeza Agizo",
+  "nav.printBarcode": "Chapisha Barcode",
+  "nav.modifyOrder": "Badilisha Agizo",
+  "nav.results": "Matokeo",
+  "nav.validation": "Uthibitisho",
+  "nav.reports": "Ripoti",
+  "nav.workplan": "Mpango wa Kazi",
+  "nav.storage": "Hifadhi",
+  "nav.inventory": "Hesabu",
+  "nav.admin": "Usimamizi",
+  "nav.batchEntry": "Ingizo la Kundi",
+  "nav.nonConform": "Kutotii",
+  "nav.pathology": "Patholojia",
+  "nav.quickAccess": "Urambazaji wa Haraka"
 }
