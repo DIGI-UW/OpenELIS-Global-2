@@ -21,6 +21,7 @@ import ImmunologyPostAnalysisPage from "../pages/immunology/ImmunologyPostAnalys
 import ImmunologyResultCompilationPage from "../pages/immunology/ImmunologyResultCompilationPage";
 import ImmunologyArchivingPage from "../pages/immunology/ImmunologyArchivingPage";
 import ImmunologyDataAnalysisPage from "../pages/immunology/ImmunologyDataAnalysisPage";
+import VirologySampleReceptionPage from "../pages/virology/VirologySampleReceptionPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -278,12 +279,84 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     }
   }, [entryId]);
 
-  // Render page-specific content based on page order
+  // Determine the workflow type based on notebook title
+  const workflowType = useMemo(() => {
+    const title = (notebook?.title || entry?.title || "").toLowerCase();
+    if (title.includes("virology") || title.includes("vaccine")) {
+      return "virology";
+    }
+    if (title.includes("immunology")) {
+      return "immunology";
+    }
+    // Default to immunology for backwards compatibility
+    return "immunology";
+  }, [notebook?.title, entry?.title]);
+
+  // Render page-specific content based on page order and workflow type
   // Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive
   const renderPageContent = (page) => {
     const pageOrder = page.order || 1;
     const progress = getProgressForPage(page.id);
 
+    // Debug logging
+    console.log("renderPageContent called:", {
+      page,
+      pageOrder,
+      entryId,
+      workflowType,
+    });
+
+    // Virology & Vaccine Unit workflow (3 stages per PDF spec)
+    // Stage 1: Sample Intake & Registration
+    // Stage 2: Virus Culture Growth (In-Lab)
+    // Stage 3: Vaccine Development (Partially External)
+    if (workflowType === "virology") {
+      switch (pageOrder) {
+        case 1:
+          // Stage 1: Sample Intake & Registration
+          // Sample arrival (pre-labeled or labeled), metadata entry, test type assignment
+          return (
+            <VirologySampleReceptionPage
+              key={`virology-intake-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 2:
+          // Stage 2: Virus Culture Growth (In-Lab)
+          // Media prep, sterilization, cell culture, QC, virus culture,
+          // dark room imaging, formulation, feeding, packaging
+          return (
+            <InitialProcessingPage
+              key={`virology-culture-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 3:
+          // Stage 3: Vaccine Development (Partially External)
+          // Virus isolation, titer measurement, genome sequencing,
+          // seed virus production, preclinical trials, clinical trials
+          return (
+            <AssaysPage
+              key={`virology-vaccine-dev-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        default:
+          // Fall through to default handling for any unexpected pages
+          break;
+      }
+    }
+
+    // Immunology workflow (default)
     switch (pageOrder) {
       case 1:
         // Page 1: Sample Reception - Use enhanced ImmunologySampleReceptionPage

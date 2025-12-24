@@ -259,8 +259,9 @@ function AssaysPage({ entryId, pageData, progress, onProgressUpdate }) {
   };
 
   // Render assay info column
-  const renderAssayInfo = (sample) => {
-    if (sample.assayTestType) {
+  // Note: render function receives (value, sample) from SampleGrid
+  const renderAssayInfo = (value, sample) => {
+    if (sample?.assayTestType) {
       return (
         <div style={{ fontSize: "12px" }}>
           <Tag type="blue" size="sm">
