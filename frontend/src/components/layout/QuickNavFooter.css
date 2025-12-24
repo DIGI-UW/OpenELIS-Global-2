@@ -49,9 +49,10 @@
   outline: none;
 }
 
-.quick-nav-item.cds--btn:focus {
-  outline: none;
-  box-shadow: none;
+.quick-nav-item.cds--btn:focus,
+.quick-nav-item.cds--btn:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: 2px;
 }
 
 .quick-nav-item.cds--btn:active {
