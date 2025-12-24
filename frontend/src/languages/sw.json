@@ -744,6 +744,7 @@
   "label.printHistory.never": "Haijachapishwa kamwe",
   "label.printHistory.unknownUser": "Haijulikani",
   "label.printHistory.viewAll": "Angalia Historia",
+
   "label.printLabel": "Print Label",
   "label.program": "Program",
   "label.qualifiers": "Qualifiers",
@@ -2384,5 +2385,23 @@
   "workplan.title": "Workplan",
   "workplan.unit.title": "Workplan By Unit",
   "workplan.unit.types": "Unit Type",
-  "yes.option": "Yes"
+  "yes.option": "Yes",
+  "label.printHistory.byUser": "Na {user}",
+  "label.printHistory.count": "Lebo {count}",
+  "nav.home": "Home",
+  "nav.registerPatient": "Register Patient",
+  "nav.addOrder": "Add Order",
+  "nav.printBarcode": "Print Barcode",
+  "nav.modifyOrder": "Modify Order",
+  "nav.results": "Results",
+  "nav.validation": "Validation",
+  "nav.reports": "Reports",
+  "nav.workplan": "Workplan",
+  "nav.storage": "Storage",
+  "nav.inventory": "Inventory",
+  "nav.admin": "Admin",
+  "nav.batchEntry": "Batch Entry",
+  "nav.nonConform": "Non-Conformity",
+  "nav.pathology": "Pathology",
+  "nav.quickAccess": "Quick Access Navigation"
 }
