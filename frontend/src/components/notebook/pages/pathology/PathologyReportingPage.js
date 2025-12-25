@@ -216,12 +216,13 @@ function PathologyReportingPage({
         if (componentMounted.current) {
           // Check if we got a valid response with any data
           // Accept response if it has any metrics fields, not just if totalSamplesProcessed > 0
-          const hasMetrics = response && (
-            response.totalSamplesProcessed !== undefined ||
-            response.monthlySpecimenVolume?.total !== undefined ||
-            response.turnaroundTime?.overall !== undefined ||
-            (response.monthlySpecimenVolume?.byType && response.monthlySpecimenVolume.byType.length > 0)
-          );
+          const hasMetrics =
+            response &&
+            (response.totalSamplesProcessed !== undefined ||
+              response.monthlySpecimenVolume?.total !== undefined ||
+              response.turnaroundTime?.overall !== undefined ||
+              (response.monthlySpecimenVolume?.byType &&
+                response.monthlySpecimenVolume.byType.length > 0));
 
           if (hasMetrics) {
             // We have data from backend (even if values are 0)
@@ -456,25 +457,33 @@ function PathologyReportingPage({
         "Specimen Rejection Rate",
         `${metrics.specimenRejectionRate ?? 0}%`,
         "<5%",
-        (metrics.specimenRejectionRate ?? 0) <= 5 ? "Within Target" : "Above Target",
+        (metrics.specimenRejectionRate ?? 0) <= 5
+          ? "Within Target"
+          : "Above Target",
       ]);
       csvData.push([
         "Assay Success Rate",
         `${metrics.assaySuccessRate ?? 0}%`,
         ">95%",
-        (metrics.assaySuccessRate ?? 0) >= 95 ? "Within Target" : "Below Target",
+        (metrics.assaySuccessRate ?? 0) >= 95
+          ? "Within Target"
+          : "Below Target",
       ]);
       csvData.push([
         "Average TAT (hours)",
         metrics.turnaroundTime?.overall ?? 0,
         "<48",
-        (metrics.turnaroundTime?.overall ?? 0) <= 48 ? "Within Target" : "Above Target",
+        (metrics.turnaroundTime?.overall ?? 0) <= 48
+          ? "Within Target"
+          : "Above Target",
       ]);
       csvData.push([
         "Equipment Downtime (hours)",
         metrics.equipmentDowntime?.total ?? 0,
         "<8",
-        (metrics.equipmentDowntime?.total ?? 0) <= 8 ? "Within Target" : "Above Target",
+        (metrics.equipmentDowntime?.total ?? 0) <= 8
+          ? "Within Target"
+          : "Above Target",
       ]);
       csvData.push([
         "QC Meetings This Period",
@@ -496,41 +505,25 @@ function PathologyReportingPage({
       csvData.push(["Category", "Score", "Max", "Status"]);
       csvData.push([
         "Rejection Rate",
-        rejRate <= 5
-          ? 25
-          : rejRate <= 10
-            ? 15
-            : 0,
+        rejRate <= 5 ? 25 : rejRate <= 10 ? 15 : 0,
         25,
         rejRate <= 5 ? "Good" : "Needs Improvement",
       ]);
       csvData.push([
         "Assay Success",
-        assayRate >= 95
-          ? 25
-          : assayRate >= 90
-            ? 15
-            : 0,
+        assayRate >= 95 ? 25 : assayRate >= 90 ? 15 : 0,
         25,
         assayRate >= 95 ? "Good" : "Needs Improvement",
       ]);
       csvData.push([
         "Turnaround Time",
-        tatVal <= 48
-          ? 25
-          : tatVal <= 72
-            ? 15
-            : 0,
+        tatVal <= 48 ? 25 : tatVal <= 72 ? 15 : 0,
         25,
         tatVal <= 48 ? "Good" : "Needs Improvement",
       ]);
       csvData.push([
         "Equipment Uptime",
-        downtimeVal <= 8
-          ? 25
-          : downtimeVal <= 24
-            ? 15
-            : 0,
+        downtimeVal <= 8 ? 25 : downtimeVal <= 24 ? 15 : 0,
         25,
         downtimeVal <= 8 ? "Good" : "Needs Improvement",
       ]);
@@ -610,7 +603,12 @@ function PathologyReportingPage({
       // Equipment Downtime
       // =============================================
       csvData.push(["EQUIPMENT DOWNTIME (PROCESSORS, MICROTOMES, STAINERS)"]);
-      csvData.push(["Equipment", "Downtime (hrs)", "Incidents", "Last Incident"]);
+      csvData.push([
+        "Equipment",
+        "Downtime (hrs)",
+        "Incidents",
+        "Last Incident",
+      ]);
       equipmentDowntimeData.forEach((item) => {
         csvData.push([
           item.equipment,
@@ -652,7 +650,18 @@ function PathologyReportingPage({
       console.error("CSV export error:", err);
       setError("Failed to export metrics");
     }
-  }, [dateRange, healthScore, metrics, specimenVolumeData, tatByTypeData, rejectionByReasonData, equipmentDowntimeData, intl, setSuccess, setError]);
+  }, [
+    dateRange,
+    healthScore,
+    metrics,
+    specimenVolumeData,
+    tatByTypeData,
+    rejectionByReasonData,
+    equipmentDowntimeData,
+    intl,
+    setSuccess,
+    setError,
+  ]);
 
   // Helper function to trigger file download
   const downloadFile = useCallback((blob, fileName) => {
@@ -821,7 +830,10 @@ function PathologyReportingPage({
             backgroundColor: "#f4f4f4",
           }}
         >
-          <Analytics size={48} style={{ color: "#8d8d8d", marginBottom: "1rem" }} />
+          <Analytics
+            size={48}
+            style={{ color: "#8d8d8d", marginBottom: "1rem" }}
+          />
           <h4 style={{ marginBottom: "0.5rem", color: "#525252" }}>
             <FormattedMessage
               id="pathology.reporting.noData.title"
@@ -1075,7 +1087,8 @@ function PathologyReportingPage({
               className="progress-tile"
               style={{
                 borderColor:
-                  getMetricStatus(metrics.specimenRejectionRate ?? 0, 5) === "green"
+                  getMetricStatus(metrics.specimenRejectionRate ?? 0, 5) ===
+                  "green"
                     ? "#198038"
                     : "#da1e28",
               }}
@@ -1122,8 +1135,11 @@ function PathologyReportingPage({
                 className="progress-value"
                 style={{
                   color:
-                    getMetricStatus(metrics.assaySuccessRate ?? 0, 95, false) ===
-                    "green"
+                    getMetricStatus(
+                      metrics.assaySuccessRate ?? 0,
+                      95,
+                      false,
+                    ) === "green"
                       ? "#198038"
                       : "#da1e28",
                 }}
@@ -1155,8 +1171,10 @@ function PathologyReportingPage({
                 className="progress-value"
                 style={{
                   color:
-                    getMetricStatus(metrics.turnaroundTime?.overall ?? 0, 48) ===
-                    "green"
+                    getMetricStatus(
+                      metrics.turnaroundTime?.overall ?? 0,
+                      48,
+                    ) === "green"
                       ? "#198038"
                       : "#da1e28",
                 }}
@@ -1187,7 +1205,9 @@ function PathologyReportingPage({
                   defaultMessage="QC Meetings"
                 />
               </span>
-              <span className="progress-value">{metrics.qcMeetingsCount ?? 0}</span>
+              <span className="progress-value">
+                {metrics.qcMeetingsCount ?? 0}
+              </span>
             </Tile>
           </div>
         </Column>
@@ -1410,7 +1430,9 @@ function PathologyReportingPage({
                     </span>
                     <Tag
                       type={
-                        (metrics.rejectionRates?.overall ?? 0) <= 5 ? "green" : "red"
+                        (metrics.rejectionRates?.overall ?? 0) <= 5
+                          ? "green"
+                          : "red"
                       }
                       style={{ marginLeft: "0.5rem" }}
                     >
@@ -1432,7 +1454,9 @@ function PathologyReportingPage({
                   value={100 - (metrics.rejectionRates?.overall ?? 0)}
                   max={100}
                   status={
-                    (metrics.rejectionRates?.overall ?? 0) <= 5 ? "active" : "error"
+                    (metrics.rejectionRates?.overall ?? 0) <= 5
+                      ? "active"
+                      : "error"
                   }
                   label="Acceptance Rate"
                   style={{ marginTop: "0.5rem" }}
@@ -1690,7 +1714,10 @@ function PathologyReportingPage({
             })}
             value={reportData.reportNotes}
             onChange={(e) =>
-              setReportData((prev) => ({ ...prev, reportNotes: e.target.value }))
+              setReportData((prev) => ({
+                ...prev,
+                reportNotes: e.target.value,
+              }))
             }
             rows={3}
           />

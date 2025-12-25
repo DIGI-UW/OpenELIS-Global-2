@@ -172,7 +172,7 @@
         <comment>Insert Processing and Quality Control page template for Bacteriology workflow</comment>
 
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" value="204"/>
+            <column name="id" value="304"/>
             <column name="name" value="Processing &amp; Quality Control"/>
             <column name="display_key" value="workflow.page.bacteriology.processingQC"/>
             <column name="description" value="Prepare culture and biochemical media with IQC, test antibiotic discs, and process samples through Gram staining, microscopy, inoculation, and incubation"/>

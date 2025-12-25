@@ -312,11 +312,35 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
         sampleMaps.addAll(grandchildMaps);
 
+        // Repeat for grandchildren to get great-grandchildren (supports 4-level hierarchy:
+        // Specimen → Cassette → Block → Slide)
+        List<Map<String, Object>> greatGrandchildMaps = new java.util.ArrayList<>();
+        for (Map<String, Object> grandchildMap : grandchildMaps) {
+            String grandchildId = String.valueOf(grandchildMap.get("id"));
+            try {
+                List<SampleItem> greatGrandchildren = sampleEntryService.getChildSamples(Integer.parseInt(grandchildId));
+                for (SampleItem greatGrandchild : greatGrandchildren) {
+                    if (!includedSampleIds.contains(greatGrandchild.getId())) {
+                        org.openelisglobal.notebook.valueholder.NotebookPageSample greatGrandchildNps = notebookPageSampleService
+                                .getByPageIdAndSampleItemId(pageId, Integer.parseInt(greatGrandchild.getId()));
+                        Map<String, Object> greatGrandchildMap = buildSampleMap(greatGrandchild, greatGrandchildNps);
+                        greatGrandchildMaps.add(greatGrandchildMap);
+                        includedSampleIds.add(greatGrandchild.getId());
+                    }
+                }
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
+                        "Could not load great-grandchild samples for " + grandchildId + ": " + e.getMessage());
+            }
+        }
+        sampleMaps.addAll(greatGrandchildMaps);
+
         // Third pass: count children for each parent
         Map<String, Integer> childCountMap = new HashMap<>();
         for (Map<String, Object> sampleMap : sampleMaps) {
-            String parentId = (String) sampleMap.get("parentSampleItemId");
-            if (parentId != null) {
+            Object parentIdObj = sampleMap.get("parentSampleItemId");
+            if (parentIdObj != null) {
+                String parentId = String.valueOf(parentIdObj);
                 childCountMap.merge(parentId, 1, Integer::sum);
             }
         }
@@ -396,7 +420,26 @@ public class NotebookSampleEntryController extends BaseRestController {
         if (nps != null) {
             sampleMap.put("pageStatus", nps.getStatus() != null ? nps.getStatus().name() : "PENDING");
             sampleMap.put("pageSampleId", nps.getId());
-            sampleMap.put("data", nps.getData());
+            Map<String, Object> npsData = nps.getData();
+            sampleMap.put("data", npsData);
+            // Extract key fields from data object to top level for easier frontend access
+            if (npsData != null) {
+                if (npsData.containsKey("sampleCategory")) {
+                    sampleMap.put("sampleCategory", npsData.get("sampleCategory"));
+                }
+                if (npsData.containsKey("receivedDateTime")) {
+                    sampleMap.put("receivedDateTime", npsData.get("receivedDateTime"));
+                }
+                if (npsData.containsKey("sourceFacility")) {
+                    sampleMap.put("sourceFacility", npsData.get("sourceFacility"));
+                }
+                if (npsData.containsKey("specimenSite")) {
+                    sampleMap.put("specimenSite", npsData.get("specimenSite"));
+                }
+                if (npsData.containsKey("receivingStaff")) {
+                    sampleMap.put("receivingStaff", npsData.get("receivingStaff"));
+                }
+            }
         } else {
             sampleMap.put("pageStatus", "PENDING");
             sampleMap.put("pageSampleId", null);
@@ -418,11 +461,18 @@ public class NotebookSampleEntryController extends BaseRestController {
             sampleMap.put("collectionDate", null);
         }
 
-        // Hierarchy information
+        // Hierarchy information - calculate nesting level by following parent chain
         SampleItem parentSample = sampleItem.getParentSampleItem();
         if (parentSample != null) {
             sampleMap.put("isAliquot", true);
-            sampleMap.put("nestingLevel", 1);
+            // Calculate actual nesting level by walking up the parent chain
+            int nestingLevel = 1;
+            SampleItem ancestor = parentSample;
+            while (ancestor.getParentSampleItem() != null) {
+                nestingLevel++;
+                ancestor = ancestor.getParentSampleItem();
+            }
+            sampleMap.put("nestingLevel", nestingLevel);
             sampleMap.put("parentSampleItemId", parentSample.getId());
             sampleMap.put("parentExternalId", parentSample.getExternalId());
         } else {

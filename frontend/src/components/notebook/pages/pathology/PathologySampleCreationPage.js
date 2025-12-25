@@ -18,6 +18,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import SampleGrid from "../../workflow/SampleGrid";
@@ -153,7 +154,10 @@ function PathologySampleCreationPage({
               receivedDateTime: sample.receivedDateTime,
               receivedBy: sample.receivedBy,
               // Specimen Info
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
+              sampleType:
+                sample.sampleType ||
+                sample.specimenType ||
+                sample.typeOfSample?.description,
               specimenSite: sample.specimenSite,
               collectionDate:
                 sample.collectionDate || sample.collectionDateTime,
@@ -221,6 +225,23 @@ function PathologySampleCreationPage({
       return;
     }
 
+    // Validate date order: Collection Date must be before or equal to Received Date
+    if (newSample.collectionDateTime && newSample.receivedDateTime) {
+      const collectionDate = new Date(newSample.collectionDateTime);
+      const receivedDate = new Date(newSample.receivedDateTime);
+
+      if (collectionDate > receivedDate) {
+        setError(
+          intl.formatMessage({
+            id: "pathology.sampleCreation.error.dateOrder",
+            defaultMessage:
+              "Collection Date cannot be after Received Date. A sample must be collected before it can be received at the laboratory.",
+          }),
+        );
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -230,12 +251,12 @@ function PathologySampleCreationPage({
       pageId: pageData?.id,
     };
 
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       `/rest/notebook/pathology/sample/create`,
       JSON.stringify(sampleData),
-      (status) => {
+      (response) => {
         setSubmitting(false);
-        if (status === 200) {
+        if (response && response.success) {
           setCreateModalOpen(false);
           resetNewSampleForm();
           loadPageSamples();
@@ -243,12 +264,15 @@ function PathologySampleCreationPage({
             onProgressUpdate();
           }
         } else {
-          setError(
+          // Extract error message from server response
+          const errorMessage =
+            response?.error ||
+            response?.message ||
             intl.formatMessage({
               id: "pathology.sampleCreation.error.createFailed",
               defaultMessage: "Failed to create sample. Please try again.",
-            }),
-          );
+            });
+          setError(errorMessage);
         }
       },
     );
@@ -683,6 +707,39 @@ function PathologySampleCreationPage({
         primaryButtonDisabled={submitting}
         size="lg"
       >
+        {/* Error Display inside Modal */}
+        {error && (
+          <InlineNotification
+            kind="error"
+            title={intl.formatMessage({
+              id: "pathology.sampleCreation.error.title",
+              defaultMessage: "Error",
+            })}
+            subtitle={error}
+            onCloseButtonClick={() => setError(null)}
+            lowContrast
+            style={{ marginBottom: "1rem" }}
+          />
+        )}
+
+        {/* Loading indicator */}
+        {submitting && (
+          <div
+            style={{
+              padding: "1rem",
+              marginBottom: "1rem",
+              backgroundColor: "#e0f0ff",
+              borderRadius: "4px",
+              textAlign: "center",
+            }}
+          >
+            <FormattedMessage
+              id="pathology.sampleCreation.creating"
+              defaultMessage="Creating sample... Please wait."
+            />
+          </div>
+        )}
+
         <Grid fullWidth>
           {/* Patient Identification */}
           <Column lg={16} md={8} sm={4}>
@@ -785,94 +842,12 @@ function PathologySampleCreationPage({
             </Select>
           </Column>
 
-          {/* Receiving Information */}
+          {/* Specimen Collection Information */}
           <Column lg={16} md={8} sm={4}>
             <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
               <FormattedMessage
-                id="pathology.modal.receivingInfo"
-                defaultMessage="Receiving Information"
-              />
-            </h5>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              onChange={(dates) => handleDateChange(dates, "receivedDateTime")}
-            >
-              <DatePickerInput
-                id="receivedDateTime"
-                labelText={intl.formatMessage({
-                  id: "pathology.field.receivedDateTime",
-                  defaultMessage: "Received Date & Time *",
-                })}
-                placeholder="mm/dd/yyyy"
-              />
-            </DatePicker>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="receivedBy"
-              name="receivedBy"
-              labelText={intl.formatMessage({
-                id: "pathology.field.receivedBy",
-                defaultMessage: "Receiving Staff Name *",
-              })}
-              value={newSample.receivedBy}
-              onChange={handleInputChange}
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="sourceFacility"
-              name="sourceFacility"
-              labelText={intl.formatMessage({
-                id: "pathology.field.sourceFacility",
-                defaultMessage: "Source Facility",
-              })}
-              value={newSample.sourceFacility}
-              onChange={handleInputChange}
-            >
-              <SelectItem value="" text="" />
-              <SelectItem
-                value="Alert Hospital"
-                text={intl.formatMessage({
-                  id: "pathology.source.alertHospital",
-                  defaultMessage: "Alert Hospital",
-                })}
-              />
-              <SelectItem
-                value="Research project"
-                text={intl.formatMessage({
-                  id: "pathology.source.researchProject",
-                  defaultMessage: "Research project",
-                })}
-              />
-              <SelectItem
-                value="External clinic"
-                text={intl.formatMessage({
-                  id: "pathology.source.externalClinic",
-                  defaultMessage: "External clinic",
-                })}
-              />
-              <SelectItem
-                value="Other"
-                text={intl.formatMessage({
-                  id: "pathology.source.other",
-                  defaultMessage: "Other",
-                })}
-              />
-            </Select>
-          </Column>
-
-          {/* Specimen Type */}
-          <Column lg={16} md={8} sm={4}>
-            <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-              <FormattedMessage
-                id="pathology.modal.specimenType"
-                defaultMessage="Specimen Type & Material"
+                id="pathology.modal.specimenCollection"
+                defaultMessage="Specimen Collection Information"
               />
             </h5>
           </Column>
@@ -924,6 +899,88 @@ function PathologySampleCreationPage({
                 placeholder="mm/dd/yyyy"
               />
             </DatePicker>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="sourceFacility"
+              name="sourceFacility"
+              labelText={intl.formatMessage({
+                id: "pathology.field.sourceFacility",
+                defaultMessage: "Source Facility",
+              })}
+              value={newSample.sourceFacility}
+              onChange={handleInputChange}
+            >
+              <SelectItem value="" text="" />
+              <SelectItem
+                value="Alert Hospital"
+                text={intl.formatMessage({
+                  id: "pathology.source.alertHospital",
+                  defaultMessage: "Alert Hospital",
+                })}
+              />
+              <SelectItem
+                value="Research project"
+                text={intl.formatMessage({
+                  id: "pathology.source.researchProject",
+                  defaultMessage: "Research project",
+                })}
+              />
+              <SelectItem
+                value="External clinic"
+                text={intl.formatMessage({
+                  id: "pathology.source.externalClinic",
+                  defaultMessage: "External clinic",
+                })}
+              />
+              <SelectItem
+                value="Other"
+                text={intl.formatMessage({
+                  id: "pathology.source.other",
+                  defaultMessage: "Other",
+                })}
+              />
+            </Select>
+          </Column>
+
+          {/* Lab Reception Information */}
+          <Column lg={16} md={8} sm={4}>
+            <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
+              <FormattedMessage
+                id="pathology.modal.receivingInfo"
+                defaultMessage="Lab Reception Information"
+              />
+            </h5>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <DatePicker
+              datePickerType="single"
+              onChange={(dates) => handleDateChange(dates, "receivedDateTime")}
+            >
+              <DatePickerInput
+                id="receivedDateTime"
+                labelText={intl.formatMessage({
+                  id: "pathology.field.receivedDateTime",
+                  defaultMessage: "Received Date & Time *",
+                })}
+                placeholder="mm/dd/yyyy"
+              />
+            </DatePicker>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="receivedBy"
+              name="receivedBy"
+              labelText={intl.formatMessage({
+                id: "pathology.field.receivedBy",
+                defaultMessage: "Receiving Staff Name *",
+              })}
+              value={newSample.receivedBy}
+              onChange={handleInputChange}
+            />
           </Column>
 
           {/* Clinical Metadata (conditional) */}

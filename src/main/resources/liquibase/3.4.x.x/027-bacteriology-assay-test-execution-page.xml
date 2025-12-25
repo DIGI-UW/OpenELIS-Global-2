@@ -162,13 +162,13 @@
     <changeSet id="create-bacteriology-assay-test-execution-template" author="openelis-bacteriology">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 205
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 305
             </sqlCheck>
         </preConditions>
         <comment>Create workflow page template for Bacteriology Assay/Test Execution page</comment>
 
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" valueNumeric="205"/>
+            <column name="id" valueNumeric="305"/>
             <column name="name" value="Assay/Test Execution"/>
             <column name="display_key" value="bacteriology.assay.test.execution"/>
             <column name="page_type" value="ASSAY_EXECUTION"/>

@@ -175,12 +175,12 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                             // Log notebook pages for debugging
                             org.hibernate.Hibernate.initialize(page.getNotebook().getPages());
                             java.util.List<NoteBookPage> allPages = page.getNotebook().getPages();
-                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                                    "Notebook " + notebookId + " has " + (allPages != null ? allPages.size() : 0) + " pages");
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus", "Notebook " + notebookId
+                                    + " has " + (allPages != null ? allPages.size() : 0) + " pages");
                             if (allPages != null) {
                                 for (NoteBookPage p : allPages) {
-                                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                                            "  Page: id=" + p.getId() + " order=" + p.getOrder() + " title='" + p.getTitle() + "'");
+                                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus", "  Page: id="
+                                            + p.getId() + " order=" + p.getOrder() + " title='" + p.getTitle() + "'");
                                 }
                             }
 

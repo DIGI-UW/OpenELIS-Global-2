@@ -12,16 +12,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
+import org.openelisglobal.notebook.service.NotebookSampleEntryService;
 import org.openelisglobal.notebook.service.PathologySopService;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.PathologySop;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -57,12 +64,27 @@ public class PathologyWorkflowController extends BaseRestController {
     @Autowired
     private SampleItemService sampleItemService;
 
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private NotebookSampleEntryService notebookSampleEntryService;
+
+    @Autowired
+    private IStatusService statusService;
+
     // ========================================
     // SAMPLE CREATION ENDPOINTS
     // ========================================
 
     /**
      * Create a new pathology sample. POST /rest/notebook/pathology/sample/create
+     *
+     * Creates a Sample and SampleItem record, links it to the notebook entry, and
+     * creates a NotebookPageSample record for the sample creation page.
      */
     @PostMapping(value = "/sample/create", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -78,13 +100,575 @@ public class PathologyWorkflowController extends BaseRestController {
         }
 
         try {
-            // Store the sample creation data - actual sample creation logic would go here
+            // Extract required fields
+            Integer entryId = parseInteger(requestData.get("entryId"));
+            Integer pageId = parseInteger(requestData.get("pageId"));
+            String firstName = parseString(requestData.get("firstName"));
+            String specimenType = parseString(requestData.get("specimenType"));
+            String sampleCategory = parseString(requestData.get("sampleCategory"));
+            String receivedDateTime = parseString(requestData.get("receivedDateTime"));
+
+            // Validate required fields
+            if (entryId == null) {
+                response.put("success", false);
+                response.put("error", "Entry ID is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (firstName == null || firstName.isBlank()) {
+                response.put("success", false);
+                response.put("error", "First Name is MANDATORY for order acceptance");
+                return ResponseEntity.badRequest().body(response);
+            }
+            if (specimenType == null || specimenType.isBlank()) {
+                response.put("success", false);
+                response.put("error", "Specimen Type is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Look up the sample type by ID (frontend sends the ID, not the description)
+            TypeOfSample sampleType = typeOfSampleService.get(specimenType);
+
+            if (sampleType == null) {
+                response.put("success", false);
+                response.put("error", "Unknown specimen type ID: " + specimenType);
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Create parent Sample record
+            Sample parentSample = new Sample();
+            parentSample.setSysUserId(sysUserId);
+            parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
+
+            // Parse and set received timestamp
+            Timestamp receivedTimestamp = parseDateTime(receivedDateTime);
+            if (receivedTimestamp != null) {
+                parentSample.setReceivedTimestamp(receivedTimestamp);
+            } else {
+                parentSample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
+            }
+
+            // Generate accession number and insert sample
+            String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
+            parentSample.setId(sampleIdDb);
+
+            // Get status ID for SampleEntered
+            String sampleEnteredStatusId = statusService.getStatusID(SampleStatus.Entered);
+            if (sampleEnteredStatusId == null || "-1".equals(sampleEnteredStatusId)) {
+                sampleEnteredStatusId = "20"; // fallback
+            }
+
+            // Generate external ID from first name and specimen type description
+            String specimenTypeDescription = sampleType.getDescription() != null ? sampleType.getDescription()
+                    : sampleType.getLocalizedName();
+            String externalId = generateExternalId(firstName, specimenTypeDescription);
+
+            // Create SampleItem record
+            SampleItem item = new SampleItem();
+            item.setSample(parentSample);
+            item.setTypeOfSample(sampleType);
+            item.setExternalId(externalId);
+            item.setSortOrder("1");
+            item.setStatusId(sampleEnteredStatusId);
+            item.setSysUserId(sysUserId);
+
+            // Set collection date if provided
+            String collectionDateTime = parseString(requestData.get("collectionDateTime"));
+            if (collectionDateTime != null && !collectionDateTime.isBlank()) {
+                Timestamp collectionTimestamp = parseDateTime(collectionDateTime);
+                if (collectionTimestamp != null) {
+                    item.setCollectionDate(collectionTimestamp);
+                }
+            }
+
+            // Insert the sample item
+            String itemId = sampleItemService.insert(item);
+            item.setId(itemId);
+
+            // Add sample to the notebook entry
+            notebookEntryService.addSample(entryId, item, sysUserId);
+
+            // Link sample to notebook
+            notebookSampleEntryService.linkSamplesToNotebook(entryId, List.of(Integer.parseInt(itemId)));
+
+            // Create or update NotebookPageSample record if page ID is provided
+            if (pageId != null) {
+                NoteBookPage page = noteBookPageService.get(pageId);
+                if (page != null) {
+                    // Build metadata map from all request fields
+                    Map<String, Object> sampleData = new HashMap<>();
+                    // Patient Identification
+                    sampleData.put("firstName", firstName);
+                    sampleData.put("surname", requestData.get("surname"));
+                    sampleData.put("nationalId", requestData.get("nationalId"));
+                    // Sample Category
+                    sampleData.put("sampleCategory", sampleCategory);
+                    // Receiving Info
+                    sampleData.put("sourceFacility", requestData.get("sourceFacility"));
+                    sampleData.put("receivedDateTime", receivedDateTime);
+                    sampleData.put("receivedBy", requestData.get("receivedBy"));
+                    // Specimen Info (store description for display, not ID)
+                    sampleData.put("specimenType", specimenTypeDescription);
+                    sampleData.put("specimenTypeId", specimenType);
+                    sampleData.put("specimenSite", requestData.get("specimenSite"));
+                    sampleData.put("collectionDateTime", collectionDateTime);
+                    // Clinical metadata
+                    sampleData.put("patientId", requestData.get("patientId"));
+                    sampleData.put("requestingClinician", requestData.get("requestingClinician"));
+                    sampleData.put("clinicalDetails", requestData.get("clinicalDetails"));
+                    // Research metadata
+                    sampleData.put("studyId", requestData.get("studyId"));
+                    sampleData.put("piName", requestData.get("piName"));
+                    sampleData.put("participantAnimalId", requestData.get("participantAnimalId"));
+                    sampleData.put("ethicalApprovalRef", requestData.get("ethicalApprovalRef"));
+                    // Generated IDs
+                    sampleData.put("externalId", externalId);
+                    sampleData.put("accessionNumber", parentSample.getAccessionNumber());
+
+                    // Check if a NotebookPageSample already exists (created by linkSamplesToNotebook)
+                    NotebookPageSample existingPageSample = notebookPageSampleService.getBySampleItemIdAndPageId(itemId,
+                            pageId);
+
+                    if (existingPageSample != null) {
+                        // Update existing record with sample metadata
+                        existingPageSample.setData(sampleData);
+                        existingPageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                        existingPageSample.setSysUserId(sysUserId);
+                        notebookPageSampleService.update(existingPageSample);
+                    } else {
+                        // Create new record
+                        NotebookPageSample pageSample = new NotebookPageSample();
+                        pageSample.setNotebookPage(page);
+                        pageSample.setSampleItemId(itemId);
+                        pageSample.setData(sampleData);
+                        pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                        pageSample.setSysUserId(sysUserId);
+                        notebookPageSampleService.insert(pageSample);
+                    }
+                }
+            }
+
             response.put("success", true);
             response.put("message", "Sample created successfully");
+            response.put("sampleId", itemId);
+            response.put("externalId", externalId);
+            response.put("accessionNumber", parentSample.getAccessionNumber());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "createSample",
+                    "Failed to create sample: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to create sample: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Generate external ID from first name and specimen type.
+     */
+    private String generateExternalId(String firstName, String specimenType) {
+        // Sanitize first name (remove spaces, special chars)
+        String sanitizedName = firstName.replaceAll("[^a-zA-Z0-9]", "").toUpperCase();
+        if (sanitizedName.length() > 10) {
+            sanitizedName = sanitizedName.substring(0, 10);
+        }
+
+        // Generate abbreviation from specimen type
+        String abbrev = generateSpecimenTypeAbbrev(specimenType);
+
+        // Add timestamp for uniqueness
+        long timestamp = System.currentTimeMillis() % 100000;
+
+        return String.format("%s-%s-%05d", sanitizedName, abbrev, timestamp);
+    }
+
+    /**
+     * Generate abbreviation from specimen type.
+     */
+    private String generateSpecimenTypeAbbrev(String specimenType) {
+        if (specimenType == null || specimenType.isBlank()) {
+            return "UNK";
+        }
+        // Take first 3 letters of each significant word
+        String[] words = specimenType.toUpperCase().split("[\\s\\-\\/\\(\\)]+");
+        StringBuilder abbrev = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0 && !word.equals("FOR") && !word.equals("THE") && !word.equals("AND")) {
+                abbrev.append(word.substring(0, Math.min(3, word.length())));
+                if (abbrev.length() >= 6) {
+                    break;
+                }
+            }
+        }
+        return abbrev.length() > 0 ? abbrev.toString() : "UNK";
+    }
+
+    /**
+     * Parse date/time from various formats.
+     */
+    private Timestamp parseDateTime(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return null;
+        }
+
+        String trimmed = dateStr.trim();
+
+        // Handle ISO 8601 format (from frontend Date picker)
+        if (trimmed.contains("T")) {
+            try {
+                java.time.Instant instant = java.time.Instant.parse(trimmed);
+                return Timestamp.from(instant);
+            } catch (Exception e) {
+                // Try other formats
+            }
+        }
+
+        // Try datetime formats
+        String[] dateTimeFormats = { "yyyy-MM-dd HH:mm", "yyyy-MM-dd HH:mm:ss", "dd/MM/yyyy HH:mm",
+                "MM/dd/yyyy HH:mm" };
+
+        for (String format : dateTimeFormats) {
+            try {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern(format);
+                java.time.LocalDateTime dateTime = java.time.LocalDateTime.parse(trimmed, formatter);
+                return Timestamp.valueOf(dateTime);
+            } catch (Exception e) {
+                // Try next format
+            }
+        }
+
+        // Try date-only formats
+        String[] dateFormats = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "dd-MM-yyyy", "yyyy/MM/dd" };
+
+        for (String format : dateFormats) {
+            try {
+                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern(format);
+                java.time.LocalDate date = java.time.LocalDate.parse(trimmed, formatter);
+                return Timestamp.valueOf(date.atStartOfDay());
+            } catch (Exception e) {
+                // Try next format
+            }
+        }
+
+        return null;
+    }
+
+    // ========================================
+    // GROSSING ENDPOINTS
+    // ========================================
+
+    /**
+     * Submit gross examination results with images.
+     * POST /rest/notebook/pathology/grossing/submit
+     *
+     * Grossing is the first step in histopathology workflow where the pathologist:
+     * - Examines the specimen macroscopically
+     * - Documents gross findings (dimensions, weight, appearance, margins)
+     * - Photographs the specimen (up to 96 images with standardized naming)
+     * - Selects tissue sections for processing into cassettes
+     *
+     * Image naming convention: {AccessionNumber}_{SpecimenPart}_{ImageNumber}_{View}.jpg
+     * Example: PATH-2024-001_A_01_superior.jpg, PATH-2024-001_A_02_inferior.jpg
+     *
+     * UI sends JSON with:
+     * - sampleId, pageId, entryId
+     * - Gross findings: specimenReceived, specimenDescription, dimensions (L/W/H),
+     *   weight, color, texture, margins, landmarks, abnormalities
+     * - Sectioning plan: numberOfSections, sectioningMethod, sectionsToSubmit
+     * - Images: grossImages array of { base64Data, fileName, imageType, viewDescription }
+     * - Staff: examinerName, examinerInitials, grossingDate, grossingStartTime, grossingEndTime
+     */
+    @PostMapping(value = "/grossing/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> submitGrossing(@RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User not authenticated");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        try {
+            String sampleId = parseString(requestData.get("sampleId"));
+            Integer pageId = parseInteger(requestData.get("pageId"));
+
+            if (sampleId == null || pageId == null) {
+                response.put("success", false);
+                response.put("error", "Sample ID and Page ID are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Build grossing data map from all UI fields
+            Map<String, Object> grossingData = new HashMap<>();
+
+            // Gross examination findings
+            grossingData.put("grossingCompleted", true);
+            grossingData.put("specimenReceived", requestData.get("specimenReceived"));
+            grossingData.put("specimenDescription", requestData.get("specimenDescription"));
+
+            // Dimensions
+            grossingData.put("dimensionLength", requestData.get("dimensionLength"));
+            grossingData.put("dimensionWidth", requestData.get("dimensionWidth"));
+            grossingData.put("dimensionHeight", requestData.get("dimensionHeight"));
+            grossingData.put("dimensionUnit", requestData.get("dimensionUnit")); // cm or mm
+
+            // Weight
+            grossingData.put("specimenWeight", requestData.get("specimenWeight"));
+            grossingData.put("weightUnit", requestData.get("weightUnit")); // g or mg
+
+            // Appearance
+            grossingData.put("color", requestData.get("color"));
+            grossingData.put("texture", requestData.get("texture"));
+            grossingData.put("consistency", requestData.get("consistency"));
+            grossingData.put("margins", requestData.get("margins"));
+            grossingData.put("marginsInked", requestData.get("marginsInked"));
+            grossingData.put("inkColors", requestData.get("inkColors")); // Map of margin to ink color
+
+            // Anatomical landmarks and orientation
+            grossingData.put("landmarks", requestData.get("landmarks"));
+            grossingData.put("orientation", requestData.get("orientation"));
+            grossingData.put("orientationMarkers", requestData.get("orientationMarkers"));
+
+            // Abnormalities and lesions
+            grossingData.put("abnormalities", requestData.get("abnormalities"));
+            grossingData.put("lesionSize", requestData.get("lesionSize"));
+            grossingData.put("lesionLocation", requestData.get("lesionLocation"));
+            grossingData.put("distanceToMargins", requestData.get("distanceToMargins"));
+
+            // Sectioning plan
+            grossingData.put("numberOfSections", requestData.get("numberOfSections"));
+            grossingData.put("sectioningMethod", requestData.get("sectioningMethod")); // bread-loaf, cross-section, etc.
+            grossingData.put("sectionsToSubmit", requestData.get("sectionsToSubmit")); // List of section descriptions
+            grossingData.put("representativeSections", requestData.get("representativeSections"));
+            grossingData.put("entirelySubmitted", requestData.get("entirelySubmitted"));
+
+            // Free-text gross description (synoptic)
+            grossingData.put("grossDescription", requestData.get("grossDescription"));
+            grossingData.put("grossDictation", requestData.get("grossDictation")); // Voice dictation text
+
+            // Staff and timing
+            grossingData.put("examinerName", requestData.get("examinerName"));
+            grossingData.put("examinerInitials", requestData.get("examinerInitials"));
+            grossingData.put("grossingDate", requestData.get("grossingDate"));
+            grossingData.put("grossingStartTime", requestData.get("grossingStartTime"));
+            grossingData.put("grossingEndTime", requestData.get("grossingEndTime"));
+
+            // Process images if provided (up to 96 images)
+            List<Map<String, Object>> grossImages = (List<Map<String, Object>>) requestData.get("grossImages");
+            if (grossImages != null && !grossImages.isEmpty()) {
+                // Validate image count
+                if (grossImages.size() > 96) {
+                    response.put("success", false);
+                    response.put("error", "Maximum 96 images allowed per specimen");
+                    return ResponseEntity.badRequest().body(response);
+                }
+
+                // Get sample for naming convention
+                SampleItem sampleItem = sampleItemService.getData(sampleId);
+                String accessionNumber = sampleItem != null && sampleItem.getSample() != null
+                        ? sampleItem.getSample().getAccessionNumber()
+                        : "UNKNOWN";
+                String externalId = sampleItem != null ? sampleItem.getExternalId() : sampleId;
+
+                // Process each image with standardized naming
+                List<Map<String, Object>> processedImages = new ArrayList<>();
+                int imageCounter = 1;
+                for (Map<String, Object> image : grossImages) {
+                    Map<String, Object> processedImage = new HashMap<>();
+
+                    String originalFileName = parseString(image.get("fileName"));
+                    String viewDescription = parseString(image.get("viewDescription"));
+                    String specimenPart = parseString(image.get("specimenPart")); // A, B, C, etc.
+                    if (specimenPart == null || specimenPart.isEmpty()) {
+                        specimenPart = "A";
+                    }
+
+                    // Generate standardized file name
+                    // Format: {AccessionNumber}_{SpecimenPart}_{ImageNumber}_{View}.{ext}
+                    String extension = "jpg";
+                    if (originalFileName != null && originalFileName.contains(".")) {
+                        extension = originalFileName.substring(originalFileName.lastIndexOf(".") + 1).toLowerCase();
+                    }
+                    String viewSuffix = viewDescription != null && !viewDescription.isEmpty()
+                            ? viewDescription.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase()
+                            : "view";
+                    String standardizedFileName = String.format("%s_%s_%02d_%s.%s",
+                            accessionNumber != null ? accessionNumber.replaceAll("[^a-zA-Z0-9-]", "") : externalId,
+                            specimenPart,
+                            imageCounter,
+                            viewSuffix,
+                            extension);
+
+                    processedImage.put("originalFileName", originalFileName);
+                    processedImage.put("standardizedFileName", standardizedFileName);
+                    processedImage.put("specimenPart", specimenPart);
+                    processedImage.put("imageNumber", imageCounter);
+                    processedImage.put("viewDescription", viewDescription);
+                    processedImage.put("imageType", image.get("imageType"));
+                    processedImage.put("captureTime", image.get("captureTime"));
+                    processedImage.put("magnification", image.get("magnification"));
+                    processedImage.put("notes", image.get("notes"));
+
+                    // Store base64 data (in production, would save to file system/blob storage)
+                    String base64Data = parseString(image.get("base64Data"));
+                    if (base64Data != null && !base64Data.isEmpty()) {
+                        // For now, store reference; in production would save to storage
+                        processedImage.put("hasImageData", true);
+                        processedImage.put("imageDataSize", base64Data.length());
+                        // Note: In production, save to file system and store path instead
+                        // For now, we store a truncated version or reference
+                        if (base64Data.length() > 1000000) {
+                            // Large images: store reference only in metadata
+                            processedImage.put("imageStorageNote", "Image stored separately due to size");
+                        } else {
+                            // Small images: can store inline (thumbnails)
+                            processedImage.put("base64Data", base64Data);
+                        }
+                    }
+
+                    processedImages.add(processedImage);
+                    imageCounter++;
+                }
+
+                grossingData.put("grossImages", processedImages);
+                grossingData.put("grossImageCount", processedImages.size());
+            } else {
+                grossingData.put("grossImageCount", 0);
+            }
+
+            // Update or create the notebook page sample with grossing data
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+
+            if (pageSample != null) {
+                Map<String, Object> data = pageSample.getData() != null ? new HashMap<>(pageSample.getData())
+                        : new HashMap<>();
+                data.putAll(grossingData);
+                pageSample.setData(data);
+                pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                pageSample.setSysUserId(sysUserId);
+                notebookPageSampleService.update(pageSample);
+            } else {
+                // Create new page sample entry
+                NoteBookPage page = noteBookPageService.get(pageId);
+                if (page == null) {
+                    response.put("success", false);
+                    response.put("error", "Page not found: " + pageId);
+                    return ResponseEntity.badRequest().body(response);
+                }
+
+                NotebookPageSample newPageSample = new NotebookPageSample();
+                newPageSample.setNotebookPage(page);
+                newPageSample.setSampleItemId(sampleId);
+                newPageSample.setData(grossingData);
+                newPageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                newPageSample.setSysUserId(sysUserId);
+                notebookPageSampleService.insert(newPageSample);
+            }
+
+            response.put("success", true);
+            response.put("message", "Gross examination results saved successfully");
+            response.put("imageCount", grossingData.get("grossImageCount"));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "submitGrossing",
+                    "Failed to save grossing data: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to save grossing data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Get gross examination data for a sample.
+     * GET /rest/notebook/pathology/grossing/{sampleId}
+     */
+    @GetMapping(value = "/grossing/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getGrossingData(
+            @org.springframework.web.bind.annotation.PathVariable("sampleId") String sampleId,
+            @RequestParam Integer pageId,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+
+            if (pageSample == null || pageSample.getData() == null) {
+                response.put("success", true);
+                response.put("hasData", false);
+                response.put("message", "No grossing data found for this sample");
+                return ResponseEntity.ok(response);
+            }
+
+            Map<String, Object> data = pageSample.getData();
+
+            // Return all grossing-specific fields
+            response.put("success", true);
+            response.put("hasData", true);
+            response.put("grossingCompleted", data.get("grossingCompleted"));
+
+            // Specimen description
+            response.put("specimenReceived", data.get("specimenReceived"));
+            response.put("specimenDescription", data.get("specimenDescription"));
+
+            // Dimensions
+            response.put("dimensionLength", data.get("dimensionLength"));
+            response.put("dimensionWidth", data.get("dimensionWidth"));
+            response.put("dimensionHeight", data.get("dimensionHeight"));
+            response.put("dimensionUnit", data.get("dimensionUnit"));
+
+            // Weight
+            response.put("specimenWeight", data.get("specimenWeight"));
+            response.put("weightUnit", data.get("weightUnit"));
+
+            // Appearance
+            response.put("color", data.get("color"));
+            response.put("texture", data.get("texture"));
+            response.put("consistency", data.get("consistency"));
+            response.put("margins", data.get("margins"));
+            response.put("marginsInked", data.get("marginsInked"));
+            response.put("inkColors", data.get("inkColors"));
+
+            // Orientation and landmarks
+            response.put("landmarks", data.get("landmarks"));
+            response.put("orientation", data.get("orientation"));
+            response.put("orientationMarkers", data.get("orientationMarkers"));
+
+            // Abnormalities
+            response.put("abnormalities", data.get("abnormalities"));
+            response.put("lesionSize", data.get("lesionSize"));
+            response.put("lesionLocation", data.get("lesionLocation"));
+            response.put("distanceToMargins", data.get("distanceToMargins"));
+
+            // Sectioning plan
+            response.put("numberOfSections", data.get("numberOfSections"));
+            response.put("sectioningMethod", data.get("sectioningMethod"));
+            response.put("sectionsToSubmit", data.get("sectionsToSubmit"));
+            response.put("representativeSections", data.get("representativeSections"));
+            response.put("entirelySubmitted", data.get("entirelySubmitted"));
+
+            // Gross description
+            response.put("grossDescription", data.get("grossDescription"));
+            response.put("grossDictation", data.get("grossDictation"));
+
+            // Staff and timing
+            response.put("examinerName", data.get("examinerName"));
+            response.put("examinerInitials", data.get("examinerInitials"));
+            response.put("grossingDate", data.get("grossingDate"));
+            response.put("grossingStartTime", data.get("grossingStartTime"));
+            response.put("grossingEndTime", data.get("grossingEndTime"));
+
+            // Images
+            response.put("grossImageCount", data.get("grossImageCount"));
+            response.put("grossImages", data.get("grossImages"));
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("success", false);
-            response.put("error", "Failed to create sample: " + e.getMessage());
+            response.put("error", "Failed to get grossing data: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
@@ -584,7 +1168,8 @@ public class PathologyWorkflowController extends BaseRestController {
             int skippedCount = 0;
             List<String> errors = new ArrayList<>();
 
-            // Fetch all page samples ONCE before the loop to avoid caching/stale data issues
+            // Fetch all page samples ONCE before the loop to avoid caching/stale data
+            // issues
             List<NotebookPageSample> pageSamples = notebookPageSampleService.getByPageId(pageId);
 
             // Build a lookup map by accession number for efficient matching
@@ -665,7 +1250,8 @@ public class PathologyWorkflowController extends BaseRestController {
                 resultData.put("resultsImportedAt", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
 
                 matchingSample.setData(resultData);
-                // Keep sample as IN_PROGRESS after result entry - use "Mark Complete" button to complete
+                // Keep sample as IN_PROGRESS after result entry - use "Mark Complete" button to
+                // complete
                 matchingSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
                 matchingSample.setSysUserId(sysUserId);
                 notebookPageSampleService.update(matchingSample);

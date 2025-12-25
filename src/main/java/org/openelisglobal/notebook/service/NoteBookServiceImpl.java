@@ -1043,9 +1043,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         // Find the archiving page by title (Disposal & Archiving)
         // This is where samples go after Storage or when routed to external/storage
         NoteBookPage archivingPage = pages.stream()
-                .filter(p -> p.getTitle() != null
-                        && (p.getTitle().toLowerCase().contains("disposal")
-                                || p.getTitle().toLowerCase().contains("archiving")))
+                .filter(p -> p.getTitle() != null && (p.getTitle().toLowerCase().contains("disposal")
+                        || p.getTitle().toLowerCase().contains("archiving")))
                 .findFirst().orElse(null);
 
         if (archivingPage != null) {
