@@ -142,6 +142,12 @@ public class UserServiceImpl implements UserService {
             Boolean isLabRole) {
         List<String> currentUserRoles = userRoleService.getRoleIdsForUser(systemUser.getId());
         List<UserRole> deletedUserRoles = new ArrayList<>();
+
+        // Handle null selectedRoles - treat as empty list
+        if (selectedRoles == null) {
+            selectedRoles = new ArrayList<>();
+        }
+
         if (isLabRole) {
             for (String role : currentUserRoles) {
                 selectedRoles.add(role);
