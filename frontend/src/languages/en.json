@@ -426,6 +426,7 @@
   "field.sex": "Sex",
   "field.significantDigits": "Significant digits",
   "field.testSection": "Test Section",
+  "field.select.testSection": "Select Test Section",
   "field.testUnit": "Test Unit",
   "field.uom": "Unit of measure",
   "field.validRange": "Valid range",
