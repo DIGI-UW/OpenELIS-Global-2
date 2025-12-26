@@ -357,4 +357,48 @@
         </sql>
     </changeSet>
 
+    <!-- ======================================================== -->
+    <!-- 10. NOTEBOOK_PAGE_ALLOWED_ROLES table -->
+    <!-- Defines which roles can view/edit specific pages within a notebook -->
+    <!-- Enables page-level access control for workflow steps -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-allowed-roles-table" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE_ALLOWED_ROLES table for page-level role restrictions.</comment>
+        <createTable tableName="notebook_page_allowed_roles">
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey
+            tableName="notebook_page_allowed_roles"
+            columnNames="notebook_page_id, role"
+            constraintName="pk_notebook_page_allowed_roles"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_page_allowed_roles"
+            baseColumnNames="notebook_page_id"
+            referencedTableName="notebook_page"
+            referencedColumnNames="id"
+            constraintName="fk_npar_notebook_page"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Index for querying roles by notebook page -->
+    <changeSet id="add-notebook-page-allowed-roles-index" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating index for notebook_page_allowed_roles table.</comment>
+        <createIndex tableName="notebook_page_allowed_roles" indexName="idx_npar_notebook_page">
+            <column name="notebook_page_id"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>

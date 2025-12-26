@@ -27,6 +27,9 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { PermissionGate } from "../security";
+import { Permissions } from "../../constants/roles";
+import { usePermissions } from "../../hooks/usePermissions";
 import CustomDatePicker from "../common/CustomDatePicker";
 import {
   UserAvatar,
@@ -51,6 +54,8 @@ function NoteBookDashBoard() {
 
   const { notificationVisible } = useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { hasRoleForCurrentLabUnit } = usePermissions();
+
   const [statuses, setStatuses] = useState([]);
   const [noteBookEntries, setNoteBookEntries] = useState([]);
   const [noteBooks, setNoteBooks] = useState([]);
@@ -296,16 +301,25 @@ function NoteBookDashBoard() {
       return (
         <TableCell key={cell.id}>
           <div style={{ display: "flex", alignItems: "center" }}>
-            <Button
-              kind="ghost"
-              hasIconOnly
-              renderIcon={Edit}
-              iconDescription={intl.formatMessage({
-                id: "notebook.icon.edit",
+            <PermissionGate
+              roles={Permissions.CREATE_OR_EDIT_NOTEBOOK}
+              disabledTooltip={intl.formatMessage({
+                id: "notebook.permission.edit.required",
+                defaultMessage:
+                  "You need Notebook Administrator role to edit templates",
               })}
-              size="sm"
-              onClick={() => openNoteBookView(row.id)}
-            ></Button>
+            >
+              <Button
+                kind="ghost"
+                hasIconOnly
+                renderIcon={Edit}
+                iconDescription={intl.formatMessage({
+                  id: "notebook.icon.edit",
+                })}
+                size="sm"
+                onClick={() => openNoteBookView(row.id)}
+              ></Button>
+            </PermissionGate>
             {cell.value}
           </div>
         </TableCell>
@@ -344,16 +358,25 @@ function NoteBookDashBoard() {
               <br />
             </Column>
             <Column lg={16} md={8} sm={4}>
-              <Button
-                style={{ width: "70%" }}
-                size="sm"
-                onClick={() => {
-                  openNoteBookEntryForm();
-                }}
+              <PermissionGate
+                roles={Permissions.CREATE_OR_EDIT_NOTEBOOK}
+                disabledTooltip={intl.formatMessage({
+                  id: "notebook.permission.admin.required",
+                  defaultMessage:
+                    "You need Notebook Administrator role to create templates",
+                })}
               >
-                <Add />
-                <FormattedMessage id="notebook.button.newLabNotebook" />
-              </Button>
+                <Button
+                  style={{ width: "70%" }}
+                  size="sm"
+                  onClick={() => {
+                    openNoteBookEntryForm();
+                  }}
+                >
+                  <Add />
+                  <FormattedMessage id="notebook.button.newLabNotebook" />
+                </Button>
+              </PermissionGate>
             </Column>
             <Column lg={16} md={8} sm={4}>
               <br />
@@ -509,10 +532,30 @@ function NoteBookDashBoard() {
                     <Button
                       size="sm"
                       disabled={
-                        selectedNoteBook.technicianId != null &&
-                        userSessionDetails.userId !=
-                          selectedNoteBook.technicianId
+                        // Check if user has any of the notebook's specific allowedRoles
+                        // If no allowedRoles defined, anyone can access (empty = no restriction)
+                        (() => {
+                          const roles = selectedNoteBook?.allowedRoles
+                            ? Array.from(selectedNoteBook.allowedRoles)
+                            : [];
+                          // No roles = no restriction = enabled
+                          if (roles.length === 0) return false;
+                          return !hasRoleForCurrentLabUnit(roles);
+                        })()
                       }
+                      title={(() => {
+                        const roles = selectedNoteBook?.allowedRoles
+                          ? Array.from(selectedNoteBook.allowedRoles)
+                          : [];
+                        if (roles.length === 0) return undefined;
+                        return !hasRoleForCurrentLabUnit(roles)
+                          ? intl.formatMessage({
+                              id: "notebook.permission.entry.edit.required",
+                              defaultMessage:
+                                "You need permission to create or edit notebook entries",
+                            })
+                          : undefined;
+                      })()}
                       onClick={() => {
                         openNoteBookInstanceEntryForm();
                       }}
@@ -692,10 +735,31 @@ function NoteBookDashBoard() {
                             <Button
                               kind="secondary"
                               size="sm"
-                              disabled={
-                                entry.technicianId != null &&
-                                userSessionDetails.userId != entry.technicianId
-                              }
+                              disabled={(() => {
+                                // Check if user has any of the entry's allowedRoles (from template)
+                                const entryRoles = entry.allowedRoles
+                                  ? Array.isArray(entry.allowedRoles)
+                                    ? entry.allowedRoles
+                                    : Array.from(entry.allowedRoles)
+                                  : [];
+                                // User has required role = enabled
+                                if (
+                                  entryRoles.length === 0 ||
+                                  hasRoleForCurrentLabUnit(entryRoles)
+                                ) {
+                                  return false;
+                                }
+                                // User is the assigned technician = enabled
+                                if (
+                                  entry.technicianId != null &&
+                                  userSessionDetails.userId ==
+                                    entry.technicianId
+                                ) {
+                                  return false;
+                                }
+                                // Otherwise disabled
+                                return true;
+                              })()}
                               onClick={() => openNoteBookInstanceView(entry.id)}
                             >
                               <View size={13} />
@@ -707,11 +771,56 @@ function NoteBookDashBoard() {
                               <Button
                                 kind="primary"
                                 size="sm"
-                                disabled={
-                                  entry.technicianId != null &&
-                                  userSessionDetails.userId !=
-                                    entry.technicianId
-                                }
+                                disabled={(() => {
+                                  // Check if user has any of the entry's allowedRoles (from template)
+                                  const entryRoles = entry.allowedRoles
+                                    ? Array.isArray(entry.allowedRoles)
+                                      ? entry.allowedRoles
+                                      : Array.from(entry.allowedRoles)
+                                    : [];
+                                  // User has required role = enabled
+                                  if (
+                                    entryRoles.length === 0 ||
+                                    hasRoleForCurrentLabUnit(entryRoles)
+                                  ) {
+                                    return false;
+                                  }
+                                  // User is the assigned technician = enabled
+                                  if (
+                                    entry.technicianId != null &&
+                                    userSessionDetails.userId ==
+                                      entry.technicianId
+                                  ) {
+                                    return false;
+                                  }
+                                  // Otherwise disabled
+                                  return true;
+                                })()}
+                                title={(() => {
+                                  const entryRoles = entry.allowedRoles
+                                    ? Array.isArray(entry.allowedRoles)
+                                      ? entry.allowedRoles
+                                      : Array.from(entry.allowedRoles)
+                                    : [];
+                                  if (
+                                    entryRoles.length === 0 ||
+                                    hasRoleForCurrentLabUnit(entryRoles)
+                                  ) {
+                                    return undefined;
+                                  }
+                                  if (
+                                    entry.technicianId != null &&
+                                    userSessionDetails.userId ==
+                                      entry.technicianId
+                                  ) {
+                                    return undefined;
+                                  }
+                                  return intl.formatMessage({
+                                    id: "notebook.permission.entry.edit.required",
+                                    defaultMessage:
+                                      "You need permission to create or edit notebook entries",
+                                  });
+                                })()}
                                 onClick={() =>
                                   openNoteBookInstanceEdit(entry.id)
                                 }

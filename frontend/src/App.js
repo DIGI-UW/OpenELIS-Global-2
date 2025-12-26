@@ -345,7 +345,6 @@ export default function App() {
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
@@ -363,25 +362,21 @@ export default function App() {
                   path="/NoteBookInstanceEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
                   exact
                   component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NotebookSampleOrder/:notebookId"
                   exact
                   component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"

@@ -59,6 +59,8 @@ import {
   hasRole,
   toBase64,
 } from "../utils/Utils";
+import { usePermissions } from "../../hooks/usePermissions";
+import { Permissions } from "../../constants/roles";
 import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
 import MNTDWorkflowTab from "./workflow/MNTDWorkflowTab";
 import TBWorkflowTab from "./workflow/TBWorkflowTab";
@@ -98,6 +100,19 @@ const NoteBookInstanceEntryForm = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { hasRoleForCurrentLabUnit } = usePermissions();
+
+  // Template's allowed roles - will be set when template data is loaded
+  const [templateAllowedRoles, setTemplateAllowedRoles] = useState([]);
+
+  // Check if user can create/edit notebook entries for this specific template
+  // Uses the template's allowedRoles if available, otherwise falls back to generic permissions
+  const canEditEntry = hasRoleForCurrentLabUnit(
+    templateAllowedRoles.length > 0
+      ? templateAllowedRoles
+      : Permissions.CREATE_OR_EDIT_NOTEBOOK_ENTRY,
+  );
+
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
   const [technicianUsers, setTechnicianUsers] = useState([]);
@@ -377,15 +392,34 @@ const NoteBookInstanceEntryForm = () => {
     }
   }, []);
 
-  // Check if user is authorized to access this notebook
-  const checkAuthorization = (technicianId) => {
-    if (technicianId && userSessionDetails.userId != technicianId) {
+  // Check if user is authorized to create entries for this notebook
+  // Uses role-based permission checking: Global Roles → AllLabUnits → Specific Lab Unit
+  // @param {Set|Array} allowedRoles - The template's specific allowedRoles
+  const checkAuthorization = (allowedRoles) => {
+    // Convert Set to Array if needed
+    const rolesArray = allowedRoles
+      ? Array.isArray(allowedRoles)
+        ? allowedRoles
+        : Array.from(allowedRoles)
+      : [];
+
+    // Check if user has any of the notebook's specific allowedRoles
+    // hasRoleForCurrentLabUnit checks:
+    // 1. Global Admin (always allowed)
+    // 2. Global roles (userSessionDetails.roles)
+    // 3. AllLabUnits roles (userSessionDetails.userLabRolesMap["AllLabUnits"])
+    // 4. Specific lab unit roles (userSessionDetails.userLabRolesMap[loginLabUnit])
+    const hasAccess =
+      rolesArray.length === 0 || hasRoleForCurrentLabUnit(rolesArray);
+
+    if (!hasAccess) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
-          id: "notebook.error.notAssigned",
-          defaultMessage: "You are not assigned to this project",
+          id: "notebook.permission.entry.edit.required",
+          defaultMessage:
+            "You need permission to create or edit notebook entries",
         }),
       });
       setNotificationVisible(true);
@@ -401,8 +435,14 @@ const NoteBookInstanceEntryForm = () => {
   const loadInitialProjectData = (data) => {
     if (componentMounted.current) {
       if (data && data.id) {
-        // Check authorization
-        if (!checkAuthorization(data.technicianId)) {
+        // Store template's allowedRoles for permission checking
+        const allowedRoles = data.allowedRoles || [];
+        setTemplateAllowedRoles(
+          Array.isArray(allowedRoles) ? allowedRoles : Array.from(allowedRoles),
+        );
+
+        // Check authorization using template's specific allowedRoles
+        if (!checkAuthorization(allowedRoles)) {
           setLoading(false);
           return;
         }
@@ -434,18 +474,26 @@ const NoteBookInstanceEntryForm = () => {
   const loadInitialData = (data) => {
     if (componentMounted.current) {
       if (data && data.id) {
-        // Check authorization
-        if (!checkAuthorization(data.technicianId)) {
-          setLoading(false);
-          return;
-        }
-
         // If this is an instance (isTemplate=false) and we have templateId from backend,
         // fetch the latest parent template properties to ensure we always display the most up-to-date template data
         if (data.isTemplate === false && data.templateId) {
           getFromOpenElisServer(
             "/rest/notebook/view/" + data.templateId,
             (templateData) => {
+              // Store template's allowedRoles for permission checking
+              const allowedRoles = templateData.allowedRoles || [];
+              setTemplateAllowedRoles(
+                Array.isArray(allowedRoles)
+                  ? allowedRoles
+                  : Array.from(allowedRoles),
+              );
+
+              // Check authorization using template's specific allowedRoles
+              if (!checkAuthorization(allowedRoles)) {
+                setLoading(false);
+                return;
+              }
+
               // Merge pages: Keep existing instance pages, add new template pages that don't exist
               const instancePages = data.pages || [];
               const templatePages = templateData.pages || [];
@@ -509,6 +557,21 @@ const NoteBookInstanceEntryForm = () => {
             },
           );
         } else {
+          // This is either a template or an entry without parent templateId
+          // For templates, use allowedRoles from the data itself if available
+          const allowedRoles = data.allowedRoles || [];
+          setTemplateAllowedRoles(
+            Array.isArray(allowedRoles)
+              ? allowedRoles
+              : Array.from(allowedRoles),
+          );
+
+          // Check authorization - if no allowedRoles, fall back to generic permissions
+          if (allowedRoles.length > 0 && !checkAuthorization(allowedRoles)) {
+            setLoading(false);
+            return;
+          }
+
           setNoteBookData(data);
         }
 
@@ -1089,6 +1152,20 @@ const NoteBookInstanceEntryForm = () => {
           <Column lg={16} md={8} sm={4}>
             {/* Use enhanced workflow view for notebook instances (non-templates) */}
             {/* Detect workflow type based on notebook title */}
+            {/*
+              IMPORTANT: Do NOT pass entryId to workflow tabs.
+
+              The notebookentryid from URL params is a NoteBook ID (from notebook table),
+              NOT a NotebookEntry ID (from notebook_entry table). These are different entities.
+
+              The workflow tabs have their own logic to:
+              1. Load notebook data using notebookId
+              2. Check for existing NotebookEntry via /rest/notebook-entry/by-notebook/{notebookId}
+              3. Create a new NotebookEntry if needed
+
+              Passing notebookentryid as entryId would cause 404 errors because the workflow
+              tabs would try to fetch /rest/notebook-entry/{notebookId} which doesn't exist.
+            */}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
               noteBookData?.title
@@ -1150,200 +1227,225 @@ const NoteBookInstanceEntryForm = () => {
                   )}
                   {noteBookData?.pages?.length > 0 && (
                     <Accordion>
-                      {noteBookData.pages.map((page, index) => (
-                        <AccordionItem
-                          key={index}
-                          style={{ marginBottom: "1rem" }}
-                          title={
-                            <span
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.5rem",
-                              }}
-                            >
-                              {intl.formatMessage(
-                                { id: "pagination.page" },
-                                { page: page.order || index + 1 },
-                              )}
-                              :{" "}
-                              <h5 style={{ margin: 0, display: "inline" }}>
-                                {page.title}
-                              </h5>
-                              {page.completed && (
-                                <Tag type="green" size="sm">
-                                  <FormattedMessage id="notebook.page.completed" />
-                                </Tag>
-                              )}
-                            </span>
+                      {noteBookData.pages
+                        .filter((page) => {
+                          // During entry creation (CREATE mode), show ALL pages - no restrictions
+                          // Page-level role restrictions only apply when viewing/editing existing entries
+                          if (mode === MODES.CREATE) {
+                            return true;
                           }
-                        >
-                          <Grid>
-                            <Column lg={2} md={8} sm={4}>
-                              <h6>
-                                {intl.formatMessage({
-                                  id: "notebook.page.instructions",
-                                })}
-                              </h6>
-                            </Column>
-                            <Column lg={14} md={8} sm={4}>
-                              {page.instructions}
-                            </Column>
-                            <Column lg={2} md={8} sm={4}>
-                              <h6>
-                                {intl.formatMessage({
-                                  id: "notebook.page.content",
-                                })}
-                              </h6>
-                            </Column>
-                            <Column lg={14} md={8} sm={4}>
-                              {page.content}
-                            </Column>
-                            {page.sampleTypeId && (
-                              <>
-                                <Column lg={2} md={8} sm={4}>
-                                  <h6>
-                                    {intl.formatMessage({
-                                      id: "sample.type",
-                                    })}
-                                  </h6>
-                                </Column>
-                                <Column lg={14} md={8} sm={4}>
-                                  <div>
-                                    <span style={{ marginRight: "0.5rem" }}>
-                                      {intl.formatMessage({
-                                        id: "sample.type",
-                                      })}
-                                      :{" "}
-                                    </span>
-                                    {(() => {
-                                      const sampleType = sampleTypes.find(
-                                        (st) => st.id == page.sampleTypeId,
-                                      );
-                                      return sampleType ? (
-                                        <Tag type="blue" size="sm">
-                                          {sampleType.value}
-                                        </Tag>
-                                      ) : (
-                                        <></>
-                                      );
-                                    })()}
-                                  </div>
-                                </Column>
-                              </>
-                            )}
-                            {page.panels &&
-                              Array.isArray(page.panels) &&
-                              page.panels.length > 0 && (
+
+                          // Check page-level access control for existing entries
+                          const pageRoles = page.allowedRoles
+                            ? Array.isArray(page.allowedRoles)
+                              ? page.allowedRoles
+                              : Array.from(page.allowedRoles)
+                            : [];
+                          // No roles = no restriction = show page
+                          if (pageRoles.length === 0) return true;
+                          // Check if user has any of the page's required roles
+                          return hasRoleForCurrentLabUnit(pageRoles);
+                        })
+                        .map((page, index) => (
+                          <AccordionItem
+                            key={index}
+                            style={{ marginBottom: "1rem" }}
+                            title={
+                              <span
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                }}
+                              >
+                                {intl.formatMessage(
+                                  { id: "pagination.page" },
+                                  { page: page.order || index + 1 },
+                                )}
+                                :{" "}
+                                <h5 style={{ margin: 0, display: "inline" }}>
+                                  {page.title}
+                                </h5>
+                                {page.completed && (
+                                  <Tag type="green" size="sm">
+                                    <FormattedMessage id="notebook.page.completed" />
+                                  </Tag>
+                                )}
+                              </span>
+                            }
+                          >
+                            <Grid>
+                              <Column lg={2} md={8} sm={4}>
+                                <h6>
+                                  {intl.formatMessage({
+                                    id: "notebook.page.instructions",
+                                  })}
+                                </h6>
+                              </Column>
+                              <Column lg={14} md={8} sm={4}>
+                                {page.instructions}
+                              </Column>
+                              <Column lg={2} md={8} sm={4}>
+                                <h6>
+                                  {intl.formatMessage({
+                                    id: "notebook.page.content",
+                                  })}
+                                </h6>
+                              </Column>
+                              <Column lg={14} md={8} sm={4}>
+                                {page.content}
+                              </Column>
+                              {page.sampleTypeId && (
                                 <>
                                   <Column lg={2} md={8} sm={4}>
                                     <h6>
-                                      <FormattedMessage id="sample.label.orderpanel" />
+                                      {intl.formatMessage({
+                                        id: "sample.type",
+                                      })}
                                     </h6>
                                   </Column>
                                   <Column lg={14} md={8} sm={4}>
                                     <div>
                                       <span style={{ marginRight: "0.5rem" }}>
-                                        <FormattedMessage id="sample.label.orderpanel" />
+                                        {intl.formatMessage({
+                                          id: "sample.type",
+                                        })}
                                         :{" "}
                                       </span>
-                                      {page.panels
-                                        .filter((panelId) => panelId != null)
-                                        .map((panelId, panelIndex) => {
-                                          // Try to find panel by ID (handle both string and number)
-                                          const panel = allPanels.find((p) => {
-                                            if (!p || p.id == null)
-                                              return false;
-                                            // Normalize both to strings for comparison
-                                            const pId = String(p.id).trim();
-                                            const pagePanelId =
-                                              String(panelId).trim();
-                                            // Compare as both string and number
-                                            return (
-                                              pId === pagePanelId ||
-                                              Number(p.id) ===
-                                                Number(panelId) ||
-                                              p.id == panelId
-                                            );
-                                          });
-                                          // Only show panel if found (don't show ID fallback)
-                                          return panel ? (
-                                            <Tag
-                                              key={panelIndex}
-                                              type="green"
-                                              size="sm"
-                                              style={{ marginRight: "0.5rem" }}
-                                            >
-                                              {panel.value}
-                                            </Tag>
-                                          ) : null;
-                                        })
-                                        .filter((tag) => tag !== null)}
-                                    </div>
-                                  </Column>
-                                </>
-                              )}
-                            {page.tests &&
-                              Array.isArray(page.tests) &&
-                              page.tests.length > 0 && (
-                                <>
-                                  <Column lg={2} md={8} sm={4}>
-                                    <h6>
-                                      {intl.formatMessage({
-                                        id: "barcode.label.info.tests",
-                                      })}
-                                    </h6>
-                                  </Column>
-                                  <Column lg={14} md={8} sm={4}>
-                                    <div>
-                                      {page.tests.map((testId, testIndex) => {
-                                        const test = allTests.find(
-                                          (t) => t.id == testId,
+                                      {(() => {
+                                        const sampleType = sampleTypes.find(
+                                          (st) => st.id == page.sampleTypeId,
                                         );
-                                        return test ? (
-                                          <Tag
-                                            key={testIndex}
-                                            type="blue"
-                                            size="sm"
-                                          >
-                                            {test.value}
+                                        return sampleType ? (
+                                          <Tag type="blue" size="sm">
+                                            {sampleType.value}
                                           </Tag>
                                         ) : (
                                           <></>
                                         );
-                                      })}
+                                      })()}
                                     </div>
                                   </Column>
                                 </>
                               )}
-                            <Column lg={16} md={8} sm={4}>
-                              <br />
-                              {!page.completed ? (
-                                <Button
-                                  kind="primary"
-                                  size="sm"
-                                  onClick={() => handleMarkPageComplete(index)}
-                                  style={{ marginRight: "0.5rem" }}
-                                  hasIconOnly
-                                  renderIcon={Checkmark}
-                                  iconDescription={intl.formatMessage({
-                                    id: "notebook.page.markComplete",
-                                  })}
-                                  disabled={isViewMode}
-                                />
-                              ) : (
-                                <Tag
-                                  type="green"
-                                  size="sm"
-                                  style={{ marginRight: "0.5rem" }}
-                                >
-                                  <FormattedMessage id="notebook.page.completed" />
-                                </Tag>
-                              )}
-                            </Column>
-                          </Grid>
-                        </AccordionItem>
-                      ))}
+                              {page.panels &&
+                                Array.isArray(page.panels) &&
+                                page.panels.length > 0 && (
+                                  <>
+                                    <Column lg={2} md={8} sm={4}>
+                                      <h6>
+                                        <FormattedMessage id="sample.label.orderpanel" />
+                                      </h6>
+                                    </Column>
+                                    <Column lg={14} md={8} sm={4}>
+                                      <div>
+                                        <span style={{ marginRight: "0.5rem" }}>
+                                          <FormattedMessage id="sample.label.orderpanel" />
+                                          :{" "}
+                                        </span>
+                                        {page.panels
+                                          .filter((panelId) => panelId != null)
+                                          .map((panelId, panelIndex) => {
+                                            // Try to find panel by ID (handle both string and number)
+                                            const panel = allPanels.find(
+                                              (p) => {
+                                                if (!p || p.id == null)
+                                                  return false;
+                                                // Normalize both to strings for comparison
+                                                const pId = String(p.id).trim();
+                                                const pagePanelId =
+                                                  String(panelId).trim();
+                                                // Compare as both string and number
+                                                return (
+                                                  pId === pagePanelId ||
+                                                  Number(p.id) ===
+                                                    Number(panelId) ||
+                                                  p.id == panelId
+                                                );
+                                              },
+                                            );
+                                            // Only show panel if found (don't show ID fallback)
+                                            return panel ? (
+                                              <Tag
+                                                key={panelIndex}
+                                                type="green"
+                                                size="sm"
+                                                style={{
+                                                  marginRight: "0.5rem",
+                                                }}
+                                              >
+                                                {panel.value}
+                                              </Tag>
+                                            ) : null;
+                                          })
+                                          .filter((tag) => tag !== null)}
+                                      </div>
+                                    </Column>
+                                  </>
+                                )}
+                              {page.tests &&
+                                Array.isArray(page.tests) &&
+                                page.tests.length > 0 && (
+                                  <>
+                                    <Column lg={2} md={8} sm={4}>
+                                      <h6>
+                                        {intl.formatMessage({
+                                          id: "barcode.label.info.tests",
+                                        })}
+                                      </h6>
+                                    </Column>
+                                    <Column lg={14} md={8} sm={4}>
+                                      <div>
+                                        {page.tests.map((testId, testIndex) => {
+                                          const test = allTests.find(
+                                            (t) => t.id == testId,
+                                          );
+                                          return test ? (
+                                            <Tag
+                                              key={testIndex}
+                                              type="blue"
+                                              size="sm"
+                                            >
+                                              {test.value}
+                                            </Tag>
+                                          ) : (
+                                            <></>
+                                          );
+                                        })}
+                                      </div>
+                                    </Column>
+                                  </>
+                                )}
+                              <Column lg={16} md={8} sm={4}>
+                                <br />
+                                {!page.completed ? (
+                                  <Button
+                                    kind="primary"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleMarkPageComplete(index)
+                                    }
+                                    style={{ marginRight: "0.5rem" }}
+                                    hasIconOnly
+                                    renderIcon={Checkmark}
+                                    iconDescription={intl.formatMessage({
+                                      id: "notebook.page.markComplete",
+                                    })}
+                                    disabled={isViewMode}
+                                  />
+                                ) : (
+                                  <Tag
+                                    type="green"
+                                    size="sm"
+                                    style={{ marginRight: "0.5rem" }}
+                                  >
+                                    <FormattedMessage id="notebook.page.completed" />
+                                  </Tag>
+                                )}
+                              </Column>
+                            </Grid>
+                          </AccordionItem>
+                        ))}
                     </Accordion>
                   )}
                 </Column>
@@ -1644,7 +1746,16 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={8} md={8} sm={4}>
               <Button
                 kind="primary"
-                disabled={isSubmitting || isViewMode}
+                disabled={!canEditEntry || isSubmitting || isViewMode}
+                title={
+                  !canEditEntry
+                    ? intl.formatMessage({
+                        id: "notebook.permission.entry.edit.required",
+                        defaultMessage:
+                          "You need permission to create or edit notebook entries",
+                      })
+                    : undefined
+                }
                 onClick={() => handleSubmit()}
               >
                 <FormattedMessage id="label.button.save" />

@@ -1,19 +1,61 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { FormattedMessage } from "react-intl";
-import { Tag } from "@carbon/react";
-import { Checkmark, InProgress, CircleDash } from "@carbon/react/icons";
+import { Tag, Tooltip } from "@carbon/react";
+import { Checkmark, InProgress, CircleDash, Locked } from "@carbon/react/icons";
+import { usePermissions } from "../../../hooks/usePermissions";
 import "./NotebookWorkflow.css";
 
 /**
- * PageNavigation - Displays the 9 workflow pages with progress indicators.
+ * PageNavigation - Displays the workflow pages with progress indicators and access control.
+ *
+ * Access control is handled internally - pages with allowedRoles will be disabled
+ * if the current user doesn't have the required roles.
  *
  * @param {Object} props
- * @param {Array} props.pages - Array of notebook pages
+ * @param {Array} props.pages - Array of notebook pages (may include allowedRoles property)
  * @param {number} props.activePage - Currently active page index
  * @param {function} props.onPageChange - Callback when page is selected
  * @param {Object} props.pageProgress - Map of page ID to progress object
  */
 function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
+  const { hasRoleForCurrentLabUnit } = usePermissions();
+
+  /**
+   * Check if user has access to a specific page based on its allowedRoles
+   * If no roles are defined, access is granted to everyone.
+   */
+  const checkPageAccess = useCallback(
+    (page) => {
+      // If page already has hasAccess computed (from parent), respect it
+      if (page.hasAccess !== undefined) {
+        return page.hasAccess;
+      }
+
+      const pageRoles = page.allowedRoles
+        ? Array.isArray(page.allowedRoles)
+          ? page.allowedRoles
+          : Array.from(page.allowedRoles)
+        : [];
+
+      // No roles defined = no restriction = allow everyone
+      if (pageRoles.length === 0) {
+        return true;
+      }
+
+      // Check if user has any of the page's required roles
+      return hasRoleForCurrentLabUnit(pageRoles);
+    },
+    [hasRoleForCurrentLabUnit],
+  );
+
+  // Compute pages with access info
+  const pagesWithAccess = useMemo(() => {
+    return pages.map((page) => ({
+      ...page,
+      hasAccess: checkPageAccess(page),
+    }));
+  }, [pages, checkPageAccess]);
+
   const getProgressStatus = (pageId) => {
     const progress = pageProgress[pageId];
     if (!progress) {
@@ -36,7 +78,10 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
     return Math.round((progress.completed / progress.total) * 100);
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status, hasAccess = true) => {
+    if (!hasAccess) {
+      return <Locked size={16} className="status-icon locked" />;
+    }
     switch (status) {
       case "complete":
         return <Checkmark size={16} className="status-icon complete" />;
@@ -87,36 +132,71 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
       </h4>
 
       <div className="page-list">
-        {pages.map((page, index) => {
+        {pagesWithAccess.map((page, index) => {
           const status = getProgressStatus(page.id);
           const percentage = getProgressPercentage(page.id);
           const isActive = index === activePage;
+          const hasAccess = page.hasAccess;
+          const isDisabled = !hasAccess;
 
-          return (
+          const pageItem = (
             <div
               key={page.id}
               role="button"
               aria-pressed={isActive}
-              className={`page-item ${isActive ? "active" : ""} ${status}`}
-              onClick={() => handlePageClick(index)}
+              aria-disabled={isDisabled}
+              className={`page-item ${isActive ? "active" : ""} ${status} ${isDisabled ? "disabled" : ""}`}
+              onClick={() => !isDisabled && handlePageClick(index)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+                if (!isDisabled && (e.key === "Enter" || e.key === " ")) {
                   e.preventDefault();
                   handlePageClick(index);
                 }
               }}
-              tabIndex={0}
+              tabIndex={isDisabled ? -1 : 0}
+              style={isDisabled ? { opacity: 0.5, cursor: "not-allowed" } : {}}
             >
-              <div className="page-status-cell">{getStatusIcon(status)}</div>
+              <div className="page-status-cell">
+                {getStatusIcon(status, hasAccess)}
+              </div>
               <div className="page-title-cell">
                 <span className="page-number">{index + 1}.</span>
                 <span className="page-title">{page.title}</span>
               </div>
               <div className="page-progress-cell">
-                {getStatusTag(status, percentage)}
+                {isDisabled ? (
+                  <Tag type="gray">
+                    <FormattedMessage
+                      id="notebook.page.restricted"
+                      defaultMessage="Restricted"
+                    />
+                  </Tag>
+                ) : (
+                  getStatusTag(status, percentage)
+                )}
               </div>
             </div>
           );
+
+          // Wrap disabled pages in Tooltip to explain why
+          if (isDisabled) {
+            return (
+              <Tooltip
+                key={page.id}
+                label={
+                  <FormattedMessage
+                    id="notebook.page.accessDenied"
+                    defaultMessage="You don't have the required role to access this page"
+                  />
+                }
+                align="right"
+              >
+                {pageItem}
+              </Tooltip>
+            );
+          }
+
+          return pageItem;
         })}
       </div>
 
@@ -125,10 +205,10 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
           id="notebook.workflow.pagesCompleted"
           defaultMessage="{completed} of {total} pages completed"
           values={{
-            completed: pages.filter(
+            completed: pagesWithAccess.filter(
               (p) => getProgressStatus(p.id) === "complete",
             ).length,
-            total: pages.length,
+            total: pagesWithAccess.length,
           }}
         />
       </div>
