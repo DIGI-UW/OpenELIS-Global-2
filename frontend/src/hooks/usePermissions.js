@@ -172,6 +172,10 @@ export const usePermissions = () => {
    */
   const hasRoleForCurrentLabUnit = useCallback(
     (roles) => {
+      const globalRoles = userSessionDetails?.roles || [];
+      const allLabUnitsRoles =
+        userSessionDetails?.userLabRolesMap?.["AllLabUnits"] || [];
+
       // Global Admins are super users - bypass all location restrictions
       if (isGlobalAdminUser()) {
         return true;
@@ -182,14 +186,11 @@ export const usePermissions = () => {
       }
 
       // Check global roles first (userSessionDetails.roles)
-      const globalRoles = userSessionDetails?.roles || [];
       if (roles.some((role) => globalRoles.includes(role))) {
         return true;
       }
 
       // Then check "AllLabUnits" (global lab access)
-      const allLabUnitsRoles =
-        userSessionDetails?.userLabRolesMap?.["AllLabUnits"] || [];
       if (roles.some((role) => allLabUnitsRoles.includes(role))) {
         return true;
       }

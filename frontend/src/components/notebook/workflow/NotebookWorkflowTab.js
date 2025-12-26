@@ -4,23 +4,11 @@ import React, {
   useEffect,
   useRef,
   useCallback,
-  useMemo,
 } from "react";
-import {
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-  Loading,
-  Grid,
-  Column,
-  Button,
-  Tag,
-} from "@carbon/react";
+import { Loading, Grid, Column, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
-import { usePermissions } from "../../../hooks/usePermissions";
+import { getFromOpenElisServer } from "../../utils/Utils";
+import { usePageAccessControl } from "../../../hooks/usePageAccessControl";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
@@ -73,7 +61,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible } =
     useContext(NotificationContext);
-  const { hasRoleForCurrentLabUnit } = usePermissions();
 
   const [loading, setLoading] = useState(true);
   const [notebook, setNotebook] = useState(null);
@@ -81,44 +68,19 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const [entryId, setEntryId] = useState(propEntryId);
   const [pages, setPages] = useState([]);
   const [pageProgress, setPageProgress] = useState({});
-  const [activePage, setActivePage] = useState(0);
   const [samples, setSamples] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
+  // Track whether we're creating a new entry vs viewing/editing existing
+  // This is determined after checking if an entry exists for the notebook
+  const [isCreatingEntry, setIsCreatingEntry] = useState(!propEntryId);
 
-  // Helper function to check if user has access to a page
-  const hasPageAccess = useCallback(
-    (page) => {
-      const pageRoles = page.allowedRoles
-        ? Array.isArray(page.allowedRoles)
-          ? page.allowedRoles
-          : Array.from(page.allowedRoles)
-        : [];
-
-      // No roles defined = no restriction = allow everyone
-      if (pageRoles.length === 0) {
-        return true;
-      }
-
-      // Check if user has any of the page's required roles
-      return hasRoleForCurrentLabUnit(pageRoles);
-    },
-    [hasRoleForCurrentLabUnit],
-  );
-
-  // Use actual pages if available, otherwise use default workflow pages
-  // Include access info for each page (for disabling in navigation)
-  const effectivePages = useMemo(() => {
-    let pagesToUse = DEFAULT_WORKFLOW_PAGES;
-    if (pages && pages.length > 0) {
-      pagesToUse = pages;
-    }
-
-    // Add hasAccess property to each page for navigation
-    return pagesToUse.map((page) => ({
-      ...page,
-      hasAccess: hasPageAccess(page),
-    }));
-  }, [pages, hasPageAccess]);
+  // Use shared hook for page access control
+  // isCreating: true when creating a new entry (bypasses page-level role restrictions)
+  // isCreating: false when viewing/editing existing entry (applies role restrictions)
+  const { effectivePages, activePage, setActivePage, handlePageChange } =
+    usePageAccessControl(pages, DEFAULT_WORKFLOW_PAGES, 0, {
+      isCreating: isCreatingEntry,
+    });
 
   useEffect(() => {
     componentMounted.current = true;
@@ -204,10 +166,12 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
                 Array.isArray(entriesResponse) &&
                 entriesResponse.length > 0
               ) {
-                // Use the first/most recent entry
+                // Use the first/most recent entry - this is an EXISTING entry
+                // so page-level role restrictions should apply
                 const existingEntry = entriesResponse[0];
                 setEntry(existingEntry);
                 setEntryId(existingEntry.id);
+                setIsCreatingEntry(false); // Viewing/editing existing entry
 
                 // Load samples for this entry
                 getFromOpenElisServer(
@@ -223,11 +187,13 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
                 );
               } else {
                 // No entry exists or got error - create one automatically
+                // This is a NEW entry, so page-level restrictions should NOT apply
                 console.log(
                   "No existing entries found for notebook",
                   nbId,
                   "- creating new entry",
                 );
+                setIsCreatingEntry(true); // Creating new entry
                 createEntryForNotebook(nbId);
               }
             }
@@ -283,6 +249,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
             setEntry(data);
             setEntryId(data.id);
             setSamples([]);
+            setIsCreatingEntry(false); // Entry created - apply page restrictions
             console.log("Entry created successfully with ID:", data.id);
           } else if (data && data.error) {
             console.error("Entry creation error:", data.error);
@@ -299,14 +266,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
           setLoading(false);
         }
       });
-  };
-
-  const handlePageChange = (pageIndex) => {
-    // Don't navigate to pages the user doesn't have access to
-    if (effectivePages[pageIndex] && !effectivePages[pageIndex].hasAccess) {
-      return;
-    }
-    setActivePage(pageIndex);
   };
 
   const getProgressForPage = (pageId) => {
@@ -579,43 +538,69 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
 
         <Column lg={12} md={6} sm={4}>
           <div className="workflow-page-content">
-            {effectivePages.length > 0 && effectivePages[activePage] && (
-              <div className="page-panel">
-                <div className="page-header">
-                  <h3>{effectivePages[activePage].title}</h3>
-                  <div className="page-progress">
-                    {(() => {
-                      const progress = getProgressForPage(
-                        effectivePages[activePage].id,
-                      );
-                      return (
-                        <span>
-                          {progress.completed}/{progress.total}{" "}
-                          <FormattedMessage id="notebook.workflow.samplesCompleted" />
-                        </span>
-                      );
-                    })()}
+            {effectivePages.length > 0 &&
+              effectivePages[activePage] &&
+              effectivePages[activePage].hasAccess && (
+                <div className="page-panel">
+                  <div className="page-header">
+                    <h3>{effectivePages[activePage].title}</h3>
+                    <div className="page-progress">
+                      {(() => {
+                        const progress = getProgressForPage(
+                          effectivePages[activePage].id,
+                        );
+                        return (
+                          <span>
+                            {progress.completed}/{progress.total}{" "}
+                            <FormattedMessage id="notebook.workflow.samplesCompleted" />
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="page-content">
+                    {effectivePages[activePage].content && (
+                      <div
+                        className="page-instructions"
+                        dangerouslySetInnerHTML={{
+                          __html: effectivePages[activePage].content,
+                        }}
+                      />
+                    )}
+
+                    {/* Page-specific content rendered based on page order */}
+                    {/* Key forces React to unmount/remount when switching pages to reset state */}
+                    <div key={`page-content-${effectivePages[activePage].id}`}>
+                      {renderPageContent(effectivePages[activePage])}
+                    </div>
                   </div>
                 </div>
-
-                <div className="page-content">
-                  {effectivePages[activePage].content && (
-                    <div
-                      className="page-instructions"
-                      dangerouslySetInnerHTML={{
-                        __html: effectivePages[activePage].content,
-                      }}
-                    />
-                  )}
-
-                  {/* Page-specific content rendered based on page order */}
-                  {/* Key forces React to unmount/remount when switching pages to reset state */}
-                  <div key={`page-content-${effectivePages[activePage].id}`}>
-                    {renderPageContent(effectivePages[activePage])}
+              )}
+            {/* Show access denied message if current page is restricted */}
+            {effectivePages.length > 0 &&
+              effectivePages[activePage] &&
+              !effectivePages[activePage].hasAccess && (
+                <div className="page-panel access-denied">
+                  <div className="page-header">
+                    <h3>{effectivePages[activePage].title}</h3>
+                    <Tag type="red">
+                      <FormattedMessage
+                        id="notebook.page.restricted"
+                        defaultMessage="Restricted"
+                      />
+                    </Tag>
+                  </div>
+                  <div className="page-content">
+                    <p>
+                      <FormattedMessage
+                        id="notebook.page.accessDeniedMessage"
+                        defaultMessage="You do not have the required role to access this page."
+                      />
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </Column>
       </Grid>

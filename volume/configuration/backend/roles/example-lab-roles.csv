@@ -1,7 +1,13 @@
 name,description,displayKey,active,editable,isGroupingRole,groupingParent
-Lab Staff,Grouping role for all laboratory staff,role.lab.staff,Y,N,Y,
-Lab Technician,Basic laboratory technician role,role.lab.technician,Y,Y,N,Lab Staff
-Results Validator,Can validate and approve test results,role.results.validator,Y,Y,N,Lab Staff
-Sample Collector,Authorized to collect patient samples,role.sample.collector,Y,Y,N,Lab Staff
-Lab Supervisor,Laboratory supervisor with extended permissions,role.lab.supervisor,Y,Y,N,Lab Staff
-Quality Control Officer,Manages quality control and assurance,role.qc.officer,Y,Y,N,
+Notebook Entry Creator,Can create new notebook entries for assigned templates,role.notebook.entry.creator,Y,Y,N,Lab Unit Roles
+Sample Receiver,Can receive and register incoming samples,role.sample.receiver,Y,Y,N,Lab Unit Roles
+Sample Processor,Can perform initial sample processing and preparation,role.sample.processor,Y,Y,N,Lab Unit Roles
+Aliquoting Technician,Can create aliquots and child samples,role.aliquoting.technician,Y,Y,N,Lab Unit Roles
+QC Technician,Can perform quality control checks on samples,role.qc.technician,Y,Y,N,Lab Unit Roles
+Storage Manager,Can manage storage locations and retrieve samples,role.storage.manager,Y,Y,N,Lab Unit Roles
+Test Executor,Can execute tests and capture raw data,role.test.executor,Y,Y,N,Lab Unit Roles
+Analyst,Can perform data analysis on test results,role.analyst,Y,Y,N,Lab Unit Roles
+Results Entry and Validator,Can enter and compile test results,role.results.entry,Y,Y,N,Lab Unit Roles
+Archivist,Can archive samples and manage long-term storage,role.archivist,Y,Y,N,Lab Unit Roles
+Disposal Officer,Can dispose of samples following protocols,role.disposal.officer,Y,Y,N,Lab Unit Roles
+Report Generator,Can generate reports and export data,role.report.generator,Y,Y,N,Lab Unit Roles
