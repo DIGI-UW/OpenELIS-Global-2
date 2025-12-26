@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.service;
 
 import org.openelisglobal.notebook.valueholder.NoteBook;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -111,6 +112,29 @@ public interface NotebookSecurityService {
      * @return true if user can edit the entry
      */
     boolean canEditEntry(Integer entryId, String sysUserId, String loginLabUnit);
+
+    // ========== PAGE ACCESS (Role Based) ==========
+
+    /**
+     * Check if user can view a specific notebook page. User must have one of the
+     * page's allowed roles, or the page has no role restrictions.
+     *
+     * @param page         the notebook page
+     * @param sysUserId    the system user ID
+     * @param loginLabUnit the user's login lab unit
+     * @return true if user can view the page
+     */
+    boolean canViewPage(NoteBookPage page, String sysUserId, String loginLabUnit);
+
+    /**
+     * Check if user can view a specific notebook page by ID.
+     *
+     * @param pageId       the notebook page ID
+     * @param sysUserId    the system user ID
+     * @param loginLabUnit the user's login lab unit
+     * @return true if user can view the page
+     */
+    boolean canViewPage(Integer pageId, String sysUserId, String loginLabUnit);
 
     // ========== HELPER METHODS ==========
 

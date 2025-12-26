@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.bean;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 
@@ -121,6 +122,16 @@ public class NoteBookDisplayBean {
 
     public void setNotebookName(String notebookName) {
         this.notebookName = notebookName;
+    }
+
+    private Set<String> allowedRoles;
+
+    public Set<String> getAllowedRoles() {
+        return allowedRoles;
+    }
+
+    public void setAllowedRoles(Set<String> allowedRoles) {
+        this.allowedRoles = allowedRoles;
     }
 
 }

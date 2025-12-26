@@ -41,6 +41,8 @@ import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.WorkflowPageTemplate;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,6 +99,9 @@ public class NoteBookRestController extends BaseRestController {
 
     @Autowired
     private NotebookPageSampleService notebookPageSampleService;
+
+    @Autowired
+    private RoleService roleService;
 
     @GetMapping(value = "/dashboard/entries", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -686,6 +691,29 @@ public class NoteBookRestController extends BaseRestController {
         noteBookService.updateTemplateDepartments(noteBookId, departmentIds, sysUserId);
 
         return ResponseEntity.ok(Map.of("id", noteBookId, "success", true));
+    }
+
+    /**
+     * Get all available roles for assignment to notebook templates and pages.
+     * Returns all active roles from the system that can be used for access control.
+     *
+     * @return list of roles with id (name), name, and displayKey
+     */
+    @GetMapping(value = "/available-roles", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, String>>> getAvailableRoles() {
+        List<Role> roles = roleService.getAllActiveRoles();
+
+        List<Map<String, String>> result = roles.stream().filter(role -> !Boolean.TRUE.equals(role.getGroupingRole())) // Exclude
+                                                                                                                       // grouping
+                                                                                                                       // roles
+                .map(role -> Map.of("id", role.getName() != null ? role.getName().trim() : "", "name",
+                        role.getName() != null ? role.getName().trim() : "", "description",
+                        role.getDescription() != null ? role.getDescription() : "", "displayKey",
+                        role.getDisplayKey() != null ? role.getDisplayKey() : ""))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
     }
 
     /**

@@ -101,11 +101,11 @@ public class NoteBook extends BaseObject<Integer> {
 
     @OneToMany
     @JoinTable(name = "notebook_samples_list", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "sample_item_id"))
-    private List<SampleItem> samples;
+    private List<SampleItem> samples = new ArrayList<>();
 
     @OneToMany
     @JoinTable(name = "notebook_analysers", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "analyser_id"))
-    private List<Analyzer> analysers;
+    private List<Analyzer> analysers = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "notebook_inventory_instruments", joinColumns = @JoinColumn(name = "notebook_id"))
@@ -115,21 +115,21 @@ public class NoteBook extends BaseObject<Integer> {
     @ElementCollection
     @CollectionTable(name = "notebook_tags", joinColumns = @JoinColumn(name = "notebook_id"))
     @Column(name = "tag")
-    private List<String> tags;
+    private List<String> tags = new ArrayList<>();
 
     @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("order ASC")
-    private List<NoteBookPage> pages;
+    private List<NoteBookPage> pages = new ArrayList<>();
 
     @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<NoteBookFile> files;
+    private List<NoteBookFile> files = new ArrayList<>();
 
     @OneToMany(mappedBy = "notebook", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<NoteBookComment> comments;
+    private List<NoteBookComment> comments = new ArrayList<>();
 
     @OneToMany
     @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
-    private List<NoteBook> entries;
+    private List<NoteBook> entries = new ArrayList<>();
 
     @Column(name = "questionnaire_fhir_uuid", columnDefinition = "uuid")
     private UUID questionnaireFhirUuid;
@@ -198,9 +198,6 @@ public class NoteBook extends BaseObject<Integer> {
     }
 
     public List<SampleItem> getSamples() {
-        if (samples == null) {
-            samples = new ArrayList<>();
-        }
         return samples;
     }
 
@@ -209,9 +206,6 @@ public class NoteBook extends BaseObject<Integer> {
     }
 
     public List<NoteBookPage> getPages() {
-        if (pages == null) {
-            pages = new ArrayList<>();
-        }
         return pages;
     }
 
@@ -220,9 +214,6 @@ public class NoteBook extends BaseObject<Integer> {
     }
 
     public List<Analyzer> getAnalysers() {
-        if (analysers == null) {
-            analysers = new ArrayList<>();
-        }
         return analysers;
     }
 
@@ -242,9 +233,6 @@ public class NoteBook extends BaseObject<Integer> {
     }
 
     public List<String> getTags() {
-        if (tags == null) {
-            tags = new ArrayList<>();
-        }
         return tags;
     }
 
@@ -269,9 +257,6 @@ public class NoteBook extends BaseObject<Integer> {
     }
 
     public List<NoteBookFile> getFiles() {
-        if (files == null) {
-            files = new ArrayList<>();
-        }
         return files;
     }
 
@@ -280,9 +265,6 @@ public class NoteBook extends BaseObject<Integer> {
     }
 
     public List<NoteBookComment> getComments() {
-        if (comments == null) {
-            comments = new ArrayList<>();
-        }
         return comments;
     }
 
@@ -299,9 +281,6 @@ public class NoteBook extends BaseObject<Integer> {
     }
 
     public List<NoteBook> getEntries() {
-        if (entries == null) {
-            entries = new ArrayList<>();
-        }
         return entries;
     }
 

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Test data for NotebookSecurityServiceImpl role hierarchy tests. Role
+        checking hierarchy: 1. Global Roles (system_user_role) 2. Lab Unit Roles
+        - AllLabUnits (lab_unit_role_map + lab_roles) 3. Lab Unit Roles - Specific
+        Units (lab_unit_role_map + lab_roles) -->
+
+    <!-- ========== SYSTEM ROLES ========== -->
+    <!-- Role IDs match actual system, names must match exactly -->
+    <system_role id="1" name="Global Administrator"
+        description="Super admin" display_key="role.globaladmin" active="Y" />
+    <system_role id="2" name="Technician"
+        description="Lab Technician" display_key="role.technician" active="Y" />
+    <system_role id="3" name="Supervisor"
+        description="Lab Supervisor" display_key="role.supervisor" active="Y" />
+    <system_role id="4" name="Pathologist"
+        description="Pathologist" display_key="role.pathologist" active="Y" />
+    <system_role id="5" name="Results"
+        description="Results entry" display_key="role.results" active="Y" />
+    <system_role id="6" name="Notebook Administrator"
+        description="Notebook Admin" display_key="role.notebookadmin"
+        active="Y" />
+    <system_role id="7" name="Cytopathologist"
+        description="Cytopathologist" display_key="role.cytopathologist"
+        active="Y" />
+
+    <!-- ========== TEST SECTIONS (Lab Units) ========== -->
+    <test_section id="100" name="Cytology"
+        description="Cytology Department" is_active="Y" sort_order="1" />
+    <test_section id="101" name="Hematology"
+        description="Hematology Department" is_active="Y" sort_order="2" />
+    <test_section id="102" name="Biochemistry"
+        description="Biochemistry Department" is_active="Y" sort_order="3" />
+
+    <!-- ========== LOCALIZATION FOR TEST SECTIONS ========== -->
+    <localization id="1000" english="Cytology"
+        french="Cytologie" description="Test section localization"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="1001" english="Hematology"
+        french="Hematologie" description="Test section localization"
+        lastupdated="2025-01-01 00:00:00" />
+    <localization id="1002" english="Biochemistry"
+        french="Biochimie" description="Test section localization"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- ========== SYSTEM USERS ========== -->
+    <!-- User 10: Global Admin (has global role) -->
+    <system_user id="10" external_id="EXT010"
+        login_name="globaladmin" last_name="Admin" first_name="Global"
+        initials="GA" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- User 11: User with global Technician role (not lab-unit specific) -->
+    <system_user id="11" external_id="EXT011"
+        login_name="globaltech" last_name="Technician" first_name="Global"
+        initials="GT" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- User 12: User with global Pathologist role -->
+    <system_user id="12" external_id="EXT012"
+        login_name="globalpathologist" last_name="Pathologist"
+        first_name="Global" initials="GP" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- User 13: User with AllLabUnits Technician role -->
+    <system_user id="13" external_id="EXT013"
+        login_name="alllabtech" last_name="Technician" first_name="AllLab"
+        initials="AT" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- User 14: User with Cytology-specific Technician role -->
+    <system_user id="14" external_id="EXT014"
+        login_name="cytotech" last_name="Technician" first_name="Cytology"
+        initials="CT" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- User 15: User with Hematology-specific Technician role -->
+    <system_user id="15" external_id="EXT015"
+        login_name="hematech" last_name="Technician" first_name="Hematology"
+        initials="HT" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- User 16: User with NO matching roles (only has unrelated role) -->
+    <system_user id="16" external_id="EXT016"
+        login_name="noroles" last_name="NoRoles" first_name="User"
+        initials="NR" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <!-- ========== GLOBAL ROLE ASSIGNMENTS (system_user_role) ========== -->
+    <!-- User 10 has Global Administrator role -->
+    <system_user_role system_user_id="10" role_id="1" />
+
+    <!-- User 11 has global Technician role -->
+    <system_user_role system_user_id="11" role_id="2" />
+
+    <!-- User 12 has global Pathologist role -->
+    <system_user_role system_user_id="12" role_id="4" />
+
+    <!-- User 16 has no relevant roles (just a placeholder role) -->
+    <!-- No entry needed - user has no global roles -->
+
+    <!-- ========== LAB UNIT ROLE MAPPINGS ========== -->
+    <!-- User 13: AllLabUnits with Technician role -->
+    <user_lab_unit_roles system_user_id="13"
+        last_updated="2025-01-01 00:00:00" />
+    <lab_unit_role_map lab_unit_role_map_id="1"
+        lab_unit="AllLabUnits" />
+    <lab_roles lab_unit_role_map_id="1" role="2" />
+    <lab_unit_roles system_user_id="13"
+        lab_unit_role_map_id="1" />
+
+    <!-- User 14: Cytology (test_section id=100) with Technician role -->
+    <user_lab_unit_roles system_user_id="14"
+        last_updated="2025-01-01 00:00:00" />
+    <lab_unit_role_map lab_unit_role_map_id="2"
+        lab_unit="100" />
+    <lab_roles lab_unit_role_map_id="2" role="2" />
+    <lab_unit_roles system_user_id="14"
+        lab_unit_role_map_id="2" />
+
+    <!-- User 15: Hematology (test_section id=101) with Technician role -->
+    <user_lab_unit_roles system_user_id="15"
+        last_updated="2025-01-01 00:00:00" />
+    <lab_unit_role_map lab_unit_role_map_id="3"
+        lab_unit="101" />
+    <lab_roles lab_unit_role_map_id="3" role="2" />
+    <lab_unit_roles system_user_id="15"
+        lab_unit_role_map_id="3" />
+
+    <!-- ========== NOTEBOOK TEMPLATE FOR TESTING ========== -->
+    <!-- Template that requires Technician or Pathologist role -->
+    <notebook id="100" title="Security Test Template" type="100"
+        protocol="Test Protocol" content="Template content"
+        objective="Security Testing" status="DRAFT" is_template="true"
+        technician_id="10" creator_id="10" date_created="2025-01-01 10:00:00"
+        last_updated="2025-01-01 10:00:00" />
+
+    <!-- Allowed roles for the template: Technician, Pathologist -->
+    <notebook_allowed_roles notebook_id="100"
+        role="Technician" />
+    <notebook_allowed_roles notebook_id="100"
+        role="Pathologist" />
+
+    <!-- Template departments (test sections) -->
+    <notebook_departments notebook_id="100"
+        test_section_id="100" />
+    <notebook_departments notebook_id="100"
+        test_section_id="101" />
+
+    <!-- ========== NOTEBOOK PAGES FOR TESTING ========== -->
+    <!-- Page 1: Requires Technician role -->
+    <notebook_page id="200" notebook_id="100" page_order="1"
+        title="Sample Intake" instructions="Intake instructions"
+        content="Sample intake content" completed="false" />
+    <notebook_page_allowed_roles
+        notebook_page_id="200" role="Technician" />
+
+    <!-- Page 2: Requires Pathologist role -->
+    <notebook_page id="201" notebook_id="100" page_order="2"
+        title="Pathology Review" instructions="Review instructions"
+        content="Pathology review content" completed="false" />
+    <notebook_page_allowed_roles
+        notebook_page_id="201" role="Pathologist" />
+
+    <!-- Page 3: Multiple roles (Technician OR Supervisor) -->
+    <notebook_page id="202" notebook_id="100" page_order="3"
+        title="Quality Control" instructions="QC instructions"
+        content="Quality control content" completed="false" />
+    <notebook_page_allowed_roles
+        notebook_page_id="202" role="Technician" />
+    <notebook_page_allowed_roles
+        notebook_page_id="202" role="Supervisor" />
+
+    <!-- Page 4: No role restriction (accessible to all) -->
+    <notebook_page id="203" notebook_id="100" page_order="4"
+        title="General Notes" instructions="General instructions"
+        content="General notes content" completed="false" />
+
+</dataset>
