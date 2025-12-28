@@ -81,5 +81,6 @@
     <include file="liquibase/3.4.x.x/043-lab-environmental-log-table.xml"/>
     <include file="liquibase/3.4.x.x/024-virology-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/025-virology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/026-virology-culture-workflow.xml"/>
 
 </databaseChangeLog>
