@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- VIROLOGY CULTURE WORKFLOW DATABASE SCHEMA               -->
+    <!-- Implements Stage 2: Virus Culture Growth (9 Process Steps) -->
+    <!-- Based on requirements from VIROLOGY & VACCINE UNIT 2- DATA.pdf -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- 1. VIRUS CULTURE BATCH TRACKING                           -->
+    <!-- Main entity that tracks a culture batch through all 9 steps -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-batch-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_batch" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create virus culture batch table for tracking complete culture workflow</comment>
+
+        <createTable tableName="virus_culture_batch" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_virus_culture_batch"/>
+            </column>
+            <column name="batch_id" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="notebook_page_sample_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_culture_batch_sample"
+                           referencedTableName="notebook_page_sample"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="MEDIA_PREP_PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="virus_strain" type="VARCHAR(255)"/>
+            <column name="cell_line_used" type="VARCHAR(100)"/>
+            <column name="passage_number" type="INTEGER"/>
+            <column name="culture_start_date" type="TIMESTAMP"/>
+            <column name="culture_end_date" type="TIMESTAMP"/>
+            <column name="temperature_celsius" type="DECIMAL(5,2)"/>
+            <column name="co2_percentage" type="DECIMAL(5,2)"/>
+            <column name="duration_hours" type="INTEGER"/>
+            <column name="titer_value" type="VARCHAR(255)"/>
+            <column name="titer_unit" type="VARCHAR(50)"/>
+            <column name="final_batch_id" type="VARCHAR(255)"/>
+            <column name="created_by" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_culture_batch_created_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_batch" baseColumnNames="created_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <createIndex tableName="virus_culture_batch" schemaName="clinlims" indexName="idx_culture_batch_id">
+            <column name="batch_id"/>
+        </createIndex>
+
+        <createIndex tableName="virus_culture_batch" schemaName="clinlims" indexName="idx_culture_batch_sample">
+            <column name="notebook_page_sample_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 2. PROCESS STEP 1: MEDIA PREPARATION                      -->
+    <!-- Log materials used (type, lot number, expiry)             -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-media-preparation-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_media_preparation" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create media preparation table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_media_preparation" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_media_prep"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_media_prep_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="media_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiry_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="supplier" type="VARCHAR(255)"/>
+            <column name="volume_ml" type="DECIMAL(10,2)"/>
+            <column name="preparation_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="equipment_used" type="TEXT"/>
+            <column name="ph_level" type="DECIMAL(4,2)"/>
+            <column name="sterility_test_result" type="VARCHAR(20)"/>
+            <column name="prepared_by" type="INTEGER"/>
+            <column name="quality_checked_by" type="INTEGER"/>
+            <column name="notes" type="TEXT"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_media_prep_prepared_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_media_preparation" baseColumnNames="prepared_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_media_prep_checked_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_media_preparation" baseColumnNames="quality_checked_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 3. PROCESS STEP 2: STERILIZATION                          -->
+    <!-- Record sterilization parameters (temp, time, pressure)    -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-sterilization-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_sterilization" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sterilization table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_sterilization" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_sterilization"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_sterilization_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="sterilization_method" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_celsius" type="DECIMAL(5,2)"/>
+            <column name="time_minutes" type="INTEGER"/>
+            <column name="pressure_psi" type="DECIMAL(6,2)"/>
+            <column name="equipment_id" type="VARCHAR(100)"/>
+            <column name="cycle_number" type="VARCHAR(50)"/>
+            <column name="start_time" type="TIMESTAMP"/>
+            <column name="end_time" type="TIMESTAMP"/>
+            <column name="validation_result" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="spore_test_result" type="VARCHAR(20)"/>
+            <column name="performed_by" type="INTEGER"/>
+            <column name="validated_by" type="INTEGER"/>
+            <column name="sterilization_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="notes" type="TEXT"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_sterilization_performed_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_sterilization" baseColumnNames="performed_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_sterilization_validated_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_sterilization" baseColumnNames="validated_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 4. PROCESS STEP 3: CELL CULTURE                           -->
+    <!-- Track cell line, passage number, growth conditions        -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-cell-culture-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_cell_culture" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create cell culture table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_cell_culture" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_cell_culture"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_cell_culture_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="cell_line" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="passage_number" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="seeding_density" type="VARCHAR(50)"/>
+            <column name="flask_type" type="VARCHAR(50)"/>
+            <column name="media_volume_ml" type="DECIMAL(10,2)"/>
+            <column name="incubation_temperature_celsius" type="DECIMAL(5,2)"/>
+            <column name="co2_percentage" type="DECIMAL(5,2)"/>
+            <column name="humidity_percentage" type="DECIMAL(5,2)"/>
+            <column name="confluence_percentage" type="INTEGER"/>
+            <column name="cell_count" type="BIGINT"/>
+            <column name="doubling_time_hours" type="DECIMAL(6,2)"/>
+            <column name="morphology_observation" type="TEXT"/>
+            <column name="seeding_date" type="TIMESTAMP"/>
+            <column name="harvest_date" type="TIMESTAMP"/>
+            <column name="technician_id" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_cell_culture_technician"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_cell_culture" baseColumnNames="technician_id"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 5. PROCESS STEP 4: QUALITY CONTROL                        -->
+    <!-- Log QC results (viability %, sterility pass/fail)        -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-quality-control-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_quality_control" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create quality control table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_quality_control" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_qc"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_qc_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="qc_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="viability_percentage" type="DECIMAL(5,2)"/>
+            <column name="sterility_result" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mycoplasma_test_result" type="VARCHAR(20)"/>
+            <column name="endotoxin_level_eu_ml" type="DECIMAL(10,4)"/>
+            <column name="ph_measurement" type="DECIMAL(4,2)"/>
+            <column name="glucose_concentration_mg_dl" type="DECIMAL(8,2)"/>
+            <column name="lactate_concentration_mmol_l" type="DECIMAL(8,2)"/>
+            <column name="test_method" type="VARCHAR(100)"/>
+            <column name="acceptance_criteria" type="TEXT"/>
+            <column name="result_interpretation" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="deviation_notes" type="TEXT"/>
+            <column name="test_date" type="TIMESTAMP"/>
+            <column name="tested_by" type="INTEGER"/>
+            <column name="reviewed_by" type="INTEGER"/>
+            <column name="approved_by" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_qc_tested_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_quality_control" baseColumnNames="tested_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_qc_reviewed_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_quality_control" baseColumnNames="reviewed_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_qc_approved_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_quality_control" baseColumnNames="approved_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 6. PROCESS STEP 5: VIRUS CULTURE                          -->
+    <!-- Record virus strain, culture conditions (temp, CO₂, duration) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-virus-inoculation-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_virus_inoculation" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create virus inoculation table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_virus_inoculation" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_virus_inoculation"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_virus_inoculation_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="virus_strain" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="virus_stock_id" type="VARCHAR(100)"/>
+            <column name="multiplicity_of_infection" type="DECIMAL(8,4)"/>
+            <column name="inoculum_volume_ml" type="DECIMAL(10,3)"/>
+            <column name="absorption_time_minutes" type="INTEGER"/>
+            <column name="infection_temperature_celsius" type="DECIMAL(5,2)"/>
+            <column name="co2_percentage" type="DECIMAL(5,2)"/>
+            <column name="infection_start_time" type="TIMESTAMP"/>
+            <column name="infection_end_time" type="TIMESTAMP"/>
+            <column name="duration_hours" type="INTEGER"/>
+            <column name="expected_cpe_time_hours" type="INTEGER"/>
+            <column name="viral_titer_tcid50_ml" type="VARCHAR(50)"/>
+            <column name="viral_titer_pfu_ml" type="VARCHAR(50)"/>
+            <column name="harvest_criteria" type="TEXT"/>
+            <column name="performed_by" type="INTEGER"/>
+            <column name="inoculation_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="notes" type="TEXT"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_virus_inoculation_performed_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_virus_inoculation" baseColumnNames="performed_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 7. PROCESS STEP 6: DARK ROOM IMAGING                      -->
+    <!-- Store image data, analysis results (CPE observation, fluorescence intensity) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-imaging-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_imaging" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create imaging table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_imaging" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_imaging"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_imaging_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="imaging_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="image_file_path" type="VARCHAR(500)"/>
+            <column name="image_file_name" type="VARCHAR(255)"/>
+            <column name="magnification" type="VARCHAR(20)"/>
+            <column name="microscope_type" type="VARCHAR(100)"/>
+            <column name="filter_set" type="VARCHAR(100)"/>
+            <column name="exposure_time_ms" type="INTEGER"/>
+            <column name="cpe_score" type="INTEGER"/>
+            <column name="cpe_description" type="TEXT"/>
+            <column name="fluorescence_intensity" type="DECIMAL(10,2)"/>
+            <column name="fluorescence_area_percentage" type="DECIMAL(5,2)"/>
+            <column name="cell_count_total" type="INTEGER"/>
+            <column name="cell_count_infected" type="INTEGER"/>
+            <column name="infection_percentage" type="DECIMAL(5,2)"/>
+            <column name="analysis_software" type="VARCHAR(100)"/>
+            <column name="analysis_parameters" type="TEXT"/>
+            <column name="quality_score" type="INTEGER"/>
+            <column name="imaging_date" type="TIMESTAMP"/>
+            <column name="imaged_by" type="INTEGER"/>
+            <column name="analyzed_by" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="notes" type="TEXT"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_imaging_imaged_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_imaging" baseColumnNames="imaged_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_imaging_analyzed_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_imaging" baseColumnNames="analyzed_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 8. PROCESS STEP 7: FORMULATION                            -->
+    <!-- Document formulation details (stabilizers, preservatives, concentrations) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-formulation-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_formulation" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create formulation table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_formulation" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_formulation"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_formulation_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="formulation_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="base_buffer" type="VARCHAR(255)"/>
+            <column name="stabilizer_name" type="VARCHAR(255)"/>
+            <column name="stabilizer_concentration" type="VARCHAR(100)"/>
+            <column name="preservative_name" type="VARCHAR(255)"/>
+            <column name="preservative_concentration" type="VARCHAR(100)"/>
+            <column name="cryoprotectant" type="VARCHAR(255)"/>
+            <column name="cryoprotectant_concentration" type="VARCHAR(100)"/>
+            <column name="final_concentration" type="VARCHAR(100)"/>
+            <column name="final_volume_ml" type="DECIMAL(10,2)"/>
+            <column name="ph_target" type="DECIMAL(4,2)"/>
+            <column name="ph_actual" type="DECIMAL(4,2)"/>
+            <column name="osmolality_mosm_kg" type="INTEGER"/>
+            <column name="protein_concentration_mg_ml" type="DECIMAL(8,3)"/>
+            <column name="virus_recovery_percentage" type="DECIMAL(5,2)"/>
+            <column name="storage_temperature_celsius" type="DECIMAL(6,2)"/>
+            <column name="expected_stability_days" type="INTEGER"/>
+            <column name="formulation_date" type="TIMESTAMP"/>
+            <column name="formulated_by" type="INTEGER"/>
+            <column name="qc_tested_by" type="INTEGER"/>
+            <column name="approved_by" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="notes" type="TEXT"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_formulation_formulated_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_formulation" baseColumnNames="formulated_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_formulation_tested_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_formulation" baseColumnNames="qc_tested_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_formulation_approved_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_formulation" baseColumnNames="approved_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 9. PROCESS STEP 8: FEEDING                                -->
+    <!-- Log feeding schedule, reagents used                       -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-feeding-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_feeding" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create feeding table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_feeding" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_feeding"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_feeding_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="feeding_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media_type" type="VARCHAR(255)"/>
+            <column name="media_lot_number" type="VARCHAR(100)"/>
+            <column name="volume_added_ml" type="DECIMAL(10,2)"/>
+            <column name="volume_removed_ml" type="DECIMAL(10,2)"/>
+            <column name="supplements_added" type="TEXT"/>
+            <column name="glucose_concentration_mg_dl" type="DECIMAL(8,2)"/>
+            <column name="ph_before_feeding" type="DECIMAL(4,2)"/>
+            <column name="ph_after_feeding" type="DECIMAL(4,2)"/>
+            <column name="cell_viability_percentage" type="DECIMAL(5,2)"/>
+            <column name="cell_density_cells_ml" type="BIGINT"/>
+            <column name="lactate_level_mmol_l" type="DECIMAL(8,2)"/>
+            <column name="feeding_interval_hours" type="INTEGER"/>
+            <column name="next_feeding_due" type="TIMESTAMP"/>
+            <column name="feeding_date" type="TIMESTAMP"/>
+            <column name="performed_by" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="notes" type="TEXT"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_feeding_performed_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_feeding" baseColumnNames="performed_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 10. PROCESS STEP 9: PACKAGING                             -->
+    <!-- Track batch ID, packaging specs (vial type, fill volume, labeling) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-packaging-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_packaging" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create packaging table for virus culture workflow</comment>
+
+        <createTable tableName="virus_culture_packaging" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_packaging"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_packaging_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="final_batch_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="vial_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="vial_size_ml" type="DECIMAL(6,2)"/>
+            <column name="fill_volume_ml" type="DECIMAL(6,3)"/>
+            <column name="vial_count" type="INTEGER"/>
+            <column name="cap_type" type="VARCHAR(100)"/>
+            <column name="label_type" type="VARCHAR(100)"/>
+            <column name="label_content" type="TEXT"/>
+            <column name="storage_temperature_celsius" type="DECIMAL(6,2)"/>
+            <column name="storage_location" type="VARCHAR(255)"/>
+            <column name="expiry_date" type="DATE"/>
+            <column name="package_integrity_check" type="VARCHAR(20)"/>
+            <column name="final_titer_verification" type="VARCHAR(100)"/>
+            <column name="sterility_test_result" type="VARCHAR(20)"/>
+            <column name="endotoxin_test_result" type="VARCHAR(20)"/>
+            <column name="packaging_date" type="TIMESTAMP"/>
+            <column name="packaged_by" type="INTEGER"/>
+            <column name="qc_checked_by" type="INTEGER"/>
+            <column name="released_by" type="INTEGER"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="notes" type="TEXT"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_packaging_packaged_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_packaging" baseColumnNames="packaged_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_packaging_qc_checked_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_packaging" baseColumnNames="qc_checked_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_packaging_released_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_packaging" baseColumnNames="released_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <createIndex tableName="virus_culture_packaging" schemaName="clinlims" indexName="idx_packaging_final_batch">
+            <column name="final_batch_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- WORKFLOW STATUS TRACKING TABLE                            -->
+    <!-- Track progress through all 9 process steps               -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virus-culture-workflow-status-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="virus_culture_workflow_status" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create workflow status tracking table</comment>
+
+        <createTable tableName="virus_culture_workflow_status" schemaName="clinlims">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_culture_workflow_status"/>
+            </column>
+            <column name="culture_batch_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_workflow_status_batch"
+                           referencedTableName="virus_culture_batch"
+                           referencedColumnNames="id"
+                           referencedTableSchemaName="clinlims"/>
+            </column>
+            <column name="step_name" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="step_order" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="started_date" type="TIMESTAMP"/>
+            <column name="completed_date" type="TIMESTAMP"/>
+            <column name="assigned_to" type="INTEGER"/>
+            <column name="completed_by" type="INTEGER"/>
+            <column name="duration_minutes" type="INTEGER"/>
+            <column name="quality_check_result" type="VARCHAR(20)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_workflow_status_assigned_to"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_workflow_status" baseColumnNames="assigned_to"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint constraintName="fk_workflow_status_completed_by"
+                               baseTableSchemaName="clinlims" baseTableName="virus_culture_workflow_status" baseColumnNames="completed_by"
+                               referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+
+        <createIndex tableName="virus_culture_workflow_status" schemaName="clinlims" indexName="idx_workflow_status_batch_step">
+            <column name="culture_batch_id"/>
+            <column name="step_order"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTE: Trigger creation removed to avoid complex SQL parsing issues -->
+    <!-- Workflow steps will be initialized programmatically in the service layer -->
+    <!-- ======================================================== -->
+
+</databaseChangeLog>
