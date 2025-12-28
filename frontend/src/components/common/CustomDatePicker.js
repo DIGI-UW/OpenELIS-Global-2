@@ -34,9 +34,18 @@ const CustomDatePicker = (props) => {
       : /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
 
     if (partialDateRegex.test(inputValue)) {
-      e.target.value = inputValue;
+      // Update component state so the controlled input reflects the typed value
+      setCurrentDate(inputValue);
+      // Propagate to parent (Formik) so form state stays in sync
+      if (typeof props.onChange === "function") {
+        props.onChange(inputValue);
+      }
     } else {
-      e.target.value = ""; // Clear invalid input
+      // Clear invalid input and notify parent
+      setCurrentDate("");
+      if (typeof props.onChange === "function") {
+        props.onChange("");
+      }
     }
   }
 
@@ -86,6 +95,7 @@ const CustomDatePicker = (props) => {
       >
         <DatePickerInput
           id={props.id}
+          name={props.name}
           placeholder={
             configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
               ? "dd/mm/yyyy"

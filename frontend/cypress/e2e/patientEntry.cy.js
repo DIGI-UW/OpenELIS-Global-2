@@ -62,6 +62,30 @@ describe("Add New Patient", function () {
     cy.get("div[role='status']").should("be.visible");
     cy.wait(200).reload();
   });
+
+  it("Enter patient Information with today's date and save", function () {
+    // Use today's date in MM/DD/YYYY format for en locale
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const yyyy = today.getFullYear();
+    const todayStr = `${mm}/${dd}/${yyyy}`;
+
+    cy.fixture("Patient").then((patient) => {
+      // Append something to subjectNumber/nationalId to avoid duplicates
+      patientPage.enterPatientInfo(
+        patient.firstName,
+        patient.lastName,
+        patient.subjectNumber + "T",
+        patient.nationalId + "T",
+        todayStr,
+      );
+    });
+
+    patientPage.clickSavePatientButton();
+    cy.wait(1000);
+    cy.get("div[role='status']").should("be.visible");
+  });
 });
 
 describe("Search Patient", function () {

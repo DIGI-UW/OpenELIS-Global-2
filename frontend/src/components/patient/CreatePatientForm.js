@@ -745,7 +745,10 @@ function CreatePatientForm(props) {
                       }
                       autofillDate={true}
                       value={values.birthDateForDisplay || ""}
-                      onChange={(date) => handleDatePickerChange(values, date)}
+                      onChange={(date) => {
+                        setFieldValue("birthDateForDisplay", date);
+                        handleDatePickerChange(values, date);
+                      }}
                       invalid={
                         errors.birthDateForDisplay &&
                         touched.birthDateForDisplay
