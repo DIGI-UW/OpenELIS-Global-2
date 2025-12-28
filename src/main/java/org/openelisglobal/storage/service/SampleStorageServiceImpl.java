@@ -474,19 +474,22 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     public java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
             String locationType, String positionCoordinate, String notes) {
         try {
-            // Validate inputs
-            if (locationId == null || locationId.trim().isEmpty()) {
-                throw new LIMSRuntimeException("Location ID is required");
-            }
-            if (locationType == null || locationType.trim().isEmpty()) {
-                throw new LIMSRuntimeException("Location type is required");
-            }
+            // Validate inputs - allow flexible storage without specific location
+            if (locationType != null && !locationType.trim().isEmpty()) {
+                // Validate locationType is valid enum when provided
+                if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")
+                        && !locationType.equals("box") && !locationType.equals("general")) {
+                    throw new LIMSRuntimeException("Invalid location type: " + locationType
+                            + ". Must be one of: 'device', 'shelf', 'rack', 'box', 'general'");
+                }
 
-            // Validate locationType is valid enum
-            if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")
-                    && !locationType.equals("box")) {
-                throw new LIMSRuntimeException("Invalid location type: " + locationType
-                        + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
+                // Location ID is required if location type is specified and not 'general'
+                if (!locationType.equals("general") && (locationId == null || locationId.trim().isEmpty())) {
+                    throw new LIMSRuntimeException("Location ID is required for location type: " + locationType);
+                }
+            } else {
+                // Default to 'general' storage when no specific location type is provided
+                locationType = "general";
             }
 
             // Resolve SampleItem: accept either SampleItem ID or accession number
@@ -540,7 +543,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             // Load location entity based on locationType
-            Integer locationIdInt = Integer.parseInt(locationId);
+            Integer locationIdInt = null;
+            if (locationId != null && !locationId.trim().isEmpty()) {
+                locationIdInt = Integer.parseInt(locationId);
+            }
+
             Object locationEntity = null;
             StorageDevice device = null;
             StorageShelf shelf = null;
@@ -577,33 +584,44 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 locationEntity = box;
                 rack = box.getParentRack();
                 break;
+            case "general":
+                // General storage without specific location entity
+                // locationEntity remains null, locationIdInt remains null
+                break;
+            default:
+                throw new LIMSRuntimeException("Unsupported location type: " + locationType);
             }
 
             // Validate location has minimum 2 levels (room + device per FR-033a)
-            if (device != null) {
-                if (device.getParentRoom() == null) {
-                    throw new LIMSRuntimeException("Device must have a parent room (minimum 2 levels: room + device)");
-                }
-            } else if (shelf != null) {
-                device = shelf.getParentDevice();
-                if (device == null || device.getParentRoom() == null) {
-                    throw new LIMSRuntimeException(
-                            "Shelf must have a parent device with a parent room (minimum 2 levels: room + device)");
-                }
-            } else if (rack != null) {
-                shelf = rack.getParentShelf();
-                if (shelf == null) {
-                    throw new LIMSRuntimeException("Rack must have a parent shelf");
-                }
-                device = shelf.getParentDevice();
-                if (device == null || device.getParentRoom() == null) {
-                    throw new LIMSRuntimeException(
-                            "Rack must have a parent shelf with a parent device and room (minimum 2 levels: room + device)");
+            // Skip validation for general storage
+            if (!"general".equals(locationType)) {
+                if (device != null) {
+                    if (device.getParentRoom() == null) {
+                        throw new LIMSRuntimeException(
+                                "Device must have a parent room (minimum 2 levels: room + device)");
+                    }
+                } else if (shelf != null) {
+                    device = shelf.getParentDevice();
+                    if (device == null || device.getParentRoom() == null) {
+                        throw new LIMSRuntimeException(
+                                "Shelf must have a parent device with a parent room (minimum 2 levels: room + device)");
+                    }
+                } else if (rack != null) {
+                    shelf = rack.getParentShelf();
+                    if (shelf == null) {
+                        throw new LIMSRuntimeException("Rack must have a parent shelf");
+                    }
+                    device = shelf.getParentDevice();
+                    if (device == null || device.getParentRoom() == null) {
+                        throw new LIMSRuntimeException(
+                                "Rack must have a parent shelf with a parent device and room (minimum 2 levels: room + device)");
+                    }
                 }
             }
 
             // Validate location is active (check entire hierarchy)
-            if (!validateLocationActiveForEntity(locationEntity, locationType)) {
+            // Skip validation for general storage
+            if (!"general".equals(locationType) && !validateLocationActiveForEntity(locationEntity, locationType)) {
                 throw new LIMSRuntimeException("Cannot assign to inactive location");
             }
 

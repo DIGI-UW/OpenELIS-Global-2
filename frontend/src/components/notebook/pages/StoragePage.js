@@ -581,15 +581,17 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
 
   // Handle storage assignment
   const handleAssignStorage = () => {
-    if (!selectedBox) {
+    // Validate shelf selection (minimum required level)
+    if (!selectedShelf) {
       setError(
         intl.formatMessage({
-          id: "notebook.storage.selectBox",
-          defaultMessage: "Please select a storage box.",
+          id: "notebook.storage.selectShelf",
+          defaultMessage: "Please select a storage shelf.",
         }),
       );
       return;
     }
+
     if (!selectedCondition) {
       setError(
         intl.formatMessage({
@@ -599,34 +601,66 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
       );
       return;
     }
-    if (Object.keys(wellAssignments).length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.storage.noWellAssignments",
-          defaultMessage:
-            "Please assign samples to wells using Auto-Populate or click on wells.",
-        }),
-      );
-      return;
+
+    // Validation depends on whether box is selected
+    if (selectedBox) {
+      // Box-level assignment: require well assignments
+      if (Object.keys(wellAssignments).length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.storage.noWellAssignments",
+            defaultMessage:
+              "Please assign samples to wells using Auto-Populate or click on wells.",
+          }),
+        );
+        return;
+      }
+    } else {
+      // Shelf-level assignment: require sample selection
+      if (selectedSampleIds.length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.storage.noSampleSelection",
+            defaultMessage: "Please select samples to assign to storage.",
+          }),
+        );
+        return;
+      }
     }
 
     setAssigning(true);
     setError(null);
 
-    // Convert wellAssignments from {sampleId: wellCoord} to {sampleId: wellCoord} map for backend
-    const wellAssignmentsForBackend = {};
-    Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
-      wellAssignmentsForBackend[parseInt(sampleId, 10)] = wellCoord;
-    });
+    let payload;
 
-    const payload = {
-      sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
-      boxId: selectedBox.id,
-      wellAssignments: wellAssignmentsForBackend,
-      condition: selectedCondition.id,
-      retentionYears: retentionYears,
-      reassign: isReassignment, // Flag to allow reassignment of already-assigned samples
-    };
+    if (selectedBox) {
+      // Box-level assignment with well coordinates
+      const wellAssignmentsForBackend = {};
+      Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
+        wellAssignmentsForBackend[parseInt(sampleId, 10)] = wellCoord;
+      });
+
+      payload = {
+        sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
+        boxId: selectedBox.id,
+        wellAssignments: wellAssignmentsForBackend,
+        condition: selectedCondition.id,
+        retentionYears: retentionYears,
+        reassign: isReassignment,
+      };
+    } else {
+      // Shelf-level assignment without box/well coordinates
+      payload = {
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        boxId: null, // No box selected - use shelf-level storage
+        condition: selectedCondition.id,
+        retentionYears: retentionYears,
+        reassign: isReassignment,
+        locationId: selectedShelf.id.toString(),
+        locationType: "shelf",
+        storageNotes: `Assigned to shelf-level storage: ${getHierarchicalPath()}`,
+      };
+    }
 
     postToOpenElisServerJsonResponse(
       `/rest/notebook/${entryId}/samples/assign-storage`,
@@ -650,7 +684,10 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
               },
               {
                 count:
-                  response.assignedCount || Object.keys(wellAssignments).length,
+                  response.assignedCount ||
+                  (selectedBox
+                    ? Object.keys(wellAssignments).length
+                    : selectedSampleIds.length),
               },
             ),
           );
@@ -976,9 +1013,10 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !selectedBox ||
+          !selectedShelf ||
           !selectedCondition ||
-          Object.keys(wellAssignments).length === 0 ||
+          (selectedBox && Object.keys(wellAssignments).length === 0) ||
+          (!selectedBox && selectedSampleIds.length === 0) ||
           assigning
         }
         size="lg"
@@ -1067,6 +1105,10 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
                   selectedItem={selectedRack}
                   onChange={handleRackChange}
                   disabled={!selectedShelf}
+                  helperText={intl.formatMessage({
+                    id: "notebook.storage.rack.optional",
+                    defaultMessage: "Optional - some labs may not use racks",
+                  })}
                 />
               </Column>
               <Column lg={6} md={2} sm={4}>
@@ -1084,7 +1126,11 @@ function StoragePage({ entryId, pageData, progress, onProgressUpdate }) {
                   itemToString={(item) => (item ? item.label : "")}
                   selectedItem={selectedBox}
                   onChange={handleBoxChange}
-                  disabled={!selectedRack}
+                  disabled={!selectedShelf}
+                  helperText={intl.formatMessage({
+                    id: "notebook.storage.box.optional",
+                    defaultMessage: "Optional - can assign to shelf level",
+                  })}
                 />
               </Column>
             </Grid>

@@ -312,7 +312,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sampleType",
                     defaultMessage: "Sample Type",
                   }),
-                  render: (sample) => sample.sampleType || "-",
+                  render: (value, sample) => sample.sampleType || "-",
                 },
                 {
                   key: "projectName",
@@ -320,7 +320,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.projectName",
                     defaultMessage: "Project",
                   }),
-                  render: (sample) => sample.projectName || "-",
+                  render: (value, sample) => sample.projectName || "-",
                 },
                 {
                   key: "sampleSourceLocation",
@@ -328,7 +328,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sourceLocation",
                     defaultMessage: "Source Location",
                   }),
-                  render: (sample) => sample.sampleSourceLocation || "-",
+                  render: (value, sample) => sample.sampleSourceLocation || "-",
                 },
                 {
                   key: "broughtBy",
@@ -336,7 +336,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.broughtBy",
                     defaultMessage: "Brought By",
                   }),
-                  render: (sample) => sample.broughtBy || "-",
+                  render: (value, sample) => sample.broughtBy || "-",
                 },
               ]}
             />
@@ -386,7 +386,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sampleType",
                     defaultMessage: "Sample Type",
                   }),
-                  render: (sample) => sample.sampleType || "-",
+                  render: (value, sample) => sample.sampleType || "-",
                 },
                 {
                   key: "projectName",
@@ -394,7 +394,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.projectName",
                     defaultMessage: "Project",
                   }),
-                  render: (sample) => sample.projectName || "-",
+                  render: (value, sample) => sample.projectName || "-",
                 },
                 {
                   key: "sampleSourceLocation",
@@ -402,7 +402,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sourceLocation",
                     defaultMessage: "Source Location",
                   }),
-                  render: (sample) => sample.sampleSourceLocation || "-",
+                  render: (value, sample) => sample.sampleSourceLocation || "-",
                 },
                 {
                   key: "broughtBy",
@@ -410,7 +410,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.broughtBy",
                     defaultMessage: "Brought By",
                   }),
-                  render: (sample) => sample.broughtBy || "-",
+                  render: (value, sample) => sample.broughtBy || "-",
                 },
               ]}
             />

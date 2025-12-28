@@ -366,7 +366,8 @@ function BacteriologyTemporaryStoragePage({
     }
 
     const alreadyAssigned = samples.filter(
-      (s) => selectedSampleIds.includes(s.id) && s.storageWell,
+      (s) =>
+        selectedSampleIds.includes(s.id) && (s.storageWell || s.storagePath),
     );
 
     if (alreadyAssigned.length > 0) {
@@ -479,24 +480,41 @@ function BacteriologyTemporaryStoragePage({
 
   // Handle bulk storage assignment
   const handleAssignStorage = useCallback(() => {
-    if (!storageSelection.box) {
+    // Validate shelf selection (minimum required level)
+    if (!storageSelection.shelf) {
       setError(
         intl.formatMessage({
-          id: "notebook.bacteriology.storage.selectBox",
-          defaultMessage: "Please select a storage box.",
+          id: "notebook.bacteriology.storage.selectShelf",
+          defaultMessage: "Please select a storage shelf.",
         }),
       );
       return;
     }
-    if (Object.keys(wellAssignments).length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.bacteriology.storage.noWellAssignments",
-          defaultMessage:
-            "Please assign samples to wells using Auto-Populate or click on wells.",
-        }),
-      );
-      return;
+
+    // Validation depends on whether box is selected
+    if (storageSelection.box) {
+      // Box-level assignment: require well assignments
+      if (Object.keys(wellAssignments).length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.bacteriology.storage.noWellAssignments",
+            defaultMessage:
+              "Please assign samples to wells using Auto-Populate or click on wells.",
+          }),
+        );
+        return;
+      }
+    } else {
+      // Shelf-level assignment: require sample selection
+      if (selectedSampleIds.length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.bacteriology.storage.noSampleSelection",
+            defaultMessage: "Please select samples to assign to storage.",
+          }),
+        );
+        return;
+      }
     }
 
     const hasRealPageId =
@@ -520,26 +538,49 @@ function BacteriologyTemporaryStoragePage({
       .filter(Boolean)
       .join(" > ");
 
-    const assignData = {
-      sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
-      boxId: storageSelection.box?.id,
-      wellAssignments: wellAssignments,
-      reassign: isReassignment,
-      data: {
-        storageType: bulkAssignValues.storageType,
-        storageRoom: storageSelection.room?.label,
-        storageFreezer: storageSelection.device?.label,
-        storageShelf: storageSelection.shelf?.label,
-        storageRack: storageSelection.rack?.label,
-        storageBox: storageSelection.box?.label,
-        storagePath: storagePath,
-        storageCondition: bulkAssignValues.storageCondition,
-        assignedBy: bulkAssignValues.assignedBy,
-        assignedDateTime:
-          bulkAssignValues.assignedDateTime || new Date().toISOString(),
-        notes: bulkAssignValues.notes,
-      },
+    let assignData;
+
+    // Common data for both box and shelf assignments
+    const commonData = {
+      storageType: bulkAssignValues.storageType,
+      storageRoom: storageSelection.room?.label,
+      storageFreezer: storageSelection.device?.label,
+      storageShelf: storageSelection.shelf?.label,
+      storageRack: storageSelection.rack?.label,
+      storageBox: storageSelection.box?.label,
+      storagePath: storagePath,
+      storageCondition: bulkAssignValues.storageCondition,
+      assignedBy: bulkAssignValues.assignedBy,
+      assignedDateTime:
+        bulkAssignValues.assignedDateTime || new Date().toISOString(),
+      notes: bulkAssignValues.notes,
     };
+
+    if (storageSelection.box) {
+      // Box-level assignment with well coordinates
+      assignData = {
+        sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
+        boxId: storageSelection.box?.id,
+        wellAssignments: wellAssignments,
+        reassign: isReassignment,
+        data: commonData,
+      };
+    } else {
+      // Shelf-level assignment without box/well coordinates
+      assignData = {
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        boxId: null, // No box selected - use shelf-level storage
+        reassign: isReassignment,
+        data: {
+          ...commonData,
+          // Send shelf information for proper hierarchical path building
+          shelfId: storageSelection.shelf?.id,
+          locationType: "shelf",
+          notes:
+            `${commonData.notes || ""} | Bacteriology shelf-level storage: ${storagePath}`.trim(),
+        },
+      };
+    }
 
     postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/storage`,
@@ -547,7 +588,10 @@ function BacteriologyTemporaryStoragePage({
       (response) => {
         setIsAssigning(false);
         const assignedCount =
-          response?.assignedCount || Object.keys(wellAssignments).length;
+          response?.assignedCount ||
+          (storageSelection.box
+            ? Object.keys(wellAssignments).length
+            : selectedSampleIds.length);
         const hasErrors =
           response?.errors &&
           Array.isArray(response.errors) &&
@@ -699,7 +743,9 @@ function BacteriologyTemporaryStoragePage({
     const selectedSamples = samples.filter((s) =>
       selectedSampleIds.includes(s.id),
     );
-    const missingStorage = selectedSamples.filter((s) => !s.storageWell);
+    const missingStorage = selectedSamples.filter(
+      (s) => !s.storageWell && !s.storagePath,
+    );
     if (missingStorage.length > 0) {
       setError(
         `${missingStorage.length} sample(s) are missing storage assignment. Please assign storage first.`,
@@ -750,16 +796,28 @@ function BacteriologyTemporaryStoragePage({
   ]);
 
   // Calculate stats
-  const storedCount = samples.filter((s) => s.storageWell).length;
-  const pendingCount = samples.filter((s) => !s.storageWell).length;
+  const storedCount = samples.filter(
+    (s) => s.storageWell || s.storagePath,
+  ).length;
+  const pendingCount = samples.filter(
+    (s) => !s.storageWell && !s.storagePath,
+  ).length;
   const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
 
   // Get storage status tag
   const getStorageTag = (sample) => {
-    if (sample.status === "COMPLETED" && sample.storageWell) {
+    const hasStorage = sample.storageWell || sample.storagePath;
+    // Show actual storage location: well coordinate or storage path
+    const storageLocation = sample.storageWell || sample.storagePath;
+
+    if (sample.status === "COMPLETED" && hasStorage) {
       return (
-        <Tag type="green" renderIcon={Checkmark} title={sample.storagePath}>
-          {sample.storageWell} (
+        <Tag
+          type="green"
+          renderIcon={Checkmark}
+          title={sample.storagePath || storageLocation}
+        >
+          {storageLocation} (
           <FormattedMessage
             id="notebook.status.sentToNext"
             defaultMessage="Sent"
@@ -768,10 +826,14 @@ function BacteriologyTemporaryStoragePage({
         </Tag>
       );
     }
-    if (sample.storageWell) {
+    if (hasStorage) {
       return (
-        <Tag type="cyan" renderIcon={Archive} title={sample.storagePath}>
-          {sample.storageWell} (
+        <Tag
+          type="cyan"
+          renderIcon={Archive}
+          title={sample.storagePath || storageLocation}
+        >
+          {storageLocation} (
           <FormattedMessage
             id="notebook.status.inProgress"
             defaultMessage="In Progress"
@@ -1150,8 +1212,9 @@ function BacteriologyTemporaryStoragePage({
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !storageSelection.box ||
-          Object.keys(wellAssignments).length === 0 ||
+          !storageSelection.shelf ||
+          (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
+          (!storageSelection.box && selectedSampleIds.length === 0) ||
           isAssigning
         }
         size="lg"
@@ -1350,14 +1413,24 @@ function BacteriologyTemporaryStoragePage({
                     color: "#525252",
                   }}
                 >
-                  <FormattedMessage
-                    id="notebook.bacteriology.storage.assignmentSummary"
-                    defaultMessage="{assigned} of {total} samples assigned to wells"
-                    values={{
-                      assigned: Object.keys(wellAssignments).length,
-                      total: selectedSampleIds.length,
-                    }}
-                  />
+                  {storageSelection.box ? (
+                    <FormattedMessage
+                      id="notebook.bacteriology.storage.assignmentSummary"
+                      defaultMessage="{assigned} of {total} samples assigned to wells"
+                      values={{
+                        assigned: Object.keys(wellAssignments).length,
+                        total: selectedSampleIds.length,
+                      }}
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="notebook.bacteriology.storage.shelfAssignmentSummary"
+                      defaultMessage="{total} samples selected for shelf-level storage"
+                      values={{
+                        total: selectedSampleIds.length,
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             ) : (
@@ -1630,7 +1703,8 @@ function BacteriologyTemporaryStoragePage({
             <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
               {samplesToReassign.map((sample) => (
                 <li key={sample.id} style={{ fontSize: "0.875rem" }}>
-                  <strong>{sample.externalId}</strong>: {sample.storageWell}
+                  <strong>{sample.externalId}</strong>:{" "}
+                  {sample.storageWell || sample.storagePath}
                   {sample.storageCondition && ` (${sample.storageCondition})`}
                 </li>
               ))}

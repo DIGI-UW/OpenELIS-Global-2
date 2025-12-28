@@ -308,6 +308,10 @@ function StorageHierarchySelector({
             selectedItem={selectedRack}
             onChange={handleRackChange}
             disabled={!selectedShelf}
+            helperText={intl.formatMessage({
+              id: "notebook.storage.rack.optional",
+              defaultMessage: "Optional - some labs may not use racks",
+            })}
           />
         </Column>
         <Column lg={6} md={2} sm={4}>
@@ -325,7 +329,11 @@ function StorageHierarchySelector({
             itemToString={(item) => (item ? item.label : "")}
             selectedItem={selectedBox}
             onChange={handleBoxChange}
-            disabled={!selectedRack}
+            disabled={!selectedShelf}
+            helperText={intl.formatMessage({
+              id: "notebook.storage.box.optional",
+              defaultMessage: "Optional - can assign to shelf level",
+            })}
           />
         </Column>
       </Grid>

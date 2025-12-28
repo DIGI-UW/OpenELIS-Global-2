@@ -36,8 +36,7 @@ public class StorageBoxForm {
 
     private Boolean active;
 
-    @NotBlank(message = "Parent rack ID is required")
-    private String parentRackId;
+    private String parentRackId; // Optional - some labs might not use rack/box hierarchy
 
     // Getters and Setters
 
