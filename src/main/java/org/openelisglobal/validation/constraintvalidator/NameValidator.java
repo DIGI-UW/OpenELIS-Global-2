@@ -27,8 +27,10 @@ public class NameValidator implements ConstraintValidator<ValidName, String>, Co
     SiteInformationService siteInformationService = SpringContext.getBean(SiteInformationService.class);
 
     private String escapeRegexChars(String regex) {
-        // TODO Auto-generated method stub
-        return regex;
+        if (regex == null) {
+            return "";
+        }
+        return regex.replaceAll("([\\\\\\^\\$\\.\\|\\?\\*\\+\\(\\)\\[\\]\\{\\}])", "\\\\$1");
     }
 
     @PostConstruct
