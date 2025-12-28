@@ -53,7 +53,22 @@ const AlertDetailModal = ({
 
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return "-";
-    return new Date(dateTimeString).toLocaleString();
+    try {
+      // Handle epoch timestamps (in seconds or milliseconds)
+      if (typeof dateTimeString === "number") {
+        // If timestamp is less than year 2100 in milliseconds, assume it's in seconds
+        const timestamp =
+          dateTimeString < 4102444800000
+            ? dateTimeString * 1000
+            : dateTimeString;
+        return new Date(timestamp).toLocaleString();
+      }
+      // Handle ISO 8601 strings (e.g., "2024-01-01T00:00:00Z")
+      return new Date(dateTimeString).toLocaleString();
+    } catch (error) {
+      console.error("Error formatting date:", dateTimeString, error);
+      return dateTimeString;
+    }
   };
 
   const handleAcknowledge = async () => {

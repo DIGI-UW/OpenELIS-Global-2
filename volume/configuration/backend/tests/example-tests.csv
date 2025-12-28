@@ -1,0 +1,18 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,englishName,frenchName
+Complete Blood Count,Hematology,Whole Blood,58410-2,Y,Y,1,,Complete Blood Count,Numération Formule Sanguine
+Hemoglobin,Hematology,Whole Blood|Serum,718-7,Y,Y,2,g/dL,Hemoglobin,Hémoglobine
+Hematocrit,Hematology,Whole Blood,20570-8,Y,Y,3,%,Hematocrit,Hématocrite
+White Blood Cell Count,Hematology,Whole Blood,6690-2,Y,Y,4,10*3/uL,White Blood Cell Count,Numération des Globules Blancs
+Platelet Count,Hematology,Whole Blood,777-3,Y,Y,5,10*3/uL,Platelet Count,Numération Plaquettaire
+Glucose,Biochemistry,Serum|Plasma|Whole Blood,2345-7,Y,Y,10,mg/dL,Glucose,Glucose
+Blood Urea Nitrogen,Biochemistry,Serum|Plasma,3094-0,Y,Y,11,mg/dL,Blood Urea Nitrogen,Azote Uréique Sanguin
+Creatinine,Biochemistry,Serum|Plasma,2160-0,Y,Y,12,mg/dL,Creatinine,Créatinine
+Total Cholesterol,Biochemistry,Serum|Plasma,2093-3,Y,Y,13,mg/dL,Total Cholesterol,Cholestérol Total
+Triglycerides,Biochemistry,Serum|Plasma,2571-8,Y,Y,14,mg/dL,Triglycerides,Triglycérides
+ALT,Biochemistry,Serum,1742-6,Y,Y,15,U/L,Alanine Aminotransferase,Alanine Aminotransférase
+AST,Biochemistry,Serum,1920-8,Y,Y,16,U/L,Aspartate Aminotransferase,Aspartate Aminotransférase
+HIV Rapid Test,Serology,Whole Blood|Serum|Plasma,68961-2,Y,Y,20,,HIV Rapid Test,Test Rapide VIH
+Hepatitis B Surface Antigen,Serology,Serum|Plasma,5195-3,Y,Y,21,,Hepatitis B Surface Antigen,Antigène de Surface Hépatite B
+Hepatitis C Antibody,Serology,Serum|Plasma,16128-1,Y,Y,22,,Hepatitis C Antibody,Anticorps Hépatite C
+Malaria Rapid Test,Parasitology,Whole Blood,51587-4,Y,Y,30,,Malaria Rapid Test,Test Rapide Paludisme
+Urinalysis 2,Urinalysis,Urine,24356-8,Y,Y,40,,Urinalysis,Analyse Urinaire

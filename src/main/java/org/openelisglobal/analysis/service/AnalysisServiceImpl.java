@@ -788,4 +788,10 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public String getMethodId(Analysis analysis) {
         return analysis == null ? "" : analysis.getMethod() == null ? "" : analysis.getMethod().getId();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Analysis getAnalysisBySampleItemAndTest(String sampleItemId, String testId) {
+        return baseObjectDAO.getAnalysisBySampleItemAndTest(sampleItemId, testId);
+    }
 }

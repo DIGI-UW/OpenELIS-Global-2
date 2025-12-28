@@ -57,16 +57,11 @@ const Index = () => {
 
   let SampleTypes = [];
   let sampleTypeMap = {};
-  let initializePanelTests = false;
-  let allTestsMap = {};
-  let panelTestsMap = {};
-  let crossTestSampleTypeTestIdMap = {};
-  let sampleTypeTestIdMap = {};
+  let CrossPanels = [];
+  let CrossTests = [];
   let sampleTypeOrder;
   let crossSampleTypeMap = {};
   let crossSampleTypeOrderMap = {};
-  let CrossPanels = [];
-  let CrossTests = [];
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -100,7 +95,9 @@ const Index = () => {
 
   const getLabOrder = (orderNumber, success, failure) => {
     if (!failure) {
-      failure = () => {};
+      failure = () => {
+        // Default failure handler - no-op
+      };
     }
 
     fetch(
@@ -190,14 +187,14 @@ const Index = () => {
 
       const urlParams = new URLSearchParams(window.location.search);
       const externalId = urlParams.get("ID");
+      const labNumber = urlParams.get("labNumber");
 
       newOrderFormValues = {
         ...newOrderFormValues,
         sampleOrderItems: {
           ...newOrderFormValues.sampleOrderItems,
           externalOrderNumber: externalId,
-          // Note: labNo is set by the mount useEffect (line ~631), not here
-          // This avoids redundant state updates and ensures consistent initialization
+          labNo: labNumber,
         },
       };
       setOrderFormValues(newOrderFormValues);
@@ -281,7 +278,9 @@ const Index = () => {
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + requestingOrg.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 
@@ -292,7 +291,9 @@ const Index = () => {
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + location.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 

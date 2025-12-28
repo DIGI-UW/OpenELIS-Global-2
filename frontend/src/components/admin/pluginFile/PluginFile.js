@@ -19,7 +19,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.pluginFile",
-    link: "/MasterListsPage#PluginFile",
+    link: "/MasterListsPage/PluginFile",
   },
 ];
 

@@ -413,20 +413,27 @@ field (`position_coordinate`), not a separate entity reference.
 stored independently, even when multiple SampleItems belong to the same parent
 Sample.
 
+**⚠️ CRITICAL: ID Handling**: The `sample_item_id` column stores **numeric ID
+only** (Integer), not external ID. Service methods accept flexible identifiers
+(external ID, accession number, or numeric ID) via `resolveSampleItem()`, then
+convert to numeric ID for database operations. See
+[SampleItem ID Patterns Guide](.specify/guides/sampleitem-id-patterns.md) for
+detailed conversion patterns and anti-patterns.
+
 **Table**: `SAMPLE_STORAGE_ASSIGNMENT`
 
 **Fields**:
 
-| Field                 | Type        | Constraints             | Description                                                                  |
-| --------------------- | ----------- | ----------------------- | ---------------------------------------------------------------------------- |
-| `id`                  | VARCHAR(36) | PK, AUTO                | Primary key                                                                  |
-| `sample_item_id`      | VARCHAR(36) | NOT NULL, UNIQUE        | SampleItem reference (one current location per SampleItem)                   |
-| `location_id`         | NUMERIC(10) | NOT NULL                | Polymorphic location ID (references device, shelf, or rack)                  |
-| `location_type`       | VARCHAR(20) | NOT NULL                | Type discriminator: 'device', 'shelf', or 'rack'                             |
-| `position_coordinate` | VARCHAR(50) | NULL                    | Optional text-based position coordinate (can be used with any location_type) |
-| `assigned_by_user_id` | INT         | NOT NULL, FK            | User who assigned                                                            |
-| `assigned_date`       | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Assignment timestamp                                                         |
-| `notes`               | TEXT        | NULL                    | Optional assignment notes                                                    |
+| Field                 | Type        | Constraints             | Description                                                                                    |
+| --------------------- | ----------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `id`                  | VARCHAR(36) | PK, AUTO                | Primary key                                                                                    |
+| `sample_item_id`      | NUMERIC(10) | NOT NULL, UNIQUE        | SampleItem numeric ID reference (Integer in Java, **not external ID** - see ID Patterns Guide) |
+| `location_id`         | NUMERIC(10) | NOT NULL                | Polymorphic location ID (references device, shelf, or rack)                                    |
+| `location_type`       | VARCHAR(20) | NOT NULL                | Type discriminator: 'device', 'shelf', or 'rack'                                               |
+| `position_coordinate` | VARCHAR(50) | NULL                    | Optional text-based position coordinate (can be used with any location_type)                   |
+| `assigned_by_user_id` | INT         | NOT NULL, FK            | User who assigned                                                                              |
+| `assigned_date`       | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Assignment timestamp                                                                           |
+| `notes`               | TEXT        | NULL                    | Optional assignment notes                                                                      |
 
 **Constraints**:
 

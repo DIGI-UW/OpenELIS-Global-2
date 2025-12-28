@@ -11,12 +11,16 @@
 #   claude  - Claude Code CLI     → .claude/commands/
 #   copilot - GitHub Copilot      → .github/copilot-instructions.md (future)
 #
-# Usage: install-commands.sh [cursor|claude|all]
+# Usage: install-commands.sh [--yes|-y] [cursor|claude|all]
+#
+# Options:
+#   --yes, -y    Skip confirmation prompt (for automation)
 #
 # Examples:
-#   ./install-commands.sh          # Install to all supported agents
+#   ./install-commands.sh          # Install to all (with confirmation)
 #   ./install-commands.sh cursor   # Install to Cursor only
 #   ./install-commands.sh claude   # Install to Claude Code only
+#   ./install-commands.sh -y all   # Install to all without prompting
 
 set -e
 
@@ -25,13 +29,72 @@ source "$SCRIPT_DIR/common.sh"
 
 REPO_ROOT=$(get_repo_root)
 SOURCE_DIR="$REPO_ROOT/.specify/commands"
-TARGET="${1:-all}"
+SKIP_CONFIRM=false
+TARGET="all"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --yes|-y)
+            SKIP_CONFIRM=true
+            shift
+            ;;
+        cursor|claude|all)
+            TARGET="$1"
+            shift
+            ;;
+        *)
+            echo "Usage: $0 [--yes|-y] [cursor|claude|all]" >&2
+            exit 1
+            ;;
+    esac
+done
 
 # Validate source
 if [[ ! -d "$SOURCE_DIR" ]]; then
     echo "Error: Source commands not found at $SOURCE_DIR" >&2
     echo "Run 'specify init' first or ensure .specify/commands/ exists" >&2
     exit 1
+fi
+
+# Count commands to be installed
+CMD_COUNT=$(ls "$SOURCE_DIR"/speckit.*.md 2>/dev/null | wc -l)
+
+# Show warning and get confirmation
+show_warning() {
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║             SpecKit Command Installation                         ║"
+    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "This script will OVERWRITE existing slash commands in your AI agent"
+    echo "directories with the latest versions from .specify/commands/"
+    echo ""
+    echo "Source: $SOURCE_DIR"
+    echo "Commands to install: $CMD_COUNT"
+    echo ""
+    echo "Target directories:"
+    case "$TARGET" in
+        cursor) echo "  • .cursor/commands/" ;;
+        claude) echo "  • .claude/commands/" ;;
+        all)
+            echo "  • .cursor/commands/"
+            echo "  • .claude/commands/"
+            ;;
+    esac
+    echo ""
+    echo "⚠️  Any local modifications to these command files will be lost!"
+    echo ""
+}
+
+if [[ "$SKIP_CONFIRM" != "true" ]]; then
+    show_warning
+    read -p "Do you want to proceed? [y/N] " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installation cancelled."
+        exit 0
+    fi
+    echo ""
 fi
 
 install_commands() {
@@ -51,15 +114,15 @@ install_commands() {
 }
 
 case "$TARGET" in
-    cursor) install_commands "Cursor" "$REPO_ROOT/.cursor/commands" ;;
-    claude) install_commands "Claude Code" "$REPO_ROOT/.claude/commands" ;;
+    cursor)
+        install_commands "Cursor" "$REPO_ROOT/.cursor/commands"
+        ;;
+    claude)
+        install_commands "Claude Code" "$REPO_ROOT/.claude/commands"
+        ;;
     all)
         install_commands "Cursor" "$REPO_ROOT/.cursor/commands"
         install_commands "Claude Code" "$REPO_ROOT/.claude/commands"
-        ;;
-    *)
-        echo "Usage: $0 [cursor|claude|all]" >&2
-        exit 1
         ;;
 esac
 

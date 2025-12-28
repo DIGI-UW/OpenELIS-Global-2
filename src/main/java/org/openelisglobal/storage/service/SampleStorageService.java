@@ -46,26 +46,36 @@ public interface SampleStorageService {
      * level with optional text-based position coordinate.
      *
      * @param sampleItemId       SampleItem ID
-     * @param locationId         Target location ID (device, shelf, or rack ID)
-     * @param locationType       Target location type: 'device', 'shelf', or 'rack'
-     * @param positionCoordinate Optional text-based coordinate (max 50 chars) - can
-     *                           be set for any location_type
+     * @param locationId         Target location ID (device, shelf, rack, or box ID)
+     * @param locationType       Target location type: 'device', 'shelf', 'rack', or
+     *                           'box'
+     * @param positionCoordinate Optional text-based coordinate (max 50 chars)
      * @param reason             Optional reason for movement
-     * @param notes              Optional condition notes
      * @return Movement ID
      */
     String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes);
 
-    /**
-     * Update position coordinate and/or notes for an existing assignment without
-     * changing the location. Useful when user wants to update metadata only.
-     *
-     * @param sampleItemId       SampleItem ID
-     * @param positionCoordinate New position coordinate (null to keep existing)
-     * @param notes              New notes (null to keep existing)
-     * @return Updated assignment info
-     */
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
+
+    java.util.Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes);
+
+    /**
+     * Get storage location for a specific SampleItem
+     * 
+     * @param sampleItemId SampleItem ID
+     * @return Map with location details including hierarchicalPath, or empty map if
+     *         not assigned
+     */
+    java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
+
+    /**
+     * Get paginated sample storage assignments for dashboard display (OGC-150).
+     * 
+     * @param pageable Pagination parameters (page number, page size, sorting)
+     * @return Page of SampleStorageAssignment entities
+     */
+    org.springframework.data.domain.Page<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleAssignments(
+            org.springframework.data.domain.Pageable pageable);
 }

@@ -44,11 +44,10 @@ public class OclInnitializerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void testImportOclPackage_validZip() throws IOException {
-        java.io.File tempFile = java.io.File.createTempFile("ocl_imported", ".flag");
-
         org.openelisglobal.test.valueholder.Test test = testService.getTestByLocalizedName("TEST C en", Locale.ENGLISH);
         assertNull(test);
-        oclImportInitializer.performOclImport(oclDirPath, tempFile.getAbsolutePath());
+        // performOclImport now only takes fileDir parameter (marker file logic removed)
+        oclImportInitializer.performOclImport(oclDirPath);
         test = testService.getTestByLocalizedName("TEST C en", Locale.ENGLISH);
         System.out.println("Test Result : " + testService.getResultType(test));
         assertNotNull(test);

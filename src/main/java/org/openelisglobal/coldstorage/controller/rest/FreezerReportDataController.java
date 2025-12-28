@@ -1,18 +1,12 @@
 package org.openelisglobal.coldstorage.controller.rest;
 
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.alert.service.AlertService;
-import org.openelisglobal.alert.valueholder.Alert;
-import org.openelisglobal.coldstorage.service.CorrectiveActionService;
 import org.openelisglobal.coldstorage.service.FreezerReadingService;
 import org.openelisglobal.coldstorage.service.FreezerService;
-import org.openelisglobal.coldstorage.valueholder.CorrectiveAction;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -32,14 +26,6 @@ public class FreezerReportDataController extends BaseRestController {
 
     @Autowired
     private FreezerService freezerService;
-
-    @Autowired
-    private AlertService alertService;
-
-    @Autowired
-    private CorrectiveActionService correctiveActionService;
-
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @GetMapping("/excursions")
     public ResponseEntity<List<Map<String, Object>>> getExcursions(@RequestParam(required = false) Long freezerId,
@@ -72,104 +58,6 @@ public class FreezerReportDataController extends BaseRestController {
         }
 
         return ResponseEntity.ok(excursions);
-    }
-
-    @GetMapping("/audit-trail")
-    public ResponseEntity<List<Map<String, Object>>> getAuditTrail(@RequestParam(required = false) Long freezerId,
-            @RequestParam String start, @RequestParam String end) {
-
-        List<Map<String, Object>> auditEvents = new ArrayList<>();
-
-        try {
-            // Parse date parameters
-            OffsetDateTime startDateTime = OffsetDateTime.parse(start);
-            OffsetDateTime endDateTime = OffsetDateTime.parse(end);
-
-            List<Freezer> freezersToCheck;
-            if (freezerId != null) {
-                Freezer freezer = freezerService.findById(freezerId).orElse(null);
-                freezersToCheck = freezer != null ? List.of(freezer) : List.of();
-            } else {
-                freezersToCheck = freezerService.getAllFreezers("");
-            }
-
-            for (Freezer freezer : freezersToCheck) {
-                Long fId = freezer.getId();
-
-                // Get alerts for this freezer
-                List<Alert> alerts = alertService.getAlertsByEntity("Freezer", fId);
-
-                // Filter alerts by date range
-                for (Alert alert : alerts) {
-                    if (alert.getStartTime() != null) {
-                        if (alert.getStartTime().isBefore(startDateTime) || alert.getStartTime().isAfter(endDateTime)) {
-                            continue; // Skip alerts outside the date range
-                        }
-                    }
-
-                    Map<String, Object> event = new HashMap<>();
-                    event.put("id", alert.getId());
-                    event.put("freezerId", String.valueOf(freezer.getId()));
-                    event.put("freezerName", freezer.getName());
-                    event.put("actionType", "ALERT");
-                    event.put("performedAt",
-                            alert.getStartTime() != null
-                                    ? alert.getStartTime().atZoneSameInstant(ZoneId.systemDefault())
-                                            .format(DATE_FORMATTER)
-                                    : "");
-                    event.put("performedBy", "System");
-                    event.put("comment", alert.getMessage());
-                    event.put("details", alert.getContextData());
-
-                    auditEvents.add(event);
-                }
-
-                // Get all corrective actions for this freezer within the date range
-                List<CorrectiveAction> actions = correctiveActionService.getCorrectiveActionsByFreezerId(fId);
-                for (CorrectiveAction action : actions) {
-                    // Filter corrective actions by date range
-                    if (action.getCreatedAt() != null) {
-                        if (action.getCreatedAt().isBefore(startDateTime)
-                                || action.getCreatedAt().isAfter(endDateTime)) {
-                            continue; // Skip actions outside the date range
-                        }
-                    }
-
-                    Map<String, Object> actionEvent = new HashMap<>();
-                    actionEvent.put("id", action.getId());
-                    actionEvent.put("freezerId", String.valueOf(freezer.getId()));
-                    actionEvent.put("freezerName", freezer.getName());
-                    actionEvent.put("actionType", "CORRECTIVE_ACTION");
-                    actionEvent.put("performedAt",
-                            action.getCreatedAt() != null
-                                    ? action.getCreatedAt().atZoneSameInstant(ZoneId.systemDefault())
-                                            .format(DATE_FORMATTER)
-                                    : "");
-
-                    // Handle lazy-loaded createdBy to avoid LazyInitializationException
-                    String performedBy = "Unknown";
-                    try {
-                        if (action.getCreatedBy() != null) {
-                            performedBy = action.getCreatedBy().getLoginName();
-                        }
-                    } catch (org.hibernate.LazyInitializationException e) {
-                        performedBy = "Unknown";
-                    }
-                    actionEvent.put("performedBy", performedBy);
-
-                    actionEvent.put("comment", action.getDescription());
-                    actionEvent.put("details", action.getCompletionNotes());
-
-                    auditEvents.add(actionEvent);
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace(); // Log the exception for debugging
-            return ResponseEntity.badRequest().build();
-        }
-
-        return ResponseEntity.ok(auditEvents);
     }
 
     private void processExcursionsForPreview(List<FreezerReading> readings, Freezer freezer,

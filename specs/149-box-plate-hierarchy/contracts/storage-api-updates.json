@@ -1,0 +1,527 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "OpenELIS Storage API - OGC-149 Updates",
+    "version": "1.0.0",
+    "description": "REST API updates for Box/Plate hierarchy enhancement. Includes new Box/Plate endpoints and updates to existing Rack endpoints."
+  },
+  "paths": {
+    "/rest/storage/box-plates": {
+      "get": {
+        "summary": "List all Box/Plates",
+        "description": "Retrieve all Box/Plate entities with optional filtering",
+        "parameters": [
+          {
+            "name": "parentRackId",
+            "in": "query",
+            "schema": {"type": "integer"},
+            "description": "Filter by parent Rack ID"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "schema": {"type": "boolean"},
+            "description": "Filter by active status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of Box/Plates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/StorageBoxPlateResponse"}
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new Box/Plate",
+        "description": "Create a new Box/Plate entity within a Rack",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/StorageBoxPlateRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Box/Plate created successfully",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/StorageBoxPlateResponse"}
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/storage/box-plates/{id}": {
+      "get": {
+        "summary": "Get Box/Plate by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Box/Plate details",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/StorageBoxPlateResponse"}
+              }
+            }
+          },
+          "404": {
+            "description": "Box/Plate not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Box/Plate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/StorageBoxPlateRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Box/Plate updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/StorageBoxPlateResponse"}
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Box/Plate not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Box/Plate",
+        "description": "Delete a Box/Plate (fails if positions exist)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Box/Plate deleted successfully"
+          },
+          "400": {
+            "description": "Cannot delete - positions exist"
+          },
+          "404": {
+            "description": "Box/Plate not found"
+          }
+        }
+      }
+    },
+    "/rest/storage/racks/{id}": {
+      "get": {
+        "summary": "Get Rack by ID (UPDATED)",
+        "description": "CHANGE: Response no longer includes 'rows', 'columns', 'positionSchemaHint'. 'label' renamed to 'name'.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rack details",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/StorageRackResponseUpdated"}
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Rack (UPDATED)",
+        "description": "CHANGE: Request no longer accepts 'rows', 'columns', 'positionSchemaHint'. 'label' renamed to 'name'.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "integer"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/StorageRackRequestUpdated"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rack updated successfully"
+          }
+        }
+      }
+    },
+    "/rest/storage/sample-assignments": {
+      "post": {
+        "summary": "Assign sample to location (UPDATED)",
+        "description": "CHANGE: 'locationType' now accepts 'box_plate' in addition to 'device', 'shelf', 'rack'",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/SampleAssignmentRequestUpdated"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sample assigned successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/rest/storage/barcode/validate": {
+      "post": {
+        "summary": "Validate barcode (UPDATED)",
+        "description": "CHANGE: Now supports 6-level barcodes (Room-Device-Shelf-Rack-BoxPlate-Position). Uses generic left-to-right parsing with graceful degradation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "barcode": {
+                    "type": "string",
+                    "description": "Barcode string (1-6 segments separated by hyphens)",
+                    "example": "LAB-F1-S1-R1-BOX1-A5"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Barcode validation result",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BarcodeValidationResponseUpdated"}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StorageBoxPlateRequest": {
+        "type": "object",
+        "required": ["name", "code", "rows", "columns", "parentRackId"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Human-readable box/plate name",
+            "example": "96-Well Plate 001"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 10,
+            "description": "Unique code within parent rack",
+            "example": "PLATE001"
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Grid row count",
+            "example": 8
+          },
+          "columns": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Grid column count",
+            "example": 12
+          },
+          "positionSchemaHint": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Optional position naming hint",
+            "example": "A1"
+          },
+          "active": {
+            "type": "boolean",
+            "default": true,
+            "description": "Active/inactive status"
+          },
+          "parentRackId": {
+            "type": "integer",
+            "description": "Parent rack ID"
+          }
+        }
+      },
+      "StorageBoxPlateResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Box/Plate ID"
+          },
+          "fhirUuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "FHIR resource identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Box/Plate name"
+          },
+          "code": {
+            "type": "string",
+            "description": "Box/Plate code"
+          },
+          "rows": {
+            "type": "integer",
+            "description": "Grid rows"
+          },
+          "columns": {
+            "type": "integer",
+            "description": "Grid columns"
+          },
+          "capacity": {
+            "type": "integer",
+            "description": "Calculated capacity (rows × columns)"
+          },
+          "positionSchemaHint": {
+            "type": "string",
+            "nullable": true,
+            "description": "Position naming hint"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Active status"
+          },
+          "parentRackId": {
+            "type": "integer",
+            "description": "Parent rack ID"
+          },
+          "parentRackName": {
+            "type": "string",
+            "description": "Parent rack name (for display)"
+          },
+          "hierarchicalPath": {
+            "type": "string",
+            "description": "Full hierarchy path",
+            "example": "Main Lab > Freezer 1 > Shelf 1 > Rack R1 > 96-Well Plate 001"
+          },
+          "barcode": {
+            "type": "string",
+            "description": "Hierarchical barcode",
+            "example": "LAB-F1-S1-R1-PLATE001"
+          },
+          "sysUserId": {
+            "type": "integer",
+            "description": "User who created/modified"
+          },
+          "lastupdated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last modification timestamp"
+          }
+        }
+      },
+      "StorageRackRequestUpdated": {
+        "type": "object",
+        "required": ["name", "code", "parentShelfId"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Rack name (formerly 'label')"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 10,
+            "description": "Rack code"
+          },
+          "active": {
+            "type": "boolean",
+            "default": true
+          },
+          "parentShelfId": {
+            "type": "integer"
+          }
+        },
+        "description": "REMOVED FIELDS: rows, columns, positionSchemaHint"
+      },
+      "StorageRackResponseUpdated": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "fhirUuid": {"type": "string", "format": "uuid"},
+          "name": {
+            "type": "string",
+            "description": "Rack name (formerly 'label')"
+          },
+          "code": {"type": "string"},
+          "active": {"type": "boolean"},
+          "parentShelfId": {"type": "integer"},
+          "sysUserId": {"type": "integer"},
+          "lastupdated": {"type": "string", "format": "date-time"}
+        },
+        "description": "REMOVED FIELDS: rows, columns, positionSchemaHint, capacity"
+      },
+      "SampleAssignmentRequestUpdated": {
+        "type": "object",
+        "required": ["sampleItemId", "locationId", "locationType"],
+        "properties": {
+          "sampleItemId": {"type": "integer"},
+          "locationId": {"type": "integer"},
+          "locationType": {
+            "type": "string",
+            "enum": ["device", "shelf", "rack", "box_plate"],
+            "description": "UPDATED: Now includes 'box_plate'"
+          },
+          "positionCoordinate": {
+            "type": "string",
+            "maxLength": 50,
+            "nullable": true
+          },
+          "notes": {"type": "string", "nullable": true}
+        }
+      },
+      "BarcodeValidationResponseUpdated": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "description": "True if at least Room level validated"
+          },
+          "autofill": {
+            "type": "object",
+            "description": "UPDATED: Now includes optional 'boxPlate' field",
+            "properties": {
+              "room": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {"type": "integer"},
+                  "code": {"type": "string"},
+                  "name": {"type": "string"}
+                }
+              },
+              "device": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {"type": "integer"},
+                  "code": {"type": "string"},
+                  "name": {"type": "string"}
+                }
+              },
+              "shelf": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {"type": "integer"},
+                  "code": {"type": "string"},
+                  "name": {"type": "string"}
+                }
+              },
+              "rack": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {"type": "integer"},
+                  "code": {"type": "string"},
+                  "name": {"type": "string"}
+                }
+              },
+              "boxPlate": {
+                "type": "object",
+                "nullable": true,
+                "description": "NEW: Box/Plate entity (if validated)",
+                "properties": {
+                  "id": {"type": "integer"},
+                  "code": {"type": "string"},
+                  "name": {"type": "string"},
+                  "rows": {"type": "integer"},
+                  "columns": {"type": "integer"}
+                }
+              },
+              "positionCoordinate": {
+                "type": "string",
+                "nullable": true,
+                "description": "NEW: Position coordinate (segment 6, if present)"
+              }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "description": "Warning messages for unmatched segments",
+            "items": {"type": "string"},
+            "example": ["Box/Plate 'INVALID' not found in Rack 'R1'"]
+          },
+          "segmentsValidated": {
+            "type": "integer",
+            "description": "Number of segments successfully validated (0-6)"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {"type": "string"},
+          "message": {"type": "string"},
+          "details": {"type": "object"}
+        }
+      }
+    }
+  }
+}
+

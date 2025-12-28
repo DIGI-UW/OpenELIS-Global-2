@@ -43,7 +43,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.testmgt.calculated",
-    link: "/MasterListsPage#calculatedValue",
+    link: "/MasterListsPage/calculatedValue",
   },
 ];
 interface CalculatedValueProps {}

@@ -43,7 +43,7 @@
         <sql>
             ALTER TABLE clinlims.sample_storage_assignment
             ADD CONSTRAINT chk_location_type_valid
-            CHECK (location_type IN ('device', 'shelf', 'rack'));
+            CHECK (location_type IN ('device', 'shelf', 'rack', 'box'));
         </sql>
         <createSequence sequenceName="sample_storage_assignment_seq" startValue="1" incrementBy="1"/>
         <rollback>
@@ -99,7 +99,7 @@
             ADD CONSTRAINT chk_previous_location_type_valid
             CHECK (
                 previous_location_type IS NULL OR
-                previous_location_type IN ('device', 'shelf', 'rack')
+                previous_location_type IN ('device', 'shelf', 'rack', 'box')
             );
         </sql>
         <sql>
@@ -107,7 +107,7 @@
             ADD CONSTRAINT chk_new_location_type_valid
             CHECK (
                 new_location_type IS NULL OR
-                new_location_type IN ('device', 'shelf', 'rack')
+                new_location_type IN ('device', 'shelf', 'rack', 'box')
             );
         </sql>
         <createSequence sequenceName="sample_storage_movement_seq" startValue="1" incrementBy="1"/>

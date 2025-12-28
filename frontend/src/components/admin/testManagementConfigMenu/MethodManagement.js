@@ -47,11 +47,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.testUnit.manage",
-    link: "/MasterListsPage#MethodManagement",
+    link: "/MasterListsPage/MethodManagement",
   },
 ];
 
@@ -85,7 +85,7 @@ function MethodManagement() {
             <UnorderedList>
               <ListItem
                 onClick={() => {
-                  window.location.assign("/MasterListsPage#MethodCreate");
+                  window.location.assign("/MasterListsPage/MethodCreate");
                 }}
               >
                 <FormattedMessage id="configuration.method.create" />

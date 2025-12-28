@@ -7,13 +7,14 @@
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. storage-test-data.sql - Storage hierarchy + sample data
+#   2. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
+#      Converted to SQL on-demand (*.generated.sql files never committed)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
-STORAGE_SQL_FILE="$SCRIPT_DIR/storage-test-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -43,7 +44,7 @@ echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
 echo "Foundational SQL: $FOUNDATIONAL_SQL_FILE"
-echo "Storage SQL: $STORAGE_SQL_FILE"
+echo "Storage fixtures: DBUnit XML → Generated SQL (on-demand)"
 if [ "$RESET" = true ]; then
     echo "Reset: Enabled (will reset test data before loading)"
 fi
@@ -52,15 +53,43 @@ if [ "$VERIFY" = true ]; then
 fi
 echo ""
 
-# Check if SQL files exist
+# Check if foundational SQL file exists
 if [ ! -f "$FOUNDATIONAL_SQL_FILE" ]; then
     echo "ERROR: Foundational SQL file not found: $FOUNDATIONAL_SQL_FILE"
     exit 1
 fi
-if [ ! -f "$STORAGE_SQL_FILE" ]; then
-    echo "ERROR: Storage SQL file not found: $STORAGE_SQL_FILE"
+
+# Check if Python is available (needed for XML→SQL generation)
+if ! command -v python3 &> /dev/null; then
+    echo "ERROR: Python 3 not found. Required for XML→SQL conversion."
     exit 1
 fi
+
+# Storage fixture paths
+STORAGE_XML="$SCRIPT_DIR/testdata/storage-e2e.xml"
+STORAGE_SQL="$SCRIPT_DIR/testdata/storage-e2e.generated.sql"
+XML_TO_SQL_SCRIPT="$SCRIPT_DIR/testdata/xml-to-sql.py"
+
+# Check if XML source exists
+if [ ! -f "$STORAGE_XML" ]; then
+    echo "ERROR: Storage XML fixture not found: $STORAGE_XML"
+    exit 1
+fi
+
+# Check if converter script exists
+if [ ! -f "$XML_TO_SQL_SCRIPT" ]; then
+    echo "ERROR: XML→SQL converter not found: $XML_TO_SQL_SCRIPT"
+    exit 1
+fi
+
+# Generate SQL from DBUnit XML (on-demand, never committed)
+echo "Generating SQL from DBUnit XML..."
+python3 "$XML_TO_SQL_SCRIPT" "$STORAGE_XML" "$STORAGE_SQL"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to generate SQL from XML"
+    exit 1
+fi
+echo ""
 
 # Reset database if requested
 if [ "$RESET" = true ]; then
@@ -90,21 +119,27 @@ check_dependencies() {
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         if [ "$USE_DOCKER" = true ]; then
             TYPE_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check for required statuses: Entered (any type), Not Tested (ANALYSIS), Finalized (ANALYSIS)
-            # Note: Entered may be EXTERNAL_ORDER or SAMPLE depending on database initialization
-            STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check storage hierarchy exists (from Liquibase)
+            # Minimum required status for fixtures is 'Entered' (used by samples/sample_items).
+            # Some environments may not seed analysis statuses ('Not Tested', 'Finalized') consistently.
+            STATUS_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Check storage hierarchy exists (from DBUnit fixtures)
             ROOM_COUNT=$(docker exec openelisglobal-database psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         else
             TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE (name = 'Entered' OR (name IN ('Not Tested', 'Finalized') AND status_type = 'ANALYSIS'));" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check storage hierarchy exists (from Liquibase)
+            STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Check storage hierarchy exists (from DBUnit fixtures)
             ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         fi
 
         # Check if all dependencies are met
-        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 3 ] && [ "$ROOM_COUNT" -ge 3 ]; then
-            echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms from Liquibase)"
+        # Note: ROOM_COUNT check is optional (will be loaded by DBUnit loader if missing)
+        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 1 ]; then
+            if [ "$ROOM_COUNT" -ge 3 ]; then
+                echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms)"
+            else
+                echo "✅ Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present)"
+                echo "   Note: Storage hierarchy will be loaded by DBUnit loader"
+            fi
             echo ""
             return 0
         fi
@@ -114,7 +149,7 @@ check_dependencies() {
         if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
             echo "⚠️  Dependencies not ready (attempt $RETRY_COUNT/$MAX_RETRIES):"
             echo "   type_of_sample: $TYPE_COUNT rows (need 3+)"
-            echo "   status_of_sample: $STATUS_COUNT matching rows (need 3+)"
+            echo "   status_of_sample: $STATUS_COUNT 'Entered' rows (need 1+)"
             echo "   storage hierarchy: $ROOM_COUNT rooms (need 3+)"
             echo "   Waiting ${RETRY_DELAY}s for Liquibase to complete..."
             sleep $RETRY_DELAY
@@ -128,24 +163,14 @@ check_dependencies() {
         exit 1
     fi
 
-    if [ "$STATUS_COUNT" -lt 3 ]; then
-        echo "ERROR: status_of_sample table missing required statuses. Found $STATUS_COUNT matching rows, need at least 3."
-        echo "Required statuses: 'Entered' (any type), 'Not Tested' (ANALYSIS), 'Finalized' (ANALYSIS)"
+    if [ "$STATUS_COUNT" -lt 1 ]; then
+        echo "ERROR: status_of_sample table missing required status 'Entered'. Found $STATUS_COUNT rows."
         echo "Please ensure database is properly initialized with status values."
         exit 1
     fi
 
-    if [ "$ROOM_COUNT" -lt 3 ]; then
-        echo "ERROR: Storage hierarchy not found after $MAX_RETRIES attempts. Expected 3 test rooms (MAIN, SEC, INACTIVE) from Liquibase. Found: $ROOM_COUNT"
-        echo "Please ensure Liquibase has run with context=\"test\" to load foundation data."
-        echo "Storage hierarchy is loaded by: src/main/resources/liquibase/3.3.x.x/004-insert-test-storage-data.xml"
-        echo ""
-        echo "Troubleshooting:"
-        echo "1. Verify SPRING_LIQUIBASE_CONTEXTS=test is set in application environment"
-        echo "2. Check application logs for Liquibase execution"
-        echo "3. Verify database connection is working"
-        exit 1
-    fi
+    # Note: Storage hierarchy check removed - it will be loaded by DBUnit loader
+    # (ROOM_COUNT check is informational only, not a hard requirement)
 }
 
 # Verification function
@@ -172,7 +197,7 @@ verify_fixtures() {
             UNION ALL
             SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
             UNION ALL
-            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
+            SELECT '', 'Boxes', COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000;
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
         echo ""
@@ -211,7 +236,7 @@ verify_fixtures() {
             UNION ALL
             SELECT '', 'Racks', COUNT(*) FROM storage_rack WHERE id BETWEEN 30 AND 40
             UNION ALL
-            SELECT '', 'Positions', COUNT(*) FROM storage_position WHERE id BETWEEN 100 AND 10000;
+            SELECT '', 'Boxes', COUNT(*) FROM storage_box WHERE id BETWEEN 100 AND 10000;
         " | sed 's/^[[:space:]]*//' | grep -v '^$'
 
         echo ""
@@ -281,9 +306,9 @@ if [ "$USE_DOCKER" = true ]; then
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
-    # Load storage and sample data
-    echo "Loading storage fixtures via Docker..."
-    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$STORAGE_SQL_FILE"
+    # Load storage hierarchy + E2E test data via generated SQL
+    echo "Loading storage fixtures via generated SQL..."
+    docker exec -i openelisglobal-database psql -U clinlims -d clinlims < "$STORAGE_SQL"
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -323,6 +348,7 @@ else
     DB_NAME="${DB_NAME:-clinlims}"
     DB_HOST="${DB_HOST:-localhost}"
     DB_PORT="${DB_PORT:-5432}"
+    DB_PASSWORD="${DB_PASSWORD:-${PGPASSWORD:-clinlims}}"
 
     echo "Using direct psql connection"
     echo "Database: $DB_NAME@$DB_HOST:$DB_PORT"
@@ -348,10 +374,9 @@ else
     echo "✅ Foundational data loaded (providers, organizations)"
     echo ""
 
-    # Load storage and sample data
-    echo "Loading storage test data..."
-    echo ""
-    psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$STORAGE_SQL_FILE"
+    # Load storage hierarchy + E2E test data via generated SQL
+    echo "Loading storage fixtures via generated SQL..."
+    psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$STORAGE_SQL"
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -376,6 +401,7 @@ else
         echo "1. Verify PostgreSQL is running"
         echo "2. Check database credentials"
         echo "3. Ensure storage tables exist (run Liquibase migrations first)"
+        echo "4. Verify Python 3 is installed for XML→SQL conversion"
         echo ""
         exit 1
     fi

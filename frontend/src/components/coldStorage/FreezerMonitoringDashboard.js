@@ -34,8 +34,9 @@ import {
   Form,
   Tile,
   Loading,
+  Pagination,
 } from "@carbon/react";
-import { CheckmarkFilled } from "@carbon/icons-react";
+import { CheckmarkFilled, View } from "@carbon/icons-react";
 import "./FreezerMonitoringDashboard.scss";
 import CorrectiveActions from "./CorrectiveActions";
 import HistoricalTrends from "./HistoricalTrends";
@@ -144,22 +145,37 @@ const normalizeUnit = (unit) => ({
 });
 
 const normalizeAlert = (alert) => {
-  const currentTemp =
-    toNumber(alert.currentTemperature) ??
-    toNumber(alert.maxTemperature) ??
-    toNumber(alert.minTemperature);
+  let contextData = {};
+  try {
+    contextData = alert.contextData ? JSON.parse(alert.contextData) : {};
+  } catch (e) {
+    console.warn("Failed to parse alert contextData:", alert.contextData);
+  }
+
+  const currentTemp = toNumber(contextData.temperature);
+
+  let durationSeconds = null;
+  let durationMinutes = null;
+  if (alert.startTime) {
+    try {
+      const startTime = new Date(alert.startTime);
+      const now = new Date();
+      durationSeconds = Math.floor((now - startTime) / 1000);
+      durationMinutes = Math.max(1, Math.round(durationSeconds / 60));
+    } catch (e) {
+      console.warn("Failed to calculate alert duration:", alert.startTime);
+    }
+  }
+
   return {
     id: alert.id,
     severity: alert.severity ?? "WARNING",
     status: alert.status ?? "OPEN",
-    unitName: alert.freezerName ?? `Freezer ${alert.freezerId}`,
-    location: alert.locationName ?? "Unknown location",
+    unitName: alert.freezer?.name ?? `Freezer ${alert.alertEntityId}`,
+    location: alert.freezer?.code ?? "Unknown location",
     currentTemp,
-    durationSeconds: alert.durationSeconds ?? null,
-    durationMinutes:
-      alert.durationSeconds != null
-        ? Math.max(1, Math.round(alert.durationSeconds / 60))
-        : null,
+    durationSeconds,
+    durationMinutes,
     startedAt: alert.startTime,
   };
 };
@@ -196,6 +212,10 @@ function FreezerMonitoringDashboard({ intl }) {
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
   const [preselectedFreezerId, setPreselectedFreezerId] = useState(null);
   const [expandedRowIds, setExpandedRowIds] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [alertsCurrentPage, setAlertsCurrentPage] = useState(1);
+  const [alertsPageSize, setAlertsPageSize] = useState(5);
 
   const handleRowExpand = useCallback((rowId) => {
     const rowIdStr = String(rowId || "");
@@ -233,6 +253,18 @@ function FreezerMonitoringDashboard({ intl }) {
       );
     });
   }, [statusFilter, deviceFilter, searchTerm, storageUnits]);
+
+  const paginatedUnits = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredUnits.slice(startIndex, endIndex);
+  }, [filteredUnits, currentPage, pageSize]);
+
+  const paginatedAlerts = useMemo(() => {
+    const startIndex = (alertsCurrentPage - 1) * alertsPageSize;
+    const endIndex = startIndex + alertsPageSize;
+    return activeAlerts.slice(startIndex, endIndex);
+  }, [activeAlerts, alertsCurrentPage, alertsPageSize]);
 
   const totalUnits = storageUnits.length;
   const normalUnits = storageUnits.filter((u) => u.status === "NORMAL").length;
@@ -284,6 +316,11 @@ function FreezerMonitoringDashboard({ intl }) {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, deviceFilter, searchTerm]);
+
   const handleAlertAction = useCallback(
     async (alertId, action) => {
       setActionInFlight(alertId);
@@ -291,10 +328,11 @@ function FreezerMonitoringDashboard({ intl }) {
         if (action === "acknowledge") {
           await acknowledgeAlert(
             alertId,
+            1,
             "Acknowledged via Cold Storage dashboard",
           );
         } else {
-          await resolveAlert(alertId, "Resolved via Cold Storage dashboard");
+          await resolveAlert(alertId, 1, "Resolved via Cold Storage dashboard");
         }
         await loadDashboardData();
         notify({
@@ -523,7 +561,7 @@ function FreezerMonitoringDashboard({ intl }) {
                         </Form>
 
                         <DataTable
-                          rows={filteredUnits.map((row) => ({
+                          rows={paginatedUnits.map((row) => ({
                             id: row.id,
                             ...row,
                             isExpanded: !!expandedRowIds[String(row.id || "")],
@@ -648,6 +686,7 @@ function FreezerMonitoringDashboard({ intl }) {
                                             colSpan={headers.length + 1}
                                           >
                                             <DeviceHistoryExpansion
+                                              key={unit.id || unit.freezerId}
                                               device={unit}
                                             />
                                           </TableExpandedRow>
@@ -660,142 +699,186 @@ function FreezerMonitoringDashboard({ intl }) {
                             </TableContainer>
                           )}
                         </DataTable>
+
+                        {filteredUnits.length > 0 && (
+                          <Pagination
+                            backwardText="Previous page"
+                            forwardText="Next page"
+                            itemsPerPageText="Items per page:"
+                            page={currentPage}
+                            pageSize={pageSize}
+                            pageSizes={[5, 10, 20, 30, 50]}
+                            totalItems={filteredUnits.length}
+                            onChange={({ page, pageSize: newPageSize }) => {
+                              setCurrentPage(page);
+                              setPageSize(newPageSize);
+                            }}
+                          />
+                        )}
                       </Column>
 
                       <Column lg={16} md={8} sm={4}>
                         <Section style={{ marginTop: "2rem" }}>
                           <Heading style={{ marginBottom: "1rem" }}>
-                            Active Alerts
+                            Active Alerts ({activeAlerts.length})
                           </Heading>
 
                           {activeAlerts.length > 0 ? (
-                            <Grid
-                              condensed
-                              className="oe-coldStorage-alerts-grid"
-                            >
-                              {activeAlerts.map((alert) => (
-                                <Column lg={8} md={8} sm={4} key={alert.id}>
-                                  <Tile
-                                    className="oe-coldStorage-alertCard"
-                                    style={{
-                                      padding: "1.5rem",
-                                      marginBottom: "1rem",
-                                      cursor: "pointer",
-                                      borderLeft:
+                            <>
+                              <DataTable
+                                rows={paginatedAlerts.map((alert) => ({
+                                  id: alert.id.toString(),
+                                  severity: (
+                                    <Tag
+                                      type={
                                         alert.severity === "CRITICAL"
-                                          ? "4px solid #da1e28"
-                                          : "4px solid #f1c21b",
-                                    }}
-                                    onClick={() =>
-                                      handleAlertRowClick(alert.id)
-                                    }
+                                          ? "red"
+                                          : "warm-gray"
+                                      }
+                                    >
+                                      {alert.severity}
+                                    </Tag>
+                                  ),
+                                  device: alert.unitName,
+                                  location: alert.location,
+                                  temperature: formatTemperatureDisplay(
+                                    alert.currentTemp,
+                                  ),
+                                  duration: alert.durationMinutes
+                                    ? `${alert.durationMinutes} min`
+                                    : "—",
+                                  startedAt: formatDateTime(alert.startedAt),
+                                  status: alert.status,
+                                  _alert: alert,
+                                }))}
+                                headers={[
+                                  { key: "severity", header: "Severity" },
+                                  { key: "device", header: "Device" },
+                                  { key: "location", header: "Location" },
+                                  { key: "temperature", header: "Temperature" },
+                                  { key: "duration", header: "Duration" },
+                                  { key: "startedAt", header: "Started" },
+                                ]}
+                                size="sm"
+                              >
+                                {({
+                                  rows,
+                                  headers,
+                                  getHeaderProps,
+                                  getRowProps,
+                                  getTableProps,
+                                  getTableContainerProps,
+                                }) => (
+                                  <TableContainer
+                                    {...getTableContainerProps()}
+                                    style={{ maxHeight: "400px" }}
                                   >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        marginBottom: "1rem",
-                                      }}
+                                    <Table
+                                      {...getTableProps()}
+                                      size="sm"
+                                      useZebraStyles
                                     >
-                                      <Tag
-                                        type={
-                                          alert.severity === "CRITICAL"
-                                            ? "red"
-                                            : "warm-gray"
-                                        }
-                                      >
-                                        {alert.severity}
-                                      </Tag>
-                                      <span
-                                        style={{
-                                          fontSize: "0.875rem",
-                                          color: "#525252",
-                                        }}
-                                      >
-                                        {formatDateTime(alert.startedAt)}
-                                      </span>
-                                    </div>
+                                      <TableHead>
+                                        <TableRow>
+                                          {headers.map((header) => (
+                                            <TableHeader
+                                              key={header.key}
+                                              {...getHeaderProps({ header })}
+                                            >
+                                              {header.header}
+                                            </TableHeader>
+                                          ))}
+                                          <TableHeader>Actions</TableHeader>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {rows.map((row) => {
+                                          const alert = activeAlerts.find(
+                                            (a) => a.id.toString() === row.id,
+                                          );
+                                          return (
+                                            <TableRow
+                                              key={row.id}
+                                              {...getRowProps({ row })}
+                                              style={{ cursor: "pointer" }}
+                                              onClick={() =>
+                                                handleAlertRowClick(alert.id)
+                                              }
+                                            >
+                                              {row.cells.map((cell) => (
+                                                <TableCell key={cell.id}>
+                                                  {cell.value}
+                                                </TableCell>
+                                              ))}
+                                              <TableCell>
+                                                <div
+                                                  style={{
+                                                    display: "flex",
+                                                    gap: "0.5rem",
+                                                    alignItems: "center",
+                                                  }}
+                                                >
+                                                  <Button
+                                                    kind="ghost"
+                                                    size="sm"
+                                                    renderIcon={View}
+                                                    iconDescription="View alert details"
+                                                    hasIconOnly
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleAlertRowClick(
+                                                        alert.id,
+                                                      );
+                                                    }}
+                                                  />
+                                                  {alert.status === "OPEN" && (
+                                                    <Button
+                                                      kind="ghost"
+                                                      size="sm"
+                                                      disabled={
+                                                        actionInFlight ===
+                                                        alert.id
+                                                      }
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAcknowledgeAlert(
+                                                          alert.id,
+                                                        );
+                                                      }}
+                                                    >
+                                                      Acknowledge
+                                                    </Button>
+                                                  )}
+                                                </div>
+                                              </TableCell>
+                                            </TableRow>
+                                          );
+                                        })}
+                                      </TableBody>
+                                    </Table>
+                                  </TableContainer>
+                                )}
+                              </DataTable>
 
-                                    <p
-                                      style={{
-                                        fontSize: "1rem",
-                                        fontWeight: "600",
-                                        marginBottom: "0.5rem",
-                                      }}
-                                    >
-                                      {alert.unitName}
-                                    </p>
-
-                                    <p
-                                      style={{
-                                        fontSize: "0.875rem",
-                                        color: "#525252",
-                                        marginBottom: "0.5rem",
-                                      }}
-                                    >
-                                      {alert.location}
-                                    </p>
-
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        marginTop: "1rem",
-                                      }}
-                                    >
-                                      <div>
-                                        <span
-                                          style={{
-                                            fontSize: "1.25rem",
-                                            fontWeight: "600",
-                                            color:
-                                              alert.severity === "CRITICAL"
-                                                ? "#da1e28"
-                                                : "#f1c21b",
-                                          }}
-                                        >
-                                          {formatTemperatureDisplay(
-                                            alert.currentTemp,
-                                          )}
-                                        </span>
-                                        {alert.durationMinutes && (
-                                          <span
-                                            style={{
-                                              fontSize: "0.875rem",
-                                              color: "#525252",
-                                              marginLeft: "1rem",
-                                            }}
-                                          >
-                                            Duration: {alert.durationMinutes}{" "}
-                                            min
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {alert.status === "OPEN" && (
-                                        <Button
-                                          kind="ghost"
-                                          size="sm"
-                                          disabled={actionInFlight === alert.id}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleAcknowledgeAlert(alert.id);
-                                          }}
-                                        >
-                                          Acknowledge
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </Tile>
-                                </Column>
-                              ))}
-                            </Grid>
+                              <Pagination
+                                backwardText="Previous page"
+                                forwardText="Next page"
+                                itemsPerPageText="Items per page:"
+                                page={alertsCurrentPage}
+                                pageSize={alertsPageSize}
+                                pageSizes={[5, 10, 20, 30, 50]}
+                                totalItems={activeAlerts.length}
+                                onChange={({ page, pageSize: newPageSize }) => {
+                                  setAlertsCurrentPage(page);
+                                  setAlertsPageSize(newPageSize);
+                                }}
+                              />
+                            </>
                           ) : (
                             <Tile
-                              style={{ padding: "2rem", textAlign: "center" }}
+                              style={{ padding: "1rem", textAlign: "center" }}
                             >
-                              <p>No active alerts</p>
+                              <p style={{ margin: 0 }}>No active alerts</p>
                             </Tile>
                           )}
                         </Section>

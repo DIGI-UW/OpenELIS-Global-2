@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- system_user - from actual table structure -->
+    <system_user id="1" login_name="testuser" last_name="Test"
+        first_name="User" initials="TU" is_active="Y" is_employee="Y"
+        lastupdated="2024-01-01 10:00:00" />
+
+    <!-- status_of_sample - common columns -->
+    <status_of_sample id="1" description="Test Status"
+        code="1" status_type="S" lastupdated="2024-01-01 10:00:00"
+        name="TestStatus" display_key="status.test" is_active="Y" />
+
+    <!-- localization - common columns -->
+    <localization id="1" english="Test Sample Type"
+        french="Type d'échantillon de test" lastupdated="2024-01-01 10:00:00" />
+
+    <!-- type_of_sample - common columns -->
+    <type_of_sample id="1" description="Test Sample Type"
+        domain="H" name_localization_id="1" lastupdated="2024-01-01 10:00:00" />
+
+    <!-- sample - common columns -->
+    <sample id="1000" accession_number="TD1000"
+        entered_date="2024-01-01 10:00:00" received_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" sys_user_id="1" />
+    <sample id="1001" accession_number="TD1001"
+        entered_date="2024-01-01 10:00:00" received_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" sys_user_id="1" />
+
+    <!-- sample_item - common columns -->
+    <sample_item id="1000" samp_id="1000" sort_order="1"
+        external_id="EXT-1000" typeosamp_id="1" status_id="1"
+        lastupdated="2024-01-01 10:00:00" />
+    <sample_item id="1001" samp_id="1001" sort_order="1"
+        external_id="EXT-1001" typeosamp_id="1" status_id="1"
+        lastupdated="2024-01-01 10:00:00" />
+    <sample_item id="1002" samp_id="1001" sort_order="2"
+        external_id="EXT-1002" typeosamp_id="1" status_id="1"
+        lastupdated="2024-01-01 10:00:00" />
+
+    <!-- storage_room - from original test -->
+    <storage_room id="1000" name="Test Integration Room"
+        code="TESTINT01" active="true" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440000" />
+
+    <!-- storage_device - from original test -->
+    <storage_device id="1000" name="Test Freezer"
+        code="TESTFRZ01" type="freezer" parent_room_id="1000" active="true"
+        sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+
+    <!-- storage_shelf - from original test -->
+    <storage_shelf id="1000" label="Test Shelf"
+        code="SHELF001" parent_device_id="1000" active="true" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440002" />
+
+    <!-- storage_rack - from original test -->
+    <storage_rack id="1000" label="Test Rack" code="RACK001"
+        parent_shelf_id="1000" active="true" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
+
+    <!-- storage_box - from original test -->
+    <storage_box id="1000" label="Box A" code="BOXA"
+        type="plate" rows="8" columns="12" parent_rack_id="1000" active="true"
+        sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
+
+    <!-- sample_storage_assignment - from original test -->
+    <sample_storage_assignment id="1000"
+        sample_item_id="1001" location_id="1000" location_type="rack"
+        position_coordinate="A1" assigned_by_user_id="1"
+        assigned_date="2024-01-01 10:00:00" last_updated="2024-01-01 10:00:00" />
+</dataset>

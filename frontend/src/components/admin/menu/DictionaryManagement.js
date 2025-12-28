@@ -440,7 +440,7 @@ function DictionaryManagement() {
           { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
           {
             label: "dictionary.label.modify",
-            link: "/MasterListsPage#DictionaryManagement",
+            link: "/MasterListsPage/DictionaryMenu",
           },
         ]}
       />

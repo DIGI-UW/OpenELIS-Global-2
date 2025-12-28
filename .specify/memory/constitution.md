@@ -1,6 +1,87 @@
-# OpenELIS Global 3.0 Constitution
+# OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Cohesion & Branch Naming Clarifications
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.0 → 1.8.1
+Change Type: PATCH - Clarify branch naming, fix stack references, sync templates
+Date: 2025-12-12
+
+Modified Sections:
+  - Principle IX: Branch naming convention revised to avoid Git ref prefix collisions
+  - Technical Stack Constraints: Clarified Spring Framework usage (Traditional Spring MVC)
+  - Development Workflow > Branch Strategy: Updated to match Principle IX naming
+  - Development Workflow > Code Review Standards: Updated "8 principles" → "9 principles"
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Update branch naming + remove Spring Boot test annotations
+  ✅ .specify/templates/spec-template.md - Updated "OpenELIS Global" phrasing
+  ⚠️ AGENTS.md - Update branch strategy examples to avoid prefix-collision patterns
+
+Follow-up TODOs:
+  - Ensure any internal docs referencing nested milestone branch paths are updated to the new convention.
+
+SYNC IMPACT REPORT - Spec-Driven Iteration (Principle IX)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.7.0 → 1.8.0
+Change Type: MINOR - New principle added for milestone-based PR workflow
+Date: 2025-12-04
+
+Added Sections:
+  - Principle IX: Spec-Driven Iteration
+    * NEW: Mandate to break features >3 days into Validation Milestones
+    * NEW: Each Milestone = 1 Pull Request
+    * NEW: Parallel [P] and Sequential milestone types
+    * NEW: Branch naming convention (spec/, feat/, milestone/, hotfix/, fix/)
+    * NEW: Jira integration via OGC-{###} issue ID format
+    * NEW: Milestone Plan table structure for plan.md
+
+Modified Sections:
+  - Development Workflow > Branch Strategy
+    * CHANGED: Updated to reference Principle IX for complete naming conventions
+    * ADDED: Spec branches, Feature branches, Milestone branches
+    * ADDED: Issue ID format guidance (Jira OGC-{###} or GitHub {###})
+
+  - Development Workflow > Pull Request Requirements
+    * CHANGED: Branch naming checklist updated for new conventions
+    * ADDED: Examples for spec PRs, milestone PRs, bugfix PRs
+
+Rationale for Changes:
+  Large features implemented as single PRs create review bottlenecks, increase
+  merge conflict risk, and delay feedback. The SDD (Spec-Driven Development)
+  approach from GitHub SpecKit enables:
+  - Manageable code reviews (smaller PRs)
+  - Earlier validation of architectural decisions
+  - Parallel development when milestones are independent
+  - Clear progress tracking via milestone checkpoints
+  - Reduced risk of "big bang" integration failures
+
+  This aligns with industry best practices for stacked PRs and trunk-based
+  development while maintaining the rigor of spec-driven workflows.
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Add Milestone Plan section
+  ⚠️ .specify/templates/tasks-template.md - Restructure to milestone-based phases
+  ⚠️ .specify/commands/speckit.tasks.md - Generate per-milestone task groups
+  ⚠️ .specify/commands/speckit.implement.md - Auto-create branches per milestone
+
+Follow-up TODOs:
+  - Update plan-template.md with Milestone Plan section
+  - Update tasks-template.md with milestone-based phase structure
+  - Update speckit.tasks.md to read milestones from plan.md
+  - Update speckit.implement.md to create milestone branches automatically
+  - Test workflow on 009-carbon-sidenav feature
+
+Commit Message:
+  docs: amend constitution to v1.8.0 (Spec-Driven Iteration - Principle IX)
+
+  - Add Principle IX: Spec-Driven Iteration for milestone-based PR workflow
+  - Define branch naming: spec/, feat/, feat/.../m{N}-, hotfix/, fix/
+  - Support parallel [P] and sequential milestones
+  - Enable Jira integration via OGC-{###} issue IDs
+  - Update Branch Strategy and PR Requirements sections
+  - Based on GitHub SpecKit SDD approach
+
 SYNC IMPACT REPORT - Enhanced Cypress E2E Testing Workflow and Review Requirements
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.6.0 → 1.7.0
@@ -898,6 +979,116 @@ patient data breaches and legal penalties.
 
 ---
 
+### IX. Spec-Driven Iteration (ADDED 2025-12-04)
+
+**MANDATE**: Features requiring >3 days effort MUST be broken into Validation
+Milestones. Each Milestone = 1 Pull Request. Milestones can be parallel `[P]` or
+sequential, enabling flexible team coordination.
+
+**Rules**:
+
+- **Spec First**: Specification PR created first on `spec/{issue-id}-{name}`
+  branch
+- **Milestone = PR**: Each milestone generates exactly one pull request
+- **Parallel Milestones `[P]`**: Can be developed simultaneously by different
+  developers or in any order
+- **Sequential Milestones**: Must complete in order due to dependencies
+- **Branch per Milestone**: Each milestone gets its own branch following naming
+  convention
+- **Verification Gate**: Each milestone PR must pass its verification criteria
+  before merge
+
+**Branch Naming Convention (Git-safe + SpecKit-friendly)**:
+
+**IMPORTANT (Git restriction)**: Avoid branch names where one branch is a prefix
+of another (Git ref namespace collision). Example (INVALID pair):
+`feat/004-astm-analyzer-mapping` and
+`feat/004-astm-analyzer-mapping/m1-backend-db`. To prevent this, use a **single
+category prefix** (`spec/`, `feat/`, `fix/`, `hotfix/`) and use **hyphens** (not
+additional slashes) for sub-scoping like milestones.
+
+| Branch Type        | Pattern                                                    | Example                                                |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------ |
+| Spec Branch        | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`                |
+| Spec Clarification | `spec/clarify-{NNN}[-{jira}]-{name}-{topic}`               | `spec/clarify-004-ogc-49-astm-mapping-branch-naming`   |
+| Milestone Branch   | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db`  |
+| Integration/Dev    | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m4-integration` |
+| Hotfix             | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                          |
+| Bugfix             | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                            |
+
+**Issue ID Formats**:
+
+- **Jira (Primary)**: `OGC-{###}` (e.g., `OGC-009`, `OGC-123`) - OpenELIS Global
+  Confluence project
+- **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
+- **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
+
+**Note on Branch Naming**: Branch names use **lowercase** versions of Jira
+ticket IDs (e.g., `ogc-49` instead of `OGC-49`) for Git compatibility and
+readability. The Jira format itself remains uppercase (`OGC-{###}`), but branch
+names convert to lowercase.
+
+**SpecKit tooling note**:
+
+- SpecKit scripts locate the feature folder by finding a `NNN-` prefix in the
+  branch name and mapping to `specs/{NNN}-*`. If you are working on a Jira-only
+  branch name (no `NNN-`), set `SPECIFY_FEATURE={NNN}-{feature-name}` before
+  running `/speckit.*`.
+
+**Milestone Plan Structure** (in `plan.md`):
+
+```markdown
+| ID     | Branch         | Scope                    | Verification    | Depends On |
+| ------ | -------------- | ------------------------ | --------------- | ---------- |
+| M1     | m1-backend     | Entities, DAOs, Services | Unit tests pass | -          |
+| [P] M2 | m2-frontend    | React components         | Jest tests pass | -          |
+| M3     | m3-integration | API + E2E                | E2E tests pass  | M1, M2     |
+```
+
+**Workflow**:
+
+1. **Specification Phase** (on `spec/{issue-id}-{name}` branch):
+
+   - Create spec branch from `develop`
+   - Complete `spec.md` (user stories, requirements)
+   - Complete `plan.md` (architecture, milestone plan)
+   - Complete `tasks.md` (task breakdown by milestone)
+
+- Use `spec/clarify/{issue-id}-{name}-{topic}` branches for spec iterations
+  (avoids Git parent-ref collisions)
+  - Create Spec PR targeting `develop` for review
+
+2. **Implementation Phase** (after spec PR approved OR in parallel):
+   - Spec PR does NOT need to be merged before implementation begins
+   - For simple features (1-2 milestones): milestone branches MAY target
+     `develop` directly
+   - For complex features (3+ milestones): use feature integration branch:
+     - Create feature branch `feat/{issue-id}-{name}` from `develop`
+     - Milestone branches target feature branch
+     - Final PR merges `feat/{issue-id}-{name}` → `develop`
+
+**Key Rules**:
+
+- Spec PR and implementation can proceed in parallel
+- Milestone branches MAY target `develop` directly for simpler features
+- Spec clarification branches merge back to spec branch
+- Feature integration branch is OPTIONAL (use for complex multi-milestone work)
+
+**Rationale**: Large features implemented as single PRs create review
+bottlenecks, increase merge conflict risk, and delay feedback. Milestone-based
+delivery enables:
+
+- Manageable code reviews (smaller PRs)
+- Earlier validation of architectural decisions
+- Parallel development when milestones are independent
+- Clear progress tracking
+- Reduced risk of "big bang" integration failures
+
+**Reference**:
+[GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
+---
+
 ## Technical Stack Constraints
 
 **NON-NEGOTIABLE**: All code MUST use these versions/frameworks. Exceptions
@@ -916,7 +1107,7 @@ require architecture review + documented justification.
 
 **Frameworks & Dependencies**
 
-- **Spring Boot 3.x** (Spring Framework 6.2.2)
+- **Spring Framework 6.2.2** (Traditional Spring MVC)
 - **Hibernate 6.x** (Hibernate 5.6.15.Final ORM)
 - **Jakarta EE 9** persistence API (NOT javax.persistence - use
   jakarta.persistence)
@@ -988,19 +1179,39 @@ creates hidden maintenance costs.
 
 ### Branch Strategy
 
+**Reference**: See Principle IX (Spec-Driven Iteration) for complete branch
+naming conventions and milestone workflow.
+
+**Primary Branches**:
+
 - **`develop`** - Main development branch (all PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches**: `issue-{###}-{feature-name}` (e.g.,
-  `issue-123-storage-management`)
-- **Hotfix branches**: `hotfix-{description}` (merged to develop + main)
+
+**Feature Development Branches** (per Principle IX):
+
+- **Spec branches**: `spec/{NNN}[-{jira}]-{name}` - Specification PRs
+- **Milestone branches**: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Milestone
+  PRs
+- **Hotfix branches**: `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
+- **Bugfix branches**: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
+
+**Issue identifiers**:
+
+- `NNN` is the 3-digit feature number used by SpecKit and used to locate
+  `specs/{NNN}-*`
+- `{jira}` (e.g., `OGC-49`) is optional
 
 ### Pull Request Requirements
 
 **MANDATORY CHECKLIST** (from [PULL_REQUEST_TIPS.md](PULL_REQUEST_TIPS.md)):
 
-1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "issue-123:
-   Add storage location widget")
-2. **Branch Naming**: Branch name matches `issue-{###}-{feature-name}`
+1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "OG-123: Add
+   storage location widget" or "feat(009): Add sidenav")
+2. **Branch Naming**: Branch name follows Principle IX convention:
+   - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
+   - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
+   - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
 3. **Target Branch**: Always `develop` (unless hotfix)
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
@@ -1014,7 +1225,7 @@ creates hidden maintenance costs.
 7. **UI Screenshots**: Attach before/after images for UI changes
 8. **Single Concern**: PR addresses ONE issue only (NO mixed refactoring +
    features)
-9. **Constitution Compliance**: Verify adherence to all 8 core principles
+9. **Constitution Compliance**: Verify adherence to all 9 core principles
 10. **Review Assignment**: Request review from appropriate team members
 
 **CI/CD Pipeline** (GitHub Actions):
@@ -1030,7 +1241,7 @@ All checks MUST pass before merge.
 
 **Reviewers MUST verify**:
 
-- ✅ Constitution compliance (all 8 principles)
+- ✅ Constitution compliance (all 9 principles)
 - ✅ Layered architecture respected (no DAO calls from controllers)
 - ✅ FHIR resources validated if applicable
 - ✅ Internationalization complete (no hardcoded strings)
@@ -1132,6 +1343,7 @@ documenting:
 - [ ] Tests included (Principle V)
 - [ ] Liquibase for schema changes (Principle VI)
 - [ ] Security/compliance requirements met (Principle VIII)
+- [ ] Milestone scope appropriate (Principle IX) - for features >3 days
 
 **Quarterly Audits**: Architecture team samples merged PRs to verify
 constitution adherence. Violations trigger corrective actions (documentation
@@ -1167,10 +1379,12 @@ sync.
 
 ---
 
-**Version**: 1.7.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-07
+**Version**: 1.8.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-12-12
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.8.1: Cohesion & branch naming clarifications (2025-12-12)
+  Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
   Amendment v1.7.0: Enhanced Cypress E2E testing workflow and review requirements (2025-11-07)
   Amendment v1.6.0: Cypress E2E testing best practices (2025-11-05)
   Amendment v1.5.0: Explicit prohibition of @Transactional in controllers (2025-11-05)

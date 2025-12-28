@@ -68,7 +68,6 @@ function DeviceHistoryExpansion({ device }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
-  // Temperature Trends state
   const [timeRange, setTimeRange] = useState("24h");
   const [chartData, setChartData] = useState([]);
   const [trendsLoading, setTrendsLoading] = useState(false);
@@ -85,7 +84,7 @@ function DeviceHistoryExpansion({ device }) {
       const freezerId =
         typeof deviceId === "string" ? parseInt(deviceId, 10) : deviceId;
       const [actionsData, alertsData] = await Promise.all([
-        fetchCorrectiveActions("FREEZER", freezerId),
+        fetchCorrectiveActions({ freezerId: freezerId }),
         fetchFilteredAlerts({
           entityType: "FREEZER",
           entityId: freezerId,
@@ -178,9 +177,13 @@ function DeviceHistoryExpansion({ device }) {
     }
   }, [activeTab, device, loadTemperatureReadings]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "—";
-    const date = new Date(dateString);
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "—";
+    const date =
+      typeof dateValue === "number"
+        ? new Date(dateValue * 1000)
+        : new Date(dateValue);
+    if (isNaN(date.getTime())) return "—";
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -188,9 +191,13 @@ function DeviceHistoryExpansion({ device }) {
     });
   };
 
-  const formatTime = (dateString) => {
-    if (!dateString) return "—";
-    const date = new Date(dateString);
+  const formatTime = (dateValue) => {
+    if (!dateValue) return "—";
+    const date =
+      typeof dateValue === "number"
+        ? new Date(dateValue * 1000)
+        : new Date(dateValue);
+    if (isNaN(date.getTime())) return "—";
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -230,18 +237,22 @@ function DeviceHistoryExpansion({ device }) {
         id: `CA-${String(action.id).padStart(3, "0")}`,
         type: "corrective-action",
         eventId: `CA-${String(action.id).padStart(3, "0")}`,
-        summary: action.summary || "No summary provided",
+        summary: action.description || "No description provided",
         severity: null,
-        date: action.performedAt,
-        time: action.performedAt,
-        acknowledgedBy: action.performedBy || "—",
+        status: action.status || "PENDING",
+        isEdited: action.isEdited || false,
+        date: action.createdAt,
+        time: action.createdAt,
+        acknowledgedBy: action.createdByName || "—",
         rawData: action,
       });
     });
 
     return events.sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
+      const dateA =
+        typeof a.date === "number" ? new Date(a.date * 1000) : new Date(a.date);
+      const dateB =
+        typeof b.date === "number" ? new Date(b.date * 1000) : new Date(b.date);
       return dateB - dateA;
     });
   }, [alerts, correctiveActions]);
@@ -278,7 +289,6 @@ function DeviceHistoryExpansion({ device }) {
   const totalAlerts = alerts.length;
   const totalCorrectiveActions = correctiveActions.length;
 
-  // Temperature statistics
   const temperatureStats = useMemo(() => {
     if (!chartData.length) {
       return { avg: "—", min: "—", max: "—", count: 0 };
@@ -296,7 +306,6 @@ function DeviceHistoryExpansion({ device }) {
     };
   }, [chartData]);
 
-  // Format chart data for Carbon Charts
   const formattedChartData = useMemo(() => {
     return chartData.map((point) => ({
       group: point.group,
@@ -310,14 +319,12 @@ function DeviceHistoryExpansion({ device }) {
     }));
   }, [chartData]);
 
-  // Get device thresholds for chart annotations
   const deviceThresholds = useMemo(() => {
     const minTemp = device?.minTemperature || device?.thresholdMin || -20;
     const maxTemp = device?.maxTemperature || device?.thresholdMax || -18;
     return { minTemp, maxTemp };
   }, [device]);
 
-  // Chart options with threshold lines
   const chartOptions = useMemo(() => {
     const { minTemp, maxTemp } = deviceThresholds;
 
@@ -342,7 +349,6 @@ function DeviceHistoryExpansion({ device }) {
       tooltip: {
         showTotal: false,
       },
-      // Add threshold lines if supported by the chart library
       thresholds: [
         {
           value: maxTemp,
@@ -393,6 +399,36 @@ function DeviceHistoryExpansion({ device }) {
     }
   };
 
+  const statusTag = (status, isEdited = false) => {
+    const tag = (() => {
+      switch (status) {
+        case "PENDING":
+          return <Tag type="red">Pending</Tag>;
+        case "IN_PROGRESS":
+          return <Tag type="blue">In Progress</Tag>;
+        case "COMPLETED":
+          return <Tag type="green">Completed</Tag>;
+        case "CANCELLED":
+          return <Tag type="gray">Cancelled</Tag>;
+        case "RETRACTED":
+          return <Tag type="magenta">Retracted</Tag>;
+        default:
+          return <Tag>{status}</Tag>;
+      }
+    })();
+
+    return (
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        {tag}
+        {isEdited && (
+          <Tag type="purple" size="sm">
+            Edited
+          </Tag>
+        )}
+      </div>
+    );
+  };
+
   const eventColumns = [
     { key: "eventType", header: "Event Type" },
     { key: "eventId", header: "Event ID" },
@@ -400,46 +436,30 @@ function DeviceHistoryExpansion({ device }) {
     { key: "severity", header: "Severity" },
     { key: "date", header: "Date" },
     { key: "time", header: "Time" },
-    { key: "acknowledgedBy", header: "Acknowledged / Performed By" },
+    { key: "performedBy", header: "Acknowledged / Performed By" },
   ];
 
   const eventRows = paginatedEvents.map((event) => {
+    const isAlert = event.type === "alert";
+
     return {
       id: event.id,
       eventType: (
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {event.type === "alert" ? (
-            <Warning
-              size={16}
-              style={{ color: "var(--cds-support-warning)" }}
-            />
-          ) : (
-            <Document size={16} style={{ color: "var(--cds-text-primary)" }} />
-          )}
-          <span>{event.type === "alert" ? "Alert" : "Corrective Action"}</span>
+          {isAlert ? <Warning size={16} /> : <Document size={16} />}
+          <Tag type={isAlert ? "red" : "blue"} size="sm">
+            {isAlert ? "Alert" : "Corrective Action"}
+          </Tag>
         </div>
       ),
       eventId: event.eventId,
       summary: event.summary,
-      severity: severityTag(event.severity),
-      date: (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Calendar size={16} style={{ color: "var(--cds-text-secondary)" }} />
-          <span>{formatDate(event.date)}</span>
-        </div>
-      ),
-      time: (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Time size={16} style={{ color: "var(--cds-text-secondary)" }} />
-          <span>{formatTime(event.time)}</span>
-        </div>
-      ),
-      acknowledgedBy: (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <User size={16} style={{ color: "var(--cds-text-secondary)" }} />
-          <span>{event.acknowledgedBy}</span>
-        </div>
-      ),
+      severity: isAlert
+        ? severityTag(event.severity)
+        : statusTag(event.status, event.isEdited),
+      date: formatDate(event.date),
+      time: formatTime(event.time),
+      performedBy: event.acknowledgedBy,
     };
   });
 
@@ -572,7 +592,6 @@ function DeviceHistoryExpansion({ device }) {
                   </Column>
                 </Grid>
 
-                {/* Event History Table */}
                 <DataTable rows={eventRows} headers={eventColumns}>
                   {({
                     rows,
@@ -586,7 +605,7 @@ function DeviceHistoryExpansion({ device }) {
                       title="Event History"
                       {...getTableContainerProps()}
                     >
-                      <Table {...getTableProps()}>
+                      <Table {...getTableProps()} size="md">
                         <TableHead>
                           <TableRow>
                             {headers.map((header) => (
@@ -602,14 +621,7 @@ function DeviceHistoryExpansion({ device }) {
                         <TableBody>
                           {rows.length === 0 && (
                             <TableRow>
-                              <TableCell
-                                colSpan={eventColumns.length}
-                                style={{
-                                  textAlign: "center",
-                                  padding: "2rem 0",
-                                  color: "var(--cds-text-secondary)",
-                                }}
-                              >
+                              <TableCell colSpan={eventColumns.length}>
                                 No events found.
                               </TableCell>
                             </TableRow>
@@ -617,7 +629,13 @@ function DeviceHistoryExpansion({ device }) {
                           {rows.map((row) => (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
+                                <TableCell
+                                  key={cell.id}
+                                  style={{
+                                    textAlign: "left",
+                                    paddingLeft: "1rem",
+                                  }}
+                                >
                                   {cell.value}
                                 </TableCell>
                               ))}

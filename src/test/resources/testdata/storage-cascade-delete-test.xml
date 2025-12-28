@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Storage hierarchy for cascade delete tests -->
+    <storage_room id="30000" name="Cascade Test Room"
+        code="CASCROOM" active="true"
+        fhir_uuid="30000000-0000-0000-0000-000000000000" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_device id="30000" name="Cascade Test Device"
+        code="CASCDEV" type="freezer" parent_room_id="30000" active="true"
+        fhir_uuid="30000000-0000-0000-0000-000000000001" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_shelf id="30000" label="Cascade Test Shelf"
+        code="CASCSHELF" parent_device_id="30000" active="true"
+        fhir_uuid="30000000-0000-0000-0000-000000000002" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+    <storage_rack id="30000" label="Cascade Test Rack"
+        code="CASCRACK" parent_shelf_id="30000" active="true"
+        fhir_uuid="30000000-0000-0000-0000-000000000003" sys_user_id="1"
+        last_updated="2025-01-01 00:00:00" />
+
+    <!-- Sample data for cascade delete assignment test -->
+    <sample id="30000" accession_number="TEST-CASCADE-001"
+        received_date="2025-01-01 00:00:00" entered_date="2025-01-01 00:00:00"
+        lastupdated="2025-01-01 00:00:00" sys_user_id="1" />
+    <sample_item id="30000" samp_id="30000" sort_order="1"
+        status_id="1" lastupdated="2025-01-01 00:00:00" />
+    <sample_storage_assignment id="30000"
+        sample_item_id="30000" location_id="30000" location_type="rack"
+        assigned_by_user_id="1" assigned_date="2025-01-01 00:00:00"
+        last_updated="2025-01-01 00:00:00" />
+</dataset>

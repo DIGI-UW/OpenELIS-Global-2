@@ -31,7 +31,8 @@ public class CorrectiveActionDAOImpl extends BaseDAOImpl<CorrectiveAction, Long>
     @Transactional(readOnly = true)
     public List<CorrectiveAction> getActionsByFreezerId(Long freezerId) {
         try {
-            String hql = "FROM CorrectiveAction ca WHERE ca.freezerId = :freezerId ORDER BY ca.createdAt DESC";
+            String hql = "FROM CorrectiveAction ca " + "LEFT JOIN FETCH ca.createdBy " + "LEFT JOIN FETCH ca.updatedBy "
+                    + "WHERE ca.freezer.id = :freezerId " + "ORDER BY ca.createdAt DESC";
             Query<CorrectiveAction> query = entityManager.unwrap(Session.class).createQuery(hql,
                     CorrectiveAction.class);
             query.setParameter("freezerId", freezerId);
@@ -52,7 +53,19 @@ public class CorrectiveActionDAOImpl extends BaseDAOImpl<CorrectiveAction, Long>
             Query<CorrectiveAction> query = entityManager.unwrap(Session.class).createNativeQuery(sql,
                     CorrectiveAction.class);
             query.setParameter("status", status.name());
-            return query.list();
+            List<CorrectiveAction> actions = query.list();
+
+            // Eagerly initialize lazy associations within transaction
+            actions.forEach(action -> {
+                if (action.getCreatedBy() != null) {
+                    org.hibernate.Hibernate.initialize(action.getCreatedBy());
+                }
+                if (action.getUpdatedBy() != null) {
+                    org.hibernate.Hibernate.initialize(action.getUpdatedBy());
+                }
+            });
+
+            return actions;
         } catch (Exception e) {
             logger.error("Error retrieving corrective actions by status: {}", status, e);
             throw new LIMSRuntimeException("Error retrieving corrective actions by status: " + status, e);
@@ -63,8 +76,8 @@ public class CorrectiveActionDAOImpl extends BaseDAOImpl<CorrectiveAction, Long>
     @Transactional(readOnly = true)
     public List<CorrectiveAction> getActionsByDateRange(OffsetDateTime startDate, OffsetDateTime endDate) {
         try {
-            String hql = "FROM CorrectiveAction ca WHERE ca.createdAt BETWEEN :startDate AND :endDate "
-                    + "ORDER BY ca.createdAt DESC";
+            String hql = "FROM CorrectiveAction ca " + "LEFT JOIN FETCH ca.createdBy " + "LEFT JOIN FETCH ca.updatedBy "
+                    + "WHERE ca.createdAt BETWEEN :startDate AND :endDate " + "ORDER BY ca.createdAt DESC";
             Query<CorrectiveAction> query = entityManager.unwrap(Session.class).createQuery(hql,
                     CorrectiveAction.class);
             query.setParameter("startDate", startDate);
@@ -81,7 +94,8 @@ public class CorrectiveActionDAOImpl extends BaseDAOImpl<CorrectiveAction, Long>
     @Transactional(readOnly = true)
     public List<CorrectiveAction> getAllActions() {
         try {
-            String hql = "FROM CorrectiveAction ca ORDER BY ca.createdAt DESC";
+            String hql = "FROM CorrectiveAction ca " + "LEFT JOIN FETCH ca.createdBy " + "LEFT JOIN FETCH ca.updatedBy "
+                    + "ORDER BY ca.createdAt DESC";
             Query<CorrectiveAction> query = entityManager.unwrap(Session.class).createQuery(hql,
                     CorrectiveAction.class);
             return query.list();

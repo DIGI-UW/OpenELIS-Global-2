@@ -87,6 +87,11 @@ public class NoteBook extends BaseObject<Integer> {
     @JoinColumn(name = "technician_id", referencedColumnName = "id")
     private SystemUser technician;
 
+    @Valid
+    @OneToOne
+    @JoinColumn(name = "creator_id", referencedColumnName = "id")
+    private SystemUser creator;
+
     @OneToMany
     @JoinTable(name = "notebook_samples_list", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "sample_item_id"))
     private List<SampleItem> samples;
@@ -282,4 +287,11 @@ public class NoteBook extends BaseObject<Integer> {
         this.questionnaireFhirUuid = questionnaireFhirUuid;
     }
 
+    public SystemUser getCreator() {
+        return creator;
+    }
+
+    public void setCreator(SystemUser creator) {
+        this.creator = creator;
+    }
 }

@@ -4,11 +4,24 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import LocationActionsOverflowMenu from "../LocationManagement/LocationActionsOverflowMenu";
 import messages from "../../../languages/en.json";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+
+jest.mock("../../utils/Utils", () => ({
+  ...jest.requireActual("../../utils/Utils"),
+}));
+
+const mockUserSessionDetails = {
+  roles: ["Global Administrator"],
+};
 
 const renderWithIntl = (component) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
-      {component}
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: mockUserSessionDetails }}
+      >
+        {component}
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
 };

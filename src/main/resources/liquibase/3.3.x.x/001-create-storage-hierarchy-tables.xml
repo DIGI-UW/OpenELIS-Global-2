@@ -143,7 +143,7 @@
         </rollback>
     </changeSet>
 
-    <!-- Storage Rack Table -->
+    <!-- Storage Rack Table (simple container for boxes) -->
     <changeSet id="storage-004-create-storage-rack-table" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
@@ -160,13 +160,7 @@
             <column name="label" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="rows" type="INT" defaultValueNumeric="0">
-                <constraints nullable="false"/>
-            </column>
-            <column name="columns" type="INT" defaultValueNumeric="0">
-                <constraints nullable="false"/>
-            </column>
-            <column name="position_schema_hint" type="VARCHAR(50)"/>
+            <column name="short_code" type="VARCHAR(10)"/>
             <column name="active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
@@ -186,11 +180,6 @@
         <addUniqueConstraint tableName="storage_rack"
             columnNames="parent_shelf_id, label"
             constraintName="uk_rack_label_in_shelf"/>
-        <sql>
-            ALTER TABLE clinlims.storage_rack
-            ADD CONSTRAINT chk_rack_dimensions
-            CHECK (rows >= 0 AND columns >= 0);
-        </sql>
         <createSequence sequenceName="storage_rack_seq" startValue="1" incrementBy="1"/>
         <rollback>
             <dropSequence sequenceName="storage_rack_seq"/>
@@ -198,38 +187,38 @@
         </rollback>
     </changeSet>
 
-    <!-- Storage Position Table (with flexible hierarchy support) -->
-    <changeSet id="storage-005-create-storage-position-table" author="sample-storage-feature">
+    <!-- Storage Box Table (gridded container like 96-well plate) -->
+    <changeSet id="storage-005-create-storage-box-table" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="storage_position"/>
+                <tableExists tableName="storage_box"/>
             </not>
         </preConditions>
-        <createTable tableName="storage_position">
+        <createTable tableName="storage_box">
             <column name="id" type="numeric(10,0)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="fhir_uuid" type="UUID">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="coordinate" type="VARCHAR(50)"/>
-            <column name="row_index" type="INT"/>
-            <column name="column_index" type="INT"/>
-            <column name="parent_device_id" type="numeric(10,0)">
-                <constraints nullable="false"
-                    foreignKeyName="fk_position_device"
-                    references="storage_device(id)"
-                    deleteCascade="true"/>
+            <column name="label" type="VARCHAR(100)">
+                <constraints nullable="false"/>
             </column>
-            <column name="parent_shelf_id" type="numeric(10,0)">
-                <constraints nullable="true"
-                    foreignKeyName="fk_position_shelf"
-                    references="storage_shelf(id)"
-                    deleteCascade="true"/>
+            <column name="type" type="VARCHAR(50)"/>
+            <column name="rows" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="columns" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="position_schema_hint" type="VARCHAR(50)"/>
+            <column name="short_code" type="VARCHAR(10)"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
             </column>
             <column name="parent_rack_id" type="numeric(10,0)">
-                <constraints nullable="true"
-                    foreignKeyName="fk_position_rack"
+                <constraints nullable="false"
+                    foreignKeyName="fk_box_rack"
                     references="storage_rack(id)"
                     deleteCascade="true"/>
             </column>
@@ -240,20 +229,18 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <addUniqueConstraint tableName="storage_box"
+            columnNames="parent_rack_id, label"
+            constraintName="uk_box_label_in_rack"/>
         <sql>
-            ALTER TABLE storage_position
-            ADD CONSTRAINT chk_position_rack_requires_shelf
-            CHECK ((parent_rack_id IS NULL) OR (parent_shelf_id IS NOT NULL));
+            ALTER TABLE clinlims.storage_box
+            ADD CONSTRAINT chk_box_dimensions
+            CHECK (rows >= 0 AND columns >= 0);
         </sql>
-        <sql>
-            ALTER TABLE storage_position
-            ADD CONSTRAINT chk_position_coordinate_requires_rack
-            CHECK ((coordinate IS NULL) OR (parent_rack_id IS NOT NULL));
-        </sql>
-        <createSequence sequenceName="storage_position_seq" startValue="1" incrementBy="1"/>
+        <createSequence sequenceName="storage_box_seq" startValue="1" incrementBy="1"/>
         <rollback>
-            <dropSequence sequenceName="storage_position_seq"/>
-            <dropTable tableName="storage_position"/>
+            <dropSequence sequenceName="storage_box_seq"/>
+            <dropTable tableName="storage_box"/>
         </rollback>
     </changeSet>
 
