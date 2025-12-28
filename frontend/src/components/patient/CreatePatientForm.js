@@ -4,6 +4,7 @@ import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { nationalityList } from "../data/countries";
 import format from "date-fns/format";
+
 import {
   differenceInYears,
   differenceInMonths,
@@ -37,6 +38,7 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
+import ClearConfirmationModal from "../common/Clear";
 
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
@@ -74,6 +76,7 @@ function CreatePatientForm(props) {
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
   });
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handlePhotoChange = (photo, setFieldValue) => {
     if (setFieldValue) {
@@ -431,6 +434,16 @@ function CreatePatientForm(props) {
     setHealthDistricts(districts);
   };
 
+  const handleClearConfirm = (resetForm) => {
+  resetForm({ values: CreatePatientFormValues });
+  setHealthDistricts([]);
+  setDateOfBirthFormatter({
+    years: "",
+    months: "",
+    days: "",
+  });
+  setShowClearConfirm(false);
+};
   const handleSubmit = async (values, { resetForm }) => {
     // Prevent multiple submissions.
     if (isSubmitting) {
@@ -492,7 +505,6 @@ function CreatePatientForm(props) {
         validateOnChange={false}
         validateOnBlur={true}
         onSubmit={handleSubmit}
-        onChange
       >
         {({
           values,
@@ -504,6 +516,7 @@ function CreatePatientForm(props) {
           handleSubmit,
           setFieldValue,
         }) => (
+          <>
           <Form
             onSubmit={handleSubmit}
             onChange={handleChange}
@@ -1187,15 +1200,10 @@ function CreatePatientForm(props) {
                     <Button
                       id="clear"
                       kind="danger"
-                      disabled={isSubmitting}
+                      type="button"
+                     
                       onClick={() => {
-                        resetForm({ values: CreatePatientFormValues });
-                        setHealthDistricts([]);
-                        setDateOfBirthFormatter({
-                          years: "",
-                          months: "",
-                          days: "",
-                        });
+                       setShowClearConfirm(true);
                       }}
                     >
                       <FormattedMessage id="label.button.clear" />
@@ -1204,7 +1212,15 @@ function CreatePatientForm(props) {
                 </>
               )}
             </Grid>
+            
+              
           </Form>
+          <ClearConfirmationModal
+               open={showClearConfirm}
+               onCancel={() => setShowClearConfirm(false)}
+               onConfirm={() => handleClearConfirm(resetForm)}
+           /> 
+          </>
         )}
       </Formik>
     </>
