@@ -22,6 +22,7 @@ import ImmunologyResultCompilationPage from "../pages/immunology/ImmunologyResul
 import ImmunologyArchivingPage from "../pages/immunology/ImmunologyArchivingPage";
 import ImmunologyDataAnalysisPage from "../pages/immunology/ImmunologyDataAnalysisPage";
 import VirologySampleReceptionPage from "../pages/virology/VirologySampleReceptionPage";
+import VirusCultureWorkflowPage from "../pages/virology/VirusCultureWorkflowPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -329,12 +330,13 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
           // Media prep, sterilization, cell culture, QC, virus culture,
           // dark room imaging, formulation, feeding, packaging
           return (
-            <InitialProcessingPage
+            <VirusCultureWorkflowPage
               key={`virology-culture-${page.id}`}
               entryId={entryId}
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookEntry={entry}
             />
           );
         case 3:

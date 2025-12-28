@@ -8,6 +8,37 @@
     <property name="now" value="now()" dbms="postgresql"/>
 
     <!-- ======================================================== -->
+    <!-- UPDATE PAGE TYPE CONSTRAINT FOR VIROLOGY WORKFLOW        -->
+    <!-- Add VIRUS_CULTURE_WORKFLOW to allowed page types         -->
+    <!-- Must run BEFORE creating virology pages                  -->
+    <!-- ======================================================== -->
+    <changeSet id="update-page-type-constraint-add-virus-culture-workflow" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if VIRUS_CULTURE_WORKFLOW is not already in the constraint -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_constraint c
+                WHERE c.conname = 'chk_page_type'
+                AND pg_get_constraintdef(c.oid) LIKE '%VIRUS_CULTURE_WORKFLOW%'
+            </sqlCheck>
+        </preConditions>
+        <comment>Update CHECK constraint to add VIRUS_CULTURE_WORKFLOW for virology workflow pages.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+            ALTER TABLE clinlims.notebook_page
+            ADD CONSTRAINT chk_page_type
+            CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT', 'CHILD_SAMPLE_CREATION', 'ASSAY_EXECUTION', 'VIRUS_CULTURE_WORKFLOW'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+                ALTER TABLE clinlims.notebook_page
+                ADD CONSTRAINT chk_page_type
+                CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT', 'CHILD_SAMPLE_CREATION', 'ASSAY_EXECUTION'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
     <!-- VIROLOGY & VACCINE UNIT NOTEBOOK TEMPLATE                 -->
     <!-- Creates a predefined notebook template with 3 workflow pages -->
     <!-- based on the 3 workflow stages from the PDF specification -->
@@ -99,12 +130,12 @@
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Virus Culture Growth"/>
-            <column name="instructions" value="In-Lab Process Steps: 1) Media Preparation - Log materials (type, lot number, expiry). 2) Sterilization - Record parameters (temp, time, pressure). 3) Cell Culture - Track cell line, passage number, growth conditions. 4) Quality Control - Log viability %, sterility pass/fail. 5) Virus Culture - Record virus strain, culture conditions (temp, CO2, duration). 6) Dark Room Imaging - Store image data, CPE observation, fluorescence intensity. 7) Formulation - Document stabilizers, preservatives, concentrations. 8) Feeding - Log feeding schedule, reagents. 9) Packaging - Track batch ID, packaging specs (vial type, fill volume, labeling)."/>
-            <column name="content" value="Stage 2: Virus Culture Growth (In-Lab) - Complete virus culture process from media preparation to packaging"/>
+            <column name="title" value="Virus Culture Workflow"/>
+            <column name="instructions" value="Professional 9-Step Virus Culture Growth Workflow: 1) Media Preparation - Select media, reagents, equipment and log materials used (type, lot number, expiry). 2) Sterilization - Autoclaving, filtration and record sterilization parameters (temp, time, pressure). 3) Cell Culture - Grow host cells and track cell line, passage number, growth conditions. 4) Quality Control - Validate cell viability and sterility, log QC results (viability %, sterility pass/fail). 5) Virus Culture - Inoculate cells with virus and record virus strain, culture conditions (temp, CO₂, duration). 6) Dark Room Imaging - Imaging or fluorescence analysis and store image data, analysis results (CPE observation, fluorescence intensity). 7) Formulation - Prepare viral product and document formulation details (stabilizers, preservatives, concentrations). 8) Feeding - Maintain culture and log feeding schedule, reagents used. 9) Packaging - Final product packaging and track batch ID, packaging specs (vial type, fill volume, labeling)."/>
+            <column name="content" value="Stage 2: Professional Virus Culture Growth Workflow - Complete 9-step virus culture process with comprehensive LMIS tracking from media preparation through final packaging. Features real-time workflow progress tracking, quality control gates, and regulatory compliance documentation."/>
             <column name="page_order" value="2"/>
             <column name="completed" valueBoolean="false"/>
-            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="page_type" value="VIRUS_CULTURE_WORKFLOW"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
