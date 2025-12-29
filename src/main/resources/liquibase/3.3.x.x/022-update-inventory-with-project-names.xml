@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Update Inventory Demo Data with Project Names
+        =============================================
+        Enhances existing inventory items with project name associations
+        to demonstrate the new project integration feature with notebooks
+    -->
+
+    <changeSet id="inventory-013-add-project-names-to-demo-items" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="inventory_item"/>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="project_name"/>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) >= 1 FROM clinlims.inventory_item WHERE name = 'DNA Extraction Kit'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Update existing demo inventory items with realistic project name associations</comment>
+
+        <!-- MNTD (Malaria and Neglected Tropical Disease) Laboratory Items -->
+        <update tableName="inventory_item" schemaName="clinlims">
+            <column name="project_name" value="Malaria and Neglected Tropical Disease (MNTD) Laboratory"/>
+            <where>name IN (
+                'DNA Extraction Kit',
+                'RNA Preservation Buffer',
+                'PCR Master Mix',
+                'Malaria RDT Buffer',
+                'Ethanol (Molecular Biology Grade)',
+                'Nuclease-Free Water'
+            )</where>
+        </update>
+
+        <!-- Immunology Laboratory Items -->
+        <update tableName="inventory_item" schemaName="clinlims">
+            <column name="project_name" value="Immunology Laboratory"/>
+            <where>name IN (
+                'Cell Lysis Buffer',
+                'Proteinase K Solution'
+            )</where>
+        </update>
+
+        <!-- Equipment/Instruments - Shared across both labs -->
+        <update tableName="inventory_item" schemaName="clinlims">
+            <column name="project_name" value="Immunology Laboratory"/>
+            <where>item_type = 'INSTRUMENT' AND name IN (
+                'Microcentrifuge (Eppendorf 5424R)',
+                'Vortex Mixer (Scientific Industries SI-0236)',
+                'Biosafety Cabinet Class II (Thermo Fisher 1300-Series)'
+            )</where>
+        </update>
+
+        <update tableName="inventory_item" schemaName="clinlims">
+            <column name="project_name" value="Malaria and Neglected Tropical Disease (MNTD) Laboratory"/>
+            <where>item_type = 'INSTRUMENT' AND name IN (
+                'PCR Thermocycler (Bio-Rad T100)',
+                'Micropipette Set (Gilson PIPETMAN-SET)',
+                'NanoDrop Spectrophotometer (Thermo Fisher ND-2000)'
+            )</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="inventory-014-create-additional-demo-items-with-projects" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="inventory_item"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.inventory_item WHERE name = 'HIV ELISA Test Kit'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Create additional inventory items with project associations to demonstrate comprehensive coverage</comment>
+
+        <!-- Additional MNTD Laboratory Items -->
+        <insert tableName="inventory_item" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_item_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Malaria RDT (Pf/Pv)"/>
+            <column name="description" value="Rapid diagnostic test for Plasmodium falciparum and vivax"/>
+            <column name="item_type" value="RDT"/>
+            <column name="category" value="Diagnostics"/>
+            <column name="manufacturer" value="SD Biosensor"/>
+            <column name="catalog_number" value="SDB-05FK60"/>
+            <column name="storage_requirements" value="15-30°C (Room Temperature)"/>
+            <column name="units" value="tests"/>
+            <column name="low_stock_threshold" value="50"/>
+            <column name="expiration_alert_days" value="30"/>
+            <column name="project_name" value="Malaria and Neglected Tropical Disease (MNTD) Laboratory"/>
+            <column name="is_active" value="Y"/>
+        </insert>
+
+        <insert tableName="inventory_item" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_item_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Dengue NS1 Antigen Test"/>
+            <column name="description" value="Rapid test for dengue virus NS1 antigen detection"/>
+            <column name="item_type" value="RDT"/>
+            <column name="category" value="Diagnostics"/>
+            <column name="manufacturer" value="Alere"/>
+            <column name="catalog_number" value="AL-DG001"/>
+            <column name="storage_requirements" value="2-30°C"/>
+            <column name="units" value="tests"/>
+            <column name="low_stock_threshold" value="25"/>
+            <column name="expiration_alert_days" value="60"/>
+            <column name="project_name" value="Malaria and Neglected Tropical Disease (MNTD) Laboratory"/>
+            <column name="is_active" value="Y"/>
+        </insert>
+
+        <!-- Additional Immunology Laboratory Items -->
+        <insert tableName="inventory_item" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_item_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="HIV ELISA Test Kit"/>
+            <column name="description" value="Enzyme-linked immunosorbent assay for HIV antibody detection"/>
+            <column name="item_type" value="HIV_KIT"/>
+            <column name="category" value="Serology"/>
+            <column name="manufacturer" value="Bio-Rad"/>
+            <column name="catalog_number" value="BR-HIV001"/>
+            <column name="storage_requirements" value="2-8°C (Refrigerated)"/>
+            <column name="units" value="tests"/>
+            <column name="low_stock_threshold" value="20"/>
+            <column name="expiration_alert_days" value="30"/>
+            <column name="project_name" value="Immunology Laboratory"/>
+            <column name="is_active" value="Y"/>
+        </insert>
+
+        <insert tableName="inventory_item" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_item_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="CD4+ Cell Count Kit"/>
+            <column name="description" value="Flow cytometry kit for CD4+ T-lymphocyte enumeration"/>
+            <column name="item_type" value="REAGENT"/>
+            <column name="category" value="Flow Cytometry"/>
+            <column name="manufacturer" value="BD Biosciences"/>
+            <column name="catalog_number" value="BD-340133"/>
+            <column name="storage_requirements" value="2-8°C (Refrigerated)"/>
+            <column name="units" value="tests"/>
+            <column name="low_stock_threshold" value="15"/>
+            <column name="expiration_alert_days" value="45"/>
+            <column name="project_name" value="Immunology Laboratory"/>
+            <column name="is_active" value="Y"/>
+        </insert>
+
+        <!-- General Laboratory Items (No specific project) -->
+        <insert tableName="inventory_item" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_item_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Universal Sample Tubes"/>
+            <column name="description" value="General-purpose sample collection tubes"/>
+            <column name="item_type" value="REAGENT"/>
+            <column name="category" value="Sample Collection"/>
+            <column name="manufacturer" value="Sarstedt"/>
+            <column name="catalog_number" value="SA-62.515"/>
+            <column name="storage_requirements" value="15-25°C (Room Temperature)"/>
+            <column name="units" value="tubes"/>
+            <column name="low_stock_threshold" value="100"/>
+            <column name="expiration_alert_days" value="90"/>
+            <column name="project_name" value=""/>
+            <column name="is_active" value="Y"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="inventory-015-create-demo-lots-with-projects" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="inventory_lot"/>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) >= 1 FROM clinlims.inventory_item WHERE project_name = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Create inventory lots for the new items to demonstrate project-based inventory tracking</comment>
+
+        <!-- Get the IDs of the newly created items for lot creation -->
+        <sql>
+            -- Malaria RDT Lot
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                initial_quantity, current_quantity, receipt_date,
+                expiration_date, qc_status, status
+            )
+            SELECT
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                ii.id,
+                'MNTD-RDT-2025-001',
+                500.0,
+                485.0,
+                CURRENT_TIMESTAMP - INTERVAL '15 days',
+                CURRENT_TIMESTAMP + INTERVAL '18 months',
+                'PASSED',
+                'IN_USE'
+            FROM clinlims.inventory_item ii
+            WHERE ii.name = 'Malaria RDT (Pf/Pv)' AND ii.project_name = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory'
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.inventory_lot il2
+                WHERE il2.lot_number = 'MNTD-RDT-2025-001'
+            );
+
+            -- Dengue Test Lot
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                initial_quantity, current_quantity, receipt_date,
+                expiration_date, qc_status, status
+            )
+            SELECT
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                ii.id,
+                'MNTD-DNG-2025-002',
+                200.0,
+                200.0,
+                CURRENT_TIMESTAMP - INTERVAL '5 days',
+                CURRENT_TIMESTAMP + INTERVAL '12 months',
+                'PENDING',
+                'ACTIVE'
+            FROM clinlims.inventory_item ii
+            WHERE ii.name = 'Dengue NS1 Antigen Test' AND ii.project_name = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory'
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.inventory_lot il2
+                WHERE il2.lot_number = 'MNTD-DNG-2025-002'
+            );
+
+            -- HIV ELISA Lot
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                initial_quantity, current_quantity, receipt_date,
+                expiration_date, qc_status, status
+            )
+            SELECT
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                ii.id,
+                'IMMUNO-HIV-2025-003',
+                96.0,
+                72.0,
+                CURRENT_TIMESTAMP - INTERVAL '30 days',
+                CURRENT_TIMESTAMP + INTERVAL '6 months',
+                'PASSED',
+                'IN_USE'
+            FROM clinlims.inventory_item ii
+            WHERE ii.name = 'HIV ELISA Test Kit' AND ii.project_name = 'Immunology Laboratory'
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.inventory_lot il2
+                WHERE il2.lot_number = 'IMMUNO-HIV-2025-003'
+            );
+
+            -- CD4 Count Kit Lot
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                initial_quantity, current_quantity, receipt_date,
+                expiration_date, qc_status, status, date_opened
+            )
+            SELECT
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                ii.id,
+                'IMMUNO-CD4-2025-004',
+                100.0,
+                65.0,
+                CURRENT_TIMESTAMP - INTERVAL '45 days',
+                CURRENT_TIMESTAMP + INTERVAL '8 months',
+                'PASSED',
+                'IN_USE',
+                CURRENT_TIMESTAMP - INTERVAL '20 days'
+            FROM clinlims.inventory_item ii
+            WHERE ii.name = 'CD4+ Cell Count Kit' AND ii.project_name = 'Immunology Laboratory'
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.inventory_lot il2
+                WHERE il2.lot_number = 'IMMUNO-CD4-2025-004'
+            );
+
+            -- Universal Tubes Lot (No project)
+            INSERT INTO clinlims.inventory_lot (
+                id, fhir_uuid, inventory_item_id, lot_number,
+                initial_quantity, current_quantity, receipt_date,
+                expiration_date, qc_status, status
+            )
+            SELECT
+                nextval('clinlims.inventory_lot_seq'),
+                uuid_generate_v4(),
+                ii.id,
+                'GENERAL-TUBES-2025-005',
+                1000.0,
+                850.0,
+                CURRENT_TIMESTAMP - INTERVAL '60 days',
+                CURRENT_TIMESTAMP + INTERVAL '24 months',
+                'PASSED',
+                'ACTIVE'
+            FROM clinlims.inventory_item ii
+            WHERE ii.name = 'Universal Sample Tubes' AND (ii.project_name IS NULL OR ii.project_name = '')
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.inventory_lot il2
+                WHERE il2.lot_number = 'GENERAL-TUBES-2025-005'
+            );
+        </sql>
+    </changeSet>
+
+    <changeSet id="inventory-016-create-storage-location-hierarchy" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="inventory_storage_location"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM clinlims.inventory_storage_location WHERE name = 'Immunology Laboratory Room'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Create comprehensive storage location hierarchy for Ethiopian lab setup</comment>
+
+        <!-- Level 1: Laboratory Rooms -->
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Immunology Laboratory Room"/>
+            <column name="description" value="Main immunology testing laboratory"/>
+            <column name="location_type" value="ROOM"/>
+            <column name="temperature_min" valueNumeric="15"/>
+            <column name="temperature_max" valueNumeric="25"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="MNTD Laboratory Room"/>
+            <column name="description" value="Malaria and Neglected Tropical Disease laboratory"/>
+            <column name="location_type" value="ROOM"/>
+            <column name="temperature_min" valueNumeric="15"/>
+            <column name="temperature_max" valueNumeric="25"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="General Storage Room"/>
+            <column name="description" value="General purpose laboratory storage"/>
+            <column name="location_type" value="ROOM"/>
+            <column name="temperature_min" valueNumeric="15"/>
+            <column name="temperature_max" valueNumeric="30"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Level 2: Refrigeration/Freezing Equipment -->
+        <!-- Immunology Lab Equipment -->
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Immunology Refrigerator A"/>
+            <column name="description" value="Primary reagent refrigerator for immunology"/>
+            <column name="location_type" value="REFRIGERATOR"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'Immunology Laboratory Room' AND location_type = 'ROOM')"/>
+            <column name="temperature_min" valueNumeric="2"/>
+            <column name="temperature_max" valueNumeric="8"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Immunology Freezer B"/>
+            <column name="description" value="Ultra-low freezer for long-term storage"/>
+            <column name="location_type" value="FREEZER"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'Immunology Laboratory Room' AND location_type = 'ROOM')"/>
+            <column name="temperature_min" valueNumeric="-80"/>
+            <column name="temperature_max" valueNumeric="-80"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- MNTD Lab Equipment -->
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="MNTD Reagent Refrigerator"/>
+            <column name="description" value="Primary reagent storage for MNTD workflows"/>
+            <column name="location_type" value="REFRIGERATOR"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'MNTD Laboratory Room' AND location_type = 'ROOM')"/>
+            <column name="temperature_min" valueNumeric="2"/>
+            <column name="temperature_max" valueNumeric="8"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="MNTD Molecular Freezer"/>
+            <column name="description" value="Molecular biology reagent freezer"/>
+            <column name="location_type" value="FREEZER"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'MNTD Laboratory Room' AND location_type = 'ROOM')"/>
+            <column name="temperature_min" valueNumeric="-20"/>
+            <column name="temperature_max" valueNumeric="-20"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- General Storage Equipment -->
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Room Temperature Cabinet"/>
+            <column name="description" value="General storage cabinet for room temperature items"/>
+            <column name="location_type" value="CABINET"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'General Storage Room' AND location_type = 'ROOM')"/>
+            <column name="temperature_min" valueNumeric="15"/>
+            <column name="temperature_max" valueNumeric="25"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <!-- Level 3: Shelves -->
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="Immunology Ref A - Shelf 1"/>
+            <column name="description" value="Top shelf for critical reagents"/>
+            <column name="location_type" value="SHELF"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'Immunology Refrigerator A')"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="MNTD Ref - Shelf 1"/>
+            <column name="description" value="Primary reagent shelf for MNTD"/>
+            <column name="location_type" value="SHELF"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'MNTD Reagent Refrigerator')"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+
+        <insert tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" valueSequenceNext="inventory_storage_location_seq"/>
+            <column name="fhir_uuid" valueComputed="uuid_generate_v4()"/>
+            <column name="name" value="RT Cabinet - Shelf A"/>
+            <column name="description" value="Room temperature storage shelf"/>
+            <column name="location_type" value="SHELF"/>
+            <column name="parent_location_id" valueComputed="(SELECT id FROM clinlims.inventory_storage_location WHERE name = 'Room Temperature Cabinet')"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="inventory-017-add-opening-dates-and-storage-to-existing-lots" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="inventory_lot"/>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) >= 1 FROM clinlims.inventory_storage_location WHERE name = 'Immunology Refrigerator A'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Add realistic opening dates and storage locations to existing demo lots</comment>
+
+        <sql>
+            -- Update Immunology Lab lots with opening dates and storage locations
+            UPDATE clinlims.inventory_lot
+            SET
+                date_opened = CURRENT_TIMESTAMP - INTERVAL '10 days',
+                storage_location_id = (
+                    SELECT id FROM clinlims.inventory_storage_location
+                    WHERE name = 'Immunology Ref A - Shelf 1'
+                )
+            WHERE lot_number IN ('CLB-2024-005', 'PK-2024-006')
+              AND date_opened IS NULL;
+
+            -- Update MNTD Lab lots with varying opening scenarios
+            UPDATE clinlims.inventory_lot
+            SET
+                date_opened = CURRENT_TIMESTAMP - INTERVAL '5 days',
+                storage_location_id = (
+                    SELECT id FROM clinlims.inventory_storage_location
+                    WHERE name = 'MNTD Ref - Shelf 1'
+                )
+            WHERE lot_number IN ('EK-2024-001', 'PM-2024-003')
+              AND date_opened IS NULL;
+
+            -- Update some lots with storage but NO opening date (unopened)
+            UPDATE clinlims.inventory_lot
+            SET
+                storage_location_id = (
+                    SELECT id FROM clinlims.inventory_storage_location
+                    WHERE name = 'MNTD Ref - Shelf 1'
+                )
+            WHERE lot_number IN ('RPB-2024-002', 'MRK-2024-004')
+              AND storage_location_id IS NULL;
+
+            -- Update room temperature items
+            UPDATE clinlims.inventory_lot
+            SET
+                storage_location_id = (
+                    SELECT id FROM clinlims.inventory_storage_location
+                    WHERE name = 'RT Cabinet - Shelf A'
+                )
+            WHERE lot_number IN ('ETH-2024-007', 'NFW-2024-008')
+              AND storage_location_id IS NULL;
+
+            -- Update equipment lots (no opening dates, stored in rooms)
+            UPDATE clinlims.inventory_lot
+            SET
+                storage_location_id = (
+                    SELECT id FROM clinlims.inventory_storage_location
+                    WHERE name = 'Immunology Laboratory Room'
+                )
+            WHERE lot_number IN ('CF-001', 'VM-003', 'BSC-005')
+              AND storage_location_id IS NULL;
+
+            UPDATE clinlims.inventory_lot
+            SET
+                storage_location_id = (
+                    SELECT id FROM clinlims.inventory_storage_location
+                    WHERE name = 'MNTD Laboratory Room'
+                )
+            WHERE lot_number IN ('TC-002', 'MP-004', 'ND-006')
+              AND storage_location_id IS NULL;
+        </sql>
+    </changeSet>
+
+    <changeSet id="inventory-018-update-new-lots-with-storage-and-opening-dates" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) >= 1 FROM clinlims.inventory_lot WHERE lot_number = 'IMMUNO-CD4-2025-004'
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) >= 1 FROM clinlims.inventory_storage_location WHERE name = 'Immunology Ref A - Shelf 1'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Update the newly created lots with appropriate storage locations</comment>
+
+        <sql>
+            -- Assign storage locations to new lots
+            UPDATE clinlims.inventory_lot
+            SET storage_location_id = (
+                SELECT id FROM clinlims.inventory_storage_location
+                WHERE name = 'MNTD Ref - Shelf 1'
+            )
+            WHERE lot_number IN ('MNTD-RDT-2025-001', 'MNTD-DNG-2025-002')
+              AND storage_location_id IS NULL;
+
+            UPDATE clinlims.inventory_lot
+            SET storage_location_id = (
+                SELECT id FROM clinlims.inventory_storage_location
+                WHERE name = 'Immunology Ref A - Shelf 1'
+            )
+            WHERE lot_number IN ('IMMUNO-HIV-2025-003', 'IMMUNO-CD4-2025-004')
+              AND storage_location_id IS NULL;
+
+            UPDATE clinlims.inventory_lot
+            SET storage_location_id = (
+                SELECT id FROM clinlims.inventory_storage_location
+                WHERE name = 'RT Cabinet - Shelf A'
+            )
+            WHERE lot_number = 'GENERAL-TUBES-2025-005'
+              AND storage_location_id IS NULL;
+        </sql>
+    </changeSet>
+
+    <!-- Update sequences to prevent conflicts -->
+    <changeSet id="inventory-019-update-sequences" author="claude">
+        <sql>
+            SELECT setval('clinlims.inventory_item_seq', (SELECT COALESCE(MAX(id), 0) FROM clinlims.inventory_item), true);
+            SELECT setval('clinlims.inventory_lot_seq', (SELECT COALESCE(MAX(id), 0) FROM clinlims.inventory_lot), true);
+            SELECT setval('clinlims.inventory_storage_location_seq', (SELECT COALESCE(MAX(id), 0) FROM clinlims.inventory_storage_location), true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

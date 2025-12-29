@@ -252,6 +252,9 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             ? formData.expirationDate.toISOString()
             : null,
           receiptDate: formData.receiptDate.toISOString(),
+          dateOpened: formData.dateOpened
+            ? formData.dateOpened.toISOString()
+            : null,
           storageLocation: { id: formData.storageLocation.id },
           qcStatus: formData.qcStatus,
           status: formData.status,

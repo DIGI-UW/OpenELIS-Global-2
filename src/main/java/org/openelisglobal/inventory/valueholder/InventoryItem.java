@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -122,6 +123,10 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "project_name", length = 255)
     @Size(max = 255)
     private String projectName;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version = 0;
 
     // Business logic helper methods
     @JsonIgnore
