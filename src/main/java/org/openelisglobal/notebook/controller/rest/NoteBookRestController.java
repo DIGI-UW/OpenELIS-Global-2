@@ -1141,7 +1141,7 @@ public class NoteBookRestController extends BaseRestController {
 
         try {
             // Get the page to verify it exists
-            NoteBookPage page = noteBookPageService.getById(pageId);
+            NoteBookPage page = noteBookPageService.get(pageId);
             if (page == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -1193,7 +1193,7 @@ public class NoteBookRestController extends BaseRestController {
 
         try {
             // Get the page to verify it exists
-            NoteBookPage page = noteBookPageService.getById(pageId);
+            NoteBookPage page = noteBookPageService.get(pageId);
             if (page == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -1224,53 +1224,6 @@ public class NoteBookRestController extends BaseRestController {
             org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "getPageData",
                     "Error getting page data for pageId=" + pageId + ": " + e.getMessage());
             return ResponseEntity.status(500).body(Map.of("error", "Failed to get page data: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * Get page samples for workflow processing GET
-     * /rest/notebook/page/{pageId}/samples
-     */
-    @GetMapping(value = "/page/{pageId}/samples", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public ResponseEntity<?> getPageSamples(@PathVariable("pageId") Integer pageId, HttpServletRequest request) {
-
-        String sysUserId = getSysUserId(request);
-        String loginLabUnit = getLoginLabUnit(request);
-
-        try {
-            // Get the page to verify it exists
-            NoteBookPage page = noteBookPageService.getById(pageId);
-            if (page == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            // Check if user has access to the parent notebook
-            NoteBook notebook = noteBookService.get(page.getNotebook().getId());
-            boolean isAllowed = false;
-
-            if (Boolean.TRUE.equals(notebook.getIsTemplate())) {
-                isAllowed = notebookSecurityService.canViewTemplate(notebook.getId(), sysUserId, loginLabUnit);
-            } else {
-                NoteBook parent = noteBookService.getParentTemplate(notebook.getId());
-                if (parent != null) {
-                    isAllowed = notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit);
-                }
-            }
-
-            if (!isAllowed) {
-                return ResponseEntity.status(403).body(Map.of("error", "Access denied to this notebook page"));
-            }
-
-            // Get samples for this page
-            List<NotebookPageSample> samples = notebookPageSampleService.getByPageId(pageId);
-
-            return ResponseEntity.ok(samples);
-
-        } catch (Exception e) {
-            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "getPageSamples",
-                    "Error getting samples for pageId=" + pageId + ": " + e.getMessage());
-            return ResponseEntity.status(500).body(Map.of("error", "Failed to get page samples: " + e.getMessage()));
         }
     }
 

@@ -461,16 +461,16 @@ function PharmaManifestImportModal({
       })}
       primaryButtonText={
         step === 1
-          ? intl.formatMessage({ id: "label.button.next" })
+          ? intl.formatMessage({ id: "label.button.next", defaultMessage: "Next" })
           : step === 2
-            ? intl.formatMessage({ id: "notebook.manifest.preview" })
+            ? intl.formatMessage({ id: "notebook.manifest.preview", defaultMessage: "Preview" })
             : step === 3
-              ? intl.formatMessage({ id: "notebook.manifest.import" })
-              : intl.formatMessage({ id: "label.button.close" })
+              ? intl.formatMessage({ id: "notebook.manifest.import", defaultMessage: "Import" })
+              : intl.formatMessage({ id: "label.button.close", defaultMessage: "Close" })
       }
       secondaryButtonText={
         step > 1 && step < 4
-          ? intl.formatMessage({ id: "label.button.back" })
+          ? intl.formatMessage({ id: "label.button.back", defaultMessage: "Back" })
           : null
       }
       onRequestSubmit={() => {

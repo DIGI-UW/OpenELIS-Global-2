@@ -639,26 +639,18 @@ function PharmaceuticalStoragePage({
 
   // Handle storage assignment
   const handleAssignStorage = () => {
-    // Validate shelf selection (minimum required level)
-    if (!storageSelection.shelf) {
+    // Validate at least room selection (minimum required level - all levels are optional after room)
+    if (!storageSelection.room) {
       setError(
         intl.formatMessage({
-          id: "notebook.pharma.storage.selectShelf",
-          defaultMessage: "Please select a storage shelf.",
+          id: "notebook.pharma.storage.selectRoom",
+          defaultMessage: "Please select at least a storage room.",
         }),
       );
       return;
     }
 
-    if (!selectedCondition) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.storage.selectCondition",
-          defaultMessage: "Please select a storage condition.",
-        }),
-      );
-      return;
-    }
+    // Storage condition is optional for hierarchy-level assignments
 
     // Validation depends on whether box is selected
     if (storageSelection.box) {
@@ -674,7 +666,7 @@ function PharmaceuticalStoragePage({
         return;
       }
     } else {
-      // Shelf-level assignment: require sample selection
+      // Hierarchy-level assignment: require sample selection
       if (selectedSampleIds.length === 0) {
         setError(
           intl.formatMessage({
@@ -703,23 +695,46 @@ function PharmaceuticalStoragePage({
         sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
         boxId: storageSelection.box.id,
         wellAssignments: wellAssignmentsForBackend,
-        condition: selectedCondition.id,
+        condition: selectedCondition?.id || null,
         retentionYears: retentionYears,
         reassign: isReassignment,
         // Note: NOT including pageId so samples are marked IN_PROGRESS, not COMPLETED
         // Mark Complete button should be used to complete samples after storage assignment
       };
     } else {
-      // Shelf-level assignment without box/well coordinates
+      // Hierarchy-level assignment without box/well coordinates
+      // Determine the most specific level selected
+      let locationType = "room";
+      let locationId = storageSelection.room?.id;
+
+      if (storageSelection.rack && storageSelection.rack.id) {
+        locationType = "rack";
+        locationId = storageSelection.rack.id;
+      } else if (storageSelection.shelf && storageSelection.shelf.id) {
+        locationType = "shelf";
+        locationId = storageSelection.shelf.id;
+      } else if (storageSelection.device && storageSelection.device.id) {
+        locationType = "device";
+        locationId = storageSelection.device.id;
+      }
+
+      // Log for debugging if locationId is undefined
+      if (!locationId) {
+        console.warn(
+          "Storage assignment: locationId is undefined. storageSelection:",
+          JSON.stringify(storageSelection),
+        );
+      }
+
       payload = {
         sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        boxId: null, // No box selected - use shelf-level storage
-        condition: selectedCondition.id,
+        boxId: null, // No box selected - use hierarchy-level storage
+        condition: selectedCondition?.id || null,
         retentionYears: retentionYears,
         reassign: isReassignment,
-        locationId: storageSelection.shelf.id.toString(),
-        locationType: "shelf",
-        storageNotes: `Pharmaceutical shelf-level storage: ${getHierarchicalPath()}`,
+        locationId: locationId ? locationId.toString() : null,
+        locationType: locationType,
+        storageNotes: `Pharmaceutical ${locationType}-level storage: ${getHierarchicalPath()}`,
       };
     }
 
@@ -1491,8 +1506,7 @@ function PharmaceuticalStoragePage({
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !storageSelection.shelf ||
-          !selectedCondition ||
+          !storageSelection.room ||
           (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
           (!storageSelection.box && selectedSampleIds.length === 0) ||
           assigning
@@ -1632,7 +1646,7 @@ function PharmaceuticalStoragePage({
               id="storage-condition-dropdown"
               titleText={intl.formatMessage({
                 id: "notebook.pharma.storage.condition",
-                defaultMessage: "Storage Condition *",
+                defaultMessage: "Storage Condition (Optional)",
               })}
               label={intl.formatMessage({
                 id: "notebook.pharma.storage.selectCondition",

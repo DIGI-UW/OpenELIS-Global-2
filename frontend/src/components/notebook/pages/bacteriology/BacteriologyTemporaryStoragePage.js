@@ -480,12 +480,12 @@ function BacteriologyTemporaryStoragePage({
 
   // Handle bulk storage assignment
   const handleAssignStorage = useCallback(() => {
-    // Validate shelf selection (minimum required level)
-    if (!storageSelection.shelf) {
+    // Validate at least room selection (minimum required level - all levels are optional after room)
+    if (!storageSelection.room) {
       setError(
         intl.formatMessage({
-          id: "notebook.bacteriology.storage.selectShelf",
-          defaultMessage: "Please select a storage shelf.",
+          id: "notebook.bacteriology.storage.selectRoom",
+          defaultMessage: "Please select at least a storage room.",
         }),
       );
       return;
@@ -505,7 +505,7 @@ function BacteriologyTemporaryStoragePage({
         return;
       }
     } else {
-      // Shelf-level assignment: require sample selection
+      // Hierarchy-level assignment (room, device, shelf, or rack): require sample selection
       if (selectedSampleIds.length === 0) {
         setError(
           intl.formatMessage({
@@ -566,18 +566,41 @@ function BacteriologyTemporaryStoragePage({
         data: commonData,
       };
     } else {
-      // Shelf-level assignment without box/well coordinates
+      // Hierarchy-level assignment without box/well coordinates
+      // Determine the most specific level selected
+      let locationType = "room";
+      let locationId = storageSelection.room?.id;
+
+      if (storageSelection.rack && storageSelection.rack.id) {
+        locationType = "rack";
+        locationId = storageSelection.rack.id;
+      } else if (storageSelection.shelf && storageSelection.shelf.id) {
+        locationType = "shelf";
+        locationId = storageSelection.shelf.id;
+      } else if (storageSelection.device && storageSelection.device.id) {
+        locationType = "device";
+        locationId = storageSelection.device.id;
+      }
+
+      // Log for debugging if locationId is undefined
+      if (!locationId) {
+        console.warn(
+          "Storage assignment: locationId is undefined. storageSelection:",
+          JSON.stringify(storageSelection),
+        );
+      }
+
       assignData = {
         sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        boxId: null, // No box selected - use shelf-level storage
+        boxId: null, // No box selected - use hierarchy-level storage
         reassign: isReassignment,
         data: {
           ...commonData,
-          // Send shelf information for proper hierarchical path building
-          shelfId: storageSelection.shelf?.id,
-          locationType: "shelf",
+          // Send location information for proper hierarchical path building
+          locationId: locationId,
+          locationType: locationType,
           notes:
-            `${commonData.notes || ""} | Bacteriology shelf-level storage: ${storagePath}`.trim(),
+            `${commonData.notes || ""} | Bacteriology ${locationType}-level storage: ${storagePath}`.trim(),
         },
       };
     }
@@ -645,6 +668,7 @@ function BacteriologyTemporaryStoragePage({
     wellAssignments,
     bulkAssignValues,
     isReassignment,
+    selectedSampleIds,
     intl,
     loadPageSamples,
     loadBoxOccupancy,
@@ -1212,7 +1236,7 @@ function BacteriologyTemporaryStoragePage({
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !storageSelection.shelf ||
+          !storageSelection.room ||
           (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
           (!storageSelection.box && selectedSampleIds.length === 0) ||
           isAssigning

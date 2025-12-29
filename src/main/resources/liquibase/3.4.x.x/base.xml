@@ -53,5 +53,6 @@
     <include file="liquibase/3.4.x.x/031-make-storage-box-rack-optional.xml"/>
     <include file="liquibase/3.4.x.x/032-add-general-location-type.xml"/>
     <include file="liquibase/3.4.x.x/033-fix-movement-constraints-for-general-location.xml"/>
+    <include file="liquibase/3.4.x.x/034-add-room-location-type.xml"/>
 
 </databaseChangeLog>

@@ -385,11 +385,12 @@ function MNTDTemporaryStoragePage({
 
   // Handle bulk storage assignment (unified modal submit)
   const handleAssignStorage = useCallback(() => {
-    if (!storageSelection.shelf) {
+    // Validate at least room selection (minimum required level - all levels are optional after room)
+    if (!storageSelection.room) {
       setError(
         intl.formatMessage({
-          id: "notebook.mntd.storage.selectShelf",
-          defaultMessage: "Please select a storage shelf.",
+          id: "notebook.mntd.storage.selectRoom",
+          defaultMessage: "Please select at least a storage room.",
         }),
       );
       return;
@@ -407,7 +408,7 @@ function MNTDTemporaryStoragePage({
       return;
     }
 
-    // Check if no box selected but no samples selected for shelf-level assignment
+    // Check if no box selected but no samples selected for hierarchy-level assignment
     if (!storageSelection.box && selectedSampleIds.length === 0) {
       setError(
         intl.formatMessage({
@@ -459,7 +460,30 @@ function MNTDTemporaryStoragePage({
         },
       };
     } else {
-      // Shelf-level assignment without box/well coordinates
+      // Hierarchy-level assignment without box/well coordinates
+      // Determine the most specific level selected
+      let locationType = "room";
+      let locationId = storageSelection.room?.id;
+
+      if (storageSelection.rack && storageSelection.rack.id) {
+        locationType = "rack";
+        locationId = storageSelection.rack.id;
+      } else if (storageSelection.shelf && storageSelection.shelf.id) {
+        locationType = "shelf";
+        locationId = storageSelection.shelf.id;
+      } else if (storageSelection.device && storageSelection.device.id) {
+        locationType = "device";
+        locationId = storageSelection.device.id;
+      }
+
+      // Log for debugging if locationId is undefined
+      if (!locationId) {
+        console.warn(
+          "Storage assignment: locationId is undefined. storageSelection:",
+          JSON.stringify(storageSelection),
+        );
+      }
+
       assignData = {
         sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
         boxId: null,
@@ -470,10 +494,10 @@ function MNTDTemporaryStoragePage({
           storageShelf: storageSelection.shelf?.label,
           storagePath: storagePath,
           assignedDateTime: new Date().toISOString(),
-          // Send shelf information for proper hierarchical path building
-          shelfId: storageSelection.shelf?.id,
-          locationType: "shelf",
-          notes: `MNTD shelf-level storage: ${storagePath}`,
+          // Send location information for proper hierarchical path building
+          locationId: locationId,
+          locationType: locationType,
+          notes: `MNTD ${locationType}-level storage: ${storagePath}`,
         },
       };
     }
@@ -543,6 +567,7 @@ function MNTDTemporaryStoragePage({
     storageSelection,
     wellAssignments,
     isReassignment,
+    selectedSampleIds,
     intl,
     loadPageSamples,
     loadBoxOccupancy,
@@ -968,7 +993,7 @@ function MNTDTemporaryStoragePage({
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !storageSelection.shelf ||
+          !storageSelection.room ||
           (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
           (!storageSelection.box && selectedSampleIds.length === 0) ||
           isAssigning

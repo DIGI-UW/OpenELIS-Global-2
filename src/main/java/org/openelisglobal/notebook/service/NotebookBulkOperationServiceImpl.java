@@ -345,7 +345,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 String sampleItemId = String.valueOf(nps.getSampleItemId());
 
                 // Create storage assignment using the storage service
-                // Handle box or shelf level storage assignment
+                // Handle box or hierarchy level storage assignment (room, device, shelf, rack,
+                // box)
                 try {
                     String locationId;
                     String locationType;
@@ -354,8 +355,13 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         // Box-level storage (with wells)
                         locationId = String.valueOf(boxId);
                         locationType = "box";
+                    } else if (storageData != null && storageData.get("locationId") != null
+                            && storageData.get("locationType") != null) {
+                        // Hierarchy-level storage (room, device, shelf, or rack)
+                        locationId = String.valueOf(storageData.get("locationId"));
+                        locationType = String.valueOf(storageData.get("locationType"));
                     } else if (storageData != null && storageData.get("shelfId") != null) {
-                        // Shelf-level storage (no box/wells required)
+                        // Legacy shelf-level storage (backward compatibility)
                         locationId = String.valueOf(storageData.get("shelfId"));
                         locationType = "shelf";
                     } else {
