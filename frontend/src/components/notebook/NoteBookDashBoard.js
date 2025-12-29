@@ -64,7 +64,6 @@ function NoteBookDashBoard() {
     orphanOnly: false,
   });
   const [createInstanceModalOpen, setCreateInstanceModalOpen] = useState(false);
-  const [refreshTreeFn, setRefreshTreeFn] = useState(null);
 
   const [counts, setCounts] = useState({
     total: 0,
@@ -244,11 +243,18 @@ function NoteBookDashBoard() {
     }
   };
 
+  // Store the refresh function from NotebookTreeView
+  const refreshTreeRef = useRef(null);
+
+  const handleTreeRefresh = (refreshFn) => {
+    refreshTreeRef.current = refreshFn;
+  };
+
   // Handler for successful instance creation
   const handleInstanceCreated = (newInstance) => {
     // Refresh the tree view
-    if (refreshTreeFn) {
-      refreshTreeFn();
+    if (refreshTreeRef.current) {
+      refreshTreeRef.current();
     }
     // Navigate to the new instance
     if (newInstance && newInstance.id) {
@@ -347,7 +353,7 @@ function NoteBookDashBoard() {
               <NotebookTreeView
                 onSelectNotebook={handleTreeSelect}
                 selectedId={selectedNoteBook?.id}
-                onRefresh={setRefreshTreeFn}
+                onRefresh={handleTreeRefresh}
               />
             </Column>
           </Grid>
