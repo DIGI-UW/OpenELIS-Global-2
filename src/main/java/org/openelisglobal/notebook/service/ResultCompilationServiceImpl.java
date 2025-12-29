@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -19,8 +20,10 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.notebook.dao.NotebookDeliveryRecordDAO;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.valueholder.NoteBook;
+import org.openelisglobal.notebook.valueholder.NotebookDeliveryRecord;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.ValidationStatus;
 import org.openelisglobal.result.service.ResultService;
@@ -48,6 +51,9 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
     private NotebookPageSampleDAO notebookPageSampleDAO;
 
     @Autowired
+    private NotebookDeliveryRecordDAO notebookDeliveryRecordDAO;
+
+    @Autowired
     private NoteBookService noteBookService;
 
     @Autowired
@@ -61,10 +67,6 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
 
     @Autowired
     private ResultService resultService;
-
-    // In-memory delivery records (in production, use database table)
-    private final List<DeliveryRecord> deliveryRecords = new ArrayList<>();
-    private int nextDeliveryId = 1;
 
     @Override
     @Transactional
@@ -157,10 +159,25 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
     public ValidationSummary getNotebookValidationSummary(Integer notebookId) {
         List<NotebookPageSample> samples = notebookPageSampleDAO.getByNotebookId(notebookId);
 
-        long valid = 0, invalid = 0, inconclusive = 0, pending = 0;
-
+        // Count validation statuses per UNIQUE sample (not per page-sample record)
+        // A sample can appear on multiple pages, so we track by sampleItemId
+        java.util.Map<String, ValidationStatus> uniqueSampleStatuses = new java.util.HashMap<>();
         for (NotebookPageSample sample : samples) {
-            ValidationStatus status = getValidationStatus(sample);
+            String sampleItemId = sample.getSampleItemId();
+            if (sampleItemId != null) {
+                ValidationStatus status = getValidationStatus(sample);
+                // Use the most "definitive" status if sample appears on multiple pages
+                // Priority: VALID/INVALID/INCONCLUSIVE > PENDING
+                ValidationStatus existingStatus = uniqueSampleStatuses.get(sampleItemId);
+                if (existingStatus == null || existingStatus == ValidationStatus.PENDING) {
+                    uniqueSampleStatuses.put(sampleItemId, status);
+                }
+            }
+        }
+
+        // Count by status
+        long valid = 0, invalid = 0, inconclusive = 0, pending = 0;
+        for (ValidationStatus status : uniqueSampleStatuses.values()) {
             switch (status) {
             case VALID:
                 valid++;
@@ -176,7 +193,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
             }
         }
 
-        return new ValidationSummary(samples.size(), valid, invalid, inconclusive, pending);
+        return new ValidationSummary(uniqueSampleStatuses.size(), valid, invalid, inconclusive, pending);
     }
 
     private ValidationStatus getValidationStatus(NotebookPageSample sample) {
@@ -543,10 +560,12 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
 
         int rowNum = 0;
 
-        // Title
+        // Title - use notebook title if available
         Row titleRow = summarySheet.createRow(rowNum++);
         Cell titleCell = titleRow.createCell(0);
-        titleCell.setCellValue("MNTD Notebook Export Report");
+        String reportTitle = notebook.getTitle() != null ? notebook.getTitle() + " Export Report"
+                : "Notebook Export Report";
+        titleCell.setCellValue(reportTitle);
         titleCell.setCellStyle(titleStyle);
 
         rowNum++; // Empty row
@@ -573,10 +592,25 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         statsHeaderCell.setCellValue("Sample Statistics");
         statsHeaderCell.setCellStyle(headerStyle);
 
-        // Count validation statuses
-        long valid = 0, invalid = 0, inconclusive = 0, pending = 0;
+        // Count validation statuses per UNIQUE sample (not per page-sample record)
+        // A sample can appear on multiple pages, so we track by sampleItemId
+        java.util.Map<String, ValidationStatus> uniqueSampleStatuses = new java.util.HashMap<>();
         for (NotebookPageSample sample : samples) {
-            ValidationStatus status = getValidationStatus(sample);
+            String sampleItemId = sample.getSampleItemId();
+            if (sampleItemId != null) {
+                ValidationStatus status = getValidationStatus(sample);
+                // Use the most "definitive" status if sample appears on multiple pages
+                // Priority: VALID/INVALID/INCONCLUSIVE > PENDING
+                ValidationStatus existingStatus = uniqueSampleStatuses.get(sampleItemId);
+                if (existingStatus == null || existingStatus == ValidationStatus.PENDING) {
+                    uniqueSampleStatuses.put(sampleItemId, status);
+                }
+            }
+        }
+
+        // Count by status
+        long valid = 0, invalid = 0, inconclusive = 0, pending = 0;
+        for (ValidationStatus status : uniqueSampleStatuses.values()) {
             switch (status) {
             case VALID:
                 valid++;
@@ -592,7 +626,8 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
             }
         }
 
-        addSummaryRow(summarySheet, rowNum++, "Total Samples:", String.valueOf(samples.size()));
+        int uniqueSampleCount = uniqueSampleStatuses.size();
+        addSummaryRow(summarySheet, rowNum++, "Total Samples:", String.valueOf(uniqueSampleCount));
         addSummaryRow(summarySheet, rowNum++, "Valid Samples:", String.valueOf(valid));
         addSummaryRow(summarySheet, rowNum++, "Invalid Samples:", String.valueOf(invalid));
         addSummaryRow(summarySheet, rowNum++, "Inconclusive Samples:", String.valueOf(inconclusive));
@@ -881,21 +916,37 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
             deliveredBy = user.getFirstName() + " " + user.getLastName();
         }
 
-        DeliveryRecord record = new DeliveryRecord(nextDeliveryId++, recipientName, recipientEmail, fileName,
-                deliveryType, regulatoryBody, notes, LocalDateTime.now(), deliveredBy);
+        // Get notebook entity
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId);
+        }
 
-        deliveryRecords.add(record);
+        // Create and persist delivery record
+        NotebookDeliveryRecord record = new NotebookDeliveryRecord(notebook, recipientName, recipientEmail, fileName,
+                deliveryType, regulatoryBody, notes, new Timestamp(System.currentTimeMillis()), deliveredBy);
+
+        notebookDeliveryRecordDAO.insert(record);
 
         LogEvent.logInfo(this.getClass().getName(), "recordDelivery", "Recorded delivery for notebook " + notebookId
                 + " to " + recipientName + " (type: " + deliveryType + ", regulatory: " + regulatoryBody + ")");
 
-        return record.id();
+        return record.getId();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<DeliveryRecord> getDeliveryHistory(Integer notebookId) {
-        // In production, filter by notebookId from database
-        return new ArrayList<>(deliveryRecords);
+        List<NotebookDeliveryRecord> records = notebookDeliveryRecordDAO.getByNotebookId(notebookId);
+
+        // Convert entity to DTO record - format date as ISO string for JavaScript
+        // parsing
+        return records.stream()
+                .map(r -> new DeliveryRecord(r.getId(), r.getRecipientName(), r.getRecipientEmail(), r.getFileName(),
+                        r.getDeliveryType(), r.getRegulatoryBody(), r.getNotes(),
+                        r.getDeliveredAt() != null ? r.getDeliveredAt().toInstant().toString() : null,
+                        r.getDeliveredBy()))
+                .collect(Collectors.toList());
     }
 
     @Override

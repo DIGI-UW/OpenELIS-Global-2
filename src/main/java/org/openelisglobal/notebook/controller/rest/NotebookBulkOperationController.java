@@ -419,6 +419,37 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
+     * Get validation summary for an entire notebook (across all pages). GET
+     * /notebook/bulk/notebook/{notebookId}/validation-summary
+     *
+     * This endpoint returns counts of unique samples across all pages, not the
+     * total number of page-sample records.
+     *
+     * @param notebookId the notebook ID
+     * @return validation summary with counts
+     */
+    @GetMapping(value = "/notebook/{notebookId}/validation-summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getNotebookValidationSummary(
+            @PathVariable("notebookId") Integer notebookId) {
+
+        ValidationSummary summary = resultCompilationService.getNotebookValidationSummary(notebookId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("notebookId", notebookId);
+        result.put("total", summary.total());
+        result.put("valid", summary.valid());
+        result.put("invalid", summary.invalid());
+        result.put("inconclusive", summary.inconclusive());
+        result.put("pending", summary.pending());
+        result.put("validPercentage", summary.validPercentage());
+        result.put("invalidPercentage", summary.invalidPercentage());
+        result.put("inconclusivePercentage", summary.inconclusivePercentage());
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Get samples with validation status for a page. GET
      * /notebook/bulk/page/{pageId}/samples-with-validation
      *

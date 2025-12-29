@@ -5,3 +5,5 @@ export { default as ImmunologyChildSampleCreationPage } from "./ImmunologyChildS
 export { default as ImmunologyPostAnalysisPage } from "./ImmunologyPostAnalysisPage";
 export { default as ImmunologyResultCompilationPage } from "./ImmunologyResultCompilationPage";
 export { default as ImmunologyArchivingPage } from "./ImmunologyArchivingPage";
+export { default as ImmunologyReportingREDCapPage } from "./ImmunologyReportingREDCapPage";
+export { default as ImmunologyDataAnalysisPage } from "./ImmunologyDataAnalysisPage";
