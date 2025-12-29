@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+>
+
+    <changeSet author="sagar" id="add-study-electronic-orders-react-menu-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_study_sample_eorder_react'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_sample_create'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Study Electronic Orders React menu item under Order->Study menu (hidden from old UI)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column
+                name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample_create')"
+            />
+            <column name="presentation_order" value="5" />
+            <column name="element_id" value="menu_study_sample_eorder_react" />
+            <column name="action_url" value="/StudyElectronicOrders" />
+            <column name="display_key" value="banner.menu.study.eorders" />
+            <column
+                name="tool_tip_key"
+                value="tooltip.bannner.menu.study.eorders"
+            />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet
+        author="sagar"
+        id="add-study-electronic-orders-react-system-module-2"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyElectronicOrdersReact'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add system module for React Study Electronic Orders</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="StudyElectronicOrdersReact" />
+            <column
+                name="description"
+                value="React implementation of Study Electronic Orders"
+            />
+            <column name="has_select_flag" value="Y" />
+            <column name="has_add_flag" value="Y" />
+            <column name="has_update_flag" value="Y" />
+            <column name="has_delete_flag" value="Y" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="sagar" id="add-study-electronic-orders-react-role-3">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyElectronicOrdersReact'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Reception role access for React Study Electronic Orders</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/StudyElectronicOrders" />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyElectronicOrdersReact')"
+            />
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column
+                name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"
+            />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyElectronicOrdersReact')"
+            />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

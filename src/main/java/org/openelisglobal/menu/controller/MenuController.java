@@ -23,7 +23,7 @@ public class MenuController {
 
     @GetMapping(value = "/rest/menu", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<MenuItem> getMenuTree() {
-        return MenuUtil.getMenuTree();
+        return MenuUtil.getMenuTreeForReactUI();
     }
 
     @GetMapping(value = "/rest/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)

@@ -80,6 +80,35 @@ public class MenuUtil {
         return root;
     }
 
+    /**
+     * Get menu tree filtered for React UI (excludes menus with hideInNewUI = true)
+     */
+    public static List<MenuItem> getMenuTreeForReactUI() {
+        List<MenuItem> fullTree = getMenuTree();
+        return filterMenuForReactUI(fullTree);
+    }
+
+    /**
+     * Recursively filter out menus that should be hidden in React UI
+     */
+    private static List<MenuItem> filterMenuForReactUI(List<MenuItem> menuItems) {
+        List<MenuItem> filtered = new ArrayList<>();
+
+        for (MenuItem menuItem : menuItems) {
+            Menu menu = menuItem.getMenu();
+            // Skip menus that should be hidden in new UI
+            if (menu.getIsActive() && !menu.isHideInNewUI()) {
+                MenuItem filteredItem = new MenuItem();
+                filteredItem.setMenu(menu);
+                // Recursively filter children
+                filteredItem.setChildMenus(filterMenuForReactUI(menuItem.getChildMenus()));
+                filtered.add(filteredItem);
+            }
+        }
+
+        return filtered;
+    }
+
     private static void createTree() {
         List<Menu> menuList = menuService.getAll();
 
