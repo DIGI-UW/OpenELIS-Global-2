@@ -10,8 +10,6 @@ import {
   Select,
   SelectItem,
   TextInput,
-  TextArea,
-  NumberInput,
   DataTable,
   Table,
   TableHead,
@@ -22,18 +20,15 @@ import {
   TableSelectRow,
   TableSelectAll,
   Tag,
-  RadioButtonGroup,
-  RadioButton,
 } from "@carbon/react";
 import {
   Archive,
-  Temperature,
   Checkmark,
   Edit,
   Location,
   Automatic,
-  Warning,
   Renew,
+  Temperature,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -48,11 +43,13 @@ import "../../workflow/NotebookWorkflow.css";
 
 /**
  * MNTDTemporaryStoragePage - Page 3 of the MNTD workflow.
- * Handles temporary storage assignment and environmental monitoring.
+ * Handles temporary storage assignment for samples.
  *
  * Data Points:
  * - Storage Hierarchy: Room, Freezer, Storage type, Rack, Box, Well/position
- * - Environmental Monitoring: Freezer ID, Temperature check (AM/PM), Temperature value, Checked by
+ *
+ * Note: Environmental monitoring (temperature logging) has been moved to
+ * Page 11 (MNTDEnvironmentalMonitoringPage) for flexible access control.
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
@@ -110,27 +107,10 @@ function MNTDTemporaryStoragePage({
     useState(false);
   const [samplesToReassign, setSamplesToReassign] = useState([]);
 
-  // Environmental monitoring modal state
-  const [tempMonitoringModalOpen, setTempMonitoringModalOpen] = useState(false);
-  const [temperatureLog, setTemperatureLog] = useState({
-    freezerId: "",
-    checkTime: "AM",
-    temperatureValue: "",
-    temperatureUnit: "C",
-    checkedBy: "",
-    checkedDateTime: new Date().toISOString().slice(0, 16),
-    notes: "",
-  });
-  const [isLoggingTemp, setIsLoggingTemp] = useState(false);
-
-  // Temperature logs for display
-  const [temperatureLogs, setTemperatureLogs] = useState([]);
-
   // Load samples for this page
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
-    loadTemperatureLogs();
 
     return () => {
       componentMounted.current = false;
@@ -183,19 +163,6 @@ function MNTDTemporaryStoragePage({
       },
     );
   }, [pageData?.id]);
-
-  const loadTemperatureLogs = useCallback(() => {
-    if (!entryId) return;
-
-    getFromOpenElisServer(
-      `/rest/notebook-entry/${entryId}/temperature-logs`,
-      (response) => {
-        if (componentMounted.current && response && Array.isArray(response)) {
-          setTemperatureLogs(response);
-        }
-      },
-    );
-  }, [entryId]);
 
   // Load box occupancy from storage API
   const loadBoxOccupancy = useCallback((boxId) => {
@@ -542,80 +509,6 @@ function MNTDTemporaryStoragePage({
     onProgressUpdate,
   ]);
 
-  // Handle temperature logging
-  const handleLogTemperature = useCallback(() => {
-    if (!temperatureLog.freezerId || !temperatureLog.temperatureValue) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.mntd.storage.tempLogRequired",
-          defaultMessage: "Device ID and temperature value are required.",
-        }),
-      );
-      return;
-    }
-
-    // Validate temperature value is a valid number
-    const tempValue = parseFloat(temperatureLog.temperatureValue);
-    if (isNaN(tempValue)) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.mntd.storage.tempInvalid",
-          defaultMessage: "Temperature value must be a valid number.",
-        }),
-      );
-      return;
-    }
-
-    setIsLoggingTemp(true);
-    setError(null);
-
-    // Build log data - DO NOT include entryId as it's in the URL path
-    const logData = {
-      freezerId: temperatureLog.freezerId,
-      checkTime: temperatureLog.checkTime,
-      temperatureValue: tempValue,
-      temperatureUnit: temperatureLog.temperatureUnit,
-      checkedBy: temperatureLog.checkedBy,
-      checkedDateTime: temperatureLog.checkedDateTime,
-      notes: temperatureLog.notes,
-    };
-
-    postToOpenElisServer(
-      `/rest/notebook-entry/${entryId}/temperature-logs`,
-      JSON.stringify(logData),
-      (status) => {
-        setIsLoggingTemp(false);
-        if (status === 200 || status === 201) {
-          setSuccessMessage(
-            intl.formatMessage({
-              id: "notebook.mntd.storage.tempLogSuccess",
-              defaultMessage: "Temperature logged successfully.",
-            }),
-          );
-          setTempMonitoringModalOpen(false);
-          loadTemperatureLogs();
-          // Reset form but keep device ID
-          setTemperatureLog((prev) => ({
-            freezerId: prev.freezerId,
-            checkTime: "AM",
-            temperatureValue: "",
-            temperatureUnit: "C",
-            checkedBy: "",
-            checkedDateTime: new Date().toISOString().slice(0, 16),
-            notes: "",
-          }));
-        } else {
-          setError(
-            intl.formatMessage({
-              id: "notebook.mntd.storage.tempLogError",
-              defaultMessage: "Failed to log temperature. Please try again.",
-            }),
-          );
-        }
-      },
-    );
-  }, [temperatureLog, entryId, intl, loadTemperatureLogs]);
-
   // Handle marking samples as stored
   const handleMarkStored = useCallback(() => {
     if (selectedSampleIds.length === 0) return;
@@ -777,33 +670,6 @@ function MNTDTemporaryStoragePage({
     );
   };
 
-  // Get temperature status tag for logs
-  const getTemperatureStatusTag = (log) => {
-    // Define acceptable ranges per device type
-    const ranges = {
-      Refrigerator: { min: 2, max: 8 },
-      "Freezer-20": { min: -25, max: -15 },
-      "Freezer-80": { min: -85, max: -75 },
-      LN2Tank: { min: -200, max: -180 },
-      Incubator: { min: 35, max: 38 },
-      ColdRoom: { min: 2, max: 8 },
-    };
-
-    const range = ranges[log.deviceType] || { min: -999, max: 999 };
-    const temp = log.temperatureValue;
-    const inRange = temp >= range.min && temp <= range.max;
-
-    return inRange ? (
-      <Tag type="green" size="sm">
-        {temp}°{log.temperatureUnit}
-      </Tag>
-    ) : (
-      <Tag type="red" size="sm" renderIcon={Warning}>
-        {temp}°{log.temperatureUnit} - OUT OF RANGE
-      </Tag>
-    );
-  };
-
   // Check if page has real ID
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
@@ -905,25 +771,6 @@ function MNTDTemporaryStoragePage({
         </Button>
 
         <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Temperature}
-          onClick={() => {
-            // Update checkedDateTime to current time when opening modal
-            setTemperatureLog((prev) => ({
-              ...prev,
-              checkedDateTime: new Date().toISOString().slice(0, 16),
-            }));
-            setTempMonitoringModalOpen(true);
-          }}
-        >
-          <FormattedMessage
-            id="notebook.page.mntd.logTemperature"
-            defaultMessage="Log Temperature"
-          />
-        </Button>
-
-        <Button
           kind="ghost"
           size="sm"
           renderIcon={Renew}
@@ -952,45 +799,6 @@ function MNTDTemporaryStoragePage({
           onClose={() => setSuccessMessage(null)}
           lowContrast
         />
-      )}
-
-      {/* Temperature Logs Summary */}
-      {temperatureLogs.length > 0 && (
-        <div style={{ marginTop: "1.5rem" }}>
-          <h5>
-            <Temperature size={16} style={{ marginRight: "0.5rem" }} />
-            <FormattedMessage
-              id="notebook.page.mntd.recentTempLogs"
-              defaultMessage="Recent Temperature Logs"
-            />
-          </h5>
-          <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              flexWrap: "wrap",
-              marginTop: "0.5rem",
-            }}
-          >
-            {temperatureLogs.slice(0, 6).map((log, index) => (
-              <Tile
-                key={index}
-                style={{
-                  padding: "0.5rem 1rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <strong>{log.freezerId}:</strong>
-                {getTemperatureStatusTag(log)}
-                <span style={{ fontSize: "0.75rem", color: "#525252" }}>
-                  ({log.checkTime})
-                </span>
-              </Tile>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Sample Grid */}
@@ -1218,182 +1026,6 @@ function MNTDTemporaryStoragePage({
                 </p>
               </div>
             )}
-          </Column>
-        </Grid>
-      </Modal>
-
-      {/* Temperature Monitoring Modal (with device type) */}
-      <Modal
-        open={tempMonitoringModalOpen}
-        onRequestClose={() => setTempMonitoringModalOpen(false)}
-        modalHeading={intl.formatMessage({
-          id: "notebook.mntd.tempLog.title",
-          defaultMessage: "Log Environmental Monitoring",
-        })}
-        primaryButtonText={
-          isLoggingTemp
-            ? intl.formatMessage({
-                id: "label.logging",
-                defaultMessage: "Logging...",
-              })
-            : intl.formatMessage({
-                id: "label.logTemperature",
-                defaultMessage: "Log Temperature",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleLogTemperature}
-        onSecondarySubmit={() => setTempMonitoringModalOpen(false)}
-        size="md"
-        primaryButtonDisabled={isLoggingTemp}
-      >
-        <p className="modal-description">
-          <FormattedMessage
-            id="notebook.mntd.tempLog.description"
-            defaultMessage="Record temperature monitoring data for MNTD laboratory environmental compliance."
-          />
-        </p>
-
-        <Grid fullWidth>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="freezerId"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.deviceId",
-                defaultMessage: "Device/Equipment ID *",
-              })}
-              value={temperatureLog.freezerId}
-              onChange={(e) =>
-                setTemperatureLog((prev) => ({
-                  ...prev,
-                  freezerId: e.target.value,
-                }))
-              }
-              placeholder="e.g., FRZ-001, LN2-002"
-              required
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <RadioButtonGroup
-              legendText={intl.formatMessage({
-                id: "notebook.mntd.checkTime",
-                defaultMessage: "Check Time",
-              })}
-              name="checkTime"
-              valueSelected={temperatureLog.checkTime}
-              onChange={(value) =>
-                setTemperatureLog((prev) => ({
-                  ...prev,
-                  checkTime: value,
-                }))
-              }
-            >
-              <RadioButton labelText="AM" value="AM" id="check-am" />
-              <RadioButton labelText="PM" value="PM" id="check-pm" />
-            </RadioButtonGroup>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <NumberInput
-              id="temperatureValue"
-              label={intl.formatMessage({
-                id: "notebook.mntd.temperatureValue",
-                defaultMessage: "Temperature Value *",
-              })}
-              value={temperatureLog.temperatureValue}
-              onChange={(e, { value }) =>
-                setTemperatureLog((prev) => ({
-                  ...prev,
-                  temperatureValue: value,
-                }))
-              }
-              min={-200}
-              max={50}
-              step={0.1}
-              invalidText="Enter a valid temperature"
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="temperatureUnit"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.temperatureUnit",
-                defaultMessage: "Unit",
-              })}
-              value={temperatureLog.temperatureUnit}
-              onChange={(e) =>
-                setTemperatureLog((prev) => ({
-                  ...prev,
-                  temperatureUnit: e.target.value,
-                }))
-              }
-            >
-              <SelectItem value="C" text="Celsius (°C)" />
-              <SelectItem value="F" text="Fahrenheit (°F)" />
-            </Select>
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="checkedBy"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.checkedBy",
-                defaultMessage: "Checked By",
-              })}
-              value={temperatureLog.checkedBy}
-              onChange={(e) =>
-                setTemperatureLog((prev) => ({
-                  ...prev,
-                  checkedBy: e.target.value,
-                }))
-              }
-              placeholder="Staff name"
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <div className="cds--form-item">
-              <label className="cds--label">
-                <FormattedMessage
-                  id="notebook.mntd.checkedDateTime"
-                  defaultMessage="Checked Date/Time"
-                />
-              </label>
-              <input
-                type="datetime-local"
-                className="cds--text-input"
-                value={temperatureLog.checkedDateTime}
-                onChange={(e) =>
-                  setTemperatureLog((prev) => ({
-                    ...prev,
-                    checkedDateTime: e.target.value,
-                  }))
-                }
-              />
-            </div>
-          </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <TextArea
-              id="tempNotes"
-              labelText={intl.formatMessage({
-                id: "notebook.mntd.notes",
-                defaultMessage: "Notes",
-              })}
-              value={temperatureLog.notes}
-              onChange={(e) =>
-                setTemperatureLog((prev) => ({
-                  ...prev,
-                  notes: e.target.value,
-                }))
-              }
-              placeholder="Optional notes about the temperature check, deviations, etc."
-            />
           </Column>
         </Grid>
       </Modal>
