@@ -3,6 +3,7 @@ package org.openelisglobal.notebook.dao;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
@@ -22,5 +23,36 @@ public interface NoteBookDAO extends BaseDAO<NoteBook, Integer> {
     Long getTotalCount();
 
     NoteBook findParentTemplate(Integer entryId);
+
+    /**
+     * Find all child instances for a given parent template.
+     *
+     * @param parentId the ID of the parent template
+     * @return list of child instances ordered by title
+     */
+    List<NoteBook> findChildrenByParentId(Integer parentId);
+
+    /**
+     * Find all parent templates (isTemplate=true AND parentNotebookId IS NULL).
+     *
+     * @return list of parent templates ordered by title
+     */
+    List<NoteBook> findAllParentTemplates();
+
+    /**
+     * Count entries for each child notebook.
+     *
+     * @param childIds list of child notebook IDs
+     * @return map of childId to entry count
+     */
+    Map<Integer, Long> countEntriesForChildren(List<Integer> childIds);
+
+    /**
+     * Get total entry count across all children of a parent.
+     *
+     * @param parentId the ID of the parent template
+     * @return total entry count
+     */
+    Long countEntriesForParent(Integer parentId);
 
 }

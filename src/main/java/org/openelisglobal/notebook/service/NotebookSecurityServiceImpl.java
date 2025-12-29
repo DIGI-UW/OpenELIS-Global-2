@@ -110,26 +110,36 @@ public class NotebookSecurityServiceImpl implements NotebookSecurityService {
 
             Integer effectiveNotebookId = notebookId;
             if (Boolean.FALSE.equals(notebook.getIsTemplate())) {
-                // This is an entry, get its parent template
-                NoteBook parent = noteBookService.getParentTemplate(notebookId);
-                if (parent != null) {
-                    effectiveNotebookId = parent.getId();
+                // This is either a child instance or an entry (not a template)
+                // First check if it's a child instance (has parentNotebook)
+                NoteBook parentNotebook = notebook.getParentNotebook();
+                if (parentNotebook != null) {
+                    // This is a child instance - check access via the parent template
+                    effectiveNotebookId = parentNotebook.getId();
                     LogEvent.logInfo(this.getClass().getSimpleName(), "canViewTemplate", "NotebookId=" + notebookId
-                            + " is an entry, using parent template id=" + effectiveNotebookId);
+                            + " is a child instance, using parent template id=" + effectiveNotebookId);
                 } else {
-                    // Orphaned entry - allow if user is creator or technician
-                    if (notebook.getTechnician() != null
-                            && String.valueOf(notebook.getTechnician().getId()).equals(sysUserId)) {
-                        return true;
+                    // Not a child instance - try finding parent via entries collection (legacy)
+                    NoteBook parent = noteBookService.getParentTemplate(notebookId);
+                    if (parent != null) {
+                        effectiveNotebookId = parent.getId();
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "canViewTemplate", "NotebookId=" + notebookId
+                                + " is an entry, using parent template id=" + effectiveNotebookId);
+                    } else {
+                        // Orphaned entry - allow if user is creator or technician
+                        if (notebook.getTechnician() != null
+                                && String.valueOf(notebook.getTechnician().getId()).equals(sysUserId)) {
+                            return true;
+                        }
+                        if (notebook.getCreator() != null
+                                && String.valueOf(notebook.getCreator().getId()).equals(sysUserId)) {
+                            return true;
+                        }
+                        // No parent and not creator/technician - deny
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "canViewTemplate",
+                                "NotebookId=" + notebookId + " is an orphaned entry with no parent, access denied");
+                        return false;
                     }
-                    if (notebook.getCreator() != null
-                            && String.valueOf(notebook.getCreator().getId()).equals(sysUserId)) {
-                        return true;
-                    }
-                    // No parent and not creator/technician - deny
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "canViewTemplate",
-                            "NotebookId=" + notebookId + " is an orphaned entry with no parent, access denied");
-                    return false;
                 }
             }
 

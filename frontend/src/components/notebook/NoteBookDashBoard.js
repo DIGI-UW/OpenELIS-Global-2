@@ -10,18 +10,13 @@ import {
   FilterableMultiSelect,
   TextInput,
   Tag,
-  DataTable,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  Pagination,
+  Breadcrumb,
+  BreadcrumbItem,
 } from "@carbon/react";
+import NotebookTreeView from "./NotebookTreeView";
+import CreateInstanceModal from "./CreateInstanceModal";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { getFromOpenElisServer, hasRole } from "../utils/Utils";
+import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -32,10 +27,8 @@ import { Permissions } from "../../constants/roles";
 import { usePermissions } from "../../hooks/usePermissions";
 import CustomDatePicker from "../common/CustomDatePicker";
 import {
-  UserAvatar,
   Document,
   Time,
-  UserAvatarFilledAlt,
   Tag as TagIcon,
   Add,
   Edit,
@@ -58,8 +51,8 @@ function NoteBookDashBoard() {
 
   const [statuses, setStatuses] = useState([]);
   const [noteBookEntries, setNoteBookEntries] = useState([]);
-  const [noteBooks, setNoteBooks] = useState([]);
   const [selectedNoteBook, setSelectedNoteBook] = useState(null);
+  const [isParentTemplate, setIsParentTemplate] = useState(false);
   const [types, setTypes] = useState([]);
   const [filters, setFilters] = useState({
     statuses: [],
@@ -68,7 +61,10 @@ function NoteBookDashBoard() {
     fromdate: "",
     todate: "",
     notebookid: null,
+    orphanOnly: false,
   });
+  const [createInstanceModalOpen, setCreateInstanceModalOpen] = useState(false);
+  const [refreshTreeFn, setRefreshTreeFn] = useState(null);
 
   const [counts, setCounts] = useState({
     total: 0,
@@ -77,8 +73,6 @@ function NoteBookDashBoard() {
     finalized: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const intl = useIntl();
 
   const setStatusList = (statusList) => {
@@ -113,7 +107,6 @@ function NoteBookDashBoard() {
   };
 
   const handleDatePickerChangeDate = (datePicker, date) => {
-    let obj = null;
     switch (datePicker) {
       case "startDate":
         setFilters({ ...filters, fromdate: date });
@@ -136,17 +129,6 @@ function NoteBookDashBoard() {
     }
   };
 
-  const loadNoteBooks = (entries) => {
-    if (componentMounted.current) {
-      if (Array.isArray(entries) && entries.length > 0) {
-        setNoteBooks(entries);
-      } else {
-        setNoteBooks([]);
-      }
-      setLoading(false);
-    }
-  };
-
   const filtersToParameters = () => {
     let params =
       "statuses=" +
@@ -163,6 +145,9 @@ function NoteBookDashBoard() {
     if (selectedNoteBook) {
       params += "&noteBookId=" + filters.notebookid;
     }
+    if (filters.orphanOnly) {
+      params += "&orphanOnly=true";
+    }
     return params;
   };
 
@@ -171,10 +156,6 @@ function NoteBookDashBoard() {
       "/rest/notebook/dashboard/entries?" + filtersToParameters(),
       loadNoteBookEntries,
     );
-  };
-
-  const openNoteBookView = (id) => {
-    window.location.href = "/NoteBookEntryForm/" + id;
   };
 
   const openNoteBookEntryForm = () => {
@@ -198,7 +179,6 @@ function NoteBookDashBoard() {
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatusList);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
     getFromOpenElisServer("/rest/notebook/dashboard/metrics", loadCounts);
-    getFromOpenElisServer("/rest/notebook/dashboard/notebooks", loadNoteBooks);
 
     return () => {
       componentMounted.current = false;
@@ -207,35 +187,6 @@ function NoteBookDashBoard() {
 
   const loadCounts = (data) => {
     setCounts(data);
-  };
-
-  function formatDateToDDMMYYYY(date) {
-    var day = date.getDate();
-    var month = date.getMonth() + 1; // Month is zero-based
-    var year = date.getFullYear();
-
-    // Ensure leading zeros for single-digit day and month
-    var formattedDay = (day < 10 ? "0" : "") + day;
-    var formattedMonth = (month < 10 ? "0" : "") + month;
-
-    // Construct the formatted string
-    var formattedDate = formattedDay + "/" + formattedMonth + "/" + year;
-    return formattedDate;
-  }
-
-  const getPastWeek = () => {
-    // Get the current date
-    var currentDate = new Date();
-
-    // Calculate the date of the past week
-    var pastWeekDate = new Date(currentDate);
-    pastWeekDate.setDate(currentDate.getDate() - 7);
-
-    return (
-      formatDateToDDMMYYYY(pastWeekDate) +
-      " - " +
-      formatDateToDDMMYYYY(currentDate)
-    );
   };
 
   const tileList = [
@@ -280,52 +231,33 @@ function NoteBookDashBoard() {
     { label: "label.button.newEntry", link: "/NoteBookEntryForm" },
   ];
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
+  // Handler for tree view selection
+  const handleTreeSelect = (notebookId, isParent, notebookData) => {
+    setSelectedNoteBook(notebookData);
+    setIsParentTemplate(isParent);
+    if (notebookData) {
+      setFilters({
+        ...filters,
+        notebookid: notebookId,
+        orphanOnly: notebookData.showOrphanEntries === true,
+      });
     }
   };
-  const handleSelectNoteBook = (id) => {
-    // Convert id to number for comparison since DataTable converts IDs to strings
-    const numericId = typeof id === "string" ? parseInt(id, 10) : id;
-    const notebook = noteBooks.find((entry) => entry.id === numericId);
-    setSelectedNoteBook(notebook);
-  };
 
-  const renderCell = (cell, row) => {
-    if (cell.info.header === "title") {
-      return (
-        <TableCell key={cell.id}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <PermissionGate
-              roles={Permissions.CREATE_OR_EDIT_NOTEBOOK}
-              disabledTooltip={intl.formatMessage({
-                id: "notebook.permission.edit.required",
-                defaultMessage:
-                  "You need Notebook Administrator role to edit templates",
-              })}
-            >
-              <Button
-                kind="ghost"
-                hasIconOnly
-                renderIcon={Edit}
-                iconDescription={intl.formatMessage({
-                  id: "notebook.icon.edit",
-                })}
-                size="sm"
-                onClick={() => openNoteBookView(row.id)}
-              ></Button>
-            </PermissionGate>
-            {cell.value}
-          </div>
-        </TableCell>
-      );
-    } else {
-      return <TableCell key={cell.id}>{cell.value}</TableCell>;
+  // Handler for successful instance creation
+  const handleInstanceCreated = (newInstance) => {
+    // Refresh the tree view
+    if (refreshTreeFn) {
+      refreshTreeFn();
+    }
+    // Navigate to the new instance
+    if (newInstance && newInstance.id) {
+      handleTreeSelect(newInstance.id, false, {
+        id: newInstance.id,
+        title: newInstance.title,
+        isChildInstance: true,
+        parentNotebookId: newInstance.parentNotebookId,
+      });
     }
   };
 
@@ -412,103 +344,11 @@ function NoteBookDashBoard() {
               </h4>
             </Column>
             <Column lg={16} md={8} sm={4}>
-              <DataTable
-                rows={noteBooks
-                  .slice((page - 1) * pageSize, page * pageSize)
-                  .map((notebook) => ({
-                    ...notebook,
-                    id: String(notebook.id),
-                  }))}
-                headers={[
-                  {
-                    key: "title",
-                    header: <FormattedMessage id="notebook.label.title" />,
-                  },
-                  {
-                    key: "entriesCount",
-                    header: (
-                      <FormattedMessage id="notebook.table.header.entries" />
-                    ),
-                  },
-                ]}
-                isSortable
-              >
-                {({ rows, headers, getHeaderProps, getTableProps }) => (
-                  <TableContainer title="" description="">
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
-                            >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <>
-                          {rows.map((row) => (
-                            <TableRow
-                              key={row.id}
-                              onClick={() => {
-                                handleSelectNoteBook(row.id);
-                              }}
-                            >
-                              {row.cells.map((cell) => renderCell(cell, row))}
-                            </TableRow>
-                          ))}
-                        </>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </DataTable>
-              <div style={{ overflowX: "auto" }}>
-                <Pagination
-                  onChange={handlePageChange}
-                  page={page}
-                  pageSize={pageSize}
-                  pageSizes={[10, 20, 30, 50, 100]}
-                  totalItems={noteBooks.length}
-                  forwardText={intl.formatMessage({ id: "pagination.forward" })}
-                  backwardText={intl.formatMessage({
-                    id: "pagination.backward",
-                  })}
-                  itemRangeText={(min, max, total) =>
-                    intl.formatMessage(
-                      { id: "pagination.item-range" },
-                      { min: min, max: max, total: total },
-                    )
-                  }
-                  itemsPerPageText={intl.formatMessage({
-                    id: "pagination.items-per-page",
-                  })}
-                  itemText={(min, max) =>
-                    intl.formatMessage(
-                      { id: "pagination.item" },
-                      { min: min, max: max },
-                    )
-                  }
-                  pageNumberText={intl.formatMessage({
-                    id: "pagination.page-number",
-                  })}
-                  pageRangeText={(_current, total) =>
-                    intl.formatMessage(
-                      { id: "pagination.page-range" },
-                      { total: total },
-                    )
-                  }
-                  pageText={(page, pagesUnknown) =>
-                    intl.formatMessage(
-                      { id: "pagination.page" },
-                      { page: pagesUnknown ? "" : page },
-                    )
-                  }
-                />
-              </div>
+              <NotebookTreeView
+                onSelectNotebook={handleTreeSelect}
+                selectedId={selectedNoteBook?.id}
+                onRefresh={setRefreshTreeFn}
+              />
             </Column>
           </Grid>
         </Column>
@@ -525,43 +365,96 @@ function NoteBookDashBoard() {
             <Grid fullWidth={true}>
               {selectedNoteBook ? (
                 <>
-                  <Column lg={11} md={8} sm={4}>
-                    <h4> {selectedNoteBook.title} </h4>
-                  </Column>
-                  <Column lg={4} md={8} sm={4}>
-                    <Button
-                      size="sm"
-                      disabled={
-                        // Check if user has any of the notebook's specific allowedRoles
-                        // If no allowedRoles defined, anyone can access (empty = no restriction)
-                        (() => {
-                          const roles = selectedNoteBook?.allowedRoles
-                            ? Array.from(selectedNoteBook.allowedRoles)
-                            : [];
-                          // No roles = no restriction = enabled
-                          if (roles.length === 0) return false;
-                          return !hasRoleForCurrentLabUnit(roles);
-                        })()
-                      }
-                      title={(() => {
-                        const roles = selectedNoteBook?.allowedRoles
-                          ? Array.from(selectedNoteBook.allowedRoles)
-                          : [];
-                        if (roles.length === 0) return undefined;
-                        return !hasRoleForCurrentLabUnit(roles)
-                          ? intl.formatMessage({
-                              id: "notebook.permission.entry.edit.required",
-                              defaultMessage:
-                                "You need permission to create or edit notebook entries",
-                            })
-                          : undefined;
-                      })()}
-                      onClick={() => {
-                        openNoteBookInstanceEntryForm();
+                  <Column lg={16} md={8} sm={4}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
                       }}
                     >
-                      <FormattedMessage id="label.button.newEntry" />
-                    </Button>
+                      <div>
+                        <h4> {selectedNoteBook.title} </h4>
+                        {selectedNoteBook.parentNotebookTitle && (
+                          <Breadcrumb noTrailingSlash>
+                            <BreadcrumbItem
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                // Navigate to parent
+                                handleTreeSelect(
+                                  selectedNoteBook.parentNotebookId,
+                                  true,
+                                  {
+                                    id: selectedNoteBook.parentNotebookId,
+                                    title: selectedNoteBook.parentNotebookTitle,
+                                  },
+                                );
+                              }}
+                            >
+                              {selectedNoteBook.parentNotebookTitle}
+                            </BreadcrumbItem>
+                            <BreadcrumbItem isCurrentPage>
+                              {selectedNoteBook.title}
+                            </BreadcrumbItem>
+                          </Breadcrumb>
+                        )}
+                      </div>
+                      <div>
+                        {isParentTemplate ? (
+                          <Button
+                            size="sm"
+                            onClick={() => setCreateInstanceModalOpen(true)}
+                          >
+                            <FormattedMessage id="notebook.button.createInstance" />
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled={
+                              // Check if user has any of the notebook's specific allowedRoles
+                              // If no allowedRoles defined, anyone can access (empty = no restriction)
+                              (() => {
+                                const roles = selectedNoteBook?.allowedRoles
+                                  ? Array.from(selectedNoteBook.allowedRoles)
+                                  : [];
+                                // No roles = no restriction = enabled
+                                if (roles.length === 0) return false;
+                                return !hasRoleForCurrentLabUnit(roles);
+                              })()
+                            }
+                            title={(() => {
+                              const roles = selectedNoteBook?.allowedRoles
+                                ? Array.from(selectedNoteBook.allowedRoles)
+                                : [];
+                              if (roles.length === 0) return undefined;
+                              return !hasRoleForCurrentLabUnit(roles)
+                                ? intl.formatMessage({
+                                    id: "notebook.permission.entry.edit.required",
+                                    defaultMessage:
+                                      "You need permission to create or edit notebook entries",
+                                  })
+                                : undefined;
+                            })()}
+                            onClick={() => {
+                              openNoteBookInstanceEntryForm();
+                            }}
+                          >
+                            <FormattedMessage id="label.button.newEntry" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {isParentTemplate && (
+                      <div className="parent-template-banner">
+                        <p>
+                          <FormattedMessage
+                            id="notebook.parentTemplate.banner"
+                            defaultMessage="This is a template. Create a lab instance to add entries."
+                          />
+                        </p>
+                      </div>
+                    )}
                   </Column>
                 </>
               ) : (
@@ -840,6 +733,13 @@ function NoteBookDashBoard() {
           </div>
         </Column>
       </Grid>
+
+      <CreateInstanceModal
+        open={createInstanceModalOpen}
+        onClose={() => setCreateInstanceModalOpen(false)}
+        parentNotebook={selectedNoteBook}
+        onSuccess={handleInstanceCreated}
+      />
     </>
   );
 }

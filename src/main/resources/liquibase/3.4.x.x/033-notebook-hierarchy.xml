@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK TEMPLATE HIERARCHY FEATURE -->
+    <!-- Implements parent-child relationships for notebooks -->
+    <!-- - Parent templates are blueprints that spawn child instances -->
+    <!-- - Child instances can have entries added to them -->
+    <!-- - Parent templates aggregate entries from all children -->
+    <!-- - Children inherit pages from parent (live inheritance) -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- 1. Add parent_notebook_id column to notebook table -->
+    <!-- Links child instances to their parent template -->
+    <!-- ======================================================== -->
+    <changeSet id="add-parent-notebook-id-column" author="openelis-hierarchy">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook" columnName="parent_notebook_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding parent_notebook_id column to notebook table for template hierarchy.</comment>
+        <addColumn tableName="notebook">
+            <column name="parent_notebook_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 2. Add foreign key constraint with CASCADE delete -->
+    <!-- When a parent template is deleted, all children are deleted -->
+    <!-- ======================================================== -->
+    <changeSet id="add-parent-notebook-fk" author="openelis-hierarchy">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <columnExists tableName="notebook" columnName="parent_notebook_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraint for parent_notebook_id with CASCADE delete.</comment>
+        <addForeignKeyConstraint
+            baseTableName="notebook"
+            baseColumnNames="parent_notebook_id"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            constraintName="fk_notebook_parent"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 3. Add index on parent_notebook_id for query performance -->
+    <!-- Optimizes queries for finding children of a parent -->
+    <!-- ======================================================== -->
+    <changeSet id="add-parent-notebook-index" author="openelis-hierarchy">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <columnExists tableName="notebook" columnName="parent_notebook_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating index on parent_notebook_id for efficient hierarchy queries.</comment>
+        <createIndex tableName="notebook" indexName="idx_notebook_parent">
+            <column name="parent_notebook_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 4. Add composite index for finding parent templates -->
+    <!-- Optimizes query: is_template=true AND parent_notebook_id IS NULL -->
+    <!-- ======================================================== -->
+    <changeSet id="add-parent-template-index" author="openelis-hierarchy">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <columnExists tableName="notebook" columnName="parent_notebook_id" schemaName="clinlims"/>
+            <columnExists tableName="notebook" columnName="is_template" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating composite index for finding parent templates efficiently.</comment>
+        <createIndex tableName="notebook" indexName="idx_notebook_parent_template">
+            <column name="is_template"/>
+            <column name="parent_notebook_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

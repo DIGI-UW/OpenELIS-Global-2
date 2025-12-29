@@ -38,3 +38,140 @@
   font-size: 1.5rem;
   font-weight: bold;
 }
+
+/* Notebook Tree View Styles */
+.notebook-tree-view {
+  padding: 0.5rem 0;
+}
+
+.notebook-tree-view .cds--tree {
+  background-color: transparent;
+}
+
+.notebook-tree-view .cds--tree-node {
+  padding: 0.25rem 0;
+}
+
+.notebook-tree-view .cds--tree-node__label {
+  font-size: 0.875rem;
+}
+
+.tree-node-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.tree-node-edit-btn {
+  padding: 0 !important;
+  min-height: 1.5rem !important;
+  min-width: 1.5rem !important;
+}
+
+.tree-node-edit-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.tree-node-icon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.tree-node-icon.parent-icon {
+  color: #0f62fe;
+}
+
+.tree-node-icon.child-icon {
+  color: #6f6f6f;
+}
+
+.tree-node-icon.orphan-icon {
+  color: #f1c21b;
+}
+
+.tree-node-orphan {
+  background-color: #fff8e1;
+  border-radius: 4px;
+  padding: 0.125rem 0.25rem;
+}
+
+.tree-node-orphan-count {
+  color: #b28600;
+  font-weight: 500;
+}
+
+.tree-node-title {
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.tree-node-count {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+  flex-shrink: 0;
+}
+
+.tree-node-empty {
+  color: #a8a8a8;
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
+.tree-node-selected {
+  background-color: #e0e0e0;
+  border-radius: 4px;
+}
+
+.notebook-tree-view .cds--tree-node:hover {
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+/* Parent template indicator in main content */
+.parent-template-banner {
+  background-color: #d0e2ff;
+  border-left: 4px solid #0f62fe;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.parent-template-banner p {
+  margin: 0;
+  color: #0043ce;
+  font-size: 0.875rem;
+}
+
+/* Child instance breadcrumb */
+.child-instance-breadcrumb {
+  margin-bottom: 0.5rem;
+}
+
+.child-instance-breadcrumb a {
+  color: #0f62fe;
+  text-decoration: none;
+}
+
+.child-instance-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+/* Child source indicator in entry cards */
+.entry-child-source {
+  font-size: 0.75rem;
+  color: #6f6f6f;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.entry-child-source svg {
+  width: 12px;
+  height: 12px;
+}
