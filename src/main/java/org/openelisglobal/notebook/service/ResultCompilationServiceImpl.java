@@ -309,8 +309,10 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                                 "Sample not found: " + pageSample.getSampleItemId());
                     }
 
-                    // Populate row with comprehensive data
+                    // Populate row with comprehensive data - must match headers order
                     int colIdx = 0;
+
+                    // Sample Identification
                     row.createCell(colIdx++)
                             .setCellValue(pageSample.getSampleItemId() != null ? pageSample.getSampleItemId() : "");
                     row.createCell(colIdx++).setCellValue(externalId);
@@ -337,6 +339,69 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                         break;
                     }
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, VALIDATION_REASON_KEY));
+
+                    // Reception Data (Page 1)
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "receptionDate"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "receptionTime"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "projectName"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "manifestReference"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "sourceFacility"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "transportTemperature"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageConditionOnArrival"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "receivingPersonnel"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "manifestVerified"));
+
+                    // Initial Processing Data (Page 2)
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "volumeMeasured"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "volumeSufficient"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "volumeNotes"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "cellCountMethod"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "cellConcentration"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "cellConcentrationUnit"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "isolationRequired"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "isolationMethod"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "cellPopulationIsolated"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "centrifugationSpeed"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "centrifugationSpeedUnit"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "centrifugationTime"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "centrifugationTimeUnit"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "processingTemperature"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "temperatureUnit"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "equipmentUsed"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "cellViabilityPercentage"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "finalCellYield"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "processingStartTime"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "processingEndTime"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "viabilityThresholdMet"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "cellCountAdequate"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "visualInspectionPassed"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "contaminationObserved"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "qcResult"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "processingQcNotes"));
+
+                    // Additional Assays Data (Page 3)
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "testType"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "testTypeOther"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "assayProtocol"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "assayPurpose"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "operatorName"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "operatorInitials"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "assayDate"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "assayStartTime"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "assayEndTime"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "resultsSummary"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "resultsQuantitative"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "resultsUnit"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "assayResult"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "failAction"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "failureReason"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "deviationObserved"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "deviationDescription"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "deviationImpact"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "correctiveAction"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "generalNotes"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "selectedReagents"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "selectedEquipment"));
 
                     // Test Results
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "testResult"));
@@ -374,7 +439,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                     // Operator Info
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "operator"));
 
-                    // Sample Processing Info
+                    // Sample Processing (Extraction) Info
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "extractionMethod"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "extractionKit"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "elutionVolume"));
@@ -393,16 +458,28 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageWell"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageCondition"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "storageTemperature"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "storagePath"));
 
-                    // Aliquoting Info
+                    // Aliquoting / Child Samples Info
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "aliquotCount"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "aliquotVolume"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "parentSampleId"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "isParentSample"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "childSampleIds"));
+
+                    // Archival Data
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "archiveLocation"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "archiveDate"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "retentionPeriod"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "disposalDate"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "disposedBy"));
 
                     // Notes
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "notes"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "executionNotes"));
                     row.createCell(colIdx++).setCellValue(getStringFromData(data, "assignmentNotes"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "receptionNotes"));
+                    row.createCell(colIdx++).setCellValue(getStringFromData(data, "processingNotes"));
 
                     // Completed info
                     Timestamp completedAt = pageSample.getCompletedAt();
@@ -448,7 +525,8 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
     }
 
     /**
-     * Get comprehensive headers for the export in logical order.
+     * Get comprehensive headers for the export in logical order. Includes all
+     * Immunology workflow data points.
      */
     private List<String> getComprehensiveHeaders() {
         List<String> headers = new ArrayList<>();
@@ -464,6 +542,69 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         headers.add("Page Status");
         headers.add("Validation Status");
         headers.add("Validation Reason");
+
+        // Reception Data (Page 1)
+        headers.add("Reception Date");
+        headers.add("Reception Time");
+        headers.add("Project Name");
+        headers.add("Manifest Reference");
+        headers.add("Source Facility");
+        headers.add("Transport Temperature");
+        headers.add("Storage Condition on Arrival");
+        headers.add("Receiving Personnel");
+        headers.add("Manifest Verified");
+
+        // Initial Processing Data (Page 2)
+        headers.add("Volume Measured (mL)");
+        headers.add("Volume Sufficient");
+        headers.add("Volume Notes");
+        headers.add("Cell Count Method");
+        headers.add("Cell Concentration");
+        headers.add("Cell Concentration Unit");
+        headers.add("Isolation Required");
+        headers.add("Isolation Method");
+        headers.add("Cell Population Isolated");
+        headers.add("Centrifugation Speed");
+        headers.add("Centrifugation Speed Unit");
+        headers.add("Centrifugation Time");
+        headers.add("Centrifugation Time Unit");
+        headers.add("Processing Temperature");
+        headers.add("Temperature Unit");
+        headers.add("Equipment Used");
+        headers.add("Cell Viability (%)");
+        headers.add("Final Cell Yield");
+        headers.add("Processing Start Time");
+        headers.add("Processing End Time");
+        headers.add("Viability Threshold Met");
+        headers.add("Cell Count Adequate");
+        headers.add("Visual Inspection Passed");
+        headers.add("Contamination Observed");
+        headers.add("Processing QC Result");
+        headers.add("Processing QC Notes");
+
+        // Additional Assays Data (Page 3)
+        headers.add("Assay Test Type");
+        headers.add("Assay Test Type Other");
+        headers.add("Assay Protocol");
+        headers.add("Assay Purpose");
+        headers.add("Assay Operator Name");
+        headers.add("Assay Operator Initials");
+        headers.add("Assay Date");
+        headers.add("Assay Start Time");
+        headers.add("Assay End Time");
+        headers.add("Assay Results Summary");
+        headers.add("Assay Results Quantitative");
+        headers.add("Assay Results Unit");
+        headers.add("Assay Result (Pass/Fail)");
+        headers.add("Assay Fail Action");
+        headers.add("Assay Failure Reason");
+        headers.add("Assay Deviation Observed");
+        headers.add("Assay Deviation Description");
+        headers.add("Assay Deviation Impact");
+        headers.add("Assay Corrective Action");
+        headers.add("Assay General Notes");
+        headers.add("Assay Selected Reagents");
+        headers.add("Assay Selected Equipment");
 
         // Test Results
         headers.add("Test Result");
@@ -501,7 +642,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         // Operator
         headers.add("Operator");
 
-        // Sample Processing
+        // Sample Processing (Extraction)
         headers.add("Extraction Method");
         headers.add("Extraction Kit");
         headers.add("Elution Volume");
@@ -520,16 +661,28 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         headers.add("Storage Well");
         headers.add("Storage Condition");
         headers.add("Storage Temperature");
+        headers.add("Storage Path");
 
-        // Aliquoting
+        // Aliquoting / Child Samples
         headers.add("Aliquot Count");
         headers.add("Aliquot Volume");
         headers.add("Parent Sample ID");
+        headers.add("Is Parent Sample");
+        headers.add("Child Sample IDs");
+
+        // Archival Data
+        headers.add("Archive Location");
+        headers.add("Archive Date");
+        headers.add("Retention Period");
+        headers.add("Disposal Date");
+        headers.add("Disposed By");
 
         // Notes
         headers.add("Notes");
         headers.add("Execution Notes");
         headers.add("Assignment Notes");
+        headers.add("Reception Notes");
+        headers.add("Processing Notes");
 
         // Completion
         headers.add("Completed At");
@@ -792,6 +945,69 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                 rowValues.add(escapeCsv(validationStatus.getDisplayName()));
                 rowValues.add(escapeCsv(getStringFromData(data, VALIDATION_REASON_KEY)));
 
+                // Reception Data (Page 1)
+                rowValues.add(escapeCsv(getStringFromData(data, "receptionDate")));
+                rowValues.add(escapeCsv(getStringFromData(data, "receptionTime")));
+                rowValues.add(escapeCsv(getStringFromData(data, "projectName")));
+                rowValues.add(escapeCsv(getStringFromData(data, "manifestReference")));
+                rowValues.add(escapeCsv(getStringFromData(data, "sourceFacility")));
+                rowValues.add(escapeCsv(getStringFromData(data, "transportTemperature")));
+                rowValues.add(escapeCsv(getStringFromData(data, "storageConditionOnArrival")));
+                rowValues.add(escapeCsv(getStringFromData(data, "receivingPersonnel")));
+                rowValues.add(escapeCsv(getStringFromData(data, "manifestVerified")));
+
+                // Initial Processing Data (Page 2)
+                rowValues.add(escapeCsv(getStringFromData(data, "volumeMeasured")));
+                rowValues.add(escapeCsv(getStringFromData(data, "volumeSufficient")));
+                rowValues.add(escapeCsv(getStringFromData(data, "volumeNotes")));
+                rowValues.add(escapeCsv(getStringFromData(data, "cellCountMethod")));
+                rowValues.add(escapeCsv(getStringFromData(data, "cellConcentration")));
+                rowValues.add(escapeCsv(getStringFromData(data, "cellConcentrationUnit")));
+                rowValues.add(escapeCsv(getStringFromData(data, "isolationRequired")));
+                rowValues.add(escapeCsv(getStringFromData(data, "isolationMethod")));
+                rowValues.add(escapeCsv(getStringFromData(data, "cellPopulationIsolated")));
+                rowValues.add(escapeCsv(getStringFromData(data, "centrifugationSpeed")));
+                rowValues.add(escapeCsv(getStringFromData(data, "centrifugationSpeedUnit")));
+                rowValues.add(escapeCsv(getStringFromData(data, "centrifugationTime")));
+                rowValues.add(escapeCsv(getStringFromData(data, "centrifugationTimeUnit")));
+                rowValues.add(escapeCsv(getStringFromData(data, "processingTemperature")));
+                rowValues.add(escapeCsv(getStringFromData(data, "temperatureUnit")));
+                rowValues.add(escapeCsv(getStringFromData(data, "equipmentUsed")));
+                rowValues.add(escapeCsv(getStringFromData(data, "cellViabilityPercentage")));
+                rowValues.add(escapeCsv(getStringFromData(data, "finalCellYield")));
+                rowValues.add(escapeCsv(getStringFromData(data, "processingStartTime")));
+                rowValues.add(escapeCsv(getStringFromData(data, "processingEndTime")));
+                rowValues.add(escapeCsv(getStringFromData(data, "viabilityThresholdMet")));
+                rowValues.add(escapeCsv(getStringFromData(data, "cellCountAdequate")));
+                rowValues.add(escapeCsv(getStringFromData(data, "visualInspectionPassed")));
+                rowValues.add(escapeCsv(getStringFromData(data, "contaminationObserved")));
+                rowValues.add(escapeCsv(getStringFromData(data, "qcResult")));
+                rowValues.add(escapeCsv(getStringFromData(data, "processingQcNotes")));
+
+                // Additional Assays Data (Page 3)
+                rowValues.add(escapeCsv(getStringFromData(data, "testType")));
+                rowValues.add(escapeCsv(getStringFromData(data, "testTypeOther")));
+                rowValues.add(escapeCsv(getStringFromData(data, "assayProtocol")));
+                rowValues.add(escapeCsv(getStringFromData(data, "assayPurpose")));
+                rowValues.add(escapeCsv(getStringFromData(data, "operatorName")));
+                rowValues.add(escapeCsv(getStringFromData(data, "operatorInitials")));
+                rowValues.add(escapeCsv(getStringFromData(data, "assayDate")));
+                rowValues.add(escapeCsv(getStringFromData(data, "assayStartTime")));
+                rowValues.add(escapeCsv(getStringFromData(data, "assayEndTime")));
+                rowValues.add(escapeCsv(getStringFromData(data, "resultsSummary")));
+                rowValues.add(escapeCsv(getStringFromData(data, "resultsQuantitative")));
+                rowValues.add(escapeCsv(getStringFromData(data, "resultsUnit")));
+                rowValues.add(escapeCsv(getStringFromData(data, "assayResult")));
+                rowValues.add(escapeCsv(getStringFromData(data, "failAction")));
+                rowValues.add(escapeCsv(getStringFromData(data, "failureReason")));
+                rowValues.add(escapeCsv(getStringFromData(data, "deviationObserved")));
+                rowValues.add(escapeCsv(getStringFromData(data, "deviationDescription")));
+                rowValues.add(escapeCsv(getStringFromData(data, "deviationImpact")));
+                rowValues.add(escapeCsv(getStringFromData(data, "correctiveAction")));
+                rowValues.add(escapeCsv(getStringFromData(data, "generalNotes")));
+                rowValues.add(escapeCsv(getStringFromData(data, "selectedReagents")));
+                rowValues.add(escapeCsv(getStringFromData(data, "selectedEquipment")));
+
                 // Test Results
                 rowValues.add(escapeCsv(getStringFromData(data, "testResult")));
                 rowValues.add(escapeCsv(getStringFromData(data, "ctValue")));
@@ -828,7 +1044,7 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                 // Operator
                 rowValues.add(escapeCsv(getStringFromData(data, "operator")));
 
-                // Sample Processing
+                // Sample Processing (Extraction)
                 rowValues.add(escapeCsv(getStringFromData(data, "extractionMethod")));
                 rowValues.add(escapeCsv(getStringFromData(data, "extractionKit")));
                 rowValues.add(escapeCsv(getStringFromData(data, "elutionVolume")));
@@ -847,16 +1063,28 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
                 rowValues.add(escapeCsv(getStringFromData(data, "storageWell")));
                 rowValues.add(escapeCsv(getStringFromData(data, "storageCondition")));
                 rowValues.add(escapeCsv(getStringFromData(data, "storageTemperature")));
+                rowValues.add(escapeCsv(getStringFromData(data, "storagePath")));
 
-                // Aliquoting
+                // Aliquoting / Child Samples
                 rowValues.add(escapeCsv(getStringFromData(data, "aliquotCount")));
                 rowValues.add(escapeCsv(getStringFromData(data, "aliquotVolume")));
                 rowValues.add(escapeCsv(getStringFromData(data, "parentSampleId")));
+                rowValues.add(escapeCsv(getStringFromData(data, "isParentSample")));
+                rowValues.add(escapeCsv(getStringFromData(data, "childSampleIds")));
+
+                // Archival Data
+                rowValues.add(escapeCsv(getStringFromData(data, "archiveLocation")));
+                rowValues.add(escapeCsv(getStringFromData(data, "archiveDate")));
+                rowValues.add(escapeCsv(getStringFromData(data, "retentionPeriod")));
+                rowValues.add(escapeCsv(getStringFromData(data, "disposalDate")));
+                rowValues.add(escapeCsv(getStringFromData(data, "disposedBy")));
 
                 // Notes
                 rowValues.add(escapeCsv(getStringFromData(data, "notes")));
                 rowValues.add(escapeCsv(getStringFromData(data, "executionNotes")));
                 rowValues.add(escapeCsv(getStringFromData(data, "assignmentNotes")));
+                rowValues.add(escapeCsv(getStringFromData(data, "receptionNotes")));
+                rowValues.add(escapeCsv(getStringFromData(data, "processingNotes")));
 
                 // Completion
                 rowValues.add(
