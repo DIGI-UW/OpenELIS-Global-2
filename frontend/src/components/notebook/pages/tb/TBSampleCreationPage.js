@@ -1,53 +1,42 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Grid,
   Column,
   Button,
   Tile,
   InlineNotification,
-  Loading,
-  Modal,
-  FileUploaderDropContainer,
-  FileUploaderItem,
-  Select,
-  SelectItem,
-  DataTable,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
   Tag,
-  TextInput,
-  DatePicker,
-  DatePickerInput,
-  TimePicker,
-  Checkbox,
-  TextArea,
 } from "@carbon/react";
-import { Upload, Checkmark, Warning, Add, Printer } from "@carbon/react/icons";
+import { Upload, Checkmark } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
-  postToOpenElisServerFormDataJson,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import TBManifestImportModal from "../../workflow/TBManifestImportModal";
-import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
  * TBSampleCreationPage - Page 1 of the TB workflow.
- * Handles comprehensive sample creation with full metadata capture including:
+ * Handles Sample Accession & Registration with full metadata capture.
+ *
+ * TB Sample Accession Metadata (per SRS FR-014):
  * A. Sample Identity (System Controlled)
- * B. Specimen Information
- * C. Request Paper Details
- * D. Patient / Participant Metadata
- * E. Clinical Context
- * F. Requested Tests
- * G. Receipt Details
+ * B. Specimen Information (Specimen Type, Quality)
+ * C. Request Paper Details (Document Number, Referring Facility)
+ * D. Patient / Participant Metadata (Name, Age, Sex, ID, Study ID, Address, Phone, Consent)
+ * E. Clinical Context (Treatment History)
+ * F. Requested Tests (Culture, Smear, GeneXpert, Identification, DST 1st/2nd Line, Method)
+ * G. Receipt Details (Received Site, Date, Time)
+ *
+ * Cloned from ImmunologySampleReceptionPage with TB-specific fields.
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
@@ -64,25 +53,13 @@ function TBSampleCreationPage({
   const intl = useIntl();
   const componentMounted = useRef(false);
 
-  // State for samples
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  // State for sample types from type_of_sample table
-  const [sampleTypes, setSampleTypes] = useState([]);
-
-  // Modal state for import
   const [importModalOpen, setImportModalOpen] = useState(false);
-
-  // Load sample types from type_of_sample table
-  useEffect(() => {
-    getFromOpenElisServer("/rest/user-sample-types", (res) => {
-      setSampleTypes(res || []);
-    });
-  }, []);
 
   // Load samples for this page
   useEffect(() => {
@@ -92,6 +69,7 @@ function TBSampleCreationPage({
     return () => {
       componentMounted.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId, pageData?.id]);
 
   const loadPageSamples = useCallback(() => {
@@ -107,6 +85,7 @@ function TBSampleCreationPage({
 
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     getFromOpenElisServer(
       `/rest/notebook/page/${pageData.id}/samples`,
@@ -119,18 +98,21 @@ function TBSampleCreationPage({
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              patientName: sample.patientName,
-              volume: sample.volume,
-              // TB specific fields from questionnaire responses
+              status: sample.pageStatus || sample.status || "PENDING",
+              // TB-specific fields from JSONB data
               specimenType: sample.data?.specimenType,
+              specimenQuality: sample.data?.specimenQuality,
               documentNumber: sample.data?.documentNumber,
               referringFacility: sample.data?.referringFacility,
+              patientName: sample.data?.patientName,
               patientAge: sample.data?.patientAge,
               patientSex: sample.data?.patientSex,
               patientId: sample.data?.patientId,
               studyId: sample.data?.studyId,
+              treatmentHistory: sample.data?.treatmentHistory,
               requestedTests: sample.data?.requestedTests,
+              receivedSite: sample.data?.receivedSite,
+              receivedDate: sample.data?.receivedDate,
             }));
             setSamples(transformedSamples);
           } else {
@@ -142,16 +124,41 @@ function TBSampleCreationPage({
     );
   }, [pageData?.id]);
 
-  // Handle bulk mark as completed
-  const handleBulkMarkCompleted = useCallback(() => {
-    if (selectedSampleIds.length === 0) return;
+  const handleImportSuccess = useCallback(() => {
+    setImportModalOpen(false);
+    loadPageSamples();
+    if (onProgressUpdate) {
+      onProgressUpdate();
+    }
+  }, [loadPageSamples, onProgressUpdate]);
 
-    const hasRealPageId =
-      pageData?.id && !String(pageData.id).startsWith("default-");
-    if (!hasRealPageId) {
-      setError("Cannot update samples: Page not properly initialized.");
+  const hasRealPageId =
+    pageData?.id && !String(pageData.id).startsWith("default-");
+
+  const markAsVerified = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.error.noSelection",
+          defaultMessage: "Please select at least one sample.",
+        }),
+      );
       return;
     }
+
+    if (!hasRealPageId) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.error.noPage",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
+      );
+      return;
+    }
+
+    setError(null);
+    setSuccessMessage(null);
 
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
@@ -161,37 +168,134 @@ function TBSampleCreationPage({
       }),
       (status) => {
         if (status === 200) {
-          loadPageSamples();
+          setSuccessMessage(
+            intl.formatMessage(
+              {
+                id: "notebook.page.tb.success.verified",
+                defaultMessage:
+                  "Marked {count} sample(s) as Verified. They will proceed to Quality Check.",
+              },
+              { count: selectedSampleIds.length },
+            ),
+          );
           setSelectedSampleIds([]);
+          loadPageSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          setError("Failed to update sample status.");
+          setError(
+            intl.formatMessage({
+              id: "notebook.page.tb.error.status",
+              defaultMessage: "Failed to verify samples. Please try again.",
+            }),
+          );
         }
       },
     );
-  }, [selectedSampleIds, pageData?.id, loadPageSamples, onProgressUpdate]);
+  }, [
+    selectedSampleIds,
+    hasRealPageId,
+    intl,
+    loadPageSamples,
+    onProgressUpdate,
+    pageData?.id,
+  ]);
 
-  // Print barcode
-  const handlePrintBarcode = (accessionNumber) => {
-    const barcodesPdf =
-      config.serverBaseUrl +
-      `/LabelMakerServlet?labNo=${encodeURIComponent(accessionNumber)}&type=order&quantity=1`;
-    window.open(barcodesPdf);
-  };
+  // Split samples into pending/in-progress and completed
+  const pendingSamples = useMemo(
+    () =>
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
+    [samples],
+  );
+  const completedSamples = useMemo(
+    () => samples.filter((s) => s.status === "COMPLETED"),
+    [samples],
+  );
 
-  // Calculate stats
-  const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
-  const pendingCount = samples.filter((s) => s.status === "PENDING").length;
+  const pendingCount = pendingSamples.length;
+  const completedCount = completedSamples.length;
 
-  // Handle import success
-  const handleImportSuccess = useCallback(() => {
-    loadPageSamples();
-    if (onProgressUpdate) {
-      onProgressUpdate();
-    }
-  }, [loadPageSamples, onProgressUpdate]);
+  // Custom columns for TB-specific accession metadata
+  const getAdditionalColumns = (intl) => [
+    {
+      key: "specimenType",
+      header: intl.formatMessage({
+        id: "notebook.sample.specimenType",
+        defaultMessage: "Specimen Type",
+      }),
+      render: (value, sample) => value || sample?.sampleType || "-",
+    },
+    {
+      key: "patientName",
+      header: intl.formatMessage({
+        id: "notebook.sample.patientName",
+        defaultMessage: "Patient Name",
+      }),
+      render: (value) => value || "-",
+    },
+    {
+      key: "patientId",
+      header: intl.formatMessage({
+        id: "notebook.sample.patientId",
+        defaultMessage: "Patient ID",
+      }),
+      render: (value) => value || "-",
+    },
+    {
+      key: "referringFacility",
+      header: intl.formatMessage({
+        id: "notebook.sample.referringFacility",
+        defaultMessage: "Referring Facility",
+      }),
+      render: (value) => value || "-",
+    },
+    {
+      key: "requestedTests",
+      header: intl.formatMessage({
+        id: "notebook.sample.requestedTests",
+        defaultMessage: "Requested Tests",
+      }),
+      render: (value) => {
+        if (!value) return "-";
+        // Handle both string and array formats
+        const tests = Array.isArray(value) ? value : [value];
+        return tests.length > 0 ? (
+          <span title={tests.join(", ")}>
+            {tests.slice(0, 2).join(", ")}
+            {tests.length > 2 && ` +${tests.length - 2}`}
+          </span>
+        ) : (
+          "-"
+        );
+      },
+    },
+    {
+      key: "treatmentHistory",
+      header: intl.formatMessage({
+        id: "notebook.sample.treatmentHistory",
+        defaultMessage: "Treatment",
+      }),
+      render: (value) => {
+        if (!value) return "-";
+        const tagType =
+          value === "New"
+            ? "green"
+            : value === "Retreatment"
+              ? "blue"
+              : value === "MDR-TB"
+                ? "red"
+                : "gray";
+        return (
+          <Tag type={tagType} size="sm">
+            {value}
+          </Tag>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="tb-sample-creation-page">
@@ -199,14 +303,14 @@ function TBSampleCreationPage({
       <div className="page-section-header">
         <h4>
           <FormattedMessage
-            id="notebook.page.tb.sampleCreation.title"
-            defaultMessage="Sample Creation & Full Metadata Capture"
+            id="notebook.page.tb.sampleAccession.title"
+            defaultMessage="Sample Accession & Registration"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
-            id="notebook.page.tb.sampleCreation.description"
-            defaultMessage="Capture complete sample metadata including accession number, specimen information, patient details, clinical context, requested tests, and receipt details. Import samples via CSV manifest or create individually."
+            id="notebook.page.tb.sampleAccession.description"
+            defaultMessage="Import TB samples from delivery manifest with complete metadata. Select samples and mark as Verified to proceed to Quality Check."
           />
         </p>
       </div>
@@ -224,23 +328,23 @@ function TBSampleCreationPage({
               </span>
               <span className="progress-value">{samples.length}</span>
             </Tile>
-            <Tile className="progress-tile verified">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="notebook.page.tb.completed"
-                  defaultMessage="Completed"
-                />
-              </span>
-              <span className="progress-value">{completedCount}</span>
-            </Tile>
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tb.pending"
-                  defaultMessage="Pending"
+                  id="notebook.page.tb.pendingInProgress"
+                  defaultMessage="Pending / In Progress"
                 />
               </span>
               <span className="progress-value">{pendingCount}</span>
+            </Tile>
+            <Tile className="progress-tile verified">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="notebook.page.tb.verified"
+                  defaultMessage="Verified"
+                />
+              </span>
+              <span className="progress-value">{completedCount}</span>
             </Tile>
           </div>
         </Column>
@@ -265,18 +369,19 @@ function TBSampleCreationPage({
             kind="secondary"
             size="sm"
             renderIcon={Checkmark}
-            onClick={handleBulkMarkCompleted}
+            onClick={markAsVerified}
+            data-testid="mark-as-verified-button"
           >
             <FormattedMessage
-              id="notebook.page.tb.markCompleted"
-              defaultMessage="Mark as Completed ({count})"
+              id="notebook.page.tb.markAsVerified"
+              defaultMessage="Mark as Verified ({count})"
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
         )}
       </div>
 
-      {/* Error Display */}
+      {/* Errors / Success */}
       {error && (
         <InlineNotification
           kind="error"
@@ -285,43 +390,112 @@ function TBSampleCreationPage({
           lowContrast
         />
       )}
-
-      {/* Sample Grid */}
-      <div className="sample-grid-container">
-        <SampleGrid
-          samples={samples}
-          selectedIds={selectedSampleIds}
-          onSelectionChange={setSelectedSampleIds}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          showSelection={true}
-          loading={loading}
-          columns={[
-            { key: "accessionNumber", header: "Accession Number" },
-            { key: "externalId", header: "Sample ID" },
-            { key: "specimenType", header: "Specimen Type" },
-            { key: "patientName", header: "Patient Name" },
-            { key: "patientId", header: "Patient ID" },
-            { key: "referringFacility", header: "Referring Facility" },
-            { key: "requestedTests", header: "Requested Tests" },
-            { key: "status", header: "Status" },
-          ]}
+      {successMessage && (
+        <InlineNotification
+          kind="success"
+          title={successMessage}
+          hideCloseButton
+          lowContrast
         />
+      )}
+
+      {/* Pending / In Progress Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tb.pendingSamples.title"
+              defaultMessage="Pending / In Progress"
+            />
+            <Tag type="gray" size="sm" className="count-tag">
+              {pendingCount}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.tb.pendingSamples.description"
+              defaultMessage="Samples awaiting accession verification. Select samples and mark as Verified to move them to the completed section."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          {!loading && pendingSamples.length === 0 ? (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.tb.pendingSamples.empty"
+                  defaultMessage="No pending samples. Import a delivery manifest to add samples."
+                />
+              </p>
+            </div>
+          ) : (
+            <SampleGrid
+              gridId="pending-samples"
+              samples={pendingSamples}
+              selectedIds={selectedSampleIds}
+              onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
+              loading={loading}
+              additionalColumns={getAdditionalColumns(intl)}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Empty state */}
+      {/* Completed Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tb.completedSamples.title"
+              defaultMessage="Completed"
+            />
+            <Tag type="green" size="sm" className="count-tag">
+              {completedCount}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.tb.completedSamples.description"
+              defaultMessage="Samples that have been verified and are ready for Quality Check."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          {!loading && completedSamples.length === 0 ? (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.tb.completedSamples.empty"
+                  defaultMessage="No verified samples yet. Select pending samples and mark them as verified."
+                />
+              </p>
+            </div>
+          ) : (
+            <SampleGrid
+              gridId="completed-samples"
+              samples={completedSamples}
+              showSelection={false}
+              loading={loading}
+              additionalColumns={getAdditionalColumns(intl)}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Global Empty state - only show when no samples at all */}
       {!loading && samples.length === 0 && (
-        <div className="empty-state">
+        <div className="empty-state global-empty">
           <p>
             <FormattedMessage
-              id="notebook.page.tb.sampleCreation.empty"
-              defaultMessage="No samples have been added yet. Use 'Import from Manifest' to create samples from a CSV file with complete TB metadata."
+              id="notebook.page.tb.empty"
+              defaultMessage="No samples have been added yet. Import a delivery manifest to add samples with complete TB metadata."
             />
           </p>
         </div>
       )}
 
-      {/* Import Modal */}
+      {/* Manifest Import Modal */}
       <TBManifestImportModal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}

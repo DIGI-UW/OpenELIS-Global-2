@@ -1,0 +1,510 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB LABORATORY ORGANIZATION AND SAMPLE TYPES              -->
+    <!-- Creates:                                                  -->
+    <!-- 1. TB Laboratory organization                            -->
+    <!-- 2. TB-specific sample types (Sputum, BAL, etc.)         -->
+    <!-- 3. Links sample types to TB organization                 -->
+    <!-- 4. Links TB organization to TB notebook template         -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- 1. CREATE TB LABORATORY ORGANIZATION                     -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-laboratory-organization" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create TB Laboratory organization for sample type validation</comment>
+        <insert tableName="organization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="organization_seq"/>
+            <column name="name" value="TB Laboratory"/>
+            <column name="short_name" value="TB Lab"/>
+            <column name="is_active" value="Y"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete tableName="organization" schemaName="clinlims">
+                <where>name = 'TB Laboratory'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 2. TB SPECIMEN SAMPLE TYPES                              -->
+    <!-- Creates sample types used in TB laboratory workflow      -->
+    <!-- ======================================================== -->
+
+    <!-- Sputum - Primary TB specimen type -->
+    <changeSet id="add-tb-localization-sputum" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Sputum' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Sputum"/>
+            <column name="french" value="Crachat"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-type-sputum" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'sputum'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Sputum"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Sputum' AND description = 'sampleType name' ORDER BY id DESC LIMIT 1)"/>
+        </insert>
+    </changeSet>
+
+    <!-- BAL (Bronchoalveolar Lavage) - may already exist from immunology -->
+    <changeSet id="add-tb-localization-bal" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'bal'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'BAL' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="BAL"/>
+            <column name="french" value="LBA"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-type-bal" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'bal'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="BAL"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'BAL' AND description = 'sampleType name' ORDER BY id DESC LIMIT 1)"/>
+        </insert>
+    </changeSet>
+
+    <!-- Pleural Fluid -->
+    <changeSet id="add-tb-localization-pleural-fluid" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Pleural Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Pleural Fluid"/>
+            <column name="french" value="Liquide pleural"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-type-pleural-fluid" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'pleural fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Pleural Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Pleural Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- CSF (Cerebrospinal Fluid) - may already exist from pharma -->
+    <changeSet id="add-tb-localization-csf" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'csf'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'CSF' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="CSF"/>
+            <column name="french" value="LCR"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-type-csf" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'csf'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="CSF"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'CSF' AND description = 'sampleType name' ORDER BY id DESC LIMIT 1)"/>
+        </insert>
+    </changeSet>
+
+    <!-- Tissue -->
+    <changeSet id="add-tb-localization-tissue" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Tissue' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Tissue"/>
+            <column name="french" value="Tissu"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-type-tissue" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tissue'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tissue"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Tissue' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Gastric Aspirate -->
+    <changeSet id="add-tb-localization-gastric-aspirate" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Gastric Aspirate' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Gastric Aspirate"/>
+            <column name="french" value="Aspirat gastrique"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-tb-sample-type-gastric-aspirate" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'gastric aspirate'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Gastric Aspirate"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Gastric Aspirate' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 3. LINK SAMPLE TYPES TO TB ORGANIZATION                  -->
+    <!-- Uses the organization_sample_type table created in 027   -->
+    <!-- ======================================================== -->
+
+    <!-- Link Sputum to TB Laboratory -->
+    <changeSet id="link-tb-org-sputum" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'sputum'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_sample_type ost
+                JOIN clinlims.organization o ON ost.org_id = o.id
+                JOIN clinlims.type_of_sample tos ON ost.sample_type_id = tos.id
+                WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'sputum'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Sputum sample type to TB Laboratory organization</comment>
+        <sql>
+            INSERT INTO clinlims.organization_sample_type (id, org_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.organization_sample_type_seq'), o.id, tos.id, 'Y', 1, now()
+            FROM clinlims.organization o, clinlims.type_of_sample tos
+            WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'sputum';
+        </sql>
+    </changeSet>
+
+    <!-- Link BAL to TB Laboratory -->
+    <changeSet id="link-tb-org-bal" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'bal'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_sample_type ost
+                JOIN clinlims.organization o ON ost.org_id = o.id
+                JOIN clinlims.type_of_sample tos ON ost.sample_type_id = tos.id
+                WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'bal'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link BAL sample type to TB Laboratory organization</comment>
+        <sql>
+            INSERT INTO clinlims.organization_sample_type (id, org_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.organization_sample_type_seq'), o.id, tos.id, 'Y', 2, now()
+            FROM clinlims.organization o, clinlims.type_of_sample tos
+            WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'bal';
+        </sql>
+    </changeSet>
+
+    <!-- Link Pleural Fluid to TB Laboratory -->
+    <changeSet id="link-tb-org-pleural-fluid" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'pleural fluid'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_sample_type ost
+                JOIN clinlims.organization o ON ost.org_id = o.id
+                JOIN clinlims.type_of_sample tos ON ost.sample_type_id = tos.id
+                WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'pleural fluid'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Pleural Fluid sample type to TB Laboratory organization</comment>
+        <sql>
+            INSERT INTO clinlims.organization_sample_type (id, org_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.organization_sample_type_seq'), o.id, tos.id, 'Y', 3, now()
+            FROM clinlims.organization o, clinlims.type_of_sample tos
+            WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'pleural fluid';
+        </sql>
+    </changeSet>
+
+    <!-- Link CSF to TB Laboratory -->
+    <changeSet id="link-tb-org-csf" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'csf'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_sample_type ost
+                JOIN clinlims.organization o ON ost.org_id = o.id
+                JOIN clinlims.type_of_sample tos ON ost.sample_type_id = tos.id
+                WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'csf'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link CSF sample type to TB Laboratory organization</comment>
+        <sql>
+            INSERT INTO clinlims.organization_sample_type (id, org_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.organization_sample_type_seq'), o.id, tos.id, 'Y', 4, now()
+            FROM clinlims.organization o, clinlims.type_of_sample tos
+            WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'csf';
+        </sql>
+    </changeSet>
+
+    <!-- Link Tissue to TB Laboratory -->
+    <changeSet id="link-tb-org-tissue" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tissue'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_sample_type ost
+                JOIN clinlims.organization o ON ost.org_id = o.id
+                JOIN clinlims.type_of_sample tos ON ost.sample_type_id = tos.id
+                WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'tissue'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Tissue sample type to TB Laboratory organization</comment>
+        <sql>
+            INSERT INTO clinlims.organization_sample_type (id, org_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.organization_sample_type_seq'), o.id, tos.id, 'Y', 5, now()
+            FROM clinlims.organization o, clinlims.type_of_sample tos
+            WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'tissue';
+        </sql>
+    </changeSet>
+
+    <!-- Link Gastric Aspirate to TB Laboratory -->
+    <changeSet id="link-tb-org-gastric-aspirate" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="organization_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'gastric aspirate'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_sample_type ost
+                JOIN clinlims.organization o ON ost.org_id = o.id
+                JOIN clinlims.type_of_sample tos ON ost.sample_type_id = tos.id
+                WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'gastric aspirate'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Gastric Aspirate sample type to TB Laboratory organization</comment>
+        <sql>
+            INSERT INTO clinlims.organization_sample_type (id, org_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.organization_sample_type_seq'), o.id, tos.id, 'Y', 6, now()
+            FROM clinlims.organization o, clinlims.type_of_sample tos
+            WHERE o.name = 'TB Laboratory' AND LOWER(tos.description) = 'gastric aspirate';
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 4. LINK TB ORGANIZATION TO TB NOTEBOOK TEMPLATE          -->
+    <!-- ======================================================== -->
+    <changeSet id="link-tb-notebook-to-organization" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.organization WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_organizations no
+                JOIN clinlims.notebook n ON no.notebook_id = n.id
+                JOIN clinlims.organization o ON no.organization_id = o.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND o.name = 'TB Laboratory'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link TB Laboratory organization to Tuberculosis Laboratory notebook template</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n, clinlims.organization o
+            WHERE n.title = 'Tuberculosis Laboratory'
+              AND n.is_template = true
+              AND o.name = 'TB Laboratory';
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 5. CREATE TB LABORATORY DEPARTMENT (TEST_SECTION)        -->
+    <!-- This makes TB Lab appear in the Locations/Organizations  -->
+    <!-- dropdown when creating notebook entries                  -->
+    <!-- ======================================================== -->
+
+    <!-- First create localization for the department name -->
+    <changeSet id="add-tb-department-localization" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'TB Laboratory' AND description = 'test section name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="test section name"/>
+            <column name="english" value="TB Laboratory"/>
+            <column name="french" value="Laboratoire TB"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="create-tb-laboratory-department" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'TB Laboratory'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create TB Laboratory department (test_section) for notebook dropdown</comment>
+        <insert tableName="test_section" schemaName="clinlims">
+            <column name="id" valueSequenceNext="test_section_seq"/>
+            <column name="name" value="TB Laboratory"/>
+            <column name="description" value="Tuberculosis Laboratory Department"/>
+            <column name="is_active" value="Y"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="sort_order" valueNumeric="100"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'TB Laboratory' AND description = 'test section name' ORDER BY id DESC LIMIT 1)"/>
+        </insert>
+        <rollback>
+            <delete tableName="test_section" schemaName="clinlims">
+                <where>name = 'TB Laboratory'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Link TB Laboratory department to TB notebook template -->
+    <changeSet id="link-tb-notebook-to-department" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_departments" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'TB Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND ts.name = 'TB Laboratory'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link TB Laboratory department to Tuberculosis Laboratory notebook template</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n, clinlims.test_section ts
+            WHERE n.title = 'Tuberculosis Laboratory'
+              AND n.is_template = true
+              AND ts.name = 'TB Laboratory';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

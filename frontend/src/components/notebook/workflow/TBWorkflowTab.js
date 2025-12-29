@@ -13,22 +13,27 @@ import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
 import TBSampleCreationPage from "../pages/tb/TBSampleCreationPage";
+import TBQualityCheckPage from "../pages/tb/TBQualityCheckPage";
+import TBStorageAssignmentPage from "../pages/tb/TBStorageAssignmentPage";
+import TBInitialProcessingPage from "../pages/tb/TBInitialProcessingPage";
+import TBIncubationMonitoringPage from "../pages/tb/TBIncubationMonitoringPage";
+import TBSmearResultsPage from "../pages/tb/TBSmearResultsPage";
 import "./NotebookWorkflow.css";
 
 /**
  * Default workflow pages for Tuberculosis workflow.
- * Page 1: Sample Creation & Full Metadata Capture
+ * Page 1: Sample Accession & Registration
  * Page 2: Raw Sample Quality Check (QC)
  * Page 3: Sample Storage Assignment
  * Page 4: Initial Sample Processing
- * Page 5: Culture Inoculation & Weekly Monitoring
- * Page 6: Sample-Linked Test Execution
+ * Page 5: Incubation & Monitoring
+ * Page 6: AFB Smear Microscopy
  */
 const DEFAULT_TB_WORKFLOW_PAGES = [
   {
     id: "default-1",
     order: 1,
-    title: "Sample Creation & Full Metadata Capture",
+    title: "Sample Accession & Registration",
   },
   { id: "default-2", order: 2, title: "Raw Sample Quality Check (QC)" },
   { id: "default-3", order: 3, title: "Sample Storage Assignment" },
@@ -36,9 +41,9 @@ const DEFAULT_TB_WORKFLOW_PAGES = [
   {
     id: "default-5",
     order: 5,
-    title: "Culture Inoculation & Weekly Monitoring",
+    title: "Incubation & Monitoring",
   },
-  { id: "default-6", order: 6, title: "Sample-Linked Test Execution" },
+  { id: "default-6", order: 6, title: "AFB Smear Microscopy" },
 ];
 
 /**
@@ -260,7 +265,7 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
 
     switch (pageOrder) {
       case 1:
-        // Page 1: Sample Creation & Full Metadata Capture
+        // Page 1: Sample Accession & Registration
         return (
           <TBSampleCreationPage
             key={`sample-creation-${page.id}`}
@@ -272,59 +277,62 @@ function TBWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 2:
-        // Page 2: Raw Sample Quality Check (QC) - TODO: Implement
+        // Page 2: Raw Sample Quality Check (QC)
         return (
-          <div className="page-placeholder">
-            <FormattedMessage
-              id="notebook.workflow.pageDefault.description"
-              defaultMessage="Page content for workflow step {step}"
-              values={{ step: pageOrder }}
-            />
-          </div>
+          <TBQualityCheckPage
+            key={`quality-check-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            pages={effectivePages}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
         );
       case 3:
-        // Page 3: Sample Storage Assignment - TODO: Implement
+        // Page 3: Sample Storage Assignment
         return (
-          <div className="page-placeholder">
-            <FormattedMessage
-              id="notebook.workflow.pageDefault.description"
-              defaultMessage="Page content for workflow step {step}"
-              values={{ step: pageOrder }}
-            />
-          </div>
+          <TBStorageAssignmentPage
+            key={`storage-assignment-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            pages={effectivePages}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
         );
       case 4:
-        // Page 4: Initial Sample Processing - TODO: Implement
+        // Page 4: Initial Sample Processing
         return (
-          <div className="page-placeholder">
-            <FormattedMessage
-              id="notebook.workflow.pageDefault.description"
-              defaultMessage="Page content for workflow step {step}"
-              values={{ step: pageOrder }}
-            />
-          </div>
+          <TBInitialProcessingPage
+            key={`initial-processing-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            pages={effectivePages}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
         );
       case 5:
-        // Page 5: Culture Inoculation & Weekly Monitoring - TODO: Implement
+        // Page 5: Incubation & Monitoring
         return (
-          <div className="page-placeholder">
-            <FormattedMessage
-              id="notebook.workflow.pageDefault.description"
-              defaultMessage="Page content for workflow step {step}"
-              values={{ step: pageOrder }}
-            />
-          </div>
+          <TBIncubationMonitoringPage
+            key={`incubation-monitoring-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
         );
       case 6:
-        // Page 6: Sample-Linked Test Execution - TODO: Implement
+        // Page 6: AFB Smear Microscopy
         return (
-          <div className="page-placeholder">
-            <FormattedMessage
-              id="notebook.workflow.pageDefault.description"
-              defaultMessage="Page content for workflow step {step}"
-              values={{ step: pageOrder }}
-            />
-          </div>
+          <TBSmearResultsPage
+            key={`smear-results-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+          />
         );
       default:
         return (

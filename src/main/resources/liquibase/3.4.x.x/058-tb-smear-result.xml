@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TB_SMEAR_RESULT TABLE -->
+    <!-- Stores smear microscopy and AFB results -->
+    <!-- Methods: ZN, Concentrated, Fluorescent, Other -->
+    <!-- AFB Results: Negative, Scanty, 1+, 2+, 3+ -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-smear-result-sequence" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="tb_smear_result_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for tb_smear_result table.</comment>
+        <createSequence sequenceName="tb_smear_result_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-tb-smear-result-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="tb_smear_result" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating TB_SMEAR_RESULT table for smear microscopy results.</comment>
+        <createTable tableName="tb_smear_result">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="tb_smear_result_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_tb_smear_result"/>
+            </column>
+            <column name="sample_item_id" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="afb_result" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tested_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="reviewed_by" type="NUMERIC(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-tb-smear-result-foreign-keys" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_smear_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to tb_smear_result table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="tb_smear_result"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_tb_smear_sample_item"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="tb_smear_result"
+            baseColumnNames="tested_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_smear_tested_by"/>
+        <addForeignKeyConstraint
+            baseTableName="tb_smear_result"
+            baseColumnNames="reviewed_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_tb_smear_reviewed_by"/>
+    </changeSet>
+
+    <changeSet id="add-tb-smear-result-method-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_smear_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for method values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_smear_result
+            ADD CONSTRAINT chk_tb_smear_method
+            CHECK (method IN ('ZN', 'CONCENTRATED', 'FLUORESCENT', 'OTHER'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_smear_result DROP CONSTRAINT IF EXISTS chk_tb_smear_method;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-smear-result-afb-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_smear_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for afb_result values.</comment>
+        <sql>
+            ALTER TABLE clinlims.tb_smear_result
+            ADD CONSTRAINT chk_tb_smear_afb_result
+            CHECK (afb_result IN ('NEGATIVE', 'SCANTY', 'PLUS1', 'PLUS2', 'PLUS3'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.tb_smear_result DROP CONSTRAINT IF EXISTS chk_tb_smear_afb_result;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-tb-smear-result-indexes" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tb_smear_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="tb_smear_result" indexName="idx_tb_smear_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="tb_smear_result" indexName="idx_tb_smear_result_date">
+            <column name="result_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-tb-smear-result-reference-table" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'TB_SMEAR_RESULT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating TB_SMEAR_RESULT reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="TB_SMEAR_RESULT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='TB_SMEAR_RESULT'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

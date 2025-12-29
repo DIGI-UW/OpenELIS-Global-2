@@ -17,6 +17,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -25,6 +26,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
 /**
@@ -251,5 +253,16 @@ public class NotebookEntry extends BaseObject<Integer> {
 
     public void setAccessibleOrganizations(Set<Organization> accessibleOrganizations) {
         this.accessibleOrganizations = accessibleOrganizations;
+    }
+
+    /**
+     * Get departments linked to this entry's notebook template. Used for
+     * department-based sample type validation.
+     */
+    public Set<TestSection> getLinkedDepartments() {
+        if (notebook != null) {
+            return notebook.getDepartments();
+        }
+        return Collections.emptySet();
     }
 }

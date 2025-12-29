@@ -181,7 +181,7 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 5: CULTURE INOCULATION &amp; WEEKLY MONITORING -->
+    <!-- PAGE 5: INCUBATION &amp; MONITORING -->
     <!-- ======================================================== -->
     <changeSet id="create-tb-page-5-culture-monitoring" author="openelis-tb">
         <preConditions onFail="MARK_RAN">
@@ -194,13 +194,13 @@
                 WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 5
             </sqlCheck>
         </preConditions>
-        <comment>Create Culture Inoculation &amp; Weekly Monitoring page for Tuberculosis Laboratory notebook</comment>
+        <comment>Create Incubation &amp; Monitoring page for Tuberculosis Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Culture Inoculation &amp; Weekly Monitoring"/>
-            <column name="instructions" value="Record culture inoculation details and perform weekly monitoring of culture growth. Document growth patterns and contamination status."/>
-            <column name="content" value="Culture Inoculation &amp; Weekly Monitoring - Culture setup and ongoing monitoring"/>
+            <column name="title" value="Incubation &amp; Monitoring"/>
+            <column name="instructions" value="Track weekly culture readings for inoculated samples. Monitor growth patterns over 8 weeks and record final culture results (positive, negative, or contaminated)."/>
+            <column name="content" value="Incubation &amp; Monitoring - Weekly culture reading and growth tracking"/>
             <column name="page_order" value="5"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
@@ -246,6 +246,137 @@
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
                 <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- TB WORKFLOW PAGE TEMPLATES (for dropdown selection) -->
+    <!-- These appear in the "Use Template" dropdown when adding pages -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-tb-workflow-page-templates" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'TB'
+            </sqlCheck>
+            <!-- Also check if any of the specific IDs already exist (prevents duplicate key errors) -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id IN (201, 202, 203, 204, 205, 206)
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert predefined TB workflow page templates for dropdown selection</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="201"/>
+            <column name="name" value="Sample Creation &amp; Full Metadata Capture"/>
+            <column name="display_key" value="workflow.page.tb.sampleCreation"/>
+            <column name="description" value="Capture complete sample metadata for TB specimens"/>
+            <column name="default_instructions" value="Capture complete sample metadata including accession number, specimen information, patient details, clinical context, requested tests, and receipt details."/>
+            <column name="default_content" value="Sample Creation &amp; Full Metadata Capture - Complete metadata entry for TB samples"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="202"/>
+            <column name="name" value="Raw Sample Quality Check (QC)"/>
+            <column name="display_key" value="workflow.page.tb.qualityCheck"/>
+            <column name="description" value="Quality assessment of incoming TB samples"/>
+            <column name="default_instructions" value="Perform quality checks on raw samples. Verify sample condition, volume, and suitability for processing."/>
+            <column name="default_content" value="Raw Sample Quality Check (QC) - Quality assessment of incoming samples"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="203"/>
+            <column name="name" value="Sample Storage Assignment"/>
+            <column name="display_key" value="workflow.page.tb.storageAssignment"/>
+            <column name="description" value="Assign TB samples to appropriate storage locations"/>
+            <column name="default_instructions" value="Assign samples to appropriate storage locations. Record storage location details and conditions."/>
+            <column name="default_content" value="Sample Storage Assignment - Assign samples to storage locations"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="204"/>
+            <column name="name" value="Initial Sample Processing"/>
+            <column name="display_key" value="workflow.page.tb.initialProcessing"/>
+            <column name="description" value="Sample preparation and decontamination for TB processing"/>
+            <column name="default_instructions" value="Perform initial processing steps including sample preparation and decontamination procedures."/>
+            <column name="default_content" value="Initial Sample Processing - Sample preparation and decontamination"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="205"/>
+            <column name="name" value="Incubation &amp; Monitoring"/>
+            <column name="display_key" value="workflow.page.tb.incubationMonitoring"/>
+            <column name="description" value="Weekly culture reading and growth monitoring over 8-week incubation period"/>
+            <column name="default_instructions" value="Track weekly culture readings for inoculated samples. Monitor growth patterns over 8 weeks and record final culture results (positive, negative, or contaminated)."/>
+            <column name="default_content" value="Incubation &amp; Monitoring - Weekly culture reading and growth tracking"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="206"/>
+            <column name="name" value="Sample-Linked Test Execution"/>
+            <column name="display_key" value="workflow.page.tb.testExecution"/>
+            <column name="description" value="Execute and record TB test results"/>
+            <column name="default_instructions" value="Execute requested tests including culture, smear microscopy, GeneXpert, identification, and drug susceptibility testing. Record test results and methods used."/>
+            <column name="default_content" value="Sample-Linked Test Execution - Execute and record test results"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="TB"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'TB'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- TB EXPERIMENT TYPE DICTIONARY ENTRY -->
+    <!-- Adds "Tuberculosis" as an option in the Experiment Type dropdown -->
+    <!-- ======================================================== -->
+    <changeSet id="add-tuberculosis-experiment-type" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary
+                WHERE dict_entry = 'Tuberculosis'
+                AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Tuberculosis as an experiment type in the dictionary</comment>
+
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="dict_entry" value="Tuberculosis"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type' LIMIT 1)"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="dictionary" schemaName="clinlims">
+                <where>dict_entry = 'Tuberculosis' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')</where>
             </delete>
         </rollback>
     </changeSet>

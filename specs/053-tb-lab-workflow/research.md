@@ -1,6 +1,29 @@
 # Research - Tuberculosis Laboratory Workflow
 
+**Updated**: 2025-12-18
+
 ## Items and Decisions
+
+- **Frontend page duplication strategy**
+
+  - **Decision**: Duplicate TB-specific pages from existing workflows
+    (Immunology/MNTD, Pharma) rather than sharing/extending them. Reuse only
+    shared components (`SampleGrid`, `PageNavigation`,
+    `StorageHierarchySelector`).
+  - **Rationale**: Prevents merge conflicts during parallel workflow
+    development. Each workflow team can iterate independently. Pages will be
+    harmonized in a future refactoring milestone after all workflows stabilize.
+  - **Alternatives**: Shared component library (rejected: too early for
+    abstraction, workflows still evolving, merge conflicts likely).
+
+- **Current implementation status**
+
+  - **Page 1 (Sample Creation)**: ✅ Implemented
+    - `TBSampleCreationPage.js` - Full metadata capture with manifest import
+    - `TBManifestImportModal.js` - CSV import functionality
+    - `TBWorkflowTab.js` - Container with 6 default pages (5 are placeholders)
+  - **Pages 2-6**: Placeholders in TBWorkflowTab.js, need implementation
+  - **Backend**: TB entities not yet created, need Liquibase + valueholders
 
 - **GeneXpert integration**
 
@@ -52,11 +75,50 @@
     drugs, allows flexible second-line panels without schema churn.
 
 - **QC flag propagation**
+
   - **Decision**: Keep QC entity as source of truth with `overall_result` +
     `rejection_reason`; propagate a "has_qc_failure" warning via services so
     downstream pages can display alerts and require acknowledgement.
   - **Rationale**: Ensures QC outcomes remain visible through the workflow
     without duplicating flags on every page.
+
+- **TB workflow page structure**
+
+  - **Decision**: Expand from current 6 pages to 11-12 pages to match full TB
+    workflow requirements from screenshots:
+    1. Sample Creation & Registration ✅
+    2. Quality Check (QC) - Raw Sample Integrity
+    3. Sample Storage Assignment
+    4. Initial Processing (media preparation)
+    5. Culture Inoculation & Weekly Monitoring (8-week grid)
+    6. Smear Microscopy & AFB Results
+    7. Species Identification
+    8. GeneXpert Testing
+    9. Drug Susceptibility Testing (DST)
+    10. Isolate Storage
+    11. Result Compilation & Reporting
+    12. Data Export (REDCap)
+  - **Rationale**: Full TB workflow from screenshots requires dedicated pages
+    for each diagnostic step. Culture tracking is unique to TB (8-week
+    monitoring).
+  - **Implementation**: Update `DEFAULT_TB_WORKFLOW_PAGES` in `TBWorkflowTab.js`
+
+- **Existing workflow patterns to reference**
+
+  - **MNTD (Immunology)**: 10+ pages with similar structure
+    - `MNTDSampleIntakePage.js` - Sample intake/registration
+    - `MNTDReceptionVerificationPage.js` - QC equivalent
+    - `MNTDProcessingQCPage.js` - Processing
+    - `MNTDTemporaryStoragePage.js` - Storage
+    - `MNTDTestExecutionPage.js` - Test execution
+    - `MNTDReportingREDCapPage.js` - REDCap export
+  - **Pharma**: 7 pages with similar patterns
+    - `PharmaceuticalQualityCheckPage.js` - QC pattern to duplicate
+    - `PharmaceuticalStoragePage.js` - Storage pattern to duplicate
+  - **Shared components** (reuse, don't duplicate):
+    - `SampleGrid.js` - Virtualized sample grid with status filtering
+    - `PageNavigation.js` - 9-page navigation with progress indicators
+    - `StorageHierarchySelector.js` - Hierarchical storage picker
 
 ## Follow-ups
 
@@ -64,3 +126,6 @@
 - Confirm whether analyzer import hook should emit events or remain manual-only
   for now.
 - Confirm if TB sample ID needs site-specific prefix for multi-site deployments.
+- Update `DEFAULT_TB_WORKFLOW_PAGES` in `TBWorkflowTab.js` to reflect 11-12
+  pages.
+- Create TB-specific backend entities in `org.openelisglobal.tb` package.

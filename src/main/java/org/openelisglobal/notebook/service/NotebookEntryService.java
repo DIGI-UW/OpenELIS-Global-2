@@ -47,6 +47,17 @@ public interface NotebookEntryService extends BaseObjectService<NotebookEntry, I
     /** Add a sample to an entry. */
     void addSample(Integer entryId, SampleItem sample, String sysUserId);
 
+    /**
+     * Add a sample to an entry with associated metadata (stored in
+     * NotebookPageSample.data).
+     *
+     * @param entryId   the entry ID
+     * @param sample    the sample item to add
+     * @param data      metadata to store with the page sample (e.g., manifest data)
+     * @param sysUserId the user ID
+     */
+    void addSampleWithData(Integer entryId, SampleItem sample, java.util.Map<String, Object> data, String sysUserId);
+
     /** Add multiple samples to an entry. */
     void addSamples(Integer entryId, List<SampleItem> samples, String sysUserId);
 

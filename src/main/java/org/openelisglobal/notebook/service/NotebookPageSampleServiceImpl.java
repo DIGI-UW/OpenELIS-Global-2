@@ -666,6 +666,48 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
     @Override
     @Transactional
+    public void createPageSamplesForNotebookWithData(Integer notebookId, Integer sampleItemId,
+            java.util.Map<String, Object> data) {
+        NoteBook notebook = noteBookService.get(notebookId);
+        if (notebook == null) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId);
+        }
+
+        SampleItem sampleItem = sampleItemService.get(sampleItemId.toString());
+        if (sampleItem == null) {
+            throw new IllegalArgumentException("SampleItem not found: " + sampleItemId);
+        }
+
+        // Initialize lazy-loaded pages collection
+        org.hibernate.Hibernate.initialize(notebook.getPages());
+
+        List<NoteBookPage> pages = notebook.getPages();
+        if (pages == null || pages.isEmpty()) {
+            return;
+        }
+
+        // Only create NotebookPageSample for the FIRST page (Page 1 - Reception)
+        NoteBookPage firstPage = pages.stream().filter(p -> p.getOrder() != null)
+                .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(pages.get(0));
+
+        // Check if page sample already exists on first page
+        NotebookPageSample existing = getByPageIdAndSampleItemId(firstPage.getId(), sampleItemId);
+        if (existing == null) {
+            NotebookPageSample nps = new NotebookPageSample();
+            nps.setNotebookPage(firstPage);
+            nps.setSampleItemId(sampleItem.getId());
+            nps.setStatus(Status.PENDING);
+            nps.setData(data); // Store the manifest metadata
+            insert(nps);
+        } else if (data != null && !data.isEmpty()) {
+            // Update existing record with data if not already set
+            existing.setData(data);
+            update(existing);
+        }
+    }
+
+    @Override
+    @Transactional
     public void createPageSampleForPage(Integer pageId, Integer sampleItemId, Status status) {
         if (pageId == null || sampleItemId == null) {
             return;

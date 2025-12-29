@@ -102,6 +102,15 @@
         <class>org.openelisglobal.notebook.valueholder.SampleRouting</class>
         <class>org.openelisglobal.notebook.valueholder.WorkflowPageTemplate</class>
 
+        <!-- TB Laboratory Workflow entities (053-tb-lab-workflow) -->
+        <class>org.openelisglobal.tb.valueholder.TbSampleRegistration</class>
+        <class>org.openelisglobal.tb.valueholder.TbQualityCheck</class>
+        <class>org.openelisglobal.tb.valueholder.TbMediaPreparation</class>
+        <class>org.openelisglobal.tb.valueholder.TbSampleProcessing</class>
+        <class>org.openelisglobal.tb.valueholder.TbCultureReading</class>
+        <class>org.openelisglobal.tb.valueholder.TbSmearResult</class>
+        <class>org.openelisglobal.tb.valueholder.TbIdentificationResult</class>
+
         <!-- Inventory Management entities (004-remove-old-inventory) -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>

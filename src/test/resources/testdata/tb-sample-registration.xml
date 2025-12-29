@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Test data for TB Laboratory Workflow feature (053-tb-lab-workflow) -->
+<dataset>
+    <!-- Localization entries (required for type_of_sample) -->
+    <localization id="100" description="Sputum"
+        english="Sputum" french="Crachat" />
+    <localization id="101" description="Body Fluid"
+        english="Body Fluid" french="Liquide Corporel" />
+
+    <!-- Type of Sample entries for TB -->
+    <type_of_sample id="100" description="Sputum" domain="H"
+        lastupdated="2024-01-01 12:00:00" local_abbrev="sputum"
+        is_active="true" sort_order="100" name_localization_id="100"
+        display_key="sample.type.Sputum" />
+    <type_of_sample id="101" description="Body Fluid"
+        domain="H" lastupdated="2024-01-01 12:00:00" local_abbrev="bodyfluid"
+        is_active="true" sort_order="101" name_localization_id="101"
+        display_key="sample.type.BodyFluid" />
+
+    <!-- Person entries -->
+    <person id="100" last_name="TB" first_name="Patient1"
+        middle_name="Test" city="Addis Ababa" state="Addis Ababa"
+        country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+    <person id="101" last_name="TB" first_name="Patient2"
+        middle_name="Test" city="Addis Ababa" state="Addis Ababa"
+        country="Ethiopia" lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Patient entries -->
+    <patient id="100" person_id="100" gender="M"
+        birth_date="1990-01-01 00:00:00" national_id="TB001"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="101" person_id="101" gender="F"
+        birth_date="1985-05-15 00:00:00" national_id="TB002"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Sample entries -->
+    <sample id="100" accession_number="TB2024-001"
+        received_date="2024-01-15 08:00:00.0"
+        entered_date="2024-01-15 08:00:00.0"
+        collection_date="2024-01-14 10:00:00.0"
+        lastupdated="2024-01-15 12:00:00" />
+    <sample id="101" accession_number="TB2024-002"
+        received_date="2024-01-16 09:00:00.0"
+        entered_date="2024-01-16 09:00:00.0"
+        collection_date="2024-01-15 11:00:00.0"
+        lastupdated="2024-01-16 12:00:00" />
+
+    <!-- Sample Items -->
+    <sample_item id="100" samp_id="100" sort_order="1"
+        status_id="1" typeosamp_id="100" external_id="TB2024-001-1"
+        collection_date="2024-01-14 10:00:00.0"
+        lastupdated="2024-01-15 12:00:00" />
+    <sample_item id="101" samp_id="101" sort_order="1"
+        status_id="1" typeosamp_id="101" external_id="TB2024-002-1"
+        collection_date="2024-01-15 11:00:00.0"
+        lastupdated="2024-01-16 12:00:00" />
+
+    <!-- TB Sample Registrations -->
+    <tb_sample_registration id="1"
+        sample_item_id="100" document_number="TB-DOC-001"
+        specimen_type="SPUTUM" specimen_quality="Good"
+        referring_facility="Test Health Center"
+        treatment_history="New case, no prior treatment"
+        physician_phone="+251911111111" patient_phone="+251922222222"
+        consent_status="Obtained" received_site="Central Lab"
+        received_datetime="2024-01-15 08:00:00.0"
+        date_created="2024-01-15 08:00:00.0" />
+    <tb_sample_registration id="2"
+        sample_item_id="101" document_number="TB-DOC-002"
+        specimen_type="BODY_FLUID" specimen_quality="Adequate"
+        referring_facility="Test Health Center"
+        treatment_history="Relapse case" physician_phone="+251933333333"
+        patient_phone="+251944444444" consent_status="Obtained"
+        received_site="Central Lab" received_datetime="2024-01-16 09:00:00.0"
+        date_created="2024-01-16 09:00:00.0" />
+
+    <!-- TB Quality Checks -->
+    <tb_quality_check id="1" sample_item_id="100"
+        qc_date="2024-01-15 09:00:00.0" leak_check="true"
+        temperature_check="true" packaging_check="true" labeling_check="true"
+        volume_check="true" request_match_check="true" overall_result="PASS"
+        destination="CULTURE" />
+    <tb_quality_check id="2" sample_item_id="101"
+        qc_date="2024-01-16 10:00:00.0" leak_check="true"
+        temperature_check="false" packaging_check="true" labeling_check="true"
+        volume_check="true" request_match_check="true"
+        overall_result="FAIL_PROCEED" rejection_reason="TEMPERATURE_BREACH"
+        rejection_remarks="Temperature was 8C, above 4C threshold"
+        destination="CULTURE" />
+
+    <!-- TB Culture Readings -->
+    <tb_culture_reading id="1" sample_item_id="100"
+        week_number="1" reading_date="2024-01-22 10:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false" />
+    <tb_culture_reading id="2" sample_item_id="100"
+        week_number="2" reading_date="2024-01-29 10:00:00.0"
+        culture_method="LJ" growth_observation="NO_GROWTH" is_delayed="false" />
+    <tb_culture_reading id="3" sample_item_id="100"
+        week_number="3" reading_date="2024-02-05 10:00:00.0"
+        culture_method="LJ" growth_observation="GROWTH_DETECTED"
+        notes="Colonies visible on LJ medium" is_delayed="false" />
+
+    <!-- TB Smear Results -->
+    <tb_smear_result id="1" sample_item_id="100"
+        method="ZN" afb_result="PLUS2" result_date="2024-01-15 11:00:00.0"
+        notes="AFB positive, moderate load" />
+    <tb_smear_result id="2" sample_item_id="101"
+        method="FLUORESCENT" afb_result="NEGATIVE"
+        result_date="2024-01-16 11:00:00.0" notes="No AFB detected" />
+
+    <!-- TB Identification Results -->
+    <tb_identification_result id="1"
+        sample_item_id="100" result="MTB" method="RAPID_TEST_KIT"
+        result_date="2024-02-06 10:00:00.0"
+        notes="MTB confirmed by SD Bioline" />
+</dataset>

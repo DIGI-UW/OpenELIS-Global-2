@@ -147,6 +147,17 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
     void createPageSamplesForNotebook(Integer notebookId, Integer sampleItemId);
 
     /**
+     * Create NotebookPageSample records for all pages in a notebook with associated
+     * metadata.
+     *
+     * @param notebookId   the notebook ID
+     * @param sampleItemId the sample item ID
+     * @param data         metadata to store with each page sample (e.g., manifest
+     *                     data)
+     */
+    void createPageSamplesForNotebookWithData(Integer notebookId, Integer sampleItemId, Map<String, Object> data);
+
+    /**
      * Create a page sample record for a specific page. Used when child samples are
      * created and should appear on a specific page.
      *
