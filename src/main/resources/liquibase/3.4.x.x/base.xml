@@ -45,6 +45,8 @@
     <include file="liquibase/3.4.x.x/028-bacteriology-post-analysis-page.xml"/>
     <include file="liquibase/3.4.x.x/029-bacteriology-retrieval-disposal-page.xml"/>
     <include file="liquibase/3.4.x.x/030-bacteriology-reporting-data-export-page.xml"/>
+    <include file="liquibase/3.4.x.x/031-immunology-reporting-redcap-page.xml"/>
+    <include file="liquibase/3.4.x.x/032-notebook-delivery-record.xml"/>
     <include file="liquibase/3.4.x.x/031-mntd-environmental-monitoring-page.xml"/>
 
 </databaseChangeLog>

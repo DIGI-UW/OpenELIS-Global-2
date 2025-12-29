@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <!-- Create notebook_delivery_record table for persisting delivery audit trail -->
+    <changeSet id="create-notebook-delivery-record-table" author="openelis-notebook">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_delivery_record" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create notebook_delivery_record table for tracking result deliveries</comment>
+
+        <!-- Create sequence -->
+        <createSequence sequenceName="notebook_delivery_record_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <!-- Create table -->
+        <createTable tableName="notebook_delivery_record" schemaName="clinlims">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="notebook_delivery_record_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recipient_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recipient_email" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="delivery_type" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="regulatory_body" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="delivered_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="delivered_by" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!-- Add foreign key to notebook -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="notebook_delivery_record"
+            baseColumnNames="notebook_id"
+            constraintName="fk_delivery_record_notebook"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <!-- Add index for notebook_id lookups -->
+        <createIndex indexName="idx_delivery_record_notebook_id"
+                     tableName="notebook_delivery_record"
+                     schemaName="clinlims">
+            <column name="notebook_id"/>
+        </createIndex>
+
+        <!-- Add index for delivered_at for chronological queries -->
+        <createIndex indexName="idx_delivery_record_delivered_at"
+                     tableName="notebook_delivery_record"
+                     schemaName="clinlims">
+            <column name="delivered_at" descending="true"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="notebook_delivery_record" schemaName="clinlims"/>
+            <dropSequence sequenceName="notebook_delivery_record_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
