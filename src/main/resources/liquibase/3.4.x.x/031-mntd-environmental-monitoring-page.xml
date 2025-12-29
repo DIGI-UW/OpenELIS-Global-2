@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 11: LOG ENVIRONMENTAL MONITORING -->
+    <!-- Purpose: Track temperature and environmental conditions -->
+    <!-- Who uses it: Lab staff, environmental monitoring personnel -->
+    <!-- Data Entered: -->
+    <!--   - Device/Equipment ID -->
+    <!--   - Temperature Value and Unit -->
+    <!--   - Check Time (AM/PM) -->
+    <!--   - Checked By (staff name) -->
+    <!--   - Checked Date/Time -->
+    <!--   - Notes -->
+    <!-- System Actions: -->
+    <!--   - Record temperature logs for compliance -->
+    <!--   - Display historical temperature logs for entry -->
+    <!--   - Flag out-of-range temperatures -->
+    <!-- Note: This page is independent of sample workflow -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-11-environmental-monitoring" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 11
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Environmental Monitoring page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Log Environmental Monitoring"/>
+            <column name="instructions" value="Record temperature and environmental monitoring data for laboratory compliance. Log device/equipment temperatures with AM/PM checks. View historical temperature logs for this notebook entry. Out-of-range temperatures will be flagged automatically."/>
+            <column name="content" value='{
+                "pageDescription": "Environmental Monitoring and Temperature Logging",
+                "dataPoints": {
+                    "temperatureLog": {
+                        "deviceId": {
+                            "type": "text",
+                            "label": "Device/Equipment ID",
+                            "required": true,
+                            "example": "FRZ-001, LN2-002"
+                        },
+                        "temperatureValue": {
+                            "type": "number",
+                            "label": "Temperature Value",
+                            "required": true,
+                            "min": -200,
+                            "max": 50
+                        },
+                        "temperatureUnit": {
+                            "type": "choice",
+                            "label": "Unit",
+                            "options": ["C", "F"],
+                            "default": "C",
+                            "required": true
+                        },
+                        "checkTime": {
+                            "type": "choice",
+                            "label": "Check Time",
+                            "options": ["AM", "PM"],
+                            "required": true
+                        },
+                        "checkedBy": {
+                            "type": "text",
+                            "label": "Checked By",
+                            "required": false
+                        },
+                        "checkedDateTime": {
+                            "type": "dateTime",
+                            "label": "Checked Date/Time",
+                            "required": false
+                        },
+                        "notes": {
+                            "type": "text",
+                            "label": "Notes",
+                            "multiline": true,
+                            "required": false
+                        }
+                    }
+                },
+                "temperatureRanges": {
+                    "Refrigerator": { "min": 2, "max": 8 },
+                    "Freezer-20": { "min": -25, "max": -15 },
+                    "Freezer-80": { "min": -85, "max": -75 },
+                    "LN2Tank": { "min": -200, "max": -180 },
+                    "Incubator": { "min": 35, "max": 38 },
+                    "ColdRoom": { "min": 2, "max": 8 }
+                },
+                "systemActions": [
+                    "Record temperature logs for environmental compliance",
+                    "Display historical temperature logs in data table",
+                    "Flag out-of-range temperatures with warning"
+                ],
+                "note": "This page is independent of sample workflow - no sample routing"
+            }'/>
+            <column name="page_order" value="11"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" valueComputed="NULL"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 11</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for MNTD Environmental Monitoring -->
+    <changeSet id="insert-mntd-environmental-monitoring-workflow-template" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'MNTD' AND display_order = 11
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert MNTD Environmental Monitoring workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="111"/>
+            <column name="name" value="Log Environmental Monitoring"/>
+            <column name="display_key" value="workflow.page.mntd.environmentalMonitoring"/>
+            <column name="description" value="Record and view temperature logs for laboratory environmental compliance"/>
+            <column name="default_instructions" value="Log device temperatures with AM/PM checks. View historical temperature logs. Out-of-range readings are flagged automatically."/>
+            <column name="default_content" value="Environmental Monitoring - Temperature logging and compliance tracking"/>
+            <column name="page_type" valueComputed="NULL"/>
+            <column name="display_order" value="11"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MNTD' AND display_order = 11</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

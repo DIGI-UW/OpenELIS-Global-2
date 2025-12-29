@@ -8,3 +8,4 @@ export { default as MNTDTestAssignmentPage } from "./MNTDTestAssignmentPage";
 export { default as MNTDTestExecutionPage } from "./MNTDTestExecutionPage";
 export { default as MNTDSampleArchivingPage } from "./MNTDSampleArchivingPage";
 export { default as MNTDDataAnalysisPage } from "./MNTDDataAnalysisPage";
+export { default as MNTDEnvironmentalMonitoringPage } from "./MNTDEnvironmentalMonitoringPage";
