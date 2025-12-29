@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -54,9 +55,23 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/all", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getAll() {
+    public ResponseEntity<List<InventoryItem>> getAll(@RequestParam(required = false) ItemType itemType,
+            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String projectName) {
         try {
-            List<InventoryItem> items = inventoryItemService.getAll();
+            List<InventoryItem> items;
+
+            if (itemType != null || isActive != null || projectName != null) {
+                // Use filtered approach
+                items = inventoryItemService.getAll();
+                items = items.stream().filter(item -> itemType == null || item.getItemType().equals(itemType))
+                        .filter(item -> isActive == null || item.isActive() == isActive)
+                        .filter(item -> projectName == null
+                                || (item.getProjectName() != null && item.getProjectName().equals(projectName)))
+                        .toList();
+            } else {
+                items = inventoryItemService.getAll();
+            }
+
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -93,6 +108,18 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<List<InventoryItem>> getByCategory(@PathVariable String category) {
         try {
             List<InventoryItem> items = inventoryItemService.getByCategory(category);
+            return ResponseEntity.ok(items);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping(value = "/project/{projectName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<InventoryItem>> getByProject(@PathVariable String projectName) {
+        try {
+            List<InventoryItem> items = inventoryItemService.getAll().stream()
+                    .filter(item -> projectName.equals(item.getProjectName())).collect(Collectors.toList());
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);

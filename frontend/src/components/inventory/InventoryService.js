@@ -131,6 +131,42 @@ export const InventoryItemAPI = {
   deactivate: (id) => put(`/items/${id}/deactivate`, {}),
 
   activate: (id) => put(`/items/${id}/activate`, {}),
+
+  getUnitOptions: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer("/rest/UomCreate", (response) => {
+        if (response && response.existingUomList) {
+          const formattedUnits = response.existingUomList.map((unit) => ({
+            id: unit.id || unit.unitOfMeasureName || unit.value,
+            text:
+              unit.value || unit.unitOfMeasureName || unit.text || String(unit),
+          }));
+          resolve(formattedUnits);
+        } else {
+          resolve([]);
+        }
+      });
+    });
+  },
+
+  createUnitOfMeasure: (unitName) => {
+    return new Promise((resolve, reject) => {
+      postToOpenElisServerJsonResponse(
+        "/rest/UomCreate",
+        JSON.stringify({ uomEnglishName: unitName }),
+        (response) => {
+          if (response && response.error) {
+            reject(new Error(response.message || response.error));
+          } else {
+            resolve(response);
+          }
+        },
+        (error) => {
+          reject(error);
+        },
+      );
+    });
+  },
 };
 
 export const InventoryLotAPI = {
@@ -441,6 +477,47 @@ export const ReportsAPI = {
           reject(error);
         },
       );
+    });
+  },
+};
+
+export const NotebookDataAPI = {
+  getNotebooks: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer(
+        "/rest/notebook/dashboard/notebooks",
+        (response) => {
+          if (response && response.error) {
+            reject(new Error(response.message || response.error));
+          } else {
+            resolve(response || []);
+          }
+        },
+      );
+    });
+  },
+
+  getOrganizations: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer("/rest/notebook/organizations", (response) => {
+        if (response && response.error) {
+          reject(new Error(response.message || response.error));
+        } else {
+          resolve(response || []);
+        }
+      });
+    });
+  },
+
+  getDepartments: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer("/rest/notebook/departments", (response) => {
+        if (response && response.error) {
+          reject(new Error(response.message || response.error));
+        } else {
+          resolve(response || []);
+        }
+      });
     });
   },
 };

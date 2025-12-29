@@ -2139,7 +2139,7 @@
   "lot.qcStatus": "QC Status",
   "lot.status": "Status",
   "lot.barcode": "Barcode",
-  "lot.dateOpened": "Date Opened",
+  "lot.dateOpened": "Opening Date",
   "lot.calculatedExpiry": "Calculated Expiry",
   "lot.form.title.add": "Receive New Inventory Lot",
   "lot.form.title.edit": "Edit Inventory Lot",

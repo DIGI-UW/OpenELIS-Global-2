@@ -17,6 +17,7 @@ import {
   TableBatchAction,
   Button,
   Dropdown,
+  Search,
   Tag,
   OverflowMenu,
   OverflowMenuItem,
@@ -66,6 +67,8 @@ const InventoryDashboard = () => {
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
   const [loading, setLoading] = useState(true);
+  const [unitMap, setUnitMap] = useState({}); // Unit ID to name mapping
+  const [projectMap, setProjectMap] = useState({}); // Project ID to name mapping
 
   const [metrics, setMetrics] = useState({
     totalLots: 0,
@@ -114,6 +117,10 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "catalog.item.name" }),
     },
     {
+      key: "projectName",
+      header: "Project",
+    },
+    {
       key: "lotNumber",
       header: intl.formatMessage({ id: "lot.number" }),
     },
@@ -130,6 +137,10 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "lot.expirationDate" }),
     },
     {
+      key: "dateOpened",
+      header: intl.formatMessage({ id: "lot.openingDate" }) || "Opening Date",
+    },
+    {
       key: "status",
       header: intl.formatMessage({ id: "lot.status" }),
     },
@@ -144,8 +155,38 @@ const InventoryDashboard = () => {
   ];
 
   useEffect(() => {
+    fetchUnits();
+    fetchProjects();
     fetchLots();
   }, [typeFilter, statusFilter]);
+
+  const fetchUnits = async () => {
+    try {
+      const unitsData = await InventoryItemAPI.getUnitOptions();
+      const unitLookup = {};
+      unitsData.forEach((unit) => {
+        unitLookup[unit.id] = unit.text;
+      });
+      setUnitMap(unitLookup);
+    } catch (error) {
+      console.error("Error fetching unit options:", error);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const { NotebookDataAPI } = await import("./InventoryService");
+      const notebooks = await NotebookDataAPI.getNotebooks();
+      const projectLookup = {};
+      notebooks.forEach((notebook) => {
+        projectLookup[notebook.id] = notebook.title;
+        projectLookup[String(notebook.id)] = notebook.title; // Handle both string and number IDs
+      });
+      setProjectMap(projectLookup);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+    }
+  };
 
   const fetchLots = async () => {
     setLoading(true);
@@ -312,15 +353,36 @@ const InventoryDashboard = () => {
     const item = items[lot.inventoryItem?.id];
     const stockStatus = getStockStatus(lot);
 
+    // Get unit name from unit map using the unit ID
+    const unitId = item?.units;
+    const unitsDisplay = unitMap[unitId] || unitId || "";
+
+    // Get project name, handle both stored names and IDs
+    const projectName = item?.projectName;
+    let projectDisplay = "N/A";
+    if (projectName) {
+      // If it's already a name (not a number), use it directly
+      if (isNaN(projectName)) {
+        projectDisplay = projectName;
+      } else {
+        // It's an ID, resolve it to a name
+        projectDisplay = projectMap[projectName] || projectName;
+      }
+    }
+
     return {
       id: String(lot.id),
       name: item?.name || "Unknown",
+      projectName: projectDisplay,
       lotNumber: lot.lotNumber,
       itemType: item?.itemType || "",
-      currentQuantity: `${lot.currentQuantity || 0} ${item?.units || ""}`,
+      currentQuantity: `${lot.currentQuantity || 0}${unitsDisplay ? ` ${unitsDisplay}` : ""}`,
       expirationDate: lot.expirationDate
         ? new Date(lot.expirationDate).toLocaleDateString()
         : "N/A",
+      dateOpened: lot.dateOpened
+        ? new Date(lot.dateOpened).toLocaleDateString()
+        : "Not Opened",
       status: lot.status,
       stockStatus: stockStatus,
     };
@@ -459,256 +521,284 @@ const InventoryDashboard = () => {
                 };
 
                 return (
-                  <TableContainer
-                    title=""
-                    description=""
-                    {...getTableContainerProps()}
-                  >
-                    <TableToolbar>
-                      <TableBatchActions
-                        {...getSelectionProps()}
-                        onSelectAll={() => {
-                          rows.forEach((row) => selectRow(row.id));
-                        }}
-                        onCancel={() => {
-                          // Clear all selections when cancel is clicked
-                          selectedRows.forEach((rowId) => selectRow(rowId));
-                        }}
-                        totalSelected={selectedRows.length}
-                        shouldShowBatchActions={selectedRows.length > 0}
-                      >
-                        <TableBatchAction
-                          renderIcon={() => null}
-                          onClick={handleBatchDispose}
-                        >
-                          <FormattedMessage
-                            id="disposal.batch.button"
-                            defaultMessage="Dispose Selected ({count})"
-                            values={{ count: selectedRows.length }}
+                  <>
+                    {/* Filters Section - Outside DataTable to prevent dropdown overlap */}
+                    <div className="inventory-filters-section">
+                      <div className="inventory-filters-container">
+                        <div className="filter-group">
+                          <Search
+                            placeholder={intl.formatMessage({
+                              id: "inventory.search.placeholder",
+                            })}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            value={searchTerm}
+                            size="md"
                           />
-                        </TableBatchAction>
-                      </TableBatchActions>
-                      <TableToolbarContent>
-                        <TableToolbarSearch
-                          placeholder={intl.formatMessage({
-                            id: "inventory.search.placeholder",
-                          })}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          value={searchTerm}
-                        />
 
-                        <Dropdown
-                          id="type-filter"
-                          titleText=""
-                          label={intl.formatMessage({
-                            id: "inventory.filter.type",
-                          })}
-                          items={itemTypes}
-                          itemToString={(item) => (item ? item.text : "")}
-                          selectedItem={itemTypes.find(
-                            (t) => t.id === typeFilter,
-                          )}
-                          onChange={({ selectedItem }) =>
-                            setTypeFilter(selectedItem.id)
-                          }
-                          size="md"
-                        />
+                          <Dropdown
+                            id="type-filter"
+                            titleText=""
+                            label={intl.formatMessage({
+                              id: "inventory.filter.type",
+                            })}
+                            items={itemTypes}
+                            itemToString={(item) => (item ? item.text : "")}
+                            selectedItem={itemTypes.find(
+                              (t) => t.id === typeFilter,
+                            )}
+                            onChange={({ selectedItem }) =>
+                              setTypeFilter(selectedItem.id)
+                            }
+                            size="md"
+                          />
 
-                        <Dropdown
-                          id="status-filter"
-                          titleText=""
-                          label={intl.formatMessage({
-                            id: "inventory.filter.status",
-                          })}
-                          items={statusOptions}
-                          itemToString={(item) => (item ? item.text : "")}
-                          selectedItem={statusOptions.find(
-                            (s) => s.id === statusFilter,
-                          )}
-                          onChange={({ selectedItem }) =>
-                            setStatusFilter(selectedItem.id)
-                          }
-                          size="md"
-                        />
+                          <Dropdown
+                            id="status-filter"
+                            titleText=""
+                            label={intl.formatMessage({
+                              id: "inventory.filter.status",
+                            })}
+                            items={statusOptions}
+                            itemToString={(item) => (item ? item.text : "")}
+                            selectedItem={statusOptions.find(
+                              (s) => s.id === statusFilter,
+                            )}
+                            onChange={({ selectedItem }) =>
+                              setStatusFilter(selectedItem.id)
+                            }
+                            size="md"
+                          />
+                        </div>
 
-                        <Button
-                          renderIcon={Add}
-                          onClick={() => {
-                            setSelectedLot(null);
-                            setLotModalOpen(true);
+                        <div className="action-buttons-group">
+                          <Button
+                            renderIcon={Add}
+                            onClick={() => {
+                              setSelectedLot(null);
+                              setLotModalOpen(true);
+                            }}
+                          >
+                            <FormattedMessage id="inventory.add.button" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <TableContainer
+                      title=""
+                      description=""
+                      {...getTableContainerProps()}
+                    >
+                      <TableToolbar>
+                        <TableBatchActions
+                          onCancel={() => {
+                            // Clear all selections when cancel is clicked
+                            selectedRows.forEach((rowId) => selectRow(rowId));
                           }}
+                          totalSelected={selectedRows.length}
+                          shouldShowBatchActions={selectedRows.length > 0}
                         >
-                          <FormattedMessage id="inventory.add.button" />
-                        </Button>
-                      </TableToolbarContent>
-                    </TableToolbar>
+                          <TableBatchAction
+                            renderIcon={() => null}
+                            onClick={handleBatchDispose}
+                          >
+                            <FormattedMessage
+                              id="disposal.batch.button"
+                              defaultMessage="Dispose Selected ({count})"
+                              values={{ count: selectedRows.length }}
+                            />
+                          </TableBatchAction>
+                        </TableBatchActions>
+                        <TableToolbarContent>
+                          {/* Empty toolbar content since filters moved outside */}
+                        </TableToolbarContent>
+                      </TableToolbar>
 
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          <TableSelectAll {...getSelectionProps()} />
-                          {headers.map((header) => (
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
-                            >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {loading ? (
+                      <Table {...getTableProps()}>
+                        <TableHead>
                           <TableRow>
-                            <TableCell colSpan={headers.length}>
-                              Loading...
-                            </TableCell>
+                            <TableSelectAll {...getSelectionProps()} />
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
                           </TableRow>
-                        ) : rows.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={headers.length}>
-                              No inventory items found
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          rows.map((row, rowIndex) => {
-                            const lot = paginatedLots[rowIndex];
-                            return (
-                              <TableRow key={row.id} {...getRowProps({ row })}>
-                                <TableSelectRow
-                                  {...getSelectionProps({ row })}
-                                />
-                                {row.cells.map((cell) => {
-                                  if (cell.info.header === "stockStatus") {
-                                    const status = cell.value;
-                                    return (
-                                      <TableCell key={cell.id}>
-                                        {status && (
-                                          <Tag type={status.kind}>
-                                            {status.label}
-                                          </Tag>
-                                        )}
-                                      </TableCell>
-                                    );
-                                  }
+                        </TableHead>
+                        <TableBody>
+                          {loading ? (
+                            <TableRow>
+                              <TableCell colSpan={headers.length}>
+                                Loading...
+                              </TableCell>
+                            </TableRow>
+                          ) : rows.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={headers.length}>
+                                No inventory items found
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            rows.map((row, rowIndex) => {
+                              const lot = paginatedLots[rowIndex];
+                              return (
+                                <TableRow
+                                  key={row.id}
+                                  {...getRowProps({ row })}
+                                >
+                                  <TableSelectRow
+                                    {...getSelectionProps({ row })}
+                                  />
+                                  {row.cells.map((cell) => {
+                                    if (cell.info.header === "stockStatus") {
+                                      const status = cell.value;
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          {status && (
+                                            <Tag type={status.kind}>
+                                              {status.label}
+                                            </Tag>
+                                          )}
+                                        </TableCell>
+                                      );
+                                    }
 
-                                  if (cell.info.header === "actions") {
-                                    return (
-                                      <TableCell key={cell.id}>
-                                        <OverflowMenu
-                                          size="sm"
-                                          flipped
-                                          ariaLabel={intl.formatMessage({
-                                            id: "label.button.action",
-                                          })}
-                                        >
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "lot.details.view",
-                                            })}
-                                            onClick={() =>
-                                              handleViewDetails(lot)
+                                    if (cell.info.header === "dateOpened") {
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          {cell.value === "Not Opened" ? (
+                                            <Tag type="outline">
+                                              {cell.value}
+                                            </Tag>
+                                          ) : (
+                                            cell.value
+                                          )}
+                                        </TableCell>
+                                      );
+                                    }
+
+                                    if (cell.info.header === "actions") {
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          <OverflowMenu
+                                            size="sm"
+                                            flipped
+                                            aria-label={
+                                              intl?.formatMessage({
+                                                id: "label.button.action",
+                                              }) || "Actions"
                                             }
-                                          />
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "button.edit",
-                                            })}
-                                            onClick={() => handleEditLot(lot)}
-                                          />
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "usage.record.button",
-                                            })}
-                                            onClick={() => {
-                                              setSelectedLot(lot);
-                                              setSelectedItem(null);
-                                              setUsageModalOpen(true);
-                                            }}
-                                          />
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "usage.record.fefo.button",
-                                            })}
-                                            onClick={() => {
-                                              setSelectedItem(
-                                                lot.inventoryItem,
-                                              );
-                                              setSelectedLot(null);
-                                              setUsageModalOpen(true);
-                                            }}
-                                          />
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "adjustment.button",
-                                            })}
-                                            onClick={() => {
-                                              setSelectedLot(lot);
-                                              setAdjustmentModalOpen(true);
-                                            }}
-                                          />
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "qc.status.update.button",
-                                            })}
-                                            onClick={() => {
-                                              setSelectedLot(lot);
-                                              setQcStatusModalOpen(true);
-                                            }}
-                                          />
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "audit.log.view.button",
-                                            })}
-                                            onClick={() => {
-                                              setSelectedLot(lot);
-                                              setAuditLogOpen(true);
-                                            }}
-                                          />
-                                          <OverflowMenuItem
-                                            itemText={intl.formatMessage({
-                                              id: "disposal.button",
-                                            })}
-                                            onClick={() => {
-                                              setSelectedLot(lot);
-                                              setDisposalModalOpen(true);
-                                            }}
-                                            isDelete
-                                          />
-                                        </OverflowMenu>
+                                          >
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "lot.details.view",
+                                              })}
+                                              onClick={() =>
+                                                handleViewDetails(lot)
+                                              }
+                                            />
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "button.edit",
+                                              })}
+                                              onClick={() => handleEditLot(lot)}
+                                            />
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "usage.record.button",
+                                              })}
+                                              onClick={() => {
+                                                setSelectedLot(lot);
+                                                setSelectedItem(null);
+                                                setUsageModalOpen(true);
+                                              }}
+                                            />
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "usage.record.fefo.button",
+                                              })}
+                                              onClick={() => {
+                                                setSelectedItem(
+                                                  lot.inventoryItem,
+                                                );
+                                                setSelectedLot(null);
+                                                setUsageModalOpen(true);
+                                              }}
+                                            />
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "adjustment.button",
+                                              })}
+                                              onClick={() => {
+                                                setSelectedLot(lot);
+                                                setAdjustmentModalOpen(true);
+                                              }}
+                                            />
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "qc.status.update.button",
+                                              })}
+                                              onClick={() => {
+                                                setSelectedLot(lot);
+                                                setQcStatusModalOpen(true);
+                                              }}
+                                            />
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "audit.log.view.button",
+                                              })}
+                                              onClick={() => {
+                                                setSelectedLot(lot);
+                                                setAuditLogOpen(true);
+                                              }}
+                                            />
+                                            <OverflowMenuItem
+                                              itemText={intl.formatMessage({
+                                                id: "disposal.button",
+                                              })}
+                                              onClick={() => {
+                                                setSelectedLot(lot);
+                                                setDisposalModalOpen(true);
+                                              }}
+                                              isDelete
+                                            />
+                                          </OverflowMenu>
+                                        </TableCell>
+                                      );
+                                    }
+
+                                    return (
+                                      <TableCell key={cell.id}>
+                                        {cell.value}
                                       </TableCell>
                                     );
-                                  }
+                                  })}
+                                </TableRow>
+                              );
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
 
-                                  return (
-                                    <TableCell key={cell.id}>
-                                      {cell.value}
-                                    </TableCell>
-                                  );
-                                })}
-                              </TableRow>
-                            );
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
-
-                    {!loading && rows.length > 0 && (
-                      <Pagination
-                        backwardText="Previous page"
-                        forwardText="Next page"
-                        itemsPerPageText="Items per page:"
-                        page={page}
-                        pageSize={pageSize}
-                        pageSizes={[10, 20, 30, 40, 50]}
-                        totalItems={filteredLots.length}
-                        onChange={({ page, pageSize }) => {
-                          setPage(page);
-                          setPageSize(pageSize);
-                        }}
-                      />
-                    )}
-                  </TableContainer>
+                      {!loading && rows.length > 0 && (
+                        <Pagination
+                          backwardText="Previous page"
+                          forwardText="Next page"
+                          itemsPerPageText="Items per page:"
+                          page={page}
+                          pageSize={pageSize}
+                          pageSizes={[10, 20, 30, 40, 50]}
+                          totalItems={filteredLots.length}
+                          onChange={({ page, pageSize }) => {
+                            setPage(page);
+                            setPageSize(pageSize);
+                          }}
+                        />
+                      )}
+                    </TableContainer>
+                  </>
                 );
               }}
             </DataTable>

@@ -75,11 +75,12 @@ function OEHeader(props) {
   }, []);
 
   useEffect(() => {
-    userSessionDetails.authenticated
-      ? getFromOpenElisServer("/rest/menu", (res) => {
-          handleMenuItems("menu", res);
-        })
-      : console.log("User not authenticated, not getting menu");
+    if (userSessionDetails.authenticated) {
+      getFromOpenElisServer("/rest/menu", (res) => {
+        handleMenuItems("menu", res);
+      });
+    }
+    // Silent handling - no console log needed for normal authentication flow
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {

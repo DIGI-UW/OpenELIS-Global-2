@@ -327,6 +327,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         clone.setExpirationDate(lot.getExpirationDate());
         clone.setDateOpened(lot.getDateOpened());
         clone.setCalculatedExpiryAfterOpening(lot.getCalculatedExpiryAfterOpening());
+        clone.setUnitSize(lot.getUnitSize());
         clone.setSysUserId(lot.getSysUserId());
         clone.setLastupdated(lot.getLastupdated());
         return clone;

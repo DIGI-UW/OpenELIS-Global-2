@@ -115,6 +115,14 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "is_active", length = 1, nullable = false)
     private String isActive = "Y";
 
+    /**
+     * Project/notebook name associated with this inventory item. Links to the
+     * notebook system for project-specific inventory management.
+     */
+    @Column(name = "project_name", length = 255)
+    @Size(max = 255)
+    private String projectName;
+
     // Business logic helper methods
     @JsonIgnore
     public boolean isReagent() {

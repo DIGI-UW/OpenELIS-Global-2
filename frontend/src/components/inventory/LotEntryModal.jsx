@@ -28,8 +28,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     inventoryItem: null,
     lotNumber: "",
     currentQuantity: 0,
+    unitSize: "",
     expirationDate: null,
     receiptDate: new Date(),
+    dateOpened: null,
     storageLocation: null,
     qcStatus: "PENDING",
     status: "ACTIVE",
@@ -68,10 +70,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         inventoryItem: lot.inventoryItem,
         lotNumber: lot.lotNumber || "",
         currentQuantity: lot.currentQuantity || 0,
+        unitSize: lot.unitSize || "",
         expirationDate: lot.expirationDate
           ? new Date(lot.expirationDate)
           : null,
         receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : new Date(),
+        dateOpened: lot.dateOpened ? new Date(lot.dateOpened) : null,
         storageLocation: lot.storageLocation,
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
@@ -97,7 +101,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
-  // Build hierarchical location tree with indentation
   const flattenLocationTree = (locations) => {
     const rootLocations = locations.filter((loc) => !loc.parentLocation);
 
@@ -106,7 +109,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         (loc) => loc.parentLocation?.id === location.id,
       );
 
-      const indent = "\u00A0\u00A0".repeat(depth); // Non-breaking spaces
+      const indent = "\u00A0\u00A0".repeat(depth);
       const prefix = depth > 0 ? "├─ " : "";
 
       return [
@@ -176,9 +179,43 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
+    if (!formData.unitSize?.trim()) {
+      setError(
+        "Unit size is required (e.g., 50 mL, 100 tests, 1 test per strip)",
+      );
+      return false;
+    }
+
     if (!formData.storageLocation) {
       setError("Please select a storage location");
       return false;
+    }
+
+    if (formData.dateOpened) {
+      const openingDate = new Date(formData.dateOpened);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      if (openingDate > today) {
+        setError("Opening date cannot be in the future");
+        return false;
+      }
+
+      if (
+        formData.receiptDate &&
+        openingDate < new Date(formData.receiptDate)
+      ) {
+        setError("Opening date cannot be before receipt date");
+        return false;
+      }
+
+      if (
+        formData.expirationDate &&
+        openingDate > new Date(formData.expirationDate)
+      ) {
+        setError("Opening date cannot be after expiration date");
+        return false;
+      }
     }
 
     return true;
@@ -196,6 +233,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           ...formData,
           inventoryItem: formData.inventoryItem,
           storageLocation: formData.storageLocation,
+          unitSize: formData.unitSize,
+          barcode: formData.barcode || null,
+          dateOpened: formData.dateOpened
+            ? formData.dateOpened.toISOString()
+            : null,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
         });
@@ -205,6 +247,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           lotNumber: formData.lotNumber,
           currentQuantity: formData.currentQuantity,
           initialQuantity: formData.currentQuantity,
+          unitSize: formData.unitSize,
           expirationDate: formData.expirationDate
             ? formData.expirationDate.toISOString()
             : null,
@@ -236,7 +279,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         primaryButtonText={intl.formatMessage({ id: "button.save" })}
         secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
         primaryButtonDisabled={saving}
-        size="md"
+        size="sm"
       >
         <Stack gap={5}>
           {error && (
@@ -280,6 +323,16 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             required
           />
 
+          <TextInput
+            id="unitSize"
+            labelText="Unit Size *"
+            helperText="Size/volume of each individual unit (e.g., 50 mL per bottle, 1 test per strip)"
+            value={formData.unitSize}
+            onChange={(e) => handleChange("unitSize", e.target.value)}
+            placeholder="e.g., 50 mL, 100 tests, 250 μL, 1 test"
+            required
+          />
+
           <DatePicker
             datePickerType="single"
             value={formData.expirationDate}
@@ -300,6 +353,18 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             <DatePickerInput
               id="receiptDate"
               labelText={<FormattedMessage id="lot.receiptDate" />}
+              placeholder="mm/dd/yyyy"
+            />
+          </DatePicker>
+
+          <DatePicker
+            datePickerType="single"
+            value={formData.dateOpened}
+            onChange={([date]) => handleChange("dateOpened", date)}
+          >
+            <DatePickerInput
+              id="dateOpened"
+              labelText="Opening Date"
               placeholder="mm/dd/yyyy"
             />
           </DatePicker>

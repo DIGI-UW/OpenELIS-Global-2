@@ -92,6 +92,9 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "barcode", length = 100, unique = true)
     private String barcode;
 
+    @Column(name = "unit_size", length = 100)
+    private String unitSize;
+
     @Version
     @Column(name = "version", nullable = false)
     private Integer version = 0;

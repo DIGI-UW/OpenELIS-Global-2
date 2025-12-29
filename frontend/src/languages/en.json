@@ -12,6 +12,7 @@
   "add.new.dictionary.menu": "Add New Dictionary Menu",
   "admin.formEntryConfig": "General Configurations",
   "admin.legacy": "Legacy Admin",
+  "lot.openingDate": "Opening Date",
   "admin.page.configuration.formEntryConfigMenu.button.add": "Add",
   "admin.page.configuration.formEntryConfigMenu.button.deactivate": "Deactivate",
   "admin.page.configuration.formEntryConfigMenu.button.exit": "Exit",
