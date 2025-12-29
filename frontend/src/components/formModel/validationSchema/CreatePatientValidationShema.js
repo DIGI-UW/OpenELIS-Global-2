@@ -16,7 +16,23 @@ const CreatePatientValidationSchema = Yup.object().shape({
       const validDate1 = date instanceof Date && !isNaN(date);
       const validDate2 = date2 instanceof Date && !isNaN(date2);
 
-      return validDate1 || validDate2;
+      if (!validDate1 && !validDate2) {
+        return false;
+      }
+
+      // Use the valid date format
+      const birthDate = validDate1 ? date : date2;
+      
+      // Get today's date at midnight for comparison
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Get birth date at midnight for comparison
+      const birthDateMidnight = new Date(birthDate);
+      birthDateMidnight.setHours(0, 0, 0, 0);
+      
+      // Allow dates up to and including today (not future dates)
+      return birthDateMidnight <= today;
     }),
   patientContact: Yup.object().shape({
     person: Yup.object().shape({

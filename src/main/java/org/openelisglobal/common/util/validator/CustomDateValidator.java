@@ -143,6 +143,8 @@ public class CustomDateValidator extends DateValidator {
 
         int dateDiff = date.compareTo(today);
 
+        // PAST allows dates up to and including today (dateDiff <= 0)
+        // Only reject if date is in the future (dateDiff > 0)
         if (relative.equals(DateRelation.PAST) && dateDiff > 0) {
             result = IActionConstants.INVALID_TO_LARGE;
         } else if (relative.equals(DateRelation.FUTURE) && dateDiff < 0) {

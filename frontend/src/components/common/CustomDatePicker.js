@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { ConfigurationContext } from "../layout/Layout";
 
 const CustomDatePicker = (props) => {
@@ -75,7 +75,8 @@ const CustomDatePicker = (props) => {
         maxDate={
           props.disallowFutureDate
             ? format(
-                new Date(),
+                // Set to tomorrow to ensure today is selectable (validation will prevent future dates)
+                addDays(new Date(), 1),
                 configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
                   ? "dd/MM/yyyy"
                   : "MM/dd/yyyy",
