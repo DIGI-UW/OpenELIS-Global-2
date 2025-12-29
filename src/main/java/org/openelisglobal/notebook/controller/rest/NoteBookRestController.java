@@ -2,6 +2,11 @@ package org.openelisglobal.notebook.controller.rest;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -32,12 +37,16 @@ import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
+import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NoteBookSampleService;
 import org.openelisglobal.notebook.service.NoteBookService;
+import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.openelisglobal.notebook.service.NotebookSecurityService;
 import org.openelisglobal.notebook.service.WorkflowPageTemplateService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.WorkflowPageTemplate;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -56,15 +65,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.openelisglobal.notebook.service.NoteBookPageService;
-import org.openelisglobal.notebook.service.NotebookPageSampleService;
-import org.openelisglobal.notebook.valueholder.NoteBookPage;
-import org.openelisglobal.notebook.valueholder.NotebookPageSample;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping(value = "/rest/notebook")
@@ -802,8 +802,7 @@ public class NoteBookRestController extends BaseRestController {
                         totalCultures++;
                     }
                     // Count positive isolates
-                    if ("POSITIVE".equals(data.get("cultureResult"))
-                            || "POSITIVE".equals(data.get("isolateStatus"))) {
+                    if ("POSITIVE".equals(data.get("cultureResult")) || "POSITIVE".equals(data.get("isolateStatus"))) {
                         positiveIsolates++;
                     }
                     // Count AST completed
@@ -813,8 +812,7 @@ public class NoteBookRestController extends BaseRestController {
                         astCompleted++;
                     }
                     // Count MDR organisms
-                    if (Boolean.TRUE.equals(data.get("mdrOrganism"))
-                            || "MDR".equals(data.get("resistancePattern"))) {
+                    if (Boolean.TRUE.equals(data.get("mdrOrganism")) || "MDR".equals(data.get("resistancePattern"))) {
                         mdrOrganisms++;
                     }
                 }
@@ -822,8 +820,7 @@ public class NoteBookRestController extends BaseRestController {
         }
 
         // Calculate QC pass rate
-        String qcPassRate = totalSamples > 0
-                ? String.format("%.0f%%", (completedSamples * 100.0) / totalSamples)
+        String qcPassRate = totalSamples > 0 ? String.format("%.0f%%", (completedSamples * 100.0) / totalSamples)
                 : "N/A";
 
         Map<String, Object> summary = new java.util.HashMap<>();
@@ -839,17 +836,17 @@ public class NoteBookRestController extends BaseRestController {
     }
 
     /**
-     * Generate and download a CSV report for all data points in a notebook.
-     * Used by the Reporting & Data Export page.
+     * Generate and download a CSV report for all data points in a notebook. Used by
+     * the Reporting & Data Export page.
      *
-     * @param notebookId   the notebook ID
-     * @param request      HTTP request for user session
-     * @param response     HTTP response for file download
+     * @param notebookId the notebook ID
+     * @param request    HTTP request for user session
+     * @param response   HTTP response for file download
      */
     @PostMapping(value = "/{notebookId}/generate-report")
     public void generateNotebookReport(@PathVariable("notebookId") Integer notebookId,
-            @RequestBody(required = false) Map<String, Object> requestBody,
-            HttpServletRequest request, HttpServletResponse response) {
+            @RequestBody(required = false) Map<String, Object> requestBody, HttpServletRequest request,
+            HttpServletResponse response) {
 
         String sysUserId = getSysUserId(request);
         String loginLabUnit = getLoginLabUnit(request);
@@ -914,9 +911,9 @@ public class NoteBookRestController extends BaseRestController {
                         row.append(escapeCSV(getStringValue(data, "cultureResult"))).append(",");
                         row.append(escapeCSV(getStringValue(data, "organismIdentified"))).append(",");
                         row.append(escapeCSV(getStringValue(data, "susceptibilityResults"))).append(",");
-                        row.append(escapeCSV(data.get("mdrOrganism") != null
-                                ? String.valueOf(data.get("mdrOrganism"))
-                                : "")).append(",");
+                        row.append(escapeCSV(
+                                data.get("mdrOrganism") != null ? String.valueOf(data.get("mdrOrganism")) : ""))
+                                .append(",");
                         row.append(escapeCSV(getStringValue(data, "qcResult"))).append(",");
                         row.append(escapeCSV(getStringValue(data, "notes")));
                     } else {
@@ -933,8 +930,7 @@ public class NoteBookRestController extends BaseRestController {
             byte[] csvBytes = baos.toByteArray();
 
             // Set response headers for file download
-            String filename = "Bacteriology_Notebook_Report_"
-                    + java.time.LocalDate.now().toString() + ".csv";
+            String filename = "Bacteriology_Notebook_Report_" + java.time.LocalDate.now().toString() + ".csv";
             response.setContentType("text/csv; charset=UTF-8");
             response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
             response.setContentLength(csvBytes.length);
@@ -942,8 +938,8 @@ public class NoteBookRestController extends BaseRestController {
             response.getOutputStream().flush();
 
         } catch (Exception e) {
-            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(),
-                    "generateNotebookReport", "Error generating report: " + e.getMessage());
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "generateNotebookReport",
+                    "Error generating report: " + e.getMessage());
             try {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
