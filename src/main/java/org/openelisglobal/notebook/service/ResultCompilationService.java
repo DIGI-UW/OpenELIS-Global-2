@@ -145,7 +145,7 @@ public interface ResultCompilationService {
      * Delivery record for audit trail.
      */
     record DeliveryRecord(Integer id, String recipientName, String recipientEmail, String fileName, String deliveryType,
-            String regulatoryBody, String notes, java.time.LocalDateTime deliveredAt, String deliveredBy) {
+            String regulatoryBody, String notes, String deliveredAt, String deliveredBy) {
     }
 
     /**

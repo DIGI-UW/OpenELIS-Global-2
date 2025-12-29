@@ -10,7 +10,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,10 +23,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.notebook.dao.NotebookDeliveryRecordDAO;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.service.ResultCompilationService.ExportOptions;
 import org.openelisglobal.notebook.service.ResultCompilationService.ValidationSummary;
 import org.openelisglobal.notebook.valueholder.NoteBook;
+import org.openelisglobal.notebook.valueholder.NotebookDeliveryRecord;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.ValidationStatus;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -48,6 +52,9 @@ public class ResultCompilationServiceTest {
 
     @Mock
     private NotebookPageSampleDAO notebookPageSampleDAO;
+
+    @Mock
+    private NotebookDeliveryRecordDAO notebookDeliveryRecordDAO;
 
     @Mock
     private NoteBookService noteBookService;
@@ -274,30 +281,74 @@ public class ResultCompilationServiceTest {
     }
 
     /**
-     * T125c: Delivery tracking.
+     * T125c: Delivery tracking - now persisted to database via DAO.
      */
     @Test
     public void testRecordDelivery_CreatesRecord() {
         when(systemUserService.get("1")).thenReturn(testUser);
+        when(noteBookService.get(1)).thenReturn(testNotebook);
 
         Integer deliveryId = service.recordDelivery(1, "Data Management Team", "datamanagement@lab.org", null,
                 "internal", null, null, "1");
 
-        assertNotNull("Delivery ID should not be null", deliveryId);
-        assertTrue("Delivery ID should be positive", deliveryId > 0);
+        // Verify the DAO insert was called
+        ArgumentCaptor<NotebookDeliveryRecord> captor = ArgumentCaptor.forClass(NotebookDeliveryRecord.class);
+        verify(notebookDeliveryRecordDAO).insert(captor.capture());
+
+        NotebookDeliveryRecord savedRecord = captor.getValue();
+        assertEquals("Data Management Team", savedRecord.getRecipientName());
+        assertEquals("datamanagement@lab.org", savedRecord.getRecipientEmail());
+        assertEquals("internal", savedRecord.getDeliveryType());
+        assertEquals(testNotebook, savedRecord.getNotebook());
+        assertNotNull(savedRecord.getDeliveredAt());
+        assertEquals("Test User", savedRecord.getDeliveredBy());
     }
 
     @Test
     public void testGetDeliveryHistory_ReturnsRecords() {
-        when(systemUserService.get("1")).thenReturn(testUser);
+        // Create mock delivery records
+        NotebookDeliveryRecord record1 = new NotebookDeliveryRecord(testNotebook, "Data Management Team", "dm@lab.org",
+                "file1.xlsx", "internal", null, null, new Timestamp(System.currentTimeMillis()), "Test User");
+        record1.setId(1);
 
-        service.recordDelivery(1, "Data Management Team", "dm@lab.org", null, "internal", null, null, "1");
-        service.recordDelivery(1, "External Reviewer", "reviewer@external.org", null, "external", null, null, "1");
+        NotebookDeliveryRecord record2 = new NotebookDeliveryRecord(testNotebook, "External Reviewer",
+                "reviewer@external.org", "file2.xlsx", "external", "FDA", "Regulatory submission",
+                new Timestamp(System.currentTimeMillis()), "Test User");
+        record2.setId(2);
+
+        when(notebookDeliveryRecordDAO.getByNotebookId(1)).thenReturn(Arrays.asList(record1, record2));
 
         List<ResultCompilationService.DeliveryRecord> history = service.getDeliveryHistory(1);
 
         assertFalse("History should not be empty", history.isEmpty());
         assertEquals("Should have 2 delivery records", 2, history.size());
+
+        // Verify first record
+        assertEquals("Data Management Team", history.get(0).recipientName());
+        assertEquals("dm@lab.org", history.get(0).recipientEmail());
+        assertEquals("internal", history.get(0).deliveryType());
+
+        // Verify second record
+        assertEquals("External Reviewer", history.get(1).recipientName());
+        assertEquals("external", history.get(1).deliveryType());
+        assertEquals("FDA", history.get(1).regulatoryBody());
+    }
+
+    @Test
+    public void testGetDeliveryHistory_EmptyWhenNoRecords() {
+        when(notebookDeliveryRecordDAO.getByNotebookId(999)).thenReturn(Collections.emptyList());
+
+        List<ResultCompilationService.DeliveryRecord> history = service.getDeliveryHistory(999);
+
+        assertTrue("History should be empty", history.isEmpty());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRecordDelivery_ThrowsWhenNotebookNotFound() {
+        when(systemUserService.get("1")).thenReturn(testUser);
+        when(noteBookService.get(999)).thenReturn(null);
+
+        service.recordDelivery(999, "Recipient", "email@test.com", null, "internal", null, null, "1");
     }
 
     /**

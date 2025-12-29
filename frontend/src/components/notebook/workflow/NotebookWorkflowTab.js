@@ -20,6 +20,7 @@ import ImmunologyChildSampleCreationPage from "../pages/immunology/ImmunologyChi
 import ImmunologyPostAnalysisPage from "../pages/immunology/ImmunologyPostAnalysisPage";
 import ImmunologyResultCompilationPage from "../pages/immunology/ImmunologyResultCompilationPage";
 import ImmunologyArchivingPage from "../pages/immunology/ImmunologyArchivingPage";
+import ImmunologyDataAnalysisPage from "../pages/immunology/ImmunologyDataAnalysisPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -46,11 +47,12 @@ const DEFAULT_WORKFLOW_PAGES = [
   { id: "default-7", order: 7, title: "Storage" },
   { id: "default-8", order: 8, title: "Results" },
   { id: "default-9", order: 9, title: "Archive" },
+  { id: "default-10", order: 10, title: "Reporting & REDCap" },
 ];
 
 /**
  * NotebookWorkflowTab - Container component for immunology workflow pages.
- * Displays the 9-page workflow with progress indicators and navigation.
+ * Displays the 10-page workflow with progress indicators and navigation.
  *
  * @param {Object} props
  * @param {number} props.notebookId - The notebook template ID (will auto-create entry if needed)
@@ -188,11 +190,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               } else {
                 // No entry exists or got error - create one automatically
                 // This is a NEW entry, so page-level restrictions should NOT apply
-                console.log(
-                  "No existing entries found for notebook",
-                  nbId,
-                  "- creating new entry",
-                );
                 setIsCreatingEntry(true); // Creating new entry
                 createEntryForNotebook(nbId);
               }
@@ -208,7 +205,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
 
   const createEntryForNotebook = (nbId) => {
     // Create a new entry for this notebook
-    console.log("Creating new notebook entry for notebook:", nbId);
     fetch(
       `${config.serverBaseUrl}/rest/notebook-entry/create?notebookId=${nbId}`,
       {
@@ -221,13 +217,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       },
     )
       .then(async (response) => {
-        console.log(
-          "Entry creation HTTP status:",
-          response.status,
-          response.statusText,
-        );
         const text = await response.text();
-        console.log("Entry creation raw response:", text);
         let data = {};
         try {
           data = text ? JSON.parse(text) : {};
@@ -243,14 +233,12 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
         return data;
       })
       .then((data) => {
-        console.log("Entry creation response:", data);
         if (componentMounted.current) {
           if (data && data.id) {
             setEntry(data);
             setEntryId(data.id);
             setSamples([]);
             setIsCreatingEntry(false); // Entry created - apply page restrictions
-            console.log("Entry created successfully with ID:", data.id);
           } else if (data && data.error) {
             console.error("Entry creation error:", data.error);
           } else {
@@ -295,9 +283,6 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
   const renderPageContent = (page) => {
     const pageOrder = page.order || 1;
     const progress = getProgressForPage(page.id);
-
-    // Debug logging
-    console.log("renderPageContent called:", { page, pageOrder, entryId });
 
     switch (pageOrder) {
       case 1:
@@ -440,6 +425,20 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+          />
+        );
+      case 10:
+        // Page 10: Data Analysis & Export - Final reporting and data export:
+        // - View validation summary statistics
+        // - Export comprehensive results to Excel/CSV formats
+        // - Record result delivery to recipients
+        // - View delivery history
+        return (
+          <ImmunologyDataAnalysisPage
+            key={`dataanalysis-${page.id}`}
+            entryId={entryId}
+            notebookId={notebook?.id}
+            pageData={page}
           />
         );
       default:
