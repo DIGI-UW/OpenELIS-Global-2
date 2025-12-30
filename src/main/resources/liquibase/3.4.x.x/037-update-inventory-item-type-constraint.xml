@@ -11,15 +11,15 @@
         </preConditions>
         <comment>Update chk_item_type constraint to include ENZYME and ANTIBIOTICS item types</comment>
 
-        <!-- Drop the existing constraint -->
-        <dropConstraint schemaName="clinlims" tableName="inventory_item" constraintName="chk_item_type"/>
+        <!-- Drop the existing constraint and add updated constraint with ENZYME and ANTIBIOTICS -->
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            DROP CONSTRAINT IF EXISTS chk_item_type;
 
-        <!-- Add the updated constraint with ENZYME and ANTIBIOTICS -->
-        <addConstraint schemaName="clinlims" tableName="inventory_item">
-            <constraints>
-                <check addConstraintName="chk_item_type">item_type IN ('REAGENT', 'RDT', 'CARTRIDGE', 'HIV_KIT', 'SYPHILIS_KIT', 'ENZYME', 'ANTIBIOTICS')</check>
-            </constraints>
-        </addConstraint>
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_item_type
+            CHECK (item_type IN ('REAGENT', 'RDT', 'CARTRIDGE', 'HIV_KIT', 'SYPHILIS_KIT', 'ENZYME', 'ANTIBIOTICS'));
+        </sql>
     </changeSet>
 
 </databaseChangeLog>
