@@ -62,7 +62,7 @@ public class StorageBox extends BaseObject<Integer> {
     private Boolean active;
 
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
-    @JoinColumn(name = "PARENT_RACK_ID", nullable = false)
+    @JoinColumn(name = "PARENT_RACK_ID", nullable = true) // Made optional for labs without rack/box hierarchy
     private StorageRack parentRack;
 
     @Column(name = "SYS_USER_ID", nullable = false, length = 36)
@@ -158,13 +158,15 @@ public class StorageBox extends BaseObject<Integer> {
     }
 
     /**
-     * Validate hierarchy integrity constraints. - A box must always have a parent
-     * rack.
+     * Validate hierarchy integrity constraints. - A box can optionally have a
+     * parent rack, depending on the laboratory's storage organization needs.
      *
-     * @return true if hierarchy integrity is valid, false otherwise
+     * @return true if hierarchy integrity is valid (always true now since parent
+     *         rack is optional)
      */
     public boolean validateHierarchyIntegrity() {
-        return parentRack != null;
+        // Parent rack is now optional - some labs may not use rack/box hierarchy
+        return true;
     }
 
     @Override

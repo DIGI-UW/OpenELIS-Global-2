@@ -56,7 +56,6 @@
 
         <!-- Inventory Management entities (004-remove-old-inventory) -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>

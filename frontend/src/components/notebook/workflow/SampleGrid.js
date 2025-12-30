@@ -474,7 +474,14 @@ function SampleGrid({
                     </>
                   )}
                   <TableCell>
-                    <OverflowMenu flipped size="sm">
+                    <OverflowMenu
+                      flipped
+                      size="sm"
+                      ariaLabel={intl.formatMessage({
+                        id: "notebook.sample.actions",
+                        defaultMessage: "Sample actions",
+                      })}
+                    >
                       <OverflowMenuItem
                         itemText={intl.formatMessage({
                           id: "notebook.sample.action.view",

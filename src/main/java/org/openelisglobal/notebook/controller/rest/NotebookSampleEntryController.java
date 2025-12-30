@@ -1238,6 +1238,38 @@ public class NotebookSampleEntryController extends BaseRestController {
                                         data.put("storageLocation", "Box " + request.getBoxId());
                                     }
                                 }
+                            } else if (request.getLocationId() != null) {
+                                // Shelf-level storage (no box/wells)
+                                String locationType = request.getLocationType() != null ? request.getLocationType()
+                                        : "shelf";
+                                data.put("locationId", request.getLocationId());
+                                data.put("locationType", locationType);
+
+                                // Build storage path from the storage service
+                                try {
+                                    org.openelisglobal.storage.service.SampleStorageService sampleStorageService = org.openelisglobal.spring.util.SpringContext
+                                            .getBean(org.openelisglobal.storage.service.SampleStorageService.class);
+
+                                    // Get the storage assignment to retrieve hierarchical path
+                                    java.util.Map<String, Object> location = sampleStorageService
+                                            .getSampleItemLocation(sampleId.toString());
+                                    if (location != null && !location.isEmpty()) {
+                                        String hierarchicalPath = (String) location.get("hierarchicalPath");
+                                        if (hierarchicalPath != null && !hierarchicalPath.trim().isEmpty()) {
+                                            data.put("storagePath", hierarchicalPath);
+                                            data.put("storageLocation", hierarchicalPath);
+                                        } else {
+                                            data.put("storageLocation", "Shelf Storage");
+                                        }
+                                    } else {
+                                        data.put("storageLocation", "Shelf Storage");
+                                    }
+                                } catch (Exception e) {
+                                    LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
+                                            "Error retrieving storage path for sample " + sampleId + ": "
+                                                    + e.getMessage());
+                                    data.put("storageLocation", "Shelf Storage");
+                                }
                             }
 
                             nps.setData(data);

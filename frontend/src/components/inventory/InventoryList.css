@@ -64,12 +64,77 @@
   color: #da1e28;
 }
 
-/* Ensure proper spacing for toolbar items */
-.cds--toolbar-content {
+/* Filters Section - Outside DataTable to prevent dropdown overlap */
+.inventory-filters-section {
+  background-color: #f4f4f4;
+  border-radius: 5px;
+  padding: 1.5rem 2%;
+  border: 1px solid #e0e0e0;
+  position: relative;
+  z-index: 10; /* Ensure filters are above other content */
+}
+
+.inventory-filters-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
-/* Fix dropdown alignment in toolbar */
-.cds--toolbar-content .cds--dropdown {
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.action-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Fix dropdown positioning and ensure they appear above table */
+.inventory-filters-section .cds--dropdown {
   min-width: 150px;
+  position: relative;
+  z-index: 100; /* Higher than default to appear above table content */
+}
+
+/* Ensure dropdown menus appear above everything */
+.inventory-filters-section .cds--dropdown .cds--list-box__menu {
+  z-index: 1000 !important;
+  position: absolute;
+}
+
+/* Search input styling within filters */
+.inventory-filters-section .cds--search {
+  min-width: 200px;
+  background-color: #ffffff;
+}
+
+/* Ensure search input has proper styling */
+.inventory-filters-section .cds--search-input {
+  background-color: #ffffff;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .inventory-filters-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .action-buttons-group {
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
 }

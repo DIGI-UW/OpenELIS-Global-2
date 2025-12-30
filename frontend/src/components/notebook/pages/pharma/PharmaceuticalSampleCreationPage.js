@@ -339,14 +339,6 @@ function PharmaceuticalSampleCreationPage({
               loading={loading}
               additionalColumns={[
                 {
-                  key: "sampleType",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.sampleType",
-                    defaultMessage: "Sample Type",
-                  }),
-                  render: (value, sample) => value || sample?.sampleType || "-",
-                },
-                {
                   key: "lotNumber",
                   header: intl.formatMessage({
                     id: "notebook.sample.lotNumber",
@@ -405,14 +397,6 @@ function PharmaceuticalSampleCreationPage({
               showSelection={false}
               loading={loading}
               additionalColumns={[
-                {
-                  key: "sampleType",
-                  header: intl.formatMessage({
-                    id: "notebook.sample.sampleType",
-                    defaultMessage: "Sample Type",
-                  }),
-                  render: (value, sample) => value || sample?.sampleType || "-",
-                },
                 {
                   key: "lotNumber",
                   header: intl.formatMessage({

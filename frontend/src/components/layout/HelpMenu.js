@@ -19,25 +19,34 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
   useEffect(() => {
     let isMounted = true;
 
-    getFromOpenElisServer("/rest/properties", (properties) => {
-      if (!isMounted) return;
+    getFromOpenElisServer(
+      "/rest/properties",
+      (properties) => {
+        if (!isMounted) return;
 
-      // The API helper calls the callback with `undefined` when the response is
-      // not JSON (e.g., auth redirect HTML). Treat that as "no configured help
-      // URLs" rather than crashing the entire app.
-      if (!properties || typeof properties !== "object") {
+        // The API helper calls the callback with `undefined` when the response is
+        // not JSON (e.g., auth redirect HTML). Treat that as "no configured help
+        // URLs" rather than crashing the entire app.
+        if (!properties || typeof properties !== "object") {
+          setHelpUrls({ manual: "", tutorials: "", "release-notes": "" });
+          setError(new Error("Help URL configuration unavailable"));
+          return;
+        }
+
+        setHelpUrls({
+          manual: properties["org.openelisglobal.help.manual.url"] || "",
+          tutorials: properties["org.openelisglobal.help.tutorials.url"] || "",
+          "release-notes":
+            properties["org.openelisglobal.help.release-notes.url"] || "",
+        });
+      },
+      (err) => {
+        if (!isMounted) return;
         setHelpUrls({ manual: "", tutorials: "", "release-notes": "" });
-        setError(new Error("Help URL configuration unavailable"));
-        return;
-      }
-
-      setHelpUrls({
-        manual: properties["org.openelisglobal.help.manual.url"] || "",
-        tutorials: properties["org.openelisglobal.help.tutorials.url"] || "",
-        "release-notes":
-          properties["org.openelisglobal.help.release-notes.url"] || "",
-      });
-    });
+        setError(err);
+        console.error("Failed to fetch help URLs:", err);
+      },
+    );
 
     return () => {
       isMounted = false;

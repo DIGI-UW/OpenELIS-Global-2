@@ -134,19 +134,6 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.storageLocation.id = :locationId ORDER BY l.expirationDate";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("locationId", locationId);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lots by storage location ID", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryLot> getByQCStatus(QCStatus qcStatus) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryLot l WHERE l.qcStatus = :qcStatus ORDER BY l.expirationDate";
@@ -198,6 +185,22 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting lot by FHIR UUID", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryLot> getByUnifiedLocation(Integer locationId, String locationType)
+            throws LIMSRuntimeException {
+        try {
+            String hql = "FROM InventoryLot l WHERE l.locationId = :locationId AND l.locationType = :locationType "
+                    + "ORDER BY l.expirationDate";
+            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
+            query.setParameter("locationId", locationId);
+            query.setParameter("locationType", locationType);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting lots by unified location", e);
         }
     }
 }

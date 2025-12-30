@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
@@ -30,6 +31,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 @Entity
 @Access(AccessType.FIELD)
 @Table(name = "inventory_lot")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class InventoryLot extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
@@ -48,9 +50,19 @@ public class InventoryLot extends BaseObject<Long> {
     @NotNull
     private InventoryItem inventoryItem;
 
-    @ManyToOne
-    @JoinColumn(name = "storage_location_id")
-    private InventoryStorageLocation storageLocation;
+    // Unified storage hierarchy fields (same as SampleStorageAssignment)
+    // Supports assignment at any level: room, device, shelf, rack, box
+    @Column(name = "location_id")
+    private Integer locationId;
+
+    @Column(name = "location_type", length = 20)
+    private String locationType;
+
+    @Column(name = "position_coordinate", length = 50)
+    private String positionCoordinate;
+
+    @Column(name = "storage_path", length = 500)
+    private String storagePath;
 
     @Column(name = "lot_number", nullable = false, length = 100)
     @NotNull
@@ -91,6 +103,9 @@ public class InventoryLot extends BaseObject<Long> {
 
     @Column(name = "barcode", length = 100, unique = true)
     private String barcode;
+
+    @Column(name = "unit_size", length = 100)
+    private String unitSize;
 
     @Version
     @Column(name = "version", nullable = false)

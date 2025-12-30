@@ -7,12 +7,12 @@ import { getFromOpenElisServer } from "../../utils/Utils";
  * StorageHierarchySelector - Reusable component for hierarchical storage location selection.
  * Provides cascading dropdowns: Room → Device/Freezer → Shelf → Rack → Box
  *
- * Storage Hierarchy:
- * - Room: Physical room containing storage equipment
- * - Device/Freezer: Refrigerator, Freezer (-20°C, -80°C), LN2 Tank, Incubator
- * - Shelf: Physical shelf within the device
- * - Rack: Storage rack within the shelf
- * - Box: Storage box within the rack
+ * Storage Hierarchy (all levels are optional - can assign to any level):
+ * - Room: Physical room containing storage equipment (can assign here)
+ * - Device/Freezer: Refrigerator, Freezer (-20°C, -80°C), LN2 Tank, Incubator (can assign here)
+ * - Shelf: Physical shelf within the device (can assign here)
+ * - Rack: Storage rack within the shelf (can assign here)
+ * - Box: Storage box within the rack or directly on shelf (can assign here)
  * - Well: Individual position within the box (handled by BoxLayoutViewer)
  *
  * @param {Object} props
@@ -70,24 +70,40 @@ function StorageHierarchySelector({
         box: selectedBox,
       });
     }
+    // Note: onSelectionChange is intentionally not in dependencies to avoid infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRoom, selectedDevice, selectedShelf, selectedRack, selectedBox]);
 
   const loadRooms = () => {
     getFromOpenElisServer("/rest/storage/rooms?status=active", (response) => {
       if (componentMounted.current && response && Array.isArray(response)) {
-        setRooms(
-          response.map((r) => ({
-            id: r.id,
-            label: r.name,
-            ...r,
-          })),
-        );
+        const mappedRooms = response.map((r) => ({
+          id: r.id,
+          label: r.name,
+          ...r,
+        }));
+        // Debug logging to verify rooms have id property
+        const roomsWithoutId = mappedRooms.filter((room) => !room.id);
+        if (roomsWithoutId.length > 0) {
+          console.warn(
+            "StorageHierarchySelector: Rooms loaded without id:",
+            roomsWithoutId,
+          );
+        }
+        setRooms(mappedRooms);
       }
     });
   };
 
   // Load devices when room changes
   const handleRoomChange = ({ selectedItem }) => {
+    // Debug logging to trace room selection issues
+    if (selectedItem && !selectedItem.id) {
+      console.warn(
+        "StorageHierarchySelector: Room selected without id property:",
+        JSON.stringify(selectedItem),
+      );
+    }
     setSelectedRoom(selectedItem);
     setSelectedDevice(null);
     setSelectedShelf(null);
@@ -148,7 +164,7 @@ function StorageHierarchySelector({
     }
   };
 
-  // Load racks when shelf changes
+  // Load racks and boxes when shelf changes
   const handleShelfChange = ({ selectedItem }) => {
     setSelectedShelf(selectedItem);
     setSelectedRack(null);
@@ -158,16 +174,34 @@ function StorageHierarchySelector({
 
     if (selectedItem) {
       setLoadingHierarchy(true);
+      // Load racks for this shelf
       getFromOpenElisServer(
         `/rest/storage/racks?shelfId=${selectedItem.id}&active=true`,
         (response) => {
-          setLoadingHierarchy(false);
           if (componentMounted.current && response && Array.isArray(response)) {
             setRacks(
               response.map((r) => ({
                 id: r.id,
                 label: r.label || r.name,
                 ...r,
+              })),
+            );
+          }
+        },
+      );
+      // Also load boxes directly on this shelf (boxes without a rack)
+      getFromOpenElisServer(
+        `/rest/storage/boxes?shelfId=${selectedItem.id}&active=true`,
+        (response) => {
+          setLoadingHierarchy(false);
+          if (componentMounted.current && response && Array.isArray(response)) {
+            setBoxes(
+              response.map((b) => ({
+                id: b.id,
+                label: b.label || b.name,
+                rows: b.rows || 8,
+                columns: b.columns || 12,
+                ...b,
               })),
             );
           }
@@ -269,6 +303,10 @@ function StorageHierarchySelector({
             selectedItem={selectedDevice}
             onChange={handleDeviceChange}
             disabled={!selectedRoom}
+            helperText={intl.formatMessage({
+              id: "notebook.storage.device.optional",
+              defaultMessage: "Optional - can assign to room level",
+            })}
           />
         </Column>
       </Grid>
@@ -290,6 +328,10 @@ function StorageHierarchySelector({
             selectedItem={selectedShelf}
             onChange={handleShelfChange}
             disabled={!selectedDevice}
+            helperText={intl.formatMessage({
+              id: "notebook.storage.shelf.optional",
+              defaultMessage: "Optional - can assign to device level",
+            })}
           />
         </Column>
         <Column lg={5} md={3} sm={4}>
@@ -308,6 +350,10 @@ function StorageHierarchySelector({
             selectedItem={selectedRack}
             onChange={handleRackChange}
             disabled={!selectedShelf}
+            helperText={intl.formatMessage({
+              id: "notebook.storage.rack.optional",
+              defaultMessage: "Optional - can assign to shelf level",
+            })}
           />
         </Column>
         <Column lg={6} md={2} sm={4}>
@@ -325,7 +371,11 @@ function StorageHierarchySelector({
             itemToString={(item) => (item ? item.label : "")}
             selectedItem={selectedBox}
             onChange={handleBoxChange}
-            disabled={!selectedRack}
+            disabled={!selectedShelf && !selectedRack}
+            helperText={intl.formatMessage({
+              id: "notebook.storage.box.optional",
+              defaultMessage: "Optional - can assign to rack or shelf level",
+            })}
           />
         </Column>
       </Grid>

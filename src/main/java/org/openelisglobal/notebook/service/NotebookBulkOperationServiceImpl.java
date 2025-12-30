@@ -322,9 +322,11 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             return result;
         }
 
-        if (boxId == null) {
+        // Box ID is optional for labs that don't use rack/box hierarchy
+        // When null, samples can be tracked at higher levels (shelf, device, room)
+        if (boxId == null && wellCoordinate != null) {
             result.put("success", false);
-            result.put("error", "Box ID is required");
+            result.put("error", "Well coordinate specified but no box ID provided");
             return result;
         }
 
@@ -343,10 +345,32 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 String sampleItemId = String.valueOf(nps.getSampleItemId());
 
                 // Create storage assignment using the storage service
-                // locationType = "box" for box-level assignments with well coordinates
+                // Handle box or hierarchy level storage assignment (room, device, shelf, rack,
+                // box)
                 try {
+                    String locationId;
+                    String locationType;
+
+                    if (boxId != null) {
+                        // Box-level storage (with wells)
+                        locationId = String.valueOf(boxId);
+                        locationType = "box";
+                    } else if (storageData != null && storageData.get("locationId") != null
+                            && storageData.get("locationType") != null) {
+                        // Hierarchy-level storage (room, device, shelf, or rack)
+                        locationId = String.valueOf(storageData.get("locationId"));
+                        locationType = String.valueOf(storageData.get("locationType"));
+                    } else if (storageData != null && storageData.get("shelfId") != null) {
+                        // Legacy shelf-level storage (backward compatibility)
+                        locationId = String.valueOf(storageData.get("shelfId"));
+                        locationType = "shelf";
+                    } else {
+                        // Fallback to general storage
+                        locationId = null;
+                        locationType = "general";
+                    }
                     Map<String, Object> assignmentResult = sampleStorageService.assignSampleItemWithLocation(
-                            sampleItemId, String.valueOf(boxId), "box", wellCoordinate,
+                            sampleItemId, locationId, locationType, wellCoordinate,
                             storageData != null ? (String) storageData.get("notes") : null);
 
                     if (assignmentResult != null && assignmentResult.containsKey("assignmentId")) {
@@ -360,7 +384,18 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         }
                         existingData.put("storageWell", wellCoordinate);
                         existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
-                        existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
+
+                        // Use hierarchicalPath from storage service, fallback to frontend storagePath
+                        String hierarchicalPath = (String) assignmentResult.get("hierarchicalPath");
+                        if (hierarchicalPath == null || hierarchicalPath.trim().isEmpty()
+                                || "Unknown".equals(hierarchicalPath)) {
+                            // Fallback to storagePath from frontend if storage service didn't provide one
+                            hierarchicalPath = storageData != null ? (String) storageData.get("storagePath") : null;
+                        }
+                        if (hierarchicalPath != null && !hierarchicalPath.trim().isEmpty()) {
+                            existingData.put("storagePath", hierarchicalPath);
+                        }
+
                         nps.setData(existingData);
                         nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
                         notebookPageSampleService.update(nps);
@@ -390,7 +425,9 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             }
         }
 
-        result.put("success", errors.isEmpty());
+        // Success if at least some samples were assigned, even if there are individual
+        // errors
+        result.put("success", assignedCount > 0);
         result.put("assignedCount", assignedCount);
         result.put("requestedCount", sampleIds.size());
         if (!errors.isEmpty()) {
@@ -416,7 +453,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
         if (boxId == null) {
             result.put("success", false);
-            result.put("error", "Box ID is required for auto-assignment");
+            result.put("error", "Box ID is required for auto-assignment to well coordinates");
             return result;
         }
 
@@ -554,7 +591,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
         if (boxId == null) {
             result.put("success", false);
-            result.put("error", "Box ID is required");
+            result.put("error",
+                    "Box ID is required for well assignments (well coordinates like 'A1' only make sense within a box)");
             return result;
         }
 

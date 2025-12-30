@@ -51,6 +51,15 @@
     <include file="liquibase/3.4.x.x/031-mntd-environmental-monitoring-page.xml"/>
     <include file="liquibase/3.4.x.x/033-notebook-hierarchy.xml"/>
     <include file="liquibase/3.4.x.x/034-notebook-project-metadata.xml"/>
+    <include file="liquibase/3.4.x.x/031-make-storage-box-rack-optional.xml"/>
+    <include file="liquibase/3.4.x.x/032-add-general-location-type.xml"/>
+    <include file="liquibase/3.4.x.x/033-fix-movement-constraints-for-general-location.xml"/>
+    <include file="liquibase/3.4.x.x/034-add-room-location-type.xml"/>
+    <include file="liquibase/3.4.x.x/035-inventory-unified-storage-location.xml"/>
+    <include file="liquibase/3.4.x.x/036-drop-legacy-inventory-storage-location.xml"/>
+    <include file="liquibase/3.4.x.x/037-update-inventory-item-type-constraint.xml"/>
+    <include file="liquibase/3.4.x.x/039-seed-inventory-enzymes.xml"/>
+    <include file="liquibase/3.4.x.x/040-seed-inventory-antibiotics.xml"/>
     <include file="liquibase/3.4.x.x/035-notebook-entry-manifest-description.xml"/>
 
 </databaseChangeLog>

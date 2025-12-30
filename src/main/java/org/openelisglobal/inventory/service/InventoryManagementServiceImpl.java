@@ -9,7 +9,6 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
-import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +24,6 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
-
-    @Autowired
-    private InventoryStorageLocationService storageLocationService;
 
     @Autowired
     private InventoryTransactionService transactionService;
@@ -121,15 +117,6 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             throw new IllegalArgumentException("Inventory item not found: " + itemId);
         }
         lotData.setInventoryItem(managedItem);
-
-        if (lotData.getStorageLocation() != null && lotData.getStorageLocation().getId() != null) {
-            Long locationId = lotData.getStorageLocation().getId();
-            InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-            if (managedLocation == null) {
-                throw new IllegalArgumentException("Storage location not found: " + locationId);
-            }
-            lotData.setStorageLocation(managedLocation);
-        }
 
         lotData.setSysUserId(sysUserId);
         lotData.setReceiptDate(new Timestamp(System.currentTimeMillis()));

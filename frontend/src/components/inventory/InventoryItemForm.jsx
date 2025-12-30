@@ -13,7 +13,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import { InventoryItemAPI } from "./InventoryService";
+import { InventoryItemAPI, NotebookDataAPI } from "./InventoryService";
 
 const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const intl = useIntl();
@@ -40,6 +40,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     manufacturer: "",
     units: "",
     lowStockThreshold: 0,
+    projectName: "", // New field for project selection
     // Reagent-specific
     stabilityAfterOpening: 0,
     dilutionNotes: "",
@@ -58,8 +59,12 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [itemTypes, setItemTypes] = useState([]);
+  const [unitOptions, setUnitOptions] = useState([]);
+  const [projects, setProjects] = useState([]); // New state for projects
+  const [showNewUnitModal, setShowNewUnitModal] = useState(false);
+  const [newUnitName, setNewUnitName] = useState("");
 
-  // Load item types from backend
+  // Load item types and unit options from backend
   useEffect(() => {
     const loadItemTypes = async () => {
       try {
@@ -78,7 +83,53 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         });
       }
     };
+
+    const loadUnitOptions = async () => {
+      try {
+        const units = await InventoryItemAPI.getUnitOptions();
+        // Add "Add new unit..." option at the end
+        const unitsWithAddOption = [
+          ...units,
+          { id: "__add_new__", text: "Add new unit..." },
+        ];
+        setUnitOptions(unitsWithAddOption);
+      } catch (err) {
+        console.error("Error loading unit options:", err);
+        // Fallback to basic units if API fails
+        setUnitOptions([
+          { id: "mL", text: "mL" },
+          { id: "tests", text: "tests" },
+          { id: "kits", text: "kits" },
+          { id: "cartridges", text: "cartridges" },
+          { id: "tubes", text: "tubes" },
+          { id: "bottles", text: "bottles" },
+          { id: "units", text: "units" },
+          { id: "__add_new__", text: "Add new unit..." },
+        ]);
+      }
+    };
+
+    const loadProjects = async () => {
+      try {
+        const notebooks = await NotebookDataAPI.getNotebooks();
+        const formattedProjects = notebooks.map((notebook) => ({
+          id: notebook.id,
+          text: notebook.title || "Unknown",
+        }));
+        setProjects(formattedProjects);
+      } catch (err) {
+        console.error("Error loading projects:", err);
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.error" }),
+          subtitle: "Failed to load projects",
+        });
+      }
+    };
+
     loadItemTypes();
+    loadUnitOptions();
+    loadProjects();
   }, [notify, intl]);
 
   const getItemTypeLabel = (type) => {
@@ -92,6 +143,49 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     return labels[type] || type;
   };
 
+  const handleCreateNewUnit = async () => {
+    if (!newUnitName.trim()) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        subtitle: "Unit name cannot be empty",
+      });
+      return;
+    }
+
+    try {
+      await InventoryItemAPI.createUnitOfMeasure(newUnitName.trim());
+
+      // Refresh the unit options list
+      const units = await InventoryItemAPI.getUnitOptions();
+      const unitsWithAddOption = [
+        ...units,
+        { id: "__add_new__", text: "Add new unit..." },
+      ];
+      setUnitOptions(unitsWithAddOption);
+
+      // Set the newly created unit as selected
+      handleChange("units", newUnitName.trim());
+
+      // Close modal and reset form
+      setShowNewUnitModal(false);
+      setNewUnitName("");
+
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: `Unit "${newUnitName.trim()}" created successfully`,
+      });
+    } catch (err) {
+      console.error("Error creating new unit:", err);
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.error" }),
+        subtitle: err.message || "Failed to create new unit",
+      });
+    }
+  };
+
   // Load item data if editing, reset if adding new
   useEffect(() => {
     if (item) {
@@ -102,6 +196,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         manufacturer: item.manufacturer || "",
         units: item.units || "",
         lowStockThreshold: item.lowStockThreshold || 0,
+        projectName: item.projectName || "", // New field for project
         // Reagent-specific
         stabilityAfterOpening: item.stabilityAfterOpening || 0,
         dilutionNotes: item.dilutionNotes || "",
@@ -125,6 +220,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         manufacturer: "",
         units: "",
         lowStockThreshold: 0,
+        projectName: "", // New field for project
         // Reagent-specific
         stabilityAfterOpening: 0,
         dilutionNotes: "",
@@ -271,6 +367,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         manufacturer: formData.manufacturer,
         units: formData.units,
         lowStockThreshold: Number(formData.lowStockThreshold) || 0,
+        projectName: formData.projectName || null,
       };
 
       // Add type-specific fields only for relevant item types
@@ -315,232 +412,282 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   };
 
   return (
-    <Modal
-      open={open}
-      onRequestClose={onClose}
-      onRequestSubmit={handleSave}
-      modalHeading={intl.formatMessage({
-        id: isEdit
-          ? "catalog.item.form.title.edit"
-          : "catalog.item.form.title.add",
-      })}
-      primaryButtonText={intl.formatMessage({ id: "button.save" })}
-      secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-      primaryButtonDisabled={saving}
-      size="md"
-    >
-      <Stack gap={5}>
-        {error && (
-          <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
-        )}
+    <>
+      <Modal
+        open={open}
+        onRequestClose={onClose}
+        onRequestSubmit={handleSave}
+        modalHeading={intl.formatMessage({
+          id: isEdit
+            ? "catalog.item.form.title.edit"
+            : "catalog.item.form.title.add",
+        })}
+        primaryButtonText={intl.formatMessage({ id: "button.save" })}
+        secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
+        primaryButtonDisabled={saving}
+        size="md"
+      >
+        <Stack gap={5}>
+          {error && (
+            <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
+          )}
 
-        <TextInput
-          id="name"
-          labelText={<FormattedMessage id="catalog.item.name" />}
-          value={formData.name}
-          onChange={(e) => handleChange("name", e.target.value)}
-          required
-        />
+          <TextInput
+            id="name"
+            labelText={<FormattedMessage id="catalog.item.name" />}
+            value={formData.name}
+            onChange={(e) => handleChange("name", e.target.value)}
+            required
+          />
 
-        <Dropdown
-          id="itemType"
-          titleText={<FormattedMessage id="catalog.item.type" />}
-          label="Select item type"
-          items={itemTypes}
-          itemToString={(item) => (item ? item.text : "")}
-          selectedItem={itemTypes.find((t) => t.id === formData.itemType)}
-          onChange={({ selectedItem }) =>
-            handleChange("itemType", selectedItem.id)
-          }
-          required
-        />
+          <Dropdown
+            id="itemType"
+            titleText={<FormattedMessage id="catalog.item.type" />}
+            label="Select item type"
+            items={itemTypes}
+            itemToString={(item) => (item ? item.text : "")}
+            selectedItem={itemTypes.find((t) => t.id === formData.itemType)}
+            onChange={({ selectedItem }) =>
+              handleChange("itemType", selectedItem.id)
+            }
+            required
+          />
 
-        <TextInput
-          id="category"
-          labelText={<FormattedMessage id="catalog.item.category" />}
-          value={formData.category}
-          onChange={(e) => handleChange("category", e.target.value)}
-        />
+          <TextInput
+            id="category"
+            labelText={<FormattedMessage id="catalog.item.category" />}
+            value={formData.category}
+            onChange={(e) => handleChange("category", e.target.value)}
+          />
 
-        <TextInput
-          id="manufacturer"
-          labelText={<FormattedMessage id="catalog.item.manufacturer" />}
-          value={formData.manufacturer}
-          onChange={(e) => handleChange("manufacturer", e.target.value)}
-        />
+          <TextInput
+            id="manufacturer"
+            labelText={<FormattedMessage id="catalog.item.manufacturer" />}
+            value={formData.manufacturer}
+            onChange={(e) => handleChange("manufacturer", e.target.value)}
+          />
 
-        <TextInput
-          id="units"
-          labelText={<FormattedMessage id="catalog.item.units" />}
-          value={formData.units}
-          onChange={(e) => handleChange("units", e.target.value)}
-          placeholder="e.g., mL, tests, kits"
-        />
+          <Dropdown
+            id="projectName"
+            titleText="Project Name"
+            label="Select a project"
+            items={projects}
+            itemToString={(item) => (item ? item.text : "")}
+            selectedItem={projects.find((p) => p.text === formData.projectName)}
+            onChange={({ selectedItem }) =>
+              handleChange("projectName", selectedItem?.text || "")
+            }
+          />
 
-        <NumberInput
-          id="lowStockThreshold"
-          label={<FormattedMessage id="catalog.item.lowStockThreshold" />}
-          value={formData.lowStockThreshold ?? 0}
-          onChange={(e, { value }) =>
-            handleChange("lowStockThreshold", value ?? 0)
-          }
-          min={0}
-          max={999999}
-        />
-
-        {/* Type-specific fields */}
-        {formData.itemType === "REAGENT" && (
-          <>
-            <NumberInput
-              id="stabilityAfterOpening"
-              label={
-                <FormattedMessage id="catalog.item.stabilityAfterOpening" />
+          <Dropdown
+            id="units"
+            titleText={intl.formatMessage({ id: "catalog.item.units" })}
+            label="Select a unit"
+            items={unitOptions}
+            itemToString={(item) => (item ? item.text : "")}
+            selectedItem={unitOptions.find((u) => u.id === formData.units)}
+            onChange={({ selectedItem }) => {
+              if (selectedItem?.id === "__add_new__") {
+                setShowNewUnitModal(true);
+              } else {
+                handleChange("units", selectedItem?.id || "");
               }
-              helperText="Days until reagent expires after opening"
-              value={formData.stabilityAfterOpening ?? 0}
-              onChange={(e, { value }) =>
-                handleChange("stabilityAfterOpening", value ?? 0)
-              }
-              min={1}
-              max={365}
-              required
-            />
+            }}
+          />
 
-            <TextArea
-              id="dilutionNotes"
-              labelText={<FormattedMessage id="catalog.item.dilutionNotes" />}
-              value={formData.dilutionNotes}
-              onChange={(e) => handleChange("dilutionNotes", e.target.value)}
-              placeholder="e.g., Dilute 1:10 with distilled water"
-              rows={2}
-            />
+          <NumberInput
+            id="lowStockThreshold"
+            label={<FormattedMessage id="catalog.item.lowStockThreshold" />}
+            value={formData.lowStockThreshold ?? 0}
+            onChange={(e, { value }) =>
+              handleChange("lowStockThreshold", value ?? 0)
+            }
+            min={0}
+            max={999999}
+          />
 
-            <TextArea
-              id="storageRequirements"
-              labelText={
-                <FormattedMessage id="catalog.item.storageRequirements" />
-              }
-              value={formData.storageRequirements}
-              onChange={(e) =>
-                handleChange("storageRequirements", e.target.value)
-              }
-              placeholder="e.g., Store at 2-8°C, protect from light"
-              rows={2}
-            />
-          </>
-        )}
-
-        {formData.itemType === "CARTRIDGE" && (
-          <>
-            <TextInput
-              id="compatibleAnalyzers"
-              labelText={
-                <FormattedMessage id="catalog.item.compatibleAnalyzers" />
-              }
-              value={formData.compatibleAnalyzers}
-              onChange={(e) =>
-                handleChange("compatibleAnalyzers", e.target.value)
-              }
-              placeholder="e.g., GeneXpert, Cobas 6800"
-              required
-            />
-
-            <RadioButtonGroup
-              legendText={
-                <FormattedMessage id="catalog.item.calibrationRequired" />
-              }
-              name="calibrationRequired"
-              valueSelected={formData.calibrationRequired}
-              onChange={(value) => handleChange("calibrationRequired", value)}
-            >
-              <RadioButton labelText="Yes" value="Y" id="calibration-yes" />
-              <RadioButton labelText="No" value="N" id="calibration-no" />
-            </RadioButtonGroup>
-          </>
-        )}
-
-        {formData.itemType === "RDT" && (
-          <>
-            <NumberInput
-              id="testsPerKit"
-              label={<FormattedMessage id="catalog.item.testsPerKit" />}
-              helperText="Number of individual tests in this kit"
-              value={formData.testsPerKit ?? 0}
-              onChange={(e, { value }) =>
-                handleChange("testsPerKit", value ?? 0)
-              }
-              min={1}
-              max={1000}
-              required
-            />
-
-            <RadioButtonGroup
-              legendText={
-                <FormattedMessage id="catalog.item.individualTracking" />
-              }
-              name="individualTracking"
-              valueSelected={formData.individualTracking}
-              onChange={(value) => handleChange("individualTracking", value)}
-            >
-              <RadioButton
-                labelText="Yes - Track each test individually"
-                value="Y"
-                id="tracking-yes"
+          {/* Type-specific fields */}
+          {formData.itemType === "REAGENT" && (
+            <>
+              <NumberInput
+                id="stabilityAfterOpening"
+                label={
+                  <FormattedMessage id="catalog.item.stabilityAfterOpening" />
+                }
+                helperText="Days until reagent expires after opening"
+                value={formData.stabilityAfterOpening ?? 0}
+                onChange={(e, { value }) =>
+                  handleChange("stabilityAfterOpening", value ?? 0)
+                }
+                min={1}
+                max={365}
+                required
               />
-              <RadioButton
-                labelText="No - Track kit as whole"
-                value="N"
-                id="tracking-no"
+
+              <TextArea
+                id="dilutionNotes"
+                labelText={<FormattedMessage id="catalog.item.dilutionNotes" />}
+                value={formData.dilutionNotes}
+                onChange={(e) => handleChange("dilutionNotes", e.target.value)}
+                placeholder="e.g., Dilute 1:10 with distilled water"
+                rows={2}
               />
-            </RadioButtonGroup>
-          </>
-        )}
 
-        {(formData.itemType === "HIV_KIT" ||
-          formData.itemType === "SYPHILIS_KIT") && (
-          <>
-            <TextInput
-              id="sourceOrganization"
-              labelText={
-                <FormattedMessage id="catalog.item.sourceOrganization" />
-              }
-              value={formData.sourceOrganization}
-              onChange={(e) =>
-                handleChange("sourceOrganization", e.target.value)
-              }
-              placeholder="e.g., WHO, CDC, PEPFAR"
-              required
-            />
+              <TextArea
+                id="storageRequirements"
+                labelText={
+                  <FormattedMessage id="catalog.item.storageRequirements" />
+                }
+                value={formData.storageRequirements}
+                onChange={(e) =>
+                  handleChange("storageRequirements", e.target.value)
+                }
+                placeholder="e.g., Store at 2-8°C, protect from light"
+                rows={2}
+              />
+            </>
+          )}
 
-            <TextInput
-              id="kitTestType"
-              labelText={<FormattedMessage id="catalog.item.kitTestType" />}
-              value={formData.kitTestType}
-              onChange={(e) => handleChange("kitTestType", e.target.value)}
-              placeholder={
-                formData.itemType === "HIV_KIT"
-                  ? "e.g., HIV-1/2"
-                  : "e.g., RPR, TPHA"
-              }
-              required
-            />
+          {formData.itemType === "CARTRIDGE" && (
+            <>
+              <TextInput
+                id="compatibleAnalyzers"
+                labelText={
+                  <FormattedMessage id="catalog.item.compatibleAnalyzers" />
+                }
+                value={formData.compatibleAnalyzers}
+                onChange={(e) =>
+                  handleChange("compatibleAnalyzers", e.target.value)
+                }
+                placeholder="e.g., GeneXpert, Cobas 6800"
+                required
+              />
 
-            <NumberInput
-              id="testsPerKit"
-              label={<FormattedMessage id="catalog.item.testsPerKit" />}
-              helperText="Number of individual tests in this kit"
-              value={formData.testsPerKit ?? 0}
-              onChange={(e, { value }) =>
-                handleChange("testsPerKit", value ?? 0)
-              }
-              min={1}
-              max={1000}
-              required
-            />
-          </>
-        )}
-      </Stack>
-    </Modal>
+              <RadioButtonGroup
+                legendText={
+                  <FormattedMessage id="catalog.item.calibrationRequired" />
+                }
+                name="calibrationRequired"
+                valueSelected={formData.calibrationRequired}
+                onChange={(value) => handleChange("calibrationRequired", value)}
+              >
+                <RadioButton labelText="Yes" value="Y" id="calibration-yes" />
+                <RadioButton labelText="No" value="N" id="calibration-no" />
+              </RadioButtonGroup>
+            </>
+          )}
+
+          {formData.itemType === "RDT" && (
+            <>
+              <NumberInput
+                id="testsPerKit"
+                label={<FormattedMessage id="catalog.item.testsPerKit" />}
+                helperText="Number of individual tests in this kit"
+                value={formData.testsPerKit ?? 0}
+                onChange={(e, { value }) =>
+                  handleChange("testsPerKit", value ?? 0)
+                }
+                min={1}
+                max={1000}
+                required
+              />
+
+              <RadioButtonGroup
+                legendText={
+                  <FormattedMessage id="catalog.item.individualTracking" />
+                }
+                name="individualTracking"
+                valueSelected={formData.individualTracking}
+                onChange={(value) => handleChange("individualTracking", value)}
+              >
+                <RadioButton
+                  labelText="Yes - Track each test individually"
+                  value="Y"
+                  id="tracking-yes"
+                />
+                <RadioButton
+                  labelText="No - Track kit as whole"
+                  value="N"
+                  id="tracking-no"
+                />
+              </RadioButtonGroup>
+            </>
+          )}
+
+          {(formData.itemType === "HIV_KIT" ||
+            formData.itemType === "SYPHILIS_KIT") && (
+            <>
+              <TextInput
+                id="sourceOrganization"
+                labelText={
+                  <FormattedMessage id="catalog.item.sourceOrganization" />
+                }
+                value={formData.sourceOrganization}
+                onChange={(e) =>
+                  handleChange("sourceOrganization", e.target.value)
+                }
+                placeholder="e.g., WHO, CDC, PEPFAR"
+                required
+              />
+
+              <TextInput
+                id="kitTestType"
+                labelText={<FormattedMessage id="catalog.item.kitTestType" />}
+                value={formData.kitTestType}
+                onChange={(e) => handleChange("kitTestType", e.target.value)}
+                placeholder={
+                  formData.itemType === "HIV_KIT"
+                    ? "e.g., HIV-1/2"
+                    : "e.g., RPR, TPHA"
+                }
+                required
+              />
+
+              <NumberInput
+                id="testsPerKit"
+                label={<FormattedMessage id="catalog.item.testsPerKit" />}
+                helperText="Number of individual tests in this kit"
+                value={formData.testsPerKit ?? 0}
+                onChange={(e, { value }) =>
+                  handleChange("testsPerKit", value ?? 0)
+                }
+                min={1}
+                max={1000}
+                required
+              />
+            </>
+          )}
+        </Stack>
+      </Modal>
+
+      {/* New Unit Creation Modal */}
+      <Modal
+        open={showNewUnitModal}
+        onRequestClose={() => {
+          setShowNewUnitModal(false);
+          setNewUnitName("");
+        }}
+        modalHeading="Add New Unit of Measure"
+        primaryButtonText="Create Unit"
+        secondaryButtonText="Cancel"
+        onRequestSubmit={handleCreateNewUnit}
+        size="sm"
+      >
+        <div style={{ marginBottom: "1rem" }}>
+          <p style={{ marginBottom: "1rem" }}>
+            Enter a new unit of measure to add to the standardized list.
+          </p>
+          <TextInput
+            id="newUnitName"
+            labelText="Unit Name"
+            placeholder="e.g., mg, liters, vials"
+            value={newUnitName}
+            onChange={(e) => setNewUnitName(e.target.value)}
+            helperText="Enter the unit abbreviation or name (e.g., mL, tests, kits)"
+          />
+        </div>
+      </Modal>
+    </>
   );
 };
 

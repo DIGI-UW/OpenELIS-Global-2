@@ -48,7 +48,7 @@
     "yup": "^0.29.2"
   },
   "scripts": {
-    "start": "GENERATE_SOURCEMAP=false HTTPS=true react-scripts start",
+    "start": "GENERATE_SOURCEMAP=false HTTPS=true FAST_REFRESH=false react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "test:unit": "react-scripts test",

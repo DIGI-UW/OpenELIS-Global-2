@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add 'room' to all location type constraints -->
+    <!-- Support for room-level storage assignment without specific device/shelf/rack/box -->
+    <changeSet id="add-room-location-type" author="storage-hierarchy-update">
+        <comment>
+            Add 'room' as a valid location type to support room-level storage assignment.
+            Some laboratories need to assign samples directly to room level when specific
+            storage equipment (device/shelf/rack/box) is not required or not available.
+            This completes the full storage hierarchy support: room > device > shelf > rack > box.
+            Updates constraints on both sample_storage_assignment and sample_storage_movement tables.
+        </comment>
+
+        <!-- Fix sample_storage_assignment constraint -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_location_type_valid
+            CHECK (location_type IS NULL OR location_type IN ('room', 'device', 'shelf', 'rack', 'box', 'general'));
+        </sql>
+
+        <!-- Fix sample_storage_movement new_location_type constraint -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_new_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_new_location_type_valid
+            CHECK (
+                new_location_type IS NULL OR
+                new_location_type IN ('room', 'device', 'shelf', 'rack', 'box', 'general')
+            );
+        </sql>
+
+        <!-- Fix sample_storage_movement previous_location_type constraint -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_previous_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_previous_location_type_valid
+            CHECK (
+                previous_location_type IS NULL OR
+                previous_location_type IN ('room', 'device', 'shelf', 'rack', 'box', 'general')
+            );
+        </sql>
+
+        <!-- Fix sample_storage_movement has_location constraint to support room-level -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_movement_has_location;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_movement_has_location
+            CHECK (
+                (previous_location_id IS NOT NULL AND previous_location_type IS NOT NULL) OR
+                (new_location_id IS NOT NULL AND new_location_type IS NOT NULL) OR
+                (new_location_type = 'general') OR
+                (new_location_type = 'room')
+            );
+        </sql>
+
+        <rollback>
+            <!-- Restore constraints without 'room' -->
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                ADD CONSTRAINT chk_location_type_valid
+                CHECK (location_type IS NULL OR location_type IN ('device', 'shelf', 'rack', 'box', 'general'));
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_new_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_new_location_type_valid
+                CHECK (
+                    new_location_type IS NULL OR
+                    new_location_type IN ('device', 'shelf', 'rack', 'box', 'general')
+                );
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_previous_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_previous_location_type_valid
+                CHECK (
+                    previous_location_type IS NULL OR
+                    previous_location_type IN ('device', 'shelf', 'rack', 'box', 'general')
+                );
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_movement_has_location;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_movement_has_location
+                CHECK (
+                    (previous_location_id IS NOT NULL AND previous_location_type IS NOT NULL) OR
+                    (new_location_id IS NOT NULL AND new_location_type IS NOT NULL) OR
+                    (new_location_type = 'general')
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

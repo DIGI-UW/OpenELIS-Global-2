@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Drop legacy storage_location_id from inventory_lot -->
+    <!-- Now that inventory uses the unified storage hierarchy (room > device > shelf > rack > box) -->
+    <!-- the legacy inventory_storage_location reference is no longer needed -->
+    <changeSet id="drop-legacy-storage-location-from-inventory-lot" author="storage-unification">
+        <comment>
+            Drop the legacy storage_location_id column and foreign key from inventory_lot table.
+            Inventory lots now use the unified storage hierarchy via location_id and location_type
+            fields added in changeset 035-inventory-unified-storage-location.xml.
+        </comment>
+
+        <!-- Drop the foreign key constraint first -->
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            DROP CONSTRAINT IF EXISTS fk_inventory_lot_storage_location;
+        </sql>
+
+        <!-- Drop the legacy column -->
+        <dropColumn tableName="inventory_lot" schemaName="clinlims" columnName="storage_location_id"/>
+
+        <rollback>
+            <addColumn tableName="inventory_lot" schemaName="clinlims">
+                <column name="storage_location_id" type="BIGINT">
+                    <constraints nullable="true"/>
+                </column>
+            </addColumn>
+            <sql>
+                ALTER TABLE clinlims.inventory_lot
+                ADD CONSTRAINT fk_inventory_lot_storage_location
+                FOREIGN KEY (storage_location_id)
+                REFERENCES clinlims.inventory_storage_location(id);
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Drop the entire inventory_storage_location table -->
+    <!-- This table is no longer needed since inventory now uses the unified storage hierarchy -->
+    <changeSet id="drop-inventory-storage-location-table" author="storage-unification">
+        <comment>
+            Drop the legacy inventory_storage_location table.
+            Inventory now uses the unified storage hierarchy (storage_room, storage_device,
+            storage_shelf, storage_rack, storage_box) via polymorphic location_id and location_type.
+        </comment>
+
+        <dropTable tableName="inventory_storage_location" schemaName="clinlims"/>
+
+        <rollback>
+            <createTable tableName="inventory_storage_location" schemaName="clinlims">
+                <column name="id" type="BIGINT" autoIncrement="true">
+                    <constraints primaryKey="true" nullable="false"/>
+                </column>
+                <column name="name" type="VARCHAR(100)">
+                    <constraints nullable="false"/>
+                </column>
+                <column name="description" type="VARCHAR(500)"/>
+                <column name="location_type" type="VARCHAR(50)"/>
+                <column name="capacity" type="INTEGER"/>
+                <column name="is_active" type="BOOLEAN" defaultValueBoolean="true"/>
+                <column name="parent_location_id" type="BIGINT"/>
+                <column name="lastupdated" type="TIMESTAMP"/>
+            </createTable>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

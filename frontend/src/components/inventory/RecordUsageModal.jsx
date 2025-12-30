@@ -9,9 +9,15 @@ import {
   Dropdown,
   InlineNotification,
   Loading,
+  DatePicker,
+  DatePickerInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { InventoryManagementAPI, InventoryLotAPI } from "./InventoryService";
+import {
+  InventoryManagementAPI,
+  InventoryLotAPI,
+  InventoryItemAPI,
+} from "./InventoryService";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
@@ -21,6 +27,7 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
     quantityUsed: 1,
     testResultId: "",
     notes: "",
+    openingDate: new Date(), // Default to today for opening the lot
   });
 
   const [saving, setSaving] = useState(false);
@@ -36,9 +43,39 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
   const [loadingLots, setLoadingLots] = useState(false);
   const [fefoRecommendation, setFefoRecommendation] = useState(null);
 
+  // Unit name lookup map
+  const [unitMap, setUnitMap] = useState({});
+
   // Determine mode: lot mode (existing) vs item mode (FEFO)
   const isItemMode = !!item && !lot;
   const activeLot = isItemMode ? selectedLot : lot;
+
+  // Fetch unit options for display
+  useEffect(() => {
+    if (!open) return;
+
+    const fetchUnits = async () => {
+      try {
+        const unitsData = await InventoryItemAPI.getUnitOptions();
+        const unitLookup = {};
+        unitsData.forEach((unit) => {
+          // Use String() to ensure consistent key types for lookup
+          unitLookup[String(unit.id)] = unit.text;
+        });
+        setUnitMap(unitLookup);
+      } catch (error) {
+        console.error("Error fetching unit options:", error);
+      }
+    };
+
+    fetchUnits();
+  }, [open]);
+
+  // Helper to get unit name from unit ID
+  const getUnitName = (unitId) => {
+    if (!unitId) return "units";
+    return unitMap[String(unitId)] || unitId;
+  };
 
   // Fetch FEFO-sorted lots when in item mode
   useEffect(() => {
@@ -97,6 +134,11 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
     return expDate < today;
   };
 
+  // Check if the lot needs to be opened (no dateOpened set)
+  const lotNeedsOpening = (lot) => {
+    return lot && !lot.dateOpened;
+  };
+
   const searchAccessionNumbers = useCallback((query) => {
     if (!query || query.length < 2) {
       setSearchResults([]);
@@ -143,6 +185,36 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
       return false;
     }
 
+    // Validate opening date if lot needs opening
+    if (lotNeedsOpening(activeLot) && formData.openingDate) {
+      const openingDate = new Date(formData.openingDate);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      if (openingDate > today) {
+        setError(
+          intl.formatMessage({
+            id: "usage.error.openingDateFuture",
+            defaultMessage: "Opening date cannot be in the future",
+          }),
+        );
+        return false;
+      }
+
+      if (
+        activeLot.receiptDate &&
+        openingDate < new Date(activeLot.receiptDate)
+      ) {
+        setError(
+          intl.formatMessage({
+            id: "usage.error.openingDateBeforeReceipt",
+            defaultMessage: "Opening date cannot be before receipt date",
+          }),
+        );
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -159,6 +231,14 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
     setError(null);
 
     try {
+      // If the lot needs opening, open it first
+      if (lotNeedsOpening(activeLot) && formData.openingDate) {
+        await InventoryLotAPI.open(
+          activeLot.id,
+          formData.openingDate.toISOString(),
+        );
+      }
+
       await InventoryManagementAPI.consume({
         itemId: String(activeLot.inventoryItem.id),
         quantity: formData.quantityUsed,
@@ -171,6 +251,7 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
         quantityUsed: 1,
         testResultId: "",
         notes: "",
+        openingDate: new Date(),
       });
       setOverrideConfirmed(false);
 
@@ -202,6 +283,7 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
       quantityUsed: 1,
       testResultId: "",
       notes: "",
+      openingDate: new Date(),
     });
     setError(null);
     setOverrideConfirmed(false);
@@ -339,7 +421,8 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
                 </FormLabel>
                 <p>
                   <strong>
-                    {lot.currentQuantity} {lot.inventoryItem?.units || "units"}
+                    {lot.currentQuantity}{" "}
+                    {getUnitName(lot.inventoryItem?.units)}
                   </strong>
                 </p>
               </div>
@@ -355,7 +438,7 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
               <p>
                 <strong>
                   {selectedLot.currentQuantity}{" "}
-                  {selectedLot.inventoryItem?.units || "units"}
+                  {getUnitName(selectedLot.inventoryItem?.units)}
                 </strong>
               </p>
             </div>
@@ -373,6 +456,29 @@ const RecordUsageModal = ({ open, onClose, onSave, lot, item }) => {
             helperText={intl.formatMessage({ id: "usage.quantityUsed.helper" })}
             disabled={!activeLot}
           />
+
+          {/* Opening Date - only shown if the lot hasn't been opened yet */}
+          {activeLot && lotNeedsOpening(activeLot) && (
+            <DatePicker
+              datePickerType="single"
+              value={formData.openingDate}
+              onChange={([date]) => handleChange("openingDate", date)}
+            >
+              <DatePickerInput
+                id="openingDate"
+                labelText={intl.formatMessage({
+                  id: "lot.dateOpened",
+                  defaultMessage: "Opening Date",
+                })}
+                placeholder="mm/dd/yyyy"
+                helperText={intl.formatMessage({
+                  id: "usage.openingDate.helper",
+                  defaultMessage:
+                    "This lot has not been opened yet. Set the opening date to mark it as in use.",
+                })}
+              />
+            </DatePicker>
+          )}
 
           <ComboBox
             id="testResultId"
