@@ -1,16 +1,32 @@
 import config from "../../config.json";
 
-export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
+export const getFromOpenElisServer = (
+  endPoint,
+  callback,
+  errorCallback = null,
+  signal = null,
+) => {
+  // Handle legacy calls where third parameter might be signal or errorCallback
+  if (
+    typeof errorCallback === "object" &&
+    errorCallback instanceof AbortSignal
+  ) {
+    // Third parameter is signal (new style)
+    signal = errorCallback;
+    errorCallback = null;
+  }
+  const fetchOptions = {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "GET",
+  };
 
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "GET",
-      signal: signal,
-    },
-  )
+  // Only add signal if it's a valid AbortSignal
+  if (signal && signal instanceof AbortSignal) {
+    fetchOptions.signal = signal;
+  }
+
+  fetch(config.serverBaseUrl + endPoint, fetchOptions)
     .then((response) => {
       console.debug("checking response");
       // if (response.url.includes("LoginPage")) {
@@ -29,6 +45,11 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
       // Don't log AbortError - it's expected when component unmounts
       if (error.name !== "AbortError") {
         console.error(error);
+      }
+
+      // Call error callback if provided
+      if (errorCallback && typeof errorCallback === "function") {
+        errorCallback(error);
       }
     });
 };

@@ -639,54 +639,104 @@ function PharmaceuticalStoragePage({
 
   // Handle storage assignment
   const handleAssignStorage = () => {
-    if (!storageSelection.box) {
+    // Validate at least room selection (minimum required level - all levels are optional after room)
+    if (!storageSelection.room) {
       setError(
         intl.formatMessage({
-          id: "notebook.pharma.storage.selectBox",
-          defaultMessage: "Please select a storage box.",
+          id: "notebook.pharma.storage.selectRoom",
+          defaultMessage: "Please select at least a storage room.",
         }),
       );
       return;
     }
-    if (!selectedCondition) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.storage.selectCondition",
-          defaultMessage: "Please select a storage condition.",
-        }),
-      );
-      return;
-    }
-    if (Object.keys(wellAssignments).length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.pharma.storage.noWellAssignments",
-          defaultMessage:
-            "Please assign samples to wells using Auto-Populate or click on wells.",
-        }),
-      );
-      return;
+
+    // Storage condition is optional for hierarchy-level assignments
+
+    // Validation depends on whether box is selected
+    if (storageSelection.box) {
+      // Box-level assignment: require well assignments
+      if (Object.keys(wellAssignments).length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.pharma.storage.noWellAssignments",
+            defaultMessage:
+              "Please assign samples to wells using Auto-Populate or click on wells.",
+          }),
+        );
+        return;
+      }
+    } else {
+      // Hierarchy-level assignment: require sample selection
+      if (selectedSampleIds.length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.pharma.storage.noSampleSelection",
+            defaultMessage: "Please select samples to assign to storage.",
+          }),
+        );
+        return;
+      }
     }
 
     setAssigning(true);
     setError(null);
 
-    const wellAssignmentsForBackend = {};
-    Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
-      wellAssignmentsForBackend[sampleId] = wellCoord;
-    });
-
+    let payload;
     const nbId = notebookId || entryId;
-    const payload = {
-      sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
-      boxId: storageSelection.box.id,
-      wellAssignments: wellAssignmentsForBackend,
-      condition: selectedCondition.id,
-      retentionYears: retentionYears,
-      reassign: isReassignment,
-      // Note: NOT including pageId so samples are marked IN_PROGRESS, not COMPLETED
-      // Mark Complete button should be used to complete samples after storage assignment
-    };
+
+    if (storageSelection.box) {
+      // Box-level assignment with well coordinates
+      const wellAssignmentsForBackend = {};
+      Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
+        wellAssignmentsForBackend[sampleId] = wellCoord;
+      });
+
+      payload = {
+        sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
+        boxId: storageSelection.box.id,
+        wellAssignments: wellAssignmentsForBackend,
+        condition: selectedCondition?.id || null,
+        retentionYears: retentionYears,
+        reassign: isReassignment,
+        // Note: NOT including pageId so samples are marked IN_PROGRESS, not COMPLETED
+        // Mark Complete button should be used to complete samples after storage assignment
+      };
+    } else {
+      // Hierarchy-level assignment without box/well coordinates
+      // Determine the most specific level selected
+      let locationType = "room";
+      let locationId = storageSelection.room?.id;
+
+      if (storageSelection.rack && storageSelection.rack.id) {
+        locationType = "rack";
+        locationId = storageSelection.rack.id;
+      } else if (storageSelection.shelf && storageSelection.shelf.id) {
+        locationType = "shelf";
+        locationId = storageSelection.shelf.id;
+      } else if (storageSelection.device && storageSelection.device.id) {
+        locationType = "device";
+        locationId = storageSelection.device.id;
+      }
+
+      // Log for debugging if locationId is undefined
+      if (!locationId) {
+        console.warn(
+          "Storage assignment: locationId is undefined. storageSelection:",
+          JSON.stringify(storageSelection),
+        );
+      }
+
+      payload = {
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        boxId: null, // No box selected - use hierarchy-level storage
+        condition: selectedCondition?.id || null,
+        retentionYears: retentionYears,
+        reassign: isReassignment,
+        locationId: locationId ? locationId.toString() : null,
+        locationType: locationType,
+        storageNotes: `Pharmaceutical ${locationType}-level storage: ${getHierarchicalPath()}`,
+      };
+    }
 
     postToOpenElisServerJsonResponse(
       `/rest/notebook/${nbId}/samples/assign-storage`,
@@ -694,7 +744,18 @@ function PharmaceuticalStoragePage({
       (response) => {
         setAssigning(false);
 
-        if (response && response.success) {
+        const assignedCount =
+          response?.assignedCount ||
+          (storageSelection.box
+            ? Object.keys(wellAssignments).length
+            : selectedSampleIds.length);
+        const hasErrors =
+          response?.errors &&
+          Array.isArray(response.errors) &&
+          response.errors.length > 0;
+
+        // Check for success
+        if (response && (response.success || assignedCount > 0)) {
           const messageId = isReassignment
             ? "notebook.pharma.storage.reassignSuccess"
             : "notebook.pharma.storage.assignSuccess";
@@ -705,12 +766,15 @@ function PharmaceuticalStoragePage({
           setSuccess(
             intl.formatMessage(
               { id: messageId, defaultMessage: defaultMessage },
-              {
-                count:
-                  response.assignedCount || Object.keys(wellAssignments).length,
-              },
+              { count: assignedCount },
             ),
           );
+
+          if (hasErrors) {
+            setError(
+              `Some samples could not be assigned: ${response.errors.join("; ")}`,
+            );
+          }
           setIsReassignment(false);
           setStorageModalOpen(false);
           setSelectedSampleIds([]);
@@ -1442,9 +1506,9 @@ function PharmaceuticalStoragePage({
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !storageSelection.box ||
-          !selectedCondition ||
-          Object.keys(wellAssignments).length === 0 ||
+          !storageSelection.room ||
+          (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
+          (!storageSelection.box && selectedSampleIds.length === 0) ||
           assigning
         }
         size="lg"
@@ -1526,14 +1590,24 @@ function PharmaceuticalStoragePage({
                     color: "#525252",
                   }}
                 >
-                  <FormattedMessage
-                    id="notebook.pharma.storage.assignmentSummary"
-                    defaultMessage="{assigned} of {total} samples assigned to wells"
-                    values={{
-                      assigned: Object.keys(wellAssignments).length,
-                      total: selectedSampleIds.length,
-                    }}
-                  />
+                  {storageSelection.box ? (
+                    <FormattedMessage
+                      id="notebook.pharma.storage.assignmentSummary"
+                      defaultMessage="{assigned} of {total} samples assigned to wells"
+                      values={{
+                        assigned: Object.keys(wellAssignments).length,
+                        total: selectedSampleIds.length,
+                      }}
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="notebook.pharma.storage.shelfAssignmentSummary"
+                      defaultMessage="{total} samples selected for shelf-level storage"
+                      values={{
+                        total: selectedSampleIds.length,
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             ) : (
@@ -1572,7 +1646,7 @@ function PharmaceuticalStoragePage({
               id="storage-condition-dropdown"
               titleText={intl.formatMessage({
                 id: "notebook.pharma.storage.condition",
-                defaultMessage: "Storage Condition *",
+                defaultMessage: "Storage Condition (Optional)",
               })}
               label={intl.formatMessage({
                 id: "notebook.pharma.storage.selectCondition",

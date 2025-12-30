@@ -996,9 +996,12 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
-        if (request.getBoxId() == null) {
+        // Box ID is now optional - some labs may not use rack/box hierarchy
+        // but they may still want to track storage locations
+        if (request.getBoxId() == null
+                && (request.getWellAssignments() != null && !request.getWellAssignments().isEmpty())) {
             Map<String, Object> error = new HashMap<>();
-            error.put("error", "Box ID is required for storage assignment");
+            error.put("error", "Box ID is required when using well assignments");
             return ResponseEntity.badRequest().body(error);
         }
 
@@ -1071,7 +1074,7 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         if (request.getBoxId() == null) {
             Map<String, Object> error = new HashMap<>();
-            error.put("error", "Box ID is required for auto-assignment");
+            error.put("error", "Box ID is required for auto-assignment to well coordinates");
             return ResponseEntity.badRequest().body(error);
         }
 

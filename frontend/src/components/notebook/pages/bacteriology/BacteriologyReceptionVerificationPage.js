@@ -1034,7 +1034,7 @@ function BacteriologyReceptionVerificationPage({
         })}
         onRequestSubmit={handleBulkApply}
         onSecondarySubmit={() => setBulkApplyModalOpen(false)}
-        size="lg"
+        size="md"
         primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
         danger={bulkApplyValues.qcResult === "Fail"}
       >
@@ -1207,7 +1207,7 @@ function BacteriologyReceptionVerificationPage({
             <div className="qc-decision-buttons">
               <Button
                 kind={bulkApplyValues.qcResult === "Pass" ? "primary" : "ghost"}
-                size="lg"
+                size="md"
                 renderIcon={Checkmark}
                 onClick={() =>
                   setBulkApplyValues((prev) => ({
@@ -1227,7 +1227,7 @@ function BacteriologyReceptionVerificationPage({
               </Button>
               <Button
                 kind={bulkApplyValues.qcResult === "Fail" ? "danger" : "ghost"}
-                size="lg"
+                size="md"
                 renderIcon={WarningAlt}
                 onClick={() =>
                   setBulkApplyValues((prev) => ({
@@ -1247,7 +1247,7 @@ function BacteriologyReceptionVerificationPage({
               className={`qc-result-indicator ${bulkApplyValues.qcResult === "Pass" ? "pass" : bulkApplyValues.qcResult === "Fail" ? "fail" : ""}`}
             >
               {bulkApplyValues.qcResult === "Pass" && (
-                <Tag type="green" size="lg">
+                <Tag type="green" size="md">
                   <Checkmark size={16} style={{ marginRight: "0.5rem" }} />
                   <FormattedMessage
                     id="notebook.bacteriology.qc.resultPass"
@@ -1256,7 +1256,7 @@ function BacteriologyReceptionVerificationPage({
                 </Tag>
               )}
               {bulkApplyValues.qcResult === "Fail" && (
-                <Tag type="red" size="lg">
+                <Tag type="red" size="md">
                   <WarningAlt size={16} style={{ marginRight: "0.5rem" }} />
                   <FormattedMessage
                     id="notebook.bacteriology.qc.resultFail"
@@ -1265,7 +1265,7 @@ function BacteriologyReceptionVerificationPage({
                 </Tag>
               )}
               {!bulkApplyValues.qcResult && (
-                <Tag type="gray" size="lg">
+                <Tag type="gray" size="md">
                   <FormattedMessage
                     id="notebook.bacteriology.qc.resultPending"
                     defaultMessage="Select Pass or Fail to continue"

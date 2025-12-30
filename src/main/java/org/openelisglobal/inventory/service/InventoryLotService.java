@@ -22,11 +22,6 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     List<InventoryLot> getByInventoryItemId(Long itemId);
 
     /**
-     * Get lots by storage location ID
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId);
-
-    /**
      * Get lots expiring within specified days
      */
     List<InventoryLot> getExpiringLots(int daysFromNow);
@@ -114,4 +109,32 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * EXPIRED Returns count of lots updated
      */
     int processExpiredLots();
+
+    /**
+     * Update lot storage location using the unified storage hierarchy. Supports
+     * assignment at any level: room, device, shelf, rack, box.
+     *
+     * @param lotId              The lot ID
+     * @param locationId         The location ID (storage_room.id,
+     *                           storage_device.id, etc.)
+     * @param locationType       The type of location ('room', 'device', 'shelf',
+     *                           'rack', 'box')
+     * @param positionCoordinate Optional position within the location (e.g., well
+     *                           coordinate)
+     * @param storagePath        The hierarchical path string (e.g., "Room A >
+     *                           Freezer 1 > Shelf 2")
+     * @param sysUserId          The user performing the action
+     * @return The updated lot
+     */
+    InventoryLot updateStorageLocation(Long lotId, Integer locationId, String locationType, String positionCoordinate,
+            String storagePath, String sysUserId);
+
+    /**
+     * Get lots by unified storage location (room, device, shelf, rack, or box)
+     *
+     * @param locationId   The location ID
+     * @param locationType The location type
+     * @return List of lots at the specified location
+     */
+    List<InventoryLot> getByUnifiedLocation(Integer locationId, String locationType);
 }

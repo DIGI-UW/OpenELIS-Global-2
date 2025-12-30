@@ -288,6 +288,7 @@ echo -e "${GREEN}Racks inserted.${NC}"
 echo -e "${YELLOW}Inserting storage boxes...${NC}"
 execute_sql <<'EOF'
 -- Storage Boxes (gridded containers within racks)
+-- Note: No ON CONFLICT clause due to deferrable unique constraints in storage_box table
 INSERT INTO storage_box (id, fhir_uuid, label, type, rows, columns, position_schema_hint, short_code, active, parent_rack_id, sys_user_id, last_updated)
 VALUES
     -- 96-well plates in Ultra-Low Freezer 1, Rack 1000
@@ -357,8 +358,7 @@ VALUES
 
     -- Receiving queue boxes, Rack 5001
     (50010, gen_random_uuid(), 'Queue Box 1', '9x9', 9, 9, 'number-number', 'Q1', true, 5001, '1', NOW()),
-    (50011, gen_random_uuid(), 'Queue Box 2', '9x9', 9, 9, 'number-number', 'Q2', true, 5001, '1', NOW())
-ON CONFLICT DO NOTHING;
+    (50011, gen_random_uuid(), 'Queue Box 2', '9x9', 9, 9, 'number-number', 'Q2', true, 5001, '1', NOW());
 EOF
 echo -e "${GREEN}Boxes inserted.${NC}"
 

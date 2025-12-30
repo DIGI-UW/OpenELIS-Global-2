@@ -1,7 +1,6 @@
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
   postToOpenElisServerForBlob,
 } from "../utils/Utils";
 import config from "../../config.json";
@@ -131,6 +130,42 @@ export const InventoryItemAPI = {
   deactivate: (id) => put(`/items/${id}/deactivate`, {}),
 
   activate: (id) => put(`/items/${id}/activate`, {}),
+
+  getUnitOptions: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer("/rest/UomCreate", (response) => {
+        if (response && response.existingUomList) {
+          const formattedUnits = response.existingUomList.map((unit) => ({
+            id: unit.id || unit.unitOfMeasureName || unit.value,
+            text:
+              unit.value || unit.unitOfMeasureName || unit.text || String(unit),
+          }));
+          resolve(formattedUnits);
+        } else {
+          resolve([]);
+        }
+      });
+    });
+  },
+
+  createUnitOfMeasure: (unitName) => {
+    return new Promise((resolve, reject) => {
+      postToOpenElisServerJsonResponse(
+        "/rest/UomCreate",
+        JSON.stringify({ uomEnglishName: unitName }),
+        (response) => {
+          if (response && response.error) {
+            reject(new Error(response.message || response.error));
+          } else {
+            resolve(response);
+          }
+        },
+        (error) => {
+          reject(error);
+        },
+      );
+    });
+  },
 };
 
 export const InventoryLotAPI = {
@@ -148,7 +183,11 @@ export const InventoryLotAPI = {
 
   getByItem: (itemId) => get(`/lots/item/${itemId}`),
 
-  getByLocation: (locationId) => get(`/lots/location/${locationId}`),
+  // Get lots by unified storage location (room, device, shelf, rack, or box)
+  getByUnifiedLocation: (locationId, locationType) =>
+    get(
+      `/lots/unified-location?locationId=${locationId}&locationType=${locationType}`,
+    ),
 
   getExpiring: (days = 30) => get(`/lots/expiring?days=${days}`),
 
@@ -229,150 +268,6 @@ export const InventoryAuditLogAPI = {
   getStatistics: () => get(`/audit-logs/statistics`),
 };
 
-export const StorageLocationAPI = {
-  getAll: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer("/rest/inventory-storage-locations", (response) => {
-        if (response) {
-          resolve(response);
-        } else {
-          reject(new Error("Failed to fetch storage locations"));
-        }
-      });
-    });
-  },
-
-  getById: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch storage location"));
-          }
-        },
-      );
-    });
-  },
-
-  getTopLevel: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        "/rest/inventory-storage-locations/top-level",
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch top-level locations"));
-          }
-        },
-      );
-    });
-  },
-
-  getChildren: async (parentId) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${parentId}/children`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch child locations"));
-          }
-        },
-      );
-    });
-  },
-
-  getPath: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/path`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch location path"));
-          }
-        },
-      );
-    });
-  },
-
-  hasActiveLots: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/has-active-lots`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to check active lots"));
-          }
-        },
-      );
-    });
-  },
-
-  create: async (location) => {
-    return new Promise((resolve, reject) => {
-      postToOpenElisServerJsonResponse(
-        "/rest/inventory-storage-locations",
-        JSON.stringify(location),
-        (json) => {
-          if (json && (json.status >= 400 || json.statusCode >= 400)) {
-            reject(
-              new Error(
-                json.message ||
-                  json.error ||
-                  `Request failed with status ${json.status || json.statusCode}`,
-              ),
-            );
-          } else {
-            resolve(json);
-          }
-        },
-        null,
-      );
-    });
-  },
-
-  update: async (id, location) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        JSON.stringify(location),
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
-          } else {
-            reject(new Error(`Failed to update location: HTTP ${status}`));
-          }
-        },
-      );
-    });
-  },
-
-  deactivate: async (id) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/deactivate`,
-        "{}",
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
-          } else {
-            reject(new Error(`Failed to deactivate location: HTTP ${status}`));
-          }
-        },
-      );
-    });
-  },
-};
-
 export const TransactionAPI = {
   getById: (id) => get(`/transactions/${id}`),
   getByLot: (lotId) => get(`/transactions/lot/${lotId}`),
@@ -441,6 +336,47 @@ export const ReportsAPI = {
           reject(error);
         },
       );
+    });
+  },
+};
+
+export const NotebookDataAPI = {
+  getNotebooks: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer(
+        "/rest/notebook/dashboard/notebooks",
+        (response) => {
+          if (response && response.error) {
+            reject(new Error(response.message || response.error));
+          } else {
+            resolve(response || []);
+          }
+        },
+      );
+    });
+  },
+
+  getOrganizations: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer("/rest/notebook/organizations", (response) => {
+        if (response && response.error) {
+          reject(new Error(response.message || response.error));
+        } else {
+          resolve(response || []);
+        }
+      });
+    });
+  },
+
+  getDepartments: () => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer("/rest/notebook/departments", (response) => {
+        if (response && response.error) {
+          reject(new Error(response.message || response.error));
+        } else {
+          resolve(response || []);
+        }
+      });
     });
   },
 };

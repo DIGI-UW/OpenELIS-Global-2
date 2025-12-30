@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Fix movement constraints to support 'general' location type -->
+    <!-- For shelf-level storage without specific rack/box entities -->
+    <changeSet id="fix-movement-constraints-for-general" author="shelf-storage-movement">
+        <comment>
+            Fix sample_storage_movement constraints to support 'general' location type.
+            This allows shelf-level storage assignment where location_id can be NULL
+            for general storage but location_type is 'general'.
+        </comment>
+
+        <!-- Drop and recreate chk_movement_has_location to allow general storage -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_movement_has_location;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_movement_has_location
+            CHECK (
+                (previous_location_id IS NOT NULL AND previous_location_type IS NOT NULL) OR
+                (new_location_id IS NOT NULL AND new_location_type IS NOT NULL) OR
+                (new_location_type = 'general')
+            );
+        </sql>
+
+        <!-- Drop and recreate chk_new_location_type_valid to include 'general' -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_new_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_new_location_type_valid
+            CHECK (
+                new_location_type IS NULL OR
+                new_location_type IN ('device', 'shelf', 'rack', 'box', 'general')
+            );
+        </sql>
+
+        <!-- Also fix previous location type constraint for completeness -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            DROP CONSTRAINT IF EXISTS chk_previous_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_movement
+            ADD CONSTRAINT chk_previous_location_type_valid
+            CHECK (
+                previous_location_type IS NULL OR
+                previous_location_type IN ('device', 'shelf', 'rack', 'box', 'general')
+            );
+        </sql>
+
+        <rollback>
+            <!-- Restore original constraints without 'general' support -->
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_movement_has_location;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_movement_has_location
+                CHECK (
+                    (previous_location_id IS NOT NULL AND previous_location_type IS NOT NULL) OR
+                    (new_location_id IS NOT NULL AND new_location_type IS NOT NULL)
+                );
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_new_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_new_location_type_valid
+                CHECK (
+                    new_location_type IS NULL OR
+                    new_location_type IN ('device', 'shelf', 'rack', 'box')
+                );
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                DROP CONSTRAINT IF EXISTS chk_previous_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_movement
+                ADD CONSTRAINT chk_previous_location_type_valid
+                CHECK (
+                    previous_location_type IS NULL OR
+                    previous_location_type IN ('device', 'shelf', 'rack', 'box')
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

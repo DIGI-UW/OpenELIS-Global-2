@@ -13,6 +13,7 @@ import {
   TableToolbarSearch,
   Button,
   Dropdown,
+  Search,
   OverflowMenu,
   OverflowMenuItem,
   Pagination,
@@ -46,6 +47,7 @@ const InventoryCatalog = () => {
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [unitMap, setUnitMap] = useState({}); // Unit ID to name mapping
   const [itemTypes, setItemTypes] = useState([
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
   ]);
@@ -118,8 +120,23 @@ const InventoryCatalog = () => {
   }, [intl]);
 
   useEffect(() => {
+    fetchUnits();
     fetchItems();
   }, [typeFilter, statusFilter]);
+
+  const fetchUnits = async () => {
+    try {
+      const unitsData = await InventoryItemAPI.getUnitOptions();
+      const unitLookup = {};
+      unitsData.forEach((unit) => {
+        // Use String() to ensure consistent key types for lookup
+        unitLookup[String(unit.id)] = unit.text;
+      });
+      setUnitMap(unitLookup);
+    } catch (error) {
+      console.error("Error fetching unit options:", error);
+    }
+  };
 
   const getItemTypeLabel = (type) => {
     const labels = {
@@ -128,6 +145,8 @@ const InventoryCatalog = () => {
       CARTRIDGE: "Analyzer Cartridge",
       HIV_KIT: "HIV Test Kit",
       SYPHILIS_KIT: "Syphilis Test Kit",
+      ENZYME: "Enzyme",
+      ANTIBIOTICS: "Antibiotics",
     };
     return labels[type] || type;
   };
@@ -186,14 +205,20 @@ const InventoryCatalog = () => {
     page * pageSize,
   );
 
-  const rows = paginatedItems.map((item) => ({
-    id: String(item.id),
-    name: item.name,
-    itemType: item.itemType,
-    units: item.units,
-    lowStockThreshold: item.lowStockThreshold || "-",
-    status: item.isActive ? "Active" : "Inactive",
-  }));
+  const rows = paginatedItems.map((item) => {
+    // Get unit name from unit map using the unit ID
+    const unitId = item.units;
+    const unitsDisplay = unitMap[unitId] || unitId || "";
+
+    return {
+      id: String(item.id),
+      name: item.name,
+      itemType: item.itemType,
+      units: unitsDisplay,
+      lowStockThreshold: item.lowStockThreshold || "-",
+      status: item.isActive ? "Active" : "Inactive",
+    };
+  });
 
   const handleItemSaved = () => {
     setItemModalOpen(false);
@@ -268,6 +293,57 @@ const InventoryCatalog = () => {
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
+
+      {/* Filters Section - Outside DataTable to prevent dropdown overlap */}
+      <div className="inventory-filters-section">
+        <div className="inventory-filters-container">
+          <div className="filter-group">
+            <Search
+              placeholder={intl.formatMessage({
+                id: "catalog.search.placeholder",
+              })}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchTerm}
+              size="md"
+            />
+
+            <Dropdown
+              id="type-filter"
+              titleText=""
+              label={intl.formatMessage({ id: "inventory.filter.type" })}
+              items={itemTypes}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={itemTypes.find((t) => t.id === typeFilter)}
+              onChange={({ selectedItem }) => setTypeFilter(selectedItem.id)}
+              size="md"
+            />
+
+            <Dropdown
+              id="status-filter"
+              titleText=""
+              label={intl.formatMessage({ id: "inventory.filter.status" })}
+              items={statusOptions}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={statusOptions.find((s) => s.id === statusFilter)}
+              onChange={({ selectedItem }) => setStatusFilter(selectedItem.id)}
+              size="md"
+            />
+          </div>
+
+          <div className="action-buttons-group">
+            <Button
+              renderIcon={Add}
+              onClick={() => {
+                setSelectedItem(null);
+                setItemModalOpen(true);
+              }}
+            >
+              <FormattedMessage id="inventory.addItem.button" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <DataTable rows={rows} headers={headers} isSortable>
         {({
           rows,
@@ -278,56 +354,6 @@ const InventoryCatalog = () => {
           getTableContainerProps,
         }) => (
           <TableContainer title="" description="" {...getTableContainerProps()}>
-            <TableToolbar>
-              <TableToolbarContent>
-                <TableToolbarSearch
-                  placeholder={intl.formatMessage({
-                    id: "catalog.search.placeholder",
-                  })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  value={searchTerm}
-                />
-
-                <Dropdown
-                  id="type-filter"
-                  titleText=""
-                  label={intl.formatMessage({ id: "inventory.filter.type" })}
-                  items={itemTypes}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
-
-                <Dropdown
-                  id="status-filter"
-                  titleText=""
-                  label={intl.formatMessage({ id: "inventory.filter.status" })}
-                  items={statusOptions}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
-
-                <Button
-                  renderIcon={Add}
-                  onClick={() => {
-                    setSelectedItem(null);
-                    setItemModalOpen(true);
-                  }}
-                >
-                  <FormattedMessage id="inventory.addItem.button" />
-                </Button>
-              </TableToolbarContent>
-            </TableToolbar>
-
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
@@ -378,9 +404,11 @@ const InventoryCatalog = () => {
                                 <OverflowMenu
                                   size="sm"
                                   flipped
-                                  ariaLabel={intl.formatMessage({
-                                    id: "label.button.action",
-                                  })}
+                                  aria-label={
+                                    intl?.formatMessage({
+                                      id: "label.button.action",
+                                    }) || "Actions"
+                                  }
                                 >
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({

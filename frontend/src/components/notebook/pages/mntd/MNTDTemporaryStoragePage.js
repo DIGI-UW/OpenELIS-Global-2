@@ -270,7 +270,8 @@ function MNTDTemporaryStoragePage({
 
     // Check if any selected samples already have storage
     const alreadyAssigned = samples.filter(
-      (s) => selectedSampleIds.includes(s.id) && s.storageWell,
+      (s) =>
+        selectedSampleIds.includes(s.id) && (s.storageWell || s.storagePath),
     );
 
     if (alreadyAssigned.length > 0) {
@@ -384,21 +385,35 @@ function MNTDTemporaryStoragePage({
 
   // Handle bulk storage assignment (unified modal submit)
   const handleAssignStorage = useCallback(() => {
-    if (!storageSelection.box) {
+    // Validate at least room selection (minimum required level - all levels are optional after room)
+    if (!storageSelection.room) {
       setError(
         intl.formatMessage({
-          id: "notebook.mntd.storage.selectBox",
-          defaultMessage: "Please select a storage box.",
+          id: "notebook.mntd.storage.selectRoom",
+          defaultMessage: "Please select at least a storage room.",
         }),
       );
       return;
     }
-    if (Object.keys(wellAssignments).length === 0) {
+
+    // Check if box is selected and requires well assignments
+    if (storageSelection.box && Object.keys(wellAssignments).length === 0) {
       setError(
         intl.formatMessage({
           id: "notebook.mntd.storage.noWellAssignments",
           defaultMessage:
             "Please assign samples to wells using Auto-Populate or click on wells.",
+        }),
+      );
+      return;
+    }
+
+    // Check if no box selected but no samples selected for hierarchy-level assignment
+    if (!storageSelection.box && selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.mntd.storage.noSamplesSelected",
+          defaultMessage: "Please select samples to assign to storage.",
         }),
       );
       return;
@@ -425,21 +440,67 @@ function MNTDTemporaryStoragePage({
       .filter(Boolean)
       .join(" > ");
 
-    // Prepare the data to apply - using wellAssignments for individual sample placements
-    const assignData = {
-      sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
-      boxId: storageSelection.box?.id,
-      wellAssignments: wellAssignments,
-      reassign: isReassignment,
-      data: {
-        storageRoom: storageSelection.room?.label,
-        storageFreezer: storageSelection.device?.label,
-        storageRack: storageSelection.rack?.label,
-        storageBox: storageSelection.box?.label,
-        storagePath: storagePath,
-        assignedDateTime: new Date().toISOString(),
-      },
-    };
+    // Prepare the data to apply - handle both box-level and shelf-level storage
+    let assignData;
+
+    if (storageSelection.box) {
+      // Box-level assignment with well coordinates
+      assignData = {
+        sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
+        boxId: storageSelection.box.id,
+        wellAssignments: wellAssignments,
+        reassign: isReassignment,
+        data: {
+          storageRoom: storageSelection.room?.label,
+          storageFreezer: storageSelection.device?.label,
+          storageRack: storageSelection.rack?.label,
+          storageBox: storageSelection.box?.label,
+          storagePath: storagePath,
+          assignedDateTime: new Date().toISOString(),
+        },
+      };
+    } else {
+      // Hierarchy-level assignment without box/well coordinates
+      // Determine the most specific level selected
+      let locationType = "room";
+      let locationId = storageSelection.room?.id;
+
+      if (storageSelection.rack && storageSelection.rack.id) {
+        locationType = "rack";
+        locationId = storageSelection.rack.id;
+      } else if (storageSelection.shelf && storageSelection.shelf.id) {
+        locationType = "shelf";
+        locationId = storageSelection.shelf.id;
+      } else if (storageSelection.device && storageSelection.device.id) {
+        locationType = "device";
+        locationId = storageSelection.device.id;
+      }
+
+      // Log for debugging if locationId is undefined
+      if (!locationId) {
+        console.warn(
+          "Storage assignment: locationId is undefined. storageSelection:",
+          JSON.stringify(storageSelection),
+        );
+      }
+
+      assignData = {
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        boxId: null,
+        reassign: isReassignment,
+        data: {
+          storageRoom: storageSelection.room?.label,
+          storageFreezer: storageSelection.device?.label,
+          storageShelf: storageSelection.shelf?.label,
+          storagePath: storagePath,
+          assignedDateTime: new Date().toISOString(),
+          // Send location information for proper hierarchical path building
+          locationId: locationId,
+          locationType: locationType,
+          notes: `MNTD ${locationType}-level storage: ${storagePath}`,
+        },
+      };
+    }
 
     postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/storage`,
@@ -447,7 +508,10 @@ function MNTDTemporaryStoragePage({
       (response) => {
         setIsAssigning(false);
         const assignedCount =
-          response?.assignedCount || Object.keys(wellAssignments).length;
+          response?.assignedCount ||
+          (storageSelection.box
+            ? Object.keys(wellAssignments).length
+            : selectedSampleIds.length);
         const hasErrors =
           response?.errors &&
           Array.isArray(response.errors) &&
@@ -503,6 +567,7 @@ function MNTDTemporaryStoragePage({
     storageSelection,
     wellAssignments,
     isReassignment,
+    selectedSampleIds,
     intl,
     loadPageSamples,
     loadBoxOccupancy,
@@ -524,7 +589,9 @@ function MNTDTemporaryStoragePage({
     const selectedSamples = samples.filter((s) =>
       selectedSampleIds.includes(s.id),
     );
-    const missingStorage = selectedSamples.filter((s) => !s.storageWell);
+    const missingStorage = selectedSamples.filter(
+      (s) => !s.storageWell && !s.storagePath,
+    );
     if (missingStorage.length > 0) {
       setError(
         `${missingStorage.length} sample(s) are missing storage assignment. Please assign storage first.`,
@@ -575,8 +642,12 @@ function MNTDTemporaryStoragePage({
   ]);
 
   // Calculate stats
-  const storedCount = samples.filter((s) => s.storageWell).length;
-  const pendingCount = samples.filter((s) => !s.storageWell).length;
+  const storedCount = samples.filter(
+    (s) => s.storageWell || s.storagePath,
+  ).length;
+  const pendingCount = samples.filter(
+    (s) => !s.storageWell && !s.storagePath,
+  ).length;
   const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
 
   // Calculate preview wells for auto-assignment
@@ -616,10 +687,15 @@ function MNTDTemporaryStoragePage({
 
   // Get storage status tag
   const getStorageTag = (sample) => {
-    if (sample.status === "COMPLETED" && sample.storageWell) {
+    // Check if sample has any storage assignment (well-level or shelf-level)
+    const hasStorageAssignment = sample.storageWell || sample.storagePath;
+
+    if (sample.status === "COMPLETED" && hasStorageAssignment) {
+      const displayLocation =
+        sample.storageWell || (sample.storagePath ? "Shelf-level" : "Storage");
       return (
         <Tag type="green" renderIcon={Checkmark} title={sample.storagePath}>
-          {sample.storageWell} (
+          {displayLocation} (
           <FormattedMessage
             id="notebook.status.sentToNext"
             defaultMessage="Sent"
@@ -628,10 +704,12 @@ function MNTDTemporaryStoragePage({
         </Tag>
       );
     }
-    if (sample.storageWell) {
+    if (hasStorageAssignment) {
+      const displayLocation =
+        sample.storageWell || (sample.storagePath ? "Shelf-level" : "Storage");
       return (
         <Tag type="cyan" renderIcon={Archive} title={sample.storagePath}>
-          {sample.storageWell} (
+          {displayLocation} (
           <FormattedMessage
             id="notebook.status.inProgress"
             defaultMessage="In Progress"
@@ -915,8 +993,9 @@ function MNTDTemporaryStoragePage({
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !storageSelection.box ||
-          Object.keys(wellAssignments).length === 0 ||
+          !storageSelection.room ||
+          (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
+          (!storageSelection.box && selectedSampleIds.length === 0) ||
           isAssigning
         }
         size="lg"
@@ -944,7 +1023,7 @@ function MNTDTemporaryStoragePage({
                 onSelectionChange={handleStorageSelectionChange}
                 entryId={entryId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
-                boxRequired={true}
+                boxRequired={false}
                 showPath={true}
               />
             </div>
@@ -1076,7 +1155,10 @@ function MNTDTemporaryStoragePage({
             <ul style={{ marginTop: "0.5rem", paddingLeft: "1.5rem" }}>
               {samplesToReassign.map((sample) => (
                 <li key={sample.id} style={{ fontSize: "0.875rem" }}>
-                  <strong>{sample.externalId}</strong>: {sample.storageWell}
+                  <strong>{sample.externalId}</strong>:{" "}
+                  {sample.storageWell ||
+                    sample.storagePath ||
+                    "Storage assigned"}
                   {sample.storageCondition && ` (${sample.storageCondition})`}
                 </li>
               ))}

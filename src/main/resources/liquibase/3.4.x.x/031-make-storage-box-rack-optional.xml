@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Make parent_rack_id nullable in storage_box table to support optional rack/box structure -->
+    <changeSet id="storage-031-make-box-rack-optional" author="pharmaceutical-lab-feedback">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="storage_box"/>
+            <columnExists tableName="storage_box" columnName="parent_rack_id"/>
+        </preConditions>
+
+        <!-- First drop the foreign key constraint -->
+        <dropForeignKeyConstraint baseTableName="storage_box" constraintName="fk_box_rack"/>
+
+        <!-- Drop unique constraint that includes parent_rack_id -->
+        <dropUniqueConstraint tableName="storage_box" constraintName="uk_box_label_in_rack"/>
+
+        <!-- Modify column to be nullable -->
+        <modifyDataType tableName="storage_box" columnName="parent_rack_id" newDataType="numeric(10,0)"/>
+        <dropNotNullConstraint tableName="storage_box" columnName="parent_rack_id"/>
+
+        <!-- Re-add foreign key constraint but now nullable -->
+        <addForeignKeyConstraint baseTableName="storage_box"
+                               baseColumnNames="parent_rack_id"
+                               constraintName="fk_box_rack"
+                               referencedTableName="storage_rack"
+                               referencedColumnNames="id"
+                               onDelete="CASCADE"/>
+
+        <!-- Add new unique constraint that allows for null parent_rack_id -->
+        <!-- This ensures label uniqueness within a rack when parent_rack_id is not null -->
+        <!-- and allows multiple boxes with same label when parent_rack_id is null -->
+        <sql>
+            ALTER TABLE clinlims.storage_box
+            ADD CONSTRAINT uk_box_label_in_rack_nullable
+            UNIQUE (parent_rack_id, label)
+            DEFERRABLE INITIALLY DEFERRED;
+        </sql>
+
+        <!-- Add constraint to ensure box has either parent_rack_id or is clearly standalone -->
+        <sql>
+            ALTER TABLE clinlims.storage_box
+            ADD CONSTRAINT chk_box_hierarchy_valid
+            CHECK (
+                parent_rack_id IS NOT NULL OR
+                label IS NOT NULL
+            );
+        </sql>
+
+        <rollback>
+            <sql>ALTER TABLE clinlims.storage_box DROP CONSTRAINT IF EXISTS chk_box_hierarchy_valid;</sql>
+            <sql>ALTER TABLE clinlims.storage_box DROP CONSTRAINT IF EXISTS uk_box_label_in_rack_nullable;</sql>
+            <dropForeignKeyConstraint baseTableName="storage_box" constraintName="fk_box_rack"/>
+            <addNotNullConstraint tableName="storage_box" columnName="parent_rack_id"/>
+            <addForeignKeyConstraint baseTableName="storage_box"
+                                   baseColumnNames="parent_rack_id"
+                                   constraintName="fk_box_rack"
+                                   referencedTableName="storage_rack"
+                                   referencedColumnNames="id"
+                                   onDelete="CASCADE"/>
+            <addUniqueConstraint tableName="storage_box"
+                columnNames="parent_rack_id, label"
+                constraintName="uk_box_label_in_rack"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

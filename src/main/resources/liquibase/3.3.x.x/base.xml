@@ -38,4 +38,6 @@
   <include relativeToChangelogFile="true" file="020-seed-inventory-reagents.xml"/>
   <include relativeToChangelogFile="true" file="021-increase-inventory-quantities.xml"/>
   <include relativeToChangelogFile="true" file="020-register-inventory-audit-trail.xml"/>
+  <include relativeToChangelogFile="true" file="022-update-inventory-with-project-names.xml"/>
+  <include relativeToChangelogFile="true" file="023-add-inventory-item-version.xml"/>
 </databaseChangeLog>

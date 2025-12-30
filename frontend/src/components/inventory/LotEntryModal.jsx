@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Modal,
   TextInput,
@@ -8,17 +8,14 @@ import {
   DatePickerInput,
   FormLabel,
   Stack,
-  Button,
 } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryItemAPI,
   InventoryLotAPI,
   InventoryManagementAPI,
-  StorageLocationAPI,
 } from "./InventoryService";
-import StorageLocationFormModal from "./StorageLocationFormModal";
+import StorageHierarchySelector from "../notebook/workflow/StorageHierarchySelector";
 
 const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const intl = useIntl();
@@ -28,21 +25,27 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     inventoryItem: null,
     lotNumber: "",
     currentQuantity: 0,
+    unitSize: "",
     expirationDate: null,
     receiptDate: new Date(),
-    storageLocation: null,
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
   });
 
+  // Unified storage hierarchy selection state
+  const [storageSelection, setStorageSelection] = useState({
+    room: null,
+    device: null,
+    shelf: null,
+    rack: null,
+    box: null,
+  });
+
   const [items, setItems] = useState([]);
-  const [locations, setLocations] = useState([]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-
-  const [locationModalOpen, setLocationModalOpen] = useState(false);
 
   const qcStatusOptions = [
     { id: "PENDING", text: "Pending" },
@@ -59,7 +62,6 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   useEffect(() => {
     fetchItems();
-    fetchLocations();
   }, []);
 
   useEffect(() => {
@@ -68,15 +70,17 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         inventoryItem: lot.inventoryItem,
         lotNumber: lot.lotNumber || "",
         currentQuantity: lot.currentQuantity || 0,
+        unitSize: lot.unitSize || "",
         expirationDate: lot.expirationDate
           ? new Date(lot.expirationDate)
           : null,
         receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : new Date(),
-        storageLocation: lot.storageLocation,
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",
       });
+      // Note: For editing, we would need to load the storage hierarchy
+      // based on lot.locationId and lot.locationType if available
     }
   }, [lot]);
 
@@ -97,57 +101,41 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     }
   };
 
-  // Build hierarchical location tree with indentation
-  const flattenLocationTree = (locations) => {
-    const rootLocations = locations.filter((loc) => !loc.parentLocation);
+  // Handle storage hierarchy selection change
+  const handleStorageSelectionChange = useCallback((selection) => {
+    setStorageSelection(selection);
+    setError(null);
+  }, []);
 
-    const flattenNode = (location, depth = 0) => {
-      const children = locations.filter(
-        (loc) => loc.parentLocation?.id === location.id,
-      );
-
-      const indent = "\u00A0\u00A0".repeat(depth); // Non-breaking spaces
-      const prefix = depth > 0 ? "├─ " : "";
-
-      return [
-        {
-          id: location.id,
-          text: `${indent}${prefix}${location.name}`,
-          location: location,
-          depth: depth,
-        },
-        ...children.flatMap((child) => flattenNode(child, depth + 1)),
-      ];
-    };
-
-    return rootLocations.flatMap((loc) => flattenNode(loc));
+  // Build storage path from selection
+  const buildStoragePath = () => {
+    const parts = [];
+    if (storageSelection.room) parts.push(storageSelection.room.label);
+    if (storageSelection.device) parts.push(storageSelection.device.label);
+    if (storageSelection.shelf) parts.push(storageSelection.shelf.label);
+    if (storageSelection.rack) parts.push(storageSelection.rack.label);
+    if (storageSelection.box) parts.push(storageSelection.box.label);
+    return parts.join(" > ");
   };
 
-  const fetchLocations = async () => {
-    try {
-      const allLocations = await StorageLocationAPI.getAll();
-      const validLocations = Array.isArray(allLocations) ? allLocations : [];
-
-      // Build hierarchical tree with indentation
-      const hierarchicalLocations = flattenLocationTree(validLocations);
-
-      setLocations(hierarchicalLocations);
-    } catch (err) {
-      console.error("Error fetching locations:", err);
-      setLocations([]);
+  // Get the most specific location selected
+  const getLocationInfo = () => {
+    if (storageSelection.box && storageSelection.box.id) {
+      return { locationId: storageSelection.box.id, locationType: "box" };
     }
-  };
-
-  const handleLocationCreated = async (locationData) => {
-    try {
-      const newLocation = await StorageLocationAPI.create(locationData);
-      setLocationModalOpen(false);
-      await fetchLocations();
-      handleChange("storageLocation", newLocation);
-    } catch (err) {
-      console.error("Error creating storage location:", err);
-      setError("Failed to create storage location");
+    if (storageSelection.rack && storageSelection.rack.id) {
+      return { locationId: storageSelection.rack.id, locationType: "rack" };
     }
+    if (storageSelection.shelf && storageSelection.shelf.id) {
+      return { locationId: storageSelection.shelf.id, locationType: "shelf" };
+    }
+    if (storageSelection.device && storageSelection.device.id) {
+      return { locationId: storageSelection.device.id, locationType: "device" };
+    }
+    if (storageSelection.room && storageSelection.room.id) {
+      return { locationId: storageSelection.room.id, locationType: "room" };
+    }
+    return { locationId: null, locationType: null };
   };
 
   const handleChange = (field, value) => {
@@ -176,8 +164,16 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       return false;
     }
 
-    if (!formData.storageLocation) {
-      setError("Please select a storage location");
+    if (!formData.unitSize?.trim()) {
+      setError(
+        "Unit size is required (e.g., 50 mL, 100 tests, 1 test per strip)",
+      );
+      return false;
+    }
+
+    // Validate storage selection - at minimum a room must be selected
+    if (!storageSelection.room) {
+      setError("Please select a storage location (at least a room)");
       return false;
     }
 
@@ -191,28 +187,44 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     setError(null);
 
     try {
+      const locationInfo = getLocationInfo();
+      const storagePath = buildStoragePath();
+
       if (isEdit) {
+        // Update lot with unified storage location
         await InventoryLotAPI.update(lot.id, {
           ...formData,
           inventoryItem: formData.inventoryItem,
-          storageLocation: formData.storageLocation,
+          unitSize: formData.unitSize,
+          barcode: formData.barcode || null,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
+          // New unified storage fields
+          locationId: locationInfo.locationId,
+          locationType: locationInfo.locationType,
+          storagePath: storagePath,
+          // Clear legacy storage location
+          storageLocation: null,
         });
       } else {
+        // Create new lot with unified storage location
         await InventoryManagementAPI.receive({
           inventoryItem: { id: formData.inventoryItem.id },
           lotNumber: formData.lotNumber,
           currentQuantity: formData.currentQuantity,
           initialQuantity: formData.currentQuantity,
+          unitSize: formData.unitSize,
           expirationDate: formData.expirationDate
             ? formData.expirationDate.toISOString()
             : null,
           receiptDate: formData.receiptDate.toISOString(),
-          storageLocation: { id: formData.storageLocation.id },
           qcStatus: formData.qcStatus,
           status: formData.status,
           barcode: formData.barcode || null,
+          // New unified storage fields
+          locationId: locationInfo.locationId,
+          locationType: locationInfo.locationType,
+          storagePath: storagePath,
         });
       }
       onSave();
@@ -225,167 +237,203 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   };
 
   return (
-    <>
-      <Modal
-        open={open}
-        onRequestClose={onClose}
-        onRequestSubmit={handleSave}
-        modalHeading={intl.formatMessage({
-          id: isEdit ? "lot.form.title.edit" : "lot.form.title.add",
-        })}
-        primaryButtonText={intl.formatMessage({ id: "button.save" })}
-        secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-        primaryButtonDisabled={saving}
-        size="md"
-      >
-        <Stack gap={5}>
-          {error && (
-            <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
-          )}
+    <Modal
+      open={open}
+      onRequestClose={onClose}
+      onRequestSubmit={handleSave}
+      modalHeading={intl.formatMessage({
+        id: isEdit ? "lot.form.title.edit" : "lot.form.title.add",
+        defaultMessage: isEdit ? "Edit Lot" : "Add New Lot",
+      })}
+      primaryButtonText={intl.formatMessage({
+        id: "button.save",
+        defaultMessage: "Save",
+      })}
+      secondaryButtonText={intl.formatMessage({
+        id: "button.cancel",
+        defaultMessage: "Cancel",
+      })}
+      primaryButtonDisabled={saving}
+      size="lg"
+    >
+      <Stack gap={5}>
+        {error && (
+          <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>
+        )}
 
-          <Dropdown
-            id="inventoryItem"
-            titleText={<FormattedMessage id="lot.selectItem" />}
-            label="Select catalog item"
-            items={items}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={
-              formData.inventoryItem
-                ? items.find((i) => i.id === formData.inventoryItem.id)
-                : null
+        <Dropdown
+          id="inventoryItem"
+          titleText={
+            <FormattedMessage
+              id="lot.selectItem"
+              defaultMessage="Catalog Item"
+            />
+          }
+          label="Select catalog item"
+          items={items}
+          itemToString={(item) => (item ? item.text : "")}
+          selectedItem={
+            formData.inventoryItem
+              ? items.find((i) => i.id === formData.inventoryItem.id)
+              : null
+          }
+          onChange={({ selectedItem }) =>
+            handleChange("inventoryItem", selectedItem.item)
+          }
+          required
+          disabled={isEdit}
+        />
+
+        <TextInput
+          id="lotNumber"
+          labelText={
+            <FormattedMessage id="lot.number" defaultMessage="Lot Number" />
+          }
+          value={formData.lotNumber}
+          onChange={(e) => handleChange("lotNumber", e.target.value)}
+          required
+        />
+
+        <NumberInput
+          id="currentQuantity"
+          label={
+            <FormattedMessage
+              id="lot.initialQuantity"
+              defaultMessage="Initial Quantity"
+            />
+          }
+          value={formData.currentQuantity}
+          onChange={(e, { value }) => handleChange("currentQuantity", value)}
+          min={0}
+          max={999999999}
+          step={1}
+          required
+        />
+
+        <TextInput
+          id="unitSize"
+          labelText="Unit Size *"
+          helperText="Size/volume of each individual unit (e.g., 50 mL per bottle, 1 test per strip)"
+          value={formData.unitSize}
+          onChange={(e) => handleChange("unitSize", e.target.value)}
+          placeholder="e.g., 50 mL, 100 tests, 250 μL, 1 test"
+          required
+        />
+
+        <DatePicker
+          datePickerType="single"
+          value={formData.expirationDate}
+          onChange={([date]) => handleChange("expirationDate", date)}
+        >
+          <DatePickerInput
+            id="expirationDate"
+            labelText={
+              <FormattedMessage
+                id="lot.expirationDate"
+                defaultMessage="Expiration Date"
+              />
             }
-            onChange={({ selectedItem }) =>
-              handleChange("inventoryItem", selectedItem.item)
+            placeholder="mm/dd/yyyy"
+          />
+        </DatePicker>
+
+        <DatePicker
+          datePickerType="single"
+          value={formData.receiptDate}
+          onChange={([date]) => handleChange("receiptDate", date)}
+        >
+          <DatePickerInput
+            id="receiptDate"
+            labelText={
+              <FormattedMessage
+                id="lot.receiptDate"
+                defaultMessage="Receipt Date"
+              />
             }
-            required
-            disabled={isEdit}
+            placeholder="mm/dd/yyyy"
           />
+        </DatePicker>
 
-          <TextInput
-            id="lotNumber"
-            labelText={<FormattedMessage id="lot.number" />}
-            value={formData.lotNumber}
-            onChange={(e) => handleChange("lotNumber", e.target.value)}
-            required
-          />
-
-          <NumberInput
-            id="currentQuantity"
-            label={<FormattedMessage id="lot.initialQuantity" />}
-            value={formData.currentQuantity}
-            onChange={(e, { value }) => handleChange("currentQuantity", value)}
-            min={0}
-            max={999999999}
-            step={1}
-            required
-          />
-
-          <DatePicker
-            datePickerType="single"
-            value={formData.expirationDate}
-            onChange={([date]) => handleChange("expirationDate", date)}
+        {/* Unified Storage Hierarchy Selector */}
+        <div
+          style={{
+            backgroundColor: "#f4f4f4",
+            padding: "1rem",
+            borderRadius: "4px",
+            border: "1px solid #e0e0e0",
+          }}
+        >
+          <FormLabel
+            style={{
+              marginBottom: "0.75rem",
+              display: "block",
+              fontWeight: "600",
+            }}
           >
-            <DatePickerInput
-              id="expirationDate"
-              labelText={<FormattedMessage id="lot.expirationDate" />}
-              placeholder="mm/dd/yyyy"
+            <FormattedMessage
+              id="lot.selectLocation"
+              defaultMessage="Storage Location"
             />
-          </DatePicker>
-
-          <DatePicker
-            datePickerType="single"
-            value={formData.receiptDate}
-            onChange={([date]) => handleChange("receiptDate", date)}
+            <span style={{ color: "#da1e28" }}> *</span>
+          </FormLabel>
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "#525252",
+              marginBottom: "1rem",
+            }}
           >
-            <DatePickerInput
-              id="receiptDate"
-              labelText={<FormattedMessage id="lot.receiptDate" />}
-              placeholder="mm/dd/yyyy"
+            <FormattedMessage
+              id="lot.selectLocation.helper"
+              defaultMessage="Select the storage hierarchy where this lot will be stored. You can assign at any level (room, device, shelf, rack, or box)."
             />
-          </DatePicker>
-
-          <div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-end",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <FormLabel>
-                <FormattedMessage id="lot.selectLocation" />
-                <span style={{ color: "#da1e28" }}> *</span>
-              </FormLabel>
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Add}
-                onClick={() => setLocationModalOpen(true)}
-              >
-                <FormattedMessage id="storage.location.add.button" />
-              </Button>
-            </div>
-            <Dropdown
-              id="storageLocation"
-              label="Select storage location"
-              items={locations}
-              itemToString={(item) => (item ? item.text : "")}
-              selectedItem={
-                formData.storageLocation
-                  ? locations.find((l) => l.id === formData.storageLocation.id)
-                  : null
-              }
-              onChange={({ selectedItem }) =>
-                handleChange("storageLocation", selectedItem.location)
-              }
-              required
-            />
-          </div>
-
-          <Dropdown
-            id="qcStatus"
-            titleText={<FormattedMessage id="lot.qcStatus" />}
-            label="Select QC status"
-            items={qcStatusOptions}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={qcStatusOptions.find(
-              (s) => s.id === formData.qcStatus,
-            )}
-            onChange={({ selectedItem }) =>
-              handleChange("qcStatus", selectedItem.id)
-            }
+          </p>
+          <StorageHierarchySelector
+            onSelectionChange={handleStorageSelectionChange}
+            boxRequired={false}
+            showPath={true}
           />
+        </div>
 
-          <Dropdown
-            id="status"
-            titleText={<FormattedMessage id="lot.status" />}
-            label="Select status"
-            items={statusOptions}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={statusOptions.find((s) => s.id === formData.status)}
-            onChange={({ selectedItem }) =>
-              handleChange("status", selectedItem.id)
-            }
-          />
+        <Dropdown
+          id="qcStatus"
+          titleText={
+            <FormattedMessage id="lot.qcStatus" defaultMessage="QC Status" />
+          }
+          label="Select QC status"
+          items={qcStatusOptions}
+          itemToString={(item) => (item ? item.text : "")}
+          selectedItem={qcStatusOptions.find((s) => s.id === formData.qcStatus)}
+          onChange={({ selectedItem }) =>
+            handleChange("qcStatus", selectedItem.id)
+          }
+        />
 
-          <TextInput
-            id="barcode"
-            labelText={<FormattedMessage id="lot.barcode" />}
-            value={formData.barcode}
-            onChange={(e) => handleChange("barcode", e.target.value)}
-            placeholder="Optional"
-          />
-        </Stack>
-      </Modal>
+        <Dropdown
+          id="status"
+          titleText={
+            <FormattedMessage id="lot.status" defaultMessage="Status" />
+          }
+          label="Select status"
+          items={statusOptions}
+          itemToString={(item) => (item ? item.text : "")}
+          selectedItem={statusOptions.find((s) => s.id === formData.status)}
+          onChange={({ selectedItem }) =>
+            handleChange("status", selectedItem.id)
+          }
+        />
 
-      <StorageLocationFormModal
-        isOpen={locationModalOpen}
-        onClose={() => setLocationModalOpen(false)}
-        onSubmit={handleLocationCreated}
-        mode="create"
-      />
-    </>
+        <TextInput
+          id="barcode"
+          labelText={
+            <FormattedMessage id="lot.barcode" defaultMessage="Barcode" />
+          }
+          value={formData.barcode}
+          onChange={(e) => handleChange("barcode", e.target.value)}
+          placeholder="Optional"
+        />
+      </Stack>
+    </Modal>
   );
 };
 
