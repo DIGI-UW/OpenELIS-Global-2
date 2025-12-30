@@ -934,65 +934,75 @@ function BacteriologyAssayTestExecutionPage({
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              externalId: sample.externalId,
-              accessionNumber: sample.accessionNumber,
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
-              collectionDate: sample.collectionDate,
-              status: sample.pageStatus || "PENDING",
-              patientName: sample.patientName,
-              // Test execution data
-              microscopyCompleted: sample.data?.microscopyCompleted,
-              gramStainResult: sample.data?.gramStainResult,
-              cultureCompleted: sample.data?.cultureCompleted,
-              biochemCompleted: sample.data?.biochemCompleted,
-              biochemQcResult: sample.data?.biochemQcResult,
-              biochemQcFailureReason: sample.data?.biochemQcFailureReason,
-              biochemQcPassed: sample.data?.biochemQcPassed,
-              presumptiveId: sample.data?.presumptiveId,
-              dstCompleted: sample.data?.dstCompleted,
-              dstMethod: sample.data?.dstMethod,
-              automatedIdCompleted: sample.data?.automatedIdCompleted,
-              organismIdentified: sample.data?.organismIdentified,
-              molecularCompleted: sample.data?.molecularCompleted,
-              pcrCompleted: sample.data?.pcrCompleted,
-              pcrAssayType: sample.data?.pcrAssayType,
-              pcrTarget: sample.data?.pcrTarget,
-              pcrResult: sample.data?.pcrResult,
-              pcrCtValue: sample.data?.pcrCtValue,
-              pcrPrimer: sample.data?.pcrPrimer,
-              pcrEnzyme: sample.data?.pcrEnzyme,
-              pcrGeneDetectionResults: sample.data?.pcrGeneDetectionResults,
-              pcrAttachments: sample.data?.pcrAttachments,
-              pcrRunId: sample.data?.pcrRunId,
-              pcrTestDate: sample.data?.pcrTestDate,
-              pcrPerformedBy: sample.data?.pcrPerformedBy,
-              pcrInstrument: sample.data?.pcrInstrument,
-              pcrControlResults: sample.data?.pcrControlResults,
-              pcrNotes: sample.data?.pcrNotes,
-              wgsCompleted: sample.data?.wgsCompleted,
-              extractionCompleted: sample.data?.extractionCompleted,
-              // Molecular QC data
-              molecularQcCompleted: sample.data?.molecularQcCompleted,
-              molecularQcDate: sample.data?.molecularQcDate,
-              molecularQcPerformedBy: sample.data?.molecularQcPerformedBy,
-              molecularQcOverallResult: sample.data?.molecularQcOverallResult,
-              molecularQcReagentChecks: sample.data?.molecularQcReagentChecks,
-              molecularQcEquipmentChecks:
-                sample.data?.molecularQcEquipmentChecks,
-              molecularQcSampleChecks: sample.data?.molecularQcSampleChecks,
-              molecularQcNotes: sample.data?.molecularQcNotes,
-              // Media reactions data (multiple media per sample)
-              mediaReactions: sample.data?.mediaReactions,
-              mediaReactionsCompleted: sample.data?.mediaReactionsCompleted,
-              mediaReactionsCount: sample.data?.mediaReactionsCount,
-              hasDstResults: sample.data?.hasDstResults,
-              // From previous pages
-              processingStatus: sample.data?.processingStatus,
-              sampleOrigin: sample.data?.sampleOrigin,
-              projectName: sample.data?.projectName,
-            }));
+            const transformedSamples = response.map((sample) => {
+              // Ensure data is an object, not a string
+              const data =
+                typeof sample.data === "string"
+                  ? JSON.parse(sample.data || "{}")
+                  : sample.data || {};
+
+              return {
+                id: String(sample.id || sample.sampleItemId),
+                externalId: sample.externalId,
+                accessionNumber: sample.accessionNumber,
+                sampleType:
+                  sample.sampleType || sample.typeOfSample?.description,
+                collectionDate: sample.collectionDate,
+                status: sample.pageStatus || "PENDING",
+                patientName: sample.patientName,
+                // Test execution data
+                microscopyCompleted: data.microscopyCompleted,
+                gramStainResult: data.gramStainResult,
+                cultureCompleted: data.cultureCompleted,
+                biochemCompleted: data.biochemCompleted,
+                biochemQcResult: data.biochemQcResult,
+                biochemQcFailureReason: data.biochemQcFailureReason,
+                biochemQcPassed: data.biochemQcPassed,
+                presumptiveId: data.presumptiveId,
+                dstCompleted: data.dstCompleted,
+                dstMethod: data.dstMethod,
+                automatedIdCompleted: data.automatedIdCompleted,
+                organismIdentified: data.organismIdentified,
+                molecularCompleted: data.molecularCompleted,
+                pcrCompleted: data.pcrCompleted,
+                pcrAssayType: data.pcrAssayType,
+                pcrTarget: data.pcrTarget,
+                pcrResult: data.pcrResult,
+                pcrCtValue: data.pcrCtValue,
+                pcrPrimer: data.pcrPrimer,
+                pcrEnzyme: data.pcrEnzyme,
+                pcrPrimerDirection: data.pcrPrimerDirection,
+                pcrPrimerType: data.pcrPrimerType,
+                pcrGeneDetectionResults: data.pcrGeneDetectionResults,
+                pcrAttachments: data.pcrAttachments,
+                pcrRunId: data.pcrRunId,
+                pcrTestDate: data.pcrTestDate,
+                pcrPerformedBy: data.pcrPerformedBy,
+                pcrInstrument: data.pcrInstrument,
+                pcrControlResults: data.pcrControlResults,
+                pcrNotes: data.pcrNotes,
+                wgsCompleted: data.wgsCompleted,
+                extractionCompleted: data.extractionCompleted,
+                // Molecular QC data
+                molecularQcCompleted: data.molecularQcCompleted,
+                molecularQcDate: data.molecularQcDate,
+                molecularQcPerformedBy: data.molecularQcPerformedBy,
+                molecularQcOverallResult: data.molecularQcOverallResult,
+                molecularQcReagentChecks: data.molecularQcReagentChecks,
+                molecularQcEquipmentChecks: data.molecularQcEquipmentChecks,
+                molecularQcSampleChecks: data.molecularQcSampleChecks,
+                molecularQcNotes: data.molecularQcNotes,
+                // Media reactions data (multiple media per sample)
+                mediaReactions: data.mediaReactions,
+                mediaReactionsCompleted: data.mediaReactionsCompleted,
+                mediaReactionsCount: data.mediaReactionsCount,
+                hasDstResults: data.hasDstResults,
+                // From previous pages
+                processingStatus: data.processingStatus,
+                sampleOrigin: data.sampleOrigin,
+                projectName: data.projectName,
+              };
+            });
             setSamples(transformedSamples);
           } else {
             setSamples([]);
