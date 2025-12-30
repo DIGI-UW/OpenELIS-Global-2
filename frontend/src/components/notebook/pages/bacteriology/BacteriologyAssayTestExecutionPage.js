@@ -806,16 +806,12 @@ function BacteriologyAssayTestExecutionPage({
   const [pcrData, setPcrData] = useState({
     assayType: "",
     otherAssayType: "",
-    // Structured template fields (between PCR Type and Target Gene)
+    // PCR Structured Template fields - Primer and Enzyme only
     primerDirection: "",
     primerType: "",
     enzyme: "",
     otherEnzyme: "",
-    targetGene: "",
-    // Primary target gene
-    target: "",
-    otherTarget: "",
-    // Multiple gene detection results (additional targets)
+    // Multiple gene detection results
     geneDetectionResults: [],
     // Each gene result: { target, otherTarget, ctValue, result, notes }
     runId: "",
@@ -2484,15 +2480,11 @@ function BacteriologyAssayTestExecutionPage({
       molecularCompleted: true,
       pcrCompleted: true,
       pcrAssayType: pcrData.assayType,
-      // Primer/Enzyme structured template
+      // Primer/Enzyme structured template - from inventory
       pcrPrimerDirection: pcrData.primerDirection,
       pcrPrimerType: pcrData.primerType,
-      pcrTargetGene: pcrData.targetGene,
       pcrEnzyme:
         pcrData.enzyme === "OTHER" ? pcrData.otherEnzyme : pcrData.enzyme,
-      // Primary target gene
-      pcrTarget:
-        pcrData.target === "OTHER" ? pcrData.otherTarget : pcrData.target,
       // Primary result
       pcrResult: pcrData.result,
       pcrCtValue: pcrData.ctValue,
@@ -6814,67 +6806,6 @@ function BacteriologyAssayTestExecutionPage({
                       setPcrData({
                         ...pcrData,
                         otherEnzyme: e.target.value,
-                      })
-                    }
-                  />
-                </Column>
-              )}
-
-              {/* Target Gene */}
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="pcr-target-gene"
-                  labelText={intl.formatMessage({
-                    id: "notebook.bacteriology.assay.pcrTargetGene",
-                    defaultMessage: "Target Gene",
-                  })}
-                  value={pcrData.targetGene}
-                  onChange={(e) =>
-                    setPcrData({
-                      ...pcrData,
-                      targetGene: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., 16S rRNA, mecA, CTX-M"
-                />
-              </Column>
-
-              {/* Primary Target Gene (kept for backward compatibility) */}
-              <Column lg={8} md={4} sm={4}>
-                <Dropdown
-                  id="pcr-target"
-                  titleText={intl.formatMessage({
-                    id: "notebook.bacteriology.assay.pcrTarget",
-                    defaultMessage: "Primary Target Gene/Marker",
-                  })}
-                  label="Select target"
-                  items={PCR_TARGETS}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={PCR_TARGETS.find(
-                    (t) => t.id === pcrData.target,
-                  )}
-                  onChange={({ selectedItem }) =>
-                    setPcrData({
-                      ...pcrData,
-                      target: selectedItem?.id || "",
-                    })
-                  }
-                />
-              </Column>
-
-              {pcrData.target === "OTHER" && (
-                <Column lg={8} md={4} sm={4}>
-                  <TextInput
-                    id="pcr-other-target"
-                    labelText={intl.formatMessage({
-                      id: "notebook.bacteriology.assay.otherTarget",
-                      defaultMessage: "Specify Target",
-                    })}
-                    value={pcrData.otherTarget}
-                    onChange={(e) =>
-                      setPcrData({
-                        ...pcrData,
-                        otherTarget: e.target.value,
                       })
                     }
                   />
