@@ -1,8 +1,11 @@
 package org.openelisglobal.notebook.dao;
 
 import java.sql.Timestamp;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -77,7 +80,12 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
             Date fromDate, Date toDate, List<Integer> entryIds) {
 
         StringBuilder hql = new StringBuilder("select distinct nb from NoteBook nb ");
-        hql.append("left join nb.tags t where nb.isTemplate = false ");
+        // Only return notebooks that are actually entries (exist in some notebook's
+        // entries collection)
+        // This ensures findParentTemplate will find a parent and entryNumber can be
+        // calculated
+        hql.append("left join nb.tags t where nb.isTemplate = false and nb.parentNotebook is null ");
+        hql.append("and exists (from NoteBook parent join parent.entries e where e.id = nb.id) ");
 
         if (statuses != null && !statuses.isEmpty()) {
             hql.append("and nb.status in (:statuses) ");
@@ -131,7 +139,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
 
     @Override
     public Long getCountWithStatus(List<NoteBookStatus> statuses) {
-        String sql = "select count(*) from NoteBook nb where status in (:statuses) and nb.isTemplate = false";
+        String sql = "select count(*) from NoteBook nb where status in (:statuses) and nb.isTemplate = false and nb.parentNotebook is null";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
         Long count = query.uniqueResult();
@@ -141,7 +149,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     @Override
     public Long getCountWithStatusBetweenDates(List<NoteBookStatus> statuses, Timestamp from, Timestamp to) {
         String sql = "select count(*) from NoteBook nb where nb.status in (:statuses) and nb.lastupdated"
-                + " between :datefrom and :dateto and nb.isTemplate = false";
+                + " between :datefrom and :dateto and nb.isTemplate = false and nb.parentNotebook is null";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
         query.setParameter("datefrom", from);
@@ -152,7 +160,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
 
     @Override
     public Long getTotalCount() {
-        String sql = "select count(*) from NoteBook nb where nb.isTemplate = false";
+        String sql = "select count(*) from NoteBook nb where nb.isTemplate = false and nb.parentNotebook is null";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         Long count = query.uniqueResult();
         return count;
@@ -165,10 +173,76 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
 
     @Override
     public NoteBook findParentTemplate(Integer entryId) {
+        // First try: Find a parent template directly (legacy behavior for entries
+        // linked to templates)
         String hql = "select nb from NoteBook nb join nb.entries e where e.id = :entryId and nb.isTemplate = true";
         Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql, NoteBook.class);
         query.setParameter("entryId", entryId);
         List<NoteBook> results = query.list();
+        if (!results.isEmpty()) {
+            return results.get(0);
+        }
+
+        // Second try: Find if entry is linked to a child instance, then get that
+        // child's parent template
+        // This handles entries created under child instances (e.g., "Demo - Lab 4"
+        // entries)
+        String hql2 = "select child.parentNotebook from NoteBook child join child.entries e "
+                + "where e.id = :entryId and child.isTemplate = false and child.parentNotebook is not null";
+        Query<NoteBook> query2 = entityManager.unwrap(Session.class).createQuery(hql2, NoteBook.class);
+        query2.setParameter("entryId", entryId);
+        List<NoteBook> results2 = query2.list();
+        return results2.isEmpty() ? null : results2.get(0);
+    }
+
+    @Override
+    public NoteBook findDirectParentNotebook(Integer entryId) {
+        // Find the notebook that directly contains this entry in its entries collection
+        // This could be either a parent template OR a child instance
+        String hql = "select nb from NoteBook nb join nb.entries e where e.id = :entryId";
+        Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql, NoteBook.class);
+        query.setParameter("entryId", entryId);
+        List<NoteBook> results = query.list();
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    @Override
+    public List<NoteBook> findChildrenByParentId(Integer parentId) {
+        String hql = "FROM NoteBook nb WHERE nb.parentNotebook.id = :parentId ORDER BY nb.title ASC";
+        Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql, NoteBook.class);
+        query.setParameter("parentId", parentId);
+        return query.list();
+    }
+
+    @Override
+    public List<NoteBook> findAllParentTemplates() {
+        String hql = "FROM NoteBook nb WHERE nb.isTemplate = true AND nb.parentNotebook IS NULL ORDER BY nb.title ASC";
+        Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql, NoteBook.class);
+        return query.list();
+    }
+
+    @Override
+    public Map<Integer, Long> countEntriesForChildren(List<Integer> childIds) {
+        if (childIds == null || childIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String hql = "SELECT nb.id, COUNT(e) FROM NoteBook nb JOIN nb.entries e WHERE nb.id IN :childIds GROUP BY nb.id";
+        Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+        query.setParameterList("childIds", childIds);
+
+        Map<Integer, Long> result = new HashMap<>();
+        for (Object[] row : query.list()) {
+            result.put((Integer) row[0], (Long) row[1]);
+        }
+        return result;
+    }
+
+    @Override
+    public Long countEntriesForParent(Integer parentId) {
+        String hql = "SELECT COUNT(e) FROM NoteBook nb JOIN nb.entries e " + "WHERE nb.parentNotebook.id = :parentId";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+        query.setParameter("parentId", parentId);
+        Long count = query.uniqueResult();
+        return count != null ? count : 0L;
     }
 }

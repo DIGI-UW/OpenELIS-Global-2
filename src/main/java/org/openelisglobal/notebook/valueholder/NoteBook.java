@@ -7,6 +7,7 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,6 +22,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
@@ -77,6 +79,19 @@ public class NoteBook extends BaseObject<Integer> {
 
     @Column(name = "protocol")
     private String protocol;
+
+    // Project metadata fields - inherited by child instances from parent templates
+    @Column(name = "principal_investigator")
+    private String principalInvestigator;
+
+    @Column(name = "funding_source")
+    private String fundingSource;
+
+    @Column(name = "budget", precision = 15, scale = 2)
+    private BigDecimal budget;
+
+    @Column(name = "project_timeline")
+    private String projectTimeline;
 
     @Column(name = "content")
     private String content;
@@ -147,6 +162,14 @@ public class NoteBook extends BaseObject<Integer> {
     @Column(name = "role")
     private Set<String> allowedRoles = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_notebook_id")
+    private NoteBook parentNotebook;
+
+    @OneToMany(mappedBy = "parentNotebook", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("title ASC")
+    private List<NoteBook> childInstances = new ArrayList<>();
+
     @Override
     public Integer getId() {
         return id;
@@ -187,6 +210,38 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
+    }
+
+    public String getPrincipalInvestigator() {
+        return principalInvestigator;
+    }
+
+    public void setPrincipalInvestigator(String principalInvestigator) {
+        this.principalInvestigator = principalInvestigator;
+    }
+
+    public String getFundingSource() {
+        return fundingSource;
+    }
+
+    public void setFundingSource(String fundingSource) {
+        this.fundingSource = fundingSource;
+    }
+
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
+    public void setBudget(BigDecimal budget) {
+        this.budget = budget;
+    }
+
+    public String getProjectTimeline() {
+        return projectTimeline;
+    }
+
+    public void setProjectTimeline(String projectTimeline) {
+        this.projectTimeline = projectTimeline;
     }
 
     public String getContent() {
@@ -343,5 +398,71 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setAllowedRoles(Set<String> allowedRoles) {
         this.allowedRoles = allowedRoles;
+    }
+
+    public NoteBook getParentNotebook() {
+        return parentNotebook;
+    }
+
+    public void setParentNotebook(NoteBook parentNotebook) {
+        this.parentNotebook = parentNotebook;
+    }
+
+    public List<NoteBook> getChildInstances() {
+        if (childInstances == null) {
+            childInstances = new ArrayList<>();
+        }
+        return childInstances;
+    }
+
+    public void setChildInstances(List<NoteBook> childInstances) {
+        this.childInstances = childInstances;
+    }
+
+    /**
+     * Returns true if this is a parent template (can spawn children, cannot have
+     * entries directly). A parent template has isTemplate=true and no parent
+     * notebook.
+     */
+    public boolean isParentTemplate() {
+        return Boolean.TRUE.equals(isTemplate) && parentNotebook == null;
+    }
+
+    /**
+     * Returns true if this is a child instance (can have entries, cannot spawn
+     * children). A child instance has isTemplate=false and has a parent notebook.
+     */
+    public boolean isChildInstance() {
+        return !Boolean.TRUE.equals(isTemplate) && parentNotebook != null;
+    }
+
+    /**
+     * Returns the effective pages for this notebook. Child instances inherit pages
+     * from their parent template (live inheritance). Parent templates and
+     * standalone notebooks return their own pages.
+     */
+    public List<NoteBookPage> getEffectivePages() {
+        if (isChildInstance() && parentNotebook != null) {
+            return parentNotebook.getPages();
+        }
+        return this.pages;
+    }
+
+    /**
+     * Helper method to add a child instance to this parent template. Sets up the
+     * bidirectional relationship.
+     */
+    public void addChildInstance(NoteBook child) {
+        getChildInstances().add(child);
+        child.setParentNotebook(this);
+    }
+
+    /**
+     * Helper method to remove a child instance from this parent template. Clears
+     * the bidirectional relationship.
+     */
+    public void removeChildInstance(NoteBook child) {
+        getChildInstances().remove(child);
+        child.setParentNotebook(null);
     }
 }

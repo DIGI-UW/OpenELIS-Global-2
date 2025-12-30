@@ -3,10 +3,12 @@ package org.openelisglobal.notebook.service;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
+import org.openelisglobal.notebook.bean.NotebookHierarchyDTO;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.valueholder.NoteBook;
@@ -19,7 +21,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
 
     List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
-            Date fromDate, Date toDate, Integer noteBookId);
+            Date fromDate, Date toDate, Integer noteBookId, Boolean orphanOnly);
 
     List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags, Date fromDate,
             Date toDate);
@@ -198,4 +200,70 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
      * @return the parent NoteBook template or null if not found
      */
     NoteBook getParentTemplate(Integer entryId);
+
+    // ========== Notebook Hierarchy Methods ==========
+
+    /**
+     * Create a child instance from a parent template. The child inherits pages from
+     * the parent (live inheritance) but gets copies of metadata that can be edited
+     * independently.
+     *
+     * @param parentId  the ID of the parent template
+     * @param title     the title for the child instance
+     * @param sysUserId the user creating the instance
+     * @return the created child instance
+     * @throws IllegalArgumentException if parent doesn't exist or is not a template
+     */
+    NoteBook createChildInstance(Integer parentId, String title, String sysUserId);
+
+    /**
+     * Get all child instances for a parent template.
+     *
+     * @param parentId the ID of the parent template
+     * @return list of child instances ordered by title
+     */
+    List<NoteBook> getChildInstances(Integer parentId);
+
+    /**
+     * Get the hierarchy tree structure for all notebooks. Returns parent templates
+     * with their children nested.
+     *
+     * @return list of parent templates with children
+     */
+    List<NotebookHierarchyDTO> getHierarchyTree();
+
+    /**
+     * Get aggregated statistics for a parent template. Sums up statistics from all
+     * child instances.
+     *
+     * @param parentId the ID of the parent template
+     * @return map with keys: totalEntries, drafts, pendingReview, finalizedThisWeek
+     */
+    Map<String, Long> getAggregatedStatistics(Integer parentId);
+
+    /**
+     * Check if a notebook can accept entries. Only child instances can have entries
+     * added directly.
+     *
+     * @param notebookId the notebook ID
+     * @return true if the notebook is a child instance
+     */
+    boolean canAcceptEntries(Integer notebookId);
+
+    /**
+     * Get all parent templates (notebooks with isTemplate=true and no parent).
+     *
+     * @return list of parent templates
+     */
+    List<NoteBook> getAllParentTemplates();
+
+    /**
+     * Add an entry notebook to a parent notebook's entries collection. This method
+     * handles the lazy collection within a transaction.
+     *
+     * @param notebookId the parent notebook ID (template or child instance)
+     * @param entry      the entry notebook to add
+     * @param sysUserId  the user performing the action
+     */
+    void addEntry(Integer notebookId, NoteBook entry, String sysUserId);
 }

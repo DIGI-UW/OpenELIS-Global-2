@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.bean;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -19,6 +20,12 @@ public class NoteBookDisplayBean {
     private UUID questionnaireFhirUuid;
     private Integer entryNumber;
     private String notebookName;
+
+    // Project metadata fields
+    private String principalInvestigator;
+    private String fundingSource;
+    private BigDecimal budget;
+    private String projectTimeline;
 
     public String getTitle() {
         return title;
@@ -122,6 +129,38 @@ public class NoteBookDisplayBean {
 
     public void setNotebookName(String notebookName) {
         this.notebookName = notebookName;
+    }
+
+    public String getPrincipalInvestigator() {
+        return principalInvestigator;
+    }
+
+    public void setPrincipalInvestigator(String principalInvestigator) {
+        this.principalInvestigator = principalInvestigator;
+    }
+
+    public String getFundingSource() {
+        return fundingSource;
+    }
+
+    public void setFundingSource(String fundingSource) {
+        this.fundingSource = fundingSource;
+    }
+
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
+    public void setBudget(BigDecimal budget) {
+        this.budget = budget;
+    }
+
+    public String getProjectTimeline() {
+        return projectTimeline;
+    }
+
+    public void setProjectTimeline(String projectTimeline) {
+        this.projectTimeline = projectTimeline;
     }
 
     private Set<String> allowedRoles;

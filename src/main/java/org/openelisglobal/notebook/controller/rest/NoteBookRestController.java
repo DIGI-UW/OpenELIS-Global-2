@@ -35,6 +35,7 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.bean.NoteBookDashboardMetrics;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
+import org.openelisglobal.notebook.bean.NotebookHierarchyDTO;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
 import org.openelisglobal.notebook.service.NoteBookPageService;
@@ -109,7 +110,8 @@ public class NoteBookRestController extends BaseRestController {
             @RequestParam(required = false) List<NoteBookStatus> statuses,
             @RequestParam(required = false) List<String> types, @RequestParam(required = false) List<String> tags,
             @RequestParam(required = false) String fromDate, @RequestParam(required = false) String toDate,
-            @RequestParam(required = false) Integer noteBookId, HttpServletRequest request) {
+            @RequestParam(required = false) Integer noteBookId,
+            @RequestParam(required = false, defaultValue = "false") Boolean orphanOnly, HttpServletRequest request) {
 
         String sysUserId = getSysUserId(request);
         String loginLabUnit = getLoginLabUnit(request);
@@ -122,7 +124,7 @@ public class NoteBookRestController extends BaseRestController {
         }
 
         List<NoteBookDisplayBean> results = noteBookService.filterNoteBookEntries(statuses, types, tags,
-                getFormatedDate(fromDate), getFormatedDate(toDate), noteBookId).stream().filter(entry -> {
+                getFormatedDate(fromDate), getFormatedDate(toDate), noteBookId, orphanOnly).stream().filter(entry -> {
                     // Security Check: User must be able to view the parent template of the entry
                     NoteBook parent = noteBookService.getParentTemplate(entry.getId());
                     if (parent != null) {
@@ -970,6 +972,155 @@ public class NoteBookRestController extends BaseRestController {
     private String getStringValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value != null ? value.toString() : "";
+    }
+
+    // ========== Notebook Hierarchy Endpoints ==========
+
+    /**
+     * Get the notebook hierarchy tree structure. Returns parent templates with
+     * their child instances nested.
+     *
+     * @param request HTTP request for user session
+     * @return hierarchical tree of notebooks
+     */
+    @GetMapping(value = "/hierarchy", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<NotebookHierarchyDTO>> getHierarchy(HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        List<NotebookHierarchyDTO> hierarchy = noteBookService.getHierarchyTree();
+
+        // Filter by security - only show templates user can access
+        List<NotebookHierarchyDTO> filteredHierarchy = hierarchy.stream()
+                .filter(parent -> notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(filteredHierarchy);
+    }
+
+    /**
+     * Create a child instance from a parent template.
+     *
+     * @param parentId the parent template ID
+     * @param body     request body containing the title
+     * @param request  HTTP request for user session
+     * @return the created child instance
+     */
+    @PostMapping(value = "/{parentId}/instances", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> createChildInstance(@PathVariable("parentId") Integer parentId,
+            @RequestBody Map<String, String> body, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can view the parent template
+        if (!notebookSecurityService.canViewTemplate(parentId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this template"));
+        }
+
+        // Check if user can create entries from this template
+        if (!notebookSecurityService.canCreateEntry(parentId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Access denied to create instances from this template"));
+        }
+
+        String title = body.get("title");
+        if (title == null || title.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Title is required"));
+        }
+
+        try {
+            NoteBook child = noteBookService.createChildInstance(parentId, title.trim(), sysUserId);
+            return ResponseEntity.ok(Map.of("id", child.getId(), "title", child.getTitle(), "parentNotebookId",
+                    parentId, "isChildInstance", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Get all child instances for a parent template.
+     *
+     * @param parentId the parent template ID
+     * @param request  HTTP request for user session
+     * @return list of child instances
+     */
+    @GetMapping(value = "/{parentId}/instances", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getChildInstances(@PathVariable("parentId") Integer parentId, HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can view the parent template
+        if (!notebookSecurityService.canViewTemplate(parentId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this template"));
+        }
+
+        List<NoteBook> children = noteBookService.getChildInstances(parentId);
+        List<NoteBookDisplayBean> results = children.stream()
+                .map(child -> noteBookService.convertToDisplayBean(child.getId())).collect(Collectors.toList());
+
+        return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Get aggregated statistics for a parent template. Sums statistics from all
+     * child instances.
+     *
+     * @param parentId the parent template ID
+     * @param request  HTTP request for user session
+     * @return aggregated statistics
+     */
+    @GetMapping(value = "/{parentId}/aggregated-stats", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> getAggregatedStatistics(@PathVariable("parentId") Integer parentId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        // Check if user can view the parent template
+        if (!notebookSecurityService.canViewTemplate(parentId, sysUserId, loginLabUnit)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Access denied to this template"));
+        }
+
+        Map<String, Long> stats = noteBookService.getAggregatedStatistics(parentId);
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Check if a notebook can accept entries (is a child instance).
+     *
+     * @param notebookId the notebook ID
+     * @param request    HTTP request for user session
+     * @return true if the notebook can accept entries
+     */
+    @GetMapping(value = "/{notebookId}/can-accept-entries", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> canAcceptEntries(@PathVariable("notebookId") Integer notebookId,
+            HttpServletRequest request) {
+        boolean canAccept = noteBookService.canAcceptEntries(notebookId);
+        return ResponseEntity.ok(Map.of("canAcceptEntries", canAccept));
+    }
+
+    /**
+     * Get all parent templates (for backwards compatibility / admin views).
+     *
+     * @param request HTTP request for user session
+     * @return list of parent templates
+     */
+    @GetMapping(value = "/parent-templates", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<NoteBookDisplayBean>> getParentTemplates(HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        String loginLabUnit = getLoginLabUnit(request);
+
+        List<NoteBook> parents = noteBookService.getAllParentTemplates();
+        List<NoteBookDisplayBean> results = parents.stream()
+                .filter(parent -> notebookSecurityService.canViewTemplate(parent.getId(), sysUserId, loginLabUnit))
+                .map(parent -> noteBookService.convertToDisplayBean(parent.getId())).collect(Collectors.toList());
+
+        return ResponseEntity.ok(results);
     }
 
 }

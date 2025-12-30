@@ -197,6 +197,10 @@ const NoteBookEntryForm = () => {
     noteBookForm.type = noteBookData.type;
     noteBookForm.objective = noteBookData.objective;
     noteBookForm.protocol = noteBookData.protocol;
+    noteBookForm.principalInvestigator = noteBookData.principalInvestigator;
+    noteBookForm.fundingSource = noteBookData.fundingSource;
+    noteBookForm.budget = noteBookData.budget;
+    noteBookForm.projectTimeline = noteBookData.projectTimeline;
     noteBookForm.content = noteBookData.content;
     noteBookForm.status = noteBookData.status;
     noteBookForm.technicianId = noteBookData.technicianId;
@@ -997,6 +1001,99 @@ const NoteBookEntryForm = () => {
         )}
         {selectedTab === TABS.METADATA && (
           <Column lg={16} md={8} sm={4}>
+            {/* Project Information Fieldset */}
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="principalInvestigator"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.principalInvestigator",
+                    defaultMessage: "Principal Investigator (PI)",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.principalInvestigator.placeholder",
+                    defaultMessage: "Enter principal investigator name",
+                  })}
+                  value={noteBookData.principalInvestigator || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      principalInvestigator: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="fundingSource"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.fundingSource",
+                    defaultMessage: "Funding Source",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.fundingSource.placeholder",
+                    defaultMessage: "Enter funding source",
+                  })}
+                  value={noteBookData.fundingSource || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      fundingSource: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="budget"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.budget",
+                    defaultMessage: "Budget",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.budget.placeholder",
+                    defaultMessage: "Enter budget amount",
+                  })}
+                  value={noteBookData.budget || ""}
+                  type="number"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setNoteBookData({
+                      ...noteBookData,
+                      budget: value ? parseFloat(value) : null,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="projectTimeline"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.projectTimeline",
+                    defaultMessage: "Project Timeline",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.projectTimeline.placeholder",
+                    defaultMessage: "e.g., Jan 2025 - Dec 2025",
+                  })}
+                  value={noteBookData.projectTimeline || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      projectTimeline: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+            </Grid>
+            <br />
+            {/* Experiment Details */}
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={8} md={8} sm={4}>
                 <Select
