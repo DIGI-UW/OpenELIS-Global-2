@@ -108,6 +108,14 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         // Validate type-specific required fields
         validateItemTypeSpecificFields(item);
 
+        // Preserve the FHIR UUID from the existing record if not provided in the update
+        if (item.getId() != null && item.getFhirUuid() == null) {
+            InventoryItem existing = get(item.getId());
+            if (existing != null && existing.getFhirUuid() != null) {
+                item.setFhirUuid(existing.getFhirUuid());
+            }
+        }
+
         // Audit logging is automatic via auditTrailLog = true in constructor
         return super.update(item);
     }

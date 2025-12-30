@@ -6764,9 +6764,10 @@ function BacteriologyAssayTestExecutionPage({
                   label="Select enzyme"
                   items={enzymes.length > 0 ? enzymes : PCR_ENZYMES}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={(enzymes.length > 0 ? enzymes : PCR_ENZYMES).find(
-                    (e) => e.id === pcrData.enzyme,
-                  )}
+                  selectedItem={(enzymes.length > 0
+                    ? enzymes
+                    : PCR_ENZYMES
+                  ).find((e) => e.id === pcrData.enzyme)}
                   onChange={({ selectedItem }) =>
                     setPcrData({
                       ...pcrData,
