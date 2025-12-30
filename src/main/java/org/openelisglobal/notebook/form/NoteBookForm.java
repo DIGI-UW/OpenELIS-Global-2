@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.form;
 
+import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
@@ -18,6 +19,16 @@ public class NoteBookForm {
     private String objective;
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String protocol;
+
+    // Project metadata fields
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String principalInvestigator;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String fundingSource;
+    private BigDecimal budget;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String projectTimeline;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String content;
     private Integer technicianId;
@@ -67,6 +78,38 @@ public class NoteBookForm {
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
+    }
+
+    public String getPrincipalInvestigator() {
+        return principalInvestigator;
+    }
+
+    public void setPrincipalInvestigator(String principalInvestigator) {
+        this.principalInvestigator = principalInvestigator;
+    }
+
+    public String getFundingSource() {
+        return fundingSource;
+    }
+
+    public void setFundingSource(String fundingSource) {
+        this.fundingSource = fundingSource;
+    }
+
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
+    public void setBudget(BigDecimal budget) {
+        this.budget = budget;
+    }
+
+    public String getProjectTimeline() {
+        return projectTimeline;
+    }
+
+    public void setProjectTimeline(String projectTimeline) {
+        this.projectTimeline = projectTimeline;
     }
 
     public String getContent() {

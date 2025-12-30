@@ -1,10 +1,13 @@
 package org.openelisglobal.notebook.service;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,6 +25,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
+import org.openelisglobal.notebook.bean.NotebookHierarchyDTO;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean.ResultDisplayBean;
 import org.openelisglobal.notebook.dao.NoteBookDAO;
@@ -103,10 +107,23 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Override
     @Transactional
     public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
-            Date fromDate, Date toDate, Integer noteBookId) {
+            Date fromDate, Date toDate, Integer noteBookId, Boolean orphanOnly) {
         List<Integer> entryIds = new ArrayList<>();
         if (noteBookId != null) {
-            entryIds = getNoteBookEntries(noteBookId).stream().map(e -> e.getId()).collect(Collectors.toList());
+            if (Boolean.TRUE.equals(orphanOnly)) {
+                // Only get entries directly linked to the parent template (orphan entries)
+                Optional<NoteBook> parentOpt = baseObjectDAO.get(noteBookId);
+                if (parentOpt.isPresent()) {
+                    NoteBook parent = parentOpt.get();
+                    Hibernate.initialize(parent.getEntries());
+                    if (parent.getEntries() != null) {
+                        entryIds = parent.getEntries().stream().map(e -> e.getId()).collect(Collectors.toList());
+                    }
+                }
+            } else {
+                // Get all entries (from children and orphans)
+                entryIds = getNoteBookEntries(noteBookId).stream().map(e -> e.getId()).collect(Collectors.toList());
+            }
         }
         if (noteBookId != null && entryIds.isEmpty()) {
             return new ArrayList<>();
@@ -149,17 +166,53 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             assignAllActiveDepartments(noteBook);
             assignAllActiveOrganizations(noteBook);
             update(noteBook);
-        } else {
-            // Creating an entry from a template
-            NoteBook templateNoteBook = get(form.getTemplateId());
-            if (templateNoteBook != null && templateNoteBook.getIsTemplate()) {
-                templateNoteBook.getEntries().add(noteBook);
-                // Set sysUserId for audit trail tracking when updating template
-                if (form.getSystemUserId() != null) {
-                    templateNoteBook.setSysUserId(form.getSystemUserId().toString());
+        } else if (form.getTemplateId() != null) {
+            // Creating an entry - can be from a template OR from a child instance
+            NoteBook parentNoteBook = get(form.getTemplateId());
+            LogEvent.logInfo(this.getClass().getSimpleName(), "createWithFormValues",
+                    "Creating entry with templateId=" + form.getTemplateId() + ", parentNoteBook="
+                            + (parentNoteBook != null
+                                    ? "found (id=" + parentNoteBook.getId() + ", isTemplate="
+                                            + parentNoteBook.getIsTemplate() + ")"
+                                    : "null"));
+
+            if (parentNoteBook != null) {
+                // Initialize parentNotebook to check isChildInstance properly
+                Hibernate.initialize(parentNoteBook.getParentNotebook());
+                boolean isChildInst = parentNoteBook.isChildInstance();
+                boolean isTemplate = parentNoteBook.getIsTemplate();
+
+                LogEvent.logInfo(this.getClass().getSimpleName(), "createWithFormValues",
+                        "parentNoteBook: isTemplate=" + isTemplate + ", isChildInstance=" + isChildInst
+                                + ", parentNotebook="
+                                + (parentNoteBook.getParentNotebook() != null
+                                        ? parentNoteBook.getParentNotebook().getId()
+                                        : "null"));
+
+                // Check if this notebook can accept entries:
+                // - Child instances (isTemplate=false with parentNotebook set) can accept
+                // entries
+                // - Legacy templates (isTemplate=true) can also accept entries for backwards
+                // compatibility
+                boolean canAccept = isTemplate || isChildInst;
+                LogEvent.logInfo(this.getClass().getSimpleName(), "createWithFormValues", "canAccept=" + canAccept);
+
+                if (canAccept) {
+                    Hibernate.initialize(parentNoteBook.getEntries());
+                    int entriesBefore = parentNoteBook.getEntries().size();
+                    parentNoteBook.getEntries().add(noteBook);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "createWithFormValues",
+                            "Added entry to parentNoteBook entries. Before=" + entriesBefore + ", After="
+                                    + parentNoteBook.getEntries().size());
+                    // Set sysUserId for audit trail tracking when updating parent
+                    if (form.getSystemUserId() != null) {
+                        parentNoteBook.setSysUserId(form.getSystemUserId().toString());
+                    }
+                    initializeLazyCollections(parentNoteBook);
+                    update(parentNoteBook);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "createWithFormValues",
+                            "Updated parentNoteBook with new entry");
                 }
-                initializeLazyCollections(templateNoteBook);
-                update(templateNoteBook);
             }
         }
 
@@ -271,15 +324,32 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setEntriesCount(noteBook.getEntries().size());
             displayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
 
+            // Project metadata fields
+            displayBean.setPrincipalInvestigator(noteBook.getPrincipalInvestigator());
+            displayBean.setFundingSource(noteBook.getFundingSource());
+            displayBean.setBudget(noteBook.getBudget());
+            displayBean.setProjectTimeline(noteBook.getProjectTimeline());
+
             // For non-template entries, find and set entry number and parent notebook name
             // Also inherit allowedRoles from parent template
             if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+                // Find the direct parent (could be template or child instance) for display name
+                // and entry number
+                NoteBook directParent = baseObjectDAO.findDirectParentNotebook(noteBook.getId());
+                // Find the ultimate parent template for allowedRoles
                 NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+
+                // Entries inherit allowedRoles from their parent template
                 if (parentTemplate != null) {
-                    displayBean.setNotebookName(parentTemplate.getTitle());
-                    // Calculate entry number (1-based index in parent's entries list)
-                    Hibernate.initialize(parentTemplate.getEntries());
-                    List<NoteBook> entries = parentTemplate.getEntries();
+                    Hibernate.initialize(parentTemplate.getAllowedRoles());
+                    displayBean.setAllowedRoles(new HashSet<>(parentTemplate.getAllowedRoles()));
+                }
+
+                // Use direct parent's title for display name and calculate entry number
+                if (directParent != null) {
+                    displayBean.setNotebookName(directParent.getTitle());
+                    Hibernate.initialize(directParent.getEntries());
+                    List<NoteBook> entries = directParent.getEntries();
                     if (entries != null) {
                         // Sort entries by dateCreated to get consistent numbering
                         List<NoteBook> sortedEntries = entries.stream().sorted((e1, e2) -> {
@@ -301,9 +371,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                             }
                         }
                     }
-                    // Entries inherit allowedRoles from their parent template
-                    Hibernate.initialize(parentTemplate.getAllowedRoles());
-                    displayBean.setAllowedRoles(new HashSet<>(parentTemplate.getAllowedRoles()));
                 }
             } else {
                 // For templates, use their own allowedRoles
@@ -354,6 +421,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setContent(noteBook.getContent());
             fullDisplayBean.setObjective(noteBook.getObjective());
             fullDisplayBean.setProtocol(noteBook.getProtocol());
+
+            // Project metadata fields
+            fullDisplayBean.setPrincipalInvestigator(noteBook.getPrincipalInvestigator());
+            fullDisplayBean.setFundingSource(noteBook.getFundingSource());
+            fullDisplayBean.setBudget(noteBook.getBudget());
+            fullDisplayBean.setProjectTimeline(noteBook.getProjectTimeline());
+
             // Prefer inventory instruments over legacy analyzers
             List<IdValuePair> instrumentList = new ArrayList<>();
             List<Long> instrumentIds = noteBook.getInventoryInstrumentIds();
@@ -493,6 +567,21 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (!GenericValidator.isBlankOrNull(form.getProtocol())) {
             noteBook.setProtocol(form.getProtocol());
         }
+
+        // Project metadata fields
+        if (!GenericValidator.isBlankOrNull(form.getPrincipalInvestigator())) {
+            noteBook.setPrincipalInvestigator(form.getPrincipalInvestigator());
+        }
+        if (!GenericValidator.isBlankOrNull(form.getFundingSource())) {
+            noteBook.setFundingSource(form.getFundingSource());
+        }
+        if (form.getBudget() != null) {
+            noteBook.setBudget(form.getBudget());
+        }
+        if (!GenericValidator.isBlankOrNull(form.getProjectTimeline())) {
+            noteBook.setProjectTimeline(form.getProjectTimeline());
+        }
+
         noteBook.setIsTemplate(form.getIsTemplate());
         if (form.getStatus() != null) {
             noteBook.setStatus(form.getStatus());
@@ -663,11 +752,54 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
     @Override
     @Transactional
-    public List<NoteBook> getNoteBookEntries(Integer templateId) {
-        NoteBook template = get(templateId);
-        if (template != null && template.getIsTemplate()) {
-            Hibernate.initialize(template.getEntries());
-            return template.getEntries();
+    public List<NoteBook> getNoteBookEntries(Integer notebookId) {
+        if (notebookId == null) {
+            return new ArrayList<>();
+        }
+        try {
+            NoteBook notebook = get(notebookId);
+            if (notebook != null) {
+                List<NoteBook> allEntries = new ArrayList<>();
+
+                // DEBUG: Log all relevant fields before isParentTemplate check
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getNoteBookEntries",
+                        "DEBUG: notebookId=" + notebookId + ", isTemplate=" + notebook.getIsTemplate()
+                                + ", parentNotebook=" + notebook.getParentNotebook() + ", isParentTemplate()="
+                                + notebook.isParentTemplate() + ", isChildInstance()=" + notebook.isChildInstance());
+
+                // If this is a parent template, aggregate entries from all child instances
+                // Also include any direct entries (for backwards compatibility with legacy
+                // data)
+                if (notebook.isParentTemplate()) {
+                    // First, add any direct entries on the template itself (legacy support)
+                    Hibernate.initialize(notebook.getEntries());
+                    allEntries.addAll(notebook.getEntries());
+
+                    // Then, aggregate entries from all child instances
+                    List<NoteBook> children = baseObjectDAO.findChildrenByParentId(notebookId);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getNoteBookEntries",
+                            "Parent template notebookId=" + notebookId + ", directEntries="
+                                    + notebook.getEntries().size() + ", childCount=" + children.size());
+                    for (NoteBook child : children) {
+                        Hibernate.initialize(child.getEntries());
+                        allEntries.addAll(child.getEntries());
+                    }
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getNoteBookEntries",
+                            "Parent template total entries=" + allEntries.size());
+                    return allEntries;
+                }
+
+                // For child instances, return their direct entries
+                Hibernate.initialize(notebook.getEntries());
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getNoteBookEntries",
+                        "notebookId=" + notebookId + ", isTemplate=" + notebook.getIsTemplate() + ", entriesCount="
+                                + notebook.getEntries().size());
+                return notebook.getEntries();
+            }
+        } catch (Exception e) {
+            // Handle cases like ObjectNotFoundException for non-existent IDs
+            LogEvent.logDebug(this.getClass().getSimpleName(), "getNoteBookEntries",
+                    "Notebook not found: " + notebookId);
         }
         return new ArrayList<>();
     }
@@ -1034,7 +1166,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
 
         // Find the parent template
-        NoteBook template = baseObjectDAO.findParentTemplate(instanceId);
+        // First check if this is a child instance (has direct parentNotebook)
+        NoteBook template = instance.getParentNotebook();
+        if (template == null) {
+            // Fallback: try to find parent via entries collection (legacy behavior)
+            template = baseObjectDAO.findParentTemplate(instanceId);
+        }
         if (template == null) {
             LogEvent.logWarn(this.getClass().getName(), "syncPagesFromTemplate",
                     "No parent template found for instance " + instanceId);
@@ -1265,5 +1402,318 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return null;
         }
         return baseObjectDAO.findParentTemplate(entryId);
+    }
+
+    // ========== Notebook Hierarchy Methods ==========
+
+    @Override
+    @Transactional
+    public NoteBook createChildInstance(Integer parentId, String title, String sysUserId) {
+        if (parentId == null) {
+            throw new IllegalArgumentException("Parent ID is required");
+        }
+
+        NoteBook parent;
+        try {
+            parent = get(parentId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Parent notebook not found: " + parentId);
+        }
+        if (parent == null) {
+            throw new IllegalArgumentException("Parent notebook not found: " + parentId);
+        }
+
+        if (!parent.isParentTemplate()) {
+            throw new IllegalArgumentException("Cannot create instance from non-template notebook: " + parentId);
+        }
+
+        // Initialize lazy collections from parent (except pages - we'll fetch those
+        // separately)
+        Hibernate.initialize(parent.getOrganizations());
+        Hibernate.initialize(parent.getDepartments());
+        Hibernate.initialize(parent.getAllowedRoles());
+        Hibernate.initialize(parent.getTags());
+        Hibernate.initialize(parent.getInventoryInstrumentIds());
+
+        // Create new child instance
+        NoteBook child = new NoteBook();
+        child.setTitle(title != null ? title : parent.getTitle() + " - Instance");
+        child.setIsTemplate(false);
+        child.setParentNotebook(parent);
+        child.setStatus(NoteBookStatus.ACTIVE);
+        child.setDateCreated(new Date());
+        child.setType(parent.getType());
+
+        // Copy metadata (editable by child)
+        child.setObjective(parent.getObjective());
+        child.setProtocol(parent.getProtocol());
+        child.setContent(parent.getContent());
+        child.setQuestionnaireFhirUuid(parent.getQuestionnaireFhirUuid());
+
+        // Copy project metadata
+        child.setPrincipalInvestigator(parent.getPrincipalInvestigator());
+        child.setFundingSource(parent.getFundingSource());
+        child.setBudget(parent.getBudget());
+        child.setProjectTimeline(parent.getProjectTimeline());
+
+        // Copy tags
+        if (parent.getTags() != null) {
+            child.setTags(new ArrayList<>(parent.getTags()));
+        }
+
+        // Copy access control (editable by child)
+        if (parent.getOrganizations() != null) {
+            child.setOrganizations(new HashSet<>(parent.getOrganizations()));
+        }
+        if (parent.getDepartments() != null) {
+            child.setDepartments(new HashSet<>(parent.getDepartments()));
+        }
+        if (parent.getAllowedRoles() != null) {
+            child.setAllowedRoles(new HashSet<>(parent.getAllowedRoles()));
+        }
+
+        // Copy instruments
+        if (parent.getInventoryInstrumentIds() != null && !parent.getInventoryInstrumentIds().isEmpty()) {
+            child.setInventoryInstrumentIds(new ArrayList<>(parent.getInventoryInstrumentIds()));
+        }
+
+        // Set creator
+        if (sysUserId != null) {
+            child.setSysUserId(sysUserId);
+            child.setCreator(systemUserService.get(sysUserId));
+            child.setTechnician(systemUserService.get(sysUserId));
+        }
+
+        // Fetch parent pages directly via DAO to avoid Hibernate session/cache issues
+        // Using the entity's lazy collection can cause stale data problems when
+        // multiple children are created
+        List<NoteBookPage> parentPages = noteBookPageDAO.getByNotebookId(parentId);
+
+        // Save child first to get ID
+        child = save(child);
+
+        // Copy pages from parent to child - use the DAO-fetched list to avoid session
+        // issues
+        if (!parentPages.isEmpty()) {
+            for (NoteBookPage parentPage : parentPages) {
+                NoteBookPage childPage = new NoteBookPage();
+                childPage.setNotebook(child);
+                childPage.setOrder(parentPage.getOrder());
+                childPage.setTitle(parentPage.getTitle());
+                childPage.setInstructions(parentPage.getInstructions());
+                childPage.setContent(parentPage.getContent());
+                childPage.setSampleTypeId(parentPage.getSampleTypeId());
+                childPage.setCompleted(false); // Reset completion status for new instance
+
+                // Copy panels and tests lists
+                if (parentPage.getPanels() != null) {
+                    childPage.setPanels(new ArrayList<>(parentPage.getPanels()));
+                }
+                if (parentPage.getTests() != null) {
+                    childPage.setTests(new ArrayList<>(parentPage.getTests()));
+                }
+
+                // Copy allowed roles
+                if (parentPage.getAllowedRoles() != null) {
+                    childPage.setAllowedRoles(new HashSet<>(parentPage.getAllowedRoles()));
+                }
+
+                // Don't copy data - each instance starts fresh
+                childPage.setSysUserId(sysUserId);
+
+                // Save page explicitly via DAO
+                noteBookPageDAO.insert(childPage);
+            }
+        }
+
+        // Note: We do NOT add the child to the parent's childInstances collection here.
+        // The relationship is already established via child.setParentNotebook(parent)
+        // above.
+        // Adding to childInstances and calling update(parent) would trigger cascades
+        // that
+        // can cause the child's pages to be incorrectly re-associated with the parent.
+        // The childInstances collection can be loaded lazily via a query when needed.
+
+        return child;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NoteBook> getChildInstances(Integer parentId) {
+        if (parentId == null) {
+            return new ArrayList<>();
+        }
+        return baseObjectDAO.findChildrenByParentId(parentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NotebookHierarchyDTO> getHierarchyTree() {
+        List<NoteBook> parentTemplates = baseObjectDAO.findAllParentTemplates();
+        List<NotebookHierarchyDTO> hierarchy = new ArrayList<>();
+
+        for (NoteBook parent : parentTemplates) {
+            NotebookHierarchyDTO parentDTO = new NotebookHierarchyDTO();
+            parentDTO.setId(parent.getId());
+            parentDTO.setTitle(parent.getTitle());
+            parentDTO.setParentTemplate(true);
+            parentDTO.setChildInstance(false);
+
+            // Get children
+            List<NoteBook> children = baseObjectDAO.findChildrenByParentId(parent.getId());
+            List<Integer> childIds = children.stream().map(NoteBook::getId).collect(Collectors.toList());
+
+            // Get entry counts for each child
+            Map<Integer, Long> entryCounts = baseObjectDAO.countEntriesForChildren(childIds);
+
+            long totalEntries = 0;
+            for (NoteBook child : children) {
+                NotebookHierarchyDTO childDTO = new NotebookHierarchyDTO();
+                childDTO.setId(child.getId());
+                childDTO.setTitle(child.getTitle());
+                childDTO.setParentTemplate(false);
+                childDTO.setChildInstance(true);
+                childDTO.setParentNotebookId(parent.getId());
+                childDTO.setParentNotebookTitle(parent.getTitle());
+
+                long childEntryCount = entryCounts.getOrDefault(child.getId(), 0L);
+                childDTO.setEntryCount((int) childEntryCount);
+                totalEntries += childEntryCount;
+
+                parentDTO.addChild(childDTO);
+            }
+
+            // Count entries directly on the parent (orphan/legacy entries not assigned to
+            // children)
+            Hibernate.initialize(parent.getEntries());
+            int orphanEntries = parent.getEntries() != null ? parent.getEntries().size() : 0;
+            parentDTO.setOrphanEntryCount(orphanEntries);
+            parentDTO.setEntryCount(orphanEntries); // For backwards compatibility
+
+            // Total entries includes both children's entries and orphan entries
+            parentDTO.setTotalEntries((int) totalEntries + orphanEntries);
+
+            hierarchy.add(parentDTO);
+        }
+
+        return hierarchy;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> getAggregatedStatistics(Integer parentId) {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalEntries", 0L);
+        stats.put("drafts", 0L);
+        stats.put("pendingReview", 0L);
+        stats.put("finalizedThisWeek", 0L);
+
+        if (parentId == null) {
+            return stats;
+        }
+
+        // Get all child instances
+        List<NoteBook> children = baseObjectDAO.findChildrenByParentId(parentId);
+        if (children.isEmpty()) {
+            return stats;
+        }
+
+        // Calculate stats from all children's entries
+        long totalEntries = 0;
+        long drafts = 0;
+        long pendingReview = 0;
+        long finalizedThisWeek = 0;
+
+        // Get the start of this week for finalized count
+        LocalDateTime startOfWeek = LocalDateTime.now().minusDays(7);
+        Timestamp weekStart = Timestamp.valueOf(startOfWeek);
+
+        for (NoteBook child : children) {
+            Hibernate.initialize(child.getEntries());
+            List<NoteBook> entries = child.getEntries();
+            if (entries != null) {
+                for (NoteBook entry : entries) {
+                    totalEntries++;
+
+                    if (entry.getStatus() == NoteBookStatus.DRAFT) {
+                        drafts++;
+                    } else if (entry.getStatus() == NoteBookStatus.SUBMITTED) {
+                        pendingReview++;
+                    } else if (entry.getStatus() == NoteBookStatus.FINALIZED) {
+                        // Check if finalized this week
+                        if (entry.getLastupdated() != null && entry.getLastupdated().after(weekStart)) {
+                            finalizedThisWeek++;
+                        }
+                    }
+                }
+            }
+        }
+
+        stats.put("totalEntries", totalEntries);
+        stats.put("drafts", drafts);
+        stats.put("pendingReview", pendingReview);
+        stats.put("finalizedThisWeek", finalizedThisWeek);
+
+        return stats;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean canAcceptEntries(Integer notebookId) {
+        if (notebookId == null) {
+            return false;
+        }
+
+        try {
+            NoteBook notebook = get(notebookId);
+            if (notebook == null) {
+                return false;
+            }
+
+            // Only child instances can accept entries directly
+            return notebook.isChildInstance();
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return false;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NoteBook> getAllParentTemplates() {
+        List<NoteBook> parents = baseObjectDAO.findAllParentTemplates();
+        // Initialize lazy collections for security checks
+        for (NoteBook parent : parents) {
+            Hibernate.initialize(parent.getOrganizations());
+            Hibernate.initialize(parent.getDepartments());
+            Hibernate.initialize(parent.getAllowedRoles());
+        }
+        return parents;
+    }
+
+    @Override
+    @Transactional
+    public void addEntry(Integer notebookId, NoteBook entry, String sysUserId) {
+        if (notebookId == null || entry == null) {
+            throw new IllegalArgumentException("Notebook ID and entry are required");
+        }
+
+        NoteBook notebook = get(notebookId);
+        if (notebook == null) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId);
+        }
+
+        // Initialize the entries collection within this transaction
+        Hibernate.initialize(notebook.getEntries());
+
+        // Add the entry to the collection
+        notebook.getEntries().add(entry);
+
+        // Set sysUserId for audit trail
+        if (sysUserId != null) {
+            notebook.setSysUserId(sysUserId);
+        }
+
+        // Save the changes
+        update(notebook);
     }
 }

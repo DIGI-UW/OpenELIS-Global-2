@@ -48,5 +48,7 @@
     <include file="liquibase/3.4.x.x/031-immunology-reporting-redcap-page.xml"/>
     <include file="liquibase/3.4.x.x/032-notebook-delivery-record.xml"/>
     <include file="liquibase/3.4.x.x/031-mntd-environmental-monitoring-page.xml"/>
+    <include file="liquibase/3.4.x.x/033-notebook-hierarchy.xml"/>
+    <include file="liquibase/3.4.x.x/034-notebook-project-metadata.xml"/>
 
 </databaseChangeLog>
