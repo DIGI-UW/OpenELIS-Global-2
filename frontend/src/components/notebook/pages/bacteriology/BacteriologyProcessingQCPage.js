@@ -1200,6 +1200,7 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     loadPageSamples,
     onProgressUpdate,
     intl,
+    qcOutcomeChoice,
   ]);
 
   // ==========================================
