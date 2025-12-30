@@ -2096,37 +2096,6 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         </Tooltip>
 
         {/* Quick QC Pass */}
-        {selectedIds.length > 0 && (
-          <Tooltip
-            align="bottom"
-            label={
-              selectedSamplesQCStatus.hasQCFailed
-                ? intl.formatMessage(
-                    {
-                      id: "notebook.bacteriology.processing.markQCPassedWarning",
-                      defaultMessage:
-                        "{count} selected sample(s) have failed QC. Consider re-assigning preparation with passing QC media, or click to override if appropriate.",
-                    },
-                    { count: selectedSamplesQCStatus.qcFailedCount },
-                  )
-                : ""
-            }
-          >
-            <Button
-              kind="tertiary"
-              size="sm"
-              renderIcon={CheckmarkFilled}
-              onClick={handleBulkMarkQCPassed}
-              disabled={false}
-            >
-              <FormattedMessage
-                id="notebook.bacteriology.processing.markQCPassed"
-                defaultMessage="Mark QC Passed ({count})"
-                values={{ count: selectedIds.length }}
-              />
-            </Button>
-          </Tooltip>
-        )}
 
         <Button
           kind="ghost"
