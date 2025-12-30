@@ -1606,7 +1606,7 @@ public class NotebookSampleEntryController extends BaseRestController {
                                         data.put("storageLocation", "Box " + request.getBoxId());
                                     }
                                 }
-LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                                LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
                                         "Set storageLocation for sample " + sampleIdStr + ": "
                                                 + data.get("storageLocation"));
                             } else if (request.getLocationId() != null) {

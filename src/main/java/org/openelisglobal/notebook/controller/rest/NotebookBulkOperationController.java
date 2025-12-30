@@ -498,9 +498,9 @@ public class NotebookBulkOperationController extends BaseRestController {
         result.put("invalid", summary.invalid());
         result.put("inconclusive", summary.inconclusive());
         result.put("pending", summary.pending());
-        result.put("validPercentage", summary.validPercentage());
-        result.put("invalidPercentage", summary.invalidPercentage());
-        result.put("inconclusivePercentage", summary.inconclusivePercentage());
+        result.put("validPercentage", ResultCompilationService.validPercentage(summary));
+        result.put("invalidPercentage", ResultCompilationService.invalidPercentage(summary));
+        result.put("inconclusivePercentage", ResultCompilationService.inconclusivePercentage(summary));
 
         return ResponseEntity.ok(result);
     }
