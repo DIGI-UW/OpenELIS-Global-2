@@ -333,7 +333,8 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 }
             }
 
-            // If marking as COMPLETED, update completed_by and completed_at for existing records
+            // If marking as COMPLETED, update completed_by and completed_at for existing
+            // records
             if (status == Status.COMPLETED) {
                 updateCompletionInfoString(pageId, batch, user);
             }
@@ -452,6 +453,31 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         NotebookPageSample nps = new NotebookPageSample();
         nps.setNotebookPage(page);
         nps.setSampleItemId(sampleItemId.toString());
+        nps.setStatus(status != null ? status : Status.PENDING);
+        insert(nps);
+    }
+
+    @Override
+    @Transactional
+    public void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status) {
+        if (pageId == null || sampleItemId == null || sampleItemId.isEmpty()) {
+            return;
+        }
+
+        // Check if record already exists using string-based lookup
+        NotebookPageSample existing = getBySampleItemIdAndPageId(sampleItemId, pageId);
+        if (existing != null) {
+            return; // Already exists
+        }
+
+        NoteBookPage page = noteBookService.getPage(pageId);
+        if (page == null) {
+            throw new IllegalArgumentException("Page not found: " + pageId);
+        }
+
+        NotebookPageSample nps = new NotebookPageSample();
+        nps.setNotebookPage(page);
+        nps.setSampleItemId(sampleItemId);
         nps.setStatus(status != null ? status : Status.PENDING);
         insert(nps);
     }

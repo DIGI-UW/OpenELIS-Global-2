@@ -9,6 +9,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
+import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
@@ -66,6 +67,9 @@ public class NotebookSampleEntryController extends BaseRestController {
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private NotebookPageSampleDAO notebookPageSampleDAO;
 
     /**
      * Search for samples to add to a notebook. T035: GET
@@ -239,12 +243,33 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         // First pass: build sample maps from page samples
         for (org.openelisglobal.notebook.valueholder.NotebookPageSample nps : pageSamples) {
-            org.openelisglobal.sampleitem.valueholder.SampleItem sampleItem = sampleItemService
-                    .get(nps.getSampleItemId());
+            String sampleItemId = nps.getSampleItemId();
+
+            // Check if this is a composite/virtual sample ID (e.g., "123_cassette_0",
+            // "123_block_0")
+            // These IDs contain underscores and don't correspond to actual SampleItem
+            // entities
+            // We must check BEFORE calling sampleItemService.get() because that call will
+            // throw NumberFormatException when Hibernate tries to convert the ID to integer
+            if (sampleItemId != null && sampleItemId.contains("_")) {
+                // Handle virtual/composite sample IDs directly without database lookup
+                Map<String, Object> virtualSampleMap = buildVirtualSampleMap(sampleItemId, nps);
+                sampleMaps.add(virtualSampleMap);
+                includedSampleIds.add(sampleItemId);
+                continue;
+            }
+
+            org.openelisglobal.sampleitem.valueholder.SampleItem sampleItem = sampleItemService.get(sampleItemId);
             if (sampleItem != null) {
                 Map<String, Object> sampleMap = buildSampleMap(sampleItem, nps);
                 sampleMaps.add(sampleMap);
                 includedSampleIds.add(sampleItem.getId());
+            } else {
+                // Handle cases where sampleItemId is numeric but no SampleItem exists
+                // This shouldn't normally happen but handle gracefully
+                Map<String, Object> virtualSampleMap = buildVirtualSampleMap(sampleItemId, nps);
+                sampleMaps.add(virtualSampleMap);
+                includedSampleIds.add(sampleItemId);
             }
         }
 
@@ -252,59 +277,80 @@ public class NotebookSampleEntryController extends BaseRestController {
         // ONLY if the children have their own NotebookPageSample record for this page
         // This prevents children from appearing on pages they haven't been explicitly
         // added to
+        // IMPORTANT: Skip virtual/composite samples (e.g., "123_cassette_0") as they
+        // don't have actual SampleItem entities and can't have children
         List<Map<String, Object>> childMaps = new java.util.ArrayList<>();
         for (Map<String, Object> sampleMap : sampleMaps) {
+            // Skip virtual samples - they don't have real SampleItem entities
+            if (Boolean.TRUE.equals(sampleMap.get("isVirtual"))) {
+                continue;
+            }
+
             Boolean isAliquot = (Boolean) sampleMap.get("isAliquot");
             if (isAliquot == null || !isAliquot) {
                 // This is a parent sample - get its children
                 String sampleId = String.valueOf(sampleMap.get("id"));
-                SampleItem parentSample = sampleItemService.get(sampleId);
-                if (parentSample != null) {
-                    try {
-                        List<SampleItem> children = sampleEntryService.getChildSamples(Integer.parseInt(sampleId));
-                        for (SampleItem child : children) {
-                            if (!includedSampleIds.contains(child.getId())) {
-                                // Look up the child's actual NotebookPageSample record for this page
-                                org.openelisglobal.notebook.valueholder.NotebookPageSample childNps = notebookPageSampleService
-                                        .getByPageIdAndSampleItemId(pageId, Integer.parseInt(child.getId()));
 
-                                // CRITICAL FIX: Only include child if it has a NotebookPageSample record on
-                                // THIS page
-                                // This prevents children from automatically appearing when only their parent is
-                                // on the page
-                                if (childNps != null) {
-                                    Map<String, Object> childMap = buildSampleMap(child, childNps);
-                                    childMaps.add(childMap);
-                                    includedSampleIds.add(child.getId());
-                                }
+                // Skip if sampleId is not a valid numeric ID (composite IDs contain
+                // underscores)
+                if (sampleId == null || sampleId.contains("_")) {
+                    continue;
+                }
+
+                try {
+                    int sampleIdInt = Integer.parseInt(sampleId);
+                    List<SampleItem> children = sampleEntryService.getChildSamples(sampleIdInt);
+                    for (SampleItem child : children) {
+                        if (!includedSampleIds.contains(child.getId())) {
+                            // Look up the child's actual NotebookPageSample record for this page
+                            org.openelisglobal.notebook.valueholder.NotebookPageSample childNps = notebookPageSampleService
+                                    .getBySampleItemIdAndPageId(child.getId(), pageId);
+
+                            // CRITICAL FIX: Only include child if it has a NotebookPageSample record on
+                            // THIS page
+                            // This prevents children from automatically appearing when only their parent is
+                            // on the page
+                            if (childNps != null) {
+                                Map<String, Object> childMap = buildSampleMap(child, childNps);
+                                childMaps.add(childMap);
+                                includedSampleIds.add(child.getId());
                             }
                         }
-                    } catch (Exception e) {
-                        // Skip child samples if query fails (type mismatch in legacy data)
-                        LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
-                                "Could not load child samples for " + sampleId + ": " + e.getMessage());
                     }
+                } catch (NumberFormatException e) {
+                    // Skip non-numeric sample IDs (composite IDs like "123_cassette_0")
+                } catch (Exception e) {
+                    // Skip child samples if query fails (type mismatch in legacy data)
+                    LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
+                            "Could not load child samples for " + sampleId + ": " + e.getMessage());
                 }
             }
         }
         sampleMaps.addAll(childMaps);
 
         // Repeat for newly added children (recursive - one level deep for children of
-        // children)
+        // children). Only real SampleItem children can have their own children.
         List<Map<String, Object>> grandchildMaps = new java.util.ArrayList<>();
         for (Map<String, Object> childMap : childMaps) {
             String childId = String.valueOf(childMap.get("id"));
+            // Skip non-numeric IDs
+            if (childId == null || childId.contains("_")) {
+                continue;
+            }
             try {
-                List<SampleItem> grandchildren = sampleEntryService.getChildSamples(Integer.parseInt(childId));
+                int childIdInt = Integer.parseInt(childId);
+                List<SampleItem> grandchildren = sampleEntryService.getChildSamples(childIdInt);
                 for (SampleItem grandchild : grandchildren) {
                     if (!includedSampleIds.contains(grandchild.getId())) {
                         org.openelisglobal.notebook.valueholder.NotebookPageSample grandchildNps = notebookPageSampleService
-                                .getByPageIdAndSampleItemId(pageId, Integer.parseInt(grandchild.getId()));
+                                .getBySampleItemIdAndPageId(grandchild.getId(), pageId);
                         Map<String, Object> grandchildMap = buildSampleMap(grandchild, grandchildNps);
                         grandchildMaps.add(grandchildMap);
                         includedSampleIds.add(grandchild.getId());
                     }
                 }
+            } catch (NumberFormatException e) {
+                // Skip non-numeric sample IDs
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
                         "Could not load grandchild samples for " + childId + ": " + e.getMessage());
@@ -312,22 +358,29 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
         sampleMaps.addAll(grandchildMaps);
 
-        // Repeat for grandchildren to get great-grandchildren (supports 4-level hierarchy:
-        // Specimen → Cassette → Block → Slide)
+        // Repeat for grandchildren to get great-grandchildren (supports 4-level
+        // hierarchy: Specimen → Cassette → Block → Slide)
         List<Map<String, Object>> greatGrandchildMaps = new java.util.ArrayList<>();
         for (Map<String, Object> grandchildMap : grandchildMaps) {
             String grandchildId = String.valueOf(grandchildMap.get("id"));
+            // Skip non-numeric IDs
+            if (grandchildId == null || grandchildId.contains("_")) {
+                continue;
+            }
             try {
-                List<SampleItem> greatGrandchildren = sampleEntryService.getChildSamples(Integer.parseInt(grandchildId));
+                int grandchildIdInt = Integer.parseInt(grandchildId);
+                List<SampleItem> greatGrandchildren = sampleEntryService.getChildSamples(grandchildIdInt);
                 for (SampleItem greatGrandchild : greatGrandchildren) {
                     if (!includedSampleIds.contains(greatGrandchild.getId())) {
                         org.openelisglobal.notebook.valueholder.NotebookPageSample greatGrandchildNps = notebookPageSampleService
-                                .getByPageIdAndSampleItemId(pageId, Integer.parseInt(greatGrandchild.getId()));
+                                .getBySampleItemIdAndPageId(greatGrandchild.getId(), pageId);
                         Map<String, Object> greatGrandchildMap = buildSampleMap(greatGrandchild, greatGrandchildNps);
                         greatGrandchildMaps.add(greatGrandchildMap);
                         includedSampleIds.add(greatGrandchild.getId());
                     }
                 }
+            } catch (NumberFormatException e) {
+                // Skip non-numeric sample IDs
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
                         "Could not load great-grandchild samples for " + grandchildId + ": " + e.getMessage());
@@ -481,6 +534,116 @@ public class NotebookSampleEntryController extends BaseRestController {
             sampleMap.put("parentSampleItemId", null);
             sampleMap.put("parentExternalId", null);
         }
+
+        return sampleMap;
+    }
+
+    /**
+     * Build a sample map for virtual/composite sample IDs that don't have actual
+     * SampleItem entities. These are created by pathology workflow expansion (e.g.,
+     * "123_cassette_0", "123_block_0", "123_slide_0").
+     *
+     * @param sampleItemId the composite sample ID string
+     * @param nps          the NotebookPageSample record containing the stored data
+     * @return a map with sample data suitable for frontend display
+     */
+    private Map<String, Object> buildVirtualSampleMap(String sampleItemId,
+            org.openelisglobal.notebook.valueholder.NotebookPageSample nps) {
+        Map<String, Object> sampleMap = new HashMap<>();
+        sampleMap.put("id", sampleItemId);
+        sampleMap.put("sampleItemId", sampleItemId);
+
+        // Extract parent sample ID and type from composite ID (e.g., "123_cassette_0"
+        // -> parentId=123, type=cassette)
+        String parentSampleId = null;
+        String virtualType = null;
+        Integer childIndex = null;
+        if (sampleItemId != null && sampleItemId.contains("_")) {
+            String[] parts = sampleItemId.split("_");
+            if (parts.length >= 3) {
+                parentSampleId = parts[0];
+                virtualType = parts[1]; // cassette, block, or slide
+                try {
+                    childIndex = Integer.parseInt(parts[2]);
+                } catch (NumberFormatException e) {
+                    childIndex = 0;
+                }
+            }
+        }
+        sampleMap.put("parentSampleId", parentSampleId);
+        sampleMap.put("virtualType", virtualType);
+        sampleMap.put("childIndex", childIndex);
+
+        // Set status from page sample
+        if (nps != null) {
+            sampleMap.put("pageStatus", nps.getStatus() != null ? nps.getStatus().name() : "PENDING");
+            sampleMap.put("status", nps.getStatus() != null ? nps.getStatus().name() : "PENDING");
+            sampleMap.put("pageSampleId", nps.getId());
+            Map<String, Object> npsData = nps.getData();
+            sampleMap.put("data", npsData);
+
+            // Extract key fields from data to top level for easier frontend access
+            if (npsData != null) {
+                // Block-specific fields
+                if (npsData.containsKey("blockCount")) {
+                    sampleMap.put("blockCount", npsData.get("blockCount"));
+                }
+                if (npsData.containsKey("numberOfBlocks")) {
+                    sampleMap.put("numberOfBlocks", npsData.get("numberOfBlocks"));
+                }
+                if (npsData.containsKey("blocksCreated")) {
+                    sampleMap.put("blocksCreated", npsData.get("blocksCreated"));
+                }
+                if (npsData.containsKey("embeddingQuality")) {
+                    sampleMap.put("embeddingQuality", npsData.get("embeddingQuality"));
+                }
+                // Slide-specific fields
+                if (npsData.containsKey("slideCount")) {
+                    sampleMap.put("slideCount", npsData.get("slideCount"));
+                }
+                if (npsData.containsKey("numberOfSlides")) {
+                    sampleMap.put("numberOfSlides", npsData.get("numberOfSlides"));
+                }
+                if (npsData.containsKey("slidesCreated")) {
+                    sampleMap.put("slidesCreated", npsData.get("slidesCreated"));
+                }
+                if (npsData.containsKey("sectionQuality")) {
+                    sampleMap.put("sectionQuality", npsData.get("sectionQuality"));
+                }
+                if (npsData.containsKey("sectionThickness")) {
+                    sampleMap.put("sectionThickness", npsData.get("sectionThickness"));
+                }
+                // QC fields
+                if (npsData.containsKey("qcStatus")) {
+                    sampleMap.put("qcStatus", npsData.get("qcStatus"));
+                }
+                // Technician info
+                if (npsData.containsKey("technicianName")) {
+                    sampleMap.put("technicianName", npsData.get("technicianName"));
+                }
+                // Dates
+                if (npsData.containsKey("blockDate")) {
+                    sampleMap.put("blockDate", npsData.get("blockDate"));
+                }
+                if (npsData.containsKey("slideDate")) {
+                    sampleMap.put("slideDate", npsData.get("slideDate"));
+                }
+            }
+        } else {
+            sampleMap.put("pageStatus", "PENDING");
+            sampleMap.put("status", "PENDING");
+            sampleMap.put("pageSampleId", null);
+            sampleMap.put("data", null);
+        }
+
+        // Virtual samples don't have direct SampleItem entity references
+        sampleMap.put("isVirtual", true);
+        sampleMap.put("isAliquot", false);
+        sampleMap.put("nestingLevel", 0);
+        sampleMap.put("parentSampleItemId", parentSampleId);
+        sampleMap.put("parentExternalId", null);
+        sampleMap.put("externalId", null);
+        sampleMap.put("sortOrder", childIndex != null ? childIndex : 0);
 
         return sampleMap;
     }
@@ -1120,6 +1283,29 @@ public class NotebookSampleEntryController extends BaseRestController {
                 LogEvent.logWarn(this.getClass().getName(), "getBoxLayout",
                         "Could not load global storage assignments: " + e.getMessage());
             }
+
+            // Also include archived pathology samples from NotebookPageSample JSONB data
+            // This handles composite sample IDs (e.g., "4_cassette_0_block_0_slide_0")
+            // that cannot be stored in SampleStorageAssignment (which requires Integer IDs)
+            try {
+                Map<String, Map<String, String>> archivedOccupied = notebookPageSampleDAO
+                        .getOccupiedWellsByBoxId(boxId);
+
+                for (Map.Entry<String, Map<String, String>> entry : archivedOccupied.entrySet()) {
+                    String coord = entry.getKey();
+                    if (!wells.containsKey(coord)) {
+                        // Add archived pathology sample that's not in other sources
+                        Map<String, Object> wellInfo = new HashMap<>();
+                        wellInfo.put("sampleItemId", entry.getValue().get("sampleItemId"));
+                        wellInfo.put("externalId", entry.getValue().get("externalId"));
+                        wellInfo.put("source", "archived"); // Mark as archived pathology
+                        wells.put(coord, wellInfo);
+                    }
+                }
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "getBoxLayout",
+                        "Could not load archived pathology assignments: " + e.getMessage());
+            }
         }
 
         result.put("wells", wells);
@@ -1180,7 +1366,9 @@ public class NotebookSampleEntryController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
-        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+        // Support both sampleIds (integers) and sampleIdsString (composite strings)
+        List<String> effectiveSampleIds = request.getEffectiveSampleIds();
+        if (effectiveSampleIds.isEmpty()) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "No sample IDs provided");
             return ResponseEntity.badRequest().body(error);
@@ -1206,86 +1394,109 @@ public class NotebookSampleEntryController extends BaseRestController {
 
             int retentionYears = request.getRetentionYears() > 0 ? request.getRetentionYears() : 5;
 
-            // If reassign flag is set, delete existing routing records first
-            if (request.isReassign()) {
-                for (Integer sampleId : request.getSampleIds()) {
-                    SampleRouting existingRouting = sampleRoutingService.getByNotebookIdAndSampleItemId(notebookId,
-                            sampleId);
-                    if (existingRouting != null) {
-                        LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
-                                "Deleting existing routing for sample " + sampleId + " (reassignment)");
-                        sampleRoutingService.delete(existingRouting);
-                    }
-                }
-            }
+            // Check if we're dealing with composite sample IDs (e.g.,
+            // "4_cassette_0_block_0")
+            // Composite IDs cannot be used with SampleRouting or SampleStorageAssignment
+            // services
+            boolean hasCompositeSampleIds = effectiveSampleIds.stream().anyMatch(id -> id.contains("_"));
 
-            int assignedCount;
-
+            int assignedCount = 0;
             Map<Integer, String> wellAssignments = null;
-            if (request.getBoxId() != null) {
-                // Use box-based storage with well assignments
-                wellAssignments = request.getWellAssignmentsAsIntegerMap();
-                if (wellAssignments == null || wellAssignments.isEmpty()) {
-                    // Auto-assign wells if not provided
-                    wellAssignments = sampleRoutingService.autoAssignWells(notebookId, request.getSampleIds(),
-                            request.getBoxId(), 12);
-                }
-                assignedCount = sampleRoutingService.bulkRouteToStorage(notebookId, request.getSampleIds(),
-                        request.getBoxId(), wellAssignments, sysUserId);
-            } else {
-                // Use hierarchical location-based storage
-                assignedCount = sampleRoutingService.bulkRouteToStorage(notebookId, request.getSampleIds(),
-                        request.getLocationId(), request.getLocationType() != null ? request.getLocationType() : "rack",
-                        condition, retentionYears, sysUserId);
-            }
 
-            // Also create SampleStorageAssignment records for global Storage Management
-            // integration
-            java.time.LocalDate expiryDate = sampleRoutingService.calculateExpiryDate(retentionYears);
-            int storageAssignmentCount = 0;
-            for (Integer sampleId : request.getSampleIds()) {
-                try {
-                    String notes = String.format("Notebook: %s | Condition: %s | Retention: %d years | Expiry: %s",
-                            notebook.getTitle() != null ? notebook.getTitle() : String.valueOf(notebookId),
-                            condition.name(), retentionYears, expiryDate.toString());
-
-                    String wellCoord = wellAssignments != null ? wellAssignments.get(sampleId) : null;
-                    String locationIdForAssign = request.getBoxId() != null ? request.getBoxId().toString()
-                            : request.getLocationId();
-                    String locationTypeForAssign = request.getBoxId() != null ? "box"
-                            : (request.getLocationType() != null ? request.getLocationType() : "rack");
-
-                    LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
-                            "Creating SampleStorageAssignment for sample " + sampleId + " at " + locationTypeForAssign
-                                    + " " + locationIdForAssign + " (well: " + wellCoord + ")");
-
-                    // Check if sample already has a storage assignment BEFORE trying to assign
-                    // This avoids the transaction rollback issue that occurs when
-                    // assignSampleItemWithLocation throws an exception
-                    Map<String, Object> existingLocation = sampleStorageService
-                            .getSampleItemLocation(sampleId.toString());
-                    boolean hasExistingAssignment = existingLocation != null && !existingLocation.isEmpty()
-                            && existingLocation.get("location") != null
-                            && !existingLocation.get("location").toString().isEmpty();
-
-                    if (request.isReassign() || hasExistingAssignment) {
-                        // Use move for reassignment or if sample already has an assignment
-                        sampleStorageService.moveSampleItemWithLocation(sampleId.toString(), locationIdForAssign,
-                                locationTypeForAssign, wellCoord,
-                                hasExistingAssignment ? "Notebook assignment update" : "Notebook reassignment", notes);
-                    } else {
-                        // Create new assignment
-                        sampleStorageService.assignSampleItemWithLocation(sampleId.toString(), locationIdForAssign,
-                                locationTypeForAssign, wellCoord, notes);
+            // Only use routing/storage services for non-composite (integer) sample IDs
+            if (!hasCompositeSampleIds && request.getSampleIds() != null && !request.getSampleIds().isEmpty()) {
+                // If reassign flag is set, delete existing routing records first
+                if (request.isReassign()) {
+                    for (Integer sampleId : request.getSampleIds()) {
+                        SampleRouting existingRouting = sampleRoutingService.getByNotebookIdAndSampleItemId(notebookId,
+                                sampleId);
+                        if (existingRouting != null) {
+                            LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                                    "Deleting existing routing for sample " + sampleId + " (reassignment)");
+                            sampleRoutingService.delete(existingRouting);
+                        }
                     }
-                    storageAssignmentCount++;
-                } catch (Exception e) {
-                    LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
-                            "Error creating SampleStorageAssignment for sample " + sampleId + ": " + e.getMessage());
                 }
+
+                if (request.getBoxId() != null) {
+                    // Use box-based storage with well assignments
+                    wellAssignments = request.getWellAssignmentsAsIntegerMap();
+                    if (wellAssignments == null || wellAssignments.isEmpty()) {
+                        // Auto-assign wells if not provided
+                        wellAssignments = sampleRoutingService.autoAssignWells(notebookId, request.getSampleIds(),
+                                request.getBoxId(), 12);
+                    }
+                    assignedCount = sampleRoutingService.bulkRouteToStorage(notebookId, request.getSampleIds(),
+                            request.getBoxId(), wellAssignments, sysUserId);
+                } else if (request.getLocationId() != null) {
+                    // Use hierarchical location-based storage
+                    assignedCount = sampleRoutingService.bulkRouteToStorage(notebookId, request.getSampleIds(),
+                            request.getLocationId(),
+                            request.getLocationType() != null ? request.getLocationType() : "rack", condition,
+                            retentionYears, sysUserId);
+                }
+
+                // Also create SampleStorageAssignment records for global Storage Management
+                // integration
+                java.time.LocalDate expiryDate = sampleRoutingService.calculateExpiryDate(retentionYears);
+                int storageAssignmentCount = 0;
+                for (Integer sampleId : request.getSampleIds()) {
+                    try {
+                        String notes = String.format("Notebook: %s | Condition: %s | Retention: %d years | Expiry: %s",
+                                notebook.getTitle() != null ? notebook.getTitle() : String.valueOf(notebookId),
+                                condition.name(), retentionYears, expiryDate.toString());
+
+                        String wellCoord = wellAssignments != null ? wellAssignments.get(sampleId) : null;
+                        String locationIdForAssign = request.getBoxId() != null ? request.getBoxId().toString()
+                                : request.getLocationId();
+                        String locationTypeForAssign = request.getBoxId() != null ? "box"
+                                : (request.getLocationType() != null ? request.getLocationType() : "rack");
+
+                        LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                                "Creating SampleStorageAssignment for sample " + sampleId + " at "
+                                        + locationTypeForAssign + " " + locationIdForAssign + " (well: " + wellCoord
+                                        + ")");
+
+                        // Check if sample already has a storage assignment BEFORE trying to assign
+                        // This avoids the transaction rollback issue that occurs when
+                        // assignSampleItemWithLocation throws an exception
+                        Map<String, Object> existingLocation = sampleStorageService
+                                .getSampleItemLocation(sampleId.toString());
+                        boolean hasExistingAssignment = existingLocation != null && !existingLocation.isEmpty()
+                                && existingLocation.get("location") != null
+                                && !existingLocation.get("location").toString().isEmpty();
+
+                        if (request.isReassign() || hasExistingAssignment) {
+                            // Use move for reassignment or if sample already has an assignment
+                            sampleStorageService.moveSampleItemWithLocation(sampleId.toString(), locationIdForAssign,
+                                    locationTypeForAssign, wellCoord,
+                                    hasExistingAssignment ? "Notebook assignment update" : "Notebook reassignment",
+                                    notes);
+                        } else {
+                            // Create new assignment
+                            sampleStorageService.assignSampleItemWithLocation(sampleId.toString(), locationIdForAssign,
+                                    locationTypeForAssign, wellCoord, notes);
+                        }
+                        storageAssignmentCount++;
+                    } catch (Exception e) {
+                        LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
+                                "Error creating SampleStorageAssignment for sample " + sampleId + ": "
+                                        + e.getMessage());
+                    }
+                }
+                LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage", "Created "
+                        + storageAssignmentCount + " SampleStorageAssignment records for notebook " + notebookId);
+            } else if (hasCompositeSampleIds) {
+                // For composite sample IDs (pathology workflow), we skip routing/storage
+                // services
+                // and just update the NotebookPageSample records with storage info directly
+                LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
+                        "Using composite sample IDs - skipping routing/storage services, updating page samples directly");
+                assignedCount = effectiveSampleIds.size();
             }
-            LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage", "Created " + storageAssignmentCount
-                    + " SampleStorageAssignment records for notebook " + notebookId);
+
+            // Calculate expiry date for page sample updates
+            java.time.LocalDate expiryDate = sampleRoutingService.calculateExpiryDate(retentionYears);
 
             // Determine which page to update based on request.pageId
             // If pageId is provided (from Routing page), update that page's samples as
@@ -1306,16 +1517,19 @@ public class NotebookSampleEntryController extends BaseRestController {
 
             if (targetPage != null) {
                 // Update NotebookPageSample records with storage info
-                for (Integer sampleId : request.getSampleIds()) {
+                // Use effectiveSampleIds (strings) to support composite IDs (e.g.,
+                // "4_cassette_0")
+                for (String sampleIdStr : effectiveSampleIds) {
                     try {
+                        // Use string-based lookup for composite sample IDs
                         org.openelisglobal.notebook.valueholder.NotebookPageSample nps = notebookPageSampleService
-                                .getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
+                                .getBySampleItemIdAndPageId(sampleIdStr, targetPage.getId());
 
                         // Auto-create if doesn't exist - this is needed to store storage data
                         if (nps == null) {
-                            notebookPageSampleService.createPageSampleForPage(targetPage.getId(), sampleId,
+                            notebookPageSampleService.createPageSampleForPageString(targetPage.getId(), sampleIdStr,
                                     org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS);
-                            nps = notebookPageSampleService.getByPageIdAndSampleItemId(targetPage.getId(), sampleId);
+                            nps = notebookPageSampleService.getBySampleItemIdAndPageId(sampleIdStr, targetPage.getId());
                         }
 
                         if (nps != null) {
@@ -1336,10 +1550,21 @@ public class NotebookSampleEntryController extends BaseRestController {
                             data.put("retentionYears", retentionYears);
                             data.put("retentionExpiry", expiryDate.toString());
 
+                            // Save dateStored if provided
+                            if (request.getDateStored() != null && !request.getDateStored().isEmpty()) {
+                                data.put("dateStored", request.getDateStored());
+                            } else {
+                                // Default to today's date if not provided
+                                data.put("dateStored", java.time.LocalDate.now().toString());
+                            }
+
                             // Add box/well info if available
                             if (request.getBoxId() != null) {
                                 data.put("boxId", request.getBoxId());
-                                String wellCoord = wellAssignments != null ? wellAssignments.get(sampleId) : null;
+                                // Get well coordinate using string key (supports composite sample IDs)
+                                String wellCoord = request.getWellAssignments() != null
+                                        ? request.getWellAssignments().get(sampleIdStr)
+                                        : null;
                                 if (wellCoord != null) {
                                     data.put("wellCoordinate", wellCoord);
                                     data.put("storageWell", wellCoord); // Frontend expects this field name
@@ -1382,7 +1607,7 @@ public class NotebookSampleEntryController extends BaseRestController {
                                     }
                                 }
 LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
-                                        "Set storageLocation for sample " + sampleId + ": "
+                                        "Set storageLocation for sample " + sampleIdStr + ": "
                                                 + data.get("storageLocation"));
                             } else if (request.getLocationId() != null) {
                                 // Shelf-level storage (no box/wells)
@@ -1398,7 +1623,7 @@ LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
 
                                     // Get the storage assignment to retrieve hierarchical path
                                     java.util.Map<String, Object> location = sampleStorageService
-                                            .getSampleItemLocation(sampleId.toString());
+                                            .getSampleItemLocation(sampleIdStr);
                                     if (location != null && !location.isEmpty()) {
                                         String hierarchicalPath = (String) location.get("hierarchicalPath");
                                         if (hierarchicalPath != null && !hierarchicalPath.trim().isEmpty()) {
@@ -1411,11 +1636,11 @@ LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
                                         data.put("storageLocation", "Shelf Storage");
                                     }
                                     LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
-                                            "Set storageLocation for sample " + sampleId + " (location-based): "
+                                            "Set storageLocation for sample " + sampleIdStr + " (location-based): "
                                                     + data.get("storageLocation"));
                                 } catch (Exception e) {
                                     LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
-                                            "Error retrieving storage path for sample " + sampleId + ": "
+                                            "Error retrieving storage path for sample " + sampleIdStr + ": "
                                                     + e.getMessage());
                                     data.put("storageLocation", "Shelf Storage");
                                 }
@@ -1428,11 +1653,11 @@ LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
 
                             notebookPageSampleService.update(nps);
                             LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage", "Updated NPS ID="
-                                    + nps.getId() + " for pageId=" + targetPage.getId() + " sampleId=" + sampleId);
+                                    + nps.getId() + " for pageId=" + targetPage.getId() + " sampleId=" + sampleIdStr);
                         }
                     } catch (Exception e) {
                         LogEvent.logWarn(this.getClass().getName(), "assignSamplesToStorage",
-                                "Error updating NotebookPageSample for sample " + sampleId + ": " + e.getMessage());
+                                "Error updating NotebookPageSample for sample " + sampleIdStr + ": " + e.getMessage());
                     }
                 }
                 // Note: We do NOT auto-mark samples as COMPLETED here.
@@ -2446,6 +2671,7 @@ LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
      */
     public static class AssignStorageRequest {
         private List<Integer> sampleIds;
+        private List<String> sampleIdsString; // For composite sample IDs (e.g., "4_cassette_0_block_0")
         private Integer boxId;
         private Map<String, String> wellAssignments;
         private String locationId;
@@ -2485,6 +2711,28 @@ LogEvent.logInfo(this.getClass().getName(), "assignSamplesToStorage",
 
         public void setSampleIds(List<Integer> sampleIds) {
             this.sampleIds = sampleIds;
+        }
+
+        public List<String> getSampleIdsString() {
+            return sampleIdsString;
+        }
+
+        public void setSampleIdsString(List<String> sampleIdsString) {
+            this.sampleIdsString = sampleIdsString;
+        }
+
+        /**
+         * Get effective sample IDs as strings. Prefers sampleIdsString for composite
+         * IDs, falls back to converting sampleIds to strings.
+         */
+        public List<String> getEffectiveSampleIds() {
+            if (sampleIdsString != null && !sampleIdsString.isEmpty()) {
+                return sampleIdsString;
+            }
+            if (sampleIds != null) {
+                return sampleIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.toList());
+            }
+            return new java.util.ArrayList<>();
         }
 
         public Integer getBoxId() {

@@ -33,8 +33,8 @@ import "./NotebookWorkflow.css";
  * Page 2: Sample Quality Control
  * Page 3: Gross Examination
  * Page 4: Cassette Setup
- * Page 5: Block Creation
- * Page 6: Slide Preparation
+ * Page 5: Block Creation (with Archive option)
+ * Page 6: Slide Preparation (with Archive option)
  * Page 7: Slide Staining
  * Page 8: Microscopy & Diagnosis
  * Page 9: Storage & Inventory Management

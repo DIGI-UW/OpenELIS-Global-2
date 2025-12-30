@@ -186,10 +186,15 @@ public class PathologyWorkflowController extends BaseRestController {
             item.setId(itemId);
 
             // Add sample to the notebook entry
+            // This also creates NotebookPageSample records on the first page via
+            // createPageSamplesForNotebook
             notebookEntryService.addSample(entryId, item, sysUserId);
 
-            // Link sample to notebook
-            notebookSampleEntryService.linkSamplesToNotebook(entryId, List.of(Integer.parseInt(itemId)));
+            // NOTE: linkSamplesToNotebook was removed because:
+            // 1. It was being called with entryId (notebook_entry.id) instead of notebookId
+            // (notebook.id)
+            // 2. addSample already calls createPageSamplesForNotebook which does the same
+            // thing
 
             // Create or update NotebookPageSample record if page ID is provided
             if (pageId != null) {
@@ -225,7 +230,8 @@ public class PathologyWorkflowController extends BaseRestController {
                     sampleData.put("externalId", externalId);
                     sampleData.put("accessionNumber", parentSample.getAccessionNumber());
 
-                    // Check if a NotebookPageSample already exists (created by linkSamplesToNotebook)
+                    // Check if a NotebookPageSample already exists (created by
+                    // linkSamplesToNotebook)
                     NotebookPageSample existingPageSample = notebookPageSampleService.getBySampleItemIdAndPageId(itemId,
                             pageId);
 
@@ -358,25 +364,26 @@ public class PathologyWorkflowController extends BaseRestController {
     // ========================================
 
     /**
-     * Submit gross examination results with images.
-     * POST /rest/notebook/pathology/grossing/submit
+     * Submit gross examination results with images. POST
+     * /rest/notebook/pathology/grossing/submit
      *
      * Grossing is the first step in histopathology workflow where the pathologist:
-     * - Examines the specimen macroscopically
-     * - Documents gross findings (dimensions, weight, appearance, margins)
-     * - Photographs the specimen (up to 96 images with standardized naming)
-     * - Selects tissue sections for processing into cassettes
+     * - Examines the specimen macroscopically - Documents gross findings
+     * (dimensions, weight, appearance, margins) - Photographs the specimen (up to
+     * 96 images with standardized naming) - Selects tissue sections for processing
+     * into cassettes
      *
-     * Image naming convention: {AccessionNumber}_{SpecimenPart}_{ImageNumber}_{View}.jpg
-     * Example: PATH-2024-001_A_01_superior.jpg, PATH-2024-001_A_02_inferior.jpg
+     * Image naming convention:
+     * {AccessionNumber}_{SpecimenPart}_{ImageNumber}_{View}.jpg Example:
+     * PATH-2024-001_A_01_superior.jpg, PATH-2024-001_A_02_inferior.jpg
      *
-     * UI sends JSON with:
-     * - sampleId, pageId, entryId
-     * - Gross findings: specimenReceived, specimenDescription, dimensions (L/W/H),
-     *   weight, color, texture, margins, landmarks, abnormalities
-     * - Sectioning plan: numberOfSections, sectioningMethod, sectionsToSubmit
-     * - Images: grossImages array of { base64Data, fileName, imageType, viewDescription }
-     * - Staff: examinerName, examinerInitials, grossingDate, grossingStartTime, grossingEndTime
+     * UI sends JSON with: - sampleId, pageId, entryId - Gross findings:
+     * specimenReceived, specimenDescription, dimensions (L/W/H), weight, color,
+     * texture, margins, landmarks, abnormalities - Sectioning plan:
+     * numberOfSections, sectioningMethod, sectionsToSubmit - Images: grossImages
+     * array of { base64Data, fileName, imageType, viewDescription } - Staff:
+     * examinerName, examinerInitials, grossingDate, grossingStartTime,
+     * grossingEndTime
      */
     @PostMapping(value = "/grossing/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -441,7 +448,8 @@ public class PathologyWorkflowController extends BaseRestController {
 
             // Sectioning plan
             grossingData.put("numberOfSections", requestData.get("numberOfSections"));
-            grossingData.put("sectioningMethod", requestData.get("sectioningMethod")); // bread-loaf, cross-section, etc.
+            grossingData.put("sectioningMethod", requestData.get("sectioningMethod")); // bread-loaf, cross-section,
+                                                                                       // etc.
             grossingData.put("sectionsToSubmit", requestData.get("sectionsToSubmit")); // List of section descriptions
             grossingData.put("representativeSections", requestData.get("representativeSections"));
             grossingData.put("entirelySubmitted", requestData.get("entirelySubmitted"));
@@ -509,10 +517,7 @@ public class PathologyWorkflowController extends BaseRestController {
                             : "view";
                     String standardizedFileName = String.format("%s_%s_%02d_%s.%s",
                             accessionNumber != null ? accessionNumber.replaceAll("[^a-zA-Z0-9-]", "") : externalId,
-                            specimenPart,
-                            imageCounter,
-                            viewSuffix,
-                            extension);
+                            specimenPart, imageCounter, viewSuffix, extension);
 
                     processedImage.put("originalFileName", originalFileName);
                     processedImage.put("standardizedFileName", standardizedFileName);
@@ -594,15 +599,14 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Get gross examination data for a sample.
-     * GET /rest/notebook/pathology/grossing/{sampleId}
+     * Get gross examination data for a sample. GET
+     * /rest/notebook/pathology/grossing/{sampleId}
      */
     @GetMapping(value = "/grossing/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getGrossingData(
             @org.springframework.web.bind.annotation.PathVariable("sampleId") String sampleId,
-            @RequestParam Integer pageId,
-            HttpServletRequest request) {
+            @RequestParam Integer pageId, HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -701,22 +705,21 @@ public class PathologyWorkflowController extends BaseRestController {
     // ========================================
 
     /**
-     * Get samples that have completed a specific workflow step.
-     * GET /rest/notebook/pathology/workflow/samples-ready
+     * Get samples that have completed a specific workflow step. GET
+     * /rest/notebook/pathology/workflow/samples-ready
      *
      * This endpoint returns samples from the PREVIOUS workflow page that have
      * completed their step and are ready to proceed to the next step.
      *
-     * @param entryId The notebook entry ID
-     * @param currentStep The current workflow step (e.g., "blocks", "slides", "staining")
+     * @param entryId     The notebook entry ID
+     * @param currentStep The current workflow step (e.g., "blocks", "slides",
+     *                    "staining")
      * @return List of samples with their data from the previous step
      */
     @GetMapping(value = "/workflow/samples-ready", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<List<Map<String, Object>>> getSamplesReadyForStep(
-            @RequestParam Integer entryId,
-            @RequestParam String currentStep,
-            HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> getSamplesReadyForStep(@RequestParam Integer entryId,
+            @RequestParam String currentStep, HttpServletRequest request) {
 
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -737,7 +740,8 @@ public class PathologyWorkflowController extends BaseRestController {
             List<NoteBookPage> pages = noteBookPageService.getByNotebookId(entry.getNotebook().getId());
             NoteBookPage previousPage = null;
             for (NoteBookPage page : pages) {
-                // Match page by title containing the step type (e.g., "Cassette", "Block", "Slide")
+                // Match page by title containing the step type (e.g., "Cassette", "Block",
+                // "Slide")
                 String pageTitle = page.getTitle();
                 if (pageTitle != null && matchesStepType(pageTitle, previousStepType)) {
                     previousPage = page;
@@ -773,21 +777,35 @@ public class PathologyWorkflowController extends BaseRestController {
                 Map<String, Object> sampleInfo = new HashMap<>();
                 sampleInfo.put("id", pageSample.getSampleItemId());
                 sampleInfo.put("sampleItemId", pageSample.getSampleItemId());
-                sampleInfo.put("pageStatus", pageSample.getStatus() != null ? pageSample.getStatus().name() : "PENDING");
+                sampleInfo.put("pageStatus",
+                        pageSample.getStatus() != null ? pageSample.getStatus().name() : "PENDING");
 
-                // Get sample item details
+                // Get sample item details - handle composite sample IDs
+                // Composite IDs like "11_cassette_0_block_0_slide_0" need to extract the root
+                // ID for database lookup
+                String sampleItemId = pageSample.getSampleItemId();
+                String rootSampleId = sampleItemId.contains("_") ? sampleItemId.split("_")[0] : sampleItemId;
                 try {
-                    SampleItem sampleItem = sampleItemService.get(pageSample.getSampleItemId());
+                    SampleItem sampleItem = sampleItemService.get(rootSampleId);
                     if (sampleItem != null) {
                         Sample sample = sampleItem.getSample();
                         sampleInfo.put("accessionNumber", sample != null ? sample.getAccessionNumber() : "");
                         TypeOfSample typeOfSample = sampleItem.getTypeOfSample();
                         sampleInfo.put("sampleType", typeOfSample != null ? typeOfSample.getDescription() : "");
-                        sampleInfo.put("collectionDate", sampleItem.getCollectionDate() != null ?
-                                new SimpleDateFormat("yyyy-MM-dd").format(sampleItem.getCollectionDate()) : "");
+                        sampleInfo.put("collectionDate",
+                                sampleItem.getCollectionDate() != null
+                                        ? new SimpleDateFormat("yyyy-MM-dd").format(sampleItem.getCollectionDate())
+                                        : "");
+                        // Also store external ID if available
+                        if (sampleItem.getExternalId() != null) {
+                            sampleInfo.put("externalId", sampleItem.getExternalId());
+                        }
                     }
                 } catch (Exception e) {
-                    // Continue with available data
+                    // Log and continue with available data
+                    org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(),
+                            "getSamplesReadyForStep",
+                            "Could not look up sample item for ID: " + rootSampleId + " - " + e.getMessage());
                 }
 
                 // Include data from previous step for hierarchy display
@@ -797,7 +815,8 @@ public class PathologyWorkflowController extends BaseRestController {
                 // QC status from previous step
                 sampleInfo.put("qcStatus", data.get("qcStatus"));
 
-                // HIERARCHICAL EXPANSION: Create one entry per child item (cassette/block/slide)
+                // HIERARCHICAL EXPANSION: Create one entry per child item
+                // (cassette/block/slide)
                 // This allows the next step to process each item individually
                 if ("cassettes".equals(previousStepType)) {
                     // Expand cassette labels into individual entries for block creation
@@ -883,6 +902,41 @@ public class PathologyWorkflowController extends BaseRestController {
                             result.add(slideEntry);
                         }
                     }
+                } else if ("staining".equals(previousStepType)) {
+                    // Staining -> Microscopy: Pass through the stained slides directly
+                    // No expansion needed - each stained slide becomes one microscopy entry
+                    // Sample IDs are already composite (e.g., "4_cassette_0_block_0_slide_0")
+                    sampleInfo.put("workflowData", data); // Include staining data for microscopy page
+
+                    // Extract slide/block info from composite sample ID or previous step data
+                    String compositeSampleId = pageSample.getSampleItemId();
+                    // Parse composite ID to extract hierarchy: "11_cassette_0_block_0_slide_0"
+                    if (compositeSampleId != null && compositeSampleId.contains("_")) {
+                        String[] parts = compositeSampleId.split("_");
+                        // Build block/slide ID from the composite structure
+                        StringBuilder blockSlideId = new StringBuilder();
+                        for (int i = 1; i < parts.length; i += 2) {
+                            if (i > 1)
+                                blockSlideId.append("/");
+                            String label = parts[i]; // cassette, block, slide
+                            String index = (i + 1 < parts.length) ? parts[i + 1] : "0";
+                            // Capitalize first letter
+                            label = label.substring(0, 1).toUpperCase() + label.substring(1);
+                            blockSlideId.append(label).append(" ").append(Integer.parseInt(index) + 1);
+                        }
+                        sampleInfo.put("blockSlideId", blockSlideId.toString());
+                        sampleInfo.put("slideLabel", blockSlideId.toString());
+                    }
+
+                    // Also include staining info for display
+                    if (data.get("routineStains") != null) {
+                        sampleInfo.put("routineStains", data.get("routineStains"));
+                    }
+                    if (data.get("specialStains") != null) {
+                        sampleInfo.put("specialStains", data.get("specialStains"));
+                    }
+
+                    result.add(sampleInfo);
                 } else {
                     // For gross examination -> cassettes, just add the sample
                     result.add(sampleInfo);
@@ -902,16 +956,18 @@ public class PathologyWorkflowController extends BaseRestController {
      */
     private String getPreviousStepType(String currentStep) {
         switch (currentStep.toLowerCase()) {
-            case "blocks":
-                return "cassettes";
-            case "slides":
-                return "blocks";
-            case "staining":
-                return "slides";
-            case "cassettes":
-                return "gross_examination";
-            default:
-                return null;
+        case "blocks":
+            return "cassettes";
+        case "slides":
+            return "blocks";
+        case "staining":
+            return "slides";
+        case "microscopy":
+            return "staining";
+        case "cassettes":
+            return "gross_examination";
+        default:
+            return null;
         }
     }
 
@@ -920,18 +976,18 @@ public class PathologyWorkflowController extends BaseRestController {
      */
     private boolean isStepCompleted(Map<String, Object> data, String stepType) {
         switch (stepType.toLowerCase()) {
-            case "gross_examination":
-                return Boolean.TRUE.equals(data.get("grossingCompleted"));
-            case "cassettes":
-                return Boolean.TRUE.equals(data.get("cassettesCreated"));
-            case "blocks":
-                return Boolean.TRUE.equals(data.get("blocksCreated"));
-            case "slides":
-                return Boolean.TRUE.equals(data.get("slidesCreated"));
-            case "staining":
-                return Boolean.TRUE.equals(data.get("stainingCompleted"));
-            default:
-                return false;
+        case "gross_examination":
+            return Boolean.TRUE.equals(data.get("grossingCompleted"));
+        case "cassettes":
+            return Boolean.TRUE.equals(data.get("cassettesCreated"));
+        case "blocks":
+            return Boolean.TRUE.equals(data.get("blocksCreated"));
+        case "slides":
+            return Boolean.TRUE.equals(data.get("slidesCreated"));
+        case "staining":
+            return Boolean.TRUE.equals(data.get("stainingCompleted"));
+        default:
+            return false;
         }
     }
 
@@ -959,7 +1015,8 @@ public class PathologyWorkflowController extends BaseRestController {
             if (str.startsWith("[") && str.endsWith("]")) {
                 try {
                     com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                    return mapper.readValue(str, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                    return mapper.readValue(str, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {
+                    });
                 } catch (Exception e) {
                     // Fallback to simple parsing
                 }
@@ -1001,8 +1058,8 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Check if a page title matches a step type.
-     * The matching is case-insensitive and checks if the title contains the step keyword.
+     * Check if a page title matches a step type. The matching is case-insensitive
+     * and checks if the title contains the step keyword.
      */
     private boolean matchesStepType(String pageTitle, String stepType) {
         if (pageTitle == null || stepType == null) {
@@ -1010,18 +1067,18 @@ public class PathologyWorkflowController extends BaseRestController {
         }
         String titleLower = pageTitle.toLowerCase();
         switch (stepType.toLowerCase()) {
-            case "gross_examination":
-                return titleLower.contains("gross") || titleLower.contains("examination");
-            case "cassettes":
-                return titleLower.contains("cassette");
-            case "blocks":
-                return titleLower.contains("block");
-            case "slides":
-                return titleLower.contains("slide");
-            case "staining":
-                return titleLower.contains("stain");
-            default:
-                return false;
+        case "gross_examination":
+            return titleLower.contains("gross") || titleLower.contains("examination");
+        case "cassettes":
+            return titleLower.contains("cassette");
+        case "blocks":
+            return titleLower.contains("block");
+        case "slides":
+            return titleLower.contains("slide");
+        case "staining":
+            return titleLower.contains("stain");
+        default:
+            return false;
         }
     }
 
@@ -1030,20 +1087,16 @@ public class PathologyWorkflowController extends BaseRestController {
     // ========================================
 
     /**
-     * Submit pathology results with two-stage workflow.
-     * POST /rest/notebook/pathology/results/submit
+     * Submit pathology results with two-stage workflow. POST
+     * /rest/notebook/pathology/results/submit
      *
-     * Stage 1 - Initial Findings:
-     * - Microscopic description, cellular features, architectural findings
-     * - Special stain results, IHC results
-     * - Preliminary diagnostic impression
-     * - Initial slide images (up to 96)
+     * Stage 1 - Initial Findings: - Microscopic description, cellular features,
+     * architectural findings - Special stain results, IHC results - Preliminary
+     * diagnostic impression - Initial slide images (up to 96)
      *
-     * Stage 2 - Final Diagnosis:
-     * - Final diagnosis, diagnosis code, tumor type
-     * - Histologic grade, tumor stage, margins
-     * - Pathologist verification and signature
-     * - Final slide images (up to 96)
+     * Stage 2 - Final Diagnosis: - Final diagnosis, diagnosis code, tumor type -
+     * Histologic grade, tumor stage, margins - Pathologist verification and
+     * signature - Final slide images (up to 96)
      */
     @PostMapping(value = "/results/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -1117,7 +1170,8 @@ public class PathologyWorkflowController extends BaseRestController {
 
             // === SLIDE IMAGES ===
             // Process initial slide images (up to 96)
-            List<Map<String, Object>> initialSlideImages = (List<Map<String, Object>>) requestData.get("initialSlideImages");
+            List<Map<String, Object>> initialSlideImages = (List<Map<String, Object>>) requestData
+                    .get("initialSlideImages");
             if (initialSlideImages != null && !initialSlideImages.isEmpty()) {
                 if (initialSlideImages.size() > 96) {
                     response.put("success", false);
@@ -1125,11 +1179,22 @@ public class PathologyWorkflowController extends BaseRestController {
                     return ResponseEntity.badRequest().body(response);
                 }
 
-                // Get sample info for naming
-                SampleItem sampleItem = sampleItemService.getData(sampleId);
-                String accessionNumber = sampleItem != null && sampleItem.getSample() != null
-                        ? sampleItem.getSample().getAccessionNumber()
-                        : "UNKNOWN";
+                // Get sample info for naming - handle composite sample IDs
+                // Composite IDs like "11_cassette_0_block_0_slide_0" need to extract the root
+                // ID
+                String rootSampleId = sampleId.contains("_") ? sampleId.split("_")[0] : sampleId;
+                SampleItem sampleItem = null;
+                String accessionNumber = "UNKNOWN";
+                try {
+                    sampleItem = sampleItemService.getData(rootSampleId);
+                    if (sampleItem != null && sampleItem.getSample() != null) {
+                        accessionNumber = sampleItem.getSample().getAccessionNumber();
+                    }
+                } catch (Exception e) {
+                    // If lookup fails, use UNKNOWN - don't block the save
+                    org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(), "submitResults",
+                            "Could not look up sample item for ID: " + rootSampleId);
+                }
 
                 List<Map<String, Object>> processedInitialImages = new ArrayList<>();
                 int imageNum = 1;
@@ -1148,9 +1213,10 @@ public class PathologyWorkflowController extends BaseRestController {
                     String extension = originalFileName != null && originalFileName.contains(".")
                             ? originalFileName.substring(originalFileName.lastIndexOf("."))
                             : ".jpg";
-                    String magnification = image.get("magnification") != null ? (String) image.get("magnification") : "";
-                    String standardizedName = String.format("%s_initial_%02d_%s%s",
-                            accessionNumber, imageNum, magnification.replace("x", ""), extension);
+                    String magnification = image.get("magnification") != null ? (String) image.get("magnification")
+                            : "";
+                    String standardizedName = String.format("%s_initial_%02d_%s%s", accessionNumber, imageNum,
+                            magnification.replace("x", ""), extension);
                     processedImage.put("fileName", standardizedName);
                     processedImage.put("originalFileName", originalFileName);
 
@@ -1166,7 +1232,8 @@ public class PathologyWorkflowController extends BaseRestController {
             }
 
             // Process final slide images (up to 96)
-            List<Map<String, Object>> finalSlideImages = (List<Map<String, Object>>) requestData.get("finalSlideImages");
+            List<Map<String, Object>> finalSlideImages = (List<Map<String, Object>>) requestData
+                    .get("finalSlideImages");
             if (finalSlideImages != null && !finalSlideImages.isEmpty()) {
                 if (finalSlideImages.size() > 96) {
                     response.put("success", false);
@@ -1174,10 +1241,20 @@ public class PathologyWorkflowController extends BaseRestController {
                     return ResponseEntity.badRequest().body(response);
                 }
 
-                SampleItem sampleItem = sampleItemService.getData(sampleId);
-                String accessionNumber = sampleItem != null && sampleItem.getSample() != null
-                        ? sampleItem.getSample().getAccessionNumber()
-                        : "UNKNOWN";
+                // Get sample info for naming - handle composite sample IDs
+                String rootSampleIdForFinal = sampleId.contains("_") ? sampleId.split("_")[0] : sampleId;
+                SampleItem sampleItemForFinal = null;
+                String accessionNumber = "UNKNOWN";
+                try {
+                    sampleItemForFinal = sampleItemService.getData(rootSampleIdForFinal);
+                    if (sampleItemForFinal != null && sampleItemForFinal.getSample() != null) {
+                        accessionNumber = sampleItemForFinal.getSample().getAccessionNumber();
+                    }
+                } catch (Exception e) {
+                    // If lookup fails, use UNKNOWN - don't block the save
+                    org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(), "submitResults",
+                            "Could not look up sample item for ID: " + rootSampleIdForFinal);
+                }
 
                 List<Map<String, Object>> processedFinalImages = new ArrayList<>();
                 int imageNum = 1;
@@ -1195,9 +1272,10 @@ public class PathologyWorkflowController extends BaseRestController {
                     String extension = originalFileName != null && originalFileName.contains(".")
                             ? originalFileName.substring(originalFileName.lastIndexOf("."))
                             : ".jpg";
-                    String magnification = image.get("magnification") != null ? (String) image.get("magnification") : "";
-                    String standardizedName = String.format("%s_final_%02d_%s%s",
-                            accessionNumber, imageNum, magnification.replace("x", ""), extension);
+                    String magnification = image.get("magnification") != null ? (String) image.get("magnification")
+                            : "";
+                    String standardizedName = String.format("%s_final_%02d_%s%s", accessionNumber, imageNum,
+                            magnification.replace("x", ""), extension);
                     processedImage.put("fileName", standardizedName);
                     processedImage.put("originalFileName", originalFileName);
                     processedImage.put("base64Data", image.get("base64Data"));
@@ -1223,12 +1301,18 @@ public class PathologyWorkflowController extends BaseRestController {
                 pageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.insert(pageSample);
             } else {
-                // Merge with existing data
+                // Merge with existing data - only overwrite non-null values
+                // This preserves existing test data (testName, etc.) when saving results
                 Map<String, Object> existingData = pageSample.getData();
                 if (existingData == null) {
                     existingData = new HashMap<>();
                 }
-                existingData.putAll(resultsData);
+                // Only copy non-null values from resultsData to preserve existing data
+                for (Map.Entry<String, Object> entry : resultsData.entrySet()) {
+                    if (entry.getValue() != null) {
+                        existingData.put(entry.getKey(), entry.getValue());
+                    }
+                }
                 pageSample.setData(existingData);
 
                 // Update status based on stage
@@ -1246,8 +1330,10 @@ public class PathologyWorkflowController extends BaseRestController {
 
             response.put("success", true);
             response.put("message", "Results saved successfully");
-            response.put("stage", Boolean.TRUE.equals(requestData.get("reportFinalized")) ? "finalized"
-                    : Boolean.TRUE.equals(requestData.get("initialFindingsComplete")) ? "initial_complete" : "in_progress");
+            response.put("stage",
+                    Boolean.TRUE.equals(requestData.get("reportFinalized")) ? "finalized"
+                            : Boolean.TRUE.equals(requestData.get("initialFindingsComplete")) ? "initial_complete"
+                                    : "in_progress");
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
@@ -1258,15 +1344,14 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Get pathology results for a sample.
-     * GET /rest/notebook/pathology/results/{sampleId}?pageId={pageId}
+     * Get pathology results for a sample. GET
+     * /rest/notebook/pathology/results/{sampleId}?pageId={pageId}
      */
     @GetMapping(value = "/results/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getResults(
             @org.springframework.web.bind.annotation.PathVariable("sampleId") String sampleId,
-            @RequestParam Integer pageId,
-            HttpServletRequest request) {
+            @RequestParam Integer pageId, HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -2814,8 +2899,8 @@ public class PathologyWorkflowController extends BaseRestController {
     // ========================================
 
     /**
-     * Submit cassette setup data for a sample.
-     * POST /rest/notebook/pathology/cassettes/submit
+     * Submit cassette setup data for a sample. POST
+     * /rest/notebook/pathology/cassettes/submit
      */
     @PostMapping(value = "/cassettes/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -2912,8 +2997,8 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Get cassette data for a sample.
-     * GET /rest/notebook/pathology/cassettes/{sampleId}
+     * Get cassette data for a sample. GET
+     * /rest/notebook/pathology/cassettes/{sampleId}
      */
     @GetMapping(value = "/cassettes/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -2940,8 +3025,8 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Submit block creation data for a sample.
-     * POST /rest/notebook/pathology/blocks/submit
+     * Submit block creation data for a sample. POST
+     * /rest/notebook/pathology/blocks/submit
      */
     @PostMapping(value = "/blocks/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -3040,13 +3125,12 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Get block data for a sample.
-     * GET /rest/notebook/pathology/blocks/{sampleId}
+     * Get block data for a sample. GET /rest/notebook/pathology/blocks/{sampleId}
      */
     @GetMapping(value = "/blocks/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> getBlockData(@PathVariable String sampleId,
-            @RequestParam Integer pageId, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getBlockData(@PathVariable String sampleId, @RequestParam Integer pageId,
+            HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -3068,8 +3152,8 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Submit slide preparation data for a sample.
-     * POST /rest/notebook/pathology/slides/submit
+     * Submit slide preparation data for a sample. POST
+     * /rest/notebook/pathology/slides/submit
      */
     @PostMapping(value = "/slides/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -3167,13 +3251,12 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Get slide data for a sample.
-     * GET /rest/notebook/pathology/slides/{sampleId}
+     * Get slide data for a sample. GET /rest/notebook/pathology/slides/{sampleId}
      */
     @GetMapping(value = "/slides/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> getSlideData(@PathVariable String sampleId,
-            @RequestParam Integer pageId, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getSlideData(@PathVariable String sampleId, @RequestParam Integer pageId,
+            HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -3195,8 +3278,8 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Submit staining data for a sample.
-     * POST /rest/notebook/pathology/staining/submit
+     * Submit staining data for a sample. POST
+     * /rest/notebook/pathology/staining/submit
      */
     @PostMapping(value = "/staining/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -3298,8 +3381,8 @@ public class PathologyWorkflowController extends BaseRestController {
     }
 
     /**
-     * Get staining data for a sample.
-     * GET /rest/notebook/pathology/staining/{sampleId}
+     * Get staining data for a sample. GET
+     * /rest/notebook/pathology/staining/{sampleId}
      */
     @GetMapping(value = "/staining/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody

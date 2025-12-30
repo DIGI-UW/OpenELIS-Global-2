@@ -235,7 +235,9 @@ function PathologyStainingPage({
                   specimenCategory: sample.specimenCategory || "histopathology",
                   collectionDate: sample.collectionDate,
                   // ONLY use status from current staining page, default to PENDING
-                  status: pageSample?.status || "PENDING",
+                  // Backend returns status as "pageStatus" field
+                  status:
+                    pageSample?.pageStatus || pageSample?.status || "PENDING",
                   patientName: sample.patientName,
                   // Parent info from slide step (workflow expansion)
                   parentSampleId: sample.parentSampleId,
@@ -384,16 +386,18 @@ function PathologyStainingPage({
     setSubmitting(true);
     setError(null);
 
-    // Extract the real sample ID from composite ID (e.g., "123_slide_0" -> "123")
-    const realSampleId =
-      selectedSample.parentSampleId || selectedSample.id.split("_")[0];
+    // Use the full composite sample ID (e.g., "123_slide_0") to ensure
+    // each slide's staining data is stored separately
+    const sampleId = selectedSample.id;
 
     const payload = {
-      sampleId: realSampleId,
+      sampleId: sampleId,
       pageId: pageData?.id,
       ...stainingData,
       stainingComplete: true,
-      // Include parent hierarchy info
+      // Include parent hierarchy info for reference
+      parentSampleId:
+        selectedSample.parentSampleId || selectedSample.id.split("_")[0],
       parentSlideLabel: selectedSample.slideLabel || selectedSample.childLabel,
       parentSlideIndex: selectedSample.childIndex,
     };

@@ -49,6 +49,13 @@ import {
   Upload,
   Edit,
   Download,
+  ZoomIn,
+  ZoomOut,
+  ZoomFit,
+  ChevronLeft,
+  ChevronRight,
+  Maximize,
+  Close,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -104,6 +111,14 @@ function PathologyTestingMicroscopyPage({
   // Slide images for results - separate arrays for initial and final
   const [initialSlideImages, setInitialSlideImages] = useState([]);
   const [finalSlideImages, setFinalSlideImages] = useState([]);
+
+  // Image Viewer Modal state
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [viewerImage, setViewerImage] = useState(null);
+  const [viewerImageIndex, setViewerImageIndex] = useState(0);
+  const [viewerImageList, setViewerImageList] = useState([]);
+  const [viewerZoom, setViewerZoom] = useState(1);
+  const [viewerStage, setViewerStage] = useState("initial"); // which image list we're viewing
 
   const [resultsData, setResultsData] = useState({
     // === INITIAL FINDINGS (Stage 1) ===
@@ -218,7 +233,7 @@ function PathologyTestingMicroscopyPage({
   }, [entryId, pageData?.id]);
 
   const loadPageSamples = useCallback(() => {
-    if (!pageData?.id) {
+    if (!entryId || !pageData?.id) {
       setLoading(false);
       return;
     }
@@ -231,60 +246,112 @@ function PathologyTestingMicroscopyPage({
     setLoading(true);
     setError(null);
 
+    // Fetch samples that have completed the previous step (staining)
+    // and merge with current microscopy page data
     getFromOpenElisServer(
-      `/rest/notebook/page/${pageData.id}/samples`,
-      (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => {
-              const sampleData = sample.data || {};
-              const allStains = [
-                ...(sampleData.routineStains || []),
-                ...(sampleData.specialStains || []),
-              ];
-              const stainsDisplay =
-                allStains.length > 0
-                  ? allStains.slice(0, 3).join(", ") +
-                    (allStains.length > 3 ? "..." : "")
-                  : "";
+      `/rest/notebook/pathology/workflow/samples-ready?entryId=${entryId}&currentStep=microscopy`,
+      (workflowResponse) => {
+        if (!componentMounted.current) return;
 
-              return {
-                id: String(sample.id || sample.sampleItemId),
-                accessionNumber: sample.accessionNumber,
-                blockSlideId: sampleData.blockSlideId || sample.blockSlideId,
-                specimenType:
-                  sample.sampleType || sample.typeOfSample?.description,
-                status: sample.pageStatus || "PENDING",
-                testsPerformed: sample.testsPerformed || 0,
-                testName: sampleData.testName || "",
-                result: sampleData.resultFindings || sampleData.result || "",
-                stains: stainsDisplay,
-                hasTestData: !!(sampleData.testName || allStains.length > 0),
-                verifiedByPathologist:
-                  sampleData.verifiedByPathologist === true ||
-                  sampleData.verifiedByPathologist === "true",
-                technicianSignature: sampleData.technicianSignature || "",
-                testDate: sampleData.technicianDate || "",
-                // Initial and Final Diagnosis status
-                initialFindingsComplete:
-                  sampleData.initialFindingsComplete === true ||
-                  sampleData.initialFindingsComplete === "true",
-                initialImpression: sampleData.initialImpression || "",
-                reportFinalized:
-                  sampleData.reportFinalized === true ||
-                  sampleData.reportFinalized === "true",
-                finalDiagnosis: sampleData.finalDiagnosis || "",
-              };
-            });
-            setSamples(transformedSamples);
-          } else {
-            setSamples([]);
-          }
-          setLoading(false);
-        }
+        // Also fetch current page samples to get microscopy-specific data
+        getFromOpenElisServer(
+          `/rest/notebook/page/${pageData.id}/samples`,
+          (pageResponse) => {
+            if (!componentMounted.current) return;
+
+            // Build a map of current page sample data by sampleItemId
+            const pageSampleMap = {};
+            if (pageResponse && Array.isArray(pageResponse)) {
+              pageResponse.forEach((ps) => {
+                const sampleId = String(ps.sampleItemId || ps.id);
+                pageSampleMap[sampleId] = ps;
+              });
+            }
+
+            if (workflowResponse && Array.isArray(workflowResponse)) {
+              const transformedSamples = workflowResponse.map((sample) => {
+                const sampleId = String(sample.id || sample.sampleItemId);
+                // For expanded items (e.g., "123_slide_0"), try the full ID first,
+                // then fall back to parent ID for backward compatibility
+                const pageSample =
+                  pageSampleMap[sampleId] ||
+                  pageSampleMap[sample.parentSampleId] ||
+                  pageSampleMap[sampleId.split("_")[0]];
+                const sampleData = pageSample?.data || {};
+                // workflowData contains data from PREVIOUS step (staining)
+                const workflowData = sample.workflowData || {};
+
+                // Combine stains from staining page (previous step) with any microscopy data
+                const allStains = [
+                  ...(workflowData.routineStains || []),
+                  ...(workflowData.specialStains || []),
+                ];
+                const stainsDisplay =
+                  allStains.length > 0
+                    ? allStains.slice(0, 3).join(", ") +
+                      (allStains.length > 3 ? "..." : "")
+                    : "";
+
+                return {
+                  id: sampleId,
+                  externalId: sample.externalId,
+                  accessionNumber: sample.accessionNumber,
+                  // blockSlideId comes from backend parsing of composite ID, or from saved data
+                  blockSlideId:
+                    sampleData.blockSlideId ||
+                    sample.blockSlideId ||
+                    sample.slideLabel ||
+                    sample.childLabel ||
+                    "",
+                  specimenType:
+                    sample.sampleType || sample.typeOfSample?.description,
+                  // ONLY use status from current microscopy page, default to PENDING
+                  // Backend returns status as "pageStatus" field
+                  status:
+                    pageSample?.pageStatus || pageSample?.status || "PENDING",
+                  patientName: sample.patientName,
+                  // Parent info from slide/staining step (from workflow expansion)
+                  parentSampleId: sample.parentSampleId,
+                  childIndex: sample.childIndex,
+                  childLabel: sample.childLabel,
+                  slideLabel: sample.slideLabel || sample.childLabel || "",
+                  // Stain info from previous staining step - try both workflow and direct sample
+                  stains: stainsDisplay,
+                  routineStains:
+                    workflowData.routineStains || sample.routineStains || [],
+                  specialStains:
+                    workflowData.specialStains || sample.specialStains || [],
+                  // Microscopy/testing data from current page ONLY
+                  testsPerformed: sampleData.testsPerformed || 0,
+                  testName: sampleData.testName || workflowData.testName || "",
+                  result: sampleData.resultFindings || sampleData.result || "",
+                  hasTestData: !!(sampleData.testName || allStains.length > 0),
+                  verifiedByPathologist:
+                    sampleData.verifiedByPathologist === true ||
+                    sampleData.verifiedByPathologist === "true",
+                  technicianSignature: sampleData.technicianSignature || "",
+                  testDate: sampleData.technicianDate || "",
+                  // Initial and Final Diagnosis status
+                  initialFindingsComplete:
+                    sampleData.initialFindingsComplete === true ||
+                    sampleData.initialFindingsComplete === "true",
+                  initialImpression: sampleData.initialImpression || "",
+                  reportFinalized:
+                    sampleData.reportFinalized === true ||
+                    sampleData.reportFinalized === "true",
+                  finalDiagnosis: sampleData.finalDiagnosis || "",
+                };
+              });
+              setSamples(transformedSamples);
+            } else {
+              setSamples([]);
+            }
+            setLoading(false);
+          },
+        );
       },
     );
-  }, [pageData?.id]);
+  }, [entryId, pageData?.id]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -495,6 +562,102 @@ function PathologyTestingMicroscopyPage({
     },
     [],
   );
+
+  // ========================================
+  // IMAGE VIEWER HANDLERS
+  // ========================================
+
+  // Open image viewer modal
+  const openImageViewer = useCallback((image, index, imageList, stage) => {
+    setViewerImage(image);
+    setViewerImageIndex(index);
+    setViewerImageList(imageList);
+    setViewerStage(stage);
+    setViewerZoom(1);
+    setImageViewerOpen(true);
+  }, []);
+
+  // Close image viewer
+  const closeImageViewer = useCallback(() => {
+    setImageViewerOpen(false);
+    setViewerImage(null);
+    setViewerZoom(1);
+  }, []);
+
+  // Navigate to previous image
+  const viewerPrevImage = useCallback(() => {
+    if (viewerImageIndex > 0) {
+      const newIndex = viewerImageIndex - 1;
+      setViewerImageIndex(newIndex);
+      setViewerImage(viewerImageList[newIndex]);
+      setViewerZoom(1);
+    }
+  }, [viewerImageIndex, viewerImageList]);
+
+  // Navigate to next image
+  const viewerNextImage = useCallback(() => {
+    if (viewerImageIndex < viewerImageList.length - 1) {
+      const newIndex = viewerImageIndex + 1;
+      setViewerImageIndex(newIndex);
+      setViewerImage(viewerImageList[newIndex]);
+      setViewerZoom(1);
+    }
+  }, [viewerImageIndex, viewerImageList]);
+
+  // Zoom controls
+  const viewerZoomIn = useCallback(() => {
+    setViewerZoom((prev) => Math.min(prev + 0.25, 4));
+  }, []);
+
+  const viewerZoomOut = useCallback(() => {
+    setViewerZoom((prev) => Math.max(prev - 0.25, 0.25));
+  }, []);
+
+  const viewerResetZoom = useCallback(() => {
+    setViewerZoom(1);
+  }, []);
+
+  // Keyboard navigation for image viewer
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!imageViewerOpen) return;
+
+      switch (e.key) {
+        case "Escape":
+          closeImageViewer();
+          break;
+        case "ArrowLeft":
+          viewerPrevImage();
+          break;
+        case "ArrowRight":
+          viewerNextImage();
+          break;
+        case "+":
+        case "=":
+          viewerZoomIn();
+          break;
+        case "-":
+          viewerZoomOut();
+          break;
+        case "0":
+          viewerResetZoom();
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    imageViewerOpen,
+    closeImageViewer,
+    viewerPrevImage,
+    viewerNextImage,
+    viewerZoomIn,
+    viewerZoomOut,
+    viewerResetZoom,
+  ]);
 
   // Open results modal with existing data loaded
   const openResultsModalWithData = useCallback(
@@ -958,7 +1121,7 @@ function PathologyTestingMicroscopyPage({
                   ? "Report finalized successfully."
                   : resultsStage === "initial" &&
                       resultsData.initialFindingsComplete
-                    ? "Initial findings saved. Ready for final diagnosis."
+                    ? "Microscopic finding saved. Ready for final diagnosis."
                     : "Results saved successfully.",
             }),
           );
@@ -1607,7 +1770,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                                       sample?.initialImpression ||
                                       (sample?.initialFindingsComplete
                                         ? "Click to view"
-                                        : "Click to enter initial findings")
+                                        : "Click to enter microscopic finding")
                                     }
                                   >
                                     {sample?.initialFindingsComplete ? (
@@ -2590,7 +2753,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             defaultMessage: resultsViewMode
               ? "View Results - {sampleId}"
               : resultsStage === "initial"
-                ? "Initial Findings - {sampleId}"
+                ? "Microscopic Finding - {sampleId}"
                 : "Final Diagnosis - {sampleId}",
           },
           {
@@ -2613,7 +2776,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
               : resultsStage === "initial"
                 ? intl.formatMessage({
                     id: "pathology.results.saveInitial",
-                    defaultMessage: "Save Initial Findings",
+                    defaultMessage: "Save Microscopic Finding",
                   })
                 : intl.formatMessage({
                     id: "pathology.results.saveFinal",
@@ -2678,7 +2841,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                     id: "pathology.results.viewMode.description",
                     defaultMessage: resultsData.reportFinalized
                       ? "Finalized by {pathologist} on {date}"
-                      : "Initial findings recorded. Click 'Edit' to continue.",
+                      : "Microscopic finding recorded. Click 'Edit' to continue.",
                   },
                   {
                     pathologist: resultsData.diagnosingPathologist || "Unknown",
@@ -2710,7 +2873,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                   <RadioButton
                     labelText={intl.formatMessage({
                       id: "pathology.results.stage.initial",
-                      defaultMessage: "1. Initial Findings",
+                      defaultMessage: "1. Microscopic Finding",
                     })}
                     value="initial"
                     id="stage-initial"
@@ -2738,7 +2901,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                     >
                       <FormattedMessage
                         id="pathology.results.completeInitialFirst"
-                        defaultMessage="Complete initial findings before proceeding to final diagnosis."
+                        defaultMessage="Complete microscopic finding before proceeding to final diagnosis."
                       />
                     </p>
                   )}
@@ -2784,7 +2947,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                   <Tab onClick={() => setResultsStage("initial")}>
                     <FormattedMessage
                       id="pathology.results.tab.initialFindings"
-                      defaultMessage="Initial Findings"
+                      defaultMessage="Microscopic Finding"
                     />
                     {resultsData.initialFindingsComplete && (
                       <CheckmarkFilled
@@ -2811,7 +2974,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 </TabList>
 
                 <TabPanels>
-                  {/* Tab 1: Initial Findings */}
+                  {/* Tab 1: Microscopic Finding */}
                   <TabPanel>
                     <Grid fullWidth style={{ padding: "1rem 0" }}>
                       {/* Examiner Info */}
@@ -3040,7 +3203,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                               marginTop: "1rem",
                             }}
                           >
-                            {initialSlideImages.map((img) => (
+                            {initialSlideImages.map((img, index) => (
                               <div
                                 key={img.id}
                                 style={{
@@ -3051,16 +3214,50 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                                 }}
                               >
                                 {img.preview && (
-                                  <img
-                                    src={img.preview}
-                                    alt={img.fileName}
+                                  <div
                                     style={{
-                                      width: "100%",
-                                      height: "100px",
-                                      objectFit: "cover",
-                                      borderRadius: "4px",
+                                      position: "relative",
+                                      cursor: "pointer",
                                     }}
-                                  />
+                                    onClick={() =>
+                                      openImageViewer(
+                                        img,
+                                        index,
+                                        initialSlideImages,
+                                        "initial",
+                                      )
+                                    }
+                                    title="Click to view full size"
+                                  >
+                                    <img
+                                      src={img.preview}
+                                      alt={img.fileName}
+                                      style={{
+                                        width: "100%",
+                                        height: "100px",
+                                        objectFit: "cover",
+                                        borderRadius: "4px",
+                                      }}
+                                    />
+                                    <div
+                                      style={{
+                                        position: "absolute",
+                                        bottom: "4px",
+                                        right: "4px",
+                                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                                        borderRadius: "4px",
+                                        padding: "2px 6px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                      }}
+                                    >
+                                      <Maximize
+                                        size={12}
+                                        style={{ color: "#fff" }}
+                                      />
+                                    </div>
+                                  </div>
                                 )}
                                 <p
                                   style={{
@@ -3080,9 +3277,10 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                                     hasIconOnly
                                     iconDescription="Remove"
                                     renderIcon={CloseFilled}
-                                    onClick={() =>
-                                      handleRemoveSlideImage(img.id, "initial")
-                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveSlideImage(img.id, "initial");
+                                    }}
                                     style={{
                                       position: "absolute",
                                       top: "0",
@@ -3112,7 +3310,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                         )}
                       </Column>
 
-                      {/* Mark Initial Findings Complete */}
+                      {/* Mark Microscopic Finding Complete */}
                       {!resultsViewMode && (
                         <Column lg={16} md={8} sm={4}>
                           <Checkbox
@@ -3121,7 +3319,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                             labelText={intl.formatMessage({
                               id: "pathology.results.markInitialComplete",
                               defaultMessage:
-                                "Initial findings complete - ready for final diagnosis",
+                                "Microscopic finding complete - ready for final diagnosis",
                             })}
                             checked={resultsData.initialFindingsComplete}
                             onChange={handleResultsInputChange}
@@ -3354,7 +3552,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                               marginTop: "1rem",
                             }}
                           >
-                            {finalSlideImages.map((img) => (
+                            {finalSlideImages.map((img, index) => (
                               <div
                                 key={img.id}
                                 style={{
@@ -3365,16 +3563,50 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                                 }}
                               >
                                 {img.preview && (
-                                  <img
-                                    src={img.preview}
-                                    alt={img.fileName}
+                                  <div
                                     style={{
-                                      width: "100%",
-                                      height: "100px",
-                                      objectFit: "cover",
-                                      borderRadius: "4px",
+                                      position: "relative",
+                                      cursor: "pointer",
                                     }}
-                                  />
+                                    onClick={() =>
+                                      openImageViewer(
+                                        img,
+                                        index,
+                                        finalSlideImages,
+                                        "final",
+                                      )
+                                    }
+                                    title="Click to view full size"
+                                  >
+                                    <img
+                                      src={img.preview}
+                                      alt={img.fileName}
+                                      style={{
+                                        width: "100%",
+                                        height: "100px",
+                                        objectFit: "cover",
+                                        borderRadius: "4px",
+                                      }}
+                                    />
+                                    <div
+                                      style={{
+                                        position: "absolute",
+                                        bottom: "4px",
+                                        right: "4px",
+                                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                                        borderRadius: "4px",
+                                        padding: "2px 6px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                      }}
+                                    >
+                                      <Maximize
+                                        size={12}
+                                        style={{ color: "#fff" }}
+                                      />
+                                    </div>
+                                  </div>
                                 )}
                                 <p
                                   style={{
@@ -3394,9 +3626,10 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                                     hasIconOnly
                                     iconDescription="Remove"
                                     renderIcon={CloseFilled}
-                                    onClick={() =>
-                                      handleRemoveSlideImage(img.id, "final")
-                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveSlideImage(img.id, "final");
+                                    }}
                                     style={{
                                       position: "absolute",
                                       top: "0",
@@ -3609,6 +3842,305 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
           </div>
         )}
       </Modal>
+
+      {/* Image Viewer Modal - Full screen microscopy image viewer */}
+      {imageViewerOpen && viewerImage && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.95)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeImageViewer();
+          }}
+        >
+          {/* Header with controls */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "1rem 1.5rem",
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+              borderBottom: "1px solid #393939",
+            }}
+          >
+            {/* Image info */}
+            <div style={{ color: "#fff" }}>
+              <h4 style={{ margin: 0, fontSize: "1rem" }}>
+                {viewerImage.fileName || `Slide ${viewerImageIndex + 1}`}
+              </h4>
+              <p
+                style={{
+                  margin: "0.25rem 0 0",
+                  fontSize: "0.875rem",
+                  color: "#a8a8a8",
+                }}
+              >
+                {viewerImageIndex + 1} of {viewerImageList.length}
+                {viewerImage.magnification && ` • ${viewerImage.magnification}`}
+                {viewerStage === "initial"
+                  ? " • Initial Findings"
+                  : " • Final Diagnosis"}
+              </p>
+            </div>
+
+            {/* Zoom controls */}
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <Button
+                kind="ghost"
+                size="sm"
+                hasIconOnly
+                iconDescription="Zoom Out"
+                renderIcon={ZoomOut}
+                onClick={viewerZoomOut}
+                disabled={viewerZoom <= 0.25}
+                style={{ color: "#fff" }}
+              />
+              <span
+                style={{
+                  color: "#fff",
+                  minWidth: "60px",
+                  textAlign: "center",
+                }}
+              >
+                {Math.round(viewerZoom * 100)}%
+              </span>
+              <Button
+                kind="ghost"
+                size="sm"
+                hasIconOnly
+                iconDescription="Zoom In"
+                renderIcon={ZoomIn}
+                onClick={viewerZoomIn}
+                disabled={viewerZoom >= 4}
+                style={{ color: "#fff" }}
+              />
+              <Button
+                kind="ghost"
+                size="sm"
+                hasIconOnly
+                iconDescription="Reset Zoom"
+                renderIcon={ZoomFit}
+                onClick={viewerResetZoom}
+                style={{ color: "#fff" }}
+              />
+              <div
+                style={{
+                  width: "1px",
+                  height: "24px",
+                  backgroundColor: "#525252",
+                  margin: "0 0.5rem",
+                }}
+              />
+              <Button
+                kind="ghost"
+                size="sm"
+                hasIconOnly
+                iconDescription="Close (Esc)"
+                renderIcon={Close}
+                onClick={closeImageViewer}
+                style={{ color: "#fff" }}
+              />
+            </div>
+          </div>
+
+          {/* Main image area */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+              overflow: "auto",
+              padding: "1rem",
+            }}
+          >
+            {/* Previous button */}
+            <Button
+              kind="ghost"
+              size="lg"
+              hasIconOnly
+              iconDescription="Previous Image"
+              renderIcon={ChevronLeft}
+              onClick={viewerPrevImage}
+              disabled={viewerImageIndex === 0}
+              style={{
+                position: "absolute",
+                left: "1rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#fff",
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                borderRadius: "50%",
+                width: "48px",
+                height: "48px",
+              }}
+            />
+
+            {/* Image container */}
+            <div
+              style={{
+                maxWidth: "90%",
+                maxHeight: "calc(100vh - 180px)",
+                overflow: "auto",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src={viewerImage.preview || viewerImage.base64Data}
+                alt={viewerImage.fileName}
+                style={{
+                  transform: `scale(${viewerZoom})`,
+                  transformOrigin: "center center",
+                  transition: "transform 0.2s ease",
+                  maxWidth: viewerZoom <= 1 ? "100%" : "none",
+                  maxHeight: viewerZoom <= 1 ? "calc(100vh - 180px)" : "none",
+                  objectFit: "contain",
+                  cursor: viewerZoom > 1 ? "move" : "default",
+                }}
+              />
+            </div>
+
+            {/* Next button */}
+            <Button
+              kind="ghost"
+              size="lg"
+              hasIconOnly
+              iconDescription="Next Image"
+              renderIcon={ChevronRight}
+              onClick={viewerNextImage}
+              disabled={viewerImageIndex === viewerImageList.length - 1}
+              style={{
+                position: "absolute",
+                right: "1rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#fff",
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                borderRadius: "50%",
+                width: "48px",
+                height: "48px",
+              }}
+            />
+          </div>
+
+          {/* Footer with metadata */}
+          <div
+            style={{
+              padding: "1rem 1.5rem",
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+              borderTop: "1px solid #393939",
+              color: "#fff",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "2rem",
+                flexWrap: "wrap",
+                fontSize: "0.875rem",
+              }}
+            >
+              {viewerImage.magnification && (
+                <div>
+                  <span style={{ color: "#a8a8a8" }}>Magnification: </span>
+                  <span>{viewerImage.magnification}</span>
+                </div>
+              )}
+              {viewerImage.stainType && (
+                <div>
+                  <span style={{ color: "#a8a8a8" }}>Stain: </span>
+                  <span>{viewerImage.stainType}</span>
+                </div>
+              )}
+              {viewerImage.fieldDescription && (
+                <div>
+                  <span style={{ color: "#a8a8a8" }}>Field: </span>
+                  <span>{viewerImage.fieldDescription}</span>
+                </div>
+              )}
+              {viewerImage.notes && (
+                <div>
+                  <span style={{ color: "#a8a8a8" }}>Notes: </span>
+                  <span>{viewerImage.notes}</span>
+                </div>
+              )}
+            </div>
+            <p
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "0.75rem",
+                color: "#6f6f6f",
+              }}
+            >
+              Use arrow keys to navigate • +/- to zoom • 0 to reset • Esc to
+              close
+            </p>
+          </div>
+
+          {/* Thumbnail strip */}
+          {viewerImageList.length > 1 && (
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                padding: "0.75rem 1.5rem",
+                backgroundColor: "rgba(0, 0, 0, 0.9)",
+                overflowX: "auto",
+                justifyContent: "center",
+              }}
+            >
+              {viewerImageList.map((img, idx) => (
+                <div
+                  key={img.id}
+                  onClick={() => {
+                    setViewerImageIndex(idx);
+                    setViewerImage(img);
+                    setViewerZoom(1);
+                  }}
+                  style={{
+                    width: "60px",
+                    height: "60px",
+                    borderRadius: "4px",
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    border:
+                      idx === viewerImageIndex
+                        ? "2px solid #0f62fe"
+                        : "2px solid transparent",
+                    opacity: idx === viewerImageIndex ? 1 : 0.6,
+                    transition: "all 0.2s ease",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src={img.preview || img.base64Data}
+                    alt={img.fileName}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

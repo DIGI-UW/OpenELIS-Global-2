@@ -66,9 +66,9 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId);
 
     /**
-     * Bulk update status for multiple samples on a page using String IDs.
-     * Supports composite sample IDs (e.g., "123_cassette_0") used in
-     * pathology workflow pages where samples are expanded from parent items.
+     * Bulk update status for multiple samples on a page using String IDs. Supports
+     * composite sample IDs (e.g., "123_cassette_0") used in pathology workflow
+     * pages where samples are expanded from parent items.
      *
      * @param pageId    the notebook page ID
      * @param sampleIds list of sample item IDs as Strings
@@ -129,6 +129,17 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
      * @param status       the initial status (e.g., PENDING)
      */
     void createPageSampleForPage(Integer pageId, Integer sampleItemId, Status status);
+
+    /**
+     * Create a page sample record for a specific page using String sample ID.
+     * Supports composite sample IDs (e.g., "4_cassette_0_block_0") used in
+     * pathology workflows.
+     *
+     * @param pageId       the notebook page ID
+     * @param sampleItemId the sample item ID as String
+     * @param status       the initial status (e.g., PENDING)
+     */
+    void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status);
 
     /**
      * Get all page samples for a notebook (across all pages).

@@ -285,12 +285,13 @@ function PathologyDisposalArchivingPage({
       return;
     }
 
-    const numericIds = selectedIds.map((id) => parseInt(id, 10));
+    // Use string IDs for composite sample IDs (e.g., "4_cassette_0_block_0_slide_0")
+    const stringIds = selectedIds.map((id) => String(id));
 
     postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply-string`,
       JSON.stringify({
-        sampleIds: numericIds,
+        sampleIds: stringIds,
         data: {
           disposalReason: disposalData.disposalReason,
           disposalMethod: disposalData.disposalMethod,
@@ -308,11 +309,11 @@ function PathologyDisposalArchivingPage({
       (response) => {
         if (componentMounted.current) {
           if (response && !response.error) {
-            // Mark samples as COMPLETED (closed)
+            // Mark samples as COMPLETED (closed) using string IDs endpoint
             postToOpenElisServer(
-              `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+              `/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
               JSON.stringify({
-                sampleIds: numericIds,
+                sampleIds: stringIds,
                 status: "COMPLETED",
               }),
               () => {
@@ -371,12 +372,13 @@ function PathologyDisposalArchivingPage({
       return;
     }
 
-    const numericIds = selectedIds.map((id) => parseInt(id, 10));
+    // Use string IDs for composite sample IDs (e.g., "4_cassette_0_block_0_slide_0")
+    const stringIds = selectedIds.map((id) => String(id));
 
     postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply-string`,
       JSON.stringify({
-        sampleIds: numericIds,
+        sampleIds: stringIds,
         data: {
           isRetentionSample: true,
         },
@@ -384,11 +386,11 @@ function PathologyDisposalArchivingPage({
       (response) => {
         if (componentMounted.current) {
           if (response && !response.error) {
-            // Mark samples as COMPLETED after marking as retention
+            // Mark samples as COMPLETED after marking as retention using string IDs
             postToOpenElisServer(
-              `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+              `/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
               JSON.stringify({
-                sampleIds: numericIds,
+                sampleIds: stringIds,
                 status: "COMPLETED",
               }),
               () => {

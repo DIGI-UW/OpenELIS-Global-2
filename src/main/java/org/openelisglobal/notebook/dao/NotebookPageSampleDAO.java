@@ -64,9 +64,9 @@ public interface NotebookPageSampleDAO extends BaseDAO<NotebookPageSample, Integ
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status);
 
     /**
-     * Bulk update status for multiple samples on a page using String IDs.
-     * Supports composite sample IDs (e.g., "123_cassette_0") used in
-     * pathology workflow pages where samples are expanded from parent items.
+     * Bulk update status for multiple samples on a page using String IDs. Supports
+     * composite sample IDs (e.g., "123_cassette_0") used in pathology workflow
+     * pages where samples are expanded from parent items.
      *
      * @param pageId    the notebook page ID
      * @param sampleIds list of sample item IDs as Strings
@@ -111,4 +111,14 @@ public interface NotebookPageSampleDAO extends BaseDAO<NotebookPageSample, Integ
      * @return the NotebookPageSample or null if not found
      */
     NotebookPageSample getBySampleItemIdAndPageId(String sampleItemId, Integer pageId);
+
+    /**
+     * Get occupied well coordinates and sample info for a specific box from
+     * archived pathology samples. Queries the JSONB data field for boxId and
+     * wellCoordinate.
+     *
+     * @param boxId the storage box ID
+     * @return map of well coordinate to sample info (sampleItemId, externalId)
+     */
+    java.util.Map<String, java.util.Map<String, String>> getOccupiedWellsByBoxId(Integer boxId);
 }

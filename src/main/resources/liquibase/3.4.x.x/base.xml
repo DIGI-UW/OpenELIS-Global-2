@@ -75,5 +75,6 @@
     <include file="liquibase/3.4.x.x/025-remove-pathology-reference-sop-page.xml"/>
     <include file="liquibase/3.4.x.x/026-pathology-cassette-terminology.xml"/>
     <include file="liquibase/3.4.x.x/027-pathology-granular-workflow-pages.xml"/>
+    <include file="liquibase/3.4.x.x/028-extend-sample-item-id-length.xml"/>
 
 </databaseChangeLog>

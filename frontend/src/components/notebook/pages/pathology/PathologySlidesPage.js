@@ -25,12 +25,20 @@ import {
   Loading,
   TableContainer,
 } from "@carbon/react";
-import { Add, Checkmark, Renew, CheckmarkFilled } from "@carbon/react/icons";
+import {
+  Add,
+  Checkmark,
+  Renew,
+  CheckmarkFilled,
+  Archive,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
+import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -104,6 +112,71 @@ function PathologySlidesPage({
     qcReviewedBy: "",
     qcReviewDate: "",
   });
+
+  // Archive Modal state
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [archiveData, setArchiveData] = useState({
+    // Hierarchical storage selection
+    roomId: null,
+    deviceId: null,
+    shelfId: null,
+    rackId: null,
+    boxId: null,
+    // Slide-specific storage (cabinet/drawer alternative)
+    slideCabinet: "",
+    slideDrawer: "",
+    slidePosition: "",
+    // Archive metadata
+    archiveReason: "completed",
+    slideCondition: "excellent",
+    retentionPeriod: "10",
+    archiveDate: "",
+    archivedBy: "",
+    notes: "",
+  });
+  // Storage hierarchy selection state
+  const [storageSelection, setStorageSelection] = useState({
+    room: null,
+    device: null,
+    shelf: null,
+    rack: null,
+    box: null,
+  });
+  // Box layout state for archive modal
+  const [boxLayout, setBoxLayout] = useState({});
+  const [wellAssignments, setWellAssignments] = useState({});
+  const [loadingBoxLayout, setLoadingBoxLayout] = useState(false);
+
+  // Archive reason options
+  const archiveReasons = [
+    { value: "completed", text: "Diagnosis complete - standard archival" },
+    { value: "reviewed", text: "Reviewed and signed out" },
+    { value: "consultation", text: "Consultation case - returned" },
+    { value: "research", text: "Reserved for research" },
+    { value: "teaching", text: "Teaching collection" },
+    { value: "qc", text: "QC retention sample" },
+    { value: "legal", text: "Legal/regulatory hold" },
+    { value: "reorder", text: "May need re-examination" },
+    { value: "other", text: "Other" },
+  ];
+
+  // Slide condition options
+  const slideConditions = [
+    { value: "excellent", text: "Excellent - No damage" },
+    { value: "good", text: "Good - Minor wear" },
+    { value: "fair", text: "Fair - Some fading" },
+    { value: "poor", text: "Poor - Significant damage" },
+    { value: "broken", text: "Broken/Compromised" },
+  ];
+
+  // Retention period options (slides typically have longer retention)
+  const retentionPeriods = [
+    { value: "5", text: "5 years" },
+    { value: "10", text: "10 years (Standard)" },
+    { value: "20", text: "20 years" },
+    { value: "25", text: "25 years" },
+    { value: "permanent", text: "Permanent" },
+  ];
 
   // Section quality options
   const qualityOptions = [
@@ -193,7 +266,9 @@ function PathologySlidesPage({
                   specimenCategory: sample.specimenCategory || "histopathology",
                   collectionDate: sample.collectionDate,
                   // ONLY use status from current slides page, default to PENDING
-                  status: pageSample?.status || "PENDING",
+                  // Backend returns status as "pageStatus" field
+                  status:
+                    pageSample?.pageStatus || pageSample?.status || "PENDING",
                   patientName: sample.patientName,
                   // Parent info from block step (from workflow expansion)
                   parentSampleId: sample.parentSampleId,
@@ -209,6 +284,14 @@ function PathologySlidesPage({
                   slideDate: slideData.slideDate || "",
                   // QC status from current page ONLY - show nothing until slides created
                   qcStatus: slideData.qcStatus || "",
+                  // Storage/archive info from page data
+                  storageLocation: slideData.storageLocation || "",
+                  storagePath: slideData.storagePath || "",
+                  storageBox: slideData.storageBox || "",
+                  storageWell:
+                    slideData.storageWell || slideData.wellCoordinate || "",
+                  isArchived: slideData.isArchived || false,
+                  terminalStatus: slideData.terminalStatus || "",
                 };
               });
               setSamples(transformedSamples);
@@ -331,18 +414,20 @@ function PathologySlidesPage({
       labels.push(`${slideData.slidePrefix}-S${String(i).padStart(2, "0")}`);
     }
 
-    // Extract the real sample ID from composite ID (e.g., "123_block_0" -> "123")
-    const realSampleId =
-      selectedSample.parentSampleId || selectedSample.id.split("_")[0];
+    // Use the full composite sample ID (e.g., "123_block_0") to ensure
+    // each block's slide data is stored separately
+    const sampleId = selectedSample.id;
 
     const payload = {
-      sampleId: realSampleId,
+      sampleId: sampleId,
       pageId: pageData?.id,
       ...slideData,
       slideLabels: labels,
       slidesCreated: true,
       slideCount: slideData.numberOfSlides,
-      // Include parent hierarchy info
+      // Include parent hierarchy info for reference
+      parentSampleId:
+        selectedSample.parentSampleId || selectedSample.id.split("_")[0],
       parentBlockLabel: selectedSample.blockLabel || selectedSample.childLabel,
       parentBlockIndex: selectedSample.childIndex,
     };
@@ -427,6 +512,236 @@ function PathologySlidesPage({
     );
   };
 
+  // Handle archive input change
+  const handleArchiveInputChange = (e) => {
+    const { name, value } = e.target;
+    setArchiveData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle storage hierarchy selection change
+  const handleStorageSelectionChange = (selection) => {
+    setStorageSelection(selection);
+    setArchiveData((prev) => ({
+      ...prev,
+      roomId: selection.room?.id || null,
+      deviceId: selection.device?.id || null,
+      shelfId: selection.shelf?.id || null,
+      rackId: selection.rack?.id || null,
+      boxId: selection.box?.id || null,
+    }));
+
+    // Load box layout when box is selected
+    // Use notebookId or entryId to match the assign-storage endpoint
+    const nbId = notebookId || entryId;
+    if (selection.box?.id && nbId) {
+      setLoadingBoxLayout(true);
+      setBoxLayout({});
+      setWellAssignments({});
+      getFromOpenElisServer(
+        `/rest/notebook/${nbId}/box/${selection.box.id}/layout`,
+        (response) => {
+          setLoadingBoxLayout(false);
+          if (componentMounted.current && response) {
+            setBoxLayout(response.wells || {});
+          }
+        },
+      );
+    } else {
+      setBoxLayout({});
+      setWellAssignments({});
+    }
+  };
+
+  // Auto-populate wells with selected samples
+  const handleAutoPopulate = () => {
+    if (!storageSelection.box) return;
+
+    const rows = storageSelection.box.rows || 8;
+    const columns = storageSelection.box.columns || 12;
+    const rowLetters = Array.from({ length: rows }, (_, i) =>
+      String.fromCharCode("A".charCodeAt(0) + i),
+    );
+
+    const newAssignments = {};
+    let sampleIndex = 0;
+
+    // Iterate through wells row by row
+    for (let row of rowLetters) {
+      for (let col = 1; col <= columns; col++) {
+        if (sampleIndex >= selectedSampleIds.length) break;
+
+        const wellCoord = `${row}${col}`;
+        // Skip if well is already occupied
+        if (!boxLayout[wellCoord]) {
+          newAssignments[selectedSampleIds[sampleIndex]] = wellCoord;
+          sampleIndex++;
+        }
+      }
+      if (sampleIndex >= selectedSampleIds.length) break;
+    }
+
+    setWellAssignments(newAssignments);
+
+    if (sampleIndex < selectedSampleIds.length) {
+      setError(
+        intl.formatMessage(
+          {
+            id: "pathology.archive.notEnoughWells",
+            defaultMessage:
+              "Not enough empty wells. {assigned} of {total} samples assigned.",
+          },
+          { assigned: sampleIndex, total: selectedSampleIds.length },
+        ),
+      );
+    } else {
+      setError(null);
+      setSuccessMessage(
+        intl.formatMessage(
+          {
+            id: "pathology.archive.autoPopulateSuccess",
+            defaultMessage: "Auto-assigned {count} samples to wells.",
+          },
+          { count: sampleIndex },
+        ),
+      );
+    }
+  };
+
+  // Handle well click to manually assign/unassign sample
+  const handleWellClick = (wellCoord, wellInfo) => {
+    if (wellInfo) {
+      // Well is already occupied - can't assign here
+      return;
+    }
+
+    // Find if any sample is currently assigned to this well
+    const assignedSampleId = Object.keys(wellAssignments).find(
+      (sampleId) => wellAssignments[sampleId] === wellCoord,
+    );
+
+    if (assignedSampleId) {
+      // Unassign the sample from this well
+      const newAssignments = { ...wellAssignments };
+      delete newAssignments[assignedSampleId];
+      setWellAssignments(newAssignments);
+    } else {
+      // Find first unassigned sample and assign to this well
+      const unassignedSample = selectedSampleIds.find(
+        (id) => !wellAssignments[id],
+      );
+      if (unassignedSample) {
+        setWellAssignments((prev) => ({
+          ...prev,
+          [unassignedSample]: wellCoord,
+        }));
+      }
+    }
+  };
+
+  // Open archive modal
+  const openArchiveModal = () => {
+    if (selectedSampleIds.length === 0) return;
+
+    // Reset archive form data with defaults
+    setArchiveData({
+      roomId: null,
+      deviceId: null,
+      shelfId: null,
+      rackId: null,
+      boxId: null,
+      slideCabinet: "",
+      slideDrawer: "",
+      slidePosition: "",
+      archiveReason: "completed",
+      slideCondition: "excellent",
+      retentionPeriod: "10",
+      archiveDate: new Date().toISOString().split("T")[0],
+      archivedBy: "",
+      notes: "",
+    });
+    // Reset storage selection
+    setStorageSelection({
+      room: null,
+      device: null,
+      shelf: null,
+      rack: null,
+      box: null,
+    });
+    // Reset box layout state
+    setBoxLayout({});
+    setWellAssignments({});
+
+    setArchiveModalOpen(true);
+  };
+
+  // Submit archive data - Archives samples and they do NOT proceed to next page
+  const handleSubmitArchive = () => {
+    if (submitting || selectedSampleIds.length === 0) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    const sampleIds = selectedSampleIds;
+
+    // Build payload matching backend ArchiveSamplesRequest structure
+    // Note: pageId is already in the URL, isArchived/terminalStatus are set by backend
+    // Include well assignments if auto-populate was used
+    const payload = {
+      sampleIds: sampleIds,
+      // Hierarchical storage location
+      roomId: archiveData.roomId || null,
+      deviceId: archiveData.deviceId || null,
+      shelfId: archiveData.shelfId || null,
+      rackId: archiveData.rackId || null,
+      boxId: archiveData.boxId || null,
+      // Slide-specific storage fields
+      slideCabinet: archiveData.slideCabinet || null,
+      slideDrawer: archiveData.slideDrawer || null,
+      slidePosition: archiveData.slidePosition || null,
+      slideCondition: archiveData.slideCondition || null,
+      // Archive metadata
+      archiveReason: archiveData.archiveReason || null,
+      retentionPeriod: archiveData.retentionPeriod || null,
+      archiveDate: archiveData.archiveDate || null,
+      archivedBy: archiveData.archivedBy || null,
+      notes: archiveData.notes || null,
+      // Well assignments from auto-populate or manual selection
+      wellAssignments:
+        Object.keys(wellAssignments).length > 0 ? wellAssignments : null,
+    };
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData?.id}/samples/archive`,
+      JSON.stringify(payload),
+      (response) => {
+        setSubmitting(false);
+        if (response && response.success) {
+          setArchiveModalOpen(false);
+          setSelectedSampleIds([]);
+          setSuccessMessage(
+            intl.formatMessage(
+              {
+                id: "pathology.archive.slide.success",
+                defaultMessage:
+                  "Successfully archived {count} slide(s). They will not proceed to staining.",
+              },
+              { count: sampleIds.length },
+            ),
+          );
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          setError(response?.error || "Failed to archive slides.");
+        }
+      },
+    );
+  };
+
   // Handle selection changes
   const handleSelectionChange = (selectedRows) => {
     const ids = selectedRows.map((row) => row.id);
@@ -489,6 +804,13 @@ function PathologySlidesPage({
       header: intl.formatMessage({
         id: "pathology.table.qcStatus",
         defaultMessage: "QC",
+      }),
+    },
+    {
+      key: "storageLocation",
+      header: intl.formatMessage({
+        id: "pathology.table.storageLocation",
+        defaultMessage: "Storage",
       }),
     },
   ];
@@ -639,6 +961,19 @@ function PathologySlidesPage({
               values={{ count: selectedSampleIds.length }}
             />
           </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Archive}
+            onClick={openArchiveModal}
+            disabled={selectedSampleIds.length === 0 || submitting}
+          >
+            <FormattedMessage
+              id="pathology.page.archiveSlides"
+              defaultMessage="Archive ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
         </div>
       )}
 
@@ -728,7 +1063,12 @@ function PathologySlidesPage({
                                     onClick={() => openSlideModal(sample)}
                                     title="Click to view/edit slides"
                                   >
-                                    {sample?.status === "COMPLETED" ? (
+                                    {sample?.status === "SKIPPED" ||
+                                    sample?.isArchived ? (
+                                      <Tag type="purple" size="sm">
+                                        📦 Archived
+                                      </Tag>
+                                    ) : sample?.status === "COMPLETED" ? (
                                       <>
                                         <CheckmarkFilled
                                           size={16}
@@ -799,6 +1139,33 @@ function PathologySlidesPage({
                                           : sample.qcStatus === "FAIL"
                                             ? "✗ Fail"
                                             : "-"}
+                                    </Tag>
+                                  ) : (
+                                    "-"
+                                  )
+                                ) : cell.info.header === "storageLocation" ? (
+                                  sample?.isArchived ||
+                                  sample?.storagePath ||
+                                  sample?.storageLocation ? (
+                                    <Tag
+                                      type={
+                                        sample.isArchived ? "purple" : "cyan"
+                                      }
+                                      size="sm"
+                                      title={
+                                        sample.storagePath ||
+                                        sample.storageLocation
+                                      }
+                                    >
+                                      {sample.isArchived ? "📦 " : ""}
+                                      {sample.storagePath ||
+                                        sample.storageLocation ||
+                                        (sample.storageBox
+                                          ? sample.storageBox +
+                                            (sample.storageWell
+                                              ? " - " + sample.storageWell
+                                              : "")
+                                          : "Archived")}
                                     </Tag>
                                   ) : (
                                     "-"
@@ -1407,6 +1774,309 @@ function PathologySlidesPage({
             </Grid>
           </div>
         )}
+      </Modal>
+
+      {/* Archive Modal */}
+      <Modal
+        open={archiveModalOpen}
+        modalHeading={intl.formatMessage(
+          {
+            id: "pathology.modal.slideArchive.title",
+            defaultMessage: "Archive {count} Slide(s)",
+          },
+          { count: selectedSampleIds.length },
+        )}
+        primaryButtonText={intl.formatMessage({
+          id: "pathology.modal.archive",
+          defaultMessage: "Archive",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "pathology.modal.cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestClose={() => {
+          setArchiveModalOpen(false);
+          setError(null);
+        }}
+        onRequestSubmit={handleSubmitArchive}
+        primaryButtonDisabled={submitting}
+        size="lg"
+        danger
+        preventCloseOnClickOutside
+      >
+        <InlineNotification
+          kind="warning"
+          title={intl.formatMessage({
+            id: "pathology.archive.warning.title",
+            defaultMessage: "Confirm Archive",
+          })}
+          subtitle={intl.formatMessage({
+            id: "pathology.archive.slide.warning.description",
+            defaultMessage:
+              "Archived slides will NOT proceed to Staining. They will be removed from the active workflow.",
+          })}
+          lowContrast
+          hideCloseButton
+          style={{ marginBottom: "1rem" }}
+        />
+
+        {/* Storage Location - Hierarchical Selector */}
+        <h5 style={{ marginBottom: "0.5rem" }}>
+          <FormattedMessage
+            id="pathology.archive.section.storage"
+            defaultMessage="Storage Location"
+          />
+        </h5>
+        <StorageHierarchySelector
+          onSelectionChange={handleStorageSelectionChange}
+          boxRequired={false}
+          showPath={true}
+          entryId={notebookId || entryId}
+        />
+
+        {/* Box Layout Viewer with Auto-populate */}
+        {storageSelection.box && (
+          <div style={{ marginTop: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <h5>
+                <FormattedMessage
+                  id="pathology.archive.wellAssignment"
+                  defaultMessage="Well Assignment"
+                />
+              </h5>
+              <Button
+                kind="tertiary"
+                size="sm"
+                onClick={handleAutoPopulate}
+                disabled={loadingBoxLayout}
+              >
+                <FormattedMessage
+                  id="pathology.archive.autoPopulate"
+                  defaultMessage="Auto-populate Wells"
+                />
+              </Button>
+            </div>
+
+            {loadingBoxLayout ? (
+              <Loading
+                withOverlay={false}
+                small
+                description="Loading box layout..."
+              />
+            ) : (
+              <>
+                <BoxLayoutViewer
+                  boxId={storageSelection.box.id}
+                  layout={{
+                    ...boxLayout,
+                    // Add current well assignments as pending (different visual)
+                    ...Object.fromEntries(
+                      Object.entries(wellAssignments).map(
+                        ([sampleId, wellCoord]) => [
+                          wellCoord,
+                          { sampleItemId: sampleId, pending: true },
+                        ],
+                      ),
+                    ),
+                  }}
+                  rows={storageSelection.box.rows || 8}
+                  columns={storageSelection.box.columns || 12}
+                  onWellClick={handleWellClick}
+                />
+                {Object.keys(wellAssignments).length > 0 && (
+                  <div
+                    style={{
+                      marginTop: "0.5rem",
+                      fontSize: "0.875rem",
+                      color: "#525252",
+                    }}
+                  >
+                    <FormattedMessage
+                      id="pathology.archive.assignedCount"
+                      defaultMessage="{count} sample(s) assigned to wells"
+                      values={{ count: Object.keys(wellAssignments).length }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Slide-specific storage details (cabinet/drawer for slide archives) */}
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={5} md={4} sm={4}>
+            <TextInput
+              id="archiveSlideCabinet"
+              name="slideCabinet"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.slideCabinet",
+                defaultMessage: "Slide Cabinet (optional)",
+              })}
+              value={archiveData.slideCabinet}
+              onChange={handleArchiveInputChange}
+              placeholder="e.g., Cabinet 5"
+            />
+          </Column>
+          <Column lg={5} md={4} sm={4}>
+            <TextInput
+              id="archiveSlideDrawer"
+              name="slideDrawer"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.slideDrawer",
+                defaultMessage: "Drawer (optional)",
+              })}
+              value={archiveData.slideDrawer}
+              onChange={handleArchiveInputChange}
+              placeholder="e.g., Drawer 12"
+            />
+          </Column>
+          <Column lg={6} md={4} sm={4}>
+            <TextInput
+              id="archiveSlidePosition"
+              name="slidePosition"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.slidePosition",
+                defaultMessage: "Position (optional)",
+              })}
+              value={archiveData.slidePosition}
+              onChange={handleArchiveInputChange}
+              placeholder="e.g., Row 3, Slot 15"
+            />
+          </Column>
+        </Grid>
+
+        {/* Archive Details */}
+        <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+          <FormattedMessage
+            id="pathology.archive.section.details"
+            defaultMessage="Archive Details"
+          />
+        </h5>
+        <Grid>
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="archiveReason"
+              name="archiveReason"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.reason",
+                defaultMessage: "Archive Reason",
+              })}
+              value={archiveData.archiveReason}
+              onChange={handleArchiveInputChange}
+            >
+              {archiveReasons.map((reason) => (
+                <SelectItem
+                  key={reason.value}
+                  value={reason.value}
+                  text={reason.text}
+                />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="archiveSlideCondition"
+              name="slideCondition"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.slideCondition",
+                defaultMessage: "Slide Condition",
+              })}
+              value={archiveData.slideCondition}
+              onChange={handleArchiveInputChange}
+            >
+              {slideConditions.map((condition) => (
+                <SelectItem
+                  key={condition.value}
+                  value={condition.value}
+                  text={condition.text}
+                />
+              ))}
+            </Select>
+          </Column>
+        </Grid>
+
+        <Grid style={{ marginTop: "0.5rem" }}>
+          <Column lg={16} md={8} sm={4}>
+            <Select
+              id="archiveRetentionPeriod"
+              name="retentionPeriod"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.retentionPeriod",
+                defaultMessage: "Retention Period",
+              })}
+              value={archiveData.retentionPeriod}
+              onChange={handleArchiveInputChange}
+            >
+              {retentionPeriods.map((period) => (
+                <SelectItem
+                  key={period.value}
+                  value={period.value}
+                  text={period.text}
+                />
+              ))}
+            </Select>
+          </Column>
+        </Grid>
+
+        {/* Staff & Date */}
+        <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+          <FormattedMessage
+            id="pathology.archive.section.staff"
+            defaultMessage="Staff & Date"
+          />
+        </h5>
+        <Grid>
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="archiveArchivedBy"
+              name="archivedBy"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.archivedBy",
+                defaultMessage: "Archived By",
+              })}
+              value={archiveData.archivedBy}
+              onChange={handleArchiveInputChange}
+            />
+          </Column>
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="archiveDate"
+              name="archiveDate"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.date",
+                defaultMessage: "Archive Date",
+              })}
+              value={archiveData.archiveDate}
+              onChange={handleArchiveInputChange}
+              type="date"
+            />
+          </Column>
+        </Grid>
+
+        {/* Notes */}
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16} md={8} sm={4}>
+            <TextArea
+              id="archiveNotes"
+              name="notes"
+              labelText={intl.formatMessage({
+                id: "pathology.archive.notes",
+                defaultMessage: "Notes",
+              })}
+              value={archiveData.notes}
+              onChange={handleArchiveInputChange}
+              rows={3}
+            />
+          </Column>
+        </Grid>
       </Modal>
     </div>
   );

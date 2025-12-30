@@ -174,4 +174,35 @@ public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, I
                 .setParameter("sampleItemId", sampleItemId).setParameter("pageId", pageId).getResultList();
         return results.isEmpty() ? null : results.get(0);
     }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Map<String, String>> getOccupiedWellsByBoxId(Integer boxId) {
+        Map<String, Map<String, String>> result = new HashMap<>();
+
+        Session session = entityManager.unwrap(Session.class);
+        // Query for archived samples with this boxId in their JSONB data field
+        // JSONB query: data->>'boxId' = :boxId AND data->>'wellCoordinate' IS NOT NULL
+        String sql = "SELECT nps.sample_item_id, nps.data->>'wellCoordinate' as well_coordinate, "
+                + "nps.data->>'externalId' as external_id " + "FROM clinlims.notebook_page_sample nps "
+                + "WHERE (nps.data->>'boxId')::integer = :boxId " + "AND nps.data->>'wellCoordinate' IS NOT NULL "
+                + "AND nps.data->>'wellCoordinate' != '' " + "AND (nps.data->>'isArchived')::boolean = true";
+
+        List<Object[]> rows = session.createNativeQuery(sql).setParameter("boxId", boxId).getResultList();
+
+        for (Object[] row : rows) {
+            String sampleItemId = row[0] != null ? row[0].toString() : null;
+            String wellCoordinate = row[1] != null ? row[1].toString() : null;
+            String externalId = row[2] != null ? row[2].toString() : null;
+
+            if (wellCoordinate != null && !wellCoordinate.isEmpty()) {
+                Map<String, String> sampleInfo = new HashMap<>();
+                sampleInfo.put("sampleItemId", sampleItemId);
+                sampleInfo.put("externalId", externalId);
+                result.put(wellCoordinate, sampleInfo);
+            }
+        }
+
+        return result;
+    }
 }

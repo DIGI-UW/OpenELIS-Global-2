@@ -176,7 +176,9 @@ function PathologyCassettesPage({
                   specimenCategory: sample.specimenCategory || "histopathology",
                   collectionDate: sample.collectionDate,
                   // ONLY use status from current cassettes page, default to PENDING
-                  status: pageSample?.status || "PENDING",
+                  // Backend returns status as "pageStatus" field
+                  status:
+                    pageSample?.pageStatus || pageSample?.status || "PENDING",
                   patientName: sample.patientName,
                   // Cassette status from current page data ONLY
                   cassettesCreated: cassetteData.cassettesCreated === true,

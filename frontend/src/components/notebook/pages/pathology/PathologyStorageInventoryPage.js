@@ -579,8 +579,9 @@ function PathologyStorageInventoryPage({
     });
 
     const nbId = notebookId || entryId;
+    // Use sampleIdsString to support composite sample IDs (e.g., "4_cassette_0_block_0")
     const payload = {
-      sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
+      sampleIdsString: Object.keys(wellAssignments).map((id) => String(id)),
       boxId: storageSelection.box.id,
       wellAssignments: wellAssignmentsForBackend,
       condition: selectedCondition.id,
@@ -680,10 +681,11 @@ function PathologyStorageInventoryPage({
     setAssigning(true);
     setError(null);
 
-    const sampleIds = pendingSamples.map((s) => parseInt(s.id, 10));
+    // Use string IDs for composite sample IDs (e.g., "4_cassette_0_block_0_slide_0")
+    const sampleIds = pendingSamples.map((s) => String(s.id));
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
       JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
       (response) => {
         setAssigning(false);
@@ -1024,8 +1026,9 @@ function PathologyStorageInventoryPage({
     // Get list of occupied wells from current box layout
     const occupiedWells = Object.keys(boxLayout);
 
+    // Use sampleIdsString for composite sample IDs (e.g., "4_cassette_0_block_0_slide_0")
     const autoAssignData = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+      sampleIdsString: selectedSampleIds.map((id) => String(id)),
       data: {
         storageRoom: storageSelection.room?.label,
         storageDevice: storageSelection.device?.label,

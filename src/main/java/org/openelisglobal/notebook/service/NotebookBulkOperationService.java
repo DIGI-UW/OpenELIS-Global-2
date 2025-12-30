@@ -41,9 +41,9 @@ public interface NotebookBulkOperationService {
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId);
 
     /**
-     * Update status for multiple samples on a page using String IDs.
-     * Supports composite sample IDs (e.g., "123_cassette_0") used in
-     * pathology workflow pages where samples are expanded from parent items.
+     * Update status for multiple samples on a page using String IDs. Supports
+     * composite sample IDs (e.g., "123_cassette_0") used in pathology workflow
+     * pages where samples are expanded from parent items.
      *
      * @param pageId    the notebook page ID
      * @param sampleIds list of sample item IDs as Strings to update
@@ -52,6 +52,20 @@ public interface NotebookBulkOperationService {
      * @return number of samples updated
      */
     int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status, String userId);
+
+    /**
+     * Apply common values to multiple samples on a page using String IDs. Updates
+     * the JSONB data field for each sample, merging with existing data. Supports
+     * composite sample IDs (e.g., "123_block_0") used in pathology workflow pages
+     * where samples are expanded from parent items.
+     *
+     * @param pageId    the notebook page ID
+     * @param sampleIds list of sample item IDs as Strings to update
+     * @param data      map of field names to values (stored in JSONB)
+     * @param userId    the user performing the update
+     * @return number of samples updated
+     */
+    int bulkApplyValuesString(Integer pageId, List<String> sampleIds, Map<String, Object> data, String userId);
 
     /**
      * Get progress information for a notebook page. Delegates to
@@ -142,6 +156,25 @@ public interface NotebookBulkOperationService {
      */
     java.util.Map<String, Object> autoAssignSamplesToStorage(Integer pageId, List<Integer> sampleIds, Integer boxId,
             Integer rows, Integer columns, List<String> occupiedWells, Map<String, Object> storageData, String userId);
+
+    /**
+     * Auto-assign samples to storage boxes using string sample IDs. This version
+     * supports composite sample IDs (e.g., "4_cassette_0_block_0") used in
+     * pathology workflows.
+     *
+     * @param pageId        the notebook page ID
+     * @param sampleIds     list of sample IDs as strings
+     * @param boxId         the storage box ID
+     * @param rows          number of rows in the box (default 8)
+     * @param columns       number of columns in the box (default 12)
+     * @param occupiedWells list of already occupied well coordinates
+     * @param storageData   additional storage metadata
+     * @param userId        the user performing the assignment
+     * @return map containing assignments array and any errors
+     */
+    java.util.Map<String, Object> autoAssignSamplesToStorageString(Integer pageId, List<String> sampleIds,
+            Integer boxId, Integer rows, Integer columns, List<String> occupiedWells, Map<String, Object> storageData,
+            String userId);
 
     /**
      * Assign samples to storage using a well assignments map where each sample has
