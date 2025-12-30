@@ -1803,9 +1803,9 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
             selectedSamplesQCStatus.hasQCFailed
               ? intl.formatMessage(
                   {
-                    id: "notebook.bacteriology.processing.qcFailedTooltip",
+                    id: "notebook.bacteriology.processing.qcFailedWarning",
                     defaultMessage:
-                      "{count} selected sample(s) have failed QC and cannot be processed. Please re-assign preparation with passing QC media.",
+                      "{count} selected sample(s) have failed QC. Proceeding with caution - these samples may require re-assignment of preparation with passing QC media.",
                   },
                   { count: selectedSamplesQCStatus.qcFailedCount },
                 )
@@ -1817,9 +1817,7 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
             size="sm"
             renderIcon={Microscope}
             onClick={handleOpenProcessingModal}
-            disabled={
-              selectedIds.length === 0 || selectedSamplesQCStatus.hasQCFailed
-            }
+            disabled={selectedIds.length === 0}
           >
             <FormattedMessage
               id="notebook.bacteriology.processing.recordProcessing"
@@ -1837,9 +1835,9 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
               selectedSamplesQCStatus.hasQCFailed
                 ? intl.formatMessage(
                     {
-                      id: "notebook.bacteriology.processing.cannotMarkQCPassedTooltip",
+                      id: "notebook.bacteriology.processing.markQCPassedWarning",
                       defaultMessage:
-                        "{count} selected sample(s) have already failed QC. Please re-assign preparation with passing QC media first.",
+                        "{count} selected sample(s) have failed QC. Consider re-assigning preparation with passing QC media, or click to override if appropriate.",
                     },
                     { count: selectedSamplesQCStatus.qcFailedCount },
                   )
@@ -1851,7 +1849,7 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
               size="sm"
               renderIcon={CheckmarkFilled}
               onClick={handleBulkMarkQCPassed}
-              disabled={selectedSamplesQCStatus.hasQCFailed}
+              disabled={false}
             >
               <FormattedMessage
                 id="notebook.bacteriology.processing.markQCPassed"
@@ -1875,69 +1873,87 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         </Button>
 
         {/* Complete & Continue Button */}
-        <Button
-          kind="primary"
-          size="sm"
-          onClick={() => {
-            // Check for QC failed samples first
-            const qcFailedCount = samples.filter(
+        <Tooltip
+          align="bottom"
+          label={
+            samples.some(
               (s) =>
                 s.processingStatus === "QC_FAILED" ||
                 s.qcResult === "FAIL" ||
                 s.status === "REJECTED",
-            ).length;
-
-            if (qcFailedCount > 0) {
-              setError(
-                intl.formatMessage(
-                  {
-                    id: "notebook.bacteriology.processing.qcFailedError",
-                    defaultMessage:
-                      "{count} sample(s) have failed QC and cannot continue. Please re-assign preparation with passing QC media or remove these samples.",
-                  },
-                  { count: qcFailedCount },
-                ),
-              );
-              return;
-            }
-
-            // Simple completion check - all samples should have preparation assigned and be processed
-            const incompleteCount = samples.filter(
-              (s) =>
-                !s.preparationAssigned ||
-                s.processingStatus === "NOT_STARTED" ||
-                s.processingStatus === "PENDING",
-            ).length;
-
-            if (incompleteCount > 0) {
-              setError(
-                intl.formatMessage(
-                  {
-                    id: "notebook.bacteriology.processing.incompleteError",
-                    defaultMessage:
-                      "{count} samples are not yet complete. Please ensure all samples have preparation assigned and processing completed before continuing.",
-                  },
-                  { count: incompleteCount },
-                ),
-              );
-            } else {
-              // All samples are complete, proceed to next step
-              setSuccess(
-                intl.formatMessage({
-                  id: "notebook.bacteriology.processing.completeSuccess",
+            )
+              ? intl.formatMessage({
+                  id: "notebook.bacteriology.processing.proceedWithCautionTooltip",
                   defaultMessage:
-                    "All samples completed successfully. You can now proceed to the next step.",
-                }),
-              );
-            }
-          }}
-          disabled={samples.length === 0}
+                    "Some samples have failed QC. You can proceed, but be aware that these samples may require attention.",
+                })
+              : ""
+          }
         >
-          <FormattedMessage
-            id="notebook.bacteriology.processing.completeAndContinue"
-            defaultMessage="Complete & Continue"
-          />
-        </Button>
+          <Button
+            kind="primary"
+            size="sm"
+            onClick={() => {
+              // Check for incomplete samples - this is now a warning only
+              const incompleteCount = samples.filter(
+                (s) =>
+                  !s.preparationAssigned ||
+                  s.processingStatus === "NOT_STARTED" ||
+                  s.processingStatus === "PENDING",
+              ).length;
+
+              // Check for QC failed samples - now a warning, not blocking
+              const qcFailedCount = samples.filter(
+                (s) =>
+                  s.processingStatus === "QC_FAILED" ||
+                  s.qcResult === "FAIL" ||
+                  s.status === "REJECTED",
+              ).length;
+
+              if (incompleteCount > 0) {
+                setError(
+                  intl.formatMessage(
+                    {
+                      id: "notebook.bacteriology.processing.incompleteError",
+                      defaultMessage:
+                        "{count} samples are not yet complete. Please ensure all samples have preparation assigned and processing completed before continuing.",
+                    },
+                    { count: incompleteCount },
+                  ),
+                );
+              } else {
+                // Allow proceeding even with QC failed samples, but show warning
+                if (qcFailedCount > 0) {
+                  setSuccess(
+                    intl.formatMessage(
+                      {
+                        id: "notebook.bacteriology.processing.proceedWithCautionSuccess",
+                        defaultMessage:
+                          "Proceeding to next step. {count} sample(s) have failed QC - please review carefully.",
+                      },
+                      { count: qcFailedCount },
+                    ),
+                  );
+                } else {
+                  // All samples are complete with passing QC
+                  setSuccess(
+                    intl.formatMessage({
+                      id: "notebook.bacteriology.processing.completeSuccess",
+                      defaultMessage:
+                        "All samples completed successfully. You can now proceed to the next step.",
+                    }),
+                  );
+                }
+              }
+            }}
+            disabled={samples.length === 0}
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.processing.completeAndContinue"
+              defaultMessage="Complete & Continue"
+            />
+          </Button>
+        </Tooltip>
       </div>
 
       {/* Sample Grid */}
