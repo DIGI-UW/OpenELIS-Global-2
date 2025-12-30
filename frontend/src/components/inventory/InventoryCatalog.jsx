@@ -145,6 +145,8 @@ const InventoryCatalog = () => {
       CARTRIDGE: "Analyzer Cartridge",
       HIV_KIT: "HIV Test Kit",
       SYPHILIS_KIT: "Syphilis Test Kit",
+      ENZYME: "Enzyme",
+      ANTIBIOTICS: "Antibiotics",
     };
     return labels[type] || type;
   };

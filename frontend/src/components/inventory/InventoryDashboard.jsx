@@ -93,6 +93,8 @@ const InventoryDashboard = () => {
     { id: "REAGENT", text: "Reagent" },
     { id: "RDT", text: "RDT" },
     { id: "CARTRIDGE", text: "Cartridge" },
+    { id: "ENZYME", text: "Enzyme" },
+    { id: "ANTIBIOTICS", text: "Antibiotics" },
   ];
 
   const statusOptions = [

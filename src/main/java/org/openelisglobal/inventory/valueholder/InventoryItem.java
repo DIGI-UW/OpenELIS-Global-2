@@ -155,6 +155,16 @@ public class InventoryItem extends BaseObject<Long> {
     }
 
     @JsonIgnore
+    public boolean isEnzyme() {
+        return itemType == ItemType.ENZYME;
+    }
+
+    @JsonIgnore
+    public boolean isAntibiotics() {
+        return itemType == ItemType.ANTIBIOTICS;
+    }
+
+    @JsonIgnore
     public boolean isActive() {
         return "Y".equals(isActive);
     }
