@@ -244,7 +244,9 @@ public class NotebookSampleEntryController extends BaseRestController {
         }
 
         // Second pass: for each parent sample on the page, also include its children
-        // This ensures aliquots are displayed even if not explicitly linked to page
+        // ONLY if the children have their own NotebookPageSample record for this page
+        // This prevents children from appearing on pages they haven't been explicitly
+        // added to
         List<Map<String, Object>> childMaps = new java.util.ArrayList<>();
         for (Map<String, Object> sampleMap : sampleMaps) {
             Boolean isAliquot = (Boolean) sampleMap.get("isAliquot");
@@ -258,12 +260,18 @@ public class NotebookSampleEntryController extends BaseRestController {
                         for (SampleItem child : children) {
                             if (!includedSampleIds.contains(child.getId())) {
                                 // Look up the child's actual NotebookPageSample record for this page
-                                // to get the correct status (may be COMPLETED if inherited from parent)
                                 org.openelisglobal.notebook.valueholder.NotebookPageSample childNps = notebookPageSampleService
                                         .getByPageIdAndSampleItemId(pageId, Integer.parseInt(child.getId()));
-                                Map<String, Object> childMap = buildSampleMap(child, childNps);
-                                childMaps.add(childMap);
-                                includedSampleIds.add(child.getId());
+
+                                // CRITICAL FIX: Only include child if it has a NotebookPageSample record on
+                                // THIS page
+                                // This prevents children from automatically appearing when only their parent is
+                                // on the page
+                                if (childNps != null) {
+                                    Map<String, Object> childMap = buildSampleMap(child, childNps);
+                                    childMaps.add(childMap);
+                                    includedSampleIds.add(child.getId());
+                                }
                             }
                         }
                     } catch (Exception e) {
