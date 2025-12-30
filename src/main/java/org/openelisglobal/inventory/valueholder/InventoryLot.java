@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
@@ -30,6 +31,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 @Entity
 @Access(AccessType.FIELD)
 @Table(name = "inventory_lot")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class InventoryLot extends BaseObject<Long> {
 
     private static final long serialVersionUID = 1L;
