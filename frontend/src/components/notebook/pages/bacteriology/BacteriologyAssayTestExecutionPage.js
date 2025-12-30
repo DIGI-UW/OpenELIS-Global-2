@@ -413,27 +413,10 @@ const PCR_ASSAY_TYPES = [
   { id: "OTHER", text: "Other (specify)" },
 ];
 
-// PCR Primers - Common primer sets used in bacteriology
-const PCR_PRIMERS = [
-  { id: "16S_27F_1492R", text: "16S Universal (27F/1492R)" },
-  { id: "16S_515F_806R", text: "16S V4 Region (515F/806R)" },
-  { id: "16S_341F_785R", text: "16S V3-V4 Region (341F/785R)" },
-  { id: "MECA_F_R", text: "mecA Forward/Reverse" },
-  { id: "VANA_F_R", text: "vanA Forward/Reverse" },
-  { id: "VANB_F_R", text: "vanB Forward/Reverse" },
-  { id: "CTX_M_F_R", text: "CTX-M Group Forward/Reverse" },
-  { id: "KPC_F_R", text: "KPC Forward/Reverse" },
-  { id: "NDM_F_R", text: "NDM Forward/Reverse" },
-  { id: "OXA48_F_R", text: "OXA-48 Forward/Reverse" },
-  { id: "VIM_F_R", text: "VIM Forward/Reverse" },
-  { id: "IMP_F_R", text: "IMP Forward/Reverse" },
-  { id: "MCR1_F_R", text: "mcr-1 Forward/Reverse" },
-  { id: "TCDA_F_R", text: "tcdA (C. diff) Forward/Reverse" },
-  { id: "TCDB_F_R", text: "tcdB (C. diff) Forward/Reverse" },
-  { id: "SPA_F_R", text: "spa Typing Forward/Reverse" },
-  { id: "PVL_F_R", text: "PVL Forward/Reverse" },
-  { id: "CUSTOM", text: "Custom Primer Set" },
-  { id: "OTHER", text: "Other (specify)" },
+// PCR Primer Direction - Forward or Reverse
+const PCR_PRIMER_DIRECTION = [
+  { id: "FORWARD", text: "Forward" },
+  { id: "REVERSE", text: "Reverse" },
 ];
 
 // PCR Enzymes - DNA Polymerases and Master Mixes
@@ -653,6 +636,10 @@ function BacteriologyAssayTestExecutionPage({
   const [enzymes, setEnzymes] = useState([]);
   const [loadingEnzymes, setLoadingEnzymes] = useState(false);
 
+  // Antibiotics from inventory
+  const [antibiotics, setAntibiotics] = useState([]);
+  const [loadingAntibiotics, setLoadingAntibiotics] = useState(false);
+
   // ==========================================
   // SECTION A: Primary Culture & Microscopy State
   // ==========================================
@@ -820,12 +807,11 @@ function BacteriologyAssayTestExecutionPage({
     assayType: "",
     otherAssayType: "",
     // Structured template fields (between PCR Type and Target Gene)
-    primer: "",
-    otherPrimer: "",
-    customPrimerForward: "",
-    customPrimerReverse: "",
+    primerDirection: "",
+    primerType: "",
     enzyme: "",
     otherEnzyme: "",
+    targetGene: "",
     // Primary target gene
     target: "",
     otherTarget: "",
@@ -926,6 +912,7 @@ function BacteriologyAssayTestExecutionPage({
     loadPageSamples();
     loadReagents();
     loadEnzymes();
+    loadAntibiotics();
 
     return () => {
       componentMounted.current = false;
@@ -1074,6 +1061,38 @@ function BacteriologyAssayTestExecutionPage({
         if (componentMounted.current) {
           setEnzymes(PCR_ENZYMES);
           setLoadingEnzymes(false);
+        }
+      },
+    );
+  }, []);
+
+  const loadAntibiotics = useCallback(() => {
+    setLoadingAntibiotics(true);
+    getFromOpenElisServer(
+      "/rest/inventory/item/type/ANTIBIOTICS",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            const antibioticOptions = response.map((antibiotic) => ({
+              id: antibiotic.id,
+              text: antibiotic.name,
+              name: antibiotic.name,
+              catalogNumber: antibiotic.catalogNumber,
+              manufacturer: antibiotic.manufacturer,
+              ...antibiotic,
+            }));
+            setAntibiotics(antibioticOptions);
+          } else {
+            setAntibiotics([]); // No fallback hardcoded list needed
+          }
+          setLoadingAntibiotics(false);
+        }
+      },
+      () => {
+        // On error, set empty list
+        if (componentMounted.current) {
+          setAntibiotics([]);
+          setLoadingAntibiotics(false);
         }
       },
     );
@@ -2343,12 +2362,11 @@ function BacteriologyAssayTestExecutionPage({
     setPcrData({
       assayType: "",
       otherAssayType: "",
-      primer: "",
-      otherPrimer: "",
-      customPrimerForward: "",
-      customPrimerReverse: "",
+      primerDirection: "",
+      primerType: "",
       enzyme: "",
       otherEnzyme: "",
+      targetGene: "",
       target: "",
       otherTarget: "",
       geneDetectionResults: [],
@@ -2465,21 +2483,18 @@ function BacteriologyAssayTestExecutionPage({
       molecularCompleted: true,
       pcrCompleted: true,
       pcrAssayType: pcrData.assayType,
+      // Primer/Enzyme structured template
+      pcrPrimerDirection: pcrData.primerDirection,
+      pcrPrimerType: pcrData.primerType,
+      pcrTargetGene: pcrData.targetGene,
+      pcrEnzyme:
+        pcrData.enzyme === "OTHER" ? pcrData.otherEnzyme : pcrData.enzyme,
       // Primary target gene
       pcrTarget:
         pcrData.target === "OTHER" ? pcrData.otherTarget : pcrData.target,
       // Primary result
       pcrResult: pcrData.result,
       pcrCtValue: pcrData.ctValue,
-      // Primer/Enzyme structured template
-      pcrPrimer:
-        pcrData.primer === "OTHER"
-          ? pcrData.otherPrimer
-          : pcrData.primer === "CUSTOM"
-            ? `Custom: F:${pcrData.customPrimerForward} R:${pcrData.customPrimerReverse}`
-            : pcrData.primer,
-      pcrEnzyme:
-        pcrData.enzyme === "OTHER" ? pcrData.otherEnzyme : pcrData.enzyme,
       // Multiple gene detection results (additional targets)
       pcrGeneDetectionResults: pcrData.geneDetectionResults.map((result) => ({
         target: result.target === "OTHER" ? result.otherTarget : result.target,
@@ -6019,17 +6034,26 @@ function BacteriologyAssayTestExecutionPage({
 
                   {/* Antibiotic Name */}
                   <Column lg={4} md={2} sm={1}>
-                    <TextInput
+                    <Dropdown
                       id={`antibiotic-name-${index}`}
-                      value={result.antibiotic}
-                      onChange={(e) =>
+                      items={antibiotics}
+                      itemToString={(item) => (item ? item.text : "")}
+                      selectedItem={antibiotics.find(
+                        (a) => a.id === result.antibioticId,
+                      )}
+                      onChange={({ selectedItem }) => {
                         handleUpdateAntibioticResult(
                           index,
                           "antibiotic",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="e.g., Ampicillin"
+                          selectedItem?.text || "",
+                        );
+                        handleUpdateAntibioticResult(
+                          index,
+                          "antibioticId",
+                          selectedItem?.id || "",
+                        );
+                      }}
+                      disabled={loadingAntibiotics}
                       size="sm"
                     />
                   </Column>
@@ -6673,7 +6697,7 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
 
-          {/* Primer and Enzyme Structured Template */}
+          {/* Primer, Enzyme, and Target Gene Structured Template */}
           <div
             style={{
               marginTop: "1rem",
@@ -6692,23 +6716,41 @@ function BacteriologyAssayTestExecutionPage({
             <Grid fullWidth>
               <Column lg={8} md={4} sm={4}>
                 <Dropdown
-                  id="pcr-primer"
+                  id="pcr-primer-direction"
                   titleText={intl.formatMessage({
-                    id: "notebook.bacteriology.assay.pcrPrimer",
-                    defaultMessage: "Primer",
+                    id: "notebook.bacteriology.assay.pcrPrimerDirection",
+                    defaultMessage: "Primer Direction",
                   })}
-                  label="Select primer"
-                  items={PCR_PRIMERS}
+                  label="Select direction"
+                  items={PCR_PRIMER_DIRECTION}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={PCR_PRIMERS.find(
-                    (p) => p.id === pcrData.primer,
+                  selectedItem={PCR_PRIMER_DIRECTION.find(
+                    (p) => p.id === pcrData.primerDirection,
                   )}
                   onChange={({ selectedItem }) =>
                     setPcrData({
                       ...pcrData,
-                      primer: selectedItem?.id || "",
+                      primerDirection: selectedItem?.id || "",
                     })
                   }
+                />
+              </Column>
+
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="pcr-primer-type"
+                  labelText={intl.formatMessage({
+                    id: "notebook.bacteriology.assay.pcrPrimerType",
+                    defaultMessage: "Primer Type",
+                  })}
+                  value={pcrData.primerType}
+                  onChange={(e) =>
+                    setPcrData({
+                      ...pcrData,
+                      primerType: e.target.value,
+                    })
+                  }
+                  placeholder="e.g., 16S rRNA, mecA, vanA"
                 />
               </Column>
 
@@ -6735,64 +6777,6 @@ function BacteriologyAssayTestExecutionPage({
                 />
               </Column>
 
-              {pcrData.primer === "CUSTOM" && (
-                <>
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      id="pcr-custom-primer-forward"
-                      labelText={intl.formatMessage({
-                        id: "notebook.bacteriology.assay.customPrimerForward",
-                        defaultMessage: "Custom Forward Primer Sequence",
-                      })}
-                      value={pcrData.customPrimerForward}
-                      onChange={(e) =>
-                        setPcrData({
-                          ...pcrData,
-                          customPrimerForward: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., 5'-ATCGATCG...-3'"
-                    />
-                  </Column>
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      id="pcr-custom-primer-reverse"
-                      labelText={intl.formatMessage({
-                        id: "notebook.bacteriology.assay.customPrimerReverse",
-                        defaultMessage: "Custom Reverse Primer Sequence",
-                      })}
-                      value={pcrData.customPrimerReverse}
-                      onChange={(e) =>
-                        setPcrData({
-                          ...pcrData,
-                          customPrimerReverse: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., 5'-GCTAGCTA...-3'"
-                    />
-                  </Column>
-                </>
-              )}
-
-              {pcrData.primer === "OTHER" && (
-                <Column lg={16} md={8} sm={4}>
-                  <TextInput
-                    id="pcr-other-primer"
-                    labelText={intl.formatMessage({
-                      id: "notebook.bacteriology.assay.otherPrimer",
-                      defaultMessage: "Specify Other Primer",
-                    })}
-                    value={pcrData.otherPrimer}
-                    onChange={(e) =>
-                      setPcrData({
-                        ...pcrData,
-                        otherPrimer: e.target.value,
-                      })
-                    }
-                  />
-                </Column>
-              )}
-
               {pcrData.enzyme === "OTHER" && (
                 <Column lg={16} md={8} sm={4}>
                   <TextInput
@@ -6812,7 +6796,26 @@ function BacteriologyAssayTestExecutionPage({
                 </Column>
               )}
 
-              {/* Primary Target Gene */}
+              {/* Target Gene */}
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="pcr-target-gene"
+                  labelText={intl.formatMessage({
+                    id: "notebook.bacteriology.assay.pcrTargetGene",
+                    defaultMessage: "Target Gene",
+                  })}
+                  value={pcrData.targetGene}
+                  onChange={(e) =>
+                    setPcrData({
+                      ...pcrData,
+                      targetGene: e.target.value,
+                    })
+                  }
+                  placeholder="e.g., 16S rRNA, mecA, CTX-M"
+                />
+              </Column>
+
+              {/* Primary Target Gene (kept for backward compatibility) */}
               <Column lg={8} md={4} sm={4}>
                 <Dropdown
                   id="pcr-target"
