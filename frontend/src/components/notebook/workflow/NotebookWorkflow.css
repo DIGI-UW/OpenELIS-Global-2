@@ -1407,3 +1407,40 @@
     font-size: 0.8125rem;
   }
 }
+
+/* ========================================== */
+/* Manifest Description Display Styles        */
+/* ========================================== */
+
+.manifest-description-display {
+  margin: 1rem 0;
+}
+
+.manifest-info-tile {
+  background-color: var(--cds-layer-02);
+  border-left: 3px solid var(--cds-support-info);
+  padding: 0.75rem 1rem;
+}
+
+.manifest-info-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--cds-text-secondary);
+}
+
+.manifest-info-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.manifest-info-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--cds-text-primary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

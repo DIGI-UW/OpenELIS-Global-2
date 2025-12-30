@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  TextArea,
 } from "@carbon/react";
 import {
   Upload,
@@ -192,6 +193,7 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
   });
 
   const [step, setStep] = useState(1);
+  const [manifestDescription, setManifestDescription] = useState("");
   const [previewData, setPreviewData] = useState(null);
   const [previewErrors, setPreviewErrors] = useState([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -363,6 +365,7 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       specimenConditionColumn: "",
       remarksColumn: "",
     });
+    setManifestDescription("");
     setPreviewData(null);
     setPreviewErrors([]);
     setStep(1);
@@ -402,6 +405,7 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       "mapping",
       new Blob([JSON.stringify(columnMapping)], { type: "application/json" }),
     );
+    formData.append("manifestDescription", manifestDescription);
 
     fetch(
       `${config.serverBaseUrl}/rest/notebook/mntd/entry/${entryId}/samples/preview-manifest`,
@@ -435,7 +439,7 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
           { rowNumber: 0, column: "system", message: error.message },
         ]);
       });
-  }, [file, entryId, columnMapping]);
+  }, [file, entryId, columnMapping, manifestDescription]);
 
   // Execute import
   const handleImport = useCallback(() => {
@@ -449,6 +453,7 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       "mapping",
       new Blob([JSON.stringify(columnMapping)], { type: "application/json" }),
     );
+    formData.append("manifestDescription", manifestDescription);
 
     fetch(
       `${config.serverBaseUrl}/rest/notebook/mntd/entry/${entryId}/samples/create-from-manifest`,
@@ -485,7 +490,7 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
           { rowNumber: 0, column: "system", message: error.message },
         ]);
       });
-  }, [file, entryId, columnMapping, onImportSuccess]);
+  }, [file, entryId, columnMapping, manifestDescription, onImportSuccess]);
 
   // Close modal and reset
   const handleClose = useCallback(() => {
@@ -846,6 +851,26 @@ function MNTDManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
                 onDelete={handleRemoveFile}
               />
             )}
+
+            {/* Manifest Description */}
+            <div className="manifest-description-section">
+              <TextArea
+                id="manifestDescription"
+                labelText={intl.formatMessage({
+                  id: "notebook.mntd.manifest.description",
+                  defaultMessage: "Manifest Description / Notes",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "notebook.mntd.manifest.description.placeholder",
+                  defaultMessage:
+                    "Enter any additional information about this manifest import...",
+                })}
+                value={manifestDescription}
+                onChange={(e) => setManifestDescription(e.target.value)}
+                rows={3}
+                maxCount={500}
+              />
+            </div>
 
             {/* Required Fields Mapping */}
             <div className="mapping-section">
