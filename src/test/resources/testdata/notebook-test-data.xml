@@ -85,4 +85,7 @@
         comment_text="First comment" system_user_id="1"
         date_created="2025-01-02 11:00:00" />
 
+    <!-- NOTE: notebook_entries join table data is inserted via SQL in test
+        setUp() because the table has no primary key and DBUnit can't handle it -->
+
 </dataset>

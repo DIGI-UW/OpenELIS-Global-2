@@ -80,7 +80,12 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
             Date fromDate, Date toDate, List<Integer> entryIds) {
 
         StringBuilder hql = new StringBuilder("select distinct nb from NoteBook nb ");
-        hql.append("left join nb.tags t where nb.isTemplate = false ");
+        // Only return notebooks that are actually entries (exist in some notebook's
+        // entries collection)
+        // This ensures findParentTemplate will find a parent and entryNumber can be
+        // calculated
+        hql.append("left join nb.tags t where nb.isTemplate = false and nb.parentNotebook is null ");
+        hql.append("and exists (from NoteBook parent join parent.entries e where e.id = nb.id) ");
 
         if (statuses != null && !statuses.isEmpty()) {
             hql.append("and nb.status in (:statuses) ");
@@ -134,7 +139,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
 
     @Override
     public Long getCountWithStatus(List<NoteBookStatus> statuses) {
-        String sql = "select count(*) from NoteBook nb where status in (:statuses) and nb.isTemplate = false";
+        String sql = "select count(*) from NoteBook nb where status in (:statuses) and nb.isTemplate = false and nb.parentNotebook is null";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
         Long count = query.uniqueResult();
@@ -144,7 +149,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     @Override
     public Long getCountWithStatusBetweenDates(List<NoteBookStatus> statuses, Timestamp from, Timestamp to) {
         String sql = "select count(*) from NoteBook nb where nb.status in (:statuses) and nb.lastupdated"
-                + " between :datefrom and :dateto and nb.isTemplate = false";
+                + " between :datefrom and :dateto and nb.isTemplate = false and nb.parentNotebook is null";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
         query.setParameter("datefrom", from);
@@ -155,7 +160,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
 
     @Override
     public Long getTotalCount() {
-        String sql = "select count(*) from NoteBook nb where nb.isTemplate = false";
+        String sql = "select count(*) from NoteBook nb where nb.isTemplate = false and nb.parentNotebook is null";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         Long count = query.uniqueResult();
         return count;
@@ -188,6 +193,17 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         query2.setParameter("entryId", entryId);
         List<NoteBook> results2 = query2.list();
         return results2.isEmpty() ? null : results2.get(0);
+    }
+
+    @Override
+    public NoteBook findDirectParentNotebook(Integer entryId) {
+        // Find the notebook that directly contains this entry in its entries collection
+        // This could be either a parent template OR a child instance
+        String hql = "select nb from NoteBook nb join nb.entries e where e.id = :entryId";
+        Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql, NoteBook.class);
+        query.setParameter("entryId", entryId);
+        List<NoteBook> results = query.list();
+        return results.isEmpty() ? null : results.get(0);
     }
 
     @Override

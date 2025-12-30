@@ -22,15 +22,12 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { PermissionGate } from "../security";
-import { Permissions } from "../../constants/roles";
 import { usePermissions } from "../../hooks/usePermissions";
 import CustomDatePicker from "../common/CustomDatePicker";
 import {
   Document,
   Time,
   Tag as TagIcon,
-  Add,
   Edit,
   Checkmark,
   Edit as EditIcon,
@@ -155,10 +152,6 @@ function NoteBookDashBoard() {
       "/rest/notebook/dashboard/entries?" + filtersToParameters(),
       loadNoteBookEntries,
     );
-  };
-
-  const openNoteBookEntryForm = () => {
-    window.location.href = "/NoteBookEntryForm";
   };
 
   const openNoteBookInstanceEntryForm = () => {
@@ -292,30 +285,6 @@ function NoteBookDashBoard() {
       <Grid fullWidth={true}>
         <Column lg={3} md={8} sm={4}>
           <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <br />
-            </Column>
-            <Column lg={16} md={8} sm={4}>
-              <PermissionGate
-                roles={Permissions.CREATE_OR_EDIT_NOTEBOOK}
-                disabledTooltip={intl.formatMessage({
-                  id: "notebook.permission.admin.required",
-                  defaultMessage:
-                    "You need Notebook Administrator role to create templates",
-                })}
-              >
-                <Button
-                  style={{ width: "70%" }}
-                  size="sm"
-                  onClick={() => {
-                    openNoteBookEntryForm();
-                  }}
-                >
-                  <Add />
-                  <FormattedMessage id="notebook.button.newLabNotebook" />
-                </Button>
-              </PermissionGate>
-            </Column>
             <Column lg={16} md={8} sm={4}>
               <br />
             </Column>
@@ -456,7 +425,7 @@ function NoteBookDashBoard() {
                         <p>
                           <FormattedMessage
                             id="notebook.parentTemplate.banner"
-                            defaultMessage="This is a template. Create a lab instance to add entries."
+                            defaultMessage="This is a project template. Create a new project or use an existing one to add entries."
                           />
                         </p>
                       </div>

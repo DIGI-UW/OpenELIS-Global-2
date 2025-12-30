@@ -25,6 +25,16 @@ public interface NoteBookDAO extends BaseDAO<NoteBook, Integer> {
     NoteBook findParentTemplate(Integer entryId);
 
     /**
+     * Find the direct parent notebook of an entry (the notebook that contains the
+     * entry in its entries collection). This could be either a parent template or a
+     * child instance.
+     *
+     * @param entryId the ID of the entry
+     * @return the direct parent notebook, or null if not found
+     */
+    NoteBook findDirectParentNotebook(Integer entryId);
+
+    /**
      * Find all child instances for a given parent template.
      *
      * @param parentId the ID of the parent template

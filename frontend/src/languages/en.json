@@ -1053,7 +1053,7 @@
   "notebook.createInstance.success.message": "Lab instance '{title}' created successfully",
   "notebook.createInstance.error.titleRequired": "Instance name is required",
   "notebook.createInstance.error.unknown": "Failed to create instance",
-  "notebook.parentTemplate.banner": "This is a template. Create a lab instance to add entries.",
+  "notebook.parentTemplate.banner": "This is a project template. Create a new project or use an existing one to add entries.",
   "notebook.childInstance.from": "Instance of: {parentName}",
   "notebook.hierarchy.aggregatedEntries": "Showing entries from all lab instances",
   "notification.error": "An error occurred",

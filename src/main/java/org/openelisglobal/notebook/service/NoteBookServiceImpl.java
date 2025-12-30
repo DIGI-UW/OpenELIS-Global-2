@@ -333,12 +333,23 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             // For non-template entries, find and set entry number and parent notebook name
             // Also inherit allowedRoles from parent template
             if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+                // Find the direct parent (could be template or child instance) for display name
+                // and entry number
+                NoteBook directParent = baseObjectDAO.findDirectParentNotebook(noteBook.getId());
+                // Find the ultimate parent template for allowedRoles
                 NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+
+                // Entries inherit allowedRoles from their parent template
                 if (parentTemplate != null) {
-                    displayBean.setNotebookName(parentTemplate.getTitle());
-                    // Calculate entry number (1-based index in parent's entries list)
-                    Hibernate.initialize(parentTemplate.getEntries());
-                    List<NoteBook> entries = parentTemplate.getEntries();
+                    Hibernate.initialize(parentTemplate.getAllowedRoles());
+                    displayBean.setAllowedRoles(new HashSet<>(parentTemplate.getAllowedRoles()));
+                }
+
+                // Use direct parent's title for display name and calculate entry number
+                if (directParent != null) {
+                    displayBean.setNotebookName(directParent.getTitle());
+                    Hibernate.initialize(directParent.getEntries());
+                    List<NoteBook> entries = directParent.getEntries();
                     if (entries != null) {
                         // Sort entries by dateCreated to get consistent numbering
                         List<NoteBook> sortedEntries = entries.stream().sorted((e1, e2) -> {
@@ -360,9 +371,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                             }
                         }
                     }
-                    // Entries inherit allowedRoles from their parent template
-                    Hibernate.initialize(parentTemplate.getAllowedRoles());
-                    displayBean.setAllowedRoles(new HashSet<>(parentTemplate.getAllowedRoles()));
                 }
             } else {
                 // For templates, use their own allowedRoles
@@ -1425,6 +1433,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         Hibernate.initialize(parent.getDepartments());
         Hibernate.initialize(parent.getAllowedRoles());
         Hibernate.initialize(parent.getTags());
+        Hibernate.initialize(parent.getInventoryInstrumentIds());
 
         // Create new child instance
         NoteBook child = new NoteBook();
@@ -1461,6 +1470,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
         if (parent.getAllowedRoles() != null) {
             child.setAllowedRoles(new HashSet<>(parent.getAllowedRoles()));
+        }
+
+        // Copy instruments
+        if (parent.getInventoryInstrumentIds() != null && !parent.getInventoryInstrumentIds().isEmpty()) {
+            child.setInventoryInstrumentIds(new ArrayList<>(parent.getInventoryInstrumentIds()));
         }
 
         // Set creator
