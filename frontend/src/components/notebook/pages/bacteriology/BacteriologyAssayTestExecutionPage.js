@@ -1583,6 +1583,7 @@ function BacteriologyAssayTestExecutionPage({
             ? "2ND_LINE"
             : "1ST_LINE",
       antibiotic: "",
+      antibioticId: "",
       zoneDiameter: "",
       mic: "",
       interpretation: "",
@@ -5660,17 +5661,32 @@ function BacteriologyAssayTestExecutionPage({
                     </Column>
 
                     <Column lg={4} md={2} sm={1}>
-                      <TextInput
+                      <Dropdown
                         id={`media-ab-name-${abIndex}`}
-                        value={result.antibiotic}
-                        onChange={(e) =>
+                        items={antibiotics}
+                        itemToString={(item) => (item ? item.text : "")}
+                        selectedItem={antibiotics.find(
+                          (a) =>
+                            a.id ===
+                            (result.antibioticId ||
+                              antibiotics.find(
+                                (ab) => ab.name === result.antibiotic,
+                              )?.id),
+                        )}
+                        onChange={({ selectedItem }) => {
                           handleUpdateMediaReactionAntibiotic(
                             abIndex,
                             "antibiotic",
-                            e.target.value,
-                          )
-                        }
-                        placeholder="e.g., Ampicillin"
+                            selectedItem?.text || "",
+                          );
+                          handleUpdateMediaReactionAntibiotic(
+                            abIndex,
+                            "antibioticId",
+                            selectedItem?.id || "",
+                          );
+                        }}
+                        disabled={loadingAntibiotics}
+                        placeholder="Select antibiotic"
                         size="sm"
                       />
                     </Column>
