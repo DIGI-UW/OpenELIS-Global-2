@@ -57,5 +57,6 @@
     <include file="liquibase/3.4.x.x/035-inventory-unified-storage-location.xml"/>
     <include file="liquibase/3.4.x.x/036-drop-legacy-inventory-storage-location.xml"/>
     <include file="liquibase/3.4.x.x/039-seed-inventory-enzymes.xml"/>
+    <include file="liquibase/3.4.x.x/040-seed-inventory-antibiotics.xml"/>
 
 </databaseChangeLog>

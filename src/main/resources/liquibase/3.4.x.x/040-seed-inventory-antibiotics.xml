@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Seed Inventory Antibiotics for Bacteriology Drug Susceptibility Testing
+        =========================================================================
+        Pre-populates inventory with 25 antibiotic types used in DST workflows
+    -->
+
+    <changeSet id="seed-antibiotic-001-amikacin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Amikacin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Amikacin antibiotic (AMK)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Amikacin', 'Aminoglycoside antibiotic (AMK)', 'ANTIBIOTICS', 'Aminoglycosides', 'Generic', 'AMK-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-002-amoxicillin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Amoxicillin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Amoxicillin antibiotic (AMX)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Amoxicillin', 'Beta-lactam antibiotic (AMX)', 'ANTIBIOTICS', 'Penicillins', 'Generic', 'AMX-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-003-amoxicillin-clavulanic" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Amoxicillin-Clavulanic Acid' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Amoxicillin-Clavulanic Acid antibiotic (AMC)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Amoxicillin-Clavulanic Acid', 'Beta-lactam/beta-lactamase inhibitor (AMC)', 'ANTIBIOTICS', 'Penicillins', 'Generic', 'AMC-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-004-ampicillin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Ampicillin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Ampicillin antibiotic (AMP)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Ampicillin', 'Beta-lactam antibiotic (AMP)', 'ANTIBIOTICS', 'Penicillins', 'Generic', 'AMP-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-005-ampicillin-sulbactam" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Ampicillin-Sulbactam' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Ampicillin-Sulbactam antibiotic (SAM)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Ampicillin-Sulbactam', 'Beta-lactam/beta-lactamase inhibitor (SAM)', 'ANTIBIOTICS', 'Penicillins', 'Generic', 'SAM-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-006-azithromycin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Azithromycin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Azithromycin antibiotic (AZM)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Azithromycin', 'Macrolide antibiotic (AZM)', 'ANTIBIOTICS', 'Macrolides', 'Generic', 'AZM-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-007-aztreonam" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Aztreonam' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Aztreonam antibiotic (ATM)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Aztreonam', 'Monobactam beta-lactam (ATM)', 'ANTIBIOTICS', 'Monobactams', 'Generic', 'ATM-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-008-cefazolin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cefazolin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cefazolin antibiotic (CFZ)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Cefazolin', '1st generation cephalosporin (CFZ)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'CFZ-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-009-cefepime" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cefepime' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cefepime antibiotic (FEP)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Cefepime', '4th generation cephalosporin (FEP)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'FEP-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-010-cefotaxime" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cefotaxime' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cefotaxime antibiotic (CTX)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Cefotaxime', '3rd generation cephalosporin (CTX)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'CTX-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-011-cefpodoxime" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cefpodoxime' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cefpodoxime antibiotic (CPD)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Cefpodoxime', '3rd generation cephalosporin (CPD)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'CPD-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-012-ceftriaxone" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Ceftriaxone' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Ceftriaxone antibiotic (CRO)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Ceftriaxone', '3rd generation cephalosporin (CRO)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'CRO-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-013-cefuroxime" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cefuroxime' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cefuroxime antibiotic (CXM)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Cefuroxime', '2nd generation cephalosporin (CXM)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'CXM-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-014-cefoxitin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cefoxitin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cefoxitin antibiotic (FOX)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Cefoxitin', '2nd generation cephalosporin (FOX)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'FOX-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-015-ceftazidime" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Ceftazidime' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Ceftazidime antibiotic (CAZ)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Ceftazidime', '3rd generation cephalosporin (CAZ)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'CAZ-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-016-cefoperazone" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Cefoperazone' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Cefoperazone antibiotic (CFP)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Cefoperazone', '3rd generation cephalosporin (CFP)', 'ANTIBIOTICS', 'Cephalosporins', 'Generic', 'CFP-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-017-chloramphenicol" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Chloramphenicol' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Chloramphenicol antibiotic (CHL)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Chloramphenicol', 'Phenicol antibiotic (CHL)', 'ANTIBIOTICS', 'Phenicols', 'Generic', 'CHL-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-018-ciprofloxacin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Ciprofloxacin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Ciprofloxacin antibiotic (CIP)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Ciprofloxacin', 'Fluoroquinolone antibiotic (CIP)', 'ANTIBIOTICS', 'Fluoroquinolones', 'Generic', 'CIP-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-019-clindamycin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Clindamycin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Clindamycin antibiotic (CLI)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Clindamycin', 'Lincosamide antibiotic (CLI)', 'ANTIBIOTICS', 'Lincosamides', 'Generic', 'CLI-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-020-colistin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Colistin (Polymyxin E)' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Colistin (Polymyxin E) antibiotic (CST)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Colistin (Polymyxin E)', 'Polymyxin antibiotic (CST)', 'ANTIBIOTICS', 'Polymyxins', 'Generic', 'CST-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-021-daptomycin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Daptomycin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Daptomycin antibiotic (DAP)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Daptomycin', 'Lipopeptide antibiotic (DAP)', 'ANTIBIOTICS', 'Lipopeptides', 'Generic', 'DAP-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-022-doxycycline" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Doxycycline' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Doxycycline antibiotic (DOX)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Doxycycline', 'Tetracycline antibiotic (DOX)', 'ANTIBIOTICS', 'Tetracyclines', 'Generic', 'DOX-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-023-erythromycin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Erythromycin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Erythromycin antibiotic (ERY)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Erythromycin', 'Macrolide antibiotic (ERY)', 'ANTIBIOTICS', 'Macrolides', 'Generic', 'ERY-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-024-fosfomycin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Fosfomycin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Fosfomycin antibiotic (FOS)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Fosfomycin', 'Phosphonic acid antibiotic (FOS)', 'ANTIBIOTICS', 'Phosphonic Acids', 'Generic', 'FOS-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+    <changeSet id="seed-antibiotic-025-gentamicin" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Gentamicin' AND item_type = 'ANTIBIOTICS';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Gentamicin antibiotic (GEN)</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, description, item_type, category, manufacturer, catalog_number, storage_requirements, units, low_stock_threshold, expiration_alert_days, is_active)
+            VALUES (nextval('clinlims.inventory_item_seq'), uuid_generate_v4(), 'Gentamicin', 'Aminoglycoside antibiotic (GEN)', 'ANTIBIOTICS', 'Aminoglycosides', 'Generic', 'GEN-STD', '15-25°C', 'discs', 5, 365, 'Y');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
