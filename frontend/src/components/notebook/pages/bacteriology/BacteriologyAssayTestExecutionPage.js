@@ -712,6 +712,7 @@ function BacteriologyAssayTestExecutionPage({
 
   const [mediaReactionsModalOpen, setMediaReactionsModalOpen] = useState(false);
   const [mediaReactions, setMediaReactions] = useState([]);
+  const [editingSampleIds, setEditingSampleIds] = useState([]);
   // Each media reaction structure:
   // {
   //   id: UUID string,
@@ -1510,20 +1511,43 @@ function BacteriologyAssayTestExecutionPage({
   // Support for multiple media inoculations per sample with independent results
   // ==========================================
 
-  const handleOpenMediaReactionsModal = useCallback(() => {
-    if (selectedIds.length === 0) {
-      setError(
-        intl.formatMessage({
-          id: "notebook.bacteriology.assay.selectSamples",
-          defaultMessage: "Please select at least one sample.",
-        }),
-      );
-      return;
-    }
-    // Initialize with empty array - user will add reactions
-    setMediaReactions([]);
-    setMediaReactionsModalOpen(true);
-  }, [selectedIds, intl]);
+  const handleOpenMediaReactionsModal = useCallback(
+    (sampleIdFromClick = null) => {
+      const idsToEdit = sampleIdFromClick ? [sampleIdFromClick] : selectedIds;
+
+      if (idsToEdit.length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.bacteriology.assay.selectSamples",
+            defaultMessage: "Please select at least one sample.",
+          }),
+        );
+        return;
+      }
+
+      // Load existing media reactions for the selected sample(s)
+      let existingReactions = [];
+      if (idsToEdit.length === 1) {
+        // For single sample, load its existing reactions
+        const sample = samples.find((s) => s.id === idsToEdit[0]);
+        if (
+          sample &&
+          sample.mediaReactions &&
+          sample.mediaReactions.length > 0
+        ) {
+          existingReactions = [...sample.mediaReactions];
+        }
+      } else {
+        // For multiple samples, start fresh
+        existingReactions = [];
+      }
+
+      setEditingSampleIds(idsToEdit);
+      setMediaReactions(existingReactions);
+      setMediaReactionsModalOpen(true);
+    },
+    [selectedIds, samples, intl],
+  );
 
   const handleAddMediaReaction = useCallback(() => {
     const newReaction = {
@@ -1676,7 +1700,7 @@ function BacteriologyAssayTestExecutionPage({
       return;
     }
 
-    const numericIds = selectedIds.map((id) => parseInt(id, 10));
+    const numericIds = editingSampleIds.map((id) => parseInt(id, 10));
 
     const dataToSave = {
       mediaReactionsCompleted: true,
@@ -1705,7 +1729,7 @@ function BacteriologyAssayTestExecutionPage({
                     "Media reactions saved for {count} samples ({reactionCount} reactions recorded).",
                 },
                 {
-                  count: selectedIds.length,
+                  count: editingSampleIds.length,
                   reactionCount: mediaReactions.length,
                 },
               ),
@@ -1724,7 +1748,7 @@ function BacteriologyAssayTestExecutionPage({
     );
   }, [
     mediaReactions,
-    selectedIds,
+    editingSampleIds,
     hasRealPageId,
     pageData?.id,
     loadPageSamples,
@@ -3331,21 +3355,47 @@ function BacteriologyAssayTestExecutionPage({
     if (!reactions || reactions.length === 0) {
       if (sample.mediaReactionsCompleted) {
         return (
-          <span style={{ color: "#8d8d8d", fontSize: "12px" }}>
+          <button
+            onClick={() => handleOpenMediaReactionsModal(sample.id)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "#8d8d8d",
+              fontSize: "12px",
+              textDecoration: "underline",
+              textDecorationStyle: "dotted",
+            }}
+            title="Click to view or edit media reactions"
+          >
             <FormattedMessage
               id="notebook.bacteriology.assay.noReactionsRecorded"
               defaultMessage="No reactions"
             />
-          </span>
+          </button>
         );
       }
       return (
-        <span style={{ color: "#8d8d8d", fontSize: "12px" }}>
+        <button
+          onClick={() => handleOpenMediaReactionsModal(sample.id)}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            color: "#8d8d8d",
+            fontSize: "12px",
+            textDecoration: "underline",
+            textDecorationStyle: "dotted",
+          }}
+          title="Click to add media reactions"
+        >
           <FormattedMessage
             id="notebook.bacteriology.assay.mediaReactionsNotRecorded"
             defaultMessage="Not recorded"
           />
-        </span>
+        </button>
       );
     }
 
@@ -3367,88 +3417,101 @@ function BacteriologyAssayTestExecutionPage({
     ).length;
 
     return (
-      <div style={{ fontSize: "12px" }}>
-        {/* Media count summary */}
-        <div style={{ marginBottom: "4px" }}>
-          <Tag type="blue" size="sm">
-            {reactions.length}{" "}
-            <FormattedMessage
-              id="notebook.bacteriology.assay.mediaCount"
-              defaultMessage="{count, plural, one {medium} other {media}}"
-              values={{ count: reactions.length }}
-            />
-          </Tag>
-        </div>
-
-        {/* Growth results */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
-          {growthCount > 0 && (
-            <Tag type="green" size="sm">
-              {growthCount} Growth
-            </Tag>
-          )}
-          {noGrowthCount > 0 && (
-            <Tag type="gray" size="sm">
-              {noGrowthCount} No Growth
-            </Tag>
-          )}
-          {contaminatedCount > 0 && (
-            <Tag type="red" size="sm">
-              {contaminatedCount} Contaminated
-            </Tag>
-          )}
-          {pendingCount > 0 && (
-            <Tag type="purple" size="sm">
-              {pendingCount} Pending
-            </Tag>
-          )}
-        </div>
-
-        {/* DST summary */}
-        {dstCount > 0 && (
-          <div style={{ marginTop: "4px" }}>
-            <Tag type="teal" size="sm">
-              {dstCount} DST
+      <button
+        onClick={() => handleOpenMediaReactionsModal(sample.id)}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          textAlign: "left",
+          fontSize: "12px",
+        }}
+        title="Click to view or edit media reactions"
+      >
+        <div style={{ fontSize: "12px" }}>
+          {/* Media count summary */}
+          <div style={{ marginBottom: "4px" }}>
+            <Tag type="blue" size="sm">
+              {reactions.length}{" "}
+              <FormattedMessage
+                id="notebook.bacteriology.assay.mediaCount"
+                defaultMessage="{count, plural, one {medium} other {media}}"
+                values={{ count: reactions.length }}
+              />
             </Tag>
           </div>
-        )}
 
-        {/* List individual media types */}
-        <div
-          style={{
-            marginTop: "4px",
-            fontSize: "11px",
-            color: "#525252",
-          }}
-        >
-          {reactions.slice(0, 3).map((r, idx) => {
-            const mediaName =
-              ISOLATION_MEDIA_TYPES.find((m) => m.id === r.mediaType)?.text ||
-              r.mediaType ||
-              "Unknown";
-            const shortName =
-              mediaName.length > 15
-                ? mediaName.substring(0, 12) + "..."
-                : mediaName;
-            return (
-              <div key={r.id || idx}>
-                {shortName}
-                {r.organismIdentified && (
-                  <span style={{ fontWeight: "500" }}>
-                    {" "}
-                    → {r.organismIdentified}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          {reactions.length > 3 && (
-            <div style={{ fontStyle: "italic" }}>
-              +{reactions.length - 3} more...
+          {/* Growth results */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
+            {growthCount > 0 && (
+              <Tag type="green" size="sm">
+                {growthCount} Growth
+              </Tag>
+            )}
+            {noGrowthCount > 0 && (
+              <Tag type="gray" size="sm">
+                {noGrowthCount} No Growth
+              </Tag>
+            )}
+            {contaminatedCount > 0 && (
+              <Tag type="red" size="sm">
+                {contaminatedCount} Contaminated
+              </Tag>
+            )}
+            {pendingCount > 0 && (
+              <Tag type="purple" size="sm">
+                {pendingCount} Pending
+              </Tag>
+            )}
+          </div>
+
+          {/* DST summary */}
+          {dstCount > 0 && (
+            <div style={{ marginTop: "4px" }}>
+              <Tag type="teal" size="sm">
+                {dstCount} DST
+              </Tag>
             </div>
           )}
+
+          {/* List individual media types */}
+          <div
+            style={{
+              marginTop: "4px",
+              fontSize: "11px",
+              color: "#525252",
+            }}
+          >
+            {reactions.slice(0, 3).map((r, idx) => {
+              const mediaName =
+                ISOLATION_MEDIA_TYPES.find((m) => m.id === r.mediaType)?.text ||
+                r.mediaType ||
+                "Unknown";
+              const shortName =
+                mediaName.length > 15
+                  ? mediaName.substring(0, 12) + "..."
+                  : mediaName;
+              return (
+                <div key={r.id || idx}>
+                  {shortName}
+                  {r.organismIdentified && (
+                    <span style={{ fontWeight: "500" }}>
+                      {" "}
+                      → {r.organismIdentified}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            {reactions.length > 3 && (
+              <div style={{ fontStyle: "italic" }}>
+                +{reactions.length - 3} more...
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </button>
     );
   };
 
@@ -5060,10 +5123,19 @@ function BacteriologyAssayTestExecutionPage({
           ========================================== */}
       <Modal
         open={mediaReactionsModalOpen}
-        modalHeading={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.mediaReactionsTitle",
-          defaultMessage: "Record Media Reactions",
-        })}
+        modalHeading={intl.formatMessage(
+          {
+            id:
+              editingSampleIds.length === 1
+                ? "notebook.bacteriology.assay.modal.viewMediaReactionsTitle"
+                : "notebook.bacteriology.assay.modal.mediaReactionsTitle",
+            defaultMessage:
+              editingSampleIds.length === 1
+                ? "View/Edit Media Reactions"
+                : "Record Media Reactions",
+          },
+          { count: editingSampleIds.length },
+        )}
         primaryButtonText={intl.formatMessage({
           id: "notebook.bacteriology.assay.modal.save",
           defaultMessage: "Save",
@@ -5078,11 +5150,18 @@ function BacteriologyAssayTestExecutionPage({
       >
         <div style={{ marginBottom: "1rem" }}>
           <p style={{ color: "#525252", marginBottom: "1rem" }}>
-            <FormattedMessage
-              id="notebook.bacteriology.assay.modal.mediaReactionsDescription"
-              defaultMessage="Record multiple media inoculations and results for {count} selected sample(s). Each media reaction can have its own culture results and DST."
-              values={{ count: selectedIds.length }}
-            />
+            {editingSampleIds.length === 1 ? (
+              <FormattedMessage
+                id="notebook.bacteriology.assay.modal.singleSampleMediaReactionsDescription"
+                defaultMessage="View or edit media inoculations and results for this sample. Each media reaction can have its own culture results and DST."
+              />
+            ) : (
+              <FormattedMessage
+                id="notebook.bacteriology.assay.modal.multiSampleMediaReactionsDescription"
+                defaultMessage="Record multiple media inoculations and results for {count} selected sample(s). Each media reaction can have its own culture results and DST."
+                values={{ count: editingSampleIds.length }}
+              />
+            )}
           </p>
 
           {/* Add Media Reaction Button */}
