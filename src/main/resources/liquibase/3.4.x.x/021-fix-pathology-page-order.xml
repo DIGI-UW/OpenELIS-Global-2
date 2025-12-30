@@ -13,7 +13,7 @@
     <!-- to ensure proper workflow sequence: -->
     <!-- 1. Sample Creation & Metadata Capture -->
     <!-- 2. Sample Quality Control -->
-    <!-- 3. Sample Processing & Aliquoting -->
+    <!-- 3. Sample Processing & Grossing/Aliquoting -->
     <!-- 4. Testing, Staining & Microscopy -->
     <!-- 5. Storage & Inventory Management -->
     <!-- 6. Reporting & Performance Monitoring -->

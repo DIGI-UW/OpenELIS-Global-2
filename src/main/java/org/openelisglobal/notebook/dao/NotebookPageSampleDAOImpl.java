@@ -99,6 +99,20 @@ public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, I
     }
 
     @Override
+    public int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status) {
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return 0;
+        }
+
+        Session session = entityManager.unwrap(Session.class);
+        // Use native SQL query for UPDATE statement with String IDs directly
+        String sql = "UPDATE clinlims.notebook_page_sample SET status = :status " + "WHERE notebook_page_id = :pageId "
+                + "AND sample_item_id IN (:sampleIds)";
+        return session.createNativeQuery(sql).setParameter("status", status.name()).setParameter("pageId", pageId)
+                .setParameterList("sampleIds", sampleIds).executeUpdate();
+    }
+
+    @Override
     public List<NotebookPageSample> getByPageIdPaginated(Integer pageId, Status status, int offset, int limit) {
         Session session = entityManager.unwrap(Session.class);
         StringBuilder hql = new StringBuilder();

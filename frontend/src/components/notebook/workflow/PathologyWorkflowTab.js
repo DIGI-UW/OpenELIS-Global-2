@@ -15,7 +15,11 @@ import PageNavigation from "./PageNavigation";
 import {
   PathologySampleCreationPage,
   PathologyQualityControlPage,
-  PathologySampleProcessingPage,
+  PathologyGrossExaminationPage,
+  PathologyCassettesPage,
+  PathologyBlocksPage,
+  PathologySlidesPage,
+  PathologyStainingPage,
   PathologyTestingMicroscopyPage,
   PathologyStorageInventoryPage,
   PathologyReportingPage,
@@ -27,11 +31,15 @@ import "./NotebookWorkflow.css";
  * Default workflow pages for Pathology workflow.
  * Page 1: Sample Creation & Full Metadata Capture
  * Page 2: Sample Quality Control
- * Page 3: Sample Processing & Aliquoting
- * Page 4: Testing, Staining & Microscopy
- * Page 5: Storage & Inventory Management
- * Page 6: Reporting & Performance Monitoring
- * Page 7: Disposal & Archiving
+ * Page 3: Gross Examination
+ * Page 4: Cassette Setup
+ * Page 5: Block Creation
+ * Page 6: Slide Preparation
+ * Page 7: Slide Staining
+ * Page 8: Microscopy & Diagnosis
+ * Page 9: Storage & Inventory Management
+ * Page 10: Reporting & Performance Monitoring
+ * Page 11: Disposal & Archiving
  */
 const DEFAULT_PATHOLOGY_WORKFLOW_PAGES = [
   {
@@ -40,11 +48,15 @@ const DEFAULT_PATHOLOGY_WORKFLOW_PAGES = [
     title: "Sample Creation & Full Metadata Capture",
   },
   { id: "default-2", order: 2, title: "Sample Quality Control" },
-  { id: "default-3", order: 3, title: "Sample Processing & Aliquoting" },
-  { id: "default-4", order: 4, title: "Testing, Staining & Microscopy" },
-  { id: "default-5", order: 5, title: "Storage & Inventory Management" },
-  { id: "default-6", order: 6, title: "Reporting & Performance Monitoring" },
-  { id: "default-7", order: 7, title: "Disposal & Archiving" },
+  { id: "default-3", order: 3, title: "Gross Examination" },
+  { id: "default-4", order: 4, title: "Cassette Setup" },
+  { id: "default-5", order: 5, title: "Block Creation" },
+  { id: "default-6", order: 6, title: "Slide Preparation" },
+  { id: "default-7", order: 7, title: "Slide Staining" },
+  { id: "default-8", order: 8, title: "Microscopy & Diagnosis" },
+  { id: "default-9", order: 9, title: "Storage & Inventory Management" },
+  { id: "default-10", order: 10, title: "Reporting & Performance Monitoring" },
+  { id: "default-11", order: 11, title: "Disposal & Archiving" },
 ];
 
 /**
@@ -290,10 +302,10 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 3:
-        // Page 3: Sample Processing & Aliquoting
+        // Page 3: Gross Examination
         return (
-          <PathologySampleProcessingPage
-            key={`processing-${page.id}`}
+          <PathologyGrossExaminationPage
+            key={`gross-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
@@ -302,10 +314,10 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 4:
-        // Page 4: Testing, Staining & Microscopy
+        // Page 4: Cassette Setup
         return (
-          <PathologyTestingMicroscopyPage
-            key={`testing-${page.id}`}
+          <PathologyCassettesPage
+            key={`cassettes-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}
@@ -314,7 +326,55 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 5:
-        // Page 5: Storage & Inventory Management
+        // Page 5: Block Creation
+        return (
+          <PathologyBlocksPage
+            key={`blocks-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 6:
+        // Page 6: Slide Preparation
+        return (
+          <PathologySlidesPage
+            key={`slides-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 7:
+        // Page 7: Slide Staining
+        return (
+          <PathologyStainingPage
+            key={`staining-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 8:
+        // Page 8: Microscopy & Diagnosis
+        return (
+          <PathologyTestingMicroscopyPage
+            key={`microscopy-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 9:
+        // Page 9: Storage & Inventory Management
         return (
           <PathologyStorageInventoryPage
             key={`storage-${page.id}`}
@@ -325,8 +385,8 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 6:
-        // Page 6: Reporting & Performance Monitoring
+      case 10:
+        // Page 10: Reporting & Performance Monitoring
         return (
           <PathologyReportingPage
             key={`reporting-${page.id}`}
@@ -337,8 +397,8 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 7:
-        // Page 7: Disposal & Archiving
+      case 11:
+        // Page 11: Disposal & Archiving
         return (
           <PathologyDisposalArchivingPage
             key={`disposal-${page.id}`}

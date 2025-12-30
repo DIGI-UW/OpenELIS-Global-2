@@ -574,123 +574,130 @@ function PathologySampleProcessingPage({
   // ========================================
 
   // Open grossing modal for a sample - loads existing data if available
-  const openGrossingModal = useCallback((sample) => {
-    setGrossingSample(sample);
-    setGrossImages([]);
-    setGrossingViewMode(false);
-    setGrossingLoading(true);
+  const openGrossingModal = useCallback(
+    (sample) => {
+      setGrossingSample(sample);
+      setGrossImages([]);
+      setGrossingViewMode(false);
+      setGrossingLoading(true);
 
-    // Initialize with empty data first
-    const emptyData = {
-      specimenReceived: "",
-      specimenDescription: "",
-      dimensionLength: "",
-      dimensionWidth: "",
-      dimensionHeight: "",
-      dimensionUnit: "cm",
-      specimenWeight: "",
-      weightUnit: "g",
-      color: "",
-      texture: "",
-      consistency: "",
-      margins: "",
-      marginsInked: false,
-      inkColors: "",
-      landmarks: "",
-      orientation: "",
-      orientationMarkers: "",
-      abnormalities: "",
-      lesionSize: "",
-      lesionLocation: "",
-      distanceToMargins: "",
-      numberOfSections: 1,
-      sectioningMethod: "",
-      sectionsToSubmit: "",
-      representativeSections: false,
-      entirelySubmitted: false,
-      grossDescription: "",
-      grossDictation: "",
-      examinerName: "",
-      examinerInitials: "",
-      grossingDate: new Date().toISOString().split("T")[0],
-      grossingStartTime: new Date().toTimeString().split(" ")[0].substring(0, 5),
-      grossingEndTime: "",
-    };
-    setGrossingData(emptyData);
-    setGrossingModalOpen(true);
+      // Initialize with empty data first
+      const emptyData = {
+        specimenReceived: "",
+        specimenDescription: "",
+        dimensionLength: "",
+        dimensionWidth: "",
+        dimensionHeight: "",
+        dimensionUnit: "cm",
+        specimenWeight: "",
+        weightUnit: "g",
+        color: "",
+        texture: "",
+        consistency: "",
+        margins: "",
+        marginsInked: false,
+        inkColors: "",
+        landmarks: "",
+        orientation: "",
+        orientationMarkers: "",
+        abnormalities: "",
+        lesionSize: "",
+        lesionLocation: "",
+        distanceToMargins: "",
+        numberOfSections: 1,
+        sectioningMethod: "",
+        sectionsToSubmit: "",
+        representativeSections: false,
+        entirelySubmitted: false,
+        grossDescription: "",
+        grossDictation: "",
+        examinerName: "",
+        examinerInitials: "",
+        grossingDate: new Date().toISOString().split("T")[0],
+        grossingStartTime: new Date()
+          .toTimeString()
+          .split(" ")[0]
+          .substring(0, 5),
+        grossingEndTime: "",
+      };
+      setGrossingData(emptyData);
+      setGrossingModalOpen(true);
 
-    // Try to load existing grossing data
-    if (pageData?.id && sample?.id) {
-      getFromOpenElisServer(
-        `/rest/notebook/pathology/grossing/${sample.id}?pageId=${pageData.id}`,
-        (response) => {
-          setGrossingLoading(false);
-          if (response && response.success && response.hasData) {
-            // Populate with existing data
-            setGrossingViewMode(true); // Start in view mode if data exists
-            setGrossingData({
-              specimenReceived: response.specimenReceived || "",
-              specimenDescription: response.specimenDescription || "",
-              dimensionLength: response.dimensionLength || "",
-              dimensionWidth: response.dimensionWidth || "",
-              dimensionHeight: response.dimensionHeight || "",
-              dimensionUnit: response.dimensionUnit || "cm",
-              specimenWeight: response.specimenWeight || "",
-              weightUnit: response.weightUnit || "g",
-              color: response.color || "",
-              texture: response.texture || "",
-              consistency: response.consistency || "",
-              margins: response.margins || "",
-              marginsInked: response.marginsInked || false,
-              inkColors: response.inkColors || "",
-              landmarks: response.landmarks || "",
-              orientation: response.orientation || "",
-              orientationMarkers: response.orientationMarkers || "",
-              abnormalities: response.abnormalities || "",
-              lesionSize: response.lesionSize || "",
-              lesionLocation: response.lesionLocation || "",
-              distanceToMargins: response.distanceToMargins || "",
-              numberOfSections: response.numberOfSections || 1,
-              sectioningMethod: response.sectioningMethod || "",
-              sectionsToSubmit: response.sectionsToSubmit || "",
-              representativeSections: response.representativeSections || false,
-              entirelySubmitted: response.entirelySubmitted || false,
-              grossDescription: response.grossDescription || "",
-              grossDictation: response.grossDictation || "",
-              examinerName: response.examinerName || "",
-              examinerInitials: response.examinerInitials || "",
-              grossingDate: response.grossingDate || "",
-              grossingStartTime: response.grossingStartTime || "",
-              grossingEndTime: response.grossingEndTime || "",
-            });
+      // Try to load existing grossing data
+      if (pageData?.id && sample?.id) {
+        getFromOpenElisServer(
+          `/rest/notebook/pathology/grossing/${sample.id}?pageId=${pageData.id}`,
+          (response) => {
+            setGrossingLoading(false);
+            if (response && response.success && response.hasData) {
+              // Populate with existing data
+              setGrossingViewMode(true); // Start in view mode if data exists
+              setGrossingData({
+                specimenReceived: response.specimenReceived || "",
+                specimenDescription: response.specimenDescription || "",
+                dimensionLength: response.dimensionLength || "",
+                dimensionWidth: response.dimensionWidth || "",
+                dimensionHeight: response.dimensionHeight || "",
+                dimensionUnit: response.dimensionUnit || "cm",
+                specimenWeight: response.specimenWeight || "",
+                weightUnit: response.weightUnit || "g",
+                color: response.color || "",
+                texture: response.texture || "",
+                consistency: response.consistency || "",
+                margins: response.margins || "",
+                marginsInked: response.marginsInked || false,
+                inkColors: response.inkColors || "",
+                landmarks: response.landmarks || "",
+                orientation: response.orientation || "",
+                orientationMarkers: response.orientationMarkers || "",
+                abnormalities: response.abnormalities || "",
+                lesionSize: response.lesionSize || "",
+                lesionLocation: response.lesionLocation || "",
+                distanceToMargins: response.distanceToMargins || "",
+                numberOfSections: response.numberOfSections || 1,
+                sectioningMethod: response.sectioningMethod || "",
+                sectionsToSubmit: response.sectionsToSubmit || "",
+                representativeSections:
+                  response.representativeSections || false,
+                entirelySubmitted: response.entirelySubmitted || false,
+                grossDescription: response.grossDescription || "",
+                grossDictation: response.grossDictation || "",
+                examinerName: response.examinerName || "",
+                examinerInitials: response.examinerInitials || "",
+                grossingDate: response.grossingDate || "",
+                grossingStartTime: response.grossingStartTime || "",
+                grossingEndTime: response.grossingEndTime || "",
+              });
 
-            // Load existing images if available
-            if (response.grossImages && Array.isArray(response.grossImages)) {
-              const loadedImages = response.grossImages.map((img, index) => ({
-                id: `existing-${index}`,
-                fileName: img.fileName || `Image ${index + 1}`,
-                fileSize: 0,
-                fileType: img.imageType || "image/jpeg",
-                specimenPart: img.specimenPart || "A",
-                viewDescription: img.viewDescription || "",
-                imageNumber: index + 1,
-                captureTime: img.captureTime || "",
-                notes: img.notes || "",
-                status: "complete",
-                preview: img.base64Data || img.imageUrl || null,
-                base64Data: img.base64Data || null,
-                imageUrl: img.imageUrl || null,
-                isExisting: true,
-              }));
-              setGrossImages(loadedImages);
+              // Load existing images if available
+              if (response.grossImages && Array.isArray(response.grossImages)) {
+                const loadedImages = response.grossImages.map((img, index) => ({
+                  id: `existing-${index}`,
+                  fileName: img.fileName || `Image ${index + 1}`,
+                  fileSize: 0,
+                  fileType: img.imageType || "image/jpeg",
+                  specimenPart: img.specimenPart || "A",
+                  viewDescription: img.viewDescription || "",
+                  imageNumber: index + 1,
+                  captureTime: img.captureTime || "",
+                  notes: img.notes || "",
+                  status: "complete",
+                  preview: img.base64Data || img.imageUrl || null,
+                  base64Data: img.base64Data || null,
+                  imageUrl: img.imageUrl || null,
+                  isExisting: true,
+                }));
+                setGrossImages(loadedImages);
+              }
             }
-          }
-        },
-      );
-    } else {
-      setGrossingLoading(false);
-    }
-  }, [pageData?.id]);
+          },
+        );
+      } else {
+        setGrossingLoading(false);
+      }
+    },
+    [pageData?.id],
+  );
 
   // Handle grossing input changes
   const handleGrossingInputChange = (e) => {
@@ -702,57 +709,69 @@ function PathologySampleProcessingPage({
   };
 
   // Handle image upload for grossing
-  const handleGrossImageUpload = useCallback((event, { addedFiles }) => {
-    // Validate total image count (max 96)
-    const currentCount = grossImages.length;
-    const newCount = addedFiles.length;
+  const handleGrossImageUpload = useCallback(
+    (event, { addedFiles }) => {
+      // Validate total image count (max 96)
+      const currentCount = grossImages.length;
+      const newCount = addedFiles.length;
 
-    if (currentCount + newCount > 96) {
-      setError(
-        intl.formatMessage({
-          id: "pathology.grossing.error.maxImages",
-          defaultMessage: "Maximum 96 images allowed per specimen. You can add {remaining} more.",
-        }, { remaining: 96 - currentCount }),
-      );
-      return;
-    }
-
-    // Process each file
-    const newImages = addedFiles.map((file, index) => {
-      const imageNumber = currentCount + index + 1;
-      return {
-        id: `img-${Date.now()}-${index}`,
-        file: file,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        specimenPart: "A",
-        viewDescription: "",
-        imageNumber: imageNumber,
-        captureTime: new Date().toISOString(),
-        notes: "",
-        status: "uploading",
-        preview: null,
-      };
-    });
-
-    // Generate previews for each image
-    newImages.forEach((img) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setGrossImages((prev) =>
-          prev.map((i) =>
-            i.id === img.id
-              ? { ...i, preview: e.target.result, base64Data: e.target.result, status: "complete" }
-              : i,
+      if (currentCount + newCount > 96) {
+        setError(
+          intl.formatMessage(
+            {
+              id: "pathology.grossing.error.maxImages",
+              defaultMessage:
+                "Maximum 96 images allowed per specimen. You can add {remaining} more.",
+            },
+            { remaining: 96 - currentCount },
           ),
         );
-      };
-      reader.readAsDataURL(img.file);
-    });
+        return;
+      }
 
-    setGrossImages((prev) => [...prev, ...newImages]);
-  }, [grossImages.length, intl]);
+      // Process each file
+      const newImages = addedFiles.map((file, index) => {
+        const imageNumber = currentCount + index + 1;
+        return {
+          id: `img-${Date.now()}-${index}`,
+          file: file,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          specimenPart: "A",
+          viewDescription: "",
+          imageNumber: imageNumber,
+          captureTime: new Date().toISOString(),
+          notes: "",
+          status: "uploading",
+          preview: null,
+        };
+      });
+
+      // Generate previews for each image
+      newImages.forEach((img) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setGrossImages((prev) =>
+            prev.map((i) =>
+              i.id === img.id
+                ? {
+                    ...i,
+                    preview: e.target.result,
+                    base64Data: e.target.result,
+                    status: "complete",
+                  }
+                : i,
+            ),
+          );
+        };
+        reader.readAsDataURL(img.file);
+      });
+
+      setGrossImages((prev) => [...prev, ...newImages]);
+    },
+    [grossImages.length, intl],
+  );
 
   // Remove a gross image
   const handleRemoveGrossImage = useCallback((imageId) => {
@@ -777,7 +796,8 @@ function PathologySampleProcessingPage({
       setError(
         intl.formatMessage({
           id: "pathology.grossing.error.requiredFields",
-          defaultMessage: "Please fill in Gross Description and Examiner Initials",
+          defaultMessage:
+            "Please fill in Gross Description and Examiner Initials",
         }),
       );
       return;
@@ -818,7 +838,8 @@ function PathologySampleProcessingPage({
             intl.formatMessage(
               {
                 id: "pathology.grossing.success",
-                defaultMessage: "Gross examination saved successfully. {imageCount} images uploaded.",
+                defaultMessage:
+                  "Gross examination saved successfully. {imageCount} images uploaded.",
               },
               { imageCount: response.imageCount || 0 },
             ),
@@ -832,7 +853,8 @@ function PathologySampleProcessingPage({
             response?.error ||
               intl.formatMessage({
                 id: "pathology.grossing.error.submitFailed",
-                defaultMessage: "Failed to save gross examination. Please try again.",
+                defaultMessage:
+                  "Failed to save gross examination. Please try again.",
               }),
           );
         }
@@ -992,7 +1014,7 @@ function PathologySampleProcessingPage({
         <h4>
           <FormattedMessage
             id="pathology.page.processing.title"
-            defaultMessage="Sample Processing & Aliquoting"
+            defaultMessage="Sample Processing & Grossing/Aliquoting"
           />
         </h4>
         <p className="page-description">
@@ -2042,20 +2064,30 @@ function PathologySampleProcessingPage({
         open={grossingModalOpen}
         modalHeading={intl.formatMessage(
           {
-            id: grossingViewMode ? "pathology.grossing.modal.title.view" : "pathology.grossing.modal.title",
-            defaultMessage: grossingViewMode ? "Gross Examination (View) - {sampleId}" : "Gross Examination - {sampleId}",
+            id: grossingViewMode
+              ? "pathology.grossing.modal.title.view"
+              : "pathology.grossing.modal.title",
+            defaultMessage: grossingViewMode
+              ? "Gross Examination (View) - {sampleId}"
+              : "Gross Examination - {sampleId}",
           },
-          { sampleId: grossingSample?.externalId || grossingSample?.accessionNumber || "" },
+          {
+            sampleId:
+              grossingSample?.externalId ||
+              grossingSample?.accessionNumber ||
+              "",
+          },
         )}
-        primaryButtonText={grossingViewMode
-          ? intl.formatMessage({
-              id: "pathology.grossing.modal.edit",
-              defaultMessage: "Edit",
-            })
-          : intl.formatMessage({
-              id: "pathology.grossing.modal.save",
-              defaultMessage: "Save Gross Examination",
-            })
+        primaryButtonText={
+          grossingViewMode
+            ? intl.formatMessage({
+                id: "pathology.grossing.modal.edit",
+                defaultMessage: "Edit",
+              })
+            : intl.formatMessage({
+                id: "pathology.grossing.modal.save",
+                defaultMessage: "Save Gross Examination",
+              })
         }
         secondaryButtonText={intl.formatMessage({
           id: "common.cancel",
@@ -2067,7 +2099,11 @@ function PathologySampleProcessingPage({
           setGrossImages([]);
           setGrossingViewMode(false);
         }}
-        onRequestSubmit={grossingViewMode ? () => setGrossingViewMode(false) : handleSubmitGrossing}
+        onRequestSubmit={
+          grossingViewMode
+            ? () => setGrossingViewMode(false)
+            : handleSubmitGrossing
+        }
         size="lg"
         hasScrollingContent
         preventCloseOnClickOutside
@@ -2075,7 +2111,10 @@ function PathologySampleProcessingPage({
         {/* Loading indicator */}
         {grossingLoading && (
           <div style={{ textAlign: "center", padding: "2rem" }}>
-            <Loading description="Loading grossing data..." withOverlay={false} />
+            <Loading
+              description="Loading grossing data..."
+              withOverlay={false}
+            />
           </div>
         )}
 
@@ -2090,7 +2129,8 @@ function PathologySampleProcessingPage({
             subtitle={intl.formatMessage(
               {
                 id: "pathology.grossing.view.description",
-                defaultMessage: "Completed by {examiner} on {date}. Click 'Edit' to modify.",
+                defaultMessage:
+                  "Completed by {examiner} on {date}. Click 'Edit' to modify.",
               },
               {
                 examiner: grossingData.examinerName || "Unknown",
@@ -2113,7 +2153,8 @@ function PathologySampleProcessingPage({
             })}
             subtitle={intl.formatMessage({
               id: "pathology.grossing.info.description",
-              defaultMessage: "Document macroscopic findings, dimensions, and photograph the specimen (up to 96 images). Images will be named using standardized convention.",
+              defaultMessage:
+                "Document macroscopic findings, dimensions, and photograph the specimen (up to 96 images). Images will be named using standardized convention.",
             })}
             lowContrast
             hideCloseButton
@@ -2584,7 +2625,13 @@ function PathologySampleProcessingPage({
                       defaultMessage="Upload Gross Images"
                     />
                   </h5>
-                  <p style={{ color: "#6f6f6f", fontSize: "0.875rem", marginBottom: "1rem" }}>
+                  <p
+                    style={{
+                      color: "#6f6f6f",
+                      fontSize: "0.875rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
                     <FormattedMessage
                       id="pathology.grossing.imageNamingInfo"
                       defaultMessage="Images will be automatically renamed using standardized convention: {AccessionNumber}_{Part}_{Number}_{View}.jpg"
@@ -2595,14 +2642,21 @@ function PathologySampleProcessingPage({
                     accept={[".jpg", ".jpeg", ".png", ".tiff", ".bmp"]}
                     labelText={intl.formatMessage({
                       id: "pathology.grossing.dropzone",
-                      defaultMessage: "Drag and drop images here or click to upload (max 96 images)",
+                      defaultMessage:
+                        "Drag and drop images here or click to upload (max 96 images)",
                     })}
                     multiple
                     onAddFiles={handleGrossImageUpload}
                     disabled={grossImages.length >= 96}
                   />
 
-                  <div style={{ marginTop: "0.5rem", display: "flex", justifyContent: "space-between" }}>
+                  <div
+                    style={{
+                      marginTop: "0.5rem",
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     <span style={{ color: "#6f6f6f", fontSize: "0.875rem" }}>
                       {grossImages.length} / 96 images
                     </span>
@@ -2626,7 +2680,8 @@ function PathologySampleProcessingPage({
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fill, minmax(280px, 1fr))",
                       gap: "1rem",
                       maxHeight: "500px",
                       overflowY: "auto",
@@ -2673,7 +2728,8 @@ function PathologySampleProcessingPage({
 
                         {/* Image Info */}
                         <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
-                          Image #{index + 1} • {(img.fileSize / 1024).toFixed(1)} KB
+                          Image #{index + 1} •{" "}
+                          {(img.fileSize / 1024).toFixed(1)} KB
                         </div>
 
                         {/* Specimen Part */}
@@ -2683,11 +2739,19 @@ function PathologySampleProcessingPage({
                           labelText="Specimen Part"
                           value={img.specimenPart}
                           onChange={(e) =>
-                            handleUpdateImageMetadata(img.id, "specimenPart", e.target.value)
+                            handleUpdateImageMetadata(
+                              img.id,
+                              "specimenPart",
+                              e.target.value,
+                            )
                           }
                         >
                           {specimenPartOptions.map((opt) => (
-                            <SelectItem key={opt.id} value={opt.id} text={opt.text} />
+                            <SelectItem
+                              key={opt.id}
+                              value={opt.id}
+                              text={opt.text}
+                            />
                           ))}
                         </Select>
 
@@ -2698,7 +2762,11 @@ function PathologySampleProcessingPage({
                           labelText="View Description"
                           value={img.viewDescription}
                           onChange={(e) =>
-                            handleUpdateImageMetadata(img.id, "viewDescription", e.target.value)
+                            handleUpdateImageMetadata(
+                              img.id,
+                              "viewDescription",
+                              e.target.value,
+                            )
                           }
                         >
                           <SelectItem value="" text="Select view..." />
@@ -2714,7 +2782,11 @@ function PathologySampleProcessingPage({
                           labelText="Notes"
                           value={img.notes}
                           onChange={(e) =>
-                            handleUpdateImageMetadata(img.id, "notes", e.target.value)
+                            handleUpdateImageMetadata(
+                              img.id,
+                              "notes",
+                              e.target.value,
+                            )
                           }
                           placeholder="Optional notes"
                         />
@@ -2742,7 +2814,10 @@ function PathologySampleProcessingPage({
                       color: "#6f6f6f",
                     }}
                   >
-                    <Camera size={48} style={{ marginBottom: "1rem", opacity: 0.5 }} />
+                    <Camera
+                      size={48}
+                      style={{ marginBottom: "1rem", opacity: 0.5 }}
+                    />
                     <p>
                       <FormattedMessage
                         id="pathology.grossing.noImages"
@@ -2836,7 +2911,8 @@ function PathologySampleProcessingPage({
                     name="sectionsToSubmit"
                     labelText={intl.formatMessage({
                       id: "pathology.grossing.sectionsToSubmit",
-                      defaultMessage: "Sections Submitted (Cassette Designations)",
+                      defaultMessage:
+                        "Sections Submitted (Cassette Designations)",
                     })}
                     value={grossingData.sectionsToSubmit}
                     onChange={handleGrossingInputChange}

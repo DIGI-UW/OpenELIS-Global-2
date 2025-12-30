@@ -59,13 +59,15 @@ import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
- * PathologyTestingMicroscopyPage - Page 4 of the pathology workflow.
- * Purpose: Perform diagnostic or research assays on sample-derived material.
+ * PathologyTestingMicroscopyPage - Page 8 of the pathology workflow (Microscopy & Diagnosis).
+ * Purpose: Perform microscopic examination and diagnostic interpretation of stained slides.
  * Who uses it: Pathologists / PIs / technicians
  *
  * Two-phase workflow:
- * 1. Add Tests - Record staining, advanced techniques, controls, microscopy observation
+ * 1. Add Tests - Record advanced techniques (IHC, ISH), controls, microscopy observation
  * 2. Enter Results - After tests are added, enter results via CSV import or manual entry
+ *
+ * Note: Routine and special staining is handled in the separate Staining page (Page 7).
  */
 function PathologyTestingMicroscopyPage({
   entryId,
@@ -95,16 +97,55 @@ function PathologyTestingMicroscopyPage({
   // Enter Results Modal state
   const [resultsModalOpen, setResultsModalOpen] = useState(false);
   const [resultsEntryMode, setResultsEntryMode] = useState("manual"); // "manual" or "csv"
+  const [resultsStage, setResultsStage] = useState("initial"); // "initial" or "final"
+  const [resultsLoading, setResultsLoading] = useState(false);
+  const [resultsViewMode, setResultsViewMode] = useState(false); // true = viewing existing results
+
+  // Slide images for results - separate arrays for initial and final
+  const [initialSlideImages, setInitialSlideImages] = useState([]);
+  const [finalSlideImages, setFinalSlideImages] = useState([]);
+
   const [resultsData, setResultsData] = useState({
-    resultFindings: "",
-    diagnosisCode: "",
-    clinicalInterpretation: "",
+    // === INITIAL FINDINGS (Stage 1) ===
+    initialFindingsDate: "",
+    initialExaminer: "",
+    initialExaminerInitials: "",
+    microscopicDescription: "", // Detailed microscopic findings
+    cellularFeatures: "", // Cell types, patterns, abnormalities
+    architecturalFindings: "", // Tissue architecture observations
+    nuclearFeatures: "", // Nuclear grade, mitotic activity
+    stromalFindings: "", // Stroma, vascular, inflammatory
+    specialStainResults: "", // Results from special stains
+    ihcResults: "", // IHC marker results
+    ishResults: "", // ISH findings
+    initialImpression: "", // Preliminary diagnostic impression
+    differentialDiagnosis: "", // DDx considerations
+    additionalStudiesRecommended: "", // Recommended additional tests
+    initialFindingsComplete: false,
+
+    // === FINAL DIAGNOSIS (Stage 2) ===
+    finalDiagnosisDate: "",
+    diagnosingPathologist: "",
+    pathologistCredentials: "", // MD, DO, etc.
+    finalDiagnosis: "", // Final diagnostic statement
+    diagnosisCode: "", // ICD-O or SNOMED code
+    tumorType: "", // WHO classification
+    histologicGrade: "", // Grade 1, 2, 3, etc.
+    tumorStage: "", // pT, pN, pM staging
+    marginStatus: "", // Positive, negative, close
+    lymphovascularInvasion: "", // Present, absent
+    perineuralInvasion: "", // Present, absent
+    additionalFindings: "", // Other significant findings
+    clinicalCorrelation: "", // Correlation with clinical history
+    prognosticFactors: "", // Relevant prognostic features
+    synopticReportComplete: false,
     verifiedByPathologist: false,
     verifyingPathologistName: "",
     verificationDate: "",
     pathologistSignature: "",
     pathologistDate: "",
     additionalNotes: "",
+    reportFinalized: false,
   });
 
   // CSV Import state for results
@@ -115,12 +156,6 @@ function PathologyTestingMicroscopyPage({
 
   // Test form state - for Add Test modal
   const [testData, setTestData] = useState({
-    // === STAINING & SLIDE PREPARATION ===
-    routineStainingCategory: "", // histology, cytology, blood
-    routineStains: [],
-    specialStains: [],
-    specialStainIndication: "",
-
     // === ADVANCED TECHNIQUES ===
     // IHC/ICC
     ihcIccPerformed: false,
@@ -230,6 +265,15 @@ function PathologyTestingMicroscopyPage({
                   sampleData.verifiedByPathologist === "true",
                 technicianSignature: sampleData.technicianSignature || "",
                 testDate: sampleData.technicianDate || "",
+                // Initial and Final Diagnosis status
+                initialFindingsComplete:
+                  sampleData.initialFindingsComplete === true ||
+                  sampleData.initialFindingsComplete === "true",
+                initialImpression: sampleData.initialImpression || "",
+                reportFinalized:
+                  sampleData.reportFinalized === true ||
+                  sampleData.reportFinalized === "true",
+                finalDiagnosis: sampleData.finalDiagnosis || "",
               };
             });
             setSamples(transformedSamples);
@@ -292,13 +336,297 @@ function PathologyTestingMicroscopyPage({
     }
   };
 
+  // ========================================
+  // SLIDE IMAGE UPLOAD HANDLERS
+  // ========================================
+
+  // Handle slide image upload for initial findings
+  const handleInitialSlideImageUpload = useCallback(
+    (event, { addedFiles }) => {
+      const currentCount = initialSlideImages.length;
+      const maxImages = 96;
+
+      if (currentCount + addedFiles.length > maxImages) {
+        setError(
+          intl.formatMessage(
+            {
+              id: "pathology.results.error.maxImages",
+              defaultMessage:
+                "Maximum {max} images allowed. You can add {remaining} more.",
+            },
+            { max: maxImages, remaining: maxImages - currentCount },
+          ),
+        );
+        return;
+      }
+
+      const newImages = addedFiles.map((file, index) => {
+        const imageNumber = currentCount + index + 1;
+        return {
+          id: `initial-${Date.now()}-${index}`,
+          file: file,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          slideId: "",
+          stainType: "",
+          magnification: "",
+          fieldDescription: "",
+          imageNumber: imageNumber,
+          captureTime: new Date().toISOString(),
+          notes: "",
+          status: "uploading",
+          preview: null,
+        };
+      });
+
+      // Generate previews
+      newImages.forEach((img) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setInitialSlideImages((prev) =>
+            prev.map((i) =>
+              i.id === img.id
+                ? {
+                    ...i,
+                    preview: e.target.result,
+                    base64Data: e.target.result,
+                    status: "complete",
+                  }
+                : i,
+            ),
+          );
+        };
+        reader.readAsDataURL(img.file);
+      });
+
+      setInitialSlideImages((prev) => [...prev, ...newImages]);
+    },
+    [initialSlideImages.length, intl],
+  );
+
+  // Handle slide image upload for final diagnosis
+  const handleFinalSlideImageUpload = useCallback(
+    (event, { addedFiles }) => {
+      const currentCount = finalSlideImages.length;
+      const maxImages = 96;
+
+      if (currentCount + addedFiles.length > maxImages) {
+        setError(
+          intl.formatMessage(
+            {
+              id: "pathology.results.error.maxImages",
+              defaultMessage:
+                "Maximum {max} images allowed. You can add {remaining} more.",
+            },
+            { max: maxImages, remaining: maxImages - currentCount },
+          ),
+        );
+        return;
+      }
+
+      const newImages = addedFiles.map((file, index) => {
+        const imageNumber = currentCount + index + 1;
+        return {
+          id: `final-${Date.now()}-${index}`,
+          file: file,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          slideId: "",
+          stainType: "",
+          magnification: "",
+          fieldDescription: "",
+          imageNumber: imageNumber,
+          captureTime: new Date().toISOString(),
+          notes: "",
+          status: "complete",
+          preview: null,
+        };
+      });
+
+      // Generate previews
+      newImages.forEach((img) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setFinalSlideImages((prev) =>
+            prev.map((i) =>
+              i.id === img.id
+                ? {
+                    ...i,
+                    preview: e.target.result,
+                    base64Data: e.target.result,
+                    status: "complete",
+                  }
+                : i,
+            ),
+          );
+        };
+        reader.readAsDataURL(img.file);
+      });
+
+      setFinalSlideImages((prev) => [...prev, ...newImages]);
+    },
+    [finalSlideImages.length, intl],
+  );
+
+  // Remove a slide image
+  const handleRemoveSlideImage = useCallback((imageId, stage) => {
+    if (stage === "initial") {
+      setInitialSlideImages((prev) => prev.filter((img) => img.id !== imageId));
+    } else {
+      setFinalSlideImages((prev) => prev.filter((img) => img.id !== imageId));
+    }
+  }, []);
+
+  // Update slide image metadata
+  const handleSlideImageMetadataChange = useCallback(
+    (imageId, field, value, stage) => {
+      const updateFn = (prev) =>
+        prev.map((img) =>
+          img.id === imageId ? { ...img, [field]: value } : img,
+        );
+
+      if (stage === "initial") {
+        setInitialSlideImages(updateFn);
+      } else {
+        setFinalSlideImages(updateFn);
+      }
+    },
+    [],
+  );
+
+  // Open results modal with existing data loaded
+  const openResultsModalWithData = useCallback(
+    (sample) => {
+      setSelectedSample(sample);
+      setResultsViewMode(false);
+      setResultsLoading(true);
+      setResultsStage("initial");
+      setInitialSlideImages([]);
+      setFinalSlideImages([]);
+
+      // Reset results data
+      setResultsData({
+        initialFindingsDate: new Date().toISOString().split("T")[0],
+        initialExaminer: "",
+        initialExaminerInitials: "",
+        microscopicDescription: "",
+        cellularFeatures: "",
+        architecturalFindings: "",
+        nuclearFeatures: "",
+        stromalFindings: "",
+        specialStainResults: "",
+        ihcResults: "",
+        ishResults: "",
+        initialImpression: "",
+        differentialDiagnosis: "",
+        additionalStudiesRecommended: "",
+        initialFindingsComplete: false,
+        finalDiagnosisDate: "",
+        diagnosingPathologist: "",
+        pathologistCredentials: "",
+        finalDiagnosis: "",
+        diagnosisCode: "",
+        tumorType: "",
+        histologicGrade: "",
+        tumorStage: "",
+        marginStatus: "",
+        lymphovascularInvasion: "",
+        perineuralInvasion: "",
+        additionalFindings: "",
+        clinicalCorrelation: "",
+        prognosticFactors: "",
+        synopticReportComplete: false,
+        verifiedByPathologist: false,
+        verifyingPathologistName: "",
+        verificationDate: "",
+        pathologistSignature: "",
+        pathologistDate: "",
+        additionalNotes: "",
+        reportFinalized: false,
+      });
+
+      setResultsModalOpen(true);
+
+      // Try to load existing results data
+      if (pageData?.id && sample?.id) {
+        getFromOpenElisServer(
+          `/rest/notebook/pathology/results/${sample.id}?pageId=${pageData.id}`,
+          (response) => {
+            setResultsLoading(false);
+            if (response && response.success && response.hasData) {
+              setResultsViewMode(true);
+              // Determine which stage to show based on data
+              if (response.reportFinalized) {
+                setResultsStage("final");
+              } else if (response.initialFindingsComplete) {
+                setResultsStage("final"); // Move to final if initial is complete
+              }
+
+              // Populate with existing data
+              setResultsData((prev) => ({
+                ...prev,
+                ...response,
+              }));
+
+              // Load existing images
+              if (
+                response.initialSlideImages &&
+                Array.isArray(response.initialSlideImages)
+              ) {
+                const loadedImages = response.initialSlideImages.map(
+                  (img, index) => ({
+                    id: `existing-initial-${index}`,
+                    fileName: img.fileName || `Slide ${index + 1}`,
+                    slideId: img.slideId || "",
+                    stainType: img.stainType || "",
+                    magnification: img.magnification || "",
+                    fieldDescription: img.fieldDescription || "",
+                    imageNumber: index + 1,
+                    status: "complete",
+                    preview: img.base64Data || img.imageUrl || null,
+                    base64Data: img.base64Data || null,
+                    isExisting: true,
+                  }),
+                );
+                setInitialSlideImages(loadedImages);
+              }
+
+              if (
+                response.finalSlideImages &&
+                Array.isArray(response.finalSlideImages)
+              ) {
+                const loadedImages = response.finalSlideImages.map(
+                  (img, index) => ({
+                    id: `existing-final-${index}`,
+                    fileName: img.fileName || `Slide ${index + 1}`,
+                    slideId: img.slideId || "",
+                    stainType: img.stainType || "",
+                    magnification: img.magnification || "",
+                    fieldDescription: img.fieldDescription || "",
+                    imageNumber: index + 1,
+                    status: "complete",
+                    preview: img.base64Data || img.imageUrl || null,
+                    base64Data: img.base64Data || null,
+                    isExisting: true,
+                  }),
+                );
+                setFinalSlideImages(loadedImages);
+              }
+            }
+          },
+        );
+      } else {
+        setResultsLoading(false);
+      }
+    },
+    [pageData?.id],
+  );
+
   // Reset test form data
   const resetTestData = (sample = null) => {
     setTestData({
-      routineStainingCategory: "",
-      routineStains: [],
-      specialStains: [],
-      specialStainIndication: "",
       ihcIccPerformed: false,
       ihcIccSampleType: "",
       ihcIccMarkers: "",
@@ -375,14 +703,6 @@ function PathologyTestingMicroscopyPage({
     setTestingModalOpen(true);
   };
 
-  // Open modal for single sample Add Test
-  const openTestingModal = (sample) => {
-    setSelectedSample(sample);
-    setIsBulkMode(false);
-    resetTestData(sample);
-    setTestingModalOpen(true);
-  };
-
   // Open Results Entry modal
   const openResultsModal = () => {
     // Only allow entering results for samples that have tests added
@@ -401,8 +721,9 @@ function PathologyTestingMicroscopyPage({
       return;
     }
 
-    resetResultsData();
-    setResultsModalOpen(true);
+    // For the two-stage workflow, open with the first selected sample
+    // that has tests - this allows entering detailed results with slide images
+    openResultsModalWithData(samplesWithTests[0]);
   };
 
   // Handle selection changes
@@ -535,73 +856,122 @@ function PathologyTestingMicroscopyPage({
     );
   };
 
-  // Handle manual results submission
+  // Handle manual results submission - Two-stage workflow
   const handleSubmitResults = () => {
     if (submitting) return;
 
-    const samplesWithTests = getSamplesWithTests();
-    if (samplesWithTests.length === 0) return;
-
-    if (!resultsData.resultFindings) {
+    // Get the sample being edited
+    if (!selectedSample) {
       setError(
         intl.formatMessage({
-          id: "pathology.testing.error.resultRequired",
-          defaultMessage: "Please enter the result findings.",
+          id: "pathology.testing.error.noSampleSelected",
+          defaultMessage: "No sample selected for results entry.",
         }),
       );
       return;
     }
 
+    // Validate based on current stage
+    if (resultsStage === "initial") {
+      // Require at least microscopic description for initial findings
+      if (
+        !resultsData.microscopicDescription &&
+        !resultsData.initialImpression
+      ) {
+        setError(
+          intl.formatMessage({
+            id: "pathology.testing.error.initialFindingsRequired",
+            defaultMessage:
+              "Please enter microscopic description or initial impression.",
+          }),
+        );
+        return;
+      }
+    } else if (resultsStage === "final") {
+      // Require final diagnosis for final stage
+      if (!resultsData.finalDiagnosis) {
+        setError(
+          intl.formatMessage({
+            id: "pathology.testing.error.finalDiagnosisRequired",
+            defaultMessage: "Please enter the final diagnosis.",
+          }),
+        );
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
-    const sampleIds = samplesWithTests.map((s) => parseInt(s.id, 10));
+    // Prepare the request payload
+    const payload = {
+      sampleId: selectedSample.id,
+      pageId: pageData?.id,
+      stage: resultsStage,
+      ...resultsData,
+      // Include slide images
+      initialSlideImages: initialSlideImages.map((img) => ({
+        base64Data: img.base64Data,
+        fileName: img.fileName,
+        fileType: img.fileType,
+        description: img.description || "",
+      })),
+      finalSlideImages: finalSlideImages.map((img) => ({
+        base64Data: img.base64Data,
+        fileName: img.fileName,
+        fileType: img.fileType,
+        description: img.description || "",
+      })),
+    };
 
-    // Save results data - keep samples IN_PROGRESS after result entry
-    // Use "Mark Complete" button to mark as COMPLETED and advance to next page
+    console.log("Submitting results payload:", payload);
+
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/bulk/page/${pageData?.id}/samples/apply`,
-      JSON.stringify({
-        sampleIds: sampleIds,
-        data: resultsData,
-      }),
-      (applyResponse) => {
-        if (applyResponse && applyResponse.success) {
-          // Keep samples as IN_PROGRESS after result entry
-          // Completion is done via the "Mark Complete" button
-          postToOpenElisServerJsonResponse(
-            `/rest/notebook/bulk/page/${pageData?.id}/samples/status`,
-            JSON.stringify({
-              sampleIds: sampleIds,
-              status: "IN_PROGRESS",
-            }),
-            (statusResponse) => {
-              setSubmitting(false);
-              if (statusResponse && statusResponse.success) {
-                setResultsModalOpen(false);
-                setSelectedSampleIds([]);
-                setSuccessMessage(
-                  intl.formatMessage(
-                    {
-                      id: "pathology.testing.success.resultsEntered",
-                      defaultMessage:
-                        "Successfully entered results for {count} samples. Use 'Mark Complete' to advance samples to the next page.",
-                    },
-                    { count: sampleIds.length },
-                  ),
-                );
-                loadPageSamples();
-                if (onProgressUpdate) {
-                  onProgressUpdate();
-                }
-              } else {
-                setError(statusResponse?.error || "Failed to update status.");
-              }
-            },
+      `/rest/notebook/pathology/results/submit`,
+      JSON.stringify(payload),
+      (response) => {
+        console.log("Results submit response:", response);
+        setSubmitting(false);
+
+        // Check for HTTP error responses (404, 500, etc.)
+        if (response && response.status && response.status >= 400) {
+          setError(
+            `Server error (${response.status}): ${response.message || response.error || "Unknown error"}`,
           );
+          return;
+        }
+
+        if (response && response.success) {
+          setResultsModalOpen(false);
+          setSelectedSample(null);
+          setSuccessMessage(
+            intl.formatMessage({
+              id:
+                resultsStage === "final" && resultsData.reportFinalized
+                  ? "pathology.testing.success.reportFinalized"
+                  : resultsStage === "initial" &&
+                      resultsData.initialFindingsComplete
+                    ? "pathology.testing.success.initialComplete"
+                    : "pathology.testing.success.resultsSaved",
+              defaultMessage:
+                resultsStage === "final" && resultsData.reportFinalized
+                  ? "Report finalized successfully."
+                  : resultsStage === "initial" &&
+                      resultsData.initialFindingsComplete
+                    ? "Initial findings saved. Ready for final diagnosis."
+                    : "Results saved successfully.",
+            }),
+          );
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
         } else {
-          setSubmitting(false);
-          setError(applyResponse?.error || "Failed to save results.");
+          setError(
+            response?.error ||
+              response?.message ||
+              "Failed to save results. Please try again.",
+          );
         }
       },
     );
@@ -899,20 +1269,6 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
       }),
     },
     {
-      key: "stains",
-      header: intl.formatMessage({
-        id: "pathology.table.stains",
-        defaultMessage: "Stains",
-      }),
-    },
-    {
-      key: "result",
-      header: intl.formatMessage({
-        id: "pathology.table.result",
-        defaultMessage: "Result",
-      }),
-    },
-    {
       key: "status",
       header: intl.formatMessage({
         id: "pathology.table.status",
@@ -927,57 +1283,22 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
       }),
     },
     {
-      key: "actions",
+      key: "initialDiagnosis",
       header: intl.formatMessage({
-        id: "pathology.table.actions",
-        defaultMessage: "Actions",
+        id: "pathology.table.initialDiagnosis",
+        defaultMessage: "Initial Diagnosis",
+      }),
+    },
+    {
+      key: "finalDiagnosis",
+      header: intl.formatMessage({
+        id: "pathology.table.finalDiagnosis",
+        defaultMessage: "Final Diagnosis",
       }),
     },
   ];
 
-  // === STAIN OPTIONS ===
-  const routineStainsByCategory = {
-    histology: [{ id: "HE", label: "H&E (Hematoxylin & Eosin)" }],
-    cytology: [
-      { id: "Pap", label: "Papanicolaou (Pap)" },
-      { id: "Romanowsky_Giemsa", label: "Romanowsky (Giemsa)" },
-      { id: "Romanowsky_DiffQuik", label: "Romanowsky (Diff-Quik)" },
-    ],
-    blood: [
-      { id: "Giemsa", label: "Giemsa" },
-      { id: "Wright", label: "Wright" },
-    ],
-  };
-
-  const specialStainOptions = [
-    {
-      id: "AFB",
-      label: "AFB (Acid-Fast Bacilli)",
-      indication: "Tuberculosis, Leprosy",
-    },
-    {
-      id: "GMS",
-      label: "GMS (Grocott's Methenamine Silver)",
-      indication: "Fungi",
-    },
-    {
-      id: "PAS",
-      label: "PAS (Periodic Acid-Schiff)",
-      indication: "Glycogen, Fungi, Basement membranes",
-    },
-    { id: "Gram", label: "Gram Stain", indication: "Bacteria" },
-    { id: "Trichrome", label: "Masson's Trichrome", indication: "Fibrosis" },
-    { id: "Reticulin", label: "Reticulin", indication: "Liver architecture" },
-    { id: "Iron", label: "Prussian Blue (Iron)", indication: "Iron deposits" },
-    { id: "Congo", label: "Congo Red", indication: "Amyloid" },
-    { id: "Mucicarmine", label: "Mucicarmine", indication: "Mucin" },
-    {
-      id: "Oil_Red_O",
-      label: "Oil Red O",
-      indication: "Lipids (frozen sections)",
-    },
-  ];
-
+  // === ASSAY OPTIONS (Staining moved to separate StainingPage) ===
   const researchAssayOptions = [
     { id: "laser_microdissection", label: "Laser Microdissection" },
     { id: "multiplex_ihc", label: "Multiplex IHC" },
@@ -1010,14 +1331,14 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
       <div className="page-section-header">
         <h4>
           <FormattedMessage
-            id="pathology.page.testing.title"
-            defaultMessage="Testing, Staining & Microscopy"
+            id="pathology.page.microscopy.title"
+            defaultMessage="Microscopy & Diagnosis"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
-            id="pathology.page.testing.description"
-            defaultMessage="Perform diagnostic or research assays on sample-derived material. First add tests, then enter results via manual entry or CSV import."
+            id="pathology.page.microscopy.description"
+            defaultMessage="Perform microscopic examination and diagnostic interpretation of stained slides. Record advanced techniques (IHC, ISH), controls, and enter initial/final diagnoses."
           />
         </p>
       </div>
@@ -1195,6 +1516,12 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             rows={samples.map((s) => ({
               ...s,
               verified: s.verifiedByPathologist ? "Yes" : "No",
+              initialDiagnosis: s.initialFindingsComplete
+                ? s.initialImpression || "Complete"
+                : "Pending",
+              finalDiagnosis: s.reportFinalized
+                ? s.finalDiagnosis || "Finalized"
+                : "Pending",
             }))}
             headers={headers}
             isSortable
@@ -1265,34 +1592,106 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                                       style={{ color: "#da1e28" }}
                                     />
                                   )
-                                ) : cell.info.header === "actions" ? (
-                                  <Button
-                                    kind="ghost"
-                                    size="sm"
-                                    renderIcon={Microscope}
-                                    onClick={() => openTestingModal(sample)}
-                                  >
-                                    <FormattedMessage
-                                      id="pathology.page.testing.addTest"
-                                      defaultMessage="Add Test"
-                                    />
-                                  </Button>
-                                ) : cell.info.header === "result" ? (
+                                ) : cell.info.header === "initialDiagnosis" ? (
                                   <span
-                                    title={cell.value}
                                     style={{
-                                      maxWidth: "150px",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      whiteSpace: "nowrap",
-                                      display: "inline-block",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem",
+                                      cursor: "pointer",
                                     }}
+                                    onClick={() =>
+                                      openResultsModalWithData(sample)
+                                    }
+                                    title={
+                                      sample?.initialImpression ||
+                                      (sample?.initialFindingsComplete
+                                        ? "Click to view"
+                                        : "Click to enter initial findings")
+                                    }
                                   >
-                                    {cell.value
-                                      ? cell.value.length > 30
-                                        ? cell.value.substring(0, 30) + "..."
-                                        : cell.value
-                                      : "-"}
+                                    {sample?.initialFindingsComplete ? (
+                                      <>
+                                        <CheckmarkFilled
+                                          size={16}
+                                          style={{ color: "#24a148" }}
+                                        />
+                                        <span
+                                          style={{
+                                            maxWidth: "100px",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                          }}
+                                        >
+                                          {sample?.initialImpression
+                                            ? sample.initialImpression.length >
+                                              15
+                                              ? sample.initialImpression.substring(
+                                                  0,
+                                                  15,
+                                                ) + "..."
+                                              : sample.initialImpression
+                                            : "Complete"}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <Tag type="gray" size="sm">
+                                        Pending
+                                      </Tag>
+                                    )}
+                                  </span>
+                                ) : cell.info.header === "finalDiagnosis" ? (
+                                  <span
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem",
+                                      cursor: "pointer",
+                                    }}
+                                    onClick={() =>
+                                      openResultsModalWithData(sample)
+                                    }
+                                    title={
+                                      sample?.finalDiagnosis ||
+                                      (sample?.reportFinalized
+                                        ? "Click to view"
+                                        : "Click to enter final diagnosis")
+                                    }
+                                  >
+                                    {sample?.reportFinalized ? (
+                                      <>
+                                        <CheckmarkFilled
+                                          size={16}
+                                          style={{ color: "#198038" }}
+                                        />
+                                        <span
+                                          style={{
+                                            maxWidth: "100px",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                          }}
+                                        >
+                                          {sample?.finalDiagnosis
+                                            ? sample.finalDiagnosis.length > 15
+                                              ? sample.finalDiagnosis.substring(
+                                                  0,
+                                                  15,
+                                                ) + "..."
+                                              : sample.finalDiagnosis
+                                            : "Finalized"}
+                                        </span>
+                                      </>
+                                    ) : sample?.initialFindingsComplete ? (
+                                      <Tag type="blue" size="sm">
+                                        Ready
+                                      </Tag>
+                                    ) : (
+                                      <Tag type="gray" size="sm">
+                                        Pending
+                                      </Tag>
+                                    )}
                                   </span>
                                 ) : (
                                   cell.value || "-"
@@ -1374,12 +1773,6 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
               <Tab>
                 <Chemistry size={16} style={{ marginRight: "0.5rem" }} />
                 <FormattedMessage
-                  id="pathology.testing.tab.staining"
-                  defaultMessage="Staining"
-                />
-              </Tab>
-              <Tab>
-                <FormattedMessage
                   id="pathology.testing.tab.advanced"
                   defaultMessage="Advanced Techniques"
                 />
@@ -1408,136 +1801,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
             </TabList>
 
             <TabPanels>
-              {/* === TAB 1: STAINING === */}
-              <TabPanel>
-                <Grid fullWidth>
-                  <Column lg={16} md={8} sm={4}>
-                    <h5 style={{ marginBottom: "1rem" }}>
-                      <FormattedMessage
-                        id="pathology.testing.routineStaining"
-                        defaultMessage="Routine Staining"
-                      />
-                    </h5>
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <Select
-                      id="routineStainingCategory"
-                      name="routineStainingCategory"
-                      labelText={intl.formatMessage({
-                        id: "pathology.testing.stainingCategory",
-                        defaultMessage: "Specimen Category",
-                      })}
-                      value={testData.routineStainingCategory}
-                      onChange={handleInputChange}
-                    >
-                      <SelectItem value="" text="-- Select Category --" />
-                      <SelectItem value="histology" text="Histology (Tissue)" />
-                      <SelectItem
-                        value="cytology"
-                        text="Cytology (Cells/Fluids)"
-                      />
-                      <SelectItem value="blood" text="Blood/Bone Marrow" />
-                    </Select>
-                  </Column>
-
-                  {testData.routineStainingCategory && (
-                    <Column lg={16} md={8} sm={4}>
-                      <div style={{ marginTop: "1rem" }}>
-                        <p style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
-                          <FormattedMessage
-                            id="pathology.testing.selectRoutineStains"
-                            defaultMessage="Select Routine Stains:"
-                          />
-                        </p>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "1rem",
-                          }}
-                        >
-                          {routineStainsByCategory[
-                            testData.routineStainingCategory
-                          ]?.map((stain) => (
-                            <Checkbox
-                              key={stain.id}
-                              id={`routine-${stain.id}`}
-                              labelText={stain.label}
-                              checked={testData.routineStains.includes(
-                                stain.id,
-                              )}
-                              onChange={(e) =>
-                                handleMultiCheckbox(
-                                  "routineStains",
-                                  stain.id,
-                                  e.target.checked,
-                                )
-                              }
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </Column>
-                  )}
-
-                  <Column lg={16} md={8} sm={4}>
-                    <h5 style={{ marginTop: "2rem", marginBottom: "1rem" }}>
-                      <FormattedMessage
-                        id="pathology.testing.specialStains"
-                        defaultMessage="Special Stains"
-                      />
-                    </h5>
-                  </Column>
-
-                  <Column lg={16} md={8} sm={4}>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(auto-fill, minmax(250px, 1fr))",
-                        gap: "0.75rem",
-                      }}
-                    >
-                      {specialStainOptions.map((stain) => (
-                        <Checkbox
-                          key={stain.id}
-                          id={`special-${stain.id}`}
-                          labelText={`${stain.label} - ${stain.indication}`}
-                          checked={testData.specialStains.includes(stain.id)}
-                          onChange={(e) =>
-                            handleMultiCheckbox(
-                              "specialStains",
-                              stain.id,
-                              e.target.checked,
-                            )
-                          }
-                        />
-                      ))}
-                    </div>
-                  </Column>
-
-                  {testData.specialStains.length > 0 && (
-                    <Column lg={16} md={8} sm={4}>
-                      <TextInput
-                        id="specialStainIndication"
-                        name="specialStainIndication"
-                        labelText={intl.formatMessage({
-                          id: "pathology.testing.specialStainIndication",
-                          defaultMessage:
-                            "Clinical Indication for Special Stain",
-                        })}
-                        value={testData.specialStainIndication}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Suspected fungal infection, rule out TB"
-                        style={{ marginTop: "1rem" }}
-                      />
-                    </Column>
-                  )}
-                </Grid>
-              </TabPanel>
-
-              {/* === TAB 2: ADVANCED TECHNIQUES === */}
+              {/* === TAB 1: ADVANCED TECHNIQUES === */}
               <TabPanel>
                 <Grid fullWidth>
                   {/* IHC/ICC Section */}
@@ -1831,7 +2095,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 </Grid>
               </TabPanel>
 
-              {/* === TAB 3: MICROSCOPY OBSERVATION === */}
+              {/* === TAB 2: MICROSCOPY OBSERVATION === */}
               <TabPanel>
                 <Grid fullWidth>
                   <Column lg={16} md={8} sm={4}>
@@ -1966,7 +2230,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 </Grid>
               </TabPanel>
 
-              {/* === TAB 4: CONTROLS & VALIDATION === */}
+              {/* === TAB 3: CONTROLS & VALIDATION === */}
               <TabPanel>
                 <Grid fullWidth>
                   <Column lg={16} md={8} sm={4}>
@@ -2175,7 +2439,7 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
                 </Grid>
               </TabPanel>
 
-              {/* === TAB 5: DOCUMENTATION === */}
+              {/* === TAB 4: DOCUMENTATION === */}
               <TabPanel>
                 <Grid fullWidth>
                   <Column lg={16} md={8} sm={4}>
@@ -2315,26 +2579,46 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
         </div>
       </Modal>
 
-      {/* Enter Results Modal */}
+      {/* Enter Results Modal - Two Stage Workflow with Slide Images */}
       <Modal
         open={resultsModalOpen}
         modalHeading={intl.formatMessage(
           {
-            id: "pathology.modal.results.title",
-            defaultMessage: "Enter Results - {count} Samples",
+            id: resultsViewMode
+              ? "pathology.modal.results.title.view"
+              : "pathology.modal.results.title",
+            defaultMessage: resultsViewMode
+              ? "View Results - {sampleId}"
+              : resultsStage === "initial"
+                ? "Initial Findings - {sampleId}"
+                : "Final Diagnosis - {sampleId}",
           },
-          { count: getSamplesWithTests().length },
+          {
+            sampleId:
+              selectedSample?.accessionNumber || selectedSample?.id || "",
+            count: getSamplesWithTests().length,
+          },
         )}
         primaryButtonText={
-          resultsEntryMode === "csv"
+          resultsViewMode
             ? intl.formatMessage({
-                id: "pathology.results.import",
-                defaultMessage: "Import",
+                id: "label.button.edit",
+                defaultMessage: "Edit",
               })
-            : intl.formatMessage({
-                id: "label.button.submit",
-                defaultMessage: "Submit",
-              })
+            : resultsEntryMode === "csv"
+              ? intl.formatMessage({
+                  id: "pathology.results.import",
+                  defaultMessage: "Import",
+                })
+              : resultsStage === "initial"
+                ? intl.formatMessage({
+                    id: "pathology.results.saveInitial",
+                    defaultMessage: "Save Initial Findings",
+                  })
+                : intl.formatMessage({
+                    id: "pathology.results.saveFinal",
+                    defaultMessage: "Finalize Report",
+                  })
         }
         secondaryButtonText={intl.formatMessage({
           id: "label.button.cancel",
@@ -2343,386 +2627,987 @@ ACC-2024-002,BLK-002-A,"Negative for malignancy",,Benign fibrocystic changes,tru
         onRequestClose={() => {
           setResultsModalOpen(false);
           resetResultsData();
+          setInitialSlideImages([]);
+          setFinalSlideImages([]);
+          setResultsViewMode(false);
           setError(null);
         }}
         onRequestSubmit={
-          resultsEntryMode === "csv" ? handleCsvImport : handleSubmitResults
+          resultsViewMode
+            ? () => setResultsViewMode(false)
+            : resultsEntryMode === "csv"
+              ? handleCsvImport
+              : handleSubmitResults
         }
         primaryButtonDisabled={
-          submitting || isImporting || (resultsEntryMode === "csv" && !csvFile)
+          submitting ||
+          isImporting ||
+          resultsLoading ||
+          (resultsEntryMode === "csv" && !csvFile)
         }
         size="lg"
+        hasScrollingContent
+        preventCloseOnClickOutside
       >
-        <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
-          {/* Mode Selection */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <RadioButtonGroup
-              legendText={intl.formatMessage({
-                id: "pathology.results.entryMode",
-                defaultMessage: "Entry Mode",
-              })}
-              name="resultsEntryMode"
-              valueSelected={resultsEntryMode}
-              onChange={(value) => setResultsEntryMode(value)}
-            >
-              <RadioButton
-                labelText={intl.formatMessage({
-                  id: "pathology.results.manualEntry",
-                  defaultMessage: "Manual Entry",
-                })}
-                value="manual"
-                id="results-manual"
-              />
-              <RadioButton
-                labelText={intl.formatMessage({
-                  id: "pathology.results.csvImport",
-                  defaultMessage: "CSV Import",
-                })}
-                value="csv"
-                id="results-csv"
-              />
-            </RadioButtonGroup>
+        {/* Loading indicator */}
+        {resultsLoading && (
+          <div style={{ textAlign: "center", padding: "2rem" }}>
+            <Loading
+              description="Loading results data..."
+              withOverlay={false}
+            />
           </div>
+        )}
 
-          {/* Selected samples display */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <p style={{ marginBottom: "0.5rem", fontWeight: "bold" }}>
-              <FormattedMessage
-                id="pathology.results.samplesWithTests"
-                defaultMessage="Samples with Tests:"
-              />
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {getSamplesWithTests().map((sample) => (
-                <Tag key={sample.id} type="blue" size="sm">
-                  {sample.accessionNumber || sample.id}
-                </Tag>
-              ))}
-            </div>
-          </div>
-
-          {resultsEntryMode === "manual" ? (
-            /* Manual Entry Form */
-            <Grid fullWidth>
-              <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="resultFindings"
-                  name="resultFindings"
-                  labelText={intl.formatMessage({
-                    id: "pathology.results.resultFindings",
-                    defaultMessage: "Result Findings *",
-                  })}
-                  value={resultsData.resultFindings}
-                  onChange={handleResultsInputChange}
-                  rows={4}
-                  placeholder="Enter the test results/findings..."
-                />
-              </Column>
-
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="diagnosisCode"
-                  name="diagnosisCode"
-                  labelText={intl.formatMessage({
-                    id: "pathology.results.diagnosisCode",
-                    defaultMessage: "Diagnosis Code (ICD-10/SNOMED)",
-                  })}
-                  value={resultsData.diagnosisCode}
-                  onChange={handleResultsInputChange}
-                  placeholder="e.g., C50.9, M8500/3"
-                  style={{ marginTop: "1rem" }}
-                />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="clinicalInterpretation"
-                  name="clinicalInterpretation"
-                  labelText={intl.formatMessage({
-                    id: "pathology.results.clinicalInterpretation",
-                    defaultMessage: "Clinical Interpretation / Diagnosis",
-                  })}
-                  value={resultsData.clinicalInterpretation}
-                  onChange={handleResultsInputChange}
-                  rows={4}
-                  placeholder="Final pathological diagnosis and interpretation..."
-                  style={{ marginTop: "1rem" }}
-                />
-              </Column>
-
-              <Column lg={16} md={8} sm={4}>
-                <h5 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-                  <FormattedMessage
-                    id="pathology.results.pathologistVerification"
-                    defaultMessage="Pathologist Verification"
-                  />
-                </h5>
-                <InlineNotification
-                  kind="warning"
-                  title={intl.formatMessage({
-                    id: "pathology.results.verificationRequired",
-                    defaultMessage:
-                      "Clinical results must be verified by a certified/licensed pathologist before release.",
-                  })}
-                  hideCloseButton
-                  lowContrast
-                  style={{ marginBottom: "1rem" }}
-                />
-              </Column>
-
-              <Column lg={8} md={4} sm={4}>
-                <Checkbox
-                  id="verifiedByPathologist"
-                  name="verifiedByPathologist"
-                  labelText={intl.formatMessage({
-                    id: "pathology.results.verifiedByPathologist",
-                    defaultMessage: "Verified by Certified Pathologist",
-                  })}
-                  checked={resultsData.verifiedByPathologist}
-                  onChange={handleResultsInputChange}
-                />
-              </Column>
-
-              {resultsData.verifiedByPathologist && (
-                <>
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      id="verifyingPathologistName"
-                      name="verifyingPathologistName"
-                      labelText={intl.formatMessage({
-                        id: "pathology.results.verifyingPathologistName",
-                        defaultMessage: "Verifying Pathologist Name",
-                      })}
-                      value={resultsData.verifyingPathologistName}
-                      onChange={handleResultsInputChange}
-                    />
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <DatePicker
-                      datePickerType="single"
-                      onChange={(dates) =>
-                        handleDateChange(dates, "verificationDate", true)
-                      }
-                    >
-                      <DatePickerInput
-                        id="verificationDate"
-                        labelText={intl.formatMessage({
-                          id: "pathology.results.verificationDate",
-                          defaultMessage: "Verification Date",
-                        })}
-                        placeholder="mm/dd/yyyy"
-                      />
-                    </DatePicker>
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      id="pathologistSignature"
-                      name="pathologistSignature"
-                      labelText={intl.formatMessage({
-                        id: "pathology.results.pathologistSignature",
-                        defaultMessage: "Pathologist Signature",
-                      })}
-                      value={resultsData.pathologistSignature}
-                      onChange={handleResultsInputChange}
-                    />
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <DatePicker
-                      datePickerType="single"
-                      onChange={(dates) =>
-                        handleDateChange(dates, "pathologistDate", true)
-                      }
-                    >
-                      <DatePickerInput
-                        id="pathologistDate"
-                        labelText={intl.formatMessage({
-                          id: "pathology.results.pathologistDate",
-                          defaultMessage: "Pathologist Date",
-                        })}
-                        placeholder="mm/dd/yyyy"
-                      />
-                    </DatePicker>
-                  </Column>
-                </>
-              )}
-
-              <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="additionalNotes"
-                  name="additionalNotes"
-                  labelText={intl.formatMessage({
-                    id: "pathology.results.additionalNotes",
-                    defaultMessage: "Additional Notes",
-                  })}
-                  value={resultsData.additionalNotes}
-                  onChange={handleResultsInputChange}
-                  rows={3}
-                  style={{ marginTop: "1rem" }}
-                />
-              </Column>
-            </Grid>
-          ) : (
-            /* CSV Import */
-            <div>
-              <p style={{ marginBottom: "1rem" }}>
-                <FormattedMessage
-                  id="pathology.results.csvDescription"
-                  defaultMessage="Upload a CSV file with results for multiple samples. The CSV must include accessionNumber or blockSlideId to match samples."
-                />
-              </p>
-
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Download}
-                onClick={handleDownloadResultsTemplate}
+        {!resultsLoading && (
+          <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+            {/* View Mode Banner */}
+            {resultsViewMode && (
+              <InlineNotification
+                kind={resultsData.reportFinalized ? "success" : "info"}
+                title={intl.formatMessage({
+                  id: resultsData.reportFinalized
+                    ? "pathology.results.finalized"
+                    : "pathology.results.inProgress",
+                  defaultMessage: resultsData.reportFinalized
+                    ? "Report Finalized"
+                    : "Report In Progress",
+                })}
+                subtitle={intl.formatMessage(
+                  {
+                    id: "pathology.results.viewMode.description",
+                    defaultMessage: resultsData.reportFinalized
+                      ? "Finalized by {pathologist} on {date}"
+                      : "Initial findings recorded. Click 'Edit' to continue.",
+                  },
+                  {
+                    pathologist: resultsData.diagnosingPathologist || "Unknown",
+                    date:
+                      resultsData.finalDiagnosisDate ||
+                      resultsData.initialFindingsDate ||
+                      "Unknown",
+                  },
+                )}
+                lowContrast
+                hideCloseButton
                 style={{ marginBottom: "1rem" }}
-              >
-                <FormattedMessage
-                  id="pathology.results.downloadTemplate"
-                  defaultMessage="Download CSV Template"
-                />
-              </Button>
+              />
+            )}
 
-              {!csvFile ? (
-                <FileUploaderDropContainer
-                  accept={[".csv"]}
-                  labelText={intl.formatMessage({
-                    id: "pathology.results.dropzone",
-                    defaultMessage:
-                      "Drag and drop a CSV file here or click to upload",
+            {/* Stage Selector - Only show in edit mode */}
+            {!resultsViewMode && resultsEntryMode === "manual" && (
+              <div style={{ marginBottom: "1.5rem" }}>
+                <RadioButtonGroup
+                  legendText={intl.formatMessage({
+                    id: "pathology.results.stage",
+                    defaultMessage: "Result Entry Stage",
                   })}
-                  onAddFiles={handleCsvFileAdded}
-                />
-              ) : (
-                <FileUploaderItem
-                  name={csvFile.name}
-                  status="edit"
-                  onDelete={() => {
-                    setCsvFile(null);
-                    setCsvPreview(null);
-                    setCsvErrors([]);
-                  }}
-                />
-              )}
-
-              {csvErrors.length > 0 && (
-                <InlineNotification
-                  kind="error"
-                  title="Validation Errors"
-                  subtitle={
-                    <ul style={{ margin: 0, paddingLeft: "1rem" }}>
-                      {csvErrors.map((err, idx) => (
-                        <li key={idx}>{err.message}</li>
-                      ))}
-                    </ul>
-                  }
-                  hideCloseButton
-                  lowContrast
-                  style={{ marginTop: "1rem" }}
-                />
-              )}
-
-              {csvPreview && csvErrors.length === 0 && (
-                <div style={{ marginTop: "1rem" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "0.5rem",
-                      marginBottom: "0.5rem",
-                    }}
-                  >
-                    <Tag type="blue">{csvPreview.totalRows} rows</Tag>
-                    <Tag type="green">Ready to import</Tag>
-                  </div>
-                  <p style={{ fontSize: "0.875rem", color: "#525252" }}>
-                    <FormattedMessage
-                      id="pathology.results.csvPreviewColumns"
-                      defaultMessage="Columns: {columns}"
-                      values={{ columns: csvPreview.headers.join(", ") }}
-                    />
-                  </p>
-                </div>
-              )}
-
-              {isImporting && (
-                <Loading
-                  withOverlay={false}
-                  description="Importing results..."
-                />
-              )}
-
-              {/* Example CSV format */}
-              <div
-                style={{
-                  marginTop: "1.5rem",
-                  padding: "1rem",
-                  backgroundColor: "#f4f4f4",
-                  borderRadius: "4px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "0.5rem",
-                  }}
+                  name="resultsStage"
+                  valueSelected={resultsStage}
+                  onChange={(value) => setResultsStage(value)}
+                  orientation="horizontal"
                 >
-                  <p style={{ fontWeight: "bold", margin: 0 }}>
-                    <FormattedMessage
-                      id="pathology.results.csvExample.title"
-                      defaultMessage="Example CSV format:"
-                    />
-                  </p>
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    renderIcon={Download}
-                    onClick={() => {
-                      const csvContent = `accessionNumber,blockSlideId,resultFindings,diagnosisCode,clinicalInterpretation,verifiedByPathologist,verifyingPathologistName,verificationDate,additionalNotes
-ACC-2024-001,BLK-001-A,"Positive for malignancy",C50.9,"Invasive ductal carcinoma",true,Dr. Smith,2024-01-15,""
-ACC-2024-002,BLK-002-A,"Negative for malignancy",,"Benign changes",true,Dr. Jones,2024-01-15,""`;
-                      const blob = new Blob([csvContent], {
-                        type: "text/csv;charset=utf-8;",
-                      });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = "pathology_results_template.csv";
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      URL.revokeObjectURL(url);
-                    }}
-                  >
-                    <FormattedMessage
-                      id="pathology.results.downloadTemplate"
-                      defaultMessage="Download Template"
-                    />
-                  </Button>
-                </div>
-                <code
-                  style={{
-                    fontSize: "0.75rem",
-                    display: "block",
-                    backgroundColor: "#e0e0e0",
-                    padding: "0.5rem",
-                    overflowX: "auto",
-                    whiteSpace: "pre",
-                  }}
-                >
-                  {`accessionNumber,blockSlideId,resultFindings,diagnosisCode,clinicalInterpretation,verifiedByPathologist,verifyingPathologistName,verificationDate,additionalNotes
-ACC-2024-001,BLK-001-A,"Positive for malignancy",C50.9,"Invasive ductal carcinoma",true,Dr. Smith,2024-01-15,""
-ACC-2024-002,BLK-002-A,"Negative for malignancy",,"Benign changes",true,Dr. Jones,2024-01-15,""`}
-                </code>
+                  <RadioButton
+                    labelText={intl.formatMessage({
+                      id: "pathology.results.stage.initial",
+                      defaultMessage: "1. Initial Findings",
+                    })}
+                    value="initial"
+                    id="stage-initial"
+                  />
+                  <RadioButton
+                    labelText={intl.formatMessage({
+                      id: "pathology.results.stage.final",
+                      defaultMessage: "2. Final Diagnosis",
+                    })}
+                    value="final"
+                    id="stage-final"
+                    disabled={
+                      !resultsData.initialFindingsComplete && !resultsViewMode
+                    }
+                  />
+                </RadioButtonGroup>
+                {!resultsData.initialFindingsComplete &&
+                  resultsStage === "initial" && (
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                        marginTop: "0.5rem",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="pathology.results.completeInitialFirst"
+                        defaultMessage="Complete initial findings before proceeding to final diagnosis."
+                      />
+                    </p>
+                  )}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {/* Mode Selection - Manual vs CSV */}
+            {!resultsViewMode && (
+              <div style={{ marginBottom: "1.5rem" }}>
+                <RadioButtonGroup
+                  legendText={intl.formatMessage({
+                    id: "pathology.results.entryMode",
+                    defaultMessage: "Entry Mode",
+                  })}
+                  name="resultsEntryMode"
+                  valueSelected={resultsEntryMode}
+                  onChange={(value) => setResultsEntryMode(value)}
+                >
+                  <RadioButton
+                    labelText={intl.formatMessage({
+                      id: "pathology.results.manualEntry",
+                      defaultMessage: "Manual Entry",
+                    })}
+                    value="manual"
+                    id="results-manual"
+                  />
+                  <RadioButton
+                    labelText={intl.formatMessage({
+                      id: "pathology.results.csvImport",
+                      defaultMessage: "CSV Import",
+                    })}
+                    value="csv"
+                    id="results-csv"
+                  />
+                </RadioButtonGroup>
+              </div>
+            )}
+
+            {resultsEntryMode === "manual" ? (
+              /* Manual Entry Form - Two Stages */
+              <Tabs selectedIndex={resultsStage === "initial" ? 0 : 1}>
+                <TabList aria-label="Results entry stages">
+                  <Tab onClick={() => setResultsStage("initial")}>
+                    <FormattedMessage
+                      id="pathology.results.tab.initialFindings"
+                      defaultMessage="Initial Findings"
+                    />
+                    {resultsData.initialFindingsComplete && (
+                      <CheckmarkFilled
+                        style={{ marginLeft: "0.5rem", color: "#24a148" }}
+                      />
+                    )}
+                  </Tab>
+                  <Tab
+                    onClick={() => setResultsStage("final")}
+                    disabled={
+                      !resultsData.initialFindingsComplete && !resultsViewMode
+                    }
+                  >
+                    <FormattedMessage
+                      id="pathology.results.tab.finalDiagnosis"
+                      defaultMessage="Final Diagnosis"
+                    />
+                    {resultsData.reportFinalized && (
+                      <CheckmarkFilled
+                        style={{ marginLeft: "0.5rem", color: "#24a148" }}
+                      />
+                    )}
+                  </Tab>
+                </TabList>
+
+                <TabPanels>
+                  {/* Tab 1: Initial Findings */}
+                  <TabPanel>
+                    <Grid fullWidth style={{ padding: "1rem 0" }}>
+                      {/* Examiner Info */}
+                      <Column lg={8} md={4} sm={4}>
+                        <TextInput
+                          id="initialExaminer"
+                          name="initialExaminer"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.initialExaminer",
+                            defaultMessage: "Examining Pathologist/Resident *",
+                          })}
+                          value={resultsData.initialExaminer}
+                          onChange={handleResultsInputChange}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={4} md={2} sm={2}>
+                        <TextInput
+                          id="initialExaminerInitials"
+                          name="initialExaminerInitials"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.initials",
+                            defaultMessage: "Initials",
+                          })}
+                          value={resultsData.initialExaminerInitials}
+                          onChange={handleResultsInputChange}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={4} md={2} sm={2}>
+                        <DatePicker
+                          datePickerType="single"
+                          onChange={(dates) =>
+                            handleDateChange(dates, "initialFindingsDate", true)
+                          }
+                          value={resultsData.initialFindingsDate}
+                        >
+                          <DatePickerInput
+                            id="initialFindingsDate"
+                            labelText={intl.formatMessage({
+                              id: "pathology.results.date",
+                              defaultMessage: "Date",
+                            })}
+                            placeholder="mm/dd/yyyy"
+                            disabled={resultsViewMode}
+                          />
+                        </DatePicker>
+                      </Column>
+
+                      {/* Microscopic Description */}
+                      <Column lg={16} md={8} sm={4}>
+                        <TextArea
+                          id="microscopicDescription"
+                          name="microscopicDescription"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.microscopicDescription",
+                            defaultMessage: "Microscopic Description *",
+                          })}
+                          value={resultsData.microscopicDescription}
+                          onChange={handleResultsInputChange}
+                          rows={4}
+                          placeholder="Detailed microscopic findings..."
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Cellular Features */}
+                      <Column lg={8} md={4} sm={4}>
+                        <TextArea
+                          id="cellularFeatures"
+                          name="cellularFeatures"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.cellularFeatures",
+                            defaultMessage: "Cellular Features",
+                          })}
+                          value={resultsData.cellularFeatures}
+                          onChange={handleResultsInputChange}
+                          rows={3}
+                          placeholder="Cell types, patterns, abnormalities..."
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Architectural Findings */}
+                      <Column lg={8} md={4} sm={4}>
+                        <TextArea
+                          id="architecturalFindings"
+                          name="architecturalFindings"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.architecturalFindings",
+                            defaultMessage: "Architectural Findings",
+                          })}
+                          value={resultsData.architecturalFindings}
+                          onChange={handleResultsInputChange}
+                          rows={3}
+                          placeholder="Tissue architecture observations..."
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Special Stain & IHC Results */}
+                      <Column lg={8} md={4} sm={4}>
+                        <TextArea
+                          id="specialStainResults"
+                          name="specialStainResults"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.specialStainResults",
+                            defaultMessage: "Special Stain Results",
+                          })}
+                          value={resultsData.specialStainResults}
+                          onChange={handleResultsInputChange}
+                          rows={2}
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={8} md={4} sm={4}>
+                        <TextArea
+                          id="ihcResults"
+                          name="ihcResults"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.ihcResults",
+                            defaultMessage: "IHC/ICC Results",
+                          })}
+                          value={resultsData.ihcResults}
+                          onChange={handleResultsInputChange}
+                          rows={2}
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Initial Impression & DDx */}
+                      <Column lg={16} md={8} sm={4}>
+                        <TextArea
+                          id="initialImpression"
+                          name="initialImpression"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.initialImpression",
+                            defaultMessage:
+                              "Preliminary Diagnostic Impression *",
+                          })}
+                          value={resultsData.initialImpression}
+                          onChange={handleResultsInputChange}
+                          rows={3}
+                          placeholder="Initial diagnostic impression..."
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={16} md={8} sm={4}>
+                        <TextArea
+                          id="differentialDiagnosis"
+                          name="differentialDiagnosis"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.differentialDiagnosis",
+                            defaultMessage: "Differential Diagnosis",
+                          })}
+                          value={resultsData.differentialDiagnosis}
+                          onChange={handleResultsInputChange}
+                          rows={2}
+                          placeholder="DDx considerations..."
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Slide Images Section */}
+                      <Column lg={16} md={8} sm={4}>
+                        <h5
+                          style={{ marginTop: "1.5rem", marginBottom: "1rem" }}
+                        >
+                          <FormattedMessage
+                            id="pathology.results.slideImages"
+                            defaultMessage="Slide Images ({count}/96)"
+                            values={{ count: initialSlideImages.length }}
+                          />
+                        </h5>
+                        <InlineNotification
+                          kind="info"
+                          title={intl.formatMessage({
+                            id: "pathology.results.slideImages.info",
+                            defaultMessage: "Microscopy Images",
+                          })}
+                          subtitle={intl.formatMessage({
+                            id: "pathology.results.slideImages.description",
+                            defaultMessage:
+                              "Upload microscopy images to document findings. Up to 96 images allowed.",
+                          })}
+                          lowContrast
+                          hideCloseButton
+                          style={{ marginBottom: "1rem" }}
+                        />
+
+                        {!resultsViewMode && (
+                          <FileUploaderDropContainer
+                            accept={[
+                              ".jpg",
+                              ".jpeg",
+                              ".png",
+                              ".tiff",
+                              ".tif",
+                              ".bmp",
+                            ]}
+                            labelText={intl.formatMessage({
+                              id: "pathology.results.dropSlideImages",
+                              defaultMessage:
+                                "Drag and drop slide images here or click to upload",
+                            })}
+                            onAddFiles={handleInitialSlideImageUpload}
+                            multiple
+                          />
+                        )}
+
+                        {/* Image Gallery */}
+                        {initialSlideImages.length > 0 && (
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns:
+                                "repeat(auto-fill, minmax(150px, 1fr))",
+                              gap: "1rem",
+                              marginTop: "1rem",
+                            }}
+                          >
+                            {initialSlideImages.map((img) => (
+                              <div
+                                key={img.id}
+                                style={{
+                                  border: "1px solid #e0e0e0",
+                                  borderRadius: "4px",
+                                  padding: "0.5rem",
+                                  position: "relative",
+                                }}
+                              >
+                                {img.preview && (
+                                  <img
+                                    src={img.preview}
+                                    alt={img.fileName}
+                                    style={{
+                                      width: "100%",
+                                      height: "100px",
+                                      objectFit: "cover",
+                                      borderRadius: "4px",
+                                    }}
+                                  />
+                                )}
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    marginTop: "0.25rem",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {img.fileName}
+                                </p>
+                                {!resultsViewMode && (
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    hasIconOnly
+                                    iconDescription="Remove"
+                                    renderIcon={CloseFilled}
+                                    onClick={() =>
+                                      handleRemoveSlideImage(img.id, "initial")
+                                    }
+                                    style={{
+                                      position: "absolute",
+                                      top: "0",
+                                      right: "0",
+                                    }}
+                                  />
+                                )}
+                                <TextInput
+                                  id={`slide-${img.id}`}
+                                  size="sm"
+                                  placeholder="Magnification (e.g., 40x)"
+                                  value={img.magnification || ""}
+                                  onChange={(e) =>
+                                    handleSlideImageMetadataChange(
+                                      img.id,
+                                      "magnification",
+                                      e.target.value,
+                                      "initial",
+                                    )
+                                  }
+                                  disabled={resultsViewMode}
+                                  style={{ marginTop: "0.25rem" }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </Column>
+
+                      {/* Mark Initial Findings Complete */}
+                      {!resultsViewMode && (
+                        <Column lg={16} md={8} sm={4}>
+                          <Checkbox
+                            id="initialFindingsComplete"
+                            name="initialFindingsComplete"
+                            labelText={intl.formatMessage({
+                              id: "pathology.results.markInitialComplete",
+                              defaultMessage:
+                                "Initial findings complete - ready for final diagnosis",
+                            })}
+                            checked={resultsData.initialFindingsComplete}
+                            onChange={handleResultsInputChange}
+                            style={{ marginTop: "1.5rem" }}
+                          />
+                        </Column>
+                      )}
+                    </Grid>
+                  </TabPanel>
+
+                  {/* Tab 2: Final Diagnosis */}
+                  <TabPanel>
+                    <Grid fullWidth style={{ padding: "1rem 0" }}>
+                      {/* Pathologist Info */}
+                      <Column lg={8} md={4} sm={4}>
+                        <TextInput
+                          id="diagnosingPathologist"
+                          name="diagnosingPathologist"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.diagnosingPathologist",
+                            defaultMessage: "Diagnosing Pathologist *",
+                          })}
+                          value={resultsData.diagnosingPathologist}
+                          onChange={handleResultsInputChange}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={4} md={2} sm={2}>
+                        <TextInput
+                          id="pathologistCredentials"
+                          name="pathologistCredentials"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.credentials",
+                            defaultMessage: "Credentials",
+                          })}
+                          value={resultsData.pathologistCredentials}
+                          onChange={handleResultsInputChange}
+                          placeholder="MD, DO, etc."
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={4} md={2} sm={2}>
+                        <DatePicker
+                          datePickerType="single"
+                          onChange={(dates) =>
+                            handleDateChange(dates, "finalDiagnosisDate", true)
+                          }
+                          value={resultsData.finalDiagnosisDate}
+                        >
+                          <DatePickerInput
+                            id="finalDiagnosisDate"
+                            labelText={intl.formatMessage({
+                              id: "pathology.results.date",
+                              defaultMessage: "Date",
+                            })}
+                            placeholder="mm/dd/yyyy"
+                            disabled={resultsViewMode}
+                          />
+                        </DatePicker>
+                      </Column>
+
+                      {/* Final Diagnosis */}
+                      <Column lg={16} md={8} sm={4}>
+                        <TextArea
+                          id="finalDiagnosis"
+                          name="finalDiagnosis"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.finalDiagnosis",
+                            defaultMessage: "Final Diagnosis *",
+                          })}
+                          value={resultsData.finalDiagnosis}
+                          onChange={handleResultsInputChange}
+                          rows={4}
+                          placeholder="Final pathological diagnosis..."
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Diagnosis Code & Tumor Type */}
+                      <Column lg={8} md={4} sm={4}>
+                        <TextInput
+                          id="diagnosisCode"
+                          name="diagnosisCode"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.diagnosisCode",
+                            defaultMessage: "Diagnosis Code (ICD-O/SNOMED)",
+                          })}
+                          value={resultsData.diagnosisCode}
+                          onChange={handleResultsInputChange}
+                          placeholder="e.g., C50.9, M8500/3"
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={8} md={4} sm={4}>
+                        <TextInput
+                          id="tumorType"
+                          name="tumorType"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.tumorType",
+                            defaultMessage: "Tumor Type (WHO Classification)",
+                          })}
+                          value={resultsData.tumorType}
+                          onChange={handleResultsInputChange}
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Grade & Stage */}
+                      <Column lg={4} md={2} sm={2}>
+                        <TextInput
+                          id="histologicGrade"
+                          name="histologicGrade"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.histologicGrade",
+                            defaultMessage: "Histologic Grade",
+                          })}
+                          value={resultsData.histologicGrade}
+                          onChange={handleResultsInputChange}
+                          placeholder="G1, G2, G3"
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={4} md={2} sm={2}>
+                        <TextInput
+                          id="tumorStage"
+                          name="tumorStage"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.tumorStage",
+                            defaultMessage: "pTNM Stage",
+                          })}
+                          value={resultsData.tumorStage}
+                          onChange={handleResultsInputChange}
+                          placeholder="pT1N0M0"
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={4} md={2} sm={2}>
+                        <TextInput
+                          id="marginStatus"
+                          name="marginStatus"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.marginStatus",
+                            defaultMessage: "Margin Status",
+                          })}
+                          value={resultsData.marginStatus}
+                          onChange={handleResultsInputChange}
+                          placeholder="Negative/Positive"
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+                      <Column lg={4} md={2} sm={2}>
+                        <TextInput
+                          id="lymphovascularInvasion"
+                          name="lymphovascularInvasion"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.lvi",
+                            defaultMessage: "LVI",
+                          })}
+                          value={resultsData.lymphovascularInvasion}
+                          onChange={handleResultsInputChange}
+                          placeholder="Present/Absent"
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Additional Findings */}
+                      <Column lg={16} md={8} sm={4}>
+                        <TextArea
+                          id="additionalFindings"
+                          name="additionalFindings"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.additionalFindings",
+                            defaultMessage: "Additional Findings",
+                          })}
+                          value={resultsData.additionalFindings}
+                          onChange={handleResultsInputChange}
+                          rows={2}
+                          style={{ marginTop: "1rem" }}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {/* Final Slide Images */}
+                      <Column lg={16} md={8} sm={4}>
+                        <h5
+                          style={{ marginTop: "1.5rem", marginBottom: "1rem" }}
+                        >
+                          <FormattedMessage
+                            id="pathology.results.finalSlideImages"
+                            defaultMessage="Final Diagnosis Images ({count}/96)"
+                            values={{ count: finalSlideImages.length }}
+                          />
+                        </h5>
+
+                        {!resultsViewMode && (
+                          <FileUploaderDropContainer
+                            accept={[
+                              ".jpg",
+                              ".jpeg",
+                              ".png",
+                              ".tiff",
+                              ".tif",
+                              ".bmp",
+                            ]}
+                            labelText={intl.formatMessage({
+                              id: "pathology.results.dropFinalImages",
+                              defaultMessage:
+                                "Upload additional images for final diagnosis",
+                            })}
+                            onAddFiles={handleFinalSlideImageUpload}
+                            multiple
+                          />
+                        )}
+
+                        {/* Final Image Gallery */}
+                        {finalSlideImages.length > 0 && (
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns:
+                                "repeat(auto-fill, minmax(150px, 1fr))",
+                              gap: "1rem",
+                              marginTop: "1rem",
+                            }}
+                          >
+                            {finalSlideImages.map((img) => (
+                              <div
+                                key={img.id}
+                                style={{
+                                  border: "1px solid #e0e0e0",
+                                  borderRadius: "4px",
+                                  padding: "0.5rem",
+                                  position: "relative",
+                                }}
+                              >
+                                {img.preview && (
+                                  <img
+                                    src={img.preview}
+                                    alt={img.fileName}
+                                    style={{
+                                      width: "100%",
+                                      height: "100px",
+                                      objectFit: "cover",
+                                      borderRadius: "4px",
+                                    }}
+                                  />
+                                )}
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    marginTop: "0.25rem",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {img.fileName}
+                                </p>
+                                {!resultsViewMode && (
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    hasIconOnly
+                                    iconDescription="Remove"
+                                    renderIcon={CloseFilled}
+                                    onClick={() =>
+                                      handleRemoveSlideImage(img.id, "final")
+                                    }
+                                    style={{
+                                      position: "absolute",
+                                      top: "0",
+                                      right: "0",
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </Column>
+
+                      {/* Pathologist Verification */}
+                      <Column lg={16} md={8} sm={4}>
+                        <h5
+                          style={{ marginTop: "1.5rem", marginBottom: "1rem" }}
+                        >
+                          <FormattedMessage
+                            id="pathology.results.pathologistVerification"
+                            defaultMessage="Pathologist Verification"
+                          />
+                        </h5>
+                        <InlineNotification
+                          kind="warning"
+                          title={intl.formatMessage({
+                            id: "pathology.results.verificationRequired",
+                            defaultMessage:
+                              "Clinical results must be verified by a certified/licensed pathologist before release.",
+                          })}
+                          hideCloseButton
+                          lowContrast
+                          style={{ marginBottom: "1rem" }}
+                        />
+                      </Column>
+
+                      <Column lg={8} md={4} sm={4}>
+                        <Checkbox
+                          id="verifiedByPathologist"
+                          name="verifiedByPathologist"
+                          labelText={intl.formatMessage({
+                            id: "pathology.results.verifiedByPathologist",
+                            defaultMessage: "Verified by Certified Pathologist",
+                          })}
+                          checked={resultsData.verifiedByPathologist}
+                          onChange={handleResultsInputChange}
+                          disabled={resultsViewMode}
+                        />
+                      </Column>
+
+                      {resultsData.verifiedByPathologist && (
+                        <>
+                          <Column lg={8} md={4} sm={4}>
+                            <TextInput
+                              id="verifyingPathologistName"
+                              name="verifyingPathologistName"
+                              labelText={intl.formatMessage({
+                                id: "pathology.results.verifyingPathologistName",
+                                defaultMessage: "Verifying Pathologist Name",
+                              })}
+                              value={resultsData.verifyingPathologistName}
+                              onChange={handleResultsInputChange}
+                              disabled={resultsViewMode}
+                            />
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <TextInput
+                              id="pathologistSignature"
+                              name="pathologistSignature"
+                              labelText={intl.formatMessage({
+                                id: "pathology.results.pathologistSignature",
+                                defaultMessage: "Electronic Signature",
+                              })}
+                              value={resultsData.pathologistSignature}
+                              onChange={handleResultsInputChange}
+                              disabled={resultsViewMode}
+                            />
+                          </Column>
+                        </>
+                      )}
+
+                      {/* Finalize Report */}
+                      {!resultsViewMode && (
+                        <Column lg={16} md={8} sm={4}>
+                          <Checkbox
+                            id="reportFinalized"
+                            name="reportFinalized"
+                            labelText={intl.formatMessage({
+                              id: "pathology.results.finalizeReport",
+                              defaultMessage:
+                                "Finalize Report - Lock for release",
+                            })}
+                            checked={resultsData.reportFinalized}
+                            onChange={handleResultsInputChange}
+                            style={{ marginTop: "1.5rem" }}
+                            disabled={!resultsData.verifiedByPathologist}
+                          />
+                          {!resultsData.verifiedByPathologist && (
+                            <p
+                              style={{
+                                fontSize: "0.875rem",
+                                color: "#da1e28",
+                                marginTop: "0.25rem",
+                              }}
+                            >
+                              <FormattedMessage
+                                id="pathology.results.mustVerifyFirst"
+                                defaultMessage="Report must be verified before finalizing."
+                              />
+                            </p>
+                          )}
+                        </Column>
+                      )}
+                    </Grid>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            ) : (
+              /* CSV Import - unchanged */
+              <div>
+                <p style={{ marginBottom: "1rem" }}>
+                  <FormattedMessage
+                    id="pathology.results.csvDescription"
+                    defaultMessage="Upload a CSV file with results for multiple samples. The CSV must include accessionNumber or blockSlideId to match samples."
+                  />
+                </p>
+
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={Download}
+                  onClick={handleDownloadResultsTemplate}
+                  style={{ marginBottom: "1rem" }}
+                >
+                  <FormattedMessage
+                    id="pathology.results.downloadTemplate"
+                    defaultMessage="Download CSV Template"
+                  />
+                </Button>
+
+                {!csvFile ? (
+                  <FileUploaderDropContainer
+                    accept={[".csv"]}
+                    labelText={intl.formatMessage({
+                      id: "pathology.results.dropzone",
+                      defaultMessage:
+                        "Drag and drop a CSV file here or click to upload",
+                    })}
+                    onAddFiles={handleCsvFileAdded}
+                  />
+                ) : (
+                  <FileUploaderItem
+                    name={csvFile.name}
+                    status="edit"
+                    onDelete={() => {
+                      setCsvFile(null);
+                      setCsvPreview(null);
+                      setCsvErrors([]);
+                    }}
+                  />
+                )}
+
+                {csvErrors.length > 0 && (
+                  <InlineNotification
+                    kind="error"
+                    title="Validation Errors"
+                    subtitle={
+                      <ul style={{ margin: 0, paddingLeft: "1rem" }}>
+                        {csvErrors.map((err, idx) => (
+                          <li key={idx}>{err.message}</li>
+                        ))}
+                      </ul>
+                    }
+                    hideCloseButton
+                    lowContrast
+                    style={{ marginTop: "1rem" }}
+                  />
+                )}
+
+                {csvPreview && csvErrors.length === 0 && (
+                  <div style={{ marginTop: "1rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.5rem",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <Tag type="blue">{csvPreview.totalRows} rows</Tag>
+                      <Tag type="green">Ready to import</Tag>
+                    </div>
+                    <p style={{ fontSize: "0.875rem", color: "#525252" }}>
+                      <FormattedMessage
+                        id="pathology.results.csvPreviewColumns"
+                        defaultMessage="Columns: {columns}"
+                        values={{ columns: csvPreview.headers.join(", ") }}
+                      />
+                    </p>
+                  </div>
+                )}
+
+                {isImporting && (
+                  <Loading
+                    withOverlay={false}
+                    description="Importing results..."
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

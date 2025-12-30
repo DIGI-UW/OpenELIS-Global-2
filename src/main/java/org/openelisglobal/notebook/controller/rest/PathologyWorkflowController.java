@@ -34,6 +34,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -456,6 +457,17 @@ public class PathologyWorkflowController extends BaseRestController {
             grossingData.put("grossingStartTime", requestData.get("grossingStartTime"));
             grossingData.put("grossingEndTime", requestData.get("grossingEndTime"));
 
+            // Quality Control fields
+            grossingData.put("qcStatus", requestData.get("qcStatus"));
+            grossingData.put("qcSpecimenIntegrity", requestData.get("qcSpecimenIntegrity"));
+            grossingData.put("qcLabelingCorrect", requestData.get("qcLabelingCorrect"));
+            grossingData.put("qcFixationAdequate", requestData.get("qcFixationAdequate"));
+            grossingData.put("qcDocumentationComplete", requestData.get("qcDocumentationComplete"));
+            grossingData.put("qcIssues", requestData.get("qcIssues"));
+            grossingData.put("qcCorrectiveAction", requestData.get("qcCorrectiveAction"));
+            grossingData.put("qcReviewedBy", requestData.get("qcReviewedBy"));
+            grossingData.put("qcReviewDate", requestData.get("qcReviewDate"));
+
             // Process images if provided (up to 96 images)
             List<Map<String, Object>> grossImages = (List<Map<String, Object>>) requestData.get("grossImages");
             if (grossImages != null && !grossImages.isEmpty()) {
@@ -665,10 +677,667 @@ public class PathologyWorkflowController extends BaseRestController {
             response.put("grossImageCount", data.get("grossImageCount"));
             response.put("grossImages", data.get("grossImages"));
 
+            // Quality Control fields
+            response.put("qcStatus", data.get("qcStatus"));
+            response.put("qcSpecimenIntegrity", data.get("qcSpecimenIntegrity"));
+            response.put("qcLabelingCorrect", data.get("qcLabelingCorrect"));
+            response.put("qcFixationAdequate", data.get("qcFixationAdequate"));
+            response.put("qcDocumentationComplete", data.get("qcDocumentationComplete"));
+            response.put("qcIssues", data.get("qcIssues"));
+            response.put("qcCorrectiveAction", data.get("qcCorrectiveAction"));
+            response.put("qcReviewedBy", data.get("qcReviewedBy"));
+            response.put("qcReviewDate", data.get("qcReviewDate"));
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("success", false);
             response.put("error", "Failed to get grossing data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    // ========================================
+    // WORKFLOW SAMPLE FLOW ENDPOINTS
+    // ========================================
+
+    /**
+     * Get samples that have completed a specific workflow step.
+     * GET /rest/notebook/pathology/workflow/samples-ready
+     *
+     * This endpoint returns samples from the PREVIOUS workflow page that have
+     * completed their step and are ready to proceed to the next step.
+     *
+     * @param entryId The notebook entry ID
+     * @param currentStep The current workflow step (e.g., "blocks", "slides", "staining")
+     * @return List of samples with their data from the previous step
+     */
+    @GetMapping(value = "/workflow/samples-ready", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getSamplesReadyForStep(
+            @RequestParam Integer entryId,
+            @RequestParam String currentStep,
+            HttpServletRequest request) {
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        try {
+            // Get the notebook entry to find all pages
+            NotebookEntry entry = notebookEntryService.get(entryId);
+            if (entry == null) {
+                return ResponseEntity.ok(result);
+            }
+
+            // Determine which previous step we need to check based on current step
+            String previousStepType = getPreviousStepType(currentStep);
+            if (previousStepType == null) {
+                return ResponseEntity.ok(result);
+            }
+
+            // Find the page for the previous step in this entry
+            List<NoteBookPage> pages = noteBookPageService.getByNotebookId(entry.getNotebook().getId());
+            NoteBookPage previousPage = null;
+            for (NoteBookPage page : pages) {
+                // Match page by title containing the step type (e.g., "Cassette", "Block", "Slide")
+                String pageTitle = page.getTitle();
+                if (pageTitle != null && matchesStepType(pageTitle, previousStepType)) {
+                    previousPage = page;
+                    break;
+                }
+            }
+
+            if (previousPage == null) {
+                return ResponseEntity.ok(result);
+            }
+
+            // Get all samples from the previous page that have completed that step
+            List<NotebookPageSample> previousSamples = notebookPageSampleService.getByPageId(previousPage.getId());
+
+            for (NotebookPageSample pageSample : previousSamples) {
+                Map<String, Object> data = pageSample.getData();
+                if (data == null) {
+                    continue;
+                }
+
+                // Check if the sample status is COMPLETED (user clicked "Mark Complete")
+                if (pageSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
+                    continue;
+                }
+
+                // Also check if the previous step data flag is set
+                boolean isCompleted = isStepCompleted(data, previousStepType);
+                if (!isCompleted) {
+                    continue;
+                }
+
+                // Build the sample info including hierarchy data
+                Map<String, Object> sampleInfo = new HashMap<>();
+                sampleInfo.put("id", pageSample.getSampleItemId());
+                sampleInfo.put("sampleItemId", pageSample.getSampleItemId());
+                sampleInfo.put("pageStatus", pageSample.getStatus() != null ? pageSample.getStatus().name() : "PENDING");
+
+                // Get sample item details
+                try {
+                    SampleItem sampleItem = sampleItemService.get(pageSample.getSampleItemId());
+                    if (sampleItem != null) {
+                        Sample sample = sampleItem.getSample();
+                        sampleInfo.put("accessionNumber", sample != null ? sample.getAccessionNumber() : "");
+                        TypeOfSample typeOfSample = sampleItem.getTypeOfSample();
+                        sampleInfo.put("sampleType", typeOfSample != null ? typeOfSample.getDescription() : "");
+                        sampleInfo.put("collectionDate", sampleItem.getCollectionDate() != null ?
+                                new SimpleDateFormat("yyyy-MM-dd").format(sampleItem.getCollectionDate()) : "");
+                    }
+                } catch (Exception e) {
+                    // Continue with available data
+                }
+
+                // Include data from previous step for hierarchy display
+                sampleInfo.put("previousStepData", data);
+                sampleInfo.put("data", data);
+
+                // QC status from previous step
+                sampleInfo.put("qcStatus", data.get("qcStatus"));
+
+                // HIERARCHICAL EXPANSION: Create one entry per child item (cassette/block/slide)
+                // This allows the next step to process each item individually
+                if ("cassettes".equals(previousStepType)) {
+                    // Expand cassette labels into individual entries for block creation
+                    Object labelsObj = data.get("cassetteLabels");
+                    List<String> labels = parseLabels(labelsObj);
+                    if (labels != null && !labels.isEmpty()) {
+                        for (int i = 0; i < labels.size(); i++) {
+                            Map<String, Object> cassetteEntry = new HashMap<>(sampleInfo);
+                            cassetteEntry.put("childIndex", i);
+                            cassetteEntry.put("childLabel", labels.get(i));
+                            cassetteEntry.put("cassetteLabel", labels.get(i));
+                            cassetteEntry.put("parentSampleId", pageSample.getSampleItemId());
+                            cassetteEntry.put("id", pageSample.getSampleItemId() + "_cassette_" + i);
+                            result.add(cassetteEntry);
+                        }
+                    } else {
+                        // Fallback: use numberOfCassettes if no labels
+                        Object countObj = data.get("numberOfCassettes");
+                        int count = countObj != null ? parseIntSafe(countObj) : 1;
+                        for (int i = 0; i < count; i++) {
+                            Map<String, Object> cassetteEntry = new HashMap<>(sampleInfo);
+                            cassetteEntry.put("childIndex", i);
+                            cassetteEntry.put("childLabel", "Cassette " + (i + 1));
+                            cassetteEntry.put("cassetteLabel", "Cassette " + (i + 1));
+                            cassetteEntry.put("parentSampleId", pageSample.getSampleItemId());
+                            cassetteEntry.put("id", pageSample.getSampleItemId() + "_cassette_" + i);
+                            result.add(cassetteEntry);
+                        }
+                    }
+                } else if ("blocks".equals(previousStepType)) {
+                    // Expand block labels into individual entries for slide creation
+                    Object labelsObj = data.get("blockLabels");
+                    List<String> labels = parseLabels(labelsObj);
+                    if (labels != null && !labels.isEmpty()) {
+                        for (int i = 0; i < labels.size(); i++) {
+                            Map<String, Object> blockEntry = new HashMap<>(sampleInfo);
+                            blockEntry.put("childIndex", i);
+                            blockEntry.put("childLabel", labels.get(i));
+                            blockEntry.put("blockLabel", labels.get(i));
+                            blockEntry.put("parentSampleId", pageSample.getSampleItemId());
+                            blockEntry.put("id", pageSample.getSampleItemId() + "_block_" + i);
+                            result.add(blockEntry);
+                        }
+                    } else {
+                        // Fallback: use numberOfBlocks if no labels
+                        Object countObj = data.get("numberOfBlocks");
+                        int count = countObj != null ? parseIntSafe(countObj) : 1;
+                        for (int i = 0; i < count; i++) {
+                            Map<String, Object> blockEntry = new HashMap<>(sampleInfo);
+                            blockEntry.put("childIndex", i);
+                            blockEntry.put("childLabel", "Block " + (i + 1));
+                            blockEntry.put("blockLabel", "Block " + (i + 1));
+                            blockEntry.put("parentSampleId", pageSample.getSampleItemId());
+                            blockEntry.put("id", pageSample.getSampleItemId() + "_block_" + i);
+                            result.add(blockEntry);
+                        }
+                    }
+                } else if ("slides".equals(previousStepType)) {
+                    // Expand slide labels into individual entries for staining
+                    Object labelsObj = data.get("slideLabels");
+                    List<String> labels = parseLabels(labelsObj);
+                    if (labels != null && !labels.isEmpty()) {
+                        for (int i = 0; i < labels.size(); i++) {
+                            Map<String, Object> slideEntry = new HashMap<>(sampleInfo);
+                            slideEntry.put("childIndex", i);
+                            slideEntry.put("childLabel", labels.get(i));
+                            slideEntry.put("slideLabel", labels.get(i));
+                            slideEntry.put("parentSampleId", pageSample.getSampleItemId());
+                            slideEntry.put("id", pageSample.getSampleItemId() + "_slide_" + i);
+                            result.add(slideEntry);
+                        }
+                    } else {
+                        // Fallback: use numberOfSlides if no labels
+                        Object countObj = data.get("numberOfSlides");
+                        int count = countObj != null ? parseIntSafe(countObj) : 1;
+                        for (int i = 0; i < count; i++) {
+                            Map<String, Object> slideEntry = new HashMap<>(sampleInfo);
+                            slideEntry.put("childIndex", i);
+                            slideEntry.put("childLabel", "Slide " + (i + 1));
+                            slideEntry.put("slideLabel", "Slide " + (i + 1));
+                            slideEntry.put("parentSampleId", pageSample.getSampleItemId());
+                            slideEntry.put("id", pageSample.getSampleItemId() + "_slide_" + i);
+                            result.add(slideEntry);
+                        }
+                    }
+                } else {
+                    // For gross examination -> cassettes, just add the sample
+                    result.add(sampleInfo);
+                }
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "getSamplesReadyForStep",
+                    "Failed to get samples ready for step: " + e.getMessage());
+            return ResponseEntity.ok(result);
+        }
+    }
+
+    /**
+     * Get the previous step type based on the current step.
+     */
+    private String getPreviousStepType(String currentStep) {
+        switch (currentStep.toLowerCase()) {
+            case "blocks":
+                return "cassettes";
+            case "slides":
+                return "blocks";
+            case "staining":
+                return "slides";
+            case "cassettes":
+                return "gross_examination";
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Check if a specific step is completed based on the data.
+     */
+    private boolean isStepCompleted(Map<String, Object> data, String stepType) {
+        switch (stepType.toLowerCase()) {
+            case "gross_examination":
+                return Boolean.TRUE.equals(data.get("grossingCompleted"));
+            case "cassettes":
+                return Boolean.TRUE.equals(data.get("cassettesCreated"));
+            case "blocks":
+                return Boolean.TRUE.equals(data.get("blocksCreated"));
+            case "slides":
+                return Boolean.TRUE.equals(data.get("slidesCreated"));
+            case "staining":
+                return Boolean.TRUE.equals(data.get("stainingCompleted"));
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Parse labels from various formats (List, JSON array string, etc.)
+     */
+    @SuppressWarnings("unchecked")
+    private List<String> parseLabels(Object labelsObj) {
+        if (labelsObj == null) {
+            return null;
+        }
+        if (labelsObj instanceof List) {
+            List<?> list = (List<?>) labelsObj;
+            List<String> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item != null) {
+                    result.add(item.toString());
+                }
+            }
+            return result.isEmpty() ? null : result;
+        }
+        if (labelsObj instanceof String) {
+            String str = (String) labelsObj;
+            // Try to parse as JSON array
+            if (str.startsWith("[") && str.endsWith("]")) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    return mapper.readValue(str, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                } catch (Exception e) {
+                    // Fallback to simple parsing
+                }
+            }
+            // Try comma-separated
+            if (str.contains(",")) {
+                String[] parts = str.split(",");
+                List<String> result = new ArrayList<>();
+                for (String part : parts) {
+                    String trimmed = part.trim();
+                    if (!trimmed.isEmpty()) {
+                        result.add(trimmed);
+                    }
+                }
+                return result.isEmpty() ? null : result;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Safely parse integer from various types.
+     */
+    private int parseIntSafe(Object obj) {
+        if (obj == null) {
+            return 1;
+        }
+        if (obj instanceof Number) {
+            return ((Number) obj).intValue();
+        }
+        if (obj instanceof String) {
+            try {
+                return Integer.parseInt((String) obj);
+            } catch (NumberFormatException e) {
+                return 1;
+            }
+        }
+        return 1;
+    }
+
+    /**
+     * Check if a page title matches a step type.
+     * The matching is case-insensitive and checks if the title contains the step keyword.
+     */
+    private boolean matchesStepType(String pageTitle, String stepType) {
+        if (pageTitle == null || stepType == null) {
+            return false;
+        }
+        String titleLower = pageTitle.toLowerCase();
+        switch (stepType.toLowerCase()) {
+            case "gross_examination":
+                return titleLower.contains("gross") || titleLower.contains("examination");
+            case "cassettes":
+                return titleLower.contains("cassette");
+            case "blocks":
+                return titleLower.contains("block");
+            case "slides":
+                return titleLower.contains("slide");
+            case "staining":
+                return titleLower.contains("stain");
+            default:
+                return false;
+        }
+    }
+
+    // ========================================
+    // RESULTS ENDPOINTS - Two-Stage Workflow
+    // ========================================
+
+    /**
+     * Submit pathology results with two-stage workflow.
+     * POST /rest/notebook/pathology/results/submit
+     *
+     * Stage 1 - Initial Findings:
+     * - Microscopic description, cellular features, architectural findings
+     * - Special stain results, IHC results
+     * - Preliminary diagnostic impression
+     * - Initial slide images (up to 96)
+     *
+     * Stage 2 - Final Diagnosis:
+     * - Final diagnosis, diagnosis code, tumor type
+     * - Histologic grade, tumor stage, margins
+     * - Pathologist verification and signature
+     * - Final slide images (up to 96)
+     */
+    @PostMapping(value = "/results/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> submitResults(@RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User not authenticated");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        try {
+            String sampleId = parseString(requestData.get("sampleId"));
+            Integer pageId = parseInteger(requestData.get("pageId"));
+
+            if (sampleId == null || pageId == null) {
+                response.put("success", false);
+                response.put("error", "Sample ID and Page ID are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Build results data map
+            Map<String, Object> resultsData = new HashMap<>();
+
+            // === INITIAL FINDINGS (Stage 1) ===
+            resultsData.put("initialFindingsDate", requestData.get("initialFindingsDate"));
+            resultsData.put("initialExaminer", requestData.get("initialExaminer"));
+            resultsData.put("initialExaminerInitials", requestData.get("initialExaminerInitials"));
+            resultsData.put("microscopicDescription", requestData.get("microscopicDescription"));
+            resultsData.put("cellularFeatures", requestData.get("cellularFeatures"));
+            resultsData.put("architecturalFindings", requestData.get("architecturalFindings"));
+            resultsData.put("nuclearFeatures", requestData.get("nuclearFeatures"));
+            resultsData.put("stromalFindings", requestData.get("stromalFindings"));
+            resultsData.put("specialStainResults", requestData.get("specialStainResults"));
+            resultsData.put("ihcResults", requestData.get("ihcResults"));
+            resultsData.put("ishResults", requestData.get("ishResults"));
+            resultsData.put("initialImpression", requestData.get("initialImpression"));
+            resultsData.put("differentialDiagnosis", requestData.get("differentialDiagnosis"));
+            resultsData.put("additionalStudiesRecommended", requestData.get("additionalStudiesRecommended"));
+            resultsData.put("initialFindingsComplete", requestData.get("initialFindingsComplete"));
+
+            // === FINAL DIAGNOSIS (Stage 2) ===
+            resultsData.put("finalDiagnosisDate", requestData.get("finalDiagnosisDate"));
+            resultsData.put("diagnosingPathologist", requestData.get("diagnosingPathologist"));
+            resultsData.put("pathologistCredentials", requestData.get("pathologistCredentials"));
+            resultsData.put("finalDiagnosis", requestData.get("finalDiagnosis"));
+            resultsData.put("diagnosisCode", requestData.get("diagnosisCode"));
+            resultsData.put("tumorType", requestData.get("tumorType"));
+            resultsData.put("histologicGrade", requestData.get("histologicGrade"));
+            resultsData.put("tumorStage", requestData.get("tumorStage"));
+            resultsData.put("marginStatus", requestData.get("marginStatus"));
+            resultsData.put("lymphovascularInvasion", requestData.get("lymphovascularInvasion"));
+            resultsData.put("perineuralInvasion", requestData.get("perineuralInvasion"));
+            resultsData.put("additionalFindings", requestData.get("additionalFindings"));
+            resultsData.put("clinicalCorrelation", requestData.get("clinicalCorrelation"));
+            resultsData.put("prognosticFactors", requestData.get("prognosticFactors"));
+            resultsData.put("synopticReportComplete", requestData.get("synopticReportComplete"));
+
+            // === VERIFICATION ===
+            resultsData.put("verifiedByPathologist", requestData.get("verifiedByPathologist"));
+            resultsData.put("verifyingPathologistName", requestData.get("verifyingPathologistName"));
+            resultsData.put("verificationDate", requestData.get("verificationDate"));
+            resultsData.put("pathologistSignature", requestData.get("pathologistSignature"));
+            resultsData.put("pathologistDate", requestData.get("pathologistDate"));
+            resultsData.put("additionalNotes", requestData.get("additionalNotes"));
+            resultsData.put("reportFinalized", requestData.get("reportFinalized"));
+
+            // === SLIDE IMAGES ===
+            // Process initial slide images (up to 96)
+            List<Map<String, Object>> initialSlideImages = (List<Map<String, Object>>) requestData.get("initialSlideImages");
+            if (initialSlideImages != null && !initialSlideImages.isEmpty()) {
+                if (initialSlideImages.size() > 96) {
+                    response.put("success", false);
+                    response.put("error", "Maximum 96 initial slide images allowed");
+                    return ResponseEntity.badRequest().body(response);
+                }
+
+                // Get sample info for naming
+                SampleItem sampleItem = sampleItemService.getData(sampleId);
+                String accessionNumber = sampleItem != null && sampleItem.getSample() != null
+                        ? sampleItem.getSample().getAccessionNumber()
+                        : "UNKNOWN";
+
+                List<Map<String, Object>> processedInitialImages = new ArrayList<>();
+                int imageNum = 1;
+                for (Map<String, Object> image : initialSlideImages) {
+                    Map<String, Object> processedImage = new HashMap<>();
+                    processedImage.put("imageNumber", imageNum);
+                    processedImage.put("slideId", image.get("slideId"));
+                    processedImage.put("stainType", image.get("stainType"));
+                    processedImage.put("magnification", image.get("magnification"));
+                    processedImage.put("fieldDescription", image.get("fieldDescription"));
+                    processedImage.put("captureTime", image.get("captureTime"));
+                    processedImage.put("notes", image.get("notes"));
+
+                    // Generate standardized filename
+                    String originalFileName = (String) image.get("fileName");
+                    String extension = originalFileName != null && originalFileName.contains(".")
+                            ? originalFileName.substring(originalFileName.lastIndexOf("."))
+                            : ".jpg";
+                    String magnification = image.get("magnification") != null ? (String) image.get("magnification") : "";
+                    String standardizedName = String.format("%s_initial_%02d_%s%s",
+                            accessionNumber, imageNum, magnification.replace("x", ""), extension);
+                    processedImage.put("fileName", standardizedName);
+                    processedImage.put("originalFileName", originalFileName);
+
+                    // Store base64 data (in production, save to file storage)
+                    processedImage.put("base64Data", image.get("base64Data"));
+                    processedImage.put("imageType", image.get("fileType"));
+
+                    processedInitialImages.add(processedImage);
+                    imageNum++;
+                }
+                resultsData.put("initialSlideImages", processedInitialImages);
+                resultsData.put("initialSlideImageCount", processedInitialImages.size());
+            }
+
+            // Process final slide images (up to 96)
+            List<Map<String, Object>> finalSlideImages = (List<Map<String, Object>>) requestData.get("finalSlideImages");
+            if (finalSlideImages != null && !finalSlideImages.isEmpty()) {
+                if (finalSlideImages.size() > 96) {
+                    response.put("success", false);
+                    response.put("error", "Maximum 96 final slide images allowed");
+                    return ResponseEntity.badRequest().body(response);
+                }
+
+                SampleItem sampleItem = sampleItemService.getData(sampleId);
+                String accessionNumber = sampleItem != null && sampleItem.getSample() != null
+                        ? sampleItem.getSample().getAccessionNumber()
+                        : "UNKNOWN";
+
+                List<Map<String, Object>> processedFinalImages = new ArrayList<>();
+                int imageNum = 1;
+                for (Map<String, Object> image : finalSlideImages) {
+                    Map<String, Object> processedImage = new HashMap<>();
+                    processedImage.put("imageNumber", imageNum);
+                    processedImage.put("slideId", image.get("slideId"));
+                    processedImage.put("stainType", image.get("stainType"));
+                    processedImage.put("magnification", image.get("magnification"));
+                    processedImage.put("fieldDescription", image.get("fieldDescription"));
+                    processedImage.put("captureTime", image.get("captureTime"));
+                    processedImage.put("notes", image.get("notes"));
+
+                    String originalFileName = (String) image.get("fileName");
+                    String extension = originalFileName != null && originalFileName.contains(".")
+                            ? originalFileName.substring(originalFileName.lastIndexOf("."))
+                            : ".jpg";
+                    String magnification = image.get("magnification") != null ? (String) image.get("magnification") : "";
+                    String standardizedName = String.format("%s_final_%02d_%s%s",
+                            accessionNumber, imageNum, magnification.replace("x", ""), extension);
+                    processedImage.put("fileName", standardizedName);
+                    processedImage.put("originalFileName", originalFileName);
+                    processedImage.put("base64Data", image.get("base64Data"));
+                    processedImage.put("imageType", image.get("fileType"));
+
+                    processedFinalImages.add(processedImage);
+                    imageNum++;
+                }
+                resultsData.put("finalSlideImages", processedFinalImages);
+                resultsData.put("finalSlideImageCount", processedFinalImages.size());
+            }
+
+            // Save to NotebookPageSample
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            NoteBookPage page = noteBookPageService.get(pageId);
+
+            if (pageSample == null) {
+                pageSample = new NotebookPageSample();
+                pageSample.setSampleItemId(sampleId);
+                pageSample.setNotebookPage(page);
+                pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                pageSample.setData(resultsData);
+                pageSample.setSysUserId(sysUserId);
+                notebookPageSampleService.insert(pageSample);
+            } else {
+                // Merge with existing data
+                Map<String, Object> existingData = pageSample.getData();
+                if (existingData == null) {
+                    existingData = new HashMap<>();
+                }
+                existingData.putAll(resultsData);
+                pageSample.setData(existingData);
+
+                // Update status based on stage
+                if (Boolean.TRUE.equals(requestData.get("reportFinalized"))) {
+                    pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
+                } else if (Boolean.TRUE.equals(requestData.get("initialFindingsComplete"))) {
+                    pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                } else {
+                    pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                }
+
+                pageSample.setSysUserId(sysUserId);
+                notebookPageSampleService.update(pageSample);
+            }
+
+            response.put("success", true);
+            response.put("message", "Results saved successfully");
+            response.put("stage", Boolean.TRUE.equals(requestData.get("reportFinalized")) ? "finalized"
+                    : Boolean.TRUE.equals(requestData.get("initialFindingsComplete")) ? "initial_complete" : "in_progress");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to save results: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Get pathology results for a sample.
+     * GET /rest/notebook/pathology/results/{sampleId}?pageId={pageId}
+     */
+    @GetMapping(value = "/results/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getResults(
+            @org.springframework.web.bind.annotation.PathVariable("sampleId") String sampleId,
+            @RequestParam Integer pageId,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+
+            if (pageSample == null || pageSample.getData() == null) {
+                response.put("success", true);
+                response.put("hasData", false);
+                response.put("message", "No results data found for this sample");
+                return ResponseEntity.ok(response);
+            }
+
+            Map<String, Object> data = pageSample.getData();
+
+            // Return all results fields
+            response.put("success", true);
+            response.put("hasData", true);
+
+            // Initial Findings
+            response.put("initialFindingsDate", data.get("initialFindingsDate"));
+            response.put("initialExaminer", data.get("initialExaminer"));
+            response.put("initialExaminerInitials", data.get("initialExaminerInitials"));
+            response.put("microscopicDescription", data.get("microscopicDescription"));
+            response.put("cellularFeatures", data.get("cellularFeatures"));
+            response.put("architecturalFindings", data.get("architecturalFindings"));
+            response.put("nuclearFeatures", data.get("nuclearFeatures"));
+            response.put("stromalFindings", data.get("stromalFindings"));
+            response.put("specialStainResults", data.get("specialStainResults"));
+            response.put("ihcResults", data.get("ihcResults"));
+            response.put("ishResults", data.get("ishResults"));
+            response.put("initialImpression", data.get("initialImpression"));
+            response.put("differentialDiagnosis", data.get("differentialDiagnosis"));
+            response.put("additionalStudiesRecommended", data.get("additionalStudiesRecommended"));
+            response.put("initialFindingsComplete", data.get("initialFindingsComplete"));
+
+            // Final Diagnosis
+            response.put("finalDiagnosisDate", data.get("finalDiagnosisDate"));
+            response.put("diagnosingPathologist", data.get("diagnosingPathologist"));
+            response.put("pathologistCredentials", data.get("pathologistCredentials"));
+            response.put("finalDiagnosis", data.get("finalDiagnosis"));
+            response.put("diagnosisCode", data.get("diagnosisCode"));
+            response.put("tumorType", data.get("tumorType"));
+            response.put("histologicGrade", data.get("histologicGrade"));
+            response.put("tumorStage", data.get("tumorStage"));
+            response.put("marginStatus", data.get("marginStatus"));
+            response.put("lymphovascularInvasion", data.get("lymphovascularInvasion"));
+            response.put("perineuralInvasion", data.get("perineuralInvasion"));
+            response.put("additionalFindings", data.get("additionalFindings"));
+            response.put("clinicalCorrelation", data.get("clinicalCorrelation"));
+            response.put("prognosticFactors", data.get("prognosticFactors"));
+            response.put("synopticReportComplete", data.get("synopticReportComplete"));
+
+            // Verification
+            response.put("verifiedByPathologist", data.get("verifiedByPathologist"));
+            response.put("verifyingPathologistName", data.get("verifyingPathologistName"));
+            response.put("verificationDate", data.get("verificationDate"));
+            response.put("pathologistSignature", data.get("pathologistSignature"));
+            response.put("pathologistDate", data.get("pathologistDate"));
+            response.put("additionalNotes", data.get("additionalNotes"));
+            response.put("reportFinalized", data.get("reportFinalized"));
+
+            // Slide Images
+            response.put("initialSlideImages", data.get("initialSlideImages"));
+            response.put("initialSlideImageCount", data.get("initialSlideImageCount"));
+            response.put("finalSlideImages", data.get("finalSlideImages"));
+            response.put("finalSlideImageCount", data.get("finalSlideImageCount"));
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to get results: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
@@ -687,7 +1356,7 @@ public class PathologyWorkflowController extends BaseRestController {
      * - Blood: wedgeSmearDone, bloodStain - Research: sopFollowed,
      * processingMethods
      */
-    @PostMapping(value = "/processing/submit", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/processing/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> submitProcessing(@RequestBody Map<String, Object> requestData,
             HttpServletRequest request) {
@@ -2135,6 +2804,523 @@ public class PathologyWorkflowController extends BaseRestController {
                     "Failed to upload SOP: " + e.getMessage());
             response.put("success", false);
             response.put("error", "Failed to upload SOP: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    // ========================================
+    // GRANULAR WORKFLOW ENDPOINTS
+    // (Cassettes, Blocks, Slides, Staining)
+    // ========================================
+
+    /**
+     * Submit cassette setup data for a sample.
+     * POST /rest/notebook/pathology/cassettes/submit
+     */
+    @PostMapping(value = "/cassettes/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> submitCassettes(@RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User not authenticated");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        try {
+            String sampleId = parseString(requestData.get("sampleId"));
+            Integer pageId = parseInteger(requestData.get("pageId"));
+
+            if (sampleId == null || pageId == null) {
+                response.put("success", false);
+                response.put("error", "Sample ID and Page ID are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Build cassette data map
+            Map<String, Object> cassetteData = new HashMap<>();
+            cassetteData.put("cassettesCreated", true);
+            cassetteData.put("numberOfCassettes", requestData.get("numberOfCassettes"));
+            cassetteData.put("cassettePrefix", requestData.get("cassettePrefix"));
+            cassetteData.put("cassetteLabels", requestData.get("cassetteLabels"));
+            cassetteData.put("cassetteColor", requestData.get("cassetteColor"));
+            cassetteData.put("cassetteCount", requestData.get("cassetteCount"));
+            cassetteData.put("tissueOrientation", requestData.get("tissueOrientation"));
+            cassetteData.put("sectioningNotes", requestData.get("sectioningNotes"));
+            cassetteData.put("processingProtocol", requestData.get("processingProtocol"));
+            cassetteData.put("processorId", requestData.get("processorId"));
+            cassetteData.put("processingStartTime", requestData.get("processingStartTime"));
+            cassetteData.put("processingEndTime", requestData.get("processingEndTime"));
+            cassetteData.put("fixativeType", requestData.get("fixativeType"));
+            cassetteData.put("fixationDuration", requestData.get("fixationDuration"));
+            cassetteData.put("technicianName", requestData.get("technicianName"));
+            cassetteData.put("technicianInitials", requestData.get("technicianInitials"));
+            cassetteData.put("cassetteDate", requestData.get("cassetteDate"));
+            cassetteData.put("notes", requestData.get("notes"));
+
+            // Quality Control fields
+            cassetteData.put("qcStatus", requestData.get("qcStatus"));
+            cassetteData.put("qcTissueQuality", requestData.get("qcTissueQuality"));
+            cassetteData.put("qcLabelingCorrect", requestData.get("qcLabelingCorrect"));
+            cassetteData.put("qcOrientationVerified", requestData.get("qcOrientationVerified"));
+            cassetteData.put("qcCassetteIntegrity", requestData.get("qcCassetteIntegrity"));
+            cassetteData.put("qcIssues", requestData.get("qcIssues"));
+            cassetteData.put("qcCorrectiveAction", requestData.get("qcCorrectiveAction"));
+            cassetteData.put("qcReviewedBy", requestData.get("qcReviewedBy"));
+            cassetteData.put("qcReviewDate", requestData.get("qcReviewDate"));
+
+            // Get or create page sample record
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            boolean isNew = pageSample == null;
+            if (isNew) {
+                pageSample = new NotebookPageSample();
+                pageSample.setSampleItemId(sampleId);
+                NoteBookPage page = noteBookPageService.get(pageId);
+                pageSample.setNotebookPage(page);
+                pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+            }
+
+            // Merge with existing data
+            Map<String, Object> existingData = pageSample.getData();
+            if (existingData == null) {
+                existingData = new HashMap<>();
+            }
+            existingData.putAll(cassetteData);
+            pageSample.setData(existingData);
+            pageSample.setSysUserId(sysUserId);
+
+            if (isNew) {
+                notebookPageSampleService.insert(pageSample);
+            } else {
+                notebookPageSampleService.update(pageSample);
+            }
+
+            response.put("success", true);
+            response.put("message", "Cassette data saved successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "submitCassettes",
+                    "Failed to save cassette data: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to save cassette data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Get cassette data for a sample.
+     * GET /rest/notebook/pathology/cassettes/{sampleId}
+     */
+    @GetMapping(value = "/cassettes/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getCassetteData(@PathVariable String sampleId,
+            @RequestParam Integer pageId, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            if (pageSample != null && pageSample.getData() != null) {
+                response.put("success", true);
+                response.put("hasData", true);
+                response.putAll(pageSample.getData());
+            } else {
+                response.put("success", true);
+                response.put("hasData", false);
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to get cassette data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Submit block creation data for a sample.
+     * POST /rest/notebook/pathology/blocks/submit
+     */
+    @PostMapping(value = "/blocks/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> submitBlocks(@RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User not authenticated");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        try {
+            String sampleId = parseString(requestData.get("sampleId"));
+            Integer pageId = parseInteger(requestData.get("pageId"));
+
+            if (sampleId == null || pageId == null) {
+                response.put("success", false);
+                response.put("error", "Sample ID and Page ID are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Build block data map
+            Map<String, Object> blockData = new HashMap<>();
+            blockData.put("blocksCreated", true);
+            blockData.put("numberOfBlocks", requestData.get("numberOfBlocks"));
+            blockData.put("blockPrefix", requestData.get("blockPrefix"));
+            blockData.put("blockLabels", requestData.get("blockLabels"));
+            blockData.put("blockCount", requestData.get("blockCount"));
+            blockData.put("embeddingMedium", requestData.get("embeddingMedium"));
+            blockData.put("embeddingTemperature", requestData.get("embeddingTemperature"));
+            blockData.put("embeddingStation", requestData.get("embeddingStation"));
+            blockData.put("embeddingQuality", requestData.get("embeddingQuality"));
+            blockData.put("qualityNotes", requestData.get("qualityNotes"));
+            blockData.put("tissueOrientation", requestData.get("tissueOrientation"));
+            blockData.put("orientationVerified", requestData.get("orientationVerified"));
+            blockData.put("orientationNotes", requestData.get("orientationNotes"));
+            blockData.put("processorUsed", requestData.get("processorUsed"));
+            blockData.put("processingProtocol", requestData.get("processingProtocol"));
+            blockData.put("processingDuration", requestData.get("processingDuration"));
+            blockData.put("technicianName", requestData.get("technicianName"));
+            blockData.put("technicianInitials", requestData.get("technicianInitials"));
+            blockData.put("blockDate", requestData.get("blockDate"));
+            blockData.put("notes", requestData.get("notes"));
+
+            // Quality Control fields
+            blockData.put("qcStatus", requestData.get("qcStatus"));
+            blockData.put("qcEmbeddingQuality", requestData.get("qcEmbeddingQuality"));
+            blockData.put("qcOrientationCorrect", requestData.get("qcOrientationCorrect"));
+            blockData.put("qcLabelingCorrect", requestData.get("qcLabelingCorrect"));
+            blockData.put("qcBlockIntegrity", requestData.get("qcBlockIntegrity"));
+            blockData.put("qcIssues", requestData.get("qcIssues"));
+            blockData.put("qcCorrectiveAction", requestData.get("qcCorrectiveAction"));
+            blockData.put("qcReviewedBy", requestData.get("qcReviewedBy"));
+            blockData.put("qcReviewDate", requestData.get("qcReviewDate"));
+
+            // Get or create page sample record
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            boolean isNew = pageSample == null;
+            if (isNew) {
+                pageSample = new NotebookPageSample();
+                pageSample.setSampleItemId(sampleId);
+                NoteBookPage page = noteBookPageService.get(pageId);
+                pageSample.setNotebookPage(page);
+                pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+            }
+
+            // Merge with existing data
+            Map<String, Object> existingData = pageSample.getData();
+            if (existingData == null) {
+                existingData = new HashMap<>();
+            }
+            existingData.putAll(blockData);
+            pageSample.setData(existingData);
+            pageSample.setSysUserId(sysUserId);
+
+            if (isNew) {
+                notebookPageSampleService.insert(pageSample);
+            } else {
+                notebookPageSampleService.update(pageSample);
+            }
+
+            response.put("success", true);
+            response.put("message", "Block data saved successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "submitBlocks",
+                    "Failed to save block data: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to save block data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Get block data for a sample.
+     * GET /rest/notebook/pathology/blocks/{sampleId}
+     */
+    @GetMapping(value = "/blocks/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getBlockData(@PathVariable String sampleId,
+            @RequestParam Integer pageId, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            if (pageSample != null && pageSample.getData() != null) {
+                response.put("success", true);
+                response.put("hasData", true);
+                response.putAll(pageSample.getData());
+            } else {
+                response.put("success", true);
+                response.put("hasData", false);
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to get block data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Submit slide preparation data for a sample.
+     * POST /rest/notebook/pathology/slides/submit
+     */
+    @PostMapping(value = "/slides/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> submitSlides(@RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User not authenticated");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        try {
+            String sampleId = parseString(requestData.get("sampleId"));
+            Integer pageId = parseInteger(requestData.get("pageId"));
+
+            if (sampleId == null || pageId == null) {
+                response.put("success", false);
+                response.put("error", "Sample ID and Page ID are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Build slide data map
+            Map<String, Object> slideData = new HashMap<>();
+            slideData.put("slidesCreated", true);
+            slideData.put("numberOfSlides", requestData.get("numberOfSlides"));
+            slideData.put("slidePrefix", requestData.get("slidePrefix"));
+            slideData.put("slideLabels", requestData.get("slideLabels"));
+            slideData.put("slideCount", requestData.get("slideCount"));
+            slideData.put("slideType", requestData.get("slideType"));
+            slideData.put("sectionThickness", requestData.get("sectionThickness"));
+            slideData.put("thicknessUnit", requestData.get("thicknessUnit"));
+            slideData.put("microtomeId", requestData.get("microtomeId"));
+            slideData.put("bladeType", requestData.get("bladeType"));
+            slideData.put("sectionQuality", requestData.get("sectionQuality"));
+            slideData.put("qualityNotes", requestData.get("qualityNotes"));
+            slideData.put("floatationBathTemp", requestData.get("floatationBathTemp"));
+            slideData.put("mountingMedium", requestData.get("mountingMedium"));
+            slideData.put("coverslipped", requestData.get("coverslipped"));
+            slideData.put("technicianName", requestData.get("technicianName"));
+            slideData.put("technicianInitials", requestData.get("technicianInitials"));
+            slideData.put("slideDate", requestData.get("slideDate"));
+            slideData.put("notes", requestData.get("notes"));
+
+            // Quality Control fields
+            slideData.put("qcStatus", requestData.get("qcStatus"));
+            slideData.put("qcSectionQuality", requestData.get("qcSectionQuality"));
+            slideData.put("qcMountingQuality", requestData.get("qcMountingQuality"));
+            slideData.put("qcLabelingCorrect", requestData.get("qcLabelingCorrect"));
+            slideData.put("qcSlideIntegrity", requestData.get("qcSlideIntegrity"));
+            slideData.put("qcIssues", requestData.get("qcIssues"));
+            slideData.put("qcCorrectiveAction", requestData.get("qcCorrectiveAction"));
+            slideData.put("qcReviewedBy", requestData.get("qcReviewedBy"));
+            slideData.put("qcReviewDate", requestData.get("qcReviewDate"));
+
+            // Get or create page sample record
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            boolean isNew = pageSample == null;
+            if (isNew) {
+                pageSample = new NotebookPageSample();
+                pageSample.setSampleItemId(sampleId);
+                NoteBookPage page = noteBookPageService.get(pageId);
+                pageSample.setNotebookPage(page);
+                pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+            }
+
+            // Merge with existing data
+            Map<String, Object> existingData = pageSample.getData();
+            if (existingData == null) {
+                existingData = new HashMap<>();
+            }
+            existingData.putAll(slideData);
+            pageSample.setData(existingData);
+            pageSample.setSysUserId(sysUserId);
+
+            if (isNew) {
+                notebookPageSampleService.insert(pageSample);
+            } else {
+                notebookPageSampleService.update(pageSample);
+            }
+
+            response.put("success", true);
+            response.put("message", "Slide data saved successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "submitSlides",
+                    "Failed to save slide data: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to save slide data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Get slide data for a sample.
+     * GET /rest/notebook/pathology/slides/{sampleId}
+     */
+    @GetMapping(value = "/slides/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getSlideData(@PathVariable String sampleId,
+            @RequestParam Integer pageId, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            if (pageSample != null && pageSample.getData() != null) {
+                response.put("success", true);
+                response.put("hasData", true);
+                response.putAll(pageSample.getData());
+            } else {
+                response.put("success", true);
+                response.put("hasData", false);
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to get slide data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Submit staining data for a sample.
+     * POST /rest/notebook/pathology/staining/submit
+     */
+    @PostMapping(value = "/staining/submit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> submitStaining(@RequestBody Map<String, Object> requestData,
+            HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User not authenticated");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        try {
+            String sampleId = parseString(requestData.get("sampleId"));
+            Integer pageId = parseInteger(requestData.get("pageId"));
+
+            if (sampleId == null || pageId == null) {
+                response.put("success", false);
+                response.put("error", "Sample ID and Page ID are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Build staining data map
+            Map<String, Object> stainingData = new HashMap<>();
+            stainingData.put("stainingCompleted", true);
+            stainingData.put("stainingCategory", requestData.get("stainingCategory"));
+            stainingData.put("routineStains", requestData.get("routineStains"));
+            stainingData.put("specialStains", requestData.get("specialStains"));
+            stainingData.put("ihcIccPerformed", requestData.get("ihcIccPerformed"));
+            stainingData.put("ihcMarkers", requestData.get("ihcMarkers"));
+            stainingData.put("stainingProtocol", requestData.get("stainingProtocol"));
+            stainingData.put("stainerUsed", requestData.get("stainerUsed"));
+            stainingData.put("batchNumber", requestData.get("batchNumber"));
+            stainingData.put("reagentLot", requestData.get("reagentLot"));
+            stainingData.put("stainingStartTime", requestData.get("stainingStartTime"));
+            stainingData.put("stainingEndTime", requestData.get("stainingEndTime"));
+            stainingData.put("stainQualityAdequate", requestData.get("stainQualityAdequate"));
+            stainingData.put("qualityNotes", requestData.get("qualityNotes"));
+            stainingData.put("positiveControlRun", requestData.get("positiveControlRun"));
+            stainingData.put("positiveControlResult", requestData.get("positiveControlResult"));
+            stainingData.put("negativeControlRun", requestData.get("negativeControlRun"));
+            stainingData.put("negativeControlResult", requestData.get("negativeControlResult"));
+            stainingData.put("technicianName", requestData.get("technicianName"));
+            stainingData.put("technicianInitials", requestData.get("technicianInitials"));
+            stainingData.put("stainingDate", requestData.get("stainingDate"));
+            stainingData.put("notes", requestData.get("notes"));
+
+            // Quality Control fields
+            stainingData.put("qcStatus", requestData.get("qcStatus"));
+            stainingData.put("qcStainIntensity", requestData.get("qcStainIntensity"));
+            stainingData.put("qcBackgroundClean", requestData.get("qcBackgroundClean"));
+            stainingData.put("qcControlsValid", requestData.get("qcControlsValid"));
+            stainingData.put("qcLabelingCorrect", requestData.get("qcLabelingCorrect"));
+            stainingData.put("qcIssues", requestData.get("qcIssues"));
+            stainingData.put("qcCorrectiveAction", requestData.get("qcCorrectiveAction"));
+            stainingData.put("qcReviewedBy", requestData.get("qcReviewedBy"));
+            stainingData.put("qcReviewDate", requestData.get("qcReviewDate"));
+
+            // Get or create page sample record
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            boolean isNew = pageSample == null;
+            if (isNew) {
+                pageSample = new NotebookPageSample();
+                pageSample.setSampleItemId(sampleId);
+                NoteBookPage page = noteBookPageService.get(pageId);
+                pageSample.setNotebookPage(page);
+                pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+            }
+
+            // Merge with existing data
+            Map<String, Object> existingData = pageSample.getData();
+            if (existingData == null) {
+                existingData = new HashMap<>();
+            }
+            existingData.putAll(stainingData);
+            pageSample.setData(existingData);
+            pageSample.setSysUserId(sysUserId);
+
+            if (isNew) {
+                notebookPageSampleService.insert(pageSample);
+            } else {
+                notebookPageSampleService.update(pageSample);
+            }
+
+            response.put("success", true);
+            response.put("message", "Staining data saved successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "submitStaining",
+                    "Failed to save staining data: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to save staining data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Get staining data for a sample.
+     * GET /rest/notebook/pathology/staining/{sampleId}
+     */
+    @GetMapping(value = "/staining/{sampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getStainingData(@PathVariable String sampleId,
+            @RequestParam Integer pageId, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+            if (pageSample != null && pageSample.getData() != null) {
+                response.put("success", true);
+                response.put("hasData", true);
+                response.putAll(pageSample.getData());
+            } else {
+                response.put("success", true);
+                response.put("hasData", false);
+            }
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to get staining data: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }

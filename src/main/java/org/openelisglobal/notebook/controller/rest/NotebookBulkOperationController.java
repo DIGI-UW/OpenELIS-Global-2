@@ -1160,6 +1160,62 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
+     * Update status for multiple samples on a page using String IDs. POST
+     * /notebook/bulk/page/{pageId}/samples/status-string
+     *
+     * This endpoint supports composite sample IDs (e.g., "123_cassette_0") used
+     * in pathology workflow pages where samples are expanded from parent items.
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds (as Strings) and status
+     * @param httpRequest for getting user session
+     * @return result with updated count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/status-string", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkUpdateStatusString(@PathVariable("pageId") Integer pageId,
+            @RequestBody StringStatusUpdateRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getStatus() == null || request.getStatus().isBlank()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Status is required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        Status status;
+        try {
+            status = Status.valueOf(request.getStatus().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Invalid status: " + request.getStatus());
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        int updatedCount = bulkOperationService.bulkUpdateStatusString(pageId, request.getSampleIds(), status, sysUserId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("pageId", pageId);
+        result.put("status", status.name());
+        result.put("success", true);
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Add existing samples to a page (for advancing workflow). POST
      * /notebook/bulk/page/{pageId}/samples/add
      *
@@ -1496,6 +1552,31 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+    /**
+     * Request body for status update operation with String sample IDs.
+     * Used for composite sample IDs (e.g., "123_cassette_0") in pathology workflows.
+     */
+    public static class StringStatusUpdateRequest {
+        private List<String> sampleIds;
+        private String status;
+
+        public List<String> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<String> sampleIds) {
             this.sampleIds = sampleIds;
         }
 

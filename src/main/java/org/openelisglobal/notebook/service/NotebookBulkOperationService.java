@@ -41,6 +41,19 @@ public interface NotebookBulkOperationService {
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId);
 
     /**
+     * Update status for multiple samples on a page using String IDs.
+     * Supports composite sample IDs (e.g., "123_cassette_0") used in
+     * pathology workflow pages where samples are expanded from parent items.
+     *
+     * @param pageId    the notebook page ID
+     * @param sampleIds list of sample item IDs as Strings to update
+     * @param status    the new status
+     * @param userId    the user performing the update
+     * @return number of samples updated
+     */
+    int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status, String userId);
+
+    /**
      * Get progress information for a notebook page. Delegates to
      * NotebookPageSampleService.getPageProgress.
      *

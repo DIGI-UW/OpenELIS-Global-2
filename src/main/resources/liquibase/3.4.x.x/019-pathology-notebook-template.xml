@@ -197,7 +197,7 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 3: SAMPLE PROCESSING & ALIQUOTING -->
+    <!-- PAGE 3: SAMPLE PROCESSING & GROSSING/ALIQUOTING -->
     <!-- Purpose: Create slides, blocks, aliquots while maintaining traceability -->
     <!-- Who uses it: Technicians / pathologists -->
     <!-- ======================================================== -->

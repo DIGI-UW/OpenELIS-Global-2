@@ -269,6 +269,17 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     }
 
     @Override
+    @Transactional
+    public int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status, String userId) {
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return 0;
+        }
+
+        // Delegate to NotebookPageSampleService which handles String-based sample IDs
+        return notebookPageSampleService.bulkUpdateStatusString(pageId, sampleIds, status, userId);
+    }
+
+    @Override
     public NotebookPageSampleService.PageProgress getPageProgress(Integer pageId) {
         return notebookPageSampleService.getPageProgress(pageId);
     }

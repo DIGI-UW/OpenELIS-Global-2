@@ -277,6 +277,71 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         }
     }
 
+    private void updateCompletionInfoString(Integer pageId, List<String> sampleIds, SystemUser user) {
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        for (String sampleId : sampleIds) {
+            NotebookPageSample nps = getBySampleItemIdAndPageId(sampleId, pageId);
+            if (nps != null) {
+                nps.setCompletedBy(user);
+                nps.setCompletedAt(now);
+                update(nps);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status, String userId) {
+        int totalUpdated = 0;
+        SystemUser user = systemUserService.get(userId);
+
+        // Get the page reference for creating new records
+        NoteBookPage page = null;
+
+        // Process in batches to avoid memory issues with large sample lists
+        for (int i = 0; i < sampleIds.size(); i += BATCH_SIZE) {
+            int endIndex = Math.min(i + BATCH_SIZE, sampleIds.size());
+            List<String> batch = sampleIds.subList(i, endIndex);
+
+            // Update existing records using String-based DAO method
+            int updated = baseObjectDAO.bulkUpdateStatusString(pageId, batch, status);
+            totalUpdated += updated;
+
+            // For samples that don't have NotebookPageSample records yet, create them
+            for (String sampleId : batch) {
+                NotebookPageSample existing = getBySampleItemIdAndPageId(sampleId, pageId);
+                if (existing == null) {
+                    // Lazy load page reference only when needed
+                    if (page == null) {
+                        page = noteBookService.getPage(pageId);
+                        if (page == null) {
+                            throw new IllegalArgumentException("Page not found: " + pageId);
+                        }
+                    }
+
+                    // Create a new NotebookPageSample record with string ID
+                    NotebookPageSample nps = new NotebookPageSample();
+                    nps.setNotebookPage(page);
+                    nps.setSampleItemId(sampleId);
+                    nps.setStatus(status);
+                    if (status == Status.COMPLETED) {
+                        nps.setCompletedBy(user);
+                        nps.setCompletedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+                    }
+                    insert(nps);
+                    totalUpdated++;
+                }
+            }
+
+            // If marking as COMPLETED, update completed_by and completed_at for existing records
+            if (status == Status.COMPLETED) {
+                updateCompletionInfoString(pageId, batch, user);
+            }
+        }
+
+        return totalUpdated;
+    }
+
     @Override
     @Transactional
     public int bulkApplyData(Integer pageId, List<Integer> sampleIds, Map<String, Object> data, String userId) {
