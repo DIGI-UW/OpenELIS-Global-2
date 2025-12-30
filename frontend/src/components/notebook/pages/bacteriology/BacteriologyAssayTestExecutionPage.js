@@ -3186,14 +3186,18 @@ function BacteriologyAssayTestExecutionPage({
       sample.pcrTarget ||
       "—";
 
-    // Get display text for Primer
+    // Get display text for Primer (Direction + Type)
     const primerText =
-      PCR_PRIMERS.find((p) => p.id === sample.pcrPrimer)?.text ||
-      sample.pcrPrimer ||
-      "—";
+      sample.pcrPrimerDirection || sample.primerDirection
+        ? `${sample.pcrPrimerDirection || sample.primerDirection}${
+            sample.pcrPrimerType || sample.primerType ? ": " : ""
+          }${sample.pcrPrimerType || sample.primerType || ""}`
+        : "—";
 
-    // Get display text for Enzyme
+    // Get display text for Enzyme (can be from inventory items or hardcoded list)
     const enzymeText =
+      enzymes.find((e) => e.id === sample.pcrEnzyme)?.text ||
+      enzymes.find((e) => e.name === sample.pcrEnzyme)?.name ||
       PCR_ENZYMES.find((e) => e.id === sample.pcrEnzyme)?.text ||
       sample.pcrEnzyme ||
       "—";
