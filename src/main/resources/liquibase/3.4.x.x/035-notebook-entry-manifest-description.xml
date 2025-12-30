@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- ADD MANIFEST DESCRIPTION COLUMN TO NOTEBOOK_ENTRY -->
+    <!-- Stores description/notes entered during manifest import -->
+    <!-- ======================================================== -->
+    <changeSet id="add-manifest-description-to-notebook-entry" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_entry" columnName="manifest_description" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add manifest_description column to notebook_entry table for storing import notes</comment>
+        <addColumn tableName="notebook_entry">
+            <column name="manifest_description" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

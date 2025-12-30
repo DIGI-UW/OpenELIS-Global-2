@@ -620,6 +620,8 @@ public class NotebookEntryRestController extends BaseRestController {
         map.put("status", entry.getStatus() != null ? entry.getStatus().name() : null);
         map.put("dateCreated", entry.getDateCreated());
         map.put("dateCompleted", entry.getDateCompleted());
+        map.put("notes", entry.getNotes());
+        map.put("manifestDescription", entry.getManifestDescription());
 
         if (entry.getNotebook() != null) {
             Map<String, Object> notebookMap = new HashMap<>();

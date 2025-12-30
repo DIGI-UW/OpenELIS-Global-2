@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -119,16 +120,19 @@ public class MNTDManifestImportController extends BaseRestController {
      * Create MNTD samples from manifest CSV for a notebook entry. POST
      * /rest/notebook/mntd/entry/{entryId}/samples/create-from-manifest
      *
-     * @param entryId     the notebook entry ID
-     * @param file        the CSV file
-     * @param form        MNTD column mapping configuration
-     * @param httpRequest for getting user session
+     * @param entryId             the notebook entry ID
+     * @param file                the CSV file
+     * @param form                MNTD column mapping configuration
+     * @param manifestDescription optional description/notes about this manifest
+     *                            import
+     * @param httpRequest         for getting user session
      * @return creation result with created sample count and accession numbers
      */
     @PostMapping(value = "/entry/{entryId}/samples/create-from-manifest", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createSamplesForEntry(@PathVariable("entryId") Integer entryId,
             @RequestPart("file") MultipartFile file, @RequestPart("mapping") MNTDManifestImportForm form,
+            @RequestParam(value = "manifestDescription", required = false) String manifestDescription,
             HttpServletRequest httpRequest) {
 
         // Verify entry exists
@@ -182,7 +186,7 @@ public class MNTDManifestImportController extends BaseRestController {
 
             // Create samples for the entry
             MNTDManifestImportResult result = mntdManifestImportService.createSamplesForEntry(entryId, parsed,
-                    sysUserId);
+                    sysUserId, manifestDescription);
 
             // Build response
             Map<String, Object> response = new HashMap<>();

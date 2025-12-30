@@ -61,12 +61,15 @@ public interface MNTDManifestImportService {
      * row with numOfSamples > 1 creates multiple SampleItem records. MNTD-specific
      * data is stored in sample metadata.
      *
-     * @param entryId   the notebook entry to link samples to
-     * @param manifest  the parsed and validated manifest
-     * @param sysUserId the user creating the samples
+     * @param entryId             the notebook entry to link samples to
+     * @param manifest            the parsed and validated manifest
+     * @param sysUserId           the user creating the samples
+     * @param manifestDescription optional description/notes about this manifest
+     *                            import
      * @return result containing created samples, accession numbers, and any errors
      */
-    MNTDManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId);
+    MNTDManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId,
+            String manifestDescription);
 
     /**
      * Generate external ID for an MNTD sample based on sample ID and sequence
