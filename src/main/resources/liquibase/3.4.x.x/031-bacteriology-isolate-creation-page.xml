@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- Renumber existing pages 3-8 to 4-9 to make room for Isolate Creation page -->
+    <changeSet id="renumber-bacteriology-pages-for-isolate-creation" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook
+                WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory'
+                  AND n.is_template = true
+                  AND np.page_order = 9
+            </sqlCheck>
+        </preConditions>
+        <comment>Renumber Bacteriology pages 3-8 to 4-9 to insert Isolate Creation page at position 3</comment>
+        <sql>
+            UPDATE clinlims.notebook_page
+            SET page_order = page_order + 1
+            WHERE notebook_id = (SELECT id FROM clinlims.notebook
+                                 WHERE title = 'Bacteriology Laboratory'
+                                 AND is_template = true)
+              AND page_order >= 3;
+        </sql>
+        <rollback>
+            UPDATE clinlims.notebook_page
+            SET page_order = page_order - 1
+            WHERE notebook_id = (SELECT id FROM clinlims.notebook
+                                 WHERE title = 'Bacteriology Laboratory'
+                                 AND is_template = true)
+              AND page_order >= 4;
+        </rollback>
+    </changeSet>
+
+    <!-- Insert Isolate Creation page at position 3 -->
+    <changeSet id="create-bacteriology-page-3-isolate-creation" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook
+                WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory'
+                  AND n.is_template = true
+                  AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Isolate Creation page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Isolate Creation"/>
+            <column name="instructions" value="Create bacterial isolates from verified samples. Select parent samples and specify isolate type and number of isolates. Child isolates maintain parent-child hierarchy for traceability. Mark samples as processing complete when ready for storage assignment."/>
+            <column name="content" value='{"pageDescription":"Isolate Creation - Create child isolates from parent samples","dataPoints":{"isolateConfiguration":{"isolateType":{"type":"reference","label":"Isolate Type","source":"parent_sample_type","required":true},"isolateTypeFreeText":{"type":"text","label":"Isolate Type Description","required":false},"numberOfIsolates":{"type":"number","label":"Number of Isolates","min":1,"max":20,"default":1,"required":true}},"creationMetadata":{"createdBy":{"type":"text","label":"Created By","required":true},"creationDate":{"type":"dateTime","label":"Creation Date/Time","required":true},"notes":{"type":"text","label":"Notes","required":false}}},"systemActions":["Create child samples with parent reference","Maintain hierarchy order","Generate unique isolate identifiers"],"bulkOperations":{"enabled":true,"applyToSelected":["isolateType","isolateTypeFreeText","numberOfIsolates"]},"previousPage":"Laboratory Reception &amp; Verification","nextPage":"Temporary Storage Assignment"}'/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="CHILD_SAMPLE_CREATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for Isolate Creation -->
+    <changeSet id="insert-bacteriology-isolate-creation-page-template" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template
+                WHERE workflow_category = 'BACTERIOLOGY'
+                  AND name = 'Isolate Creation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add workflow page template for Bacteriology Isolate Creation</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="209"/>
+            <column name="name" value="Isolate Creation"/>
+            <column name="display_key" value="workflow.page.bacteriology.isolateCreation"/>
+            <column name="description" value="Create bacterial isolates from verified samples with parent-child hierarchy tracking"/>
+            <column name="default_instructions" value="Select parent samples and create isolates. Specify isolate type and number of isolates per parent. Child isolates are automatically linked to parents for traceability."/>
+            <column name="default_content" value="Isolate Creation - Child sample creation with hierarchy"/>
+            <column name="page_type" value="CHILD_SAMPLE_CREATION"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>id = 209 AND workflow_category = 'BACTERIOLOGY'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Update display_order for subsequent workflow_page_template entries -->
+    <changeSet id="renumber-bacteriology-workflow-template-display-order" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template
+                WHERE workflow_category = 'BACTERIOLOGY'
+                  AND display_order >= 3
+                  AND id != 209
+            </sqlCheck>
+        </preConditions>
+        <comment>Renumber workflow_page_template display_order for Bacteriology pages 3-8 to 4-9</comment>
+        <sql>
+            UPDATE clinlims.workflow_page_template
+            SET display_order = display_order + 1
+            WHERE workflow_category = 'BACTERIOLOGY'
+              AND display_order >= 3
+              AND id != 209;
+        </sql>
+        <rollback>
+            UPDATE clinlims.workflow_page_template
+            SET display_order = display_order - 1
+            WHERE workflow_category = 'BACTERIOLOGY'
+              AND display_order >= 4
+              AND id != 209;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
