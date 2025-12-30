@@ -635,13 +635,40 @@ function BacteriologyPostAnalysisPage({
     setStorageNotes("");
   };
 
+  // Get the most specific location selected in the hierarchy
+  const getLocationInfo = () => {
+    if (storageSelection.box && storageSelection.box.id) {
+      return { locationId: storageSelection.box.id, locationType: "box" };
+    }
+    if (storageSelection.rack && storageSelection.rack.id) {
+      return { locationId: storageSelection.rack.id, locationType: "rack" };
+    }
+    if (storageSelection.shelf && storageSelection.shelf.id) {
+      return { locationId: storageSelection.shelf.id, locationType: "shelf" };
+    }
+    if (storageSelection.device && storageSelection.device.id) {
+      return { locationId: storageSelection.device.id, locationType: "device" };
+    }
+    if (storageSelection.room && storageSelection.room.id) {
+      return { locationId: storageSelection.room.id, locationType: "room" };
+    }
+    return { locationId: null, locationType: null };
+  };
+
   // Handle storage assignment
   const handleAssignStorage = () => {
-    if (!storageSelection.box) {
+    // Check if any hierarchy level is selected
+    if (
+      !storageSelection.room &&
+      !storageSelection.device &&
+      !storageSelection.shelf &&
+      !storageSelection.rack &&
+      !storageSelection.box
+    ) {
       setError(
         intl.formatMessage({
-          id: "notebook.bacteriology.postAnalysis.selectBox",
-          defaultMessage: "Please select a storage box.",
+          id: "notebook.bacteriology.postAnalysis.selectStorage",
+          defaultMessage: "Please select a storage location.",
         }),
       );
       return;
@@ -684,9 +711,11 @@ function BacteriologyPostAnalysisPage({
     });
 
     const nbId = notebookId || entryId;
+    const locationInfo = getLocationInfo();
     const payload = {
       sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
-      boxId: storageSelection.box.id,
+      locationId: locationInfo.locationId,
+      locationType: locationInfo.locationType,
       wellAssignments: wellAssignmentsForBackend,
       condition: selectedCondition.id,
       aliquotType: selectedAliquotType.id,
@@ -1797,7 +1826,13 @@ function BacteriologyPostAnalysisPage({
         })}
         onRequestSubmit={handleAssignStorage}
         primaryButtonDisabled={
-          !storageSelection.box ||
+          !(
+            storageSelection.room ||
+            storageSelection.device ||
+            storageSelection.shelf ||
+            storageSelection.rack ||
+            storageSelection.box
+          ) ||
           !selectedCondition ||
           !selectedAliquotType ||
           Object.keys(wellAssignments).length === 0 ||
