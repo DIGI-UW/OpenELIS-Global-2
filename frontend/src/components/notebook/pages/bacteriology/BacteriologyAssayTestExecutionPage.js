@@ -6096,6 +6096,8 @@ function BacteriologyAssayTestExecutionPage({
                       }
                       placeholder="mm"
                       size="sm"
+                      disabled={false}
+                      type="number"
                     />
                   </Column>
 
@@ -6114,6 +6116,8 @@ function BacteriologyAssayTestExecutionPage({
                       }
                       placeholder="µg/mL"
                       size="sm"
+                      disabled={false}
+                      type="text"
                     />
                   </Column>
 
