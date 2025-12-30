@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="update-inventory-item-type-constraint" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+        </preConditions>
+        <comment>Update chk_item_type constraint to include ENZYME and ANTIBIOTICS item types</comment>
+
+        <!-- Drop the existing constraint -->
+        <dropConstraint schemaName="clinlims" tableName="inventory_item" constraintName="chk_item_type"/>
+
+        <!-- Add the updated constraint with ENZYME and ANTIBIOTICS -->
+        <addConstraint schemaName="clinlims" tableName="inventory_item">
+            <constraints>
+                <check addConstraintName="chk_item_type">item_type IN ('REAGENT', 'RDT', 'CARTRIDGE', 'HIV_KIT', 'SYPHILIS_KIT', 'ENZYME', 'ANTIBIOTICS')</check>
+            </constraints>
+        </addConstraint>
+    </changeSet>
+
+</databaseChangeLog>
