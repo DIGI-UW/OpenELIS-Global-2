@@ -1033,7 +1033,7 @@ function BacteriologyAssayTestExecutionPage({
   const loadEnzymes = useCallback(() => {
     setLoadingEnzymes(true);
     getFromOpenElisServer(
-      "/rest/inventory/item/type/ENZYME",
+      "/rest/inventory/items/type/ENZYME",
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
@@ -1065,7 +1065,7 @@ function BacteriologyAssayTestExecutionPage({
   const loadAntibiotics = useCallback(() => {
     setLoadingAntibiotics(true);
     getFromOpenElisServer(
-      "/rest/inventory/item/type/ANTIBIOTICS",
+      "/rest/inventory/items/type/ANTIBIOTICS",
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
