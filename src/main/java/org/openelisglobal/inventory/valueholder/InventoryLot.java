@@ -48,9 +48,19 @@ public class InventoryLot extends BaseObject<Long> {
     @NotNull
     private InventoryItem inventoryItem;
 
-    @ManyToOne
-    @JoinColumn(name = "storage_location_id")
-    private InventoryStorageLocation storageLocation;
+    // Unified storage hierarchy fields (same as SampleStorageAssignment)
+    // Supports assignment at any level: room, device, shelf, rack, box
+    @Column(name = "location_id")
+    private Integer locationId;
+
+    @Column(name = "location_type", length = 20)
+    private String locationType;
+
+    @Column(name = "position_coordinate", length = 50)
+    private String positionCoordinate;
+
+    @Column(name = "storage_path", length = 500)
+    private String storagePath;
 
     @Column(name = "lot_number", nullable = false, length = 100)
     @NotNull

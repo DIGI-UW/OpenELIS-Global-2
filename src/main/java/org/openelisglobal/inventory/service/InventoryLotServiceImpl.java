@@ -68,12 +68,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) {
-        return inventoryLotDAO.getByStorageLocationId(locationId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryLot> getExpiringLots(int daysFromNow) {
         return inventoryLotDAO.getExpiringLots(daysFromNow);
     }
@@ -318,7 +312,11 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         clone.setId(lot.getId());
         clone.setLotNumber(lot.getLotNumber());
         clone.setInventoryItem(lot.getInventoryItem());
-        clone.setStorageLocation(lot.getStorageLocation());
+        // Unified storage location fields
+        clone.setLocationId(lot.getLocationId());
+        clone.setLocationType(lot.getLocationType());
+        clone.setPositionCoordinate(lot.getPositionCoordinate());
+        clone.setStoragePath(lot.getStoragePath());
         clone.setInitialQuantity(lot.getInitialQuantity());
         clone.setCurrentQuantity(lot.getCurrentQuantity());
         clone.setStatus(lot.getStatus());
@@ -331,5 +329,51 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         clone.setSysUserId(lot.getSysUserId());
         clone.setLastupdated(lot.getLastupdated());
         return clone;
+    }
+
+    @Override
+    @Transactional
+    public InventoryLot updateStorageLocation(Long lotId, Integer locationId, String locationType,
+            String positionCoordinate, String storagePath, String sysUserId) {
+        InventoryLot lot = get(lotId);
+        if (lot == null) {
+            throw new IllegalArgumentException("Lot not found: " + lotId);
+        }
+
+        // Validate location type
+        if (locationType != null && !locationType.isEmpty()) {
+            if (!locationType.equals("room") && !locationType.equals("device") && !locationType.equals("shelf")
+                    && !locationType.equals("rack") && !locationType.equals("box") && !locationType.equals("general")) {
+                throw new IllegalArgumentException("Invalid location type: " + locationType
+                        + ". Must be one of: 'room', 'device', 'shelf', 'rack', 'box', 'general'");
+            }
+        }
+
+        // Detach from session so audit can compare properly
+        inventoryLotDAO.evict(lot);
+
+        // Update unified storage location fields
+        lot.setLocationId(locationId);
+        lot.setLocationType(locationType);
+        lot.setPositionCoordinate(positionCoordinate);
+        lot.setStoragePath(storagePath);
+
+        lot.setSysUserId(sysUserId);
+        lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        // Audit logging is automatic via update() -> auditTrailLog
+        update(lot);
+
+        transactionService.recordTransaction(lotId, TransactionType.MANUAL, 0.0, lot.getCurrentQuantity(), null, null,
+                "Storage location updated to: " + (storagePath != null ? storagePath : locationType + " " + locationId),
+                sysUserId);
+
+        return lot;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryLot> getByUnifiedLocation(Integer locationId, String locationType) {
+        return inventoryLotDAO.getByUnifiedLocation(locationId, locationType);
     }
 }

@@ -129,7 +129,8 @@ const InventoryCatalog = () => {
       const unitsData = await InventoryItemAPI.getUnitOptions();
       const unitLookup = {};
       unitsData.forEach((unit) => {
-        unitLookup[unit.id] = unit.text;
+        // Use String() to ensure consistent key types for lookup
+        unitLookup[String(unit.id)] = unit.text;
       });
       setUnitMap(unitLookup);
     } catch (error) {

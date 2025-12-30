@@ -10,12 +10,10 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
-import org.openelisglobal.inventory.service.InventoryStorageLocationService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
-import org.openelisglobal.inventory.valueholder.InventoryStorageLocation;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -39,9 +37,6 @@ public class InventoryLotRestController extends BaseRestController {
 
     @Autowired
     private InventoryItemService inventoryItemService;
-
-    @Autowired
-    private InventoryStorageLocationService storageLocationService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryLot>> getAll() {
@@ -90,17 +85,6 @@ public class InventoryLotRestController extends BaseRestController {
     public ResponseEntity<List<InventoryLot>> getByItemId(@PathVariable String itemId) {
         try {
             List<InventoryLot> lots = inventoryLotService.getByInventoryItemId(Long.valueOf(itemId));
-            return ResponseEntity.ok(lots);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping(value = "/location/{locationId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getByLocationId(@PathVariable String locationId) {
-        try {
-            List<InventoryLot> lots = inventoryLotService.getByStorageLocationId(Long.valueOf(locationId));
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -177,16 +161,6 @@ public class InventoryLotRestController extends BaseRestController {
                 lot.setInventoryItem(managedItem);
             }
 
-            // Fetch managed StorageLocation entity if provided
-            if (lot.getStorageLocation() != null && lot.getStorageLocation().getId() != null) {
-                Long locationId = lot.getStorageLocation().getId();
-                InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-                if (managedLocation == null) {
-                    return ResponseEntity.badRequest().build();
-                }
-                lot.setStorageLocation(managedLocation);
-            }
-
             InventoryLot savedLot = inventoryLotService.save(lot);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedLot);
         } catch (Exception e) {
@@ -222,16 +196,6 @@ public class InventoryLotRestController extends BaseRestController {
                     return ResponseEntity.badRequest().build();
                 }
                 lot.setInventoryItem(managedItem);
-            }
-
-            // Fetch managed StorageLocation entity if provided
-            if (lot.getStorageLocation() != null && lot.getStorageLocation().getId() != null) {
-                Long locationId = lot.getStorageLocation().getId();
-                InventoryStorageLocation managedLocation = storageLocationService.get(locationId);
-                if (managedLocation == null) {
-                    return ResponseEntity.badRequest().build();
-                }
-                lot.setStorageLocation(managedLocation);
             }
 
             InventoryLot updatedLot = inventoryLotService.update(lot);
@@ -382,6 +346,45 @@ public class InventoryLotRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Update lot storage location using the unified storage hierarchy. This
+     * endpoint replaces the legacy inventory_storage_location with the same storage
+     * hierarchy used by sample storage (room > device > shelf > rack > box).
+     */
+    @PutMapping(value = "/{id}/storage-location", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<InventoryLot> updateStorageLocation(@PathVariable String id,
+            @RequestBody StorageLocationRequest request, HttpServletRequest httpRequest) {
+        try {
+            UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
+            String sysUserId = String.valueOf(usd.getSystemUserId());
+
+            InventoryLot lot = inventoryLotService.updateStorageLocation(Long.valueOf(id), request.getLocationId(),
+                    request.getLocationType(), request.getPositionCoordinate(), request.getStoragePath(), sysUserId);
+            return ResponseEntity.ok(lot);
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get lots by unified storage location (room, device, shelf, rack, or box).
+     */
+    @GetMapping(value = "/unified-location", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<InventoryLot>> getByUnifiedLocation(@RequestParam Integer locationId,
+            @RequestParam String locationType) {
+        try {
+            List<InventoryLot> lots = inventoryLotService.getByUnifiedLocation(locationId, locationType);
+            return ResponseEntity.ok(lots);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @Setter
     @Getter
     public static class OpenLotRequest {
@@ -463,6 +466,26 @@ public class InventoryLotRestController extends BaseRestController {
             this.failedCount = failedCount;
             this.errors = errors;
         }
+
+    }
+
+    /**
+     * Request DTO for updating storage location using the unified storage
+     * hierarchy. Supports assignment at any level: room, device, shelf, rack, box.
+     */
+    @Setter
+    @Getter
+    public static class StorageLocationRequest {
+        /** The location ID (storage_room.id, storage_device.id, etc.) */
+        private Integer locationId;
+        /**
+         * The type of location: 'room', 'device', 'shelf', 'rack', 'box', or 'general'
+         */
+        private String locationType;
+        /** Optional position within the location (e.g., well coordinate in a box) */
+        private String positionCoordinate;
+        /** The hierarchical path string (e.g., "Room A > Freezer 1 > Shelf 2") */
+        private String storagePath;
 
     }
 

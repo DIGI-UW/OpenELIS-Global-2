@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Unify inventory storage with sample storage hierarchy -->
+    <!-- Add polymorphic location fields to inventory_lot table -->
+    <changeSet id="add-unified-storage-to-inventory-lot" author="storage-unification">
+        <comment>
+            Add unified storage location fields to inventory_lot table.
+            This allows inventory lots to use the same storage hierarchy
+            (room > device > shelf > rack > box) as sample storage assignments.
+            The existing storage_location_id is kept for backward compatibility
+            but the new locationId + locationType fields should be used going forward.
+        </comment>
+
+        <!-- Add location_id column -->
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="location_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add location_type column -->
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="location_type" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add position_coordinate column -->
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="position_coordinate" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add storage_path column for caching the hierarchical path -->
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="storage_path" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add check constraint for location_type -->
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            ADD CONSTRAINT chk_inventory_location_type_valid
+            CHECK (location_type IS NULL OR location_type IN ('room', 'device', 'shelf', 'rack', 'box', 'general'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.inventory_lot
+                DROP CONSTRAINT IF EXISTS chk_inventory_location_type_valid;
+            </sql>
+            <dropColumn tableName="inventory_lot" schemaName="clinlims" columnName="storage_path"/>
+            <dropColumn tableName="inventory_lot" schemaName="clinlims" columnName="position_coordinate"/>
+            <dropColumn tableName="inventory_lot" schemaName="clinlims" columnName="location_type"/>
+            <dropColumn tableName="inventory_lot" schemaName="clinlims" columnName="location_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

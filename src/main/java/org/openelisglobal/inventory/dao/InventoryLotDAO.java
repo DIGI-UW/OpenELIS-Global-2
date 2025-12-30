@@ -41,11 +41,6 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
     InventoryLot getByBarcode(String barcode) throws LIMSRuntimeException;
 
     /**
-     * Get lots by storage location
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException;
-
-    /**
      * Get lots by QC status
      */
     List<InventoryLot> getByQCStatus(QCStatus qcStatus) throws LIMSRuntimeException;
@@ -64,4 +59,14 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      * Get lot by FHIR UUID
      */
     InventoryLot getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
+
+    /**
+     * Get lots by unified storage location (room, device, shelf, rack, or box)
+     *
+     * @param locationId   The location ID
+     * @param locationType The location type ('room', 'device', 'shelf', 'rack',
+     *                     'box')
+     * @return List of lots at the specified location
+     */
+    List<InventoryLot> getByUnifiedLocation(Integer locationId, String locationType) throws LIMSRuntimeException;
 }
