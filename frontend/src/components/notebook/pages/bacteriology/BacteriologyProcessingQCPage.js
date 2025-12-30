@@ -1035,7 +1035,7 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         sampleStatus = "REJECTED";
       } else if (qcOutcomeChoice === "CAUTION") {
         qcResult = "FAIL";
-        processingStatus = "IN_PROGRESS";
+        processingStatus = "QC_FAILED_CONTINUE_CAUTION";
         sampleStatus = "IN_PROGRESS";
       } else if (qcOutcomeChoice === "PASSED") {
         qcResult = "PASS";
@@ -1761,45 +1761,27 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         );
       }
 
-      // If sample has explicit QC_FAILED processing status or FAIL qcResult, show QC Failed with option to override
+      // If processing status is QC_FAILED_CONTINUE_CAUTION, show Continue with Caution tag
+      if (processingStatus === "QC_FAILED_CONTINUE_CAUTION") {
+        return (
+          <Tag type="orange" size="sm">
+            <FormattedMessage
+              id="notebook.status.qcFailedContinueCaution"
+              defaultMessage="QC Failed - Continue with Caution"
+            />
+          </Tag>
+        );
+      }
+
+      // If sample has explicit QC_FAILED processing status or FAIL qcResult, show QC Failed tag
       if (processingStatus === "QC_FAILED" || qcResult === "FAIL") {
         return (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            <Tag type="red" size="sm">
-              <FormattedMessage
-                id="notebook.status.qcFailed"
-                defaultMessage="QC Failed"
-              />
-            </Tag>
-            <Tooltip
-              label={intl.formatMessage({
-                id: "notebook.bacteriology.processing.qcFailedTooltip",
-                defaultMessage: "Click to select QC outcome",
-              })}
-            >
-              <button
-                onClick={() => handleOpenQcOverrideModal(sample.id)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: "0 2px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  color: "#d32f2f",
-                }}
-                aria-label="QC options"
-              >
-                <Edit size={14} />
-              </button>
-            </Tooltip>
-          </div>
+          <Tag type="red" size="sm">
+            <FormattedMessage
+              id="notebook.status.qcFailed"
+              defaultMessage="QC Failed"
+            />
+          </Tag>
         );
       }
 
