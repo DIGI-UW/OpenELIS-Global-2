@@ -79,6 +79,10 @@ public class NotebookEntry extends BaseObject<Integer> {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String notes;
 
+    @Column(name = "manifest_description")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String manifestDescription;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "notebook_entry_sample", joinColumns = @JoinColumn(name = "notebook_entry_id"), inverseJoinColumns = @JoinColumn(name = "sample_item_id"))
     private List<SampleItem> samples = new ArrayList<>();
@@ -181,6 +185,14 @@ public class NotebookEntry extends BaseObject<Integer> {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getManifestDescription() {
+        return manifestDescription;
+    }
+
+    public void setManifestDescription(String manifestDescription) {
+        this.manifestDescription = manifestDescription;
     }
 
     public List<SampleItem> getSamples() {
