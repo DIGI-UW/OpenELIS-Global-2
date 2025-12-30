@@ -6056,6 +6056,7 @@ function BacteriologyAssayTestExecutionPage({
                   <Column lg={4} md={2} sm={1}>
                     <Dropdown
                       id={`antibiotic-name-${index}`}
+                      label="Select"
                       items={antibiotics}
                       itemToString={(item) => (item ? item.text : "")}
                       selectedItem={antibiotics.find(
@@ -6082,6 +6083,7 @@ function BacteriologyAssayTestExecutionPage({
                   <Column lg={2} md={1} sm={1}>
                     <TextInput
                       id={`zone-diameter-${index}`}
+                      labelText=" "
                       value={result.zoneDiameter || ""}
                       onChange={(e) =>
                         handleUpdateAntibioticResult(
@@ -6099,6 +6101,7 @@ function BacteriologyAssayTestExecutionPage({
                   <Column lg={3} md={2} sm={1}>
                     <TextInput
                       id={`mic-value-${index}`}
+                      labelText=" "
                       value={result.mic || ""}
                       onChange={(e) =>
                         handleUpdateAntibioticResult(
