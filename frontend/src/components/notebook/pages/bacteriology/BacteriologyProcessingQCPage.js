@@ -32,6 +32,7 @@ import {
   Settings,
   Calendar,
   WarningAlt,
+  Edit,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -506,6 +507,13 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     // Assignment metadata
     notes: "",
   });
+
+  // ==========================================
+  // QC Override Modal State
+  // ==========================================
+  const [qcOverrideModalOpen, setQcOverrideModalOpen] = useState(false);
+  const [selectedQcOverrideSampleId, setSelectedQcOverrideSampleId] =
+    useState(null);
 
   // ==========================================
   // STEP 2: Sample Processing Modal State
@@ -1454,6 +1462,107 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     intl,
   ]);
 
+  // ==========================================
+  // QC Override Modal Handlers
+  // ==========================================
+
+  const handleOpenQcOverrideModal = useCallback((sampleId) => {
+    setSelectedQcOverrideSampleId(sampleId);
+    setQcOverrideModalOpen(true);
+  }, []);
+
+  const handleQcOverrideOption = useCallback(
+    (option) => {
+      if (!selectedQcOverrideSampleId) {
+        setError("Sample not found. Please try again.");
+        setQcOverrideModalOpen(false);
+        return;
+      }
+
+      const numericId = parseInt(selectedQcOverrideSampleId, 10);
+      const dataToSave = {};
+
+      if (option === "FAILED") {
+        // Keep as QC_FAILED - do nothing, just close modal
+        setSuccess(
+          intl.formatMessage({
+            id: "notebook.bacteriology.processing.qcFailedConfirmed",
+            defaultMessage:
+              "Sample processing halted due to QC failure. Please retake sample.",
+          }),
+        );
+        setQcOverrideModalOpen(false);
+        return;
+      } else if (option === "CAUTION") {
+        // Continue with Caution - mark status as IN_PROGRESS/COMPLETED but keep warning
+        dataToSave.processingStatus = "COMPLETED";
+        dataToSave.qcOverride = "CAUTION";
+        dataToSave.qcOverrideNote = "Continued with caution despite QC failure";
+      } else if (option === "PASSED") {
+        // Mark as QC Passed - allow to continue to next step
+        dataToSave.processingStatus = "QC_PASSED";
+        dataToSave.qcResult = "PASS";
+        dataToSave.qcOverride = "PASSED";
+        dataToSave.qcOverrideNote =
+          "QC manually overridden to passed by user decision";
+      }
+
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+        JSON.stringify({
+          sampleIds: [numericId],
+          data: dataToSave,
+        }),
+        (response) => {
+          if (response && !response.error) {
+            // Update status for PASSED override
+            if (option === "PASSED") {
+              postToOpenElisServer(
+                `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+                JSON.stringify({
+                  sampleIds: [numericId],
+                  status: "COMPLETED",
+                }),
+                () => {
+                  setSuccess(
+                    intl.formatMessage({
+                      id: "notebook.bacteriology.processing.qcPassedOverride",
+                      defaultMessage:
+                        "QC status overridden to PASSED. Sample can proceed to testing.",
+                    }),
+                  );
+                  loadPageSamples();
+                  setQcOverrideModalOpen(false);
+                  setSelectedQcOverrideSampleId(null);
+                  if (onProgressUpdate) {
+                    onProgressUpdate();
+                  }
+                },
+              );
+            } else if (option === "CAUTION") {
+              setSuccess(
+                intl.formatMessage({
+                  id: "notebook.bacteriology.processing.continueCaution",
+                  defaultMessage:
+                    "Sample marked to continue with caution. Verify results carefully.",
+                }),
+              );
+              loadPageSamples();
+              setQcOverrideModalOpen(false);
+              setSelectedQcOverrideSampleId(null);
+              if (onProgressUpdate) {
+                onProgressUpdate();
+              }
+            }
+          } else {
+            setError("Failed to update QC status. Please try again.");
+          }
+        },
+      );
+    },
+    [selectedQcOverrideSampleId, pageData?.id, loadPageSamples, intl],
+  );
+
   // Get culture media labels
   const getCultureMediaLabel = (mediaIds) => {
     if (!mediaIds || !Array.isArray(mediaIds) || mediaIds.length === 0)
@@ -1566,15 +1675,45 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
       const processingStatus = sample.processingStatus;
       const qcResult = sample.qcResult;
 
-      // If sample has explicit QC_FAILED processing status or FAIL qcResult, show QC Failed
+      // If sample has explicit QC_FAILED processing status or FAIL qcResult, show QC Failed with option to override
       if (processingStatus === "QC_FAILED" || qcResult === "FAIL") {
         return (
-          <Tag type="red" size="sm">
-            <FormattedMessage
-              id="notebook.status.qcFailed"
-              defaultMessage="QC Failed"
-            />
-          </Tag>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <Tag type="red" size="sm">
+              <FormattedMessage
+                id="notebook.status.qcFailed"
+                defaultMessage="QC Failed"
+              />
+            </Tag>
+            <Tooltip
+              label={intl.formatMessage({
+                id: "notebook.bacteriology.processing.qcFailedTooltip",
+                defaultMessage: "Click to select QC outcome",
+              })}
+            >
+              <button
+                onClick={() => handleOpenQcOverrideModal(sample.id)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: "0 2px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  color: "#d32f2f",
+                }}
+                aria-label="QC options"
+              >
+                <Edit size={14} />
+              </button>
+            </Tooltip>
+          </div>
         );
       }
 
@@ -1598,12 +1737,42 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         const qcStatus = getSampleQCStatus(sample);
         if (qcStatus.status === "FAILED") {
           return (
-            <Tag type="red" size="sm">
-              <FormattedMessage
-                id="notebook.status.qcFailed"
-                defaultMessage="QC Failed"
-              />
-            </Tag>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <Tag type="red" size="sm">
+                <FormattedMessage
+                  id="notebook.status.qcFailed"
+                  defaultMessage="QC Failed"
+                />
+              </Tag>
+              <Tooltip
+                label={intl.formatMessage({
+                  id: "notebook.bacteriology.processing.qcFailedTooltip",
+                  defaultMessage: "Click to select QC outcome",
+                })}
+              >
+                <button
+                  onClick={() => handleOpenQcOverrideModal(sample.id)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "0 2px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    color: "#d32f2f",
+                  }}
+                  aria-label="QC options"
+                >
+                  <Edit size={14} />
+                </button>
+              </Tooltip>
+            </div>
           );
         }
         if (qcStatus.status === "PASSED") {
@@ -1631,12 +1800,42 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
           );
         case "REJECTED":
           return (
-            <Tag type="red" size="sm">
-              <FormattedMessage
-                id="notebook.status.qcFailed"
-                defaultMessage="QC Failed"
-              />
-            </Tag>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <Tag type="red" size="sm">
+                <FormattedMessage
+                  id="notebook.status.qcFailed"
+                  defaultMessage="QC Failed"
+                />
+              </Tag>
+              <Tooltip
+                label={intl.formatMessage({
+                  id: "notebook.bacteriology.processing.qcFailedTooltip",
+                  defaultMessage: "Click to select QC outcome",
+                })}
+              >
+                <button
+                  onClick={() => handleOpenQcOverrideModal(sample.id)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: "0 2px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    color: "#d32f2f",
+                  }}
+                  aria-label="QC options"
+                >
+                  <Edit size={14} />
+                </button>
+              </Tooltip>
+            </div>
           );
         case "IN_PROGRESS":
           return (
@@ -2935,6 +3134,175 @@ function BacteriologyProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
             rows={2}
             placeholder="Additional observations, deviations, or comments..."
           />
+        </div>
+      </Modal>
+
+      {/* ==========================================
+          MODAL - QC Override Options
+          Allows supervisor to choose action when QC fails
+          ========================================== */}
+      <Modal
+        open={qcOverrideModalOpen}
+        modalHeading={intl.formatMessage({
+          id: "notebook.bacteriology.processing.qcOverrideTitle",
+          defaultMessage: "QC Failure - Choose Action",
+        })}
+        onRequestClose={() => setQcOverrideModalOpen(false)}
+        size="sm"
+        danger
+      >
+        <div style={{ marginBottom: "2rem" }}>
+          <p style={{ marginBottom: "1.5rem", color: "#525252" }}>
+            <FormattedMessage
+              id="notebook.bacteriology.processing.qcOverrideDescription"
+              defaultMessage="The preparation has failed QC checks. Choose how to proceed:"
+            />
+          </p>
+
+          {/* QC Options */}
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
+            {/* Option 1: Keep QC Failed */}
+            <button
+              onClick={() => handleQcOverrideOption("FAILED")}
+              style={{
+                padding: "1rem",
+                border: "2px solid #d32f2f",
+                backgroundColor: "#fff",
+                borderRadius: "4px",
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#ffebee";
+                e.currentTarget.style.borderColor = "#c62828";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff";
+                e.currentTarget.style.borderColor = "#d32f2f";
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: "600",
+                  color: "#d32f2f",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.bacteriology.processing.qcFailedOption"
+                  defaultMessage="QC Failed"
+                />
+              </div>
+              <div style={{ fontSize: "12px", color: "#525252" }}>
+                <FormattedMessage
+                  id="notebook.bacteriology.processing.qcFailedDescription"
+                  defaultMessage="Stop processing. Sample must be retaken and reprocessed."
+                />
+              </div>
+            </button>
+
+            {/* Option 2: Continue with Caution */}
+            <button
+              onClick={() => handleQcOverrideOption("CAUTION")}
+              style={{
+                padding: "1rem",
+                border: "2px solid #f57f17",
+                backgroundColor: "#fff",
+                borderRadius: "4px",
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff3e0";
+                e.currentTarget.style.borderColor = "#e65100";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff";
+                e.currentTarget.style.borderColor = "#f57f17";
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: "600",
+                  color: "#f57f17",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.bacteriology.processing.continueWithCautionOption"
+                  defaultMessage="Continue with Caution"
+                />
+              </div>
+              <div style={{ fontSize: "12px", color: "#525252" }}>
+                <FormattedMessage
+                  id="notebook.bacteriology.processing.continueWithCautionDescription"
+                  defaultMessage="Proceed to testing, but flag for supervisor review. Results require verification."
+                />
+              </div>
+            </button>
+
+            {/* Option 3: Mark as QC Passed */}
+            <button
+              onClick={() => handleQcOverrideOption("PASSED")}
+              style={{
+                padding: "1rem",
+                border: "2px solid #2e7d32",
+                backgroundColor: "#fff",
+                borderRadius: "4px",
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#e8f5e9";
+                e.currentTarget.style.borderColor = "#1b5e20";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff";
+                e.currentTarget.style.borderColor = "#2e7d32";
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: "600",
+                  color: "#2e7d32",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.bacteriology.processing.markQcPassedOption"
+                  defaultMessage="Mark as QC Passed"
+                />
+              </div>
+              <div style={{ fontSize: "12px", color: "#525252" }}>
+                <FormattedMessage
+                  id="notebook.bacteriology.processing.markQcPassedDescription"
+                  defaultMessage="Override QC failure. Sample proceeds to testing. Document reason in notes."
+                />
+              </div>
+            </button>
+          </div>
+
+          {/* Warning */}
+          <div
+            style={{
+              marginTop: "1.5rem",
+              padding: "0.75rem",
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffc107",
+              borderRadius: "4px",
+              fontSize: "12px",
+              color: "#664d03",
+            }}
+          >
+            <strong>Warning:</strong> Overriding QC failures may compromise
+            sample integrity and result quality. Ensure appropriate supervisor
+            authorization and documentation.
+          </div>
         </div>
       </Modal>
     </div>
