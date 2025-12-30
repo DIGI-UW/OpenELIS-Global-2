@@ -649,6 +649,10 @@ function BacteriologyAssayTestExecutionPage({
   const [reagents, setReagents] = useState([]);
   const [loadingReagents, setLoadingReagents] = useState(false);
 
+  // Enzymes from inventory
+  const [enzymes, setEnzymes] = useState([]);
+  const [loadingEnzymes, setLoadingEnzymes] = useState(false);
+
   // ==========================================
   // SECTION A: Primary Culture & Microscopy State
   // ==========================================
@@ -921,6 +925,7 @@ function BacteriologyAssayTestExecutionPage({
     componentMounted.current = true;
     loadPageSamples();
     loadReagents();
+    loadEnzymes();
 
     return () => {
       componentMounted.current = false;
@@ -1037,6 +1042,38 @@ function BacteriologyAssayTestExecutionPage({
             setReagents([]);
           }
           setLoadingReagents(false);
+        }
+      },
+    );
+  }, []);
+
+  const loadEnzymes = useCallback(() => {
+    setLoadingEnzymes(true);
+    getFromOpenElisServer(
+      "/rest/inventory/item/type/ENZYME",
+      (response) => {
+        if (componentMounted.current) {
+          if (response && Array.isArray(response)) {
+            const enzymeOptions = response.map((enzyme) => ({
+              id: enzyme.id,
+              text: enzyme.name,
+              name: enzyme.name,
+              catalogNumber: enzyme.catalogNumber,
+              manufacturer: enzyme.manufacturer,
+              ...enzyme,
+            }));
+            setEnzymes(enzymeOptions);
+          } else {
+            setEnzymes(PCR_ENZYMES); // Fallback to hardcoded list
+          }
+          setLoadingEnzymes(false);
+        }
+      },
+      () => {
+        // On error, use the hardcoded PCR_ENZYMES list as fallback
+        if (componentMounted.current) {
+          setEnzymes(PCR_ENZYMES);
+          setLoadingEnzymes(false);
         }
       },
     );
@@ -6683,9 +6720,9 @@ function BacteriologyAssayTestExecutionPage({
                     defaultMessage: "Enzyme/Master Mix",
                   })}
                   label="Select enzyme"
-                  items={PCR_ENZYMES}
+                  items={enzymes.length > 0 ? enzymes : PCR_ENZYMES}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={PCR_ENZYMES.find(
+                  selectedItem={(enzymes.length > 0 ? enzymes : PCR_ENZYMES).find(
                     (e) => e.id === pcrData.enzyme,
                   )}
                   onChange={({ selectedItem }) =>
@@ -6694,6 +6731,7 @@ function BacteriologyAssayTestExecutionPage({
                       enzyme: selectedItem?.id || "",
                     })
                   }
+                  disabled={loadingEnzymes}
                 />
               </Column>
 
