@@ -45,6 +45,7 @@
     <include file="liquibase/3.4.x.x/028-bacteriology-post-analysis-page.xml"/>
     <include file="liquibase/3.4.x.x/029-bacteriology-retrieval-disposal-page.xml"/>
     <include file="liquibase/3.4.x.x/030-bacteriology-reporting-data-export-page.xml"/>
+    <include file="liquibase/3.4.x.x/031-bacteriology-isolate-creation-page.xml"/>
     <include file="liquibase/3.4.x.x/031-immunology-reporting-redcap-page.xml"/>
     <include file="liquibase/3.4.x.x/032-notebook-delivery-record.xml"/>
     <include file="liquibase/3.4.x.x/031-mntd-environmental-monitoring-page.xml"/>
@@ -59,5 +60,6 @@
     <include file="liquibase/3.4.x.x/037-update-inventory-item-type-constraint.xml"/>
     <include file="liquibase/3.4.x.x/039-seed-inventory-enzymes.xml"/>
     <include file="liquibase/3.4.x.x/040-seed-inventory-antibiotics.xml"/>
+    <include file="liquibase/3.4.x.x/035-notebook-entry-manifest-description.xml"/>
 
 </databaseChangeLog>

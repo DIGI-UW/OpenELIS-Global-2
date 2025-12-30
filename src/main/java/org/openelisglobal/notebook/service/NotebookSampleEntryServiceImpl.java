@@ -11,6 +11,8 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,9 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private SampleService sampleService;
 
     @Override
     @Transactional(readOnly = true)
@@ -269,8 +274,17 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
                             + " completed up to page order: " + completedUpToOrder + " (fallback mode)");
                 }
 
-                // Create NotebookPageSample records for ALL pages
+                // Create NotebookPageSample records ONLY for pages up to and including
+                // the current page (where child is being created). Child will progress to
+                // subsequent pages when marked complete on current page.
                 for (NoteBookPage page : sortedPages) {
+                    Integer pageOrder = page.getOrder() != null ? page.getOrder() : Integer.MAX_VALUE;
+
+                    // Only create records for pages up to the current page
+                    if (currentPageOrder != null && pageOrder > currentPageOrder) {
+                        continue; // Skip future pages
+                    }
+
                     createChildPageSampleInheritingFromParent(page, childId, parentId, completedUpToOrder,
                             new ArrayList<>());
                 }
@@ -401,8 +415,28 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
     private SampleItem createChildSample(SampleItem parent, String externalIdPrefix, int sequence, String sysUserId) {
         SampleItem child = new SampleItem();
 
-        // Copy relevant properties from parent
-        child.setSample(parent.getSample());
+        // Create a NEW Sample object with a unique accession number for this child
+        // This ensures children don't share the same accession number as their parent
+        Sample parentSample = parent.getSample();
+        Sample childSample = new Sample();
+
+        // Copy relevant properties from parent's Sample
+        childSample.setEnteredDate(parentSample.getEnteredDate()); // Required NOT NULL field
+        childSample.setCollectionDate(parentSample.getCollectionDate());
+        childSample.setReceivedDate(parentSample.getReceivedDate());
+        childSample.setReceivedTimestamp(parentSample.getReceivedTimestamp());
+        childSample.setStatusId(parentSample.getStatusId());
+        childSample.setDomain(parentSample.getDomain());
+        childSample.setReferringId(parentSample.getReferringId());
+        childSample.setClinicalOrderId(parentSample.getClinicalOrderId());
+        childSample.setPriority(parentSample.getPriority());
+        childSample.setSysUserId(sysUserId);
+
+        // Generate unique accession number and insert the new Sample
+        sampleService.generateAccessionNumberAndInsert(childSample);
+
+        // Set the new Sample on the child SampleItem
+        child.setSample(childSample);
         child.setTypeOfSample(parent.getTypeOfSample());
         child.setSourceOfSample(parent.getSourceOfSample());
         child.setCollector(parent.getCollector());

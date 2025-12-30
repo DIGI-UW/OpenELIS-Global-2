@@ -167,7 +167,8 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
 
     @Override
     @Transactional
-    public MNTDManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId) {
+    public MNTDManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId,
+            String manifestDescription) {
         List<SampleItem> createdSamples = new ArrayList<>();
         List<String> createdAccessionNumbers = new ArrayList<>();
         List<ParseError> errors = new ArrayList<>();
@@ -180,6 +181,13 @@ public class MNTDManifestImportServiceImpl implements MNTDManifestImportService 
         }
 
         NotebookEntry entry = optEntry.get();
+
+        // Store manifest description if provided
+        if (manifestDescription != null && !manifestDescription.isBlank()) {
+            entry.setManifestDescription(manifestDescription.trim());
+            entry.setSysUserId(sysUserId);
+            notebookEntryService.update(entry);
+        }
         int totalRequested = 0;
 
         for (MNTDManifestRow row : manifest.rows()) {

@@ -12,8 +12,11 @@ import {
   Tile,
   InlineNotification,
   Tag,
+  ExpandableTile,
+  TileAboveTheFoldContent,
+  TileBelowTheFoldContent,
 } from "@carbon/react";
-import { Upload, Checkmark, Printer } from "@carbon/react/icons";
+import { Upload, Checkmark, Printer, Document } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -57,13 +60,28 @@ function MNTDSampleIntakePage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // State for manifest description
+  const [manifestDescription, setManifestDescription] = useState(null);
+
   // Modal state for import
   const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Load entry data to get manifest description
+  const loadEntryData = useCallback(() => {
+    if (!entryId) return;
+
+    getFromOpenElisServer(`/rest/notebook-entry/${entryId}`, (response) => {
+      if (componentMounted.current && response) {
+        setManifestDescription(response.manifestDescription || null);
+      }
+    });
+  }, [entryId]);
 
   // Load samples for this page
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
+    loadEntryData();
 
     return () => {
       componentMounted.current = false;
@@ -116,11 +134,12 @@ function MNTDSampleIntakePage({
   const handleImportSuccess = useCallback(
     (result) => {
       loadPageSamples();
+      loadEntryData(); // Reload to get updated manifest description
       if (onProgressUpdate) {
         onProgressUpdate();
       }
     },
-    [loadPageSamples, onProgressUpdate],
+    [loadPageSamples, loadEntryData, onProgressUpdate],
   );
 
   // Handle bulk mark as registered
@@ -228,6 +247,24 @@ function MNTDSampleIntakePage({
         </Column>
       </Grid>
 
+      {/* Manifest Description Display */}
+      {manifestDescription && (
+        <div className="manifest-description-display">
+          <Tile className="manifest-info-tile">
+            <div className="manifest-info-header">
+              <Document size={16} />
+              <span className="manifest-info-label">
+                <FormattedMessage
+                  id="notebook.page.mntd.manifestDescription.label"
+                  defaultMessage="Manifest Notes"
+                />
+              </span>
+            </div>
+            <p className="manifest-info-text">{manifestDescription}</p>
+          </Tile>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <Button
@@ -312,7 +349,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sampleType",
                     defaultMessage: "Sample Type",
                   }),
-                  render: (value, sample) => sample.sampleType || "-",
+                  render: (value, sample) => sample?.sampleType || value || "-",
                 },
                 {
                   key: "projectName",
@@ -320,7 +357,8 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.projectName",
                     defaultMessage: "Project",
                   }),
-                  render: (value, sample) => sample.projectName || "-",
+                  render: (value, sample) =>
+                    sample?.projectName || value || "-",
                 },
                 {
                   key: "sampleSourceLocation",
@@ -328,7 +366,8 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sourceLocation",
                     defaultMessage: "Source Location",
                   }),
-                  render: (value, sample) => sample.sampleSourceLocation || "-",
+                  render: (value, sample) =>
+                    sample?.sampleSourceLocation || value || "-",
                 },
                 {
                   key: "broughtBy",
@@ -336,7 +375,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.broughtBy",
                     defaultMessage: "Brought By",
                   }),
-                  render: (value, sample) => sample.broughtBy || "-",
+                  render: (value, sample) => sample?.broughtBy || value || "-",
                 },
               ]}
             />
@@ -386,7 +425,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sampleType",
                     defaultMessage: "Sample Type",
                   }),
-                  render: (value, sample) => sample.sampleType || "-",
+                  render: (value, sample) => sample?.sampleType || value || "-",
                 },
                 {
                   key: "projectName",
@@ -394,7 +433,8 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.projectName",
                     defaultMessage: "Project",
                   }),
-                  render: (value, sample) => sample.projectName || "-",
+                  render: (value, sample) =>
+                    sample?.projectName || value || "-",
                 },
                 {
                   key: "sampleSourceLocation",
@@ -402,7 +442,8 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.sourceLocation",
                     defaultMessage: "Source Location",
                   }),
-                  render: (value, sample) => sample.sampleSourceLocation || "-",
+                  render: (value, sample) =>
+                    sample?.sampleSourceLocation || value || "-",
                 },
                 {
                   key: "broughtBy",
@@ -410,7 +451,7 @@ function MNTDSampleIntakePage({
                     id: "notebook.sample.broughtBy",
                     defaultMessage: "Brought By",
                   }),
-                  render: (value, sample) => sample.broughtBy || "-",
+                  render: (value, sample) => sample?.broughtBy || value || "-",
                 },
               ]}
             />

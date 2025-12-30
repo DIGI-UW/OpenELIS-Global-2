@@ -24,6 +24,7 @@ import {
   BacteriologySampleReceptionPage,
   BacteriologyReceptionVerificationPage,
   BacteriologyTemporaryStoragePage,
+  BacteriologyIsolateCreationPage,
   BacteriologyProcessingQCPage,
   BacteriologyAssayTestExecutionPage,
   BacteriologyPostAnalysisPage,
@@ -36,22 +37,24 @@ import "./NotebookWorkflow.css";
  * Default workflow pages for Bacteriology workflow.
  * Page 1: Sample Reception (Manifest Import)
  * Page 2: Laboratory Reception & Verification (QC Assessment)
- * Page 3: Temporary Storage Assignment
- * Page 4: Processing & Quality Control
- * Page 5: Assay/Test Execution
- * Page 6: Post-Analysis Storage
- * Page 7: Sample Retrieval, Archival & Disposal
- * Page 8: Reporting & Data Export
+ * Page 3: Isolate Creation
+ * Page 4: Temporary Storage Assignment
+ * Page 5: Processing & Quality Control
+ * Page 6: Assay/Test Execution
+ * Page 7: Post-Analysis Storage
+ * Page 8: Sample Retrieval, Archival & Disposal
+ * Page 9: Reporting & Data Export
  */
 const DEFAULT_BACTERIOLOGY_WORKFLOW_PAGES = [
   { id: "default-1", order: 1, title: "Sample Reception" },
   { id: "default-2", order: 2, title: "Laboratory Reception & Verification" },
-  { id: "default-3", order: 3, title: "Temporary Storage Assignment" },
-  { id: "default-4", order: 4, title: "Processing & Quality Control" },
-  { id: "default-5", order: 5, title: "Assay/Test Execution" },
-  { id: "default-6", order: 6, title: "Post-Analysis Storage" },
-  { id: "default-7", order: 7, title: "Sample Retrieval, Archival & Disposal" },
-  { id: "default-8", order: 8, title: "Reporting & Data Export" },
+  { id: "default-3", order: 3, title: "Isolate Creation" },
+  { id: "default-4", order: 4, title: "Temporary Storage Assignment" },
+  { id: "default-5", order: 5, title: "Processing & Quality Control" },
+  { id: "default-6", order: 6, title: "Assay/Test Execution" },
+  { id: "default-7", order: 7, title: "Post-Analysis Storage" },
+  { id: "default-8", order: 8, title: "Sample Retrieval, Archival & Disposal" },
+  { id: "default-9", order: 9, title: "Reporting & Data Export" },
 ];
 
 /**
@@ -376,7 +379,19 @@ function BacteriologyWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 3:
-        // Page 3: Temporary Storage Assignment
+        // Page 3: Isolate Creation
+        return (
+          <BacteriologyIsolateCreationPage
+            key={`isolate-creation-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 4:
+        // Page 4: Temporary Storage Assignment
         return (
           <BacteriologyTemporaryStoragePage
             key={`storage-${page.id}`}
@@ -387,8 +402,8 @@ function BacteriologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 4:
-        // Page 4: Processing & Quality Control
+      case 5:
+        // Page 5: Processing & Quality Control
         return (
           <BacteriologyProcessingQCPage
             key={`processing-qc-${page.id}`}
@@ -399,8 +414,8 @@ function BacteriologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 5:
-        // Page 5: Assay/Test Execution
+      case 6:
+        // Page 6: Assay/Test Execution
         return (
           <BacteriologyAssayTestExecutionPage
             key={`assay-execution-${page.id}`}
@@ -411,8 +426,8 @@ function BacteriologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 6:
-        // Page 6: Post-Analysis Storage
+      case 7:
+        // Page 7: Post-Analysis Storage
         return (
           <BacteriologyPostAnalysisPage
             key={`post-analysis-${page.id}`}
@@ -423,8 +438,8 @@ function BacteriologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 7:
-        // Page 7: Sample Retrieval, Archival & Disposal
+      case 8:
+        // Page 8: Sample Retrieval, Archival & Disposal
         return (
           <BacteriologySampleRetrievalDisposalPage
             key={`retrieval-disposal-${page.id}`}
@@ -435,8 +450,8 @@ function BacteriologyWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 8:
-        // Page 8: Reporting & Data Export
+      case 9:
+        // Page 9: Reporting & Data Export
         return (
           <BacteriologyReportingDataExportPage
             key={`reporting-export-${page.id}`}
