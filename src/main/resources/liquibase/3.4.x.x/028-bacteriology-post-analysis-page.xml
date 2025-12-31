@@ -71,11 +71,11 @@
     <changeSet id="028-2-add-bacteriology-post-analysis-template" author="openelis">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM workflow_page_template WHERE id = 206
+                SELECT COUNT(*) FROM workflow_page_template WHERE id = 306
             </sqlCheck>
         </preConditions>
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" value="206"/>
+            <column name="id" value="306"/>
             <column name="name" value="Post-Analysis Storage"/>
             <column name="display_key" value="workflow.page.bacteriology.postAnalysis"/>
             <column name="description" value="Store processed samples (isolates, DNA, primary samples) with appropriate storage conditions and environmental monitoring."/>

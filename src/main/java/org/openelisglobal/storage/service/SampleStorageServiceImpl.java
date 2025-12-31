@@ -224,7 +224,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate, String notes) {
         if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
             throw new LIMSRuntimeException("SampleItem ID is required");
@@ -264,7 +264,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
         try {
             // Validate inputs
@@ -483,7 +483,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
             String locationType, String positionCoordinate, String notes) {
         try {
@@ -738,7 +738,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes) {
         try {

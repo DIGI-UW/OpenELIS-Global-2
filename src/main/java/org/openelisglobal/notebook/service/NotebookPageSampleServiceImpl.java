@@ -76,7 +76,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional(readOnly = true)
     public PageProgress getPageProgress(Integer pageId) {
         Map<Status, Long> counts = baseObjectDAO.getStatusCountsByPageId(pageId);
-        return PageProgress.from(counts);
+        return NotebookPageSampleService.createPageProgress(counts);
     }
 
     @Override
@@ -152,34 +152,67 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                                             : "null"));
                 }
 
-                // Check if this is a routing page
+                // Check if this is a routing page or storage page
                 boolean isRoutingPage = noteBookService.isRoutingPage(pageId);
-                LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                        "T150: pageId=" + pageId + " isRoutingPage=" + isRoutingPage);
+                boolean isStoragePage = noteBookService.isStoragePage(pageId);
+                LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus", "T150: pageId=" + pageId
+                        + " isRoutingPage=" + isRoutingPage + " isStoragePage=" + isStoragePage);
                 NoteBookPage archivingPage = null;
                 Integer notebookId = null;
 
-                if (isRoutingPage && page == null) {
-                    page = noteBookService.getPage(pageId);
-                }
-                if (isRoutingPage && page != null) {
-                    // Initialize lazy-loaded notebook reference
-                    org.hibernate.Hibernate.initialize(page.getNotebook());
-                    if (page.getNotebook() != null) {
-                        notebookId = page.getNotebook().getId();
-                        archivingPage = noteBookService.getLastPage(notebookId);
-                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                                "Routing page detected: pageId=" + pageId + ", notebookId=" + notebookId
-                                        + ", archivingPageId="
-                                        + (archivingPage != null ? archivingPage.getId() : "null"));
+                // For both routing pages and storage pages, we need the archiving page
+                // Always ensure page is loaded for routing/storage pages
+                if (isRoutingPage || isStoragePage) {
+                    if (page == null) {
+                        page = noteBookService.getPage(pageId);
+                    }
+                    if (page != null) {
+                        // Initialize lazy-loaded notebook reference
+                        org.hibernate.Hibernate.initialize(page.getNotebook());
+                        if (page.getNotebook() != null) {
+                            notebookId = page.getNotebook().getId();
+
+                            // Log notebook pages for debugging
+                            org.hibernate.Hibernate.initialize(page.getNotebook().getPages());
+                            java.util.List<NoteBookPage> allPages = page.getNotebook().getPages();
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus", "Notebook " + notebookId
+                                    + " has " + (allPages != null ? allPages.size() : 0) + " pages");
+                            if (allPages != null) {
+                                for (NoteBookPage p : allPages) {
+                                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus", "  Page: id="
+                                            + p.getId() + " order=" + p.getOrder() + " title='" + p.getTitle() + "'");
+                                }
+                            }
+
+                            archivingPage = noteBookService.getLastPage(notebookId);
+                            LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                    (isStoragePage ? "Storage" : "Routing") + " page detected: pageId=" + pageId
+                                            + ", notebookId=" + notebookId + ", archivingPageId="
+                                            + (archivingPage != null ? archivingPage.getId() : "null")
+                                            + ", archivingPageTitle="
+                                            + (archivingPage != null ? archivingPage.getTitle() : "null"));
+                        } else {
+                            LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatus",
+                                    "Page notebook reference is null for pageId=" + pageId);
+                        }
+                    } else {
+                        LogEvent.logWarn(this.getClass().getName(), "bulkUpdateStatus",
+                                "Could not load page for pageId=" + pageId);
                     }
                 }
 
                 for (Integer sampleId : batch) {
                     NoteBookPage targetPage = nextPage; // default to next page
 
+                    // For storage pages, always skip to archiving page (Disposal & Archiving)
+                    // Storage samples skip the Reporting page
+                    if (isStoragePage && archivingPage != null) {
+                        targetPage = archivingPage;
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                "Sample " + sampleId + " on storage page, skipping to archiving page");
+                    }
                     // For routing pages, check where the sample is routed
-                    if (isRoutingPage && notebookId != null) {
+                    else if (isRoutingPage && notebookId != null) {
                         SampleRouting routing = sampleRoutingService.getByNotebookIdAndSampleItemId(notebookId,
                                 sampleId);
                         if (routing != null) {
@@ -244,6 +277,72 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         }
     }
 
+    private void updateCompletionInfoString(Integer pageId, List<String> sampleIds, SystemUser user) {
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        for (String sampleId : sampleIds) {
+            NotebookPageSample nps = getBySampleItemIdAndPageId(sampleId, pageId);
+            if (nps != null) {
+                nps.setCompletedBy(user);
+                nps.setCompletedAt(now);
+                update(nps);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status, String userId) {
+        int totalUpdated = 0;
+        SystemUser user = systemUserService.get(userId);
+
+        // Get the page reference for creating new records
+        NoteBookPage page = null;
+
+        // Process in batches to avoid memory issues with large sample lists
+        for (int i = 0; i < sampleIds.size(); i += BATCH_SIZE) {
+            int endIndex = Math.min(i + BATCH_SIZE, sampleIds.size());
+            List<String> batch = sampleIds.subList(i, endIndex);
+
+            // Update existing records using String-based DAO method
+            int updated = baseObjectDAO.bulkUpdateStatusString(pageId, batch, status);
+            totalUpdated += updated;
+
+            // For samples that don't have NotebookPageSample records yet, create them
+            for (String sampleId : batch) {
+                NotebookPageSample existing = getBySampleItemIdAndPageId(sampleId, pageId);
+                if (existing == null) {
+                    // Lazy load page reference only when needed
+                    if (page == null) {
+                        page = noteBookService.getPage(pageId);
+                        if (page == null) {
+                            throw new IllegalArgumentException("Page not found: " + pageId);
+                        }
+                    }
+
+                    // Create a new NotebookPageSample record with string ID
+                    NotebookPageSample nps = new NotebookPageSample();
+                    nps.setNotebookPage(page);
+                    nps.setSampleItemId(sampleId);
+                    nps.setStatus(status);
+                    if (status == Status.COMPLETED) {
+                        nps.setCompletedBy(user);
+                        nps.setCompletedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+                    }
+                    insert(nps);
+                    totalUpdated++;
+                }
+            }
+
+            // If marking as COMPLETED, update completed_by and completed_at for existing
+            // records
+            if (status == Status.COMPLETED) {
+                updateCompletionInfoString(pageId, batch, user);
+            }
+        }
+
+        return totalUpdated;
+    }
+
     @Override
     @Transactional
     public int bulkApplyData(Integer pageId, List<Integer> sampleIds, Map<String, Object> data, String userId) {
@@ -296,7 +395,12 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Override
     @Transactional
     public void createPageSamplesForNotebook(Integer notebookId, Integer sampleItemId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
@@ -354,6 +458,31 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         NotebookPageSample nps = new NotebookPageSample();
         nps.setNotebookPage(page);
         nps.setSampleItemId(sampleItemId.toString());
+        nps.setStatus(status != null ? status : Status.PENDING);
+        insert(nps);
+    }
+
+    @Override
+    @Transactional
+    public void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status) {
+        if (pageId == null || sampleItemId == null || sampleItemId.isEmpty()) {
+            return;
+        }
+
+        // Check if record already exists using string-based lookup
+        NotebookPageSample existing = getBySampleItemIdAndPageId(sampleItemId, pageId);
+        if (existing != null) {
+            return; // Already exists
+        }
+
+        NoteBookPage page = noteBookService.getPage(pageId);
+        if (page == null) {
+            throw new IllegalArgumentException("Page not found: " + pageId);
+        }
+
+        NotebookPageSample nps = new NotebookPageSample();
+        nps.setNotebookPage(page);
+        nps.setSampleItemId(sampleItemId);
         nps.setStatus(status != null ? status : Status.PENDING);
         insert(nps);
     }

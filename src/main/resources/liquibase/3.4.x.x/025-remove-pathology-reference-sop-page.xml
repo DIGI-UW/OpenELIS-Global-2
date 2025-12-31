@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- REMOVE REFERENCE & SOP MODULE PAGE FROM PATHOLOGY -->
+    <!-- Removes page 8 (Reference & SOP Module) from the -->
+    <!-- Pathology Laboratory notebook template and all instances -->
+    <!-- ======================================================== -->
+
+    <changeSet id="remove-pathology-reference-sop-page" author="openelis-pathology">
+        <comment>Remove Reference &amp; SOP Module page from Pathology Laboratory notebook</comment>
+
+        <!-- Delete NotebookPageSample records for the Reference & SOP page -->
+        <sql>
+            DELETE FROM clinlims.notebook_page_sample
+            WHERE notebook_page_id IN (
+                SELECT np.id FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory'
+                AND np.title = 'Reference &amp; SOP Module'
+            );
+        </sql>
+
+        <!-- Delete the Reference & SOP Module page from all Pathology notebooks -->
+        <sql>
+            DELETE FROM clinlims.notebook_page
+            WHERE title = 'Reference &amp; SOP Module'
+            AND notebook_id IN (
+                SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory'
+            );
+        </sql>
+
+        <!-- Update Disposal & Archiving page content to remove nextPage reference -->
+        <sql>
+            UPDATE clinlims.notebook_page
+            SET content = REPLACE(content, '"nextPage": "Reference &amp; SOP Module"', '"nextPage": null')
+            WHERE title = 'Disposal &amp; Archiving'
+            AND notebook_id IN (
+                SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory'
+            );
+        </sql>
+
+        <rollback>
+            <!-- No rollback - page removal is intentional -->
+        </rollback>
+    </changeSet>
+
+    <!-- Remove the workflow page template for Reference & SOP Module -->
+    <changeSet id="remove-pathology-reference-sop-workflow-template" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template
+                WHERE workflow_category = 'PATHOLOGY' AND name = 'Reference &amp; SOP Module'
+            </sqlCheck>
+        </preConditions>
+        <comment>Remove Reference &amp; SOP Module workflow template for Pathology</comment>
+
+        <sql>
+            DELETE FROM clinlims.workflow_page_template
+            WHERE workflow_category = 'PATHOLOGY'
+            AND name = 'Reference &amp; SOP Module';
+        </sql>
+
+        <rollback>
+            <!-- No rollback - intentional removal -->
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

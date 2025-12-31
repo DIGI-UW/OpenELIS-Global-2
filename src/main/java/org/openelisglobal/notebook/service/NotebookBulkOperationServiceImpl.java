@@ -14,6 +14,7 @@ import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.storage.dao.StorageBoxDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,9 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
     @Autowired
     private InventoryManagementService inventoryManagementService;
+
+    @Autowired
+    private StorageBoxDAO storageBoxDAO;
 
     @Override
     @Transactional
@@ -266,6 +270,75 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
         // Delegate to NotebookPageSampleService which handles batch processing
         return notebookPageSampleService.bulkUpdateStatus(pageId, sampleIds, status, userId);
+    }
+
+    @Override
+    @Transactional
+    public int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status, String userId) {
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return 0;
+        }
+
+        // Delegate to NotebookPageSampleService which handles String-based sample IDs
+        return notebookPageSampleService.bulkUpdateStatusString(pageId, sampleIds, status, userId);
+    }
+
+    @Override
+    @Transactional
+    public int bulkApplyValuesString(Integer pageId, List<String> sampleIds, Map<String, Object> data, String userId) {
+        if (sampleIds == null || sampleIds.isEmpty() || data == null || data.isEmpty()) {
+            return 0;
+        }
+
+        int updatedCount = 0;
+        NoteBookPage page = null;
+
+        // Process in batches of BATCH_SIZE (50)
+        for (int i = 0; i < sampleIds.size(); i += BATCH_SIZE) {
+            int endIndex = Math.min(i + BATCH_SIZE, sampleIds.size());
+            List<String> batch = sampleIds.subList(i, endIndex);
+
+            for (String sampleId : batch) {
+                NotebookPageSample nps = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, pageId);
+                if (nps == null) {
+                    // Sample doesn't have a NotebookPageSample record for this page yet
+                    // Lazy load page reference only when needed
+                    if (page == null) {
+                        page = noteBookPageService.get(pageId);
+                        if (page == null) {
+                            LogEvent.logWarn(this.getClass().getName(), "bulkApplyValuesString",
+                                    "Page not found: " + pageId);
+                            continue;
+                        }
+                    }
+
+                    // Create new NotebookPageSample record
+                    nps = new NotebookPageSample();
+                    nps.setNotebookPage(page);
+                    nps.setSampleItemId(sampleId);
+                    nps.setStatus(Status.IN_PROGRESS);
+                    nps.setSysUserId(userId);
+                    nps.setData(new HashMap<>(data));
+                    notebookPageSampleService.save(nps);
+                    updatedCount++;
+                    LogEvent.logInfo(this.getClass().getName(), "bulkApplyValuesString",
+                            "Created NotebookPageSample for sampleId=" + sampleId + " on pageId=" + pageId);
+                } else {
+                    // Merge new data with existing data
+                    Map<String, Object> existingData = nps.getData();
+                    if (existingData == null) {
+                        existingData = new HashMap<>();
+                    }
+                    existingData.putAll(data);
+                    nps.setData(existingData);
+                    nps.setSysUserId(userId);
+                    notebookPageSampleService.update(nps);
+                    updatedCount++;
+                }
+            }
+        }
+
+        return updatedCount;
     }
 
     @Override
@@ -561,6 +634,208 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                 }
             } catch (Exception e) {
                 errors.add("Error processing sample " + sampleId + ": " + e.getMessage());
+            }
+        }
+
+        result.put("success", assignedCount > 0);
+        result.put("updatedCount", assignedCount);
+        result.put("requestedCount", sampleIds.size());
+        result.put("assignments", assignments);
+        if (!errors.isEmpty()) {
+            result.put("errors", errors);
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> autoAssignSamplesToStorageString(Integer pageId, List<String> sampleIds, Integer boxId,
+            Integer rows, Integer columns, List<String> occupiedWells, Map<String, Object> storageData, String userId) {
+        Map<String, Object> result = new HashMap<>();
+        List<Map<String, Object>> assignments = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            result.put("success", false);
+            result.put("error", "No sample IDs provided");
+            return result;
+        }
+
+        if (boxId == null) {
+            result.put("success", false);
+            result.put("error", "Box ID is required for auto-assignment");
+            return result;
+        }
+
+        // Get box dimensions (default to 8x12 for 96-well plate)
+        int numRows = rows != null ? rows : 8;
+        int numColumns = columns != null ? columns : 12;
+
+        // Build set of occupied wells
+        Set<String> occupied = new HashSet<>();
+        if (occupiedWells != null) {
+            occupied.addAll(occupiedWells);
+        }
+
+        // Generate list of all wells in order (A1, A2, ..., A12, B1, B2, ...)
+        List<String> allWells = new ArrayList<>();
+        for (int row = 0; row < numRows; row++) {
+            char rowLetter = (char) ('A' + row);
+            for (int col = 1; col <= numColumns; col++) {
+                allWells.add("" + rowLetter + col);
+            }
+        }
+
+        // Find available wells (not occupied)
+        List<String> availableWells = new ArrayList<>();
+        for (String well : allWells) {
+            if (!occupied.contains(well)) {
+                availableWells.add(well);
+            }
+        }
+
+        // Check if we have enough available wells
+        if (availableWells.size() < sampleIds.size()) {
+            result.put("success", false);
+            result.put("error", "Not enough available wells. Need " + sampleIds.size() + " but only "
+                    + availableWells.size() + " available.");
+            result.put("availableCount", availableWells.size());
+            result.put("requestedCount", sampleIds.size());
+            return result;
+        }
+
+        // Check if dealing with composite sample IDs (pathology workflow)
+        boolean hasCompositeSampleIds = sampleIds.stream().anyMatch(id -> id.contains("_"));
+
+        // Get box info for storage location string
+        String boxLabel = "Box " + boxId;
+        try {
+            org.openelisglobal.storage.valueholder.StorageBox box = storageBoxDAO.get(boxId).orElse(null);
+            if (box != null) {
+                boxLabel = box.getLabel();
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "autoAssignSamplesToStorageString",
+                    "Could not fetch box info for boxId " + boxId + ": " + e.getMessage());
+        }
+
+        // Assign each sample to the next available well
+        int assignedCount = 0;
+        for (int i = 0; i < sampleIds.size(); i++) {
+            String sampleIdStr = sampleIds.get(i);
+            String wellCoordinate = availableWells.get(i);
+
+            try {
+                // Get or create the NotebookPageSample using string-based lookup
+                NotebookPageSample nps = notebookPageSampleService.getBySampleItemIdAndPageId(sampleIdStr, pageId);
+                if (nps == null) {
+                    // Auto-create the page sample for composite IDs
+                    notebookPageSampleService.createPageSampleForPageString(pageId, sampleIdStr,
+                            NotebookPageSample.Status.IN_PROGRESS);
+                    nps = notebookPageSampleService.getBySampleItemIdAndPageId(sampleIdStr, pageId);
+                }
+
+                if (nps == null) {
+                    errors.add("Sample " + sampleIdStr + " could not be created in notebook page");
+                    continue;
+                }
+
+                // For composite sample IDs, skip the SampleStorageService calls
+                // Just update the NotebookPageSample record directly
+                if (hasCompositeSampleIds) {
+                    // Update notebook page sample data with storage info
+                    Map<String, Object> existingData = nps.getData();
+                    if (existingData == null) {
+                        existingData = new HashMap<>();
+                    }
+                    if (storageData != null) {
+                        existingData.putAll(storageData);
+                    }
+                    existingData.put("boxId", boxId);
+                    existingData.put("storageBox", boxLabel);
+                    existingData.put("storageWell", wellCoordinate);
+                    existingData.put("wellCoordinate", wellCoordinate);
+                    existingData.put("storageLocation", boxLabel + " - " + wellCoordinate);
+                    existingData.put("dateStored", java.time.LocalDate.now().toString());
+
+                    // Update status to IN_PROGRESS if PENDING
+                    if (nps.getStatus() == NotebookPageSample.Status.PENDING) {
+                        nps.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                    }
+
+                    nps.setData(existingData);
+                    nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
+                    notebookPageSampleService.update(nps);
+
+                    // Record the assignment
+                    Map<String, Object> assignment = new HashMap<>();
+                    assignment.put("sampleId", sampleIdStr);
+                    assignment.put("wellCoordinate", wellCoordinate);
+                    assignment.put("storageLocation", boxLabel + " - " + wellCoordinate);
+                    assignments.add(assignment);
+
+                    occupied.add(wellCoordinate);
+                    assignedCount++;
+
+                    LogEvent.logInfo(this.getClass().getName(), "autoAssignSamplesToStorageString",
+                            "Auto-assigned composite sample " + sampleIdStr + " to box " + boxId + " well "
+                                    + wellCoordinate);
+                } else {
+                    // For regular integer sample IDs, use the storage service
+                    try {
+                        Map<String, Object> assignmentResult = sampleStorageService.assignSampleItemWithLocation(
+                                sampleIdStr, String.valueOf(boxId), "box", wellCoordinate,
+                                storageData != null ? (String) storageData.get("notes") : null);
+
+                        if (assignmentResult != null && assignmentResult.containsKey("assignmentId")) {
+                            Map<String, Object> existingData = nps.getData();
+                            if (existingData == null) {
+                                existingData = new HashMap<>();
+                            }
+                            if (storageData != null) {
+                                existingData.putAll(storageData);
+                            }
+                            existingData.put("storageWell", wellCoordinate);
+                            existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
+                            existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
+
+                            if (nps.getStatus() == NotebookPageSample.Status.PENDING) {
+                                nps.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                            }
+
+                            nps.setData(existingData);
+                            nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
+                            notebookPageSampleService.update(nps);
+
+                            Map<String, Object> assignment = new HashMap<>();
+                            assignment.put("sampleId", sampleIdStr);
+                            assignment.put("sampleItemId", sampleIdStr);
+                            assignment.put("wellCoordinate", wellCoordinate);
+                            assignment.put("assignmentId", assignmentResult.get("assignmentId"));
+                            assignments.add(assignment);
+
+                            occupied.add(wellCoordinate);
+                            assignedCount++;
+
+                            LogEvent.logInfo(this.getClass().getName(), "autoAssignSamplesToStorageString",
+                                    "Auto-assigned sample " + sampleIdStr + " to box " + boxId + " well "
+                                            + wellCoordinate);
+                        }
+                    } catch (Exception e) {
+                        String errorMsg = e.getMessage();
+                        if (errorMsg != null && errorMsg.contains("already assigned")) {
+                            errors.add("Sample " + sampleIdStr + " is already assigned to storage");
+                        } else {
+                            errors.add("Failed to assign sample " + sampleIdStr + " to well " + wellCoordinate + ": "
+                                    + errorMsg);
+                        }
+                        LogEvent.logError(this.getClass().getName(), "autoAssignSamplesToStorageString",
+                                "Error auto-assigning sample " + sampleIdStr + ": " + e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                errors.add("Error processing sample " + sampleIdStr + ": " + e.getMessage());
             }
         }
 

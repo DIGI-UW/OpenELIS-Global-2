@@ -1040,8 +1040,57 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return null;
         }
 
-        // Return the page with the highest order (last page / archiving page)
-        return pages.stream().filter(p -> p.getOrder() != null).max((p1, p2) -> p1.getOrder().compareTo(p2.getOrder()))
+        // Find the archiving page by title (Disposal & Archiving)
+        // This is where samples go after Storage or when routed to external/storage
+        NoteBookPage archivingPage = pages.stream()
+                .filter(p -> p.getTitle() != null && (p.getTitle().toLowerCase().contains("disposal")
+                        || p.getTitle().toLowerCase().contains("archiving")))
+                .findFirst().orElse(null);
+
+        if (archivingPage != null) {
+            return archivingPage;
+        }
+
+        // Fallback: Return page with order 7 (standard archiving page position)
+        NoteBookPage order7Page = pages.stream().filter(p -> p.getOrder() != null && p.getOrder() == 7).findFirst()
+                .orElse(null);
+
+        if (order7Page != null) {
+            return order7Page;
+        }
+
+        // Final fallback: Return the page with the highest order
+        // (excluding Reference & SOP Module which is typically order 8)
+        return pages.stream().filter(p -> p.getOrder() != null)
+                .filter(p -> p.getTitle() == null || !p.getTitle().toLowerCase().contains("reference"))
+                .max((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoteBookPage getPageByNotebookIdAndOrder(Integer notebookId, Integer pageOrder) {
+        if (notebookId == null || pageOrder == null) {
+            return null;
+        }
+
+        NoteBook notebook;
+        try {
+            notebook = get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return null;
+        }
+        if (notebook == null) {
+            return null;
+        }
+
+        Hibernate.initialize(notebook.getPages());
+        List<NoteBookPage> pages = notebook.getPages();
+        if (pages == null || pages.isEmpty()) {
+            return null;
+        }
+
+        // Find page by order
+        return pages.stream().filter(p -> p.getOrder() != null && p.getOrder().equals(pageOrder)).findFirst()
                 .orElse(null);
     }
 
@@ -1071,6 +1120,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return true;
         }
 
+        // Check for "aliquoting" in title since MNTD workflow uses aliquoting page
+        // for routing samples to internal analysis (Processing & Quality Control)
+        if (title.contains("aliquoting")) {
+            return true;
+        }
+
         // Check by page order - order 4 is the Child Samples page where routing
         // happens, but ONLY for Immunology workflow (not MNTD)
         // MNTD has "Sample Processing Preparation" at order 4 which is NOT a routing
@@ -1086,6 +1141,90 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     return true;
                 }
             }
+        }
+
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isStoragePage(Integer pageId) {
+        if (pageId == null) {
+            return false;
+        }
+
+        NoteBookPage page = noteBookPageDAO.get(pageId).orElse(null);
+        if (page == null) {
+            return false;
+        }
+
+        // Check if the page title indicates it's a storage page
+        String title = page.getTitle() != null ? page.getTitle().toLowerCase() : "";
+
+        // For Bacteriology workflow, the "Sample Storage Assignment" page (page 3) is
+        // TEMPORARY storage - samples should proceed to Processing & Quality Control
+        // next,
+        // NOT skip to archiving. Only "Post-Analysis Storage" pages are final storage.
+        // Temporary storage pages contain "temporary" or "assignment" in the title.
+        if (title.contains("temporary") || title.contains("assignment")) {
+            // This is a temporary storage page (bacteriology page 3) - NOT a final storage
+            // page
+            // Samples should proceed to the next processing page, not skip to archiving
+            return false;
+        }
+
+        // Check for final storage pages by title
+        if (title.contains("storage") || title.contains("inventory")) {
+            // Verify this is not bacteriology temporary storage by checking notebook type
+            NoteBook notebook = page.getNotebook();
+            if (notebook != null) {
+                Hibernate.initialize(notebook);
+                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
+                // For bacteriology, only "Post-Analysis Storage" (order 6) is a final storage
+                // page
+                // The "Sample Storage Assignment" page (order 3 or 4) is temporary
+                if (notebookTitle.contains("bacteriology")) {
+                    // For bacteriology, only consider it a storage page if it's late in the
+                    // workflow (order >= 6)
+                    // or if the title explicitly says "post-analysis"
+                    if (title.contains("post-analysis") || title.contains("post analysis")) {
+                        return true;
+                    }
+                    // Early storage pages (order <= 5) in bacteriology are temporary storage
+                    if (page.getOrder() != null && page.getOrder() <= 5) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Check by page order - order 5 is typically the Storage & Inventory page
+        // for Pathology and Pharmaceutical workflows (but NOT for Bacteriology,
+        // Immunology, or MNTD)
+        if (page.getOrder() != null && page.getOrder() == 5) {
+            // Check notebook type - different workflows use order 5 for different purposes
+            NoteBook notebook = page.getNotebook();
+            if (notebook != null) {
+                Hibernate.initialize(notebook);
+                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
+                if (notebookTitle.contains("bacteriology")) {
+                    // In bacteriology, order 5 is "Processing & Quality Control", not storage
+                    return false;
+                }
+                if (notebookTitle.contains("immunology")) {
+                    // In immunology, order 5 is "Plate Setup", not storage
+                    // Samples should proceed to "Analyzer Results" (page 6)
+                    return false;
+                }
+                if (notebookTitle.contains("mntd") || notebookTitle.contains("malaria")
+                        || notebookTitle.contains("neglected tropical")) {
+                    // In MNTD, order 5 is "Aliquoting / Bulk Sample Import", not storage
+                    // Samples should proceed to "Processing & Quality Control" (page 6)
+                    return false;
+                }
+            }
+            return true;
         }
 
         return false;

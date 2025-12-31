@@ -86,11 +86,11 @@
     <changeSet id="029-2-add-bacteriology-retrieval-disposal-template" author="openelis">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM workflow_page_template WHERE id = 207
+                SELECT COUNT(*) FROM workflow_page_template WHERE id = 307
             </sqlCheck>
         </preConditions>
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" value="207"/>
+            <column name="id" value="307"/>
             <column name="name" value="Sample Retrieval, Archival &amp; Disposal"/>
             <column name="display_key" value="workflow.page.bacteriology.retrievalDisposal"/>
             <column name="description" value="Final stage - retrieve samples for shipping/retesting, transfer to biorepository, or dispose with full documentation."/>

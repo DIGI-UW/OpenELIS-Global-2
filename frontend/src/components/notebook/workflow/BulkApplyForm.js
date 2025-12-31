@@ -165,13 +165,13 @@ function BulkApplyForm({
             <NumberInput
               id={field.id}
               label={field.label}
-              value={value ?? ""}
+              value={value ?? field.initialValue ?? ""}
               onChange={(e, { value: numValue }) =>
                 handleFieldChange(field.id, numValue)
               }
-              min={field.min}
-              max={field.max}
-              step={field.step}
+              min={field.min ?? 0}
+              max={field.max ?? 10000}
+              step={field.step ?? 1}
               allowEmpty
             />
           </FormGroup>

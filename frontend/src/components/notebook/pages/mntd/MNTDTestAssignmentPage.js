@@ -1089,7 +1089,7 @@ function MNTDTestAssignmentPage({
                 id: "notebook.mntd.testassignment.testAssignment",
                 defaultMessage: "Test Assignment",
               }),
-              render: renderAssignmentInfo,
+              render: (_, sample) => renderAssignmentInfo(sample),
             },
             {
               key: "schedulingInfo",
@@ -1097,7 +1097,7 @@ function MNTDTestAssignmentPage({
                 id: "notebook.mntd.testassignment.machineScheduling",
                 defaultMessage: "Machine Scheduling",
               }),
-              render: renderSchedulingInfo,
+              render: (_, sample) => renderSchedulingInfo(sample),
             },
           ]}
         />

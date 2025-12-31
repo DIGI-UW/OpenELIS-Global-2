@@ -436,7 +436,7 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.sampleType",
                     defaultMessage: "Sample Type",
                   }),
-                  render: (sample) => sample.sampleType || "-",
+                  render: (value, sample) => sample?.sampleType || value || "-",
                 },
                 {
                   key: "sampleOrigin",
@@ -444,7 +444,8 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.sampleOrigin",
                     defaultMessage: "Origin",
                   }),
-                  render: (sample) => sample.sampleOrigin || "-",
+                  render: (value, sample) =>
+                    sample?.sampleOrigin || value || "-",
                 },
                 {
                   key: "projectName",
@@ -452,7 +453,8 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.projectName",
                     defaultMessage: "Project",
                   }),
-                  render: (sample) => sample.projectName || "-",
+                  render: (value, sample) =>
+                    sample?.projectName || value || "-",
                 },
                 {
                   key: "action",
@@ -460,13 +462,13 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.action",
                     defaultMessage: "Action",
                   }),
-                  render: (sample) => (
+                  render: (value, sample) => (
                     <Button
                       kind="ghost"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleOpenAssessment(sample.id);
+                        handleOpenAssessment(sample?.id);
                       }}
                     >
                       Assess
@@ -515,7 +517,7 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.sampleType",
                     defaultMessage: "Sample Type",
                   }),
-                  render: (sample) => sample.sampleType || "-",
+                  render: (value, sample) => sample?.sampleType || value || "-",
                 },
                 {
                   key: "overallAssessment",
@@ -523,8 +525,8 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.qaStatus",
                     defaultMessage: "QA Status",
                   }),
-                  render: (sample) =>
-                    getAssessmentBadge(sample.overallAssessment),
+                  render: (value, sample) =>
+                    getAssessmentBadge(sample?.overallAssessment),
                 },
                 {
                   key: "projectName",
@@ -532,7 +534,8 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.projectName",
                     defaultMessage: "Project",
                   }),
-                  render: (sample) => sample.projectName || "-",
+                  render: (value, sample) =>
+                    sample?.projectName || value || "-",
                 },
               ]}
             />
@@ -567,7 +570,7 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.sampleType",
                     defaultMessage: "Sample Type",
                   }),
-                  render: (sample) => sample.sampleType || "-",
+                  render: (value, sample) => sample?.sampleType || value || "-",
                 },
                 {
                   key: "rejectionReason",
@@ -575,7 +578,8 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.rejectionReason",
                     defaultMessage: "Rejection Reason",
                   }),
-                  render: (sample) => sample.rejectionReason || "-",
+                  render: (value, sample) =>
+                    sample?.rejectionReason || value || "-",
                 },
                 {
                   key: "projectName",
@@ -583,7 +587,8 @@ function BacteriologySampleQualityAssessmentPage({
                     id: "notebook.sample.projectName",
                     defaultMessage: "Project",
                   }),
-                  render: (sample) => sample.projectName || "-",
+                  render: (value, sample) =>
+                    sample?.projectName || value || "-",
                 },
               ]}
             />

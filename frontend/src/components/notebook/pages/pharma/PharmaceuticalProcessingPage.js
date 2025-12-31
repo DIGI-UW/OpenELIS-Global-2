@@ -662,10 +662,10 @@ function PharmaceuticalProcessingPage({
   };
 
   // Render children action button
-  const renderChildrenAction = (sample) => {
+  const renderChildrenAction = (value, sample) => {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        {sample.childAliquotCount > 0 && (
+        {sample?.childAliquotCount > 0 && (
           <Tag type="blue" size="sm">
             {sample.childAliquotCount}
           </Tag>
@@ -679,7 +679,7 @@ function PharmaceuticalProcessingPage({
             defaultMessage: "View Aliquots",
           })}
           renderIcon={View}
-          onClick={() => handleViewChildren(sample.id)}
+          onClick={() => handleViewChildren(sample?.id)}
         />
       </div>
     );

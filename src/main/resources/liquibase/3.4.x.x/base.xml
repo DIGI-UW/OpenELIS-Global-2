@@ -20,9 +20,14 @@
     <include file="liquibase/3.4.x.x/009-mntd-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/010-mntd-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/011-mntd-aliquoting-page.xml"/>
+    <include file="liquibase/3.4.x.x/011-tuberculosis-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/012-mntd-processing-qc-page.xml"/>
+    <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/012-notebook-access-control.xml"/>
     <include file="liquibase/3.4.x.x/013-mntd-test-assignment-page.xml"/>
+    <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
     <include file="liquibase/3.4.x.x/014-mntd-test-execution-page.xml"/>
+    <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
     <include file="liquibase/3.4.x.x/015-mntd-reporting-redcap-page.xml"/>
     <include file="liquibase/3.4.x.x/016-mntd-data-analysis-page.xml"/>
     <include file="liquibase/3.4.x.x/017-fix-mntd-page-order.xml"/>
@@ -61,5 +66,15 @@
     <include file="liquibase/3.4.x.x/039-seed-inventory-enzymes.xml"/>
     <include file="liquibase/3.4.x.x/040-seed-inventory-antibiotics.xml"/>
     <include file="liquibase/3.4.x.x/035-notebook-entry-manifest-description.xml"/>
+    <include file="liquibase/3.4.x.x/019-pathology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/020-pathology-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/021-fix-pathology-page-order.xml"/>
+    <include file="liquibase/3.4.x.x/022-pathology-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/023-pathology-enhanced-metadata.xml"/>
+    <include file="liquibase/3.4.x.x/024-extend-external-id-length.xml"/>
+    <include file="liquibase/3.4.x.x/025-remove-pathology-reference-sop-page.xml"/>
+    <include file="liquibase/3.4.x.x/026-pathology-cassette-terminology.xml"/>
+    <include file="liquibase/3.4.x.x/027-pathology-granular-workflow-pages.xml"/>
+    <include file="liquibase/3.4.x.x/028-extend-sample-item-id-length.xml"/>
 
 </databaseChangeLog>

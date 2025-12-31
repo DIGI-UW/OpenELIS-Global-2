@@ -46,7 +46,12 @@ public class NotebookArchivingController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> transferToBiorepository(@PathVariable("notebookId") Integer notebookId,
             @RequestBody TransferRequest request, HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -92,7 +97,12 @@ public class NotebookArchivingController extends BaseRestController {
     @PostMapping(value = "/{notebookId}/archive/verify-traceability", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TraceabilityResult> verifyTraceability(@PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -114,7 +124,12 @@ public class NotebookArchivingController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> archiveNotebook(@PathVariable("notebookId") Integer notebookId,
             @RequestBody(required = false) ArchiveRequest request, HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -156,7 +171,12 @@ public class NotebookArchivingController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> finalizeNotebook(@PathVariable("notebookId") Integer notebookId,
             HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -193,7 +213,12 @@ public class NotebookArchivingController extends BaseRestController {
     @GetMapping(value = "/{notebookId}/archive/progress", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ArchivingProgress> getArchivingProgress(@PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -215,7 +240,12 @@ public class NotebookArchivingController extends BaseRestController {
     public ResponseEntity<Map<String, List<Integer>>> getArchivableSamples(
             @PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -235,7 +265,12 @@ public class NotebookArchivingController extends BaseRestController {
     @GetMapping(value = "/{notebookId}/archive/can-finalize", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> canFinalize(@PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -261,7 +296,12 @@ public class NotebookArchivingController extends BaseRestController {
     @GetMapping(value = "/{notebookId}/archive/traceability-report", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TraceabilityReport> getTraceabilityReport(@PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }

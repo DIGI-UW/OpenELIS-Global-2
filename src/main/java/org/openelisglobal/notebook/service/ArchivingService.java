@@ -89,9 +89,13 @@ public interface ArchivingService {
      * Result of traceability verification.
      */
     record TraceabilityResult(boolean passed, List<TraceabilityCheck> checks, String summary) {
-        public boolean hasCriticalFailures() {
-            return checks.stream().anyMatch(c -> c.critical() && !c.passed());
-        }
+    }
+
+    /**
+     * Check if traceability result has any critical failures.
+     */
+    static boolean hasCriticalFailures(TraceabilityResult result) {
+        return result.checks().stream().anyMatch(c -> c.critical() && !c.passed());
     }
 
     /**
@@ -106,9 +110,13 @@ public interface ArchivingService {
      */
     record ArchivingProgress(int totalSamples, int archivedSamples, int pendingSamples, int parentSamples,
             int childSamples, int archivedParents, int archivedChildren, boolean readyForFinalization) {
-        public double percentComplete() {
-            return totalSamples > 0 ? (archivedSamples * 100.0 / totalSamples) : 0;
-        }
+    }
+
+    /**
+     * Calculate percent complete for archiving progress.
+     */
+    static double percentComplete(ArchivingProgress progress) {
+        return progress.totalSamples() > 0 ? (progress.archivedSamples() * 100.0 / progress.totalSamples()) : 0;
     }
 
     /**
