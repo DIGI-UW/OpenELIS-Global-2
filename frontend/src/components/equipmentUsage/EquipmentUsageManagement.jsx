@@ -20,9 +20,9 @@ import "./EquipmentUsage.css";
 const breadcrumbs = [
   { label: "home.label", link: "/", defaultMessage: "Home" },
   {
-    label: "sidenav.label.equipment.usage.log",
+    label: "sidenav.label.equipment.management",
     link: "/equipment-usage",
-    defaultMessage: "Equipment Usage Log",
+    defaultMessage: "Equipment Management",
   },
 ];
 
@@ -41,28 +41,28 @@ const EquipmentUsageManagement = () => {
         <Column lg={16} md={8} sm={4}>
           <div className="orderLegendBody">
             <h2>
-              <FormattedMessage id="equipment.usage.title" defaultMessage="Equipment Usage Log" />
+              <FormattedMessage id="equipment.management.title" defaultMessage="Equipment Management" />
             </h2>
 
             <Tabs
               selectedIndex={selectedTab}
               onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}
             >
-              <TabList aria-label="Equipment usage tabs" contained>
+              <TabList aria-label="Equipment management tabs" contained>
                 <Tab>
-                  <FormattedMessage id="equipment.tab.equipment" defaultMessage="Equipment" />
+                  <FormattedMessage id="equipment.management.tab.equipment" defaultMessage="Equipment" />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.usage.tab.log" defaultMessage="Usage Log" />
+                  <FormattedMessage id="equipment.management.tab.usage" defaultMessage="Usage Log" />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.usage.tab.history" defaultMessage="History" />
+                  <FormattedMessage id="equipment.management.tab.history" defaultMessage="History" />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.usage.tab.approval" defaultMessage="Approval" />
+                  <FormattedMessage id="equipment.management.tab.approval" defaultMessage="Approval" />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.usage.tab.reports" defaultMessage="Reports" />
+                  <FormattedMessage id="equipment.management.tab.reports" defaultMessage="Reports" />
                 </Tab>
               </TabList>
 
