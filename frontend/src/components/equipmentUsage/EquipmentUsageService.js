@@ -29,8 +29,10 @@ const get = (endpoint) => {
 
 const post = (endpoint, data) => {
   return new Promise((resolve, reject) => {
+    // If endpoint is absolute path (starts with /rest), use it as-is; otherwise prepend BASE_PATH
+    const fullPath = endpoint.startsWith("/rest") ? endpoint : `${BASE_PATH}${endpoint}`;
     postToOpenElisServerJsonResponse(
-      `${BASE_PATH}${endpoint}`,
+      fullPath,
       JSON.stringify(data),
       (json) => {
         if (json && (json.status >= 400 || json.statusCode >= 400)) {
@@ -59,36 +61,45 @@ const post = (endpoint, data) => {
 
 // ==================== Equipment API ====================
 
+const EQUIPMENT_BASE_PATH = "/rest/equipment";
+
 export const EquipmentAPI = {
   /**
    * Get all active equipment
    */
-  getAll: () => get("/equipment"),
+  getAll: () =>
+    promisify(getFromOpenElisServer, `${EQUIPMENT_BASE_PATH}`),
 
   /**
    * Get equipment for dropdown (active only)
    */
-  getForDropdown: () => get("/equipment/dropdown"),
+  getForDropdown: () =>
+    promisify(getFromOpenElisServer, `${EQUIPMENT_BASE_PATH}/dropdown`),
 
   /**
    * Get equipment by ID
    */
-  getById: (id) => get(`/equipment/${id}`),
+  getById: (id) =>
+    promisify(getFromOpenElisServer, `${EQUIPMENT_BASE_PATH}/${id}`),
 
   /**
    * Search equipment by name
    */
-  search: (query) => get(`/equipment/search?q=${encodeURIComponent(query)}`),
+  search: (query) =>
+    promisify(
+      getFromOpenElisServer,
+      `${EQUIPMENT_BASE_PATH}/search?q=${encodeURIComponent(query)}`,
+    ),
 
   /**
    * Create new equipment
    */
-  create: (equipment) => post("/equipment", equipment),
+  create: (equipment) => post(`${EQUIPMENT_BASE_PATH}`, equipment),
 
   /**
    * Update equipment
    */
-  update: (id, equipment) => post(`/equipment/${id}`, equipment),
+  update: (id, equipment) => post(`${EQUIPMENT_BASE_PATH}/${id}`, equipment),
 };
 
 // ==================== Equipment Usage Entry API ====================
