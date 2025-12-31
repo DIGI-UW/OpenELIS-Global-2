@@ -330,11 +330,25 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setBudget(noteBook.getBudget());
             displayBean.setProjectTimeline(noteBook.getProjectTimeline());
 
-            // For non-template entries, find and set entry number and parent notebook name
-            // Also inherit allowedRoles from parent template
-            if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
-                // Find the direct parent (could be template or child instance) for display name
-                // and entry number
+            // Handle allowedRoles based on notebook type
+            // 1. Parent templates (isTemplate=true, no parentNotebook): use own allowedRoles
+            // 2. Child instances (isTemplate=false, has parentNotebook): inherit from parent
+            // template
+            // 3. Entries (isTemplate=false, no parentNotebook, in entries collection): inherit
+            // from parent template via findParentTemplate
+            if (noteBook.isChildInstance()) {
+                // Child instance - get allowedRoles from parent template
+                NoteBook parentTemplate = noteBook.getParentNotebook();
+                if (parentTemplate != null) {
+                    Hibernate.initialize(parentTemplate.getAllowedRoles());
+                    displayBean.setAllowedRoles(new HashSet<>(parentTemplate.getAllowedRoles()));
+                } else {
+                    // Fallback to own allowedRoles if parent not found (shouldn't happen)
+                    Hibernate.initialize(noteBook.getAllowedRoles());
+                    displayBean.setAllowedRoles(new HashSet<>(noteBook.getAllowedRoles()));
+                }
+            } else if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+                // Entry (not a child instance) - find parent via entries collection
                 NoteBook directParent = baseObjectDAO.findDirectParentNotebook(noteBook.getId());
                 // Find the ultimate parent template for allowedRoles
                 NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
@@ -373,7 +387,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     }
                 }
             } else {
-                // For templates, use their own allowedRoles
+                // For parent templates, use their own allowedRoles
                 Hibernate.initialize(noteBook.getAllowedRoles());
                 displayBean.setAllowedRoles(new HashSet<>(noteBook.getAllowedRoles()));
             }
@@ -390,13 +404,29 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             Hibernate.initialize(noteBook.getAnalysers());
             Hibernate.initialize(noteBook.getInventoryInstrumentIds());
             Hibernate.initialize(noteBook.getSamples());
-            Hibernate.initialize(noteBook.getPages());
+
+            // For child instances, use effective pages (from parent template)
+            // For templates and entries, use own pages
+            List<NoteBookPage> effectivePages;
+            if (noteBook.isChildInstance()) {
+                NoteBook parentTemplate = noteBook.getParentNotebook();
+                if (parentTemplate != null) {
+                    Hibernate.initialize(parentTemplate.getPages());
+                    effectivePages = parentTemplate.getPages();
+                } else {
+                    Hibernate.initialize(noteBook.getPages());
+                    effectivePages = noteBook.getPages();
+                }
+            } else {
+                Hibernate.initialize(noteBook.getPages());
+                effectivePages = noteBook.getPages();
+            }
 
             // Initialize panels, tests, and allowedRoles for each page (LAZY to avoid
             // MultipleBagFetchException)
             // Also explicitly copy allowedRoles to ensure proper JSON serialization
-            if (noteBook.getPages() != null) {
-                for (NoteBookPage page : noteBook.getPages()) {
+            if (effectivePages != null) {
+                for (NoteBookPage page : effectivePages) {
                     Hibernate.initialize(page.getPanels());
                     Hibernate.initialize(page.getTests());
                     Hibernate.initialize(page.getAllowedRoles());
@@ -462,7 +492,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                         .map(analyzer -> new IdValuePair(analyzer.getId(), analyzer.getName())).toList();
             }
             fullDisplayBean.setAnalyzers(instrumentList);
-            fullDisplayBean.setPages(noteBook.getPages());
+            fullDisplayBean.setPages(effectivePages); // Use effective pages (inherited for child instances)
             fullDisplayBean.setFiles(noteBook.getFiles());
             // Initialize author for each comment
             for (NoteBookComment comment : noteBook.getComments()) {
@@ -480,9 +510,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setEntriesCount(noteBook.getEntries().size());
             fullDisplayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
 
-            // If this is an instance (isTemplate=false), find and set the parent template
-            // ID
-            if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+            // For child instances, set the parent template ID directly
+            // For entries, find the parent via entries collection
+            if (noteBook.isChildInstance()) {
+                NoteBook parentTemplate = noteBook.getParentNotebook();
+                if (parentTemplate != null) {
+                    fullDisplayBean.setTemplateId(parentTemplate.getId());
+                }
+            } else if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
                 NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
                 if (parentTemplate != null) {
                     fullDisplayBean.setTemplateId(parentTemplate.getId());
@@ -497,16 +532,40 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
             fullDisplayBean.setSamples(sampleDisplayBeans);
 
-            fullDisplayBean.setSamples(sampleDisplayBeans);
+            // For child instances, get access control settings from parent template
+            // This ensures page-level role restrictions are properly inherited
+            if (noteBook.isChildInstance()) {
+                NoteBook parentTemplate = noteBook.getParentNotebook();
+                if (parentTemplate != null) {
+                    Hibernate.initialize(parentTemplate.getOrganizations());
+                    fullDisplayBean.setOrganizations(parentTemplate.getOrganizations());
 
-            Hibernate.initialize(noteBook.getOrganizations());
-            fullDisplayBean.setOrganizations(noteBook.getOrganizations());
+                    Hibernate.initialize(parentTemplate.getDepartments());
+                    fullDisplayBean.setDepartments(parentTemplate.getDepartments());
 
-            Hibernate.initialize(noteBook.getDepartments());
-            fullDisplayBean.setDepartments(noteBook.getDepartments());
+                    Hibernate.initialize(parentTemplate.getAllowedRoles());
+                    fullDisplayBean.setAllowedRoles(parentTemplate.getAllowedRoles());
+                } else {
+                    // Fallback to own settings
+                    Hibernate.initialize(noteBook.getOrganizations());
+                    fullDisplayBean.setOrganizations(noteBook.getOrganizations());
 
-            Hibernate.initialize(noteBook.getAllowedRoles());
-            fullDisplayBean.setAllowedRoles(noteBook.getAllowedRoles());
+                    Hibernate.initialize(noteBook.getDepartments());
+                    fullDisplayBean.setDepartments(noteBook.getDepartments());
+
+                    Hibernate.initialize(noteBook.getAllowedRoles());
+                    fullDisplayBean.setAllowedRoles(noteBook.getAllowedRoles());
+                }
+            } else {
+                Hibernate.initialize(noteBook.getOrganizations());
+                fullDisplayBean.setOrganizations(noteBook.getOrganizations());
+
+                Hibernate.initialize(noteBook.getDepartments());
+                fullDisplayBean.setDepartments(noteBook.getDepartments());
+
+                Hibernate.initialize(noteBook.getAllowedRoles());
+                fullDisplayBean.setAllowedRoles(noteBook.getAllowedRoles());
+            }
 
         }
         return fullDisplayBean;
@@ -1502,6 +1561,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (notebook == null) {
             return new HashSet<>();
         }
+
+        // For child instances, get departments from parent template
+        // This ensures access control is always inherited from the authoritative source
+        if (notebook.isChildInstance()) {
+            NoteBook parentTemplate = notebook.getParentNotebook();
+            if (parentTemplate != null) {
+                Hibernate.initialize(parentTemplate.getDepartments());
+                return parentTemplate.getDepartments();
+            }
+        }
+
         Hibernate.initialize(notebook.getDepartments());
         return notebook.getDepartments();
     }
@@ -1516,6 +1586,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (notebook == null) {
             return new HashSet<>();
         }
+
+        // For child instances, get organizations from parent template
+        // This ensures access control is always inherited from the authoritative source
+        if (notebook.isChildInstance()) {
+            NoteBook parentTemplate = notebook.getParentNotebook();
+            if (parentTemplate != null) {
+                Hibernate.initialize(parentTemplate.getOrganizations());
+                return parentTemplate.getOrganizations();
+            }
+        }
+
         Hibernate.initialize(notebook.getOrganizations());
         return notebook.getOrganizations();
     }
@@ -1530,6 +1611,18 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (notebook == null) {
             return new HashSet<>();
         }
+
+        // For child instances, get allowedRoles from parent template
+        // This ensures roles are always inherited from the authoritative source
+        if (notebook.isChildInstance()) {
+            NoteBook parentTemplate = notebook.getParentNotebook();
+            if (parentTemplate != null) {
+                Hibernate.initialize(parentTemplate.getAllowedRoles());
+                return parentTemplate.getAllowedRoles();
+            }
+        }
+
+        // For templates and entries, use own allowedRoles
         Hibernate.initialize(notebook.getAllowedRoles());
         return notebook.getAllowedRoles();
     }
