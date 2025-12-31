@@ -1633,6 +1633,25 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (entryId == null) {
             return null;
         }
+
+        // First check if this notebook itself is a child instance (project)
+        // If so, return its parent template directly
+        NoteBook notebook;
+        try {
+            notebook = get(entryId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return null;
+        }
+        if (notebook == null) {
+            return null;
+        }
+
+        // If this is a child instance, return its parent template directly
+        if (notebook.isChildInstance()) {
+            return notebook.getParentNotebook();
+        }
+
+        // Otherwise, search via entries collection (for regular entries)
         return baseObjectDAO.findParentTemplate(entryId);
     }
 
