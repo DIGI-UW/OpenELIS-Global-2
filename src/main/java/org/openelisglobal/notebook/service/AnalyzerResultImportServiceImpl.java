@@ -223,10 +223,11 @@ public class AnalyzerResultImportServiceImpl extends AuditableBaseObjectServiceI
     @Override
     public ParseResult parseAnalyzerFile(InputStream inputStream, String fileName) {
         FileFormat format = detectFileFormat(fileName);
-        return switch (format) {
-        case CSV -> parseCsvFile(inputStream);
-        case XLSX, XLS -> parseExcelFile(inputStream, format);
-        };
+        if (format == FileFormat.CSV) {
+            return parseCsvFile(inputStream);
+        } else {
+            return parseExcelFile(inputStream, format);
+        }
     }
 
     @Override
@@ -363,20 +364,22 @@ public class AnalyzerResultImportServiceImpl extends AuditableBaseObjectServiceI
             cellType = cell.getCachedFormulaResultType();
         }
 
-        return switch (cellType) {
-        case STRING -> cell.getStringCellValue();
-        case NUMERIC -> {
+        if (cellType == CellType.STRING) {
+            return cell.getStringCellValue();
+        } else if (cellType == CellType.NUMERIC) {
             double value = cell.getNumericCellValue();
             // Check if it's a whole number
             if (value == Math.floor(value) && !Double.isInfinite(value)) {
-                yield String.valueOf((long) value);
+                return String.valueOf((long) value);
             }
-            yield String.valueOf(value);
+            return String.valueOf(value);
+        } else if (cellType == CellType.BOOLEAN) {
+            return String.valueOf(cell.getBooleanCellValue());
+        } else if (cellType == CellType.BLANK) {
+            return "";
+        } else {
+            return "";
         }
-        case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
-        case BLANK -> "";
-        default -> "";
-        };
     }
 
     // ========== Sample Matching Methods (T097, T098) ==========

@@ -48,6 +48,7 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.openelisglobal.notebook.valueholder.WorkflowPageTemplate;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -87,6 +88,9 @@ public class NoteBookRestController extends BaseRestController {
     private FhirUtil fhirUtil;
 
     @Autowired
+    private NotebookPageSampleService notebookPageSampleService;
+
+    @Autowired
     private NotebookSecurityService notebookSecurityService;
 
     @Autowired
@@ -97,9 +101,6 @@ public class NoteBookRestController extends BaseRestController {
 
     @Autowired
     private NoteBookPageService noteBookPageService;
-
-    @Autowired
-    private NotebookPageSampleService notebookPageSampleService;
 
     @Autowired
     private RoleService roleService;
@@ -220,7 +221,12 @@ public class NoteBookRestController extends BaseRestController {
         String sysUserId = getSysUserId(request);
         String loginLabUnit = getLoginLabUnit(request);
 
-        NoteBook notebook = noteBookService.get(noteBookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(noteBookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -396,7 +402,12 @@ public class NoteBookRestController extends BaseRestController {
             return ResponseEntity.ok(response);
         }
 
-        NoteBook noteBook = noteBookService.get(notebookId);
+        NoteBook noteBook;
+        try {
+            noteBook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.ok(response);
+        }
         if (noteBook == null) {
             return ResponseEntity.ok(response);
         }
@@ -574,7 +585,12 @@ public class NoteBookRestController extends BaseRestController {
             return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
         }
 
-        NoteBook notebook = noteBookService.get(noteBookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(noteBookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -626,7 +642,12 @@ public class NoteBookRestController extends BaseRestController {
             return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
         }
 
-        NoteBook notebook = noteBookService.get(noteBookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(noteBookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -684,7 +705,12 @@ public class NoteBookRestController extends BaseRestController {
             return ResponseEntity.status(403).body(Map.of("error", "Admin access required to edit templates"));
         }
 
-        NoteBook notebook = noteBookService.get(noteBookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(noteBookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -757,7 +783,12 @@ public class NoteBookRestController extends BaseRestController {
         String sysUserId = getSysUserId(request);
         String loginLabUnit = getLoginLabUnit(request);
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -939,6 +970,14 @@ public class NoteBookRestController extends BaseRestController {
             response.getOutputStream().write(csvBytes);
             response.getOutputStream().flush();
 
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            try {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Notebook not found\"}");
+            } catch (Exception ignored) {
+                // Response may already be committed
+            }
         } catch (Exception e) {
             org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "generateNotebookReport",
                     "Error generating report: " + e.getMessage());
@@ -974,7 +1013,7 @@ public class NoteBookRestController extends BaseRestController {
         return value != null ? value.toString() : "";
     }
 
-    // ========== Notebook Hierarchy Endpoints ==========
+// ========== Notebook Hierarchy Endpoints ==========
 
     /**
      * Get the notebook hierarchy tree structure. Returns parent templates with
@@ -1224,6 +1263,221 @@ public class NoteBookRestController extends BaseRestController {
             org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "getPageData",
                     "Error getting page data for pageId=" + pageId + ": " + e.getMessage());
             return ResponseEntity.status(500).body(Map.of("error", "Failed to get page data: " + e.getMessage()));
+        }
+    }
+
+    // ==========================================
+    // Sample Advancement Endpoints
+    // ==========================================
+
+    /**
+     * Advance completed samples from one page to the next page in the workflow.
+     * This creates new NotebookPageSample records on the target page for the
+     * specified samples.
+     *
+     * @param notebookId  the notebook ID
+     * @param request     contains sampleIds, fromPageId, and toPageIndex
+     * @param httpRequest HTTP request for user session
+     * @return result with advanced count
+     */
+    @PostMapping(value = "/{notebookId}/samples/advance", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> advanceSamplesToNextPage(@PathVariable("notebookId") Integer notebookId,
+            @RequestBody AdvanceSamplesRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No sample IDs provided"));
+        }
+
+        if (request.getToPageIndex() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Target page index is required"));
+        }
+
+        try {
+            // Find the target page by notebook ID and page order
+            // Use service method that properly initializes lazy pages within a transaction
+            Integer targetPageOrder = request.getToPageIndex();
+            NoteBookPage targetPage = noteBookService.getPageByNotebookIdAndOrder(notebookId, targetPageOrder);
+
+            if (targetPage == null) {
+                return ResponseEntity.badRequest().body(Map.of("error",
+                        "No page found with order: " + targetPageOrder + " in notebook: " + notebookId));
+            }
+            Integer targetPageId = targetPage.getId();
+
+            // Create NotebookPageSample records on the target page for each sample
+            int advancedCount = 0;
+            for (Integer sampleId : request.getSampleIds()) {
+                try {
+                    // Check if sample already exists on target page
+                    var existing = notebookPageSampleService.getByPageIdAndSampleItemId(targetPageId, sampleId);
+                    if (existing == null) {
+                        // Create new page sample record on target page
+                        notebookPageSampleService.createPageSampleForPage(targetPageId, sampleId, Status.PENDING);
+                        advancedCount++;
+                    }
+                } catch (Exception e) {
+                    // Log but continue with other samples
+                    org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(),
+                            "advanceSamplesToNextPage", "Failed to advance sample " + sampleId + ": " + e.getMessage());
+                }
+            }
+
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("success", true);
+            result.put("advancedCount", advancedCount);
+            result.put("targetPageId", targetPageId);
+            result.put("targetPageIndex", request.getToPageIndex());
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(), "advanceSamplesToNextPage",
+                    "Error advancing samples: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to advance samples: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Request body for advance samples operation.
+     */
+    public static class AdvanceSamplesRequest {
+        private List<Integer> sampleIds;
+        private Integer fromPageId;
+        private Integer toPageIndex;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Integer getFromPageId() {
+            return fromPageId;
+        }
+
+        public void setFromPageId(Integer fromPageId) {
+            this.fromPageId = fromPageId;
+        }
+
+        public Integer getToPageIndex() {
+            return toPageIndex;
+        }
+
+        public void setToPageIndex(Integer toPageIndex) {
+            this.toPageIndex = toPageIndex;
+        }
+    }
+
+    /**
+     * Advance samples to the next page using string sample IDs. This endpoint
+     * supports composite sample IDs (e.g., "4_cassette_0_block_0_slide_0") used in
+     * pathology workflows.
+     */
+    @PostMapping(value = "/{notebookId}/samples/advance-string", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> advanceSamplesToNextPageString(
+            @PathVariable("notebookId") Integer notebookId, @RequestBody AdvanceSamplesStringRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No sample IDs provided"));
+        }
+
+        if (request.getToPageIndex() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Target page index is required"));
+        }
+
+        try {
+            // Find the target page by notebook ID and page order
+            // Use service method that properly initializes lazy pages within a transaction
+            Integer targetPageOrder = request.getToPageIndex();
+            NoteBookPage targetPage = noteBookService.getPageByNotebookIdAndOrder(notebookId, targetPageOrder);
+
+            if (targetPage == null) {
+                return ResponseEntity.badRequest().body(Map.of("error",
+                        "No page found with order: " + targetPageOrder + " in notebook: " + notebookId));
+            }
+
+            Integer targetPageId = targetPage.getId();
+
+            // Create NotebookPageSample records on the target page for each sample
+            // using string IDs to preserve composite sample IDs
+            int advancedCount = 0;
+            for (String sampleId : request.getSampleIds()) {
+                try {
+                    // Check if sample already exists on target page using string-based lookup
+                    var existing = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, targetPageId);
+                    if (existing == null) {
+                        // Create new page sample record on target page with string ID
+                        notebookPageSampleService.createPageSampleForPageString(targetPageId, sampleId, Status.PENDING);
+                        advancedCount++;
+                    }
+                } catch (Exception e) {
+                    // Log but continue with other samples
+                    org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(),
+                            "advanceSamplesToNextPageString",
+                            "Failed to advance sample " + sampleId + ": " + e.getMessage());
+                }
+            }
+
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("success", true);
+            result.put("advancedCount", advancedCount);
+            result.put("targetPageId", targetPageId);
+            result.put("targetPageIndex", request.getToPageIndex());
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logError(this.getClass().getSimpleName(),
+                    "advanceSamplesToNextPageString", "Error advancing samples: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to advance samples: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Request body for advance samples operation with string IDs.
+     */
+    public static class AdvanceSamplesStringRequest {
+        private List<String> sampleIds;
+        private Integer fromPageId;
+        private Integer toPageIndex;
+
+        public List<String> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<String> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Integer getFromPageId() {
+            return fromPageId;
+        }
+
+        public void setFromPageId(Integer fromPageId) {
+            this.fromPageId = fromPageId;
+        }
+
+        public Integer getToPageIndex() {
+            return toPageIndex;
+        }
+
+        public void setToPageIndex(Integer toPageIndex) {
+            this.toPageIndex = toPageIndex;
         }
     }
 

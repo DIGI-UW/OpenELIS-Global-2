@@ -99,6 +99,20 @@ public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, I
     }
 
     @Override
+    public int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status) {
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return 0;
+        }
+
+        Session session = entityManager.unwrap(Session.class);
+        // Use native SQL query for UPDATE statement with String IDs directly
+        String sql = "UPDATE clinlims.notebook_page_sample SET status = :status " + "WHERE notebook_page_id = :pageId "
+                + "AND sample_item_id IN (:sampleIds)";
+        return session.createNativeQuery(sql).setParameter("status", status.name()).setParameter("pageId", pageId)
+                .setParameterList("sampleIds", sampleIds).executeUpdate();
+    }
+
+    @Override
     public List<NotebookPageSample> getByPageIdPaginated(Integer pageId, Status status, int offset, int limit) {
         Session session = entityManager.unwrap(Session.class);
         StringBuilder hql = new StringBuilder();
@@ -159,5 +173,36 @@ public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, I
         List<NotebookPageSample> results = session.createQuery(hql, NotebookPageSample.class)
                 .setParameter("sampleItemId", sampleItemId).setParameter("pageId", pageId).getResultList();
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<String, Map<String, String>> getOccupiedWellsByBoxId(Integer boxId) {
+        Map<String, Map<String, String>> result = new HashMap<>();
+
+        Session session = entityManager.unwrap(Session.class);
+        // Query for archived samples with this boxId in their JSONB data field
+        // JSONB query: data->>'boxId' = :boxId AND data->>'wellCoordinate' IS NOT NULL
+        String sql = "SELECT nps.sample_item_id, nps.data->>'wellCoordinate' as well_coordinate, "
+                + "nps.data->>'externalId' as external_id " + "FROM clinlims.notebook_page_sample nps "
+                + "WHERE (nps.data->>'boxId')::integer = ?1 " + "AND nps.data->>'wellCoordinate' IS NOT NULL "
+                + "AND nps.data->>'wellCoordinate' != '' " + "AND (nps.data->>'isArchived')::boolean = true";
+
+        List<Object[]> rows = session.createNativeQuery(sql).setParameter(1, boxId).getResultList();
+
+        for (Object[] row : rows) {
+            String sampleItemId = row[0] != null ? row[0].toString() : null;
+            String wellCoordinate = row[1] != null ? row[1].toString() : null;
+            String externalId = row[2] != null ? row[2].toString() : null;
+
+            if (wellCoordinate != null && !wellCoordinate.isEmpty()) {
+                Map<String, String> sampleInfo = new HashMap<>();
+                sampleInfo.put("sampleItemId", sampleItemId);
+                sampleInfo.put("externalId", externalId);
+                result.put(wellCoordinate, sampleInfo);
+            }
+        }
+
+        return result;
     }
 }

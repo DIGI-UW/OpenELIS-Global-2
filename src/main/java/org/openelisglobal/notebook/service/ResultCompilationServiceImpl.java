@@ -213,7 +213,13 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         LogEvent.logInfo(this.getClass().getName(), "compileToExcel",
                 "Starting comprehensive Excel export for notebook ID: " + notebookId);
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            LogEvent.logError(this.getClass().getName(), "compileToExcel", "Notebook not found: " + notebookId);
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             LogEvent.logError(this.getClass().getName(), "compileToExcel", "Notebook not found: " + notebookId);
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
@@ -876,7 +882,12 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         LogEvent.logInfo(this.getClass().getName(), "compileToCsv",
                 "Starting comprehensive CSV export for notebook ID: " + notebookId);
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
@@ -1145,7 +1156,12 @@ public class ResultCompilationServiceImpl implements ResultCompilationService {
         }
 
         // Get notebook entity
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }

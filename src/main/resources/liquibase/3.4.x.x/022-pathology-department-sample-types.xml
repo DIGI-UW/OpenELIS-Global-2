@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY DEPARTMENT AND SAMPLE TYPE ASSOCIATION         -->
+    <!-- Creates:                                                  -->
+    <!-- 1. Pathology test_section (department)                   -->
+    <!-- 2. Links notebook template to the department             -->
+    <!-- 3. Ensures notebook has all active organizations         -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- 1. CREATE PATHOLOGY DEPARTMENT (TEST_SECTION)            -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-localization-test-section" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE description = 'pathology test section' AND english = 'Pathology'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create localization entry for Pathology test section</comment>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="description" value="pathology test section"/>
+            <column name="english" value="Pathology"/>
+            <column name="french" value="Pathologie"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="create-pathology-test-section" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Pathology'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Pathology test section (department)</comment>
+        <insert tableName="test_section" schemaName="clinlims">
+            <column name="id" valueSequenceNext="test_section_seq"/>
+            <column name="name" value="Pathology"/>
+            <column name="description" value="Pathology Laboratory"/>
+            <column name="is_external" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="sort_order" value="2147483647"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'pathology test section' AND english = 'Pathology' LIMIT 1)"/>
+            <column name="display_key" value="testsection.Pathology"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 2. LINK PATHOLOGY NOTEBOOK TO DEPARTMENT                 -->
+    <!-- ======================================================== -->
+    <changeSet id="link-pathology-notebook-to-department" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_departments" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Pathology'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_departments nd
+                JOIN clinlims.notebook n ON nd.notebook_id = n.id
+                JOIN clinlims.test_section ts ON nd.test_section_id = ts.id
+                WHERE n.title = 'Pathology Laboratory' AND ts.name = 'Pathology'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Pathology Laboratory notebook template to Pathology department</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_departments (notebook_id, test_section_id)
+            SELECT n.id, ts.id
+            FROM clinlims.notebook n, clinlims.test_section ts
+            WHERE n.title = 'Pathology Laboratory'
+              AND n.is_template = true
+              AND ts.name = 'Pathology';
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 3. ENSURE PATHOLOGY NOTEBOOK HAS ALL ACTIVE ORGANIZATIONS -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-pathology-notebook-organizations" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure Pathology Laboratory notebook has all active organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.title = 'Pathology Laboratory'
+              AND n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

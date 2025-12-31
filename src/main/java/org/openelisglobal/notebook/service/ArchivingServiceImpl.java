@@ -63,7 +63,12 @@ public class ArchivingServiceImpl implements ArchivingService {
     public List<SampleRouting> transferToBiorepository(Integer notebookId, List<Integer> sampleItemIds,
             String locationId, String locationType, String notes, String userId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
@@ -116,7 +121,12 @@ public class ArchivingServiceImpl implements ArchivingService {
     private SampleRouting createBiorepositoryRouting(Integer notebookId, Integer sampleItemId,
             Map<String, Object> assignmentResult, String userId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         SystemUser user = systemUserService.get(userId);
 
         SampleRouting routing = new SampleRouting();
@@ -178,7 +188,13 @@ public class ArchivingServiceImpl implements ArchivingService {
 
     private TraceabilityCheck verifyParentChildLinks(Integer notebookId) {
         List<String> issues = new ArrayList<>();
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return new TraceabilityCheck("Parent-Child Links", "Verify all aliquot relationships are intact", false,
+                    true, List.of("Notebook not found: " + notebookId));
+        }
 
         if (notebook == null || notebook.getSamples() == null) {
             return new TraceabilityCheck("Parent-Child Links", "Verify all aliquot relationships are intact", false,
@@ -204,7 +220,13 @@ public class ArchivingServiceImpl implements ArchivingService {
 
     private TraceabilityCheck verifyMovementHistory(Integer notebookId) {
         List<String> issues = new ArrayList<>();
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return new TraceabilityCheck("Movement History", "Verify complete storage movement chain", false, true,
+                    List.of("Notebook not found: " + notebookId));
+        }
 
         if (notebook == null) {
             return new TraceabilityCheck("Movement History", "Verify complete storage movement chain", false, true,
@@ -230,7 +252,13 @@ public class ArchivingServiceImpl implements ArchivingService {
 
     private TraceabilityCheck verifyStorageAssignments(Integer notebookId) {
         List<String> issues = new ArrayList<>();
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return new TraceabilityCheck("Storage Assignments", "Verify all archived samples have valid locations",
+                    false, true, List.of("Notebook not found: " + notebookId));
+        }
 
         if (notebook == null) {
             return new TraceabilityCheck("Storage Assignments", "Verify all archived samples have valid locations",
@@ -286,7 +314,12 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Override
     @Transactional
     public NoteBook finalizeNotebook(Integer notebookId, String userId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
@@ -297,7 +330,7 @@ public class ArchivingServiceImpl implements ArchivingService {
 
         // Verify traceability before finalizing
         TraceabilityResult traceability = verifyTraceability(notebookId);
-        if (traceability.hasCriticalFailures()) {
+        if (ArchivingService.hasCriticalFailures(traceability)) {
             throw new IllegalStateException(
                     "Cannot finalize: Critical traceability checks failed. " + traceability.summary());
         }
@@ -319,13 +352,18 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Transactional(readOnly = true)
     public boolean canFinalize(Integer notebookId) {
         TraceabilityResult traceability = verifyTraceability(notebookId);
-        return !traceability.hasCriticalFailures();
+        return !ArchivingService.hasCriticalFailures(traceability);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ArchivingProgress getArchivingProgress(Integer notebookId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return new ArchivingProgress(0, 0, 0, 0, 0, 0, 0, false);
+        }
         if (notebook == null) {
             return new ArchivingProgress(0, 0, 0, 0, 0, 0, 0, false);
         }
@@ -387,7 +425,14 @@ public class ArchivingServiceImpl implements ArchivingService {
         List<Integer> parentIds = new ArrayList<>();
         List<Integer> childIds = new ArrayList<>();
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            result.put("parent", parentIds);
+            result.put("child", childIds);
+            return result;
+        }
         if (notebook == null || notebook.getSamples() == null) {
             result.put("parent", parentIds);
             result.put("child", childIds);
@@ -428,7 +473,12 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Override
     @Transactional(readOnly = true)
     public TraceabilityReport generateTraceabilityReport(Integer notebookId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }

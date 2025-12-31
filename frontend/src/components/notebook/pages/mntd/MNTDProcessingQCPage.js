@@ -441,6 +441,9 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
 
   // Render extraction info column
   const renderExtractionInfo = (sample) => {
+    if (!sample) {
+      return null;
+    }
     if (sample.extractionMethod) {
       const methodLabel = getMethodLabel(sample.extractionMethod);
       const sampleTypeLabel =

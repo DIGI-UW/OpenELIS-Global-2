@@ -344,12 +344,18 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         }
 
         // Determine report type display name
-        String reportTypeDisplay = switch (reportType.toLowerCase()) {
-        case "daily", "dailylog", "freezerdailylogreport" -> "Daily Log";
-        case "weekly", "weeklylog" -> "Weekly Log";
-        case "monthly", "monthlylog" -> "Monthly Log";
-        default -> "Temperature Log";
-        };
+        String reportTypeDisplay;
+        String reportTypeLower = reportType.toLowerCase();
+        if ("daily".equals(reportTypeLower) || "dailylog".equals(reportTypeLower)
+                || "freezerdailylogreport".equals(reportTypeLower)) {
+            reportTypeDisplay = "Daily Log";
+        } else if ("weekly".equals(reportTypeLower) || "weeklylog".equals(reportTypeLower)) {
+            reportTypeDisplay = "Weekly Log";
+        } else if ("monthly".equals(reportTypeLower) || "monthlylog".equals(reportTypeLower)) {
+            reportTypeDisplay = "Monthly Log";
+        } else {
+            reportTypeDisplay = "Temperature Log";
+        }
 
         parameters.put("reportTitle", "Temperature Monitoring Report");
         parameters.put("reportType", reportTypeDisplay);
@@ -367,15 +373,17 @@ public class FreezerReportServiceImpl implements FreezerReportService {
 
     private JRBeanCollectionDataSource buildDataSource(String reportType, Long freezerId, LocalDate startDate,
             LocalDate endDate) {
-        return switch (reportType.toLowerCase()) {
-        case "daily", "dailylog", "freezerdailylogreport" ->
-            new JRBeanCollectionDataSource(generateDailyLogData(freezerId, startDate, endDate));
-        case "weekly", "weeklylog" ->
-            new JRBeanCollectionDataSource(generateWeeklyLogData(freezerId, startDate, endDate));
-        case "monthly", "monthlylog" ->
-            new JRBeanCollectionDataSource(generateMonthlyLogData(freezerId, startDate, endDate));
-        default -> throw new IllegalArgumentException("Unknown report type: " + reportType);
-        };
+        String reportTypeLower = reportType.toLowerCase();
+        if ("daily".equals(reportTypeLower) || "dailylog".equals(reportTypeLower)
+                || "freezerdailylogreport".equals(reportTypeLower)) {
+            return new JRBeanCollectionDataSource(generateDailyLogData(freezerId, startDate, endDate));
+        } else if ("weekly".equals(reportTypeLower) || "weeklylog".equals(reportTypeLower)) {
+            return new JRBeanCollectionDataSource(generateWeeklyLogData(freezerId, startDate, endDate));
+        } else if ("monthly".equals(reportTypeLower) || "monthlylog".equals(reportTypeLower)) {
+            return new JRBeanCollectionDataSource(generateMonthlyLogData(freezerId, startDate, endDate));
+        } else {
+            throw new IllegalArgumentException("Unknown report type: " + reportType);
+        }
     }
 
     private FreezerDailyLogData mapToDailyLogData(FreezerReading reading) {

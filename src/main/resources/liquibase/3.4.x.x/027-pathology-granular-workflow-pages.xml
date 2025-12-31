@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY GRANULAR WORKFLOW PAGES                        -->
+    <!-- Splits the Sample Processing page into separate pages    -->
+    <!-- for each step in the histopathology workflow:            -->
+    <!-- 1. Sample Creation & Metadata Capture                    -->
+    <!-- 2. Sample Quality Control                                -->
+    <!-- 3. Gross Examination (NEW)                               -->
+    <!-- 4. Cassette Setup (NEW)                                  -->
+    <!-- 5. Block Creation (NEW)                                  -->
+    <!-- 6. Slide Preparation (NEW)                               -->
+    <!-- 7. Slide Staining (NEW - extracted from Testing)         -->
+    <!-- 8. Microscopy & Diagnosis (formerly Testing & Staining)  -->
+    <!-- 9. Storage & Inventory Management                        -->
+    <!-- 10. Reporting & Performance Monitoring                   -->
+    <!-- 11. Disposal & Archiving                                 -->
+    <!-- ======================================================== -->
+
+    <!-- ======================= -->
+    <!-- UPDATE EXISTING PAGES PAGE ORDER -->
+    <!-- ======================= -->
+
+    <changeSet id="update-pathology-page-orders-for-granular-workflow" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Update page orders to make room for new granular workflow pages</comment>
+
+        <!-- Update Storage page from order 5 to 9 -->
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 9
+            WHERE title = 'Storage &amp; Inventory Management'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <!-- Update Reporting page from order 6 to 10 -->
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 10
+            WHERE title = 'Reporting &amp; Performance Monitoring'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <!-- Update Disposal page from order 7 to 11 -->
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 11
+            WHERE title = 'Disposal &amp; Archiving'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <!-- Update Testing page from order 4 to 8 and rename -->
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 8, title = 'Microscopy &amp; Diagnosis'
+            WHERE title = 'Testing, Staining &amp; Microscopy'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <!-- Rename Sample Processing page to Gross Examination and keep at order 3 -->
+        <sql>
+            UPDATE clinlims.notebook_page SET title = 'Gross Examination',
+            instructions = 'Perform macroscopic examination of specimens with photo documentation. Document specimen appearance, dimensions, weight, color, texture, margins, orientation, and abnormalities. Capture up to 96 gross images per specimen. Record sectioning decisions and number of sections to submit for processing.'
+            WHERE title = 'Sample Processing &amp; Aliquoting'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- ADD NEW CASSETTE SETUP PAGE (ORDER 4) -->
+    <!-- ======================= -->
+
+    <changeSet id="add-pathology-cassette-setup-page" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.title = 'Cassette Setup'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Cassette Setup page - Page 4 in the pathology workflow</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="page_order" valueNumeric="4"/>
+            <column name="title" value="Cassette Setup"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="instructions" value="Create and label cassettes for tissue embedding. Transfer tissue sections into labeled cassettes (perforated plastic containers). Use color coding for specimen type or priority. Document tissue orientation and sectioning notes. Track cassette count per specimen."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Cassette Setup - Create cassettes from grossed specimens&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;cassetteConfiguration&quot;: {
+      &quot;numberOfCassettes&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Number of Cassettes&quot;, &quot;required&quot;: true, &quot;min&quot;: 1},
+      &quot;cassettePrefix&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Cassette ID Prefix&quot;, &quot;required&quot;: true},
+      &quot;cassetteColor&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Cassette Color&quot;, &quot;options&quot;: [&quot;White&quot;, &quot;Pink&quot;, &quot;Blue&quot;, &quot;Green&quot;, &quot;Yellow&quot;, &quot;Orange&quot;, &quot;Lavender&quot;, &quot;Tan&quot;, &quot;Gray&quot;]}
+    },
+    &quot;tissueInfo&quot;: {
+      &quot;tissueType&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Tissue Type&quot;},
+      &quot;tissueOrientation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Tissue Orientation&quot;},
+      &quot;sectioningNotes&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Sectioning Notes&quot;}
+    },
+    &quot;staffInfo&quot;: {
+      &quot;technicianName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Technician Name&quot;, &quot;required&quot;: true},
+      &quot;technicianInitials&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Initials&quot;},
+      &quot;cassetteDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;nextPage&quot;: &quot;Block Creation&quot;
+}"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- ADD NEW BLOCK CREATION PAGE (ORDER 5) -->
+    <!-- ======================= -->
+
+    <changeSet id="add-pathology-block-creation-page" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.title = 'Block Creation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Block Creation page - Page 5 in the pathology workflow</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="page_order" valueNumeric="5"/>
+            <column name="title" value="Block Creation"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="instructions" value="Create paraffin blocks from processed cassettes. Embed tissue in paraffin wax with correct orientation. Verify tissue orientation before embedding. Document embedding quality, temperature, and station used. Generate block IDs for traceability."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Block Creation - Embed tissue from cassettes into paraffin blocks&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;blockConfiguration&quot;: {
+      &quot;numberOfBlocks&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Number of Blocks&quot;, &quot;required&quot;: true, &quot;min&quot;: 1},
+      &quot;blockPrefix&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Block ID Prefix&quot;, &quot;required&quot;: true},
+      &quot;embeddingMedium&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Embedding Medium&quot;, &quot;options&quot;: [&quot;Paraffin Wax&quot;, &quot;OCT (Frozen)&quot;, &quot;Resin&quot;, &quot;Celloidin&quot;], &quot;default&quot;: &quot;Paraffin Wax&quot;}
+    },
+    &quot;embeddingDetails&quot;: {
+      &quot;embeddingTemperature&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Temperature (C)&quot;},
+      &quot;embeddingStation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Embedding Station&quot;},
+      &quot;embeddingQuality&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Embedding Quality&quot;, &quot;options&quot;: [&quot;Excellent&quot;, &quot;Good&quot;, &quot;Acceptable&quot;, &quot;Poor - Needs Re-embedding&quot;]}
+    },
+    &quot;orientation&quot;: {
+      &quot;tissueOrientation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Orientation Description&quot;},
+      &quot;orientationVerified&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Orientation Verified&quot;, &quot;required&quot;: true}
+    },
+    &quot;staffInfo&quot;: {
+      &quot;technicianName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Technician Name&quot;, &quot;required&quot;: true},
+      &quot;blockDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;nextPage&quot;: &quot;Slide Preparation&quot;
+}"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- ADD NEW SLIDE PREPARATION PAGE (ORDER 6) -->
+    <!-- ======================= -->
+
+    <changeSet id="add-pathology-slide-preparation-page" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.title = 'Slide Preparation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Slide Preparation page - Page 6 in the pathology workflow</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="page_order" valueNumeric="6"/>
+            <column name="title" value="Slide Preparation"/>
+            <column name="page_type" value="CHILD_SAMPLE_CREATION"/>
+            <column name="instructions" value="Cut and prepare slides from tissue blocks via microtomy. Cut thin sections (typically 3-5 um) using microtome. Mount sections on appropriately labeled glass slides. Document section thickness, blade type, and section quality. Float sections in water bath before mounting."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Slide Preparation - Cut sections from blocks and mount on slides&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;slideConfiguration&quot;: {
+      &quot;numberOfSlides&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Number of Slides&quot;, &quot;required&quot;: true, &quot;min&quot;: 1},
+      &quot;slidePrefix&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Slide ID Prefix&quot;, &quot;required&quot;: true},
+      &quot;slideType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Slide Type&quot;, &quot;options&quot;: [&quot;Frosted End&quot;, &quot;Plain&quot;, &quot;Charged/Plus&quot;, &quot;Adhesive Coated&quot;], &quot;default&quot;: &quot;Frosted End&quot;}
+    },
+    &quot;microtomy&quot;: {
+      &quot;sectionThickness&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Section Thickness (um)&quot;, &quot;required&quot;: true, &quot;default&quot;: 4, &quot;min&quot;: 1, &quot;max&quot;: 50},
+      &quot;microtomeId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Microtome ID&quot;},
+      &quot;bladeType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Blade Type&quot;, &quot;options&quot;: [&quot;Disposable Steel&quot;, &quot;Tungsten Carbide&quot;, &quot;Diamond&quot;, &quot;Glass Knife&quot;]},
+      &quot;floatationBathTemp&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Floatation Bath Temp (C)&quot;}
+    },
+    &quot;quality&quot;: {
+      &quot;sectionQuality&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Section Quality&quot;, &quot;options&quot;: [&quot;Excellent - No artifacts&quot;, &quot;Good - Minor artifacts&quot;, &quot;Acceptable - Some artifacts&quot;, &quot;Poor - Significant artifacts&quot;, &quot;Needs Re-cut&quot;]},
+      &quot;coverslipped&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Coverslipped&quot;}
+    },
+    &quot;staffInfo&quot;: {
+      &quot;technicianName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Technician Name&quot;, &quot;required&quot;: true},
+      &quot;slideDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;nextPage&quot;: &quot;Slide Staining&quot;
+}"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- ADD NEW SLIDE STAINING PAGE (ORDER 7) -->
+    <!-- ======================= -->
+
+    <changeSet id="add-pathology-slide-staining-page" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.title = 'Slide Staining'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Slide Staining page - Page 7 in the pathology workflow</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="page_order" valueNumeric="7"/>
+            <column name="title" value="Slide Staining"/>
+            <column name="page_type" value="ASSAY_EXECUTION"/>
+            <column name="instructions" value="Apply routine and special stains to prepared slides. ROUTINE STAINS: H&amp;E for histology, Pap for cytology, Wright-Giemsa for hematology, Gram for microbiology. SPECIAL STAINS: PAS, Masson Trichrome, Reticulin, Iron, Congo Red, AFB, GMS as indicated. IHC/ICC: Immunohistochemistry for protein markers when needed. Run positive and negative controls with each batch. Document stain quality and batch information."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Slide Staining - Apply stains to prepared slides&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;routineStaining&quot;: {
+      &quot;routineStainingCategory&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Staining Category&quot;, &quot;options&quot;: [&quot;Histology&quot;, &quot;Cytology&quot;, &quot;Hematology&quot;, &quot;Microbiology&quot;]},
+      &quot;routineStains&quot;: {&quot;type&quot;: &quot;multiselect&quot;, &quot;label&quot;: &quot;Routine Stains&quot;, &quot;options&quot;: [&quot;H&amp;E&quot;, &quot;Pap&quot;, &quot;Giemsa&quot;, &quot;Wright-Giemsa&quot;, &quot;Gram&quot;, &quot;AFB&quot;]}
+    },
+    &quot;specialStains&quot;: {
+      &quot;specialStains&quot;: {&quot;type&quot;: &quot;multiselect&quot;, &quot;label&quot;: &quot;Special Stains&quot;, &quot;options&quot;: [&quot;PAS&quot;, &quot;PAS-D&quot;, &quot;Masson Trichrome&quot;, &quot;Reticulin&quot;, &quot;Iron (Prussian Blue)&quot;, &quot;Congo Red&quot;, &quot;Mucicarmine&quot;, &quot;Alcian Blue&quot;, &quot;EVG (Elastic)&quot;, &quot;AFB&quot;, &quot;GMS (Grocott)&quot;]},
+      &quot;specialStainIndication&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Indication&quot;}
+    },
+    &quot;ihcIcc&quot;: {
+      &quot;ihcPerformed&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;IHC/ICC Performed&quot;},
+      &quot;ihcMarkers&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Markers&quot;},
+      &quot;ihcClone&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Clone&quot;},
+      &quot;ihcDilution&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Dilution&quot;}
+    },
+    &quot;controls&quot;: {
+      &quot;positiveControlRun&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Positive Control Run&quot;},
+      &quot;negativeControlRun&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Negative Control Run&quot;},
+      &quot;controlsAccepted&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Controls Accepted&quot;},
+      &quot;stainQualityAdequate&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Stain Quality Adequate&quot;}
+    },
+    &quot;batchInfo&quot;: {
+      &quot;batchNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Batch Number&quot;},
+      &quot;batchDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Batch Date&quot;}
+    },
+    &quot;staffInfo&quot;: {
+      &quot;technicianName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Technician Name&quot;, &quot;required&quot;: true},
+      &quot;stainingDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;nextPage&quot;: &quot;Microscopy &amp; Diagnosis&quot;
+}"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- UPDATE MICROSCOPY PAGE INSTRUCTIONS -->
+    <!-- ======================= -->
+
+    <changeSet id="update-pathology-microscopy-page-instructions" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.title = 'Microscopy &amp; Diagnosis'
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Microscopy page to focus on diagnosis (staining moved to separate page)</comment>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET
+            instructions = 'Perform microscopic examination and enter diagnosis. Two-phase workflow: INITIAL FINDINGS: Pathologist examines stained slides, documents microscopic findings, cellular features, architectural observations, nuclear features, and records initial diagnostic impression. FINAL DIAGNOSIS: Review initial findings, correlate with clinical history, finalize diagnosis with ICD-O/SNOMED codes, document tumor type, grade, stage, margins, and prognostic factors. Upload slide images as supporting documentation.',
+            last_updated = now()
+            WHERE title = 'Microscopy &amp; Diagnosis'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

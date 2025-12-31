@@ -349,11 +349,13 @@ function PharmaceuticalStoragePage({
           // Determine if sample has storage assignment
           // Check multiple sources: page sample data, routing records, or just the hasRouting flag
           const hasStorageAssignment = !!(
-            storageLocation ||
-            storagePath ||
-            storageBox ||
-            storageWell ||
-            routing?.hasRouting // Fallback: routing record exists even if box details aren't loaded
+            (
+              storageLocation ||
+              storagePath ||
+              storageBox ||
+              storageWell ||
+              routing?.hasRouting
+            ) // Fallback: routing record exists even if box details aren't loaded
           );
 
           let status = sample.pageStatus || "PENDING";

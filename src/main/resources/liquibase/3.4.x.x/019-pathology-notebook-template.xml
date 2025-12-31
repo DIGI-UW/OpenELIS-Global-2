@@ -1,0 +1,709 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY LABORATORY NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with 8 workflow pages -->
+    <!-- for the Pathology Laboratory workflow -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-pathology-notebook-template" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Pathology Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Pathology Laboratory"/>
+            <column name="objective" value="Complete pathology workflow from sample reception to archiving"/>
+            <column name="protocol" value="Standard Pathology Laboratory Protocol"/>
+            <column name="content" value="Pathology Laboratory notebook template with 8 predefined workflow pages for sample creation, QC, processing, testing, storage, reporting, disposal, and reference management."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Pathology Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE CREATION & FULL METADATA CAPTURE -->
+    <!-- Purpose: Create the pathology sample and capture all metadata at once -->
+    <!-- Who uses it: Data clerks / reception staff -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-1-sample-creation" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Creation and Metadata Capture page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Creation &amp; Metadata Capture"/>
+            <column name="instructions" value="Create the pathology sample and capture all metadata at once. Enter: Sample Identity (unique accession number, barcode, category - Clinical diagnostic/Research), Sample Source (Alert Hospital/Research project, received date/time, received by), Specimen Type (Histopathology: FFPE block, fresh biopsy, surgical resection; Cytopathology: FNA, body fluids, urine, sputum, cervical smear; Hematology: EDTA blood; Research: human tissue, animal tissue, bacterial pellets, cell cultures), Clinical/Research Metadata (Patient ID, requesting clinician, collection date/time, specimen site, clinical details for clinical samples; Study ID, PI name, participant/animal ID, ethical approval reference for research samples). System generates unique ID and barcode, sets status to 'Created - Pending QC'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Creation &amp; Full Metadata Capture&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sampleIdentity&quot;: {
+      &quot;accessionNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Pathology Accession Number&quot;, &quot;generated&quot;: true, &quot;required&quot;: true},
+      &quot;barcode&quot;: {&quot;type&quot;: &quot;barcode&quot;, &quot;label&quot;: &quot;Barcode/Label&quot;, &quot;generated&quot;: true},
+      &quot;sampleCategory&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Category&quot;, &quot;options&quot;: [&quot;Clinical diagnostic&quot;, &quot;Research&quot;], &quot;required&quot;: true}
+    },
+    &quot;sampleSource&quot;: {
+      &quot;sourceFacility&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Source Facility&quot;, &quot;options&quot;: [&quot;Alert Hospital&quot;, &quot;Research project&quot;], &quot;required&quot;: true},
+      &quot;receivedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Received Date &amp; Time&quot;, &quot;required&quot;: true},
+      &quot;receivedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Received By (Staff Name)&quot;, &quot;required&quot;: true}
+    },
+    &quot;specimenType&quot;: {
+      &quot;type&quot;: &quot;reference&quot;,
+      &quot;label&quot;: &quot;Specimen Type&quot;,
+      &quot;source&quot;: &quot;type_of_sample&quot;,
+      &quot;categories&quot;: {
+        &quot;histopathology&quot;: [&quot;FFPE tissue block&quot;, &quot;Fresh biopsy&quot;, &quot;Surgical resection&quot;],
+        &quot;cytopathology&quot;: [&quot;FNA&quot;, &quot;Body fluid (pleural)&quot;, &quot;Body fluid (peritoneal)&quot;, &quot;Body fluid (pericardial)&quot;, &quot;Body fluid (CSF)&quot;, &quot;Urine&quot;, &quot;Sputum&quot;, &quot;Cervical smear&quot;],
+        &quot;hematology&quot;: [&quot;EDTA blood (peripheral smear)&quot;],
+        &quot;research&quot;: [&quot;Human tissue (fresh)&quot;, &quot;Human tissue (frozen)&quot;, &quot;Human tissue (FFPE)&quot;, &quot;Animal tissue (mouse footpad)&quot;, &quot;Animal tissue (nerve)&quot;, &quot;Bacterial/cellular pellet&quot;, &quot;Primary cell culture&quot;]
+      },
+      &quot;required&quot;: true
+    },
+    &quot;clinicalMetadata&quot;: {
+      &quot;patientId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Patient ID&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Clinical diagnostic&quot;, &quot;required&quot;: false},
+      &quot;requestingClinician&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Requesting Clinician&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Clinical diagnostic&quot;, &quot;required&quot;: false},
+      &quot;collectionDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Collection Date &amp; Time&quot;, &quot;required&quot;: true},
+      &quot;specimenSite&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Specimen Site&quot;, &quot;required&quot;: false},
+      &quot;clinicalDetails&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Clinical Details&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Clinical diagnostic&quot;, &quot;required&quot;: false}
+    },
+    &quot;researchMetadata&quot;: {
+      &quot;studyId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Study ID&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: false},
+      &quot;piName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;PI Name&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: false},
+      &quot;participantAnimalId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Participant/Animal ID&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: false},
+      &quot;ethicalApprovalRef&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Ethical Approval Reference&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate unique pathology accession number&quot;, &quot;Generate label/barcode&quot;, &quot;Set status: Created - Pending QC&quot;, &quot;Print label&quot;],
+  &quot;nextPage&quot;: &quot;Sample Quality Control&quot;
+}"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: SAMPLE QUALITY CONTROL (QC) -->
+    <!-- Purpose: Verify sample suitability before processing -->
+    <!-- Who uses it: Lab technicians -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-2-quality-control" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Quality Control page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Quality Control"/>
+            <column name="instructions" value="Verify sample suitability before processing. Perform QC checks by sample type: Histology (fixative used - 10% NBF, fixative ratio 10:1, fixation duration, tissue integrity), Cytology (container integrity, preservative type e.g. Cytolyt, volume, clot presence), Peripheral blood (clot check in EDTA tube), Research samples (consent verified, storage medium OCT/RNAlater, sample type matches protocol). For tissue blocks post-embedding: check for smooth surface, correct depth/orientation, no paraffin overflow. Record QC outcome (Pass/Fail), remarks, staff initials, QC date. If Fail: select action (Recollection requested/Process with limitations), notify clinician/PI and lab head/pathologist."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Quality Control (QC)&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;histologyQC&quot;: {
+      &quot;fixativeUsed&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Fixative Used&quot;, &quot;options&quot;: [&quot;10% NBF&quot;, &quot;Formalin&quot;, &quot;Other&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == histopathology&quot;},
+      &quot;fixativeRatio&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Fixative Ratio&quot;, &quot;placeholder&quot;: &quot;e.g., 10:1&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == histopathology&quot;},
+      &quot;fixationDuration&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Fixation Duration&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == histopathology&quot;},
+      &quot;tissueIntegrity&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Tissue Integrity&quot;, &quot;options&quot;: [&quot;Intact&quot;, &quot;Compromised&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == histopathology&quot;}
+    },
+    &quot;cytologyQC&quot;: {
+      &quot;containerIntegrity&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Container Integrity&quot;, &quot;options&quot;: [&quot;Intact&quot;, &quot;Compromised&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == cytopathology&quot;},
+      &quot;preservativeType&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Preservative Type&quot;, &quot;placeholder&quot;: &quot;e.g., Cytolyt&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == cytopathology&quot;},
+      &quot;volume&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Volume (mL)&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == cytopathology&quot;},
+      &quot;clotPresence&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Clot Presence&quot;, &quot;options&quot;: [&quot;None&quot;, &quot;Present&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == cytopathology&quot;}
+    },
+    &quot;bloodQC&quot;: {
+      &quot;clotCheck&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Clot Check in EDTA Tube&quot;, &quot;options&quot;: [&quot;No clot&quot;, &quot;Clot present&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == hematology&quot;}
+    },
+    &quot;researchQC&quot;: {
+      &quot;consentVerified&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Consent Verified&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;},
+      &quot;storageMedium&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Medium&quot;, &quot;options&quot;: [&quot;OCT&quot;, &quot;RNAlater&quot;, &quot;None&quot;, &quot;Other&quot;], &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;},
+      &quot;sampleTypeMatchesProtocol&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Sample Type Matches Protocol&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;}
+    },
+    &quot;tissueBlockQC&quot;: {
+      &quot;surfaceQuality&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Surface Quality&quot;, &quot;options&quot;: [&quot;Smooth&quot;, &quot;Cracks&quot;, &quot;Bubbles&quot;]},
+      &quot;depthOrientation&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Depth/Orientation&quot;, &quot;options&quot;: [&quot;Correct&quot;, &quot;Shallow&quot;, &quot;Deep&quot;]},
+      &quot;paraffinOverflow&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Paraffin Overflow&quot;}
+    },
+    &quot;qcOutcome&quot;: {
+      &quot;qcStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;QC Status&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;], &quot;required&quot;: true},
+      &quot;qcRemarks&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;QC Remarks&quot;},
+      &quot;staffInitials&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Staff Initials&quot;, &quot;required&quot;: true},
+      &quot;qcDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;QC Date&quot;, &quot;required&quot;: true}
+    },
+    &quot;failActions&quot;: {
+      &quot;actionTaken&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Action Taken&quot;, &quot;options&quot;: [&quot;Recollection requested&quot;, &quot;Process with limitations&quot;, &quot;Re-embed&quot;, &quot;Melt block&quot;], &quot;conditionalOn&quot;: &quot;qcStatus == Fail&quot;},
+      &quot;notificationSent&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Notification Sent To&quot;, &quot;options&quot;: [&quot;Clinician&quot;, &quot;PI&quot;, &quot;Lab Head&quot;, &quot;Pathologist&quot;], &quot;conditionalOn&quot;: &quot;qcStatus == Fail&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Log QC status in accession record&quot;, &quot;Update sample status: QC Passed or QC Failed - Action Required&quot;],
+  &quot;nextPage&quot;: &quot;Sample Processing &amp; Aliquoting&quot;
+}"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: SAMPLE PROCESSING & GROSSING/ALIQUOTING -->
+    <!-- Purpose: Create slides, blocks, aliquots while maintaining traceability -->
+    <!-- Who uses it: Technicians / pathologists -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-3-sample-processing" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Processing and Aliquoting page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Processing &amp; Aliquoting"/>
+            <column name="instructions" value="Create slides, blocks, aliquots while maintaining traceability. Grossing/Aliquoting: Section tissue blocks into slides, aliquot fluids for LBC/cell blocks/molecular testing/biobanking. Label with parent accession number + unique child ID, maintain parent-child relationship. Processing by type: Histopathology (gross exam, description, sectioning, tissue processing through alcohols/xylene/paraffin, embedding, microtomy 3-5 um), Cytopathology (centrifugation, smears Pap/Romanowsky, cell block preparation from clots/pellets), Peripheral blood (wedge smear within hours, Giemsa/Wright stain), Research (per study SOPs - LN2 freezing, OCT embedding, nucleic acid extraction)."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Processing &amp; Aliquoting&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;grossingAliquoting&quot;: {
+      &quot;processingAction&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Processing Action&quot;, &quot;options&quot;: [&quot;Section to slides&quot;, &quot;Aliquot for LBC&quot;, &quot;Aliquot for cell block&quot;, &quot;Aliquot for molecular testing&quot;, &quot;Aliquot for biobanking&quot;], &quot;required&quot;: true},
+      &quot;parentAccessionNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Parent Accession Number&quot;, &quot;required&quot;: true},
+      &quot;childId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Child Sample ID&quot;, &quot;generated&quot;: true}
+    },
+    &quot;histopathologyProcessing&quot;: {
+      &quot;grossExamDone&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Gross Examination Done&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == histopathology&quot;},
+      &quot;grossDescription&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Gross Description&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == histopathology&quot;},
+      &quot;sectioningDone&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Sectioning Done&quot;},
+      &quot;tissueProcessing&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Tissue Processing Steps&quot;, &quot;options&quot;: [&quot;Alcohols&quot;, &quot;Xylene&quot;, &quot;Paraffin&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == histopathology&quot;},
+      &quot;embeddingDone&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Embedding Done&quot;},
+      &quot;microtomyThickness&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Microtomy Thickness (um)&quot;, &quot;default&quot;: 4}
+    },
+    &quot;cytopathologyProcessing&quot;: {
+      &quot;centrifugationDone&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Centrifugation Done&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == cytopathology&quot;},
+      &quot;smearType&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Smear Type&quot;, &quot;options&quot;: [&quot;Direct smear&quot;, &quot;LBC (ThinPrep)&quot;, &quot;Cell block&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == cytopathology&quot;},
+      &quot;stainUsed&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Stain Used&quot;, &quot;options&quot;: [&quot;Pap stain&quot;, &quot;Romanowsky&quot;]}
+    },
+    &quot;bloodProcessing&quot;: {
+      &quot;wedgeSmearDone&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Wedge Smear Done&quot;, &quot;conditionalOn&quot;: &quot;specimenType.category == hematology&quot;},
+      &quot;bloodStain&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Blood Stain&quot;, &quot;options&quot;: [&quot;Giemsa&quot;, &quot;Wright&quot;, &quot;Giemsa/Wright&quot;], &quot;conditionalOn&quot;: &quot;specimenType.category == hematology&quot;}
+    },
+    &quot;researchProcessing&quot;: {
+      &quot;sopFollowed&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;SOP Reference&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;},
+      &quot;processingMethod&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Processing Method&quot;, &quot;options&quot;: [&quot;LN2 freezing&quot;, &quot;OCT embedding&quot;, &quot;Nucleic acid extraction&quot;], &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;}
+    },
+    &quot;processingLog&quot;: {
+      &quot;processingStep&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Processing Step&quot;},
+      &quot;processingDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Processing Date&quot;, &quot;required&quot;: true},
+      &quot;staffInitials&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Staff Initials&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Log processing steps&quot;, &quot;Create child samples&quot;, &quot;Update sample status: Processing In Progress&quot;],
+  &quot;nextPage&quot;: &quot;Testing, Staining &amp; Microscopy&quot;
+}"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BRANCHING"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: TESTING, STAINING & MICROSCOPY -->
+    <!-- Purpose: Perform diagnostic or research assays on sample-derived material -->
+    <!-- Who uses it: Pathologists / PIs / technicians -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-4-testing-microscopy" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Testing, Staining and Microscopy page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Testing, Staining &amp; Microscopy"/>
+            <column name="instructions" value="Perform diagnostic or research assays on sample-derived material. Routine stains: H&amp;E (histology), Papanicolaou/Romanowsky (cytology/blood). Special stains: AFB, GMS, PAS, Gram. Advanced techniques: IHC/ICC (FFPE blocks, cell blocks, smears), ISH. Research assays: Laser microdissection, multiplex IHC, immunofluorescent staining, RNAscope. Run positive/negative controls for each IHC/ICC/ISH run. Record assay acceptance based on control and stain quality. Clinical results must be verified by certified pathologist. Document: accession number, block/slide ID, test name, control results, result, signatures."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Testing, Staining &amp; Microscopy&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;routineStains&quot;: {
+      &quot;stainType&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Routine Stain&quot;, &quot;options&quot;: [&quot;H&amp;E&quot;, &quot;Papanicolaou&quot;, &quot;Romanowsky&quot;, &quot;Giemsa&quot;, &quot;Wright&quot;]}
+    },
+    &quot;specialStains&quot;: {
+      &quot;specialStainType&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Special Stain&quot;, &quot;options&quot;: [&quot;AFB&quot;, &quot;GMS&quot;, &quot;PAS&quot;, &quot;Gram&quot;, &quot;Trichrome&quot;, &quot;Reticulin&quot;, &quot;Iron&quot;]}
+    },
+    &quot;advancedTechniques&quot;: {
+      &quot;advancedType&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Advanced Technique&quot;, &quot;options&quot;: [&quot;IHC&quot;, &quot;ICC&quot;, &quot;ISH&quot;, &quot;FISH&quot;]},
+      &quot;ihcMarkers&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;IHC/ICC Markers&quot;, &quot;conditionalOn&quot;: &quot;advancedType includes IHC or ICC&quot;}
+    },
+    &quot;researchAssays&quot;: {
+      &quot;researchAssayType&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Research Assay&quot;, &quot;options&quot;: [&quot;Laser microdissection&quot;, &quot;Multiplex IHC&quot;, &quot;Immunofluorescent staining&quot;, &quot;RNAscope&quot;], &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;}
+    },
+    &quot;controls&quot;: {
+      &quot;positiveControlRun&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Positive Control Run&quot;},
+      &quot;positiveControlResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Positive Control Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;]},
+      &quot;negativeControlRun&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Negative Control Run&quot;},
+      &quot;negativeControlResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Negative Control Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;]},
+      &quot;assayAccepted&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Assay Accepted&quot;}
+    },
+    &quot;documentation&quot;: {
+      &quot;blockSlideId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Block/Slide ID&quot;, &quot;required&quot;: true},
+      &quot;testName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Test Name&quot;, &quot;required&quot;: true},
+      &quot;result&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Result&quot;, &quot;required&quot;: true},
+      &quot;technicianSignature&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Technician Signature&quot;, &quot;required&quot;: true},
+      &quot;pathologistVerification&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Pathologist Verification&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Clinical diagnostic&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Link results to sample&quot;, &quot;Update sample status: Results Pending Review&quot;],
+  &quot;nextPage&quot;: &quot;Storage &amp; Inventory Management&quot;
+}"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: STORAGE & INVENTORY MANAGEMENT -->
+    <!-- Purpose: Track physical storage and retrieval of pathology materials -->
+    <!-- Who uses it: Store manager / lab staff -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-5-storage-inventory" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Storage and Inventory Management page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Storage &amp; Inventory Management"/>
+            <column name="instructions" value="Track physical storage and retrieval of pathology materials. Storage conditions: FFPE blocks &amp; slides at room temperature in labeled cabinets, Cell blocks same as FFPE, Residual cytology material at 4C for 2-4 weeks, Frozen research samples at -80C or LN2 vapor, Blood smears at room temperature in slide boxes. Location tracking: storage unit (cabinet/freezer), rack, box, position. Record date stored/retrieved and recipient signature. Environmental monitoring: Manual temperature checks twice daily, logged per storage unit."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Storage &amp; Inventory Management&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;storageConditions&quot;: {
+      &quot;storageType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Type&quot;, &quot;options&quot;: [&quot;Room temperature cabinet&quot;, &quot;4C refrigerator&quot;, &quot;-20C freezer&quot;, &quot;-80C freezer&quot;, &quot;LN2 vapor&quot;, &quot;Slide box&quot;], &quot;required&quot;: true},
+      &quot;expectedDuration&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Expected Storage Duration&quot;}
+    },
+    &quot;locationTracking&quot;: {
+      &quot;storageUnit&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Storage Unit (Cabinet/Freezer ID)&quot;, &quot;required&quot;: true},
+      &quot;rack&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Rack&quot;, &quot;required&quot;: true},
+      &quot;box&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Box&quot;, &quot;required&quot;: true},
+      &quot;position&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Position&quot;, &quot;placeholder&quot;: &quot;e.g., A1, B3&quot;, &quot;required&quot;: true},
+      &quot;dateStored&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Date/Time Stored&quot;, &quot;required&quot;: true},
+      &quot;storedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Stored By&quot;, &quot;required&quot;: true}
+    },
+    &quot;retrieval&quot;: {
+      &quot;dateRetrieved&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Date/Time Retrieved&quot;},
+      &quot;retrievedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Retrieved By&quot;},
+      &quot;recipientSignature&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Recipient Signature&quot;}
+    },
+    &quot;environmentalMonitoring&quot;: {
+      &quot;temperatureCheckAM&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Temperature Check AM (C)&quot;},
+      &quot;temperatureCheckPM&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Temperature Check PM (C)&quot;},
+      &quot;checkedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Checked By&quot;},
+      &quot;checkDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Check Date&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Maintain location history&quot;, &quot;Attach temperature logs&quot;],
+  &quot;nextPage&quot;: &quot;Reporting &amp; Performance Monitoring&quot;
+}"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: REPORTING & PERFORMANCE MONITORING -->
+    <!-- Purpose: Track laboratory performance and turnaround -->
+    <!-- Who uses it: Lab managers / supervisors -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-6-reporting-monitoring" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reporting and Performance Monitoring page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reporting &amp; Performance Monitoring"/>
+            <column name="instructions" value="Track laboratory performance and turnaround. Generate routine reports: Monthly specimen volume, Turnaround time (TAT), Rejection rates, QC incidents, Equipment downtime. Key metrics: Specimen rejection rate, Assay success rate, TAT, Equipment downtime. Data used for monthly QC meetings. System generates dashboards for performance visualization."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Reporting &amp; Performance Monitoring&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;routineReports&quot;: {
+      &quot;reportType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Report Type&quot;, &quot;options&quot;: [&quot;Monthly specimen volume&quot;, &quot;Turnaround time (TAT)&quot;, &quot;Rejection rates&quot;, &quot;QC incidents&quot;, &quot;Equipment downtime&quot;]},
+      &quot;reportPeriod&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Report Period&quot;, &quot;placeholder&quot;: &quot;e.g., January 2025&quot;},
+      &quot;generatedDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Generated Date&quot;}
+    },
+    &quot;keyMetrics&quot;: {
+      &quot;specimenRejectionRate&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Specimen Rejection Rate (%)&quot;},
+      &quot;assaySuccessRate&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Assay Success Rate (%)&quot;},
+      &quot;averageTAT&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Average TAT (hours)&quot;},
+      &quot;equipmentDowntimeHours&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Equipment Downtime (hours)&quot;}
+    },
+    &quot;qcMeetings&quot;: {
+      &quot;meetingDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;QC Meeting Date&quot;},
+      &quot;attendees&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Attendees&quot;},
+      &quot;issuesDiscussed&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Issues Discussed&quot;},
+      &quot;actionsRequired&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Actions Required&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate dashboards&quot;, &quot;Data used for QC meetings&quot;],
+  &quot;nextPage&quot;: &quot;Disposal &amp; Archiving&quot;
+}"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: DISPOSAL & ARCHIVING -->
+    <!-- Purpose: Close the sample lifecycle in compliance with policy -->
+    <!-- Who uses it: Lab manager / quality officer -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-7-disposal-archiving" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Disposal and Archiving page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Disposal &amp; Archiving"/>
+            <column name="instructions" value="Close the sample lifecycle in compliance with policy. Disposal: Per retention policy (Clinical - national guidelines, Research - approved protocol). Record in Disposal Logbook: date, sample IDs, method (incineration/autoclaving), staff signature, unit head approval. Mark Storage Logbook as 'Disposed [Date]'. Archiving: Physical archives (logbooks, ledgers, reports) in fire-proof cabinets. Digital data backed up on secure servers. System marks sample as Closed and locks records."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Disposal &amp; Archiving&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;disposal&quot;: {
+      &quot;disposalReason&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Disposal Reason&quot;, &quot;options&quot;: [&quot;Retention period expired&quot;, &quot;Sample depleted&quot;, &quot;Quality degradation&quot;, &quot;Study completion&quot;, &quot;Other&quot;], &quot;required&quot;: true},
+      &quot;retentionPolicy&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Retention Policy Applied&quot;, &quot;options&quot;: [&quot;National clinical guidelines&quot;, &quot;Research protocol&quot;, &quot;Institutional policy&quot;]},
+      &quot;disposalMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Disposal Method&quot;, &quot;options&quot;: [&quot;Incineration&quot;, &quot;Autoclaving&quot;, &quot;Chemical treatment&quot;, &quot;Other&quot;], &quot;required&quot;: true},
+      &quot;disposalDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Disposal Date&quot;, &quot;required&quot;: true},
+      &quot;staffSignature&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Staff Signature&quot;, &quot;required&quot;: true},
+      &quot;unitHeadApproval&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Unit Head Approval&quot;, &quot;required&quot;: true}
+    },
+    &quot;archiving&quot;: {
+      &quot;archiveType&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Archive Type&quot;, &quot;options&quot;: [&quot;Physical - Logbooks&quot;, &quot;Physical - Ledgers&quot;, &quot;Physical - Reports&quot;, &quot;Digital backup&quot;]},
+      &quot;archiveLocation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Archive Location&quot;, &quot;placeholder&quot;: &quot;e.g., Fire-proof cabinet A3&quot;},
+      &quot;digitalBackupLocation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Digital Backup Location&quot;, &quot;placeholder&quot;: &quot;e.g., Secure server /archives/2025&quot;},
+      &quot;archiveDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Archive Date&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Mark sample as Closed&quot;, &quot;Lock records&quot;],
+  &quot;nextPage&quot;: &quot;Reference &amp; SOP Module&quot;
+}"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 8: REFERENCE & SOP MODULE -->
+    <!-- Purpose: Provide controlled access to SOPs and protocols -->
+    <!-- Who uses it: All users -->
+    <!-- ======================================================== -->
+    <changeSet id="create-pathology-page-8-reference-sop" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reference and SOP Module page for Pathology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reference &amp; SOP Module"/>
+            <column name="instructions" value="Provide controlled access to SOPs and protocols. Features: SOP repository with dedicated access to reference materials. Protocol management: Upload new/updated protocols, maintain access to previous versions. Access control: View access for all users, Upload/edit access for authorized personnel only (lab managers, supervisors). SOPs uploaded and stored as reference documents. All users can view SOPs without restriction."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Reference &amp; SOP Module&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sopRepository&quot;: {
+      &quot;sopTitle&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;SOP Title&quot;},
+      &quot;sopCategory&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;SOP Category&quot;, &quot;options&quot;: [&quot;Sample Reception&quot;, &quot;Quality Control&quot;, &quot;Processing&quot;, &quot;Testing&quot;, &quot;Storage&quot;, &quot;Disposal&quot;, &quot;Safety&quot;, &quot;Equipment&quot;, &quot;Other&quot;]},
+      &quot;sopDocument&quot;: {&quot;type&quot;: &quot;file&quot;, &quot;label&quot;: &quot;SOP Document&quot;, &quot;accept&quot;: &quot;.pdf,.doc,.docx&quot;},
+      &quot;version&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Version&quot;},
+      &quot;effectiveDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Effective Date&quot;},
+      &quot;reviewDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Review Date&quot;}
+    },
+    &quot;protocolUpdates&quot;: {
+      &quot;previousVersion&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Previous Version&quot;},
+      &quot;changesSummary&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Summary of Changes&quot;},
+      &quot;approvedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Approved By&quot;},
+      &quot;approvalDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Approval Date&quot;}
+    },
+    &quot;accessControl&quot;: {
+      &quot;viewAccessLevel&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;View Access&quot;, &quot;default&quot;: &quot;All users&quot;, &quot;readOnly&quot;: true},
+      &quot;editAccessLevel&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Edit Access&quot;, &quot;default&quot;: &quot;Lab managers, Supervisors&quot;, &quot;readOnly&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Store SOP documents&quot;, &quot;Maintain version history&quot;, &quot;Control access based on role&quot;]
+}"/>
+            <column name="page_order" value="8"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 8</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY WORKFLOW PAGE TEMPLATES -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-pathology-workflow-page-templates" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'PATHOLOGY'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert predefined Pathology workflow page templates</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="201"/>
+            <column name="name" value="Sample Creation &amp; Metadata Capture"/>
+            <column name="display_key" value="workflow.page.pathology.sampleCreation"/>
+            <column name="description" value="Create the pathology sample and capture all metadata at once"/>
+            <column name="default_instructions" value="Create samples with full metadata including sample identity, source, specimen type, and clinical/research metadata. System generates unique ID and barcode."/>
+            <column name="default_content" value="Sample Creation and Metadata Capture - Bulk data entry for incoming pathology samples"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="202"/>
+            <column name="name" value="Sample Quality Control"/>
+            <column name="display_key" value="workflow.page.pathology.qualityControl"/>
+            <column name="description" value="Verify sample suitability before processing"/>
+            <column name="default_instructions" value="Perform QC checks by sample type. Record QC outcome, remarks, and actions for failed samples."/>
+            <column name="default_content" value="Sample Quality Control - Batch verification of sample quality"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="203"/>
+            <column name="name" value="Sample Processing &amp; Aliquoting"/>
+            <column name="display_key" value="workflow.page.pathology.processing"/>
+            <column name="description" value="Create slides, blocks, aliquots while maintaining traceability"/>
+            <column name="default_instructions" value="Process samples by type (histopathology, cytopathology, blood, research). Create child samples and maintain parent-child relationships."/>
+            <column name="default_content" value="Sample Processing and Aliquoting - Create derived samples with traceability"/>
+            <column name="page_type" value="BRANCHING"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="204"/>
+            <column name="name" value="Testing, Staining &amp; Microscopy"/>
+            <column name="display_key" value="workflow.page.pathology.testing"/>
+            <column name="description" value="Perform diagnostic or research assays on sample-derived material"/>
+            <column name="default_instructions" value="Perform routine stains, special stains, and advanced techniques. Run controls and document results with pathologist verification."/>
+            <column name="default_content" value="Testing, Staining and Microscopy - Assay execution and result documentation"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="205"/>
+            <column name="name" value="Storage &amp; Inventory Management"/>
+            <column name="display_key" value="workflow.page.pathology.storage"/>
+            <column name="description" value="Track physical storage and retrieval of pathology materials"/>
+            <column name="default_instructions" value="Assign storage locations, track retrieval, and log environmental monitoring data."/>
+            <column name="default_content" value="Storage and Inventory Management - Location tracking and environmental monitoring"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="206"/>
+            <column name="name" value="Reporting &amp; Performance Monitoring"/>
+            <column name="display_key" value="workflow.page.pathology.reporting"/>
+            <column name="description" value="Track laboratory performance and turnaround"/>
+            <column name="default_instructions" value="Generate routine reports, track key metrics, and document QC meetings."/>
+            <column name="default_content" value="Reporting and Performance Monitoring - Dashboards and metrics"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="207"/>
+            <column name="name" value="Disposal &amp; Archiving"/>
+            <column name="display_key" value="workflow.page.pathology.disposal"/>
+            <column name="description" value="Close the sample lifecycle in compliance with policy"/>
+            <column name="default_instructions" value="Record disposal with appropriate method and approvals. Archive physical and digital records."/>
+            <column name="default_content" value="Disposal and Archiving - Sample lifecycle closure"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="208"/>
+            <column name="name" value="Reference &amp; SOP Module"/>
+            <column name="display_key" value="workflow.page.pathology.reference"/>
+            <column name="description" value="Provide controlled access to SOPs and protocols"/>
+            <column name="default_instructions" value="Access SOP repository, upload protocols, and manage version control."/>
+            <column name="default_content" value="Reference and SOP Module - Protocol management"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="8"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="PATHOLOGY"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'PATHOLOGY'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

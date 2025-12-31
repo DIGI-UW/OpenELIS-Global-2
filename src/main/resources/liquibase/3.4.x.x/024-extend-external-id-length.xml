@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="24-extend-external-id-23-12-2025" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists columnName="external_id" schemaName="clinlims" tableName="sample_item" />
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM information_schema.columns WHERE
+                    table_schema = 'clinlims' AND table_name = 'sample_item' AND column_name =
+                    'external_id' AND character_maximum_length >= 100
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Extend external_id column length from 40 to 100 to support recursive child sample IDs (e.g., PARENT-SLD-2025-0001-SLD-2025-0002)</comment>
+        <modifyDataType schemaName="clinlims"
+            tableName="sample_item"
+            columnName="external_id"
+            newDataType="varchar(100)" />
+    </changeSet>
+
+</databaseChangeLog>

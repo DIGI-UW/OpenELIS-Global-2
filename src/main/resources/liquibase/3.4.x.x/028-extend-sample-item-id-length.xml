@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Extend sample_item_id column length to support composite sample IDs -->
+    <!-- Composite IDs like "4_cassette_0_block_0_slide_0" can be up to 50+ chars -->
+
+    <changeSet id="028-extend-sample-item-id-length-1" author="pathology-workflow">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="notebook_page_sample" columnName="sample_item_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Extend sample_item_id column from VARCHAR(20) to VARCHAR(100) for composite sample IDs</comment>
+        <modifyDataType
+            tableName="notebook_page_sample"
+            columnName="sample_item_id"
+            newDataType="VARCHAR(100)"
+            schemaName="clinlims"/>
+    </changeSet>
+
+</databaseChangeLog>

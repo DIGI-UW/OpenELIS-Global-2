@@ -241,7 +241,12 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
     public int bulkRouteToStorage(Integer notebookId, List<Integer> sampleItemIds, Integer boxId,
             Map<Integer, String> wellAssignments, String userId) {
         int count = 0;
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            notebook = null;
+        }
         String notebookTitle = notebook != null ? notebook.getTitle() : String.valueOf(notebookId);
 
         for (Integer sampleItemId : sampleItemIds) {
@@ -365,7 +370,12 @@ public class SampleRoutingServiceImpl extends AuditableBaseObjectServiceImpl<Sam
             throw new IllegalStateException("Sample " + sampleItemId + " is already routed in notebook " + notebookId);
         }
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }

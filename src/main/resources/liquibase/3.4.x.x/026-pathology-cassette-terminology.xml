@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY CASSETTE TERMINOLOGY                           -->
+    <!-- Adds cassette as an intermediate sample type in the      -->
+    <!-- histopathology workflow: Specimen -> Cassette -> Block -> Slide -->
+    <!-- This addresses client feedback for pathology-specific    -->
+    <!-- terminology in the workflow and data model               -->
+    <!-- ======================================================== -->
+
+    <!-- ======================= -->
+    <!-- TISSUE CASSETTE SAMPLE TYPE -->
+    <!-- ======================= -->
+
+    <!-- Tissue cassette localization -->
+    <changeSet id="add-pathology-localization-tissue-cassette" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Tissue cassette' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add localization for Tissue cassette sample type - intermediate container in histopathology workflow</comment>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Tissue cassette"/>
+            <column name="french" value="Cassette tissulaire"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-tissue-cassette" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tissue cassette'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Tissue cassette sample type - perforated plastic container for tissue processing</comment>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tissue cassette"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="CAS"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="25"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Tissue cassette' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- PARAFFIN BLOCK SAMPLE TYPE (more specific than generic FFPE block) -->
+    <!-- ======================= -->
+
+    <!-- Paraffin block localization -->
+    <changeSet id="add-pathology-localization-paraffin-block" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Paraffin block' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add localization for Paraffin block sample type - embedded tissue after cassette processing</comment>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Paraffin block"/>
+            <column name="french" value="Bloc de paraffine"/>
+            <column name="lastupdated" valueComputed="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-pathology-sample-type-paraffin-block" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'paraffin block'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Paraffin block sample type - embedded tissue ready for sectioning</comment>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Paraffin block"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="local_abbrev" value="PBK"/>
+            <column name="is_active" value="Y"/>
+            <column name="sort_order" valueNumeric="26"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Paraffin block' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- UPDATE PATHOLOGY PAGE 3 (Sample Processing) CONTENT -->
+    <!-- ======================= -->
+
+    <changeSet id="update-pathology-page-3-cassette-workflow" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Sample Processing page to include cassette workflow step</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="instructions" value="Process specimens through the histopathology workflow: GROSSING: Examine specimen, document gross findings, select tissue for processing. CASSETTING: Transfer tissue sections into labeled cassettes (perforated plastic containers). PROCESSING: Run cassettes through tissue processor (fixation, dehydration, clearing, paraffin infiltration). EMBEDDING: Orient processed tissue in paraffin block. MICROTOMY: Cut thin sections (3-5 um) from paraffin block. MOUNTING: Mount sections onto labeled glass slides. Track each step with cassette ID -> block ID -> slide ID for full traceability."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Processing &amp; Aliquoting - Cassette Workflow&quot;,
+  &quot;workflowHierarchy&quot;: {
+    &quot;description&quot;: &quot;Histopathology sample processing follows the hierarchy: Specimen → Cassette → Block → Slide&quot;,
+    &quot;levels&quot;: [
+      {&quot;level&quot;: 1, &quot;name&quot;: &quot;Specimen&quot;, &quot;description&quot;: &quot;Original tissue specimen received&quot;, &quot;idField&quot;: &quot;specimenId&quot;},
+      {&quot;level&quot;: 2, &quot;name&quot;: &quot;Cassette&quot;, &quot;description&quot;: &quot;Tissue placed in cassette for processing&quot;, &quot;idField&quot;: &quot;cassetteId&quot;, &quot;sampleType&quot;: &quot;Tissue cassette&quot;},
+      {&quot;level&quot;: 3, &quot;name&quot;: &quot;Block&quot;, &quot;description&quot;: &quot;Processed tissue embedded in paraffin&quot;, &quot;idField&quot;: &quot;blockId&quot;, &quot;sampleType&quot;: &quot;Paraffin block&quot;},
+      {&quot;level&quot;: 4, &quot;name&quot;: &quot;Slide&quot;, &quot;description&quot;: &quot;Sections mounted on glass slide&quot;, &quot;idField&quot;: &quot;slideId&quot;, &quot;sampleType&quot;: &quot;Tissue slide&quot;}
+    ]
+  },
+  &quot;dataPoints&quot;: {
+    &quot;grossExamination&quot;: {
+      &quot;grossExamDate&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Gross Examination Date&quot;, &quot;required&quot;: true},
+      &quot;grossExamBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Examined By (Pathologist/Resident)&quot;, &quot;required&quot;: true},
+      &quot;grossDescription&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Gross Description&quot;, &quot;required&quot;: true},
+      &quot;specimenDimensions&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Specimen Dimensions (cm)&quot;},
+      &quot;specimenWeight&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Specimen Weight (g)&quot;},
+      &quot;sectionsSubmitted&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Number of Sections Submitted&quot;, &quot;required&quot;: true}
+    },
+    &quot;cassettingInfo&quot;: {
+      &quot;cassetteId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Cassette ID&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Unique identifier for the tissue cassette&quot;},
+      &quot;cassetteColor&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Cassette Color&quot;, &quot;options&quot;: [&quot;White&quot;, &quot;Blue&quot;, &quot;Pink&quot;, &quot;Green&quot;, &quot;Yellow&quot;, &quot;Orange&quot;, &quot;Lavender&quot;], &quot;description&quot;: &quot;Color coding for specimen type or priority&quot;},
+      &quot;cassetteLabel&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Cassette Label&quot;, &quot;description&quot;: &quot;Text written/printed on cassette&quot;},
+      &quot;tissueOrientation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Tissue Orientation&quot;, &quot;description&quot;: &quot;How tissue is oriented in cassette (ink marks, sutures)&quot;},
+      &quot;numberOfCassettes&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Number of Cassettes&quot;, &quot;required&quot;: true, &quot;min&quot;: 1}
+    },
+    &quot;processingInfo&quot;: {
+      &quot;processorId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Tissue Processor ID&quot;},
+      &quot;processingProtocol&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Processing Protocol&quot;, &quot;options&quot;: [&quot;Standard overnight&quot;, &quot;Rapid (biopsy)&quot;, &quot;Extended (fatty tissue)&quot;, &quot;Decalcification required&quot;]},
+      &quot;processingStartTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Processing Start Time&quot;},
+      &quot;processingEndTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Processing End Time&quot;},
+      &quot;processingTechnician&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Processing Technician&quot;}
+    },
+    &quot;embeddingInfo&quot;: {
+      &quot;blockId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Block ID&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Unique identifier for the paraffin block&quot;},
+      &quot;embeddingDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Embedding Date&quot;, &quot;required&quot;: true},
+      &quot;embeddingTechnician&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Embedding Technician&quot;, &quot;required&quot;: true},
+      &quot;orientationConfirmed&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Tissue Orientation Confirmed&quot;, &quot;required&quot;: true}
+    },
+    &quot;microtomyInfo&quot;: {
+      &quot;slideId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Slide ID&quot;, &quot;description&quot;: &quot;Unique identifier for the glass slide&quot;},
+      &quot;sectionThickness&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Section Thickness (um)&quot;, &quot;default&quot;: 4, &quot;min&quot;: 1, &quot;max&quot;: 10},
+      &quot;numberOfSlides&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Number of Slides Cut&quot;},
+      &quot;microtomyTechnician&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Microtomy Technician&quot;},
+      &quot;sectionQuality&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Section Quality&quot;, &quot;options&quot;: [&quot;Good&quot;, &quot;Acceptable&quot;, &quot;Poor - recut needed&quot;]}
+    }
+  },
+  &quot;childCreationOptions&quot;: [
+    {&quot;type&quot;: &quot;cassette&quot;, &quot;label&quot;: &quot;Create Cassette from Specimen&quot;, &quot;sampleType&quot;: &quot;Tissue cassette&quot;, &quot;idPrefix&quot;: &quot;CAS&quot;},
+    {&quot;type&quot;: &quot;block&quot;, &quot;label&quot;: &quot;Create Block from Cassette&quot;, &quot;sampleType&quot;: &quot;Paraffin block&quot;, &quot;idPrefix&quot;: &quot;BLK&quot;},
+    {&quot;type&quot;: &quot;slide&quot;, &quot;label&quot;: &quot;Create Slide from Block&quot;, &quot;sampleType&quot;: &quot;Tissue slide&quot;, &quot;idPrefix&quot;: &quot;SLD&quot;}
+  ],
+  &quot;systemActions&quot;: [&quot;Create cassette child samples&quot;, &quot;Create block child samples&quot;, &quot;Create slide child samples&quot;, &quot;Track parent-child relationships&quot;, &quot;Generate cassette/block/slide labels&quot;],
+  &quot;nextPage&quot;: &quot;Testing, Staining &amp; Microscopy&quot;
+}"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 3</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="instructions" value="Create slides, blocks, aliquots while maintaining traceability."/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 3</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================= -->
+    <!-- UPDATE PATHOLOGY PAGE 4 (Testing) TO USE CASSETTE/BLOCK/SLIDE IDs -->
+    <!-- ======================= -->
+
+    <changeSet id="update-pathology-page-4-hierarchy-ids" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Testing page to use specific hierarchy IDs (cassetteId, blockId, slideId)</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="instructions" value="Perform diagnostic or research assays on sample-derived material. Each test should reference the specific slide ID (which traces back to block ID and cassette ID). STAINING: Apply routine stains (H&amp;E, Pap, Giemsa) or special stains (AFB, GMS, PAS) as indicated. ADVANCED TECHNIQUES: IHC/ICC for protein markers, ISH for nucleic acid targets, special research assays. CONTROLS: Run positive and negative controls with each batch; document results. MICROSCOPY: Pathologist/PI examines stained slides, documents findings, and enters diagnosis. Track all tests by slide ID for complete traceability."/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 4</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

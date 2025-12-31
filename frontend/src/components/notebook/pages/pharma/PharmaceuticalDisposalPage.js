@@ -736,7 +736,7 @@ function PharmaceuticalDisposalPage({
                 id: "notebook.pharma.disposal.expiry",
                 defaultMessage: "Expiry",
               }),
-              render: renderExpiryStatus,
+              render: (_, sample) => renderExpiryStatus(sample),
             },
           ]}
         />

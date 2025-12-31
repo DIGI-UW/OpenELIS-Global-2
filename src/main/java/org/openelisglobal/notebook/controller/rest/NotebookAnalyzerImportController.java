@@ -77,7 +77,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
             ParseResult parseResult = analyzerResultImportService.parseAnalyzerFile(file.getInputStream(), fileName);
 
             // Build response
-            response.put("success", !parseResult.hasErrors());
+            response.put("success", !AnalyzerResultImportService.hasParseErrors(parseResult));
             response.put("fileName", fileName);
             response.put("format", format.name());
             response.put("headers", parseResult.headers());
@@ -86,7 +86,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
                     parseResult.rows().size() > 5 ? parseResult.rows().subList(0, 5) : parseResult.rows()); // First 5
                                                                                                             // rows for
                                                                                                             // preview
-            if (parseResult.hasErrors()) {
+            if (AnalyzerResultImportService.hasParseErrors(parseResult)) {
                 response.put("parseErrors", parseResult.parseErrors());
             }
 
@@ -136,7 +136,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
 
             // Parse the file
             ParseResult parseResult = analyzerResultImportService.parseAnalyzerFile(file.getInputStream(), fileName);
-            if (parseResult.hasErrors()) {
+            if (AnalyzerResultImportService.hasParseErrors(parseResult)) {
                 response.put("error", "File parsing failed");
                 response.put("parseErrors", parseResult.parseErrors());
                 return ResponseEntity.badRequest().body(response);
@@ -210,7 +210,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
 
             // Parse the file
             ParseResult parseResult = analyzerResultImportService.parseAnalyzerFile(file.getInputStream(), fileName);
-            if (parseResult.hasErrors()) {
+            if (AnalyzerResultImportService.hasParseErrors(parseResult)) {
                 response.put("error", "File parsing failed");
                 response.put("parseErrors", parseResult.parseErrors());
                 return ResponseEntity.badRequest().body(response);
@@ -233,12 +233,12 @@ public class NotebookAnalyzerImportController extends BaseRestController {
             ImportResult importResult = analyzerResultImportService.executeImport(pageId, parseResult, columnMapping,
                     assayRunId, operatorId, null, null, userId);
 
-            response.put("success", importResult.isFullySuccessful());
+            response.put("success", AnalyzerResultImportService.isFullySuccessful(importResult));
             response.put("importId", importResult.importId());
             response.put("totalRows", importResult.totalRows());
             response.put("successfulRows", importResult.successfulRows());
             response.put("failedRows", importResult.failedRows());
-            if (!importResult.isFullySuccessful()) {
+            if (!AnalyzerResultImportService.isFullySuccessful(importResult)) {
                 response.put("errors", importResult.errors());
             }
 
@@ -345,10 +345,9 @@ public class NotebookAnalyzerImportController extends BaseRestController {
             return importData;
         }).toList());
 
-        response.put("summary",
-                Map.of("importCount", summary.importCount(), "totalRows", summary.totalRows(), "successfulRows",
-                        summary.successfulRows(), "failedRows", summary.failedRows(), "overallSuccessRate",
-                        summary.overallSuccessRate(), "lastImportDate", summary.lastImportDate()));
+        response.put("summary", Map.of("importCount", summary.importCount(), "totalRows", summary.totalRows(),
+                "successfulRows", summary.successfulRows(), "failedRows", summary.failedRows(), "overallSuccessRate",
+                AnalyzerResultImportService.overallSuccessRate(summary), "lastImportDate", summary.lastImportDate()));
 
         return ResponseEntity.ok(response);
     }
@@ -376,7 +375,7 @@ public class NotebookAnalyzerImportController extends BaseRestController {
         response.put("totalRows", summary.totalRows());
         response.put("successfulRows", summary.successfulRows());
         response.put("failedRows", summary.failedRows());
-        response.put("overallSuccessRate", summary.overallSuccessRate());
+        response.put("overallSuccessRate", AnalyzerResultImportService.overallSuccessRate(summary));
         response.put("lastImportDate", summary.lastImportDate());
         response.put("hasFailedImports", analyzerResultImportService.hasFailedImports(pageId));
 

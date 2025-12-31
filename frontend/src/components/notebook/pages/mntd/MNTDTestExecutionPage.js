@@ -771,6 +771,9 @@ function MNTDTestExecutionPage({
 
   // Render execution info column
   const renderExecutionInfo = (sample) => {
+    if (!sample) {
+      return null;
+    }
     if (sample.runCompleted) {
       const isCompleted = sample.runCompleted === "YES";
       return (
@@ -824,6 +827,9 @@ function MNTDTestExecutionPage({
 
   // Render raw data column
   const renderRawData = (sample) => {
+    if (!sample) {
+      return null;
+    }
     if (sample.rawDataFile || sample.testResult) {
       return (
         <div style={{ fontSize: "12px" }}>
@@ -859,6 +865,9 @@ function MNTDTestExecutionPage({
 
   // Render post-test QC column
   const renderPostTestQC = (sample) => {
+    if (!sample) {
+      return null;
+    }
     if (sample.postTestQCResult) {
       const isPassed = sample.postTestQCResult === "PASS";
       return (

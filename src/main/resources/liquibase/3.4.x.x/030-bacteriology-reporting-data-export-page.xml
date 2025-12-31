@@ -58,11 +58,11 @@
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 208
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 308
             </sqlCheck>
         </preConditions>
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" value="208"/>
+            <column name="id" value="308"/>
             <column name="name" value="Reporting &amp; Data Export"/>
             <column name="display_key" value="workflow.page.bacteriology.reportingDataExport"/>
             <column name="description" value="Finalize bacteriology results, generate reports, and export data to external systems"/>

@@ -61,7 +61,12 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
     @Override
     @Transactional
     public NotebookEntry createEntry(Integer notebookId, String title, Organization organization, String sysUserId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }

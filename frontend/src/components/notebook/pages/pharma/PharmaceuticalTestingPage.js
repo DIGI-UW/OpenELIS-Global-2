@@ -734,7 +734,7 @@ function PharmaceuticalTestingPage({
                 id: "notebook.pharma.testing.testInfo",
                 defaultMessage: "Test Info",
               }),
-              render: renderTestInfo,
+              render: (value, sample) => renderTestInfo(sample),
             },
           ]}
         />

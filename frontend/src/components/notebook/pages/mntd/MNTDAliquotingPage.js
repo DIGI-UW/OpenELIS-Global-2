@@ -319,7 +319,7 @@ function MNTDAliquotingPage({
     };
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${entryId}/samples/create-children`,
+      `/rest/notebook/${notebookId}/samples/create-children`,
       JSON.stringify(requestData),
       (response) => {
         setCreating(false);
@@ -348,7 +348,7 @@ function MNTDAliquotingPage({
   }, [
     selectedParentIds,
     hasRealPageId,
-    entryId,
+    notebookId,
     childCount,
     externalIdPrefix,
     aliquotType,
@@ -357,6 +357,8 @@ function MNTDAliquotingPage({
     loadPageSamples,
     onProgressUpdate,
     intl,
+    isDbs,
+    initialDbsSpots,
   ]);
 
   // Handle view children for a parent
@@ -1006,7 +1008,7 @@ function MNTDAliquotingPage({
                       id: "notebook.mntd.aliquoting.volume",
                       defaultMessage: "Volume",
                     }),
-                    render: renderVolumeColumn,
+                    render: (_, sample) => renderVolumeColumn(sample),
                   },
                   {
                     key: "aliquots",
@@ -1019,7 +1021,7 @@ function MNTDAliquotingPage({
                   {
                     key: "actions",
                     header: "",
-                    render: renderChildrenAction,
+                    render: (_, sample) => renderChildrenAction(sample),
                   },
                 ]}
               />
@@ -1140,7 +1142,7 @@ function MNTDAliquotingPage({
                       id: "notebook.mntd.aliquoting.volumeOrSpots",
                       defaultMessage: "Volume/Spots",
                     }),
-                    render: renderVolumeColumn,
+                    render: (_, sample) => renderVolumeColumn(sample),
                   },
                   {
                     key: "processingQc",
@@ -1148,7 +1150,7 @@ function MNTDAliquotingPage({
                       id: "notebook.mntd.aliquoting.processingQc",
                       defaultMessage: "Processing QC",
                     }),
-                    render: renderProcessingQcTag,
+                    render: (_, sample) => renderProcessingQcTag(sample),
                   },
                   {
                     key: "project",
@@ -1156,7 +1158,7 @@ function MNTDAliquotingPage({
                       id: "notebook.mntd.aliquoting.project",
                       defaultMessage: "Project/Control",
                     }),
-                    render: renderProjectInfo,
+                    render: (_, sample) => renderProjectInfo(sample),
                   },
                   {
                     key: "routingStatus",

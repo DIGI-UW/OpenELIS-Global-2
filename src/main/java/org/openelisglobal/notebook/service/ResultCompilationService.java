@@ -117,17 +117,27 @@ public interface ResultCompilationService {
      * Validation summary statistics.
      */
     record ValidationSummary(long total, long valid, long invalid, long inconclusive, long pending) {
-        public double validPercentage() {
-            return total > 0 ? (valid * 100.0 / total) : 0;
-        }
+    }
 
-        public double invalidPercentage() {
-            return total > 0 ? (invalid * 100.0 / total) : 0;
-        }
+    /**
+     * Calculate valid percentage for validation summary.
+     */
+    static double validPercentage(ValidationSummary summary) {
+        return summary.total() > 0 ? (summary.valid() * 100.0 / summary.total()) : 0;
+    }
 
-        public double inconclusivePercentage() {
-            return total > 0 ? (inconclusive * 100.0 / total) : 0;
-        }
+    /**
+     * Calculate invalid percentage for validation summary.
+     */
+    static double invalidPercentage(ValidationSummary summary) {
+        return summary.total() > 0 ? (summary.invalid() * 100.0 / summary.total()) : 0;
+    }
+
+    /**
+     * Calculate inconclusive percentage for validation summary.
+     */
+    static double inconclusivePercentage(ValidationSummary summary) {
+        return summary.total() > 0 ? (summary.inconclusive() * 100.0 / summary.total()) : 0;
     }
 
     /**
@@ -135,10 +145,13 @@ public interface ResultCompilationService {
      */
     record ExportOptions(boolean includeInvalid, boolean includeInconclusive, boolean includeRawData,
             List<String> columns, String dateFormat, String title) {
+    }
 
-        public static ExportOptions defaultOptions() {
-            return new ExportOptions(true, true, true, null, "yyyy-MM-dd", "Analysis Results");
-        }
+    /**
+     * Create default export options.
+     */
+    static ExportOptions defaultExportOptions() {
+        return new ExportOptions(true, true, true, null, "yyyy-MM-dd", "Analysis Results");
     }
 
     /**

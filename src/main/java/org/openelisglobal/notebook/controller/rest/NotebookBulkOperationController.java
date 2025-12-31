@@ -18,6 +18,9 @@ import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.openelisglobal.notebook.valueholder.ValidationStatus;
+import org.openelisglobal.storage.dao.StorageBoxDAO;
+import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -53,6 +56,12 @@ public class NotebookBulkOperationController extends BaseRestController {
 
     @Autowired
     private NotebookPageSampleService notebookPageSampleService;
+
+    @Autowired
+    private StorageBoxDAO storageBoxDAO;
+
+    @Autowired
+    private SampleStorageService sampleStorageService;
 
     /**
      * Bulk apply values to multiple samples on a page. POST
@@ -90,6 +99,53 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         int updatedCount = bulkOperationService.bulkApplyValues(pageId, request.getSampleIds(), request.getData(),
+                sysUserId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("pageId", pageId);
+        result.put("success", true);
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Bulk apply values to multiple samples on a page using String sample IDs. POST
+     * /notebook/bulk/page/{pageId}/samples/apply-string
+     *
+     * This endpoint supports composite sample IDs (e.g., "123_cassette_0") used in
+     * pathology workflow pages where samples are expanded from parent items.
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds (as Strings) and data to apply
+     * @param httpRequest for getting user session
+     * @return result with updated count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/apply-string", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkApplyValuesString(@PathVariable("pageId") Integer pageId,
+            @RequestBody StringApplyRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getData() == null || request.getData().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No data provided to apply");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        int updatedCount = bulkOperationService.bulkApplyValuesString(pageId, request.getSampleIds(), request.getData(),
                 sysUserId);
 
         Map<String, Object> result = new HashMap<>();
@@ -411,9 +467,9 @@ public class NotebookBulkOperationController extends BaseRestController {
         result.put("invalid", summary.invalid());
         result.put("inconclusive", summary.inconclusive());
         result.put("pending", summary.pending());
-        result.put("validPercentage", summary.validPercentage());
-        result.put("invalidPercentage", summary.invalidPercentage());
-        result.put("inconclusivePercentage", summary.inconclusivePercentage());
+        result.put("validPercentage", ResultCompilationService.validPercentage(summary));
+        result.put("invalidPercentage", ResultCompilationService.invalidPercentage(summary));
+        result.put("inconclusivePercentage", ResultCompilationService.inconclusivePercentage(summary));
 
         return ResponseEntity.ok(result);
     }
@@ -442,9 +498,9 @@ public class NotebookBulkOperationController extends BaseRestController {
         result.put("invalid", summary.invalid());
         result.put("inconclusive", summary.inconclusive());
         result.put("pending", summary.pending());
-        result.put("validPercentage", summary.validPercentage());
-        result.put("invalidPercentage", summary.invalidPercentage());
-        result.put("inconclusivePercentage", summary.inconclusivePercentage());
+        result.put("validPercentage", ResultCompilationService.validPercentage(summary));
+        result.put("invalidPercentage", ResultCompilationService.invalidPercentage(summary));
+        result.put("inconclusivePercentage", ResultCompilationService.inconclusivePercentage(summary));
 
         return ResponseEntity.ok(result);
     }
@@ -1066,7 +1122,9 @@ public class NotebookBulkOperationController extends BaseRestController {
             return ResponseEntity.status(401).body(error);
         }
 
-        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+        // Support both sampleIds (integers) and sampleIdsString (composite strings)
+        List<String> effectiveSampleIds = request.getEffectiveSampleIds();
+        if (effectiveSampleIds.isEmpty()) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "No sample IDs provided");
             return ResponseEntity.badRequest().body(error);
@@ -1080,7 +1138,8 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         // Use the new auto-assign storage service method that persists to
         // SampleStorageAssignment
-        Map<String, Object> result = bulkOperationService.autoAssignSamplesToStorage(pageId, request.getSampleIds(),
+        // For composite IDs (pathology), use the string-based version
+        Map<String, Object> result = bulkOperationService.autoAssignSamplesToStorageString(pageId, effectiveSampleIds,
                 request.getBoxId(), request.getRows(), request.getColumns(), request.getOccupiedWells(),
                 request.getData(), sysUserId);
 
@@ -1157,6 +1216,293 @@ public class NotebookBulkOperationController extends BaseRestController {
         result.put("success", true);
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Update status for multiple samples on a page using String IDs. POST
+     * /notebook/bulk/page/{pageId}/samples/status-string
+     *
+     * This endpoint supports composite sample IDs (e.g., "123_cassette_0") used in
+     * pathology workflow pages where samples are expanded from parent items.
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds (as Strings) and status
+     * @param httpRequest for getting user session
+     * @return result with updated count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/status-string", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkUpdateStatusString(@PathVariable("pageId") Integer pageId,
+            @RequestBody StringStatusUpdateRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getStatus() == null || request.getStatus().isBlank()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Status is required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        Status status;
+        try {
+            status = Status.valueOf(request.getStatus().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Invalid status: " + request.getStatus());
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        int updatedCount = bulkOperationService.bulkUpdateStatusString(pageId, request.getSampleIds(), status,
+                sysUserId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("updatedCount", updatedCount);
+        result.put("pageId", pageId);
+        result.put("status", status.name());
+        result.put("success", true);
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Archive samples - marks them as ARCHIVED (terminal status, will not proceed
+     * to next page). POST /notebook/bulk/page/{pageId}/samples/archive
+     *
+     * Archives selected samples with storage location and archive metadata.
+     * Archived samples are removed from the active workflow and do NOT continue to
+     * the next page.
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds and archive metadata (storageLocation,
+     *                    archiveReason, etc.)
+     * @param httpRequest for getting user session
+     * @return result with archived count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/archive", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> archiveSamples(@PathVariable("pageId") Integer pageId,
+            @RequestBody ArchiveSamplesRequest request, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            // Build archive data map from request
+            Map<String, Object> archiveData = new HashMap<>();
+            archiveData.put("isArchived", true);
+            archiveData.put("terminalStatus", "ARCHIVED");
+            archiveData.put("archiveDate",
+                    request.getArchiveDate() != null ? request.getArchiveDate() : java.time.LocalDate.now().toString());
+            archiveData.put("archivedBy", request.getArchivedBy());
+            archiveData.put("archiveReason", request.getArchiveReason());
+            archiveData.put("retentionPeriod", request.getRetentionPeriod());
+            archiveData.put("notes", request.getNotes());
+
+            // Storage location fields
+            if (request.getStorageLocation() != null) {
+                archiveData.put("storageLocation", request.getStorageLocation());
+            }
+            if (request.getStorageBox() != null) {
+                archiveData.put("storageBox", request.getStorageBox());
+            }
+            if (request.getStoragePosition() != null) {
+                archiveData.put("storagePosition", request.getStoragePosition());
+            }
+            // Slide-specific storage fields
+            if (request.getSlideCabinet() != null) {
+                archiveData.put("slideCabinet", request.getSlideCabinet());
+            }
+            if (request.getSlideDrawer() != null) {
+                archiveData.put("slideDrawer", request.getSlideDrawer());
+            }
+            if (request.getSlidePosition() != null) {
+                archiveData.put("slidePosition", request.getSlidePosition());
+            }
+            if (request.getSlideCondition() != null) {
+                archiveData.put("slideCondition", request.getSlideCondition());
+            }
+
+            // Hierarchical storage location (from StorageHierarchySelector)
+            if (request.getRoomId() != null) {
+                archiveData.put("roomId", request.getRoomId());
+            }
+            if (request.getDeviceId() != null) {
+                archiveData.put("deviceId", request.getDeviceId());
+            }
+            if (request.getShelfId() != null) {
+                archiveData.put("shelfId", request.getShelfId());
+            }
+            if (request.getRackId() != null) {
+                archiveData.put("rackId", request.getRackId());
+            }
+
+            // Resolve box info and build storage location strings (like assign-storage
+            // does)
+            StorageBox box = null;
+            String boxLabel = null;
+            if (request.getBoxId() != null) {
+                archiveData.put("boxId", request.getBoxId());
+                box = storageBoxDAO.get(request.getBoxId()).orElse(null);
+                if (box != null) {
+                    boxLabel = box.getLabel();
+                    archiveData.put("storageBox", boxLabel);
+
+                    // Build storage path from box hierarchy
+                    StringBuilder pathBuilder = new StringBuilder();
+                    if (box.getParentRack() != null) {
+                        if (box.getParentRack().getParentShelf() != null) {
+                            if (box.getParentRack().getParentShelf().getParentDevice() != null) {
+                                pathBuilder.append(box.getParentRack().getParentShelf().getParentDevice().getName())
+                                        .append(" > ");
+                            }
+                            pathBuilder.append(box.getParentRack().getParentShelf().getLabel()).append(" > ");
+                        }
+                        pathBuilder.append(box.getParentRack().getLabel()).append(" > ");
+                    }
+                    pathBuilder.append(boxLabel);
+                    archiveData.put("storagePath", pathBuilder.toString());
+                } else {
+                    boxLabel = "Box " + request.getBoxId();
+                    archiveData.put("storageBox", boxLabel);
+                }
+            }
+
+            // Handle well assignments from auto-populate
+            Map<String, String> wellAssignments = request.getWellAssignments();
+            if (wellAssignments != null && !wellAssignments.isEmpty()) {
+                archiveData.put("hasWellAssignments", true);
+            }
+
+            // Apply archive data and set status to SKIPPED (terminal status)
+            // If we have well assignments, we need to apply per-sample data with individual
+            // well coords
+            int updatedCount = 0;
+            final String finalBoxLabel = boxLabel;
+            if (wellAssignments != null && !wellAssignments.isEmpty()) {
+                // Apply well-specific data for each sample
+                for (String sampleId : request.getSampleIds()) {
+                    Map<String, Object> sampleArchiveData = new HashMap<>(archiveData);
+                    String wellCoord = wellAssignments.get(sampleId);
+                    if (wellCoord != null) {
+                        sampleArchiveData.put("wellCoordinate", wellCoord);
+                        sampleArchiveData.put("storagePosition", wellCoord);
+                        sampleArchiveData.put("storageWell", wellCoord);
+                        // Build full storage location string with well coordinate
+                        if (finalBoxLabel != null) {
+                            sampleArchiveData.put("storageLocation", finalBoxLabel + " - " + wellCoord);
+                            // Update storagePath to include well
+                            String basePath = (String) archiveData.get("storagePath");
+                            if (basePath != null) {
+                                sampleArchiveData.put("storagePath", basePath + " - " + wellCoord);
+                            }
+                        }
+                    }
+                    updatedCount += bulkOperationService.bulkApplyValuesString(pageId,
+                            java.util.Collections.singletonList(sampleId), sampleArchiveData, sysUserId);
+                }
+            } else {
+                // No well assignments - apply same data to all samples
+                // Set storageLocation without well coordinate
+                if (finalBoxLabel != null) {
+                    archiveData.put("storageLocation", finalBoxLabel);
+                }
+                updatedCount = bulkOperationService.bulkApplyValuesString(pageId, request.getSampleIds(), archiveData,
+                        sysUserId);
+            }
+
+            // Also update the status to SKIPPED (archived samples don't continue)
+            bulkOperationService.bulkUpdateStatusString(pageId, request.getSampleIds(),
+                    NotebookPageSample.Status.SKIPPED, sysUserId);
+
+            // Create SampleStorageAssignment records for proper well occupancy tracking
+            // This ensures archived pathology samples show as occupying wells in Storage
+            // Management
+            int storageAssignmentCount = 0;
+            if (request.getBoxId() != null && wellAssignments != null && !wellAssignments.isEmpty()) {
+                for (String sampleId : request.getSampleIds()) {
+                    try {
+                        String wellCoord = wellAssignments.get(sampleId);
+                        if (wellCoord != null) {
+                            // For composite sample IDs (e.g., "4_cassette_0_block_0_slide_0"),
+                            // extract the base sample ID (e.g., "4") for storage assignment
+                            String baseSampleId = sampleId;
+                            if (sampleId.contains("_")) {
+                                baseSampleId = sampleId.split("_")[0];
+                            }
+
+                            String notes = String.format(
+                                    "Archived pathology sample | Original ID: %s | Reason: %s | Retention: %s",
+                                    sampleId,
+                                    request.getArchiveReason() != null ? request.getArchiveReason() : "completed",
+                                    request.getRetentionPeriod() != null ? request.getRetentionPeriod() + " years"
+                                            : "default");
+
+                            // Check if this well is already occupied
+                            Map<String, Object> existingLocation = sampleStorageService
+                                    .getSampleItemLocation(baseSampleId);
+                            boolean hasExistingAssignment = existingLocation != null && !existingLocation.isEmpty()
+                                    && existingLocation.get("location") != null
+                                    && !existingLocation.get("location").toString().isEmpty();
+
+                            if (hasExistingAssignment) {
+                                // Move existing assignment to new location
+                                sampleStorageService.moveSampleItemWithLocation(baseSampleId,
+                                        request.getBoxId().toString(), "box", wellCoord, "Archive update", notes);
+                            } else {
+                                // Create new assignment
+                                sampleStorageService.assignSampleItemWithLocation(baseSampleId,
+                                        request.getBoxId().toString(), "box", wellCoord, notes);
+                            }
+                            storageAssignmentCount++;
+                        }
+                    } catch (Exception e) {
+                        LogEvent.logWarn(this.getClass().getName(), "archiveSamples",
+                                "Error creating SampleStorageAssignment for sample " + sampleId + ": "
+                                        + e.getMessage());
+                    }
+                }
+                LogEvent.logInfo(this.getClass().getName(), "archiveSamples",
+                        "Created " + storageAssignmentCount + " SampleStorageAssignment records for archived samples");
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("archivedCount", updatedCount);
+            result.put("storageAssignmentCount", storageAssignmentCount);
+            result.put("pageId", pageId);
+            result.put("message", String.format("Successfully archived %d sample(s)", updatedCount));
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "archiveSamples",
+                    "Failed to archive samples: " + e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Failed to archive samples: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
     }
 
     /**
@@ -1509,6 +1855,56 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
+     * Request body for status update operation with String sample IDs. Used for
+     * composite sample IDs (e.g., "123_cassette_0") in pathology workflows.
+     */
+    public static class StringStatusUpdateRequest {
+        private List<String> sampleIds;
+        private String status;
+
+        public List<String> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<String> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
+
+    /**
+     * Request body for bulk apply operation with String sample IDs. Used for
+     * composite sample IDs (e.g., "123_cassette_0") in pathology workflows.
+     */
+    public static class StringApplyRequest {
+        private List<String> sampleIds;
+        private Map<String, Object> data;
+
+        public List<String> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<String> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Map<String, Object> getData() {
+            return data;
+        }
+
+        public void setData(Map<String, Object> data) {
+            this.data = data;
+        }
+    }
+
+    /**
      * Request body for adding samples to a page (workflow advancement).
      */
     public static class AddSamplesRequest {
@@ -1528,6 +1924,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      */
     public static class AutoAssignStorageRequest {
         private List<Integer> sampleIds;
+        private List<String> sampleIdsString; // For composite sample IDs (e.g., "4_cassette_0_block_0")
         private Map<String, Object> data;
         private Integer boxId;
         private Integer rows;
@@ -1540,6 +1937,28 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setSampleIds(List<Integer> sampleIds) {
             this.sampleIds = sampleIds;
+        }
+
+        public List<String> getSampleIdsString() {
+            return sampleIdsString;
+        }
+
+        public void setSampleIdsString(List<String> sampleIdsString) {
+            this.sampleIdsString = sampleIdsString;
+        }
+
+        /**
+         * Get effective sample IDs as strings. Prefers sampleIdsString for composite
+         * IDs, falls back to converting sampleIds to strings.
+         */
+        public List<String> getEffectiveSampleIds() {
+            if (sampleIdsString != null && !sampleIdsString.isEmpty()) {
+                return sampleIdsString;
+            }
+            if (sampleIds != null) {
+                return sampleIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.toList());
+            }
+            return new java.util.ArrayList<>();
         }
 
         public Map<String, Object> getData() {
@@ -1968,5 +2387,275 @@ public class NotebookBulkOperationController extends BaseRestController {
         response.setHeader("Content-Disposition", "attachment; filename=mntd-test-results-template.csv");
         response.getOutputStream().write(template.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         response.getOutputStream().flush();
+    }
+
+    // ========================================
+    // PROCESSING ENDPOINTS
+    // ========================================
+
+    /**
+     * Bulk save processing data for multiple samples. POST
+     * /notebook/bulk/page/{pageId}/samples/processing
+     *
+     * Used by pathology and other workflows to save lab processing steps (tissue
+     * processing, embedding, microtomy, staining, etc.) for multiple samples at
+     * once.
+     *
+     * @param pageId      the notebook page ID
+     * @param request     contains sampleIds and processingData to save
+     * @param httpRequest for getting user session
+     * @return result with updated count
+     */
+    @PostMapping(value = "/page/{pageId}/samples/processing", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkSaveProcessing(@PathVariable("pageId") Integer pageId,
+            @RequestBody BulkProcessingRequest request, HttpServletRequest httpRequest) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            response.put("success", false);
+            response.put("error", "User session not found");
+            return ResponseEntity.status(401).body(response);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            response.put("success", false);
+            response.put("error", "No samples specified");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        if (request.getProcessingData() == null || request.getProcessingData().isEmpty()) {
+            response.put("success", false);
+            response.put("error", "No processing data provided");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            // Apply processing data to all selected samples
+            int updatedCount = bulkOperationService.bulkApplyValues(pageId, request.getSampleIds(),
+                    request.getProcessingData(), sysUserId);
+
+            response.put("success", true);
+            response.put("message", String.format("Processing data saved for %d samples", updatedCount));
+            response.put("updatedCount", updatedCount);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "bulkSaveProcessing",
+                    "Failed to save processing data: " + e.getMessage());
+            response.put("success", false);
+            response.put("error", "Failed to save processing data: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * Request object for bulk processing operations.
+     */
+    public static class BulkProcessingRequest {
+        private List<Integer> sampleIds;
+        private Map<String, Object> processingData;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Map<String, Object> getProcessingData() {
+            return processingData;
+        }
+
+        public void setProcessingData(Map<String, Object> processingData) {
+            this.processingData = processingData;
+        }
+    }
+
+    /**
+     * Request object for archive samples operation. Supports both block archiving
+     * (storageLocation, storageBox, storagePosition) and slide archiving
+     * (slideCabinet, slideDrawer, slidePosition, slideCondition). Also supports
+     * hierarchical storage selection (roomId, deviceId, shelfId, rackId, boxId).
+     */
+    public static class ArchiveSamplesRequest {
+        private List<String> sampleIds;
+        private String storageLocation;
+        private String storageBox;
+        private String storagePosition;
+        // Slide-specific fields
+        private String slideCabinet;
+        private String slideDrawer;
+        private String slidePosition;
+        private String slideCondition;
+        // Hierarchical storage location
+        private Integer roomId;
+        private Integer deviceId;
+        private Integer shelfId;
+        private Integer rackId;
+        private Integer boxId;
+        // Archive metadata
+        private String archiveReason;
+        private String retentionPeriod;
+        private String archiveDate;
+        private String archivedBy;
+        private String notes;
+        // Well assignments from auto-populate (sampleId -> wellCoordinate)
+        private Map<String, String> wellAssignments;
+
+        public List<String> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<String> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getStorageLocation() {
+            return storageLocation;
+        }
+
+        public void setStorageLocation(String storageLocation) {
+            this.storageLocation = storageLocation;
+        }
+
+        public String getStorageBox() {
+            return storageBox;
+        }
+
+        public void setStorageBox(String storageBox) {
+            this.storageBox = storageBox;
+        }
+
+        public String getStoragePosition() {
+            return storagePosition;
+        }
+
+        public void setStoragePosition(String storagePosition) {
+            this.storagePosition = storagePosition;
+        }
+
+        public String getSlideCabinet() {
+            return slideCabinet;
+        }
+
+        public void setSlideCabinet(String slideCabinet) {
+            this.slideCabinet = slideCabinet;
+        }
+
+        public String getSlideDrawer() {
+            return slideDrawer;
+        }
+
+        public void setSlideDrawer(String slideDrawer) {
+            this.slideDrawer = slideDrawer;
+        }
+
+        public String getSlidePosition() {
+            return slidePosition;
+        }
+
+        public void setSlidePosition(String slidePosition) {
+            this.slidePosition = slidePosition;
+        }
+
+        public String getSlideCondition() {
+            return slideCondition;
+        }
+
+        public void setSlideCondition(String slideCondition) {
+            this.slideCondition = slideCondition;
+        }
+
+        public Integer getRoomId() {
+            return roomId;
+        }
+
+        public void setRoomId(Integer roomId) {
+            this.roomId = roomId;
+        }
+
+        public Integer getDeviceId() {
+            return deviceId;
+        }
+
+        public void setDeviceId(Integer deviceId) {
+            this.deviceId = deviceId;
+        }
+
+        public Integer getShelfId() {
+            return shelfId;
+        }
+
+        public void setShelfId(Integer shelfId) {
+            this.shelfId = shelfId;
+        }
+
+        public Integer getRackId() {
+            return rackId;
+        }
+
+        public void setRackId(Integer rackId) {
+            this.rackId = rackId;
+        }
+
+        public Integer getBoxId() {
+            return boxId;
+        }
+
+        public void setBoxId(Integer boxId) {
+            this.boxId = boxId;
+        }
+
+        public String getArchiveReason() {
+            return archiveReason;
+        }
+
+        public void setArchiveReason(String archiveReason) {
+            this.archiveReason = archiveReason;
+        }
+
+        public String getRetentionPeriod() {
+            return retentionPeriod;
+        }
+
+        public void setRetentionPeriod(String retentionPeriod) {
+            this.retentionPeriod = retentionPeriod;
+        }
+
+        public String getArchiveDate() {
+            return archiveDate;
+        }
+
+        public void setArchiveDate(String archiveDate) {
+            this.archiveDate = archiveDate;
+        }
+
+        public String getArchivedBy() {
+            return archivedBy;
+        }
+
+        public void setArchivedBy(String archivedBy) {
+            this.archivedBy = archivedBy;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
+
+        public Map<String, String> getWellAssignments() {
+            return wellAssignments;
+        }
+
+        public void setWellAssignments(Map<String, String> wellAssignments) {
+            this.wellAssignments = wellAssignments;
+        }
     }
 }

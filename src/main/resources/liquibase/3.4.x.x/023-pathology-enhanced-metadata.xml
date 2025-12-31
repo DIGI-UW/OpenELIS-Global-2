@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PATHOLOGY ENHANCED METADATA CAPTURE                      -->
+    <!-- Updates Page 1 to include comprehensive metadata fields: -->
+    <!-- - Patient identification (First Name mandatory, not Surname) -->
+    <!-- - National ID optional (not mandatory)                   -->
+    <!-- - Clinical sample metadata                               -->
+    <!-- - Research sample metadata                               -->
+    <!-- - Receiving information for all samples                  -->
+    <!-- ======================================================== -->
+
+    <changeSet id="update-pathology-page-1-enhanced-metadata" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Pathology Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Sample Creation page with enhanced metadata fields including patient identification, clinical and research metadata</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="instructions" value="Create the pathology sample and capture all required metadata. PATIENT IDENTIFICATION: First Name is MANDATORY (Surname/Last Name is optional), National ID is OPTIONAL. CLINICAL SAMPLES: Enter Patient ID, requesting clinician, collection date/time, specimen type/site (e.g., liver biopsy, lung FNA), clinical details/indication. RESEARCH SAMPLES: Enter Study ID, Principal Investigator (PI) name, Participant ID or Animal ID, sample type, collection date/time, ethical approval reference. ALL SAMPLES: Record receiving date/time and receiving staff name. System generates unique lab accession number and barcode, sets status to 'Created - Pending QC'."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Creation &amp; Full Metadata Capture&quot;,
+  &quot;validationNotes&quot;: {
+    &quot;firstNameMandatory&quot;: &quot;First Name is the mandatory name field for individual order acceptance&quot;,
+    &quot;surnameOptional&quot;: &quot;Surname/Last Name is NOT mandatory&quot;,
+    &quot;nationalIdOptional&quot;: &quot;National ID is NOT required for order acceptance - it is optional&quot;
+  },
+  &quot;dataPoints&quot;: {
+    &quot;sampleIdentity&quot;: {
+      &quot;accessionNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Pathology Accession Number (Lab Accession)&quot;, &quot;generated&quot;: true, &quot;required&quot;: true, &quot;description&quot;: &quot;Unique lab accession number&quot;},
+      &quot;barcode&quot;: {&quot;type&quot;: &quot;barcode&quot;, &quot;label&quot;: &quot;Barcode/Label&quot;, &quot;generated&quot;: true},
+      &quot;sampleCategory&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Category&quot;, &quot;options&quot;: [&quot;Clinical diagnostic&quot;, &quot;Research&quot;], &quot;required&quot;: true}
+    },
+    &quot;patientIdentification&quot;: {
+      &quot;firstName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;First Name&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;MANDATORY - Primary name field for order acceptance&quot;},
+      &quot;surname&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Surname/Last Name&quot;, &quot;required&quot;: false, &quot;description&quot;: &quot;Optional - Not required for order acceptance&quot;},
+      &quot;nationalId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;National ID&quot;, &quot;required&quot;: false, &quot;description&quot;: &quot;OPTIONAL - Not required for order acceptance&quot;}
+    },
+    &quot;receivingInfo&quot;: {
+      &quot;receivedDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Receiving Date &amp; Time&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Date and time sample was received at the lab&quot;},
+      &quot;receivedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Receiving Staff Name&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Name of staff member who received the sample&quot;},
+      &quot;sourceFacility&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Source Facility&quot;, &quot;options&quot;: [&quot;Alert Hospital&quot;, &quot;Research project&quot;, &quot;External clinic&quot;, &quot;Other&quot;], &quot;required&quot;: true}
+    },
+    &quot;specimenInfo&quot;: {
+      &quot;specimenType&quot;: {
+        &quot;type&quot;: &quot;reference&quot;,
+        &quot;label&quot;: &quot;Specimen Type&quot;,
+        &quot;source&quot;: &quot;type_of_sample&quot;,
+        &quot;categories&quot;: {
+          &quot;histopathology&quot;: [&quot;FFPE tissue block&quot;, &quot;Fresh biopsy&quot;, &quot;Surgical resection&quot;],
+          &quot;cytopathology&quot;: [&quot;Fine needle aspirate (FNA)&quot;, &quot;Pleural fluid&quot;, &quot;Peritoneal fluid&quot;, &quot;Pericardial fluid&quot;, &quot;CSF for cytology&quot;, &quot;Urine for cytology&quot;, &quot;Sputum for cytology&quot;, &quot;Cervical smear&quot;],
+          &quot;hematology&quot;: [&quot;EDTA blood (peripheral smear)&quot;],
+          &quot;research&quot;: [&quot;Human tissue (fresh)&quot;, &quot;Human tissue (frozen)&quot;, &quot;Human tissue (FFPE)&quot;, &quot;Animal tissue (mouse footpad)&quot;, &quot;Animal tissue (nerve)&quot;, &quot;Bacterial/cellular pellet&quot;, &quot;Primary cell culture&quot;]
+        },
+        &quot;required&quot;: true
+      },
+      &quot;specimenSite&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Specimen Site/Location&quot;, &quot;required&quot;: true, &quot;placeholder&quot;: &quot;e.g., liver biopsy, lung FNA, skin lesion&quot;, &quot;description&quot;: &quot;Anatomical site from which specimen was collected&quot;},
+      &quot;collectionDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Collection Date &amp; Time&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Date and time specimen was collected from patient&quot;}
+    },
+    &quot;clinicalMetadata&quot;: {
+      &quot;patientId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Patient ID&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Clinical diagnostic&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Hospital/clinic patient identifier&quot;},
+      &quot;requestingClinician&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Requesting Clinician&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Clinical diagnostic&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Name of clinician who ordered the test&quot;},
+      &quot;clinicalDetails&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Clinical Details/Indication&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Clinical diagnostic&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Clinical history, indication for test, relevant findings&quot;}
+    },
+    &quot;researchMetadata&quot;: {
+      &quot;studyId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Study ID&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Research study/protocol identifier&quot;},
+      &quot;piName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Principal Investigator (PI) Name&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Name of the principal investigator&quot;},
+      &quot;participantAnimalId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Participant ID / Animal ID&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;Research participant or animal identifier&quot;},
+      &quot;ethicalApprovalRef&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Ethical Approval Reference&quot;, &quot;conditionalOn&quot;: &quot;sampleCategory == Research&quot;, &quot;required&quot;: true, &quot;description&quot;: &quot;IRB/Ethics committee approval number&quot;}
+    }
+  },
+  &quot;csvImportFields&quot;: [
+    &quot;firstName&quot;, &quot;surname&quot;, &quot;nationalId&quot;, &quot;sampleCategory&quot;,
+    &quot;receivedDateTime&quot;, &quot;receivedBy&quot;, &quot;sourceFacility&quot;,
+    &quot;specimenType&quot;, &quot;specimenSite&quot;, &quot;collectionDateTime&quot;,
+    &quot;patientId&quot;, &quot;requestingClinician&quot;, &quot;clinicalDetails&quot;,
+    &quot;studyId&quot;, &quot;piName&quot;, &quot;participantAnimalId&quot;, &quot;ethicalApprovalRef&quot;
+  ],
+  &quot;systemActions&quot;: [&quot;Generate unique pathology accession number&quot;, &quot;Generate label/barcode&quot;, &quot;Set status: Created - Pending QC&quot;, &quot;Print label&quot;],
+  &quot;nextPage&quot;: &quot;Sample Quality Control&quot;
+}"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 1</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="instructions" value="Create the pathology sample and capture all metadata at once. Enter: Sample Identity (unique accession number, barcode, category - Clinical diagnostic/Research), Sample Source (Alert Hospital/Research project, received date/time, received by), Specimen Type (Histopathology: FFPE block, fresh biopsy, surgical resection; Cytopathology: FNA, body fluids, urine, sputum, cervical smear; Hematology: EDTA blood; Research: human tissue, animal tissue, bacterial pellets, cell cultures), Clinical/Research Metadata (Patient ID, requesting clinician, collection date/time, specimen site, clinical details for clinical samples; Study ID, PI name, participant/animal ID, ethical approval reference for research samples). System generates unique ID and barcode, sets status to 'Created - Pending QC'."/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true) AND page_order = 1</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

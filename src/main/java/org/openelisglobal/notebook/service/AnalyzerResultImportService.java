@@ -23,9 +23,13 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
      */
     record ParseResult(List<String> headers, List<Map<String, String>> rows, FileFormat format, int totalRows,
             List<String> parseErrors) {
-        public boolean hasErrors() {
-            return parseErrors != null && !parseErrors.isEmpty();
-        }
+    }
+
+    /**
+     * Check if parse result has errors.
+     */
+    static boolean hasParseErrors(ParseResult result) {
+        return result.parseErrors() != null && !result.parseErrors().isEmpty();
     }
 
     /**
@@ -48,9 +52,13 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
      */
     record ImportResult(int importId, int totalRows, int successfulRows, int failedRows,
             List<Map<String, Object>> errors) {
-        public boolean isFullySuccessful() {
-            return failedRows == 0;
-        }
+    }
+
+    /**
+     * Check if import was fully successful (no failed rows).
+     */
+    static boolean isFullySuccessful(ImportResult result) {
+        return result.failedRows() == 0;
     }
 
     /**
@@ -101,11 +109,15 @@ public interface AnalyzerResultImportService extends BaseObjectService<AnalyzerR
      */
     record ImportSummary(int importCount, long totalRows, long successfulRows, long failedRows,
             java.sql.Timestamp lastImportDate) {
-        public double overallSuccessRate() {
-            if (totalRows == 0)
-                return 0.0;
-            return successfulRows * 100.0 / totalRows;
-        }
+    }
+
+    /**
+     * Calculate overall success rate for import summary.
+     */
+    static double overallSuccessRate(ImportSummary summary) {
+        if (summary.totalRows() == 0)
+            return 0.0;
+        return summary.successfulRows() * 100.0 / summary.totalRows();
     }
 
     // ========== File Parsing Methods (T095, T096) ==========
