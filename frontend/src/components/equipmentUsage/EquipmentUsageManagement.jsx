@@ -10,6 +10,7 @@ import {
 } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import EquipmentManagement from "./EquipmentManagement";
 import EquipmentUsageLog from "./EquipmentUsageLog";
 import EquipmentUsageApproval from "./EquipmentUsageApproval";
 import EquipmentUsageHistory from "./EquipmentUsageHistory";
@@ -49,6 +50,9 @@ const EquipmentUsageManagement = () => {
             >
               <TabList aria-label="Equipment usage tabs" contained>
                 <Tab>
+                  <FormattedMessage id="equipment.tab.equipment" defaultMessage="Equipment" />
+                </Tab>
+                <Tab>
                   <FormattedMessage id="equipment.usage.tab.log" defaultMessage="Usage Log" />
                 </Tab>
                 <Tab>
@@ -63,6 +67,11 @@ const EquipmentUsageManagement = () => {
               </TabList>
 
               <TabPanels>
+                {/* Equipment Management Tab - Add/Edit equipment */}
+                <TabPanel>
+                  <EquipmentManagement />
+                </TabPanel>
+
                 {/* Usage Log Tab - Create/Edit entries */}
                 <TabPanel>
                   <EquipmentUsageLog onEntrySubmitted={triggerRefresh} />

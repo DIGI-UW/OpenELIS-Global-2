@@ -65,7 +65,7 @@ const EQUIPMENT_BASE_PATH = "/rest/equipment";
 
 export const EquipmentAPI = {
   /**
-   * Get all active equipment
+   * Get all equipment (active and inactive)
    */
   getAll: () =>
     promisify(getFromOpenElisServer, `${EQUIPMENT_BASE_PATH}`),
@@ -100,6 +100,16 @@ export const EquipmentAPI = {
    * Update equipment
    */
   update: (id, equipment) => post(`${EQUIPMENT_BASE_PATH}/${id}`, equipment),
+
+  /**
+   * Deactivate equipment
+   */
+  deactivate: (id) => post(`${EQUIPMENT_BASE_PATH}/${id}/deactivate`, {}),
+
+  /**
+   * Activate equipment
+   */
+  activate: (id) => post(`${EQUIPMENT_BASE_PATH}/${id}/activate`, {}),
 };
 
 // ==================== Equipment Usage Entry API ====================
