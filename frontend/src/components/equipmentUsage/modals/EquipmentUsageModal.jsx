@@ -218,25 +218,33 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
               disabled
             />
 
-            <TimePickerSelect
-              id="login-time"
-              labelText="Login Time"
-              value={formData.loginTime?.split("T")[1] || ""}
-              onChange={(e) => {
-                const newLoginTime = `${formData.loginTime}T${e.target.value}`;
-                handleInputChange("loginTime", newLoginTime);
-              }}
-            />
+            <div>
+              <label htmlFor="login-time" style={{ display: "block", marginBottom: "0.5rem" }}>
+                Login Time
+              </label>
+              <TimePickerSelect
+                id="login-time"
+                value={formData.loginTime?.split("T")[1] || ""}
+                onChange={(e) => {
+                  const newLoginTime = `${formData.loginTime}T${e.target.value}`;
+                  handleInputChange("loginTime", newLoginTime);
+                }}
+              />
+            </div>
 
-            <TimePickerSelect
-              id="logout-time"
-              labelText="Logout Time"
-              value={formData.logoutTime?.split("T")[1] || ""}
-              onChange={(e) => {
-                const newLogoutTime = `${formData.loginTime}T${e.target.value}`;
-                handleInputChange("logoutTime", newLogoutTime);
-              }}
-            />
+            <div>
+              <label htmlFor="logout-time" style={{ display: "block", marginBottom: "0.5rem" }}>
+                Logout Time
+              </label>
+              <TimePickerSelect
+                id="logout-time"
+                value={formData.logoutTime?.split("T")[1] || ""}
+                onChange={(e) => {
+                  const newLogoutTime = `${formData.loginTime}T${e.target.value}`;
+                  handleInputChange("logoutTime", newLogoutTime);
+                }}
+              />
+            </div>
           </Stack>
         </FormGroup>
 
