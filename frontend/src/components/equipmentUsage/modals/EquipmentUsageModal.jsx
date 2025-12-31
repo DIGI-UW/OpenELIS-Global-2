@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Modal,
   Form,
@@ -15,10 +15,11 @@ import {
   Loading,
 } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import EquipmentUsageService from "../EquipmentUsageService";
-import { getCurrentUserInfo } from "../../../utils/authentication";
 
 const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [formData, setFormData] = useState({
     equipment: null,
     operatorName: "",
@@ -32,15 +33,12 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const user = getCurrentUserInfo();
-    setCurrentUser(user);
-    if (user) {
+    if (userSessionDetails?.firstName && userSessionDetails?.lastName) {
       setFormData((prev) => ({
         ...prev,
-        operatorName: user.username || "",
+        operatorName: `${userSessionDetails.firstName} ${userSessionDetails.lastName}`,
       }));
     }
     loadEquipment();

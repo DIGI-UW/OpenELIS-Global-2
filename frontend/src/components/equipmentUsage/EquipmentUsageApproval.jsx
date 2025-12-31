@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Button,
   DataTable,
@@ -18,20 +18,18 @@ import {
 } from "@carbon/react";
 import { Checkmark, Close } from "@carbon/icons-react";
 import { FormattedMessage } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import EquipmentUsageService from "./EquipmentUsageService";
-import { getCurrentUserInfo } from "../../utils/authentication";
 
 const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const user = getCurrentUserInfo();
-    setCurrentUser(user);
     loadPendingApproval();
   }, []);
 
@@ -54,10 +52,10 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
   };
 
   const handleApprove = async () => {
-    if (!selectedEntry || !currentUser) return;
+    if (!selectedEntry || !userSessionDetails?.userId) return;
 
     try {
-      await EquipmentUsageService.approveEntry(selectedEntry.id, currentUser.id);
+      await EquipmentUsageService.approveEntry(selectedEntry.id, userSessionDetails.userId);
       setShowApprovalModal(false);
       setSelectedEntry(null);
       loadPendingApproval();

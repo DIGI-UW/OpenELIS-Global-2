@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Button,
   DataTable,
@@ -17,11 +17,12 @@ import {
 } from "@carbon/react";
 import { Add, Edit, TrashCan, SendAlt } from "@carbon/icons-react";
 import { FormattedMessage } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import EquipmentUsageModal from "./modals/EquipmentUsageModal";
 import EquipmentUsageService from "./EquipmentUsageService";
-import { getCurrentUserInfo } from "../../utils/authentication";
 
 const EquipmentUsageLog = ({ onEntrySubmitted }) => {
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -37,7 +38,6 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
     setLoading(true);
     setError(null);
     try {
-      const currentUser = getCurrentUserInfo();
       const allEntries = await EquipmentUsageService.getAllUsageEntries();
       // Filter to show only DRAFT entries for current user (simplified)
       const userDrafts = allEntries.filter((entry) => entry.entryStatus === "DRAFT");
