@@ -12,16 +12,29 @@ import {
 } from "@carbon/react";
 import { DocumentExport, Printer } from "@carbon/icons-react";
 import { FormattedMessage } from "react-intl";
+import { EquipmentUsageEntryAPI } from "./EquipmentUsageService";
+import EquipmentUsagePrintableForm from "./EquipmentUsagePrintableForm";
 
 const EquipmentUsageReports = () => {
   const [reportType, setReportType] = useState("all");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [error, setError] = useState(null);
+  const [showPrintForm, setShowPrintForm] = useState(false);
+  const [printEntries, setPrintEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleExportPDF = () => {
-    // Implement PDF export logic
-    console.log("Exporting to PDF with filters:", { reportType, dateRange });
-    setError("PDF export coming soon");
+  const handleExportPDF = async () => {
+    // For now, use the print modal as a PDF-capable view
+    // In future, can implement backend PDF generation with iText
+    try {
+      setLoading(true);
+      await loadEntriesForPrint();
+      setShowPrintForm(true);
+    } catch (err) {
+      setError("Failed to load entries for export");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleExportExcel = () => {
@@ -30,9 +43,53 @@ const EquipmentUsageReports = () => {
     setError("Excel export coming soon");
   };
 
-  const handlePrint = () => {
-    // Implement print logic
-    window.print();
+  const loadEntriesForPrint = async () => {
+    try {
+      const filters = {};
+
+      if (reportType !== "all") {
+        filters.status = reportType === "pending" ? "DRAFT" :
+                        reportType === "approved" ? "APPROVED" :
+                        reportType === "by-equipment" ? "ALL" :
+                        reportType === "by-operator" ? "ALL" :
+                        reportType === "by-department" ? "ALL" : "ALL";
+      }
+
+      if (dateRange.start) {
+        filters.startDate = formatDateForApi(dateRange.start);
+      }
+      if (dateRange.end) {
+        filters.endDate = formatDateForApi(dateRange.end);
+      }
+
+      const entries = await EquipmentUsageEntryAPI.search(filters);
+      setPrintEntries(Array.isArray(entries) ? entries : []);
+    } catch (err) {
+      console.error("Error loading entries for print:", err);
+      setError("Failed to load entries for print");
+    }
+  };
+
+  const handlePrint = async () => {
+    try {
+      setLoading(true);
+      await loadEntriesForPrint();
+      setShowPrintForm(true);
+    } catch (err) {
+      setError("Failed to load entries for printing");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateForApi = (dateString) => {
+    if (!dateString) return "";
+    // Handle both ISO string and Date object
+    const date = typeof dateString === "string" ? new Date(dateString) : dateString;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   return (
@@ -166,6 +223,15 @@ const EquipmentUsageReports = () => {
           including operator signature, approval status, and equipment condition tracking.
         </p>
       </div>
+
+      {showPrintForm && (
+        <div style={{ marginTop: "40px", marginBottom: "20px" }}>
+          <EquipmentUsagePrintableForm
+            entries={printEntries}
+            onClose={() => setShowPrintForm(false)}
+          />
+        </div>
+      )}
     </>
   );
 };
