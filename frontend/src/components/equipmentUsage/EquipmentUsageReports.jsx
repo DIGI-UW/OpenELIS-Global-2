@@ -80,7 +80,11 @@ const EquipmentUsageReports = () => {
               placeholder="Start Date"
               labelText="Date Range"
             />
-            <DatePickerInput id="end-date" placeholder="End Date" />
+            <DatePickerInput
+              id="end-date"
+              placeholder="End Date"
+              labelText="End Date"
+            />
           </DatePicker>
         </Column>
 
