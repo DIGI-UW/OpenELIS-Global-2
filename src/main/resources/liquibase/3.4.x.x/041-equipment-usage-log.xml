@@ -176,32 +176,24 @@
         </createIndex>
     </changeSet>
 
-    <!-- Add menu entries for Equipment Usage Log -->
-    <changeSet id="equipment-usage-menu-entries" author="openelis">
+    <changeSet author="openelis" id="equipment-usage-log-add-submenu">
         <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_equipment_usage'</sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_equipment_usage_log';
+            </sqlCheck>
         </preConditions>
+        <comment>Add Equipment Usage Log as submenu item under Inventory menu</comment>
         <insert tableName="menu" schemaName="clinlims">
-            <column name="id" valueSequenceNext="menu_seq"/>
-            <column name="parent_id" valueNumeric="null"/>
-            <column name="presentation_order" value="25"/>
-            <column name="element_id" value="menu_equipment_usage"/>
-            <column name="action_url" valueNumeric="null"/>
-            <column name="display_key" value="sidenav.label.equipment.usage"/>
-            <column name="tool_tip_key" value="tooltip.equipment.usage"/>
-            <column name="new_window" valueBoolean="false"/>
-            <column name="is_active" valueBoolean="true"/>
-        </insert>
-        <insert tableName="menu" schemaName="clinlims">
-            <column name="id" valueSequenceNext="menu_seq"/>
-            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_equipment_usage')"/>
-            <column name="presentation_order" value="1"/>
-            <column name="element_id" value="menu_equipment_usage_log"/>
-            <column name="action_url" value="/equipment-usage"/>
-            <column name="display_key" value="sidenav.label.equipment.usage.log"/>
-            <column name="tool_tip_key" value="tooltip.equipment.usage.log"/>
-            <column name="new_window" valueBoolean="false"/>
-            <column name="is_active" valueBoolean="true"/>
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')" />
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_equipment_usage_log" />
+            <column name="action_url" value="/equipment-usage" />
+            <column name="display_key" value="sidenav.label.equipment.usage.log" />
+            <column name="tool_tip_key" value="tooltip.equipment.usage.log" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
         </insert>
     </changeSet>
 

@@ -2148,6 +2148,8 @@
   "sidenav.label.inventory.tooltip": "Inventory management for reagents, kits, and supplies",
   "sidenav.label.inventory.management": "Inventory Management",
   "sidenav.label.inventory.management.tooltip": "Manage inventory items, lots, and stock levels",
+  "sidenav.label.equipment.usage.log": "Equipment Usage Log",
+  "tooltip.equipment.usage.log": "Track permanent laboratory equipment usage with approval workflow and audit trail",
   "banner.menu.generic.sample.results": "Enter Results",
   "tooltip.banner.menu.generic.sample.results": "Enter test results for generic samples",
   "banner.menu.sampleManagement": "Sample Management",
