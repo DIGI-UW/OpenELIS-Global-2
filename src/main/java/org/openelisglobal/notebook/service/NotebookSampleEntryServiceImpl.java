@@ -65,7 +65,12 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
     @Override
     @Transactional
     public int linkSamplesToNotebook(Integer notebookId, List<Integer> sampleItemIds) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
@@ -115,7 +120,12 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
     @Override
     @Transactional
     public boolean unlinkSampleFromNotebook(Integer notebookId, Integer sampleItemId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return false;
+        }
         if (notebook == null) {
             return false;
         }
@@ -140,7 +150,12 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
     @Override
     @Transactional(readOnly = true)
     public List<SampleItem> getSamplesForNotebook(Integer notebookId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return new ArrayList<>();
+        }
         if (notebook == null || notebook.getPages() == null || notebook.getPages().isEmpty()) {
             return new ArrayList<>();
         }
@@ -163,7 +178,12 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
     @Override
     @Transactional(readOnly = true)
     public boolean isSampleLinked(Integer notebookId, Integer sampleItemId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return false;
+        }
         if (notebook == null || notebook.getPages() == null || notebook.getPages().isEmpty()) {
             return false;
         }
@@ -191,7 +211,12 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
             throw new IllegalArgumentException("Child count per parent must be positive");
         }
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
@@ -308,7 +333,12 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
             // specified)
             Integer targetPageId = pageId;
             if (targetPageId == null) {
-                NoteBook notebook = noteBookService.get(notebookId);
+                NoteBook notebook = null;
+                try {
+                    notebook = noteBookService.get(notebookId);
+                } catch (org.hibernate.ObjectNotFoundException e) {
+                    // Notebook not found, skip aliquot data assignment
+                }
                 if (notebook != null && notebook.getPages() != null && !notebook.getPages().isEmpty()) {
                     // Get the first page by order
                     List<NoteBookPage> pages = new ArrayList<>(notebook.getPages());

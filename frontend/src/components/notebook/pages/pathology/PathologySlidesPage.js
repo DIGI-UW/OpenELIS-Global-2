@@ -534,14 +534,13 @@ function PathologySlidesPage({
     }));
 
     // Load box layout when box is selected
-    // Use notebookId or entryId to match the assign-storage endpoint
-    const nbId = notebookId || entryId;
-    if (selection.box?.id && nbId) {
+    // Must use notebookId - do not fall back to entryId as they are different ID types
+    if (selection.box?.id && notebookId) {
       setLoadingBoxLayout(true);
       setBoxLayout({});
       setWellAssignments({});
       getFromOpenElisServer(
-        `/rest/notebook/${nbId}/box/${selection.box.id}/layout`,
+        `/rest/notebook/${notebookId}/box/${selection.box.id}/layout`,
         (response) => {
           setLoadingBoxLayout(false);
           if (componentMounted.current && response) {
@@ -1831,7 +1830,7 @@ function PathologySlidesPage({
           onSelectionChange={handleStorageSelectionChange}
           boxRequired={false}
           showPath={true}
-          entryId={notebookId || entryId}
+          entryId={notebookId}
         />
 
         {/* Box Layout Viewer with Auto-populate */}

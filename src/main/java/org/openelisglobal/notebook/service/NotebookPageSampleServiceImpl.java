@@ -395,7 +395,12 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Override
     @Transactional
     public void createPageSamplesForNotebook(Integer notebookId, Integer sampleItemId) {
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        }
         if (notebook == null) {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }

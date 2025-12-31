@@ -185,10 +185,10 @@ public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, I
         // JSONB query: data->>'boxId' = :boxId AND data->>'wellCoordinate' IS NOT NULL
         String sql = "SELECT nps.sample_item_id, nps.data->>'wellCoordinate' as well_coordinate, "
                 + "nps.data->>'externalId' as external_id " + "FROM clinlims.notebook_page_sample nps "
-                + "WHERE (nps.data->>'boxId')::integer = :boxId " + "AND nps.data->>'wellCoordinate' IS NOT NULL "
+                + "WHERE (nps.data->>'boxId')::integer = ?1 " + "AND nps.data->>'wellCoordinate' IS NOT NULL "
                 + "AND nps.data->>'wellCoordinate' != '' " + "AND (nps.data->>'isArchived')::boolean = true";
 
-        List<Object[]> rows = session.createNativeQuery(sql).setParameter("boxId", boxId).getResultList();
+        List<Object[]> rows = session.createNativeQuery(sql).setParameter(1, boxId).getResultList();
 
         for (Object[] row : rows) {
             String sampleItemId = row[0] != null ? row[0].toString() : null;

@@ -193,9 +193,9 @@ function PathologyReportingPage({
   }, [metrics, hasData]);
 
   // Load metrics from backend
+  // Must use notebookId - do not fall back to entryId as they are different ID types
   const loadMetrics = useCallback(() => {
-    const nbId = notebookId || entryId;
-    if (!nbId) {
+    if (!notebookId) {
       setLoading(false);
       setHasData(false);
       return;
@@ -205,7 +205,7 @@ function PathologyReportingPage({
     setError(null);
 
     const params = new URLSearchParams({
-      entryId: nbId,
+      entryId: notebookId,
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
     });
@@ -322,7 +322,7 @@ function PathologyReportingPage({
         }
       },
     );
-  }, [notebookId, entryId, dateRange]);
+  }, [notebookId, dateRange]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -334,9 +334,9 @@ function PathologyReportingPage({
   }, [loadMetrics]);
 
   // Handle export metrics to Excel
+  // Must use notebookId - do not fall back to entryId as they are different ID types
   const handleExportMetrics = async () => {
-    const nbId = notebookId || entryId;
-    if (!nbId) {
+    if (!notebookId) {
       setError(
         intl.formatMessage({
           id: "pathology.reporting.error.noNotebook",
@@ -351,7 +351,7 @@ function PathologyReportingPage({
 
     try {
       const params = new URLSearchParams({
-        entryId: nbId,
+        entryId: notebookId,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
         format: "excel",
@@ -678,9 +678,9 @@ function PathologyReportingPage({
   }, []);
 
   // Handle generating report - downloads CSV file from backend (same pattern as MNTD)
+  // Must use notebookId - do not fall back to entryId as they are different ID types
   const handleGenerateReport = useCallback(() => {
-    const nbId = notebookId || entryId;
-    if (!nbId) {
+    if (!notebookId) {
       setError("Entry ID not available for report generation.");
       return;
     }
@@ -690,7 +690,7 @@ function PathologyReportingPage({
 
     // Build query params for the pathology report endpoint
     const params = new URLSearchParams({
-      entryId: nbId,
+      entryId: notebookId,
       reportType: reportType,
       reportPeriod: `${reportData.dateRangeStart || dateRange.startDate} to ${reportData.dateRangeEnd || dateRange.endDate}`,
       startDate: reportData.dateRangeStart || dateRange.startDate,
@@ -768,7 +768,6 @@ function PathologyReportingPage({
     reportData,
     reportType,
     notebookId,
-    entryId,
     dateRange,
     intl,
     downloadFile,

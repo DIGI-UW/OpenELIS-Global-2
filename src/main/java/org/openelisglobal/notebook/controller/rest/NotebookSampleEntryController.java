@@ -27,6 +27,7 @@ import org.openelisglobal.storage.service.SampleStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -91,7 +92,12 @@ public class NotebookSampleEntryController extends BaseRestController {
             @RequestParam(required = false) String dateTo) {
 
         // Verify notebook exists
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -119,7 +125,12 @@ public class NotebookSampleEntryController extends BaseRestController {
             @RequestBody LinkSamplesRequest request, HttpServletRequest httpRequest) {
 
         // Verify notebook exists
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -150,7 +161,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<List<SampleDisplayBean>> getLinkedSamples(@PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -174,7 +190,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     public ResponseEntity<Map<Integer, NotebookPageSampleService.PageProgress>> getPageProgress(
             @PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -920,7 +941,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> createChildSamples(@PathVariable("notebookId") Integer notebookId,
             @RequestBody CreateChildSamplesRequest request, HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -1032,10 +1058,16 @@ public class NotebookSampleEntryController extends BaseRestController {
      */
     @PostMapping(value = "/{notebookId}/samples/route", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
+    @Transactional
     public ResponseEntity<Map<String, Object>> routeSamples(@PathVariable("notebookId") Integer notebookId,
             @RequestBody RouteSamplesRequest request, HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -1171,7 +1203,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getRoutingSummary(@PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -1202,7 +1239,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     public ResponseEntity<List<Map<String, Object>>> getRoutingRecords(@PathVariable("notebookId") Integer notebookId,
             @RequestParam(required = false) String destinationType) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -1240,7 +1282,12 @@ public class NotebookSampleEntryController extends BaseRestController {
             @PathVariable("boxId") Integer boxId,
             @RequestParam(required = false, defaultValue = "true") Boolean includeGlobal) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -1354,7 +1401,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> assignSamplesToStorage(@PathVariable("notebookId") Integer notebookId,
             @RequestBody AssignStorageRequest request, HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -1460,11 +1512,13 @@ public class NotebookSampleEntryController extends BaseRestController {
                         // Check if sample already has a storage assignment BEFORE trying to assign
                         // This avoids the transaction rollback issue that occurs when
                         // assignSampleItemWithLocation throws an exception
+                        // NOTE: Check for sampleItemId key presence (not location) since an assignment
+                        // record may exist with an empty location path (e.g., after disposal or
+                        // partial assignment)
                         Map<String, Object> existingLocation = sampleStorageService
                                 .getSampleItemLocation(sampleId.toString());
                         boolean hasExistingAssignment = existingLocation != null && !existingLocation.isEmpty()
-                                && existingLocation.get("location") != null
-                                && !existingLocation.get("location").toString().isEmpty();
+                                && existingLocation.containsKey("sampleItemId");
 
                         if (request.isReassign() || hasExistingAssignment) {
                             // Use move for reassignment or if sample already has an assignment
@@ -1868,7 +1922,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateSampleVolume(@PathVariable("notebookId") Integer notebookId,
             @RequestBody UpdateVolumeRequest request, HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -1958,7 +2017,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> addQualityFlag(@PathVariable("notebookId") Integer notebookId,
             @RequestBody QualityFlagRequest request, HttpServletRequest httpRequest) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }
@@ -2069,7 +2133,12 @@ public class NotebookSampleEntryController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getQCSummary(@PathVariable("notebookId") Integer notebookId) {
 
-        NoteBook notebook = noteBookService.get(notebookId);
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
         if (notebook == null) {
             return ResponseEntity.notFound().build();
         }

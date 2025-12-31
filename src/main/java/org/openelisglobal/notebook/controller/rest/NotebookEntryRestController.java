@@ -126,6 +126,8 @@ public class NotebookEntryRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(response);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Failed to create notebook entry: " + e.getMessage());

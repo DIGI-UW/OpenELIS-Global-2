@@ -96,6 +96,16 @@ public interface NoteBookService extends BaseObjectService<NoteBook, Integer> {
     NoteBookPage getLastPage(Integer notebookId);
 
     /**
+     * Get a page by notebook ID and page order. This method initializes the lazy
+     * pages collection within a transaction.
+     *
+     * @param notebookId the notebook ID
+     * @param pageOrder  the page order (1-indexed)
+     * @return the NoteBookPage with the given order or null if not found
+     */
+    NoteBookPage getPageByNotebookIdAndOrder(Integer notebookId, Integer pageOrder);
+
+    /**
      * Check if a page is a routing page (by title pattern).
      *
      * @param pageId the page ID

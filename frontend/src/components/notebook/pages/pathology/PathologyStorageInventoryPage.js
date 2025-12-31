@@ -322,20 +322,19 @@ function PathologyStorageInventoryPage({
     );
   }, [pageData?.id]);
 
-  // Load temperature logs
+  // Load temperature logs - uses entry ID for notebook-entry endpoint
   const loadTemperatureLogs = useCallback(() => {
-    const effectiveEntryId = notebookId || entryId;
-    if (!effectiveEntryId) return;
+    if (!entryId) return;
 
     getFromOpenElisServer(
-      `/rest/notebook-entry/${effectiveEntryId}/temperature-logs`,
+      `/rest/notebook-entry/${entryId}/temperature-logs`,
       (response) => {
         if (componentMounted.current && response && Array.isArray(response)) {
           setTemperatureLogs(response);
         }
       },
     );
-  }, [entryId, notebookId]);
+  }, [entryId]);
 
   // Load storage logbook entries
   const loadStorageLogbook = useCallback(() => {
@@ -578,7 +577,17 @@ function PathologyStorageInventoryPage({
       wellAssignmentsForBackend[sampleId] = wellCoord;
     });
 
-    const nbId = notebookId || entryId;
+    // notebookId is the actual notebook ID - do not use entryId as fallback
+    if (!notebookId) {
+      setError(
+        intl.formatMessage({
+          id: "pathology.storage.error.noNotebookId",
+          defaultMessage: "Notebook ID not available. Cannot assign storage.",
+        }),
+      );
+      setAssigning(false);
+      return;
+    }
     // Use sampleIdsString to support composite sample IDs (e.g., "4_cassette_0_block_0")
     const payload = {
       sampleIdsString: Object.keys(wellAssignments).map((id) => String(id)),
@@ -592,7 +601,7 @@ function PathologyStorageInventoryPage({
     };
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${nbId}/samples/assign-storage`,
+      `/rest/notebook/${notebookId}/samples/assign-storage`,
       JSON.stringify(payload),
       (response) => {
         setAssigning(false);
@@ -623,9 +632,9 @@ function PathologyStorageInventoryPage({
           setWellAssignments({});
           loadPageSamples();
           // Reload box layout
-          if (storageSelection.box && nbId) {
+          if (storageSelection.box && notebookId) {
             getFromOpenElisServer(
-              `/rest/notebook/${nbId}/box/${storageSelection.box.id}/layout`,
+              `/rest/notebook/${notebookId}/box/${storageSelection.box.id}/layout`,
               (layoutResponse) => {
                 if (componentMounted.current && layoutResponse) {
                   setBoxLayout(layoutResponse.wells || {});
@@ -649,7 +658,7 @@ function PathologyStorageInventoryPage({
     );
   };
 
-  // Handle mark complete
+  // Handle mark complete - marks samples complete and advances them to Disposal & Archiving page
   const handleMarkComplete = () => {
     // Find samples with storage that aren't already completed
     const pendingSamples = samples.filter(
@@ -688,24 +697,77 @@ function PathologyStorageInventoryPage({
       `/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
       JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
       (response) => {
-        setAssigning(false);
-
         if (response && response.success) {
-          setSuccess(
-            intl.formatMessage(
-              {
-                id: "pathology.storage.completeSuccess",
-                defaultMessage:
-                  "Successfully marked {count} samples as complete.",
-              },
-              { count: response.updatedCount || pendingSamples.length },
-            ),
-          );
-          loadPageSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
+          // Now advance samples to Disposal & Archiving page (page 11)
+          // Storage is page 9, Disposal is page 11
+          // Note: notebookId is the actual notebook ID, entryId is the notebook entry ID
+          // We must use notebookId for the advance API, not entryId
+          if (!notebookId) {
+            console.warn(
+              "notebookId not available, cannot advance samples to Disposal page",
+            );
+            setSuccess(
+              intl.formatMessage(
+                {
+                  id: "pathology.storage.completeSuccess",
+                  defaultMessage:
+                    "Successfully marked {count} samples as complete.",
+                },
+                { count: response.updatedCount || pendingSamples.length },
+              ),
+            );
+            loadPageSamples();
+            setAssigning(false);
+            return;
           }
+          // Use string endpoint to preserve composite sample IDs (e.g., "4_cassette_0_block_0_slide_0")
+          postToOpenElisServerJsonResponse(
+            `/rest/notebook/${notebookId}/samples/advance-string`,
+            JSON.stringify({
+              sampleIds: sampleIds, // Keep full composite IDs as strings
+              fromPageId: pageData.id,
+              toPageIndex: 11, // Disposal & Archiving page
+            }),
+            (advanceResponse) => {
+              setAssigning(false);
+
+              if (advanceResponse && advanceResponse.success) {
+                setSuccess(
+                  intl.formatMessage(
+                    {
+                      id: "pathology.storage.completeAndAdvanceSuccess",
+                      defaultMessage:
+                        "Successfully completed {count} samples and advanced to Disposal & Archiving.",
+                    },
+                    { count: response.updatedCount || pendingSamples.length },
+                  ),
+                );
+              } else {
+                // Samples were marked complete but advance failed - still show partial success
+                setSuccess(
+                  intl.formatMessage(
+                    {
+                      id: "pathology.storage.completeSuccess",
+                      defaultMessage:
+                        "Successfully marked {count} samples as complete.",
+                    },
+                    { count: response.updatedCount || pendingSamples.length },
+                  ),
+                );
+                console.warn(
+                  "Failed to advance samples to Disposal page:",
+                  advanceResponse?.error,
+                );
+              }
+
+              loadPageSamples();
+              if (onProgressUpdate) {
+                onProgressUpdate();
+              }
+            },
+          );
         } else {
+          setAssigning(false);
           setError(response?.error || "Failed to mark samples complete.");
         }
       },
@@ -752,8 +814,8 @@ function PathologyStorageInventoryPage({
       return;
     }
 
-    const effectiveEntryId = notebookId || entryId;
-    if (!effectiveEntryId) {
+    // Temperature logs use the entry ID for notebook-entry endpoint
+    if (!entryId) {
       setError("Notebook entry not found");
       return;
     }
@@ -765,7 +827,7 @@ function PathologyStorageInventoryPage({
 
     // Use the common temperature log endpoint (like Pharma)
     postToOpenElisServerJsonResponse(
-      `/rest/notebook-entry/${effectiveEntryId}/temperature-logs`,
+      `/rest/notebook-entry/${entryId}/temperature-logs`,
       JSON.stringify({
         freezerId: tempLogData.storageUnit, // API expects freezerId
         checkTime: tempLogData.checkTime || "AM",
@@ -1072,11 +1134,10 @@ function PathologyStorageInventoryPage({
           setAutoAssignModalOpen(false);
           loadPageSamples();
           setSelectedSampleIds([]);
-          // Reload box layout
-          const nbId = notebookId || entryId;
-          if (storageSelection.box && nbId) {
+          // Reload box layout - uses notebook ID for notebook endpoint
+          if (storageSelection.box && notebookId) {
             getFromOpenElisServer(
-              `/rest/notebook/${nbId}/box/${storageSelection.box.id}/layout`,
+              `/rest/notebook/${notebookId}/box/${storageSelection.box.id}/layout`,
               (layoutResponse) => {
                 if (componentMounted.current && layoutResponse) {
                   setBoxLayout(layoutResponse.wells || {});
@@ -1570,7 +1631,7 @@ function PathologyStorageInventoryPage({
             </h5>
             <StorageHierarchySelector
               onSelectionChange={handleStorageSelectionChange}
-              entryId={notebookId || entryId}
+              entryId={notebookId}
               onBoxLayoutLoaded={handleBoxLayoutLoaded}
               boxRequired={true}
               showPath={true}
