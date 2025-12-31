@@ -206,9 +206,9 @@ public class ResultCompilationServiceTest {
     public void testValidationSummary_Percentages() {
         ValidationSummary summary = new ValidationSummary(100, 80, 10, 5, 5);
 
-        assertEquals(80.0, summary.validPercentage(), 0.01);
-        assertEquals(10.0, summary.invalidPercentage(), 0.01);
-        assertEquals(5.0, summary.inconclusivePercentage(), 0.01);
+        assertEquals(80.0, ResultCompilationService.validPercentage(summary), 0.01);
+        assertEquals(10.0, ResultCompilationService.invalidPercentage(summary), 0.01);
+        assertEquals(5.0, ResultCompilationService.inconclusivePercentage(summary), 0.01);
     }
 
     /**
@@ -228,7 +228,7 @@ public class ResultCompilationServiceTest {
         when(sampleItemService.get("101")).thenReturn(sampleItem);
         when(sampleItemService.get("102")).thenReturn(sampleItem);
 
-        byte[] excelBytes = service.compileToExcel(1, ExportOptions.defaultOptions());
+        byte[] excelBytes = service.compileToExcel(1, ResultCompilationService.defaultExportOptions());
 
         assertNotNull("Excel bytes should not be null", excelBytes);
         assertTrue("Excel should have content", excelBytes.length > 0);
@@ -270,7 +270,7 @@ public class ResultCompilationServiceTest {
         when(sampleItem.getExternalId()).thenReturn("EXT-101");
         when(sampleItemService.get("101")).thenReturn(sampleItem);
 
-        byte[] csvBytes = service.compileToCsv(1, ExportOptions.defaultOptions());
+        byte[] csvBytes = service.compileToCsv(1, ResultCompilationService.defaultExportOptions());
 
         assertNotNull("CSV bytes should not be null", csvBytes);
 

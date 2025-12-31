@@ -266,7 +266,7 @@ public class ArchivingServiceTest {
 
         // Assert
         assertTrue("All checks should pass", result.passed());
-        assertFalse("Should not have critical failures", result.hasCriticalFailures());
+        assertFalse("Should not have critical failures", ArchivingService.hasCriticalFailures(result));
         assertNotNull("Should have summary", result.summary());
     }
 
@@ -320,7 +320,7 @@ public class ArchivingServiceTest {
         TraceabilityResult result = archivingService.verifyTraceability(1);
 
         // Assert - should fail storage assignments check (critical)
-        assertTrue("Should have critical failures", result.hasCriticalFailures());
+        assertTrue("Should have critical failures", ArchivingService.hasCriticalFailures(result));
         assertTrue("Storage Assignments check should have issues",
                 result.checks().stream().filter(c -> c.checkName().equals("Storage Assignments"))
                         .findFirst().map(c -> !c.passed()).orElse(false));
@@ -352,7 +352,7 @@ public class ArchivingServiceTest {
         TraceabilityResult result = archivingService.verifyTraceability(1);
 
         // Assert - should fail parent-child links check (critical)
-        assertTrue("Should have critical failures", result.hasCriticalFailures());
+        assertTrue("Should have critical failures", ArchivingService.hasCriticalFailures(result));
     }
 
     // ==================== Finalization Tests ====================
