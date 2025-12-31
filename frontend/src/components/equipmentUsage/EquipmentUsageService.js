@@ -1,186 +1,128 @@
 /**
  * Equipment Usage REST API Service
  * Handles all API calls for Equipment and Equipment Usage Entry operations
+ * Uses Utils.js helper functions for consistent API handling (following Inventory pattern)
  */
 
-const API_BASE_URL = "/rest";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 
-class EquipmentUsageService {
-  // ==================== Equipment API ====================
+const BASE_PATH = "/rest/equipment-usage";
 
+const promisify = (fn, ...args) => {
+  return new Promise((resolve, reject) => {
+    fn(...args, (response) => {
+      if (response && response.error) {
+        reject(new Error(response.message || response.error));
+      } else {
+        resolve(response);
+      }
+    });
+  });
+};
+
+const get = (endpoint) => {
+  return promisify(getFromOpenElisServer, `${BASE_PATH}${endpoint}`);
+};
+
+const post = (endpoint, data) => {
+  return new Promise((resolve, reject) => {
+    postToOpenElisServerJsonResponse(
+      `${BASE_PATH}${endpoint}`,
+      JSON.stringify(data),
+      (json) => {
+        if (json && (json.status >= 400 || json.statusCode >= 400)) {
+          if (json.errors && typeof json.errors === "object") {
+            const errorMessages = Object.entries(json.errors)
+              .map(([field, message]) => `${field}: ${message}`)
+              .join(", ");
+            reject(new Error(errorMessages));
+            return;
+          }
+          reject(
+            new Error(
+              json.message ||
+                json.error ||
+                `Request failed with status ${json.status || json.statusCode}`,
+            ),
+          );
+        } else {
+          resolve(json);
+        }
+      },
+      null,
+    );
+  });
+};
+
+// ==================== Equipment API ====================
+
+export const EquipmentAPI = {
   /**
    * Get all active equipment
    */
-  static getAllEquipment() {
-    return fetch(`${API_BASE_URL}/equipment`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch equipment");
-      return response.json();
-    });
-  }
+  getAll: () => get("/equipment"),
 
   /**
    * Get equipment for dropdown (active only)
    */
-  static getEquipmentForDropdown() {
-    return fetch(`${API_BASE_URL}/equipment/dropdown`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch equipment dropdown");
-      return response.json();
-    });
-  }
+  getForDropdown: () => get("/equipment/dropdown"),
 
   /**
    * Get equipment by ID
    */
-  static getEquipmentById(id) {
-    return fetch(`${API_BASE_URL}/equipment/${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch equipment");
-      return response.json();
-    });
-  }
+  getById: (id) => get(`/equipment/${id}`),
 
   /**
    * Search equipment by name
    */
-  static searchEquipment(query) {
-    return fetch(`${API_BASE_URL}/equipment/search?q=${encodeURIComponent(query)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to search equipment");
-      return response.json();
-    });
-  }
+  search: (query) => get(`/equipment/search?q=${encodeURIComponent(query)}`),
 
   /**
    * Create new equipment
    */
-  static createEquipment(equipment) {
-    return fetch(`${API_BASE_URL}/equipment`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(equipment),
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to create equipment");
-      return response.json();
-    });
-  }
+  create: (equipment) => post("/equipment", equipment),
 
   /**
    * Update equipment
    */
-  static updateEquipment(id, equipment) {
-    return fetch(`${API_BASE_URL}/equipment/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(equipment),
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to update equipment");
-      return response.json();
-    });
-  }
+  update: (id, equipment) => post(`/equipment/${id}`, equipment),
+};
 
-  // ==================== Equipment Usage Entry API ====================
+// ==================== Equipment Usage Entry API ====================
 
+export const EquipmentUsageEntryAPI = {
   /**
    * Get all usage entries
    */
-  static getAllUsageEntries() {
-    return fetch(`${API_BASE_URL}/equipment-usage`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch usage entries");
-      return response.json();
-    });
-  }
+  getAll: () => get(""),
 
   /**
    * Get usage entry by ID
    */
-  static getUsageEntryById(id) {
-    return fetch(`${API_BASE_URL}/equipment-usage/${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch usage entry");
-      return response.json();
-    });
-  }
+  getById: (id) => get(`/${id}`),
 
   /**
    * Get usage entries by equipment
    */
-  static getByEquipmentId(equipmentId) {
-    return fetch(`${API_BASE_URL}/equipment-usage/equipment/${equipmentId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch usage entries");
-      return response.json();
-    });
-  }
+  getByEquipmentId: (equipmentId) => get(`/equipment/${equipmentId}`),
 
   /**
    * Get entries pending approval
    */
-  static getPendingApproval() {
-    return fetch(`${API_BASE_URL}/equipment-usage/pending-approval`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch pending entries");
-      return response.json();
-    });
-  }
+  getPendingApproval: () => get("/pending-approval"),
 
   /**
    * Get approved entries
    */
-  static getApprovedEntries() {
-    return fetch(`${API_BASE_URL}/equipment-usage/approved`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to fetch approved entries");
-      return response.json();
-    });
-  }
+  getApproved: () => get("/approved"),
 
   /**
    * Search usage entries with filters
    */
-  static searchUsageEntries(filters) {
+  search: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.equipmentId) params.append("equipmentId", filters.equipmentId);
     if (filters.operatorId) params.append("operatorId", filters.operatorId);
@@ -188,123 +130,126 @@ class EquipmentUsageService {
     if (filters.endDate) params.append("endDate", filters.endDate);
     if (filters.department) params.append("department", filters.department);
     if (filters.status) params.append("status", filters.status);
-
-    return fetch(`${API_BASE_URL}/equipment-usage/search?${params}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to search usage entries");
-      return response.json();
-    });
-  }
+    const query = params.toString();
+    return get(`/search${query ? `?${query}` : ""}`);
+  },
 
   /**
    * Create new usage entry (as DRAFT)
    */
-  static createUsageEntry(entry) {
-    return fetch(`${API_BASE_URL}/equipment-usage`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(entry),
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to create usage entry");
-      return response.json();
-    });
-  }
+  create: (entry) => post("", entry),
 
   /**
    * Save usage entry as draft
    */
-  static saveDraft(id, entry) {
-    return fetch(`${API_BASE_URL}/equipment-usage/${id}/draft`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(entry),
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to save draft");
-      return response.json();
-    });
-  }
+  saveDraft: (id, entry) => post(`/${id}/draft`, entry),
 
   /**
    * Submit entry for approval
    */
-  static submitForApproval(id) {
-    return fetch(`${API_BASE_URL}/equipment-usage/${id}/submit`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to submit entry");
-      return response.json();
-    });
-  }
+  submitForApproval: (id) => post(`/${id}/submit`, {}),
 
   /**
    * Approve entry
    */
-  static approveEntry(id, approverId) {
-    return fetch(`${API_BASE_URL}/equipment-usage/${id}/approve?approverId=${approverId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to approve entry");
-      return response.json();
-    });
-  }
+  approve: (id, approverId) =>
+    post(`/${id}/approve?approverId=${approverId}`, {}),
 
   /**
    * Reject entry
    */
-  static rejectEntry(id) {
-    return fetch(`${API_BASE_URL}/equipment-usage/${id}/reject`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to reject entry");
-      return response.json();
-    });
-  }
+  reject: (id) => post(`/${id}/reject`, {}),
 
   /**
    * Check if entry can be edited
    */
-  static canEditEntry(id) {
-    return fetch(`${API_BASE_URL}/equipment-usage/${id}/can-edit`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to check edit permission");
-      return response.json();
-    });
-  }
+  canEdit: (id) => get(`/${id}/can-edit`),
 
   /**
    * Check if entry can be approved
    */
+  canApprove: (id) => get(`/${id}/can-approve`),
+};
+
+// ==================== Backwards compatibility wrapper ====================
+
+class EquipmentUsageService {
+  // Equipment methods
+  static getAllEquipment() {
+    return EquipmentAPI.getAll();
+  }
+
+  static getEquipmentForDropdown() {
+    return EquipmentAPI.getForDropdown();
+  }
+
+  static getEquipmentById(id) {
+    return EquipmentAPI.getById(id);
+  }
+
+  static searchEquipment(query) {
+    return EquipmentAPI.search(query);
+  }
+
+  static createEquipment(equipment) {
+    return EquipmentAPI.create(equipment);
+  }
+
+  static updateEquipment(id, equipment) {
+    return EquipmentAPI.update(id, equipment);
+  }
+
+  // Equipment Usage Entry methods
+  static getAllUsageEntries() {
+    return EquipmentUsageEntryAPI.getAll();
+  }
+
+  static getUsageEntryById(id) {
+    return EquipmentUsageEntryAPI.getById(id);
+  }
+
+  static getByEquipmentId(equipmentId) {
+    return EquipmentUsageEntryAPI.getByEquipmentId(equipmentId);
+  }
+
+  static getPendingApproval() {
+    return EquipmentUsageEntryAPI.getPendingApproval();
+  }
+
+  static getApprovedEntries() {
+    return EquipmentUsageEntryAPI.getApproved();
+  }
+
+  static searchUsageEntries(filters) {
+    return EquipmentUsageEntryAPI.search(filters);
+  }
+
+  static createUsageEntry(entry) {
+    return EquipmentUsageEntryAPI.create(entry);
+  }
+
+  static saveDraft(id, entry) {
+    return EquipmentUsageEntryAPI.saveDraft(id, entry);
+  }
+
+  static submitForApproval(id) {
+    return EquipmentUsageEntryAPI.submitForApproval(id);
+  }
+
+  static approveEntry(id, approverId) {
+    return EquipmentUsageEntryAPI.approve(id, approverId);
+  }
+
+  static rejectEntry(id) {
+    return EquipmentUsageEntryAPI.reject(id);
+  }
+
+  static canEditEntry(id) {
+    return EquipmentUsageEntryAPI.canEdit(id);
+  }
+
   static canApproveEntry(id) {
-    return fetch(`${API_BASE_URL}/equipment-usage/${id}/can-approve`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then((response) => {
-      if (!response.ok) throw new Error("Failed to check approve permission");
-      return response.json();
-    });
+    return EquipmentUsageEntryAPI.canApprove(id);
   }
 }
 

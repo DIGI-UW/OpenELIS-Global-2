@@ -33,6 +33,7 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isMounted, setIsMounted] = useState(true);
 
   useEffect(() => {
     if (userSessionDetails?.firstName && userSessionDetails?.lastName) {
@@ -42,6 +43,11 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
       }));
     }
     loadEquipment();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      setIsMounted(false);
+    };
   }, []);
 
   useEffect(() => {
@@ -59,14 +65,22 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
   }, [entry, isNew, isOpen]);
 
   const loadEquipment = async () => {
+    if (!isMounted) return;
+
     setLoading(true);
     try {
       const data = await EquipmentUsageService.getEquipmentForDropdown();
-      setEquipment(data || []);
+      if (isMounted) {
+        setEquipment(data || []);
+      }
     } catch (err) {
-      setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 

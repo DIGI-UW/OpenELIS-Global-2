@@ -41,9 +41,10 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
   const loadEquipment = async () => {
     try {
       const data = await EquipmentUsageService.getEquipmentForDropdown();
-      setEquipment(data);
+      setEquipment(data || []);
     } catch (err) {
       console.error("Failed to load equipment:", err);
+      setError(`Failed to load equipment: ${err.message}`);
     }
   };
 
@@ -143,11 +144,14 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
         <Column lg={4} md={4} sm={4}>
           <DatePicker
             datePickerType="range"
-            value={`${filters.startDate}/${filters.endDate}`}
+            value={filters.startDate && filters.endDate ? `${filters.startDate}/${filters.endDate}` : ""}
             onChange={(dates) => {
               if (dates && dates.length === 2) {
                 handleFilterChange("startDate", dates[0]);
                 handleFilterChange("endDate", dates[1]);
+              } else if (dates && dates.length === 0) {
+                handleFilterChange("startDate", "");
+                handleFilterChange("endDate", "");
               }
             }}
           >
@@ -156,7 +160,7 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
               placeholder="Start Date"
               labelText="Date Range"
             />
-            <DatePickerInput id="end-date" placeholder="End Date" />
+            <DatePickerInput id="end-date" placeholder="End Date" labelText="" />
           </DatePicker>
         </Column>
 
