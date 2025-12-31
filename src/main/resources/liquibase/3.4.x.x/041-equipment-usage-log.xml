@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Equipment Usage Log - Standalone module for tracking permanent laboratory equipment usage -->
+    <!-- Not linked to notebooks, captures compliance and audit requirements per MNTD format 5.3-003 -->
+
+    <!-- Create equipment master table -->
+    <changeSet id="equipment-master-table" author="openelis">
+        <createTable tableName="equipment">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="serial_number" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="department" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="manufacturer" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="model_number" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="purchase_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_calibration_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="next_calibration_due" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="is_active" type="CHAR(1)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_equipment_created_by" references="system_user(id)"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_equipment_modified_by" references="system_user(id)"/>
+            </column>
+            <column name="modified_date" type="TIMESTAMP" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="idx_equipment_name" tableName="equipment">
+            <column name="name"/>
+        </createIndex>
+        <createIndex indexName="idx_equipment_serial" tableName="equipment">
+            <column name="serial_number"/>
+        </createIndex>
+        <createIndex indexName="idx_equipment_active" tableName="equipment">
+            <column name="is_active"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create equipment usage entry table -->
+    <changeSet id="equipment-usage-entry-table" author="openelis">
+        <createTable tableName="equipment_usage_entry">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="equipment_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_usage_equipment" references="equipment(id)"/>
+            </column>
+            <column name="operator_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operator_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_usage_operator" references="system_user(id)"/>
+            </column>
+            <column name="login_time" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="logout_time" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="activities_done" type="LONGTEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="equipment_status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="department" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="entry_status" type="VARCHAR(50)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approved_by" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_usage_approved_by" references="system_user(id)"/>
+            </column>
+            <column name="approval_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="approval_signature" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_usage_created_by" references="system_user(id)"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="modified_by" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_usage_modified_by" references="system_user(id)"/>
+            </column>
+            <column name="modified_date" type="TIMESTAMP" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="idx_usage_equipment" tableName="equipment_usage_entry">
+            <column name="equipment_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_operator" tableName="equipment_usage_entry">
+            <column name="operator_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_status" tableName="equipment_usage_entry">
+            <column name="entry_status"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_login_time" tableName="equipment_usage_entry">
+            <column name="login_time"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create audit log table for equipment usage changes -->
+    <changeSet id="equipment-usage-audit-table" author="openelis">
+        <createTable tableName="equipment_usage_audit">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="usage_entry_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_audit_usage_entry" references="equipment_usage_entry(id)"/>
+            </column>
+            <column name="change_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_field" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="old_value" type="LONGTEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="new_value" type="LONGTEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="changed_by" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_audit_changed_by" references="system_user(id)"/>
+            </column>
+            <column name="changed_date" type="TIMESTAMP" defaultValueDate="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="idx_audit_usage_entry" tableName="equipment_usage_audit">
+            <column name="usage_entry_id"/>
+        </createIndex>
+        <createIndex indexName="idx_audit_changed_date" tableName="equipment_usage_audit">
+            <column name="changed_date"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add menu entries for Equipment Usage Log -->
+    <changeSet id="equipment-usage-menu-entries" author="openelis">
+        <insert tableName="menu">
+            <column name="menu_id" value="menu_equipment_usage"/>
+            <column name="display_key" value="sidenav.label.equipment.usage"/>
+            <column name="element_id" value="menu_equipment_usage"/>
+            <column name="parent_menu_id" value=""/>
+            <column name="action_url" value=""/>
+            <column name="presentation_order" value="25"/>
+        </insert>
+        <insert tableName="menu">
+            <column name="menu_id" value="menu_equipment_usage_log"/>
+            <column name="display_key" value="sidenav.label.equipment.usage.log"/>
+            <column name="element_id" value="menu_equipment_usage_log"/>
+            <column name="parent_menu_id" value="menu_equipment_usage"/>
+            <column name="action_url" value="/equipment-usage"/>
+            <column name="presentation_order" value="1"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

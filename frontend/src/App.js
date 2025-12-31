@@ -6,6 +6,7 @@ import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import InventoryManagement from "./components/inventory/InventoryManagement";
+import EquipmentUsageManagement from "./components/equipmentUsage/EquipmentUsageManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import { Admin } from "./components";
@@ -469,6 +470,12 @@ export default function App() {
                   path="/inventory"
                   exact
                   component={() => <InventoryManagement />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/equipment-usage"
+                  exact
+                  component={() => <EquipmentUsageManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

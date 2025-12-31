@@ -1,0 +1,152 @@
+/* Equipment Usage Log Styles */
+
+.equipment-usage-container {
+  padding: 1rem;
+}
+
+.equipment-usage-form {
+  margin-bottom: 2rem;
+}
+
+.equipment-usage-table {
+  margin-top: 1rem;
+}
+
+.equipment-status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.equipment-status.functional {
+  background-color: #d0e2d4;
+  color: #198754;
+}
+
+.equipment-status.under-maintenance {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.equipment-status.faulty {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.equipment-status.calibration-required {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.entry-status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.entry-status.draft {
+  background-color: #e7e7e7;
+  color: #333;
+}
+
+.entry-status.submitted {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.entry-status.approved {
+  background-color: #d0e2d4;
+  color: #198754;
+}
+
+.filter-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.actions-column {
+  text-align: center;
+}
+
+.report-info {
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  margin-top: 2rem;
+}
+
+.report-info h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.report-info h4 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #555;
+}
+
+.report-info ul {
+  list-style-position: inside;
+  line-height: 1.6;
+}
+
+.report-info li {
+  margin-bottom: 0.5rem;
+}
+
+.approval-modal {
+  min-width: 400px;
+}
+
+.equipment-usage-modal {
+  max-width: 600px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .filter-section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .report-info {
+    font-size: 0.875rem;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .cds--btn,
+  .cds--overflow-menu,
+  .filter-section {
+    display: none !important;
+  }
+
+  .equipment-usage-table {
+    margin-top: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    border: 1px solid #999;
+    padding: 8px;
+    text-align: left;
+  }
+
+  th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+  }
+}
