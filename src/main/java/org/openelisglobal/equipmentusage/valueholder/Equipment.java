@@ -89,4 +89,14 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     @Column(name = "version")
     private Long version;
 
+    @Override
+    public Long getId() {
+        return this.id;
+    }
+
+    @Override
+    public void setId(Long id) {
+        this.id = id;
+    }
+
 }

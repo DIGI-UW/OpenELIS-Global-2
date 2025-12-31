@@ -111,4 +111,14 @@ public class EquipmentUsageEntry extends BaseObject<Long> implements Serializabl
     public enum EntryStatus {
         DRAFT, SUBMITTED, APPROVED
     }
+
+    @Override
+    public Long getId() {
+        return this.id;
+    }
+
+    @Override
+    public void setId(Long id) {
+        this.id = id;
+    }
 }
