@@ -12,8 +12,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -62,15 +60,12 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     private String modelNumber;
 
     @Column(name = "purchase_date")
-    @Temporal(TemporalType.DATE)
     private LocalDate purchaseDate;
 
     @Column(name = "last_calibration_date")
-    @Temporal(TemporalType.DATE)
     private LocalDate lastCalibrationDate;
 
     @Column(name = "next_calibration_due")
-    @Temporal(TemporalType.DATE)
     private LocalDate nextCalibrationDue;
 
     @Column(name = "is_active", nullable = false, length = 1)
@@ -81,7 +76,6 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     private SystemUser createdBy;
 
     @Column(name = "created_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime createdDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -89,35 +83,10 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     private SystemUser modifiedBy;
 
     @Column(name = "modified_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime modifiedDate;
 
     @Version
     @Column(name = "version")
     private Long version;
 
-    // Explicit setters for compiler recognition
-    public void setIsActive(String isActive) {
-        this.isActive = isActive;
-    }
-
-    public String getIsActive() {
-        return this.isActive;
-    }
-
-    public void setModifiedDate(LocalDateTime modifiedDate) {
-        this.modifiedDate = modifiedDate;
-    }
-
-    public LocalDateTime getModifiedDate() {
-        return this.modifiedDate;
-    }
-
-    public void setCreatedDate(LocalDateTime createdDate) {
-        this.createdDate = createdDate;
-    }
-
-    public LocalDateTime getCreatedDate() {
-        return this.createdDate;
-    }
 }

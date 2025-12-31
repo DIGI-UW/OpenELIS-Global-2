@@ -14,8 +14,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 import jakarta.persistence.Version;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
@@ -56,12 +54,10 @@ public class EquipmentUsageEntry extends BaseObject<Long> implements Serializabl
     private SystemUser operator;
 
     @Column(name = "login_time", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
     @NotNull
     private LocalDateTime loginTime;
 
     @Column(name = "logout_time")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime logoutTime;
 
     @Column(name = "activities_done", columnDefinition = "LONGTEXT")
@@ -85,7 +81,6 @@ public class EquipmentUsageEntry extends BaseObject<Long> implements Serializabl
     private SystemUser approvedBy;
 
     @Column(name = "approval_date")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime approvalDate;
 
     @Column(name = "approval_signature", length = 255)
@@ -96,7 +91,6 @@ public class EquipmentUsageEntry extends BaseObject<Long> implements Serializabl
     private SystemUser createdBy;
 
     @Column(name = "created_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime createdDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -104,7 +98,6 @@ public class EquipmentUsageEntry extends BaseObject<Long> implements Serializabl
     private SystemUser modifiedBy;
 
     @Column(name = "modified_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-    @Temporal(TemporalType.TIMESTAMP)
     private LocalDateTime modifiedDate;
 
     @Version
@@ -117,54 +110,5 @@ public class EquipmentUsageEntry extends BaseObject<Long> implements Serializabl
 
     public enum EntryStatus {
         DRAFT, SUBMITTED, APPROVED
-    }
-
-    // Explicit setters for compiler recognition
-    public void setModifiedDate(LocalDateTime modifiedDate) {
-        this.modifiedDate = modifiedDate;
-    }
-
-    public LocalDateTime getModifiedDate() {
-        return this.modifiedDate;
-    }
-
-    public void setCreatedDate(LocalDateTime createdDate) {
-        this.createdDate = createdDate;
-    }
-
-    public LocalDateTime getCreatedDate() {
-        return this.createdDate;
-    }
-
-    public void setApprovalDate(LocalDateTime approvalDate) {
-        this.approvalDate = approvalDate;
-    }
-
-    public LocalDateTime getApprovalDate() {
-        return this.approvalDate;
-    }
-
-    public void setEntryStatus(EntryStatus entryStatus) {
-        this.entryStatus = entryStatus;
-    }
-
-    public EntryStatus getEntryStatus() {
-        return this.entryStatus;
-    }
-
-    public void setApprovedBy(SystemUser approvedBy) {
-        this.approvedBy = approvedBy;
-    }
-
-    public SystemUser getApprovedBy() {
-        return this.approvedBy;
-    }
-
-    public void setApprovalSignature(String approvalSignature) {
-        this.approvalSignature = approvalSignature;
-    }
-
-    public String getApprovalSignature() {
-        return this.approvalSignature;
     }
 }
