@@ -5,8 +5,8 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Equipment Usage Log - Standalone module for tracking permanent laboratory equipment usage -->
-    <!-- Not linked to notebooks, captures compliance and audit requirements per MNTD format 5.3-003 -->
+    <!-- Equipment Management - Comprehensive system for managing laboratory equipment -->
+    <!-- Includes equipment master data, usage tracking, approval workflows, and compliance with MNTD format 5.3-003 -->
 
     <!-- Create equipment master table -->
     <changeSet id="equipment-master-table" author="openelis">
@@ -55,6 +55,9 @@
             </column>
             <column name="version" type="BIGINT" defaultValue="0">
                 <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueDate="now()">
+                <constraints nullable="true"/>
             </column>
         </createTable>
         <createIndex indexName="idx_equipment_name" tableName="equipment">
@@ -125,6 +128,9 @@
             <column name="version" type="BIGINT" defaultValue="0">
                 <constraints nullable="false"/>
             </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueDate="now()">
+                <constraints nullable="true"/>
+            </column>
         </createTable>
         <createIndex indexName="idx_usage_equipment" tableName="equipment_usage_entry">
             <column name="equipment_id"/>
@@ -179,18 +185,18 @@
     <changeSet author="openelis" id="equipment-usage-log-add-submenu">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_equipment_usage_log';
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_equipment_management';
             </sqlCheck>
         </preConditions>
-        <comment>Add Equipment Usage Log as submenu item under Inventory menu</comment>
+        <comment>Add Equipment Management as submenu item under Inventory menu</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')" />
             <column name="presentation_order" value="2" />
-            <column name="element_id" value="menu_equipment_usage_log" />
+            <column name="element_id" value="menu_equipment_management" />
             <column name="action_url" value="/equipment-usage" />
-            <column name="display_key" value="sidenav.label.equipment.usage.log" />
-            <column name="tool_tip_key" value="tooltip.equipment.usage.log" />
+            <column name="display_key" value="sidenav.label.equipment.management" />
+            <column name="tool_tip_key" value="tooltip.equipment.management" />
             <column name="new_window" valueBoolean="false" />
             <column name="is_active" valueBoolean="true" />
             <column name="hide_in_old_ui" valueBoolean="true" />
