@@ -19,7 +19,8 @@ import { NotificationKinds } from "../../common/CustomNotification";
 
 const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
   const intl = useIntl();
-  const { addNotification, setNotificationVisible } = useContext(NotificationContext);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   const [formData, setFormData] = useState({
     loginTime: "",
@@ -34,7 +35,10 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
   const formatDateForInput = (dateValue) => {
     if (!dateValue) return "";
 
-    if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    if (
+      typeof dateValue === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
+    ) {
       return dateValue;
     }
 
@@ -97,7 +101,8 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
   };
 
   const handleTimeChange = (field, timeValue) => {
-    const dateValue = field === "loginTime" ? formData.loginTime : formData.logoutTime;
+    const dateValue =
+      field === "loginTime" ? formData.loginTime : formData.logoutTime;
     if (dateValue && timeValue) {
       const newDateTime = `${dateValue}T${timeValue}`;
       handleInputChange(field, newDateTime);
@@ -108,10 +113,13 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
     try {
       if (!formData.loginTime) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
+          }),
           message: intl.formatMessage({
             id: "equipment.usage.loginTime.required",
-            defaultMessage: "Login time is required"
+            defaultMessage: "Login time is required",
           }),
           kind: NotificationKinds.error,
         });
@@ -134,11 +142,16 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
     } catch (err) {
       console.error("Error submitting usage entry:", err);
       addNotification({
-        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-        message: err.message || intl.formatMessage({
-          id: "equipment.usage.submit.error",
-          defaultMessage: "Failed to submit usage entry"
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Error",
         }),
+        message:
+          err.message ||
+          intl.formatMessage({
+            id: "equipment.usage.submit.error",
+            defaultMessage: "Failed to submit usage entry",
+          }),
         kind: NotificationKinds.error,
       });
       setNotificationVisible(true);
@@ -164,7 +177,10 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
         </div>
       }
       primaryButtonText={
-        <FormattedMessage id="common.button.save" defaultMessage="Save Changes" />
+        <FormattedMessage
+          id="common.button.save"
+          defaultMessage="Save Changes"
+        />
       }
       secondaryButtonText={
         <FormattedMessage id="common.button.cancel" defaultMessage="Cancel" />
@@ -183,7 +199,13 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
           borderRadius: "6px",
         }}
       >
-        <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "1rem", fontWeight: "600" }}>
+        <h4
+          style={{
+            margin: "0 0 0.5rem 0",
+            fontSize: "1rem",
+            fontWeight: "600",
+          }}
+        >
           <FormattedMessage
             id="equipment.usage.edit.equipment.info"
             defaultMessage="Equipment Information"
@@ -194,7 +216,8 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
           <FormattedMessage
             id="equipment.usage.edit.operator"
             defaultMessage="Operator"
-          />: {entry.operatorName || "—"}
+          />
+          : {entry.operatorName || "—"}
         </p>
       </div>
 
@@ -248,7 +271,9 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
                   id="equipment.usage.edit.login.time"
                   defaultMessage="Start Time"
                 />
-                <span style={{ color: "#da1e28", marginLeft: "0.25rem" }}>*</span>
+                <span style={{ color: "#da1e28", marginLeft: "0.25rem" }}>
+                  *
+                </span>
               </label>
               <TimePicker
                 id="edit-login-time"
@@ -346,7 +371,10 @@ const EditUsageEntryModal = ({ isOpen, onClose, entry, onSubmit }) => {
               <SelectItem value="FUNCTIONAL" text="Functional" />
               <SelectItem value="UNDER_MAINTENANCE" text="Under Maintenance" />
               <SelectItem value="FAULTY" text="Faulty" />
-              <SelectItem value="CALIBRATION_REQUIRED" text="Calibration Required" />
+              <SelectItem
+                value="CALIBRATION_REQUIRED"
+                text="Calibration Required"
+              />
             </Select>
           </Column>
         </Grid>

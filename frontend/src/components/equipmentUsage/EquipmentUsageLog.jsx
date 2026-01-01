@@ -67,11 +67,16 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       console.error("Error loading drafts:", err);
       if (isMounted) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-          message: err.message || intl.formatMessage({
-            id: "equipment.usage.load.error",
-            defaultMessage: "Failed to load usage entries"
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
           }),
+          message:
+            err.message ||
+            intl.formatMessage({
+              id: "equipment.usage.load.error",
+              defaultMessage: "Failed to load usage entries",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -111,20 +116,26 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       if (isNew) {
         await EquipmentUsageService.createUsageEntry(entry);
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Success",
+          }),
           message: intl.formatMessage({
             id: "equipment.usage.create.success",
-            defaultMessage: "Usage entry created successfully"
+            defaultMessage: "Usage entry created successfully",
           }),
           kind: NotificationKinds.success,
         });
       } else {
         await EquipmentUsageService.saveDraft(entry.id, entry);
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Success",
+          }),
           message: intl.formatMessage({
             id: "equipment.usage.save.success",
-            defaultMessage: "Usage entry saved successfully"
+            defaultMessage: "Usage entry saved successfully",
           }),
           kind: NotificationKinds.success,
         });
@@ -142,11 +153,16 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       console.error("Error submitting entry:", err);
       if (isMounted) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-          message: err.message || intl.formatMessage({
-            id: "equipment.usage.submit.error",
-            defaultMessage: "Failed to submit usage entry"
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
           }),
+          message:
+            err.message ||
+            intl.formatMessage({
+              id: "equipment.usage.submit.error",
+              defaultMessage: "Failed to submit usage entry",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -161,10 +177,13 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       await EquipmentUsageService.saveDraft(entry.id, entry);
 
       addNotification({
-        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Success",
+        }),
         message: intl.formatMessage({
           id: "equipment.usage.update.success",
-          defaultMessage: "Usage entry updated successfully"
+          defaultMessage: "Usage entry updated successfully",
         }),
         kind: NotificationKinds.success,
       });
@@ -181,11 +200,16 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       console.error("Error updating entry:", err);
       if (isMounted) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-          message: err.message || intl.formatMessage({
-            id: "equipment.usage.update.error",
-            defaultMessage: "Failed to update usage entry"
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
           }),
+          message:
+            err.message ||
+            intl.formatMessage({
+              id: "equipment.usage.update.error",
+              defaultMessage: "Failed to update usage entry",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -200,10 +224,13 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       await EquipmentUsageService.submitForApproval(id);
 
       addNotification({
-        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Success",
+        }),
         message: intl.formatMessage({
           id: "equipment.usage.submit.approval.success",
-          defaultMessage: "Usage entry submitted for approval successfully"
+          defaultMessage: "Usage entry submitted for approval successfully",
         }),
         kind: NotificationKinds.success,
       });
@@ -219,11 +246,16 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       console.error("Error submitting for approval:", err);
       if (isMounted) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-          message: err.message || intl.formatMessage({
-            id: "equipment.usage.submit.approval.error",
-            defaultMessage: "Failed to submit usage entry for approval"
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
           }),
+          message:
+            err.message ||
+            intl.formatMessage({
+              id: "equipment.usage.submit.approval.error",
+              defaultMessage: "Failed to submit usage entry for approval",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -244,11 +276,16 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
         console.error("Error deleting entry:", err);
         if (isMounted) {
           addNotification({
-            title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-            message: err.message || intl.formatMessage({
-              id: "equipment.usage.delete.error",
-              defaultMessage: "Failed to delete usage entry"
+            title: intl.formatMessage({
+              id: "notification.title",
+              defaultMessage: "Error",
             }),
+            message:
+              err.message ||
+              intl.formatMessage({
+                id: "equipment.usage.delete.error",
+                defaultMessage: "Failed to delete usage entry",
+              }),
             kind: NotificationKinds.error,
           });
           setNotificationVisible(true);
@@ -362,12 +399,11 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
                           );
                         }
 
-                        if (typeof cell.value === "object" && cell.value !== null) {
-                          return (
-                            <TableCell key={cell.id}>
-                              —
-                            </TableCell>
-                          );
+                        if (
+                          typeof cell.value === "object" &&
+                          cell.value !== null
+                        ) {
+                          return <TableCell key={cell.id}>—</TableCell>;
                         }
 
                         return (

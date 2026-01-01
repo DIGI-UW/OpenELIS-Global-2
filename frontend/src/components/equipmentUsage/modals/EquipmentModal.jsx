@@ -30,14 +30,18 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
   });
 
   const [loading, setLoading] = useState(false);
-  const { addNotification, setNotificationVisible } = useContext(NotificationContext);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // Helper function to safely format date strings for API format (YYYY-MM-DD)
   const formatDateForInput = (dateValue) => {
     if (!dateValue) return "";
 
     // If it's already a string in YYYY-MM-DD format, return as is
-    if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    if (
+      typeof dateValue === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
+    ) {
       return dateValue;
     }
 
@@ -114,10 +118,13 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
       // Validation
       if (!formData.name.trim()) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
+          }),
           message: intl.formatMessage({
             id: "equipment.name.required",
-            defaultMessage: "Equipment name is required"
+            defaultMessage: "Equipment name is required",
           }),
           kind: NotificationKinds.error,
         });
@@ -126,10 +133,13 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
       }
       if (!formData.serialNumber.trim()) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
+          }),
           message: intl.formatMessage({
             id: "equipment.serialNumber.required",
-            defaultMessage: "Serial number is required"
+            defaultMessage: "Serial number is required",
           }),
           kind: NotificationKinds.error,
         });
@@ -143,10 +153,10 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
       const formatDateForAPI = (dateValue) => {
         if (!dateValue) return null;
         if (dateValue instanceof Date) {
-          return dateValue.toISOString().split('T')[0]; // Convert to YYYY-MM-DD
+          return dateValue.toISOString().split("T")[0]; // Convert to YYYY-MM-DD
         }
-        if (typeof dateValue === 'string' && dateValue.includes('T')) {
-          return dateValue.split('T')[0]; // Extract date part from datetime string
+        if (typeof dateValue === "string" && dateValue.includes("T")) {
+          return dateValue.split("T")[0]; // Extract date part from datetime string
         }
         return dateValue;
       };
@@ -161,20 +171,26 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
       if (isNew) {
         await EquipmentAPI.create(submitData);
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Success",
+          }),
           message: intl.formatMessage({
             id: "equipment.create.success",
-            defaultMessage: "Equipment created successfully"
+            defaultMessage: "Equipment created successfully",
           }),
           kind: NotificationKinds.success,
         });
       } else {
         await EquipmentAPI.update(equipment.id, submitData);
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Success",
+          }),
           message: intl.formatMessage({
             id: "equipment.update.success",
-            defaultMessage: "Equipment updated successfully"
+            defaultMessage: "Equipment updated successfully",
           }),
           kind: NotificationKinds.success,
         });
@@ -185,11 +201,16 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
     } catch (err) {
       console.error("Error saving equipment:", err);
       addNotification({
-        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-        message: err.message || intl.formatMessage({
-          id: "equipment.save.error",
-          defaultMessage: "Failed to save equipment"
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Error",
         }),
+        message:
+          err.message ||
+          intl.formatMessage({
+            id: "equipment.save.error",
+            defaultMessage: "Failed to save equipment",
+          }),
         kind: NotificationKinds.error,
       });
       setNotificationVisible(true);

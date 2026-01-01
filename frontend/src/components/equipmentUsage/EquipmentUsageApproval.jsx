@@ -64,11 +64,16 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
       console.error("Error loading pending approvals:", err);
       if (isMounted) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-          message: err.message || intl.formatMessage({
-            id: "equipment.approval.load.error",
-            defaultMessage: "Failed to load pending approvals"
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
           }),
+          message:
+            err.message ||
+            intl.formatMessage({
+              id: "equipment.approval.load.error",
+              defaultMessage: "Failed to load pending approvals",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -95,10 +100,13 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
       );
 
       addNotification({
-        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Success",
+        }),
         message: intl.formatMessage({
           id: "equipment.approval.approve.success",
-          defaultMessage: "Entry approved successfully"
+          defaultMessage: "Entry approved successfully",
         }),
         kind: NotificationKinds.success,
       });
@@ -116,11 +124,16 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
       console.error("Error approving entry:", err);
       if (isMounted) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-          message: err.message || intl.formatMessage({
-            id: "equipment.approval.approve.error",
-            defaultMessage: "Failed to approve entry"
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
           }),
+          message:
+            err.message ||
+            intl.formatMessage({
+              id: "equipment.approval.approve.error",
+              defaultMessage: "Failed to approve entry",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -136,10 +149,13 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
         await EquipmentUsageService.rejectEntry(id);
 
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Success",
+          }),
           message: intl.formatMessage({
             id: "equipment.approval.reject.success",
-            defaultMessage: "Entry rejected successfully"
+            defaultMessage: "Entry rejected successfully",
           }),
           kind: NotificationKinds.success,
         });
@@ -155,11 +171,16 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
         console.error("Error rejecting entry:", err);
         if (isMounted) {
           addNotification({
-            title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-            message: err.message || intl.formatMessage({
-              id: "equipment.approval.reject.error",
-              defaultMessage: "Failed to reject entry"
+            title: intl.formatMessage({
+              id: "notification.title",
+              defaultMessage: "Error",
             }),
+            message:
+              err.message ||
+              intl.formatMessage({
+                id: "equipment.approval.reject.error",
+                defaultMessage: "Failed to reject entry",
+              }),
             kind: NotificationKinds.error,
           });
           setNotificationVisible(true);
@@ -216,10 +237,13 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
                         : cell.info.header === "Actions"
                           ? renderApprovalActions(row.original)
                           : cell.info.header === "Date/Time"
-                            ? (row.original.loginTime
-                                ? new Date(row.original.loginTime).toLocaleString()
-                                : "—")
-                            : (typeof cell.value === "object" && cell.value !== null)
+                            ? row.original.loginTime
+                              ? new Date(
+                                  row.original.loginTime,
+                                ).toLocaleString()
+                              : "—"
+                            : typeof cell.value === "object" &&
+                                cell.value !== null
                               ? "—"
                               : cell.value}
                     </TableCell>

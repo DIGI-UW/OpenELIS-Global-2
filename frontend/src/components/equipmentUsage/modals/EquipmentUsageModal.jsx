@@ -22,7 +22,8 @@ import { NotificationKinds } from "../../common/CustomNotification";
 const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const { addNotification, setNotificationVisible } = useContext(NotificationContext);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   const [formData, setFormData] = useState({
     equipment: null,
@@ -58,7 +59,10 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
     if (!dateValue) return "";
 
     // If it's already a string in YYYY-MM-DD format, return as is
-    if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    if (
+      typeof dateValue === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
+    ) {
       return dateValue;
     }
 
@@ -103,9 +107,10 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
       // Reset form for new entry
       setFormData({
         equipment: null,
-        operatorName: userSessionDetails?.firstName && userSessionDetails?.lastName
-          ? `${userSessionDetails.firstName} ${userSessionDetails.lastName}`
-          : "",
+        operatorName:
+          userSessionDetails?.firstName && userSessionDetails?.lastName
+            ? `${userSessionDetails.firstName} ${userSessionDetails.lastName}`
+            : "",
         usageDate: new Date().toISOString().split("T")[0],
         startTime: "",
         endTime: "",
@@ -128,11 +133,16 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
       console.error("Error loading equipment:", err);
       if (isMounted) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-          message: err.message || intl.formatMessage({
-            id: "equipment.load.error",
-            defaultMessage: "Failed to load equipment list"
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
           }),
+          message:
+            err.message ||
+            intl.formatMessage({
+              id: "equipment.load.error",
+              defaultMessage: "Failed to load equipment list",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -164,10 +174,13 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
       // Validation
       if (!formData.equipment) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
+          }),
           message: intl.formatMessage({
             id: "equipment.usage.equipment.required",
-            defaultMessage: "Please select an equipment"
+            defaultMessage: "Please select an equipment",
           }),
           kind: NotificationKinds.error,
         });
@@ -176,10 +189,13 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
       }
       if (!formData.operatorName?.trim()) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
+          }),
           message: intl.formatMessage({
             id: "equipment.usage.operator.required",
-            defaultMessage: "Operator name is required"
+            defaultMessage: "Operator name is required",
           }),
           kind: NotificationKinds.error,
         });
@@ -188,10 +204,13 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
       }
       if (!formData.usageDate) {
         addNotification({
-          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Error",
+          }),
           message: intl.formatMessage({
             id: "equipment.usage.date.required",
-            defaultMessage: "Usage date is required"
+            defaultMessage: "Usage date is required",
           }),
           kind: NotificationKinds.error,
         });
@@ -221,11 +240,16 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
     } catch (err) {
       console.error("Error submitting usage entry:", err);
       addNotification({
-        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
-        message: err.message || intl.formatMessage({
-          id: "equipment.usage.submit.error",
-          defaultMessage: "Failed to submit usage entry"
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Error",
         }),
+        message:
+          err.message ||
+          intl.formatMessage({
+            id: "equipment.usage.submit.error",
+            defaultMessage: "Failed to submit usage entry",
+          }),
         kind: NotificationKinds.error,
       });
       setNotificationVisible(true);
@@ -239,7 +263,9 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
   return (
     <Modal
       open={isOpen}
-      modalHeading={isNew ? "New Equipment Usage Entry" : "Edit Equipment Usage Entry"}
+      modalHeading={
+        isNew ? "New Equipment Usage Entry" : "Edit Equipment Usage Entry"
+      }
       primaryButtonText="Save Draft"
       secondaryButtonText="Cancel"
       onRequestSubmit={handleSubmit}
@@ -356,7 +382,10 @@ const EquipmentUsageModal = ({ isOpen, onClose, entry, isNew, onSubmit }) => {
               <SelectItem value="FUNCTIONAL" text="Functional" />
               <SelectItem value="UNDER_MAINTENANCE" text="Under Maintenance" />
               <SelectItem value="FAULTY" text="Faulty" />
-              <SelectItem value="CALIBRATION_REQUIRED" text="Calibration Required" />
+              <SelectItem
+                value="CALIBRATION_REQUIRED"
+                text="Calibration Required"
+              />
             </Select>
           </Stack>
         </FormGroup>
