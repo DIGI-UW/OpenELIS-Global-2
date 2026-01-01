@@ -384,21 +384,29 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
                   <TableBody>
                     {rows.map((row) => (
                       <TableRow key={row.id} {...getRowProps({ row })}>
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>
-                            {cell.info.header.props?.id === "equipment.usage.table.equipment"
-                              ? row.original.equipment?.name || "—"
-                              : cell.info.header.props?.id === "equipment.usage.table.approved.by"
-                              ? row.original.approvedBy?.username || "—"
-                              : cell.info.header.props?.id === "equipment.usage.table.datetime"
-                              ? new Date(cell.value).toLocaleString()
-                              : cell.info.header.props?.id === "equipment.usage.table.equipment.status"
-                              ? formatEquipmentStatus(cell.value)
-                              : cell.info.header.props?.id === "equipment.usage.table.entry.status"
-                              ? formatEntryStatus(cell.value)
-                              : cell.value || "—"}
-                          </TableCell>
-                        ))}
+                        {row.cells.map((cell) => {
+                          let cellContent;
+                          if (cell.info.header.props?.id === "equipment.usage.table.equipment") {
+                            cellContent = row.original.equipment?.name || "—";
+                          } else if (cell.info.header.props?.id === "equipment.usage.table.approved.by") {
+                            cellContent = row.original.approvedBy?.username || "—";
+                          } else if (cell.info.header.props?.id === "equipment.usage.table.datetime") {
+                            cellContent = new Date(cell.value).toLocaleString();
+                          } else if (cell.info.header.props?.id === "equipment.usage.table.equipment.status") {
+                            cellContent = formatEquipmentStatus(cell.value);
+                          } else if (cell.info.header.props?.id === "equipment.usage.table.entry.status") {
+                            cellContent = formatEntryStatus(cell.value);
+                          } else if (typeof cell.value === "object" && cell.value !== null) {
+                            cellContent = "—";
+                          } else {
+                            cellContent = cell.value || "—";
+                          }
+                          return (
+                            <TableCell key={cell.id}>
+                              {cellContent}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
