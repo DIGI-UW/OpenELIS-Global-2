@@ -55,36 +55,67 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
     startDate: "",
     endDate: "",
   });
+  const [isMounted, setIsMounted] = useState(true);
 
   useEffect(() => {
+    setIsMounted(true);
     loadEquipment();
     loadEntries();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      setIsMounted(false);
+    };
   }, [refreshTrigger]);
 
   const loadEquipment = async () => {
+    if (!isMounted) return;
+
     try {
       const data = await EquipmentUsageService.getEquipmentForDropdown();
-      setEquipment(data || []);
+
+      if (isMounted) {
+        setEquipment(data || []);
+      }
     } catch (err) {
       console.error("Failed to load equipment:", err);
-      setError(`Failed to load equipment: ${err.message}`);
+      if (isMounted) {
+        setError(`Failed to load equipment: ${err.message}`);
+      }
     }
   };
 
   const loadEntries = async () => {
+    if (!isMounted) return;
+
     setLoading(true);
     setError(null);
     try {
       const data = await EquipmentUsageService.getAllUsageEntries();
-      setEntries(data || []);
+      const transformedData = Array.isArray(data)
+        ? data.map((item) => ({
+            ...item,
+            id: String(item.id), // Convert ID to string for DataTable
+          }))
+        : [];
+
+      if (isMounted) {
+        setEntries(transformedData);
+      }
     } catch (err) {
-      setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 
   const handleSearch = async () => {
+    if (!isMounted) return;
+
     setLoading(true);
     setError(null);
     try {
@@ -95,11 +126,24 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
         endDate: filters.endDate || null,
       };
       const data = await EquipmentUsageService.searchUsageEntries(searchFilters);
-      setEntries(data || []);
+      const transformedData = Array.isArray(data)
+        ? data.map((item) => ({
+            ...item,
+            id: String(item.id), // Convert ID to string for DataTable
+          }))
+        : [];
+
+      if (isMounted) {
+        setEntries(transformedData);
+      }
     } catch (err) {
-      setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 

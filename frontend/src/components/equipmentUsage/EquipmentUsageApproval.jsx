@@ -47,9 +47,15 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
     setError(null);
     try {
       const data = await EquipmentUsageService.getPendingApproval();
+      const transformedData = Array.isArray(data)
+        ? data.map((item) => ({
+            ...item,
+            id: String(item.id), // Convert ID to string for DataTable
+          }))
+        : [];
 
       if (isMounted) {
-        setEntries(data || []);
+        setEntries(transformedData);
       }
     } catch (err) {
       if (isMounted) {

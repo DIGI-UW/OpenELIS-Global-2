@@ -37,7 +37,13 @@ const EquipmentManagement = () => {
     setError(null);
     try {
       const data = await EquipmentAPI.getAll();
-      setEquipmentList(Array.isArray(data) ? data : []);
+      const transformedData = Array.isArray(data)
+        ? data.map((item) => ({
+            ...item,
+            id: String(item.id), // Convert ID to string for DataTable
+          }))
+        : [];
+      setEquipmentList(transformedData);
     } catch (err) {
       setError(err.message || "Failed to load equipment");
       console.error("Error loading equipment:", err);

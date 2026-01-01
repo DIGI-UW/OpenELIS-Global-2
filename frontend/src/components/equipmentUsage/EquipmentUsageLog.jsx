@@ -49,7 +49,12 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
     try {
       const allEntries = await EquipmentUsageService.getAllUsageEntries();
       // Filter to show only DRAFT entries for current user (simplified)
-      const userDrafts = allEntries.filter((entry) => entry.entryStatus === "DRAFT");
+      const userDrafts = allEntries
+        .filter((entry) => entry.entryStatus === "DRAFT")
+        .map((entry) => ({
+          ...entry,
+          id: String(entry.id), // Convert ID to string for DataTable
+        }));
 
       if (isMounted) {
         setEntries(userDrafts);
