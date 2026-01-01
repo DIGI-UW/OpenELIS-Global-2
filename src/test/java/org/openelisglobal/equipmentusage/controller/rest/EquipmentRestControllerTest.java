@@ -7,23 +7,22 @@ import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.equipmentusage.valueholder.Equipment;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.equipmentusage.valueholder.Equipment;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MvcResult;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @Rollback
 public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
@@ -49,10 +48,8 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllActive_shouldReturnAllActiveEquipment() throws Exception {
-        MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+        MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment").accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(200, status);
@@ -72,9 +69,7 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void getEquipmentForDropdown_shouldReturnActiveEquipment() throws Exception {
         MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/dropdown")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(200, status);
@@ -94,9 +89,7 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void getById_shouldReturnEquipmentGivenId() throws Exception {
         MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/10001")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(200, status);
@@ -111,11 +104,8 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getById_shouldReturn404WhenEquipmentNotFound() throws Exception {
-        MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/9999")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andDo(print())
-                .andReturn();
+        MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/9999").accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andDo(print()).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(404, status);
@@ -125,9 +115,7 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
     public void getBySerialNumber_shouldReturnEquipmentGivenSerialNumber() throws Exception {
         String serialNumber = "SN-001";
         MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/serial/" + serialNumber)
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(200, status);
@@ -142,9 +130,7 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void getBySerialNumber_shouldReturn404WhenSerialNumberNotFound() throws Exception {
         MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/serial/INVALID-SN")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(404, status);
@@ -153,11 +139,8 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void searchByName_shouldReturnEquipmentMatchingSearchTerm() throws Exception {
         String searchTerm = "Freezer";
-        MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/search")
-                .param("q", searchTerm)
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+        MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/search").param("q", searchTerm)
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(200, status);
@@ -177,10 +160,9 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void searchByName_shouldReturnEmptyListWhenNoMatchesFound() throws Exception {
-        MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/search")
-                .param("q", "NonexistentEquipment12345")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
+        MvcResult urlResult = super.mockMvc
+                .perform(get("/rest/equipment/search").param("q", "NonexistentEquipment12345")
+                        .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE))
                 .andReturn();
 
         int status = urlResult.getResponse().getStatus();
@@ -198,9 +180,7 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
     public void getByDepartment_shouldReturnEquipmentForGivenDepartment() throws Exception {
         String department = "Lab";
         MvcResult urlResult = super.mockMvc.perform(get("/rest/equipment/department/" + department)
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(200, status);
@@ -233,12 +213,9 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
 
         String requestBody = objectMapper.writeValueAsString(newEquipment);
 
-        MvcResult urlResult = super.mockMvc.perform(post("/rest/equipment")
-                .content(requestBody)
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession()))
-                .andReturn();
+        MvcResult urlResult = super.mockMvc.perform(post("/rest/equipment").content(requestBody)
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession())).andReturn();
 
         int status = urlResult.getResponse().getStatus();
         assertEquals(201, status);
@@ -257,14 +234,16 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void updateEquipment_shouldUpdateExistingEquipment() throws Exception {
-        // Note: Full update test with DBUnit + Hibernate has known session management issues
-        // This is validated through deactivate/activate tests which also use update semantics
-        // Direct update via fresh Equipment object to avoid Hibernate detached entity conflicts
+        // Note: Full update test with DBUnit + Hibernate has known session management
+        // issues
+        // This is validated through deactivate/activate tests which also use update
+        // semantics
+        // Direct update via fresh Equipment object to avoid Hibernate detached entity
+        // conflicts
 
         // First verify equipment exists
-        MvcResult verifyResult = super.mockMvc.perform(get("/rest/equipment/10001")
-                .accept(MediaType.APPLICATION_JSON_VALUE))
-                .andReturn();
+        MvcResult verifyResult = super.mockMvc
+                .perform(get("/rest/equipment/10001").accept(MediaType.APPLICATION_JSON_VALUE)).andReturn();
         assertEquals("Equipment should exist", 200, verifyResult.getResponse().getStatus());
 
         // Create minimal update request (fresh object, not from retrieved entity)
@@ -279,12 +258,9 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
 
         String requestBody = objectMapper.writeValueAsString(updateData);
 
-        MvcResult urlResult = super.mockMvc.perform(put("/rest/equipment/10001")
-                .content(requestBody)
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession()))
-                .andReturn();
+        MvcResult urlResult = super.mockMvc.perform(put("/rest/equipment/10001").content(requestBody)
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession())).andReturn();
 
         // Validate the endpoint responds (even if Hibernate session issue occurs)
         int status = urlResult.getResponse().getStatus();
@@ -292,8 +268,10 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
         // The PUT endpoint should return 200 on success
         // Note: Due to DBUnit + Hibernate session management complexity in tests,
         // actual update validation is covered by deactivate/activate tests
-        assertTrue("Update endpoint should accept PUT request",
-                status == 200 || status == 500); // Accept 500 due to known Hibernate/DBUnit interaction
+        assertTrue("Update endpoint should accept PUT request", status == 200 || status == 500); // Accept 500 due to
+                                                                                                 // known
+                                                                                                 // Hibernate/DBUnit
+                                                                                                 // interaction
 
         // If successful, validate the response
         if (status == 200) {
@@ -306,39 +284,37 @@ public class EquipmentRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void deactivateEquipment_shouldSetEquipmentToInactive() throws Exception {
-        // Note: Due to DBUnit+Hibernate session conflicts, the actual database update may not persist
+        // Note: Due to DBUnit+Hibernate session conflicts, the actual database update
+        // may not persist
         // in test environment, but the endpoint correctly returns 204
         // In production (without DBUnit), this works correctly
         MvcResult urlResult = super.mockMvc.perform(put("/rest/equipment/10001/deactivate")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession()))
-                .andReturn();
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession())).andReturn();
 
         int status = urlResult.getResponse().getStatus();
-        // Endpoint should return 204 No Content on success (even if Hibernate session issue occurs)
+        // Endpoint should return 204 No Content on success (even if Hibernate session
+        // issue occurs)
         assertEquals("Deactivate endpoint should return 204", 204, status);
     }
 
     @Test
     public void activateEquipment_shouldSetEquipmentToActive() throws Exception {
-        // Note: Due to DBUnit+Hibernate session conflicts, the actual database update may not persist
+        // Note: Due to DBUnit+Hibernate session conflicts, the actual database update
+        // may not persist
         // in test environment, but the endpoint correctly returns 204
         // In production (without DBUnit), this works correctly
-        super.mockMvc.perform(put("/rest/equipment/10001/deactivate")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
+        super.mockMvc.perform(put("/rest/equipment/10001/deactivate").accept(MediaType.APPLICATION_JSON_VALUE)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession()))
-                .andReturn();
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession())).andReturn();
 
         MvcResult urlResult = super.mockMvc.perform(put("/rest/equipment/10001/activate")
-                .accept(MediaType.APPLICATION_JSON_VALUE)
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession()))
-                .andReturn();
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, createMockUserSession())).andReturn();
 
         int status = urlResult.getResponse().getStatus();
-        // Endpoint should return 204 No Content on success (even if Hibernate session issue occurs)
+        // Endpoint should return 204 No Content on success (even if Hibernate session
+        // issue occurs)
         assertEquals("Activate endpoint should return 204", 204, status);
     }
 }

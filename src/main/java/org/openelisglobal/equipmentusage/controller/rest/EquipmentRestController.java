@@ -103,7 +103,8 @@ public class EquipmentRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Equipment> createEquipment(@Valid @RequestBody Equipment equipment, HttpServletRequest request) {
+    public ResponseEntity<Equipment> createEquipment(@Valid @RequestBody Equipment equipment,
+            HttpServletRequest request) {
         try {
             String currentUserId = getSysUserId(request);
             Equipment created = equipmentService.save(equipment, currentUserId);
@@ -117,7 +118,8 @@ public class EquipmentRestController extends BaseRestController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Equipment> updateEquipment(@PathVariable Long id, @Valid @RequestBody Equipment equipment, HttpServletRequest request) {
+    public ResponseEntity<Equipment> updateEquipment(@PathVariable Long id, @Valid @RequestBody Equipment equipment,
+            HttpServletRequest request) {
         try {
             equipment.setId(id);
             String currentUserId = getSysUserId(request);
@@ -138,7 +140,8 @@ public class EquipmentRestController extends BaseRestController {
             equipmentService.deactivateEquipment(id, currentUserId);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            // Check if this is a Hibernate stale state exception (DBUnit test environment issue)
+            // Check if this is a Hibernate stale state exception (DBUnit test environment
+            // issue)
             Throwable cause = e.getCause();
             while (cause != null) {
                 if (cause instanceof StaleStateException) {
@@ -162,7 +165,8 @@ public class EquipmentRestController extends BaseRestController {
             equipmentService.activateEquipment(id, currentUserId);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            // Check if this is a Hibernate stale state exception (DBUnit test environment issue)
+            // Check if this is a Hibernate stale state exception (DBUnit test environment
+            // issue)
             Throwable cause = e.getCause();
             while (cause != null) {
                 if (cause instanceof StaleStateException) {

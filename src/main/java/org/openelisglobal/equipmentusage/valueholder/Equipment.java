@@ -93,7 +93,6 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
     private LocalDateTime modifiedDate;
 
-
     @Override
     public Long getId() {
         return this.id;

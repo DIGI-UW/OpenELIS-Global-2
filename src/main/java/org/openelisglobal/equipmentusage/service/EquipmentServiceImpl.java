@@ -104,6 +104,9 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
             return super.get(id);
         }
 
+        // Detach from session so audit can compare properly
+        equipmentDAO.evict(equipment);
+
         equipment.setModifiedDate(java.time.LocalDateTime.now());
         if (currentUserId != null && !currentUserId.trim().isEmpty()) {
             equipment.setSysUserId(currentUserId);
@@ -127,6 +130,10 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
     @Transactional
     public void deactivateEquipment(Long equipmentId, String currentUserId) {
         Equipment equipment = get(equipmentId);
+
+        // Detach from session so audit can compare properly
+        equipmentDAO.evict(equipment);
+
         equipment.setIsActive("N");
         equipment.setModifiedDate(java.time.LocalDateTime.now());
         if (currentUserId != null && !currentUserId.trim().isEmpty()) {
@@ -150,6 +157,10 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
     @Transactional
     public void activateEquipment(Long equipmentId, String currentUserId) {
         Equipment equipment = get(equipmentId);
+
+        // Detach from session so audit can compare properly
+        equipmentDAO.evict(equipment);
+
         equipment.setIsActive("Y");
         equipment.setModifiedDate(java.time.LocalDateTime.now());
         if (currentUserId != null && !currentUserId.trim().isEmpty()) {

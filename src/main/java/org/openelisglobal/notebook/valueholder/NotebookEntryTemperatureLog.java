@@ -12,7 +12,6 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.equipmentusage.valueholder.Equipment;
 
 /**
  * NotebookEntryTemperatureLog - Stores environmental monitoring temperature
@@ -155,5 +154,5 @@ public class NotebookEntryTemperatureLog extends BaseObject<Integer> {
     public void setLoggedAt(Timestamp loggedAt) {
         this.loggedAt = loggedAt;
     }
-    
+
 }

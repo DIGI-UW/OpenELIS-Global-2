@@ -99,7 +99,6 @@ public class EquipmentUsageEntry extends BaseObject<Long> implements Serializabl
     @Column(name = "modified_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     private LocalDateTime modifiedDate;
 
-
     public enum EquipmentStatus {
         FUNCTIONAL, UNDER_MAINTENANCE, FAULTY, CALIBRATION_REQUIRED
     }
