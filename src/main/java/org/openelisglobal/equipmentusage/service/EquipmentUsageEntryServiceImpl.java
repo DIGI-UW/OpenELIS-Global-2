@@ -96,6 +96,7 @@ public class EquipmentUsageEntryServiceImpl extends AuditableBaseObjectServiceIm
         entry.setEntryStatus(EntryStatus.DRAFT);
         entry.setCreatedDate(LocalDateTime.now());
         entry.setModifiedDate(LocalDateTime.now());
+        entry.setLastupdatedFields(); // Set the BaseObject lastupdated field
         Long id = (Long) super.insert(entry);
         return get(id);
     }
@@ -108,6 +109,7 @@ public class EquipmentUsageEntryServiceImpl extends AuditableBaseObjectServiceIm
             entry.setCreatedDate(LocalDateTime.now());
         }
         entry.setModifiedDate(LocalDateTime.now());
+        entry.setLastupdatedFields(); // Set the BaseObject lastupdated field
         return update(entry);
     }
 
@@ -118,6 +120,7 @@ public class EquipmentUsageEntryServiceImpl extends AuditableBaseObjectServiceIm
         if (entry.getEntryStatus() == EntryStatus.DRAFT) {
             entry.setEntryStatus(EntryStatus.SUBMITTED);
             entry.setModifiedDate(LocalDateTime.now());
+            entry.setLastupdatedFields(); // Set the BaseObject lastupdated field
             return update(entry);
         }
         return entry;

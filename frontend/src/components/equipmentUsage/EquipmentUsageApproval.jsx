@@ -28,21 +28,37 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
   const [error, setError] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
 
   useEffect(() => {
+    setIsMounted(true);
     loadPendingApproval();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      setIsMounted(false);
+    };
   }, []);
 
   const loadPendingApproval = async () => {
+    if (!isMounted) return;
+
     setLoading(true);
     setError(null);
     try {
       const data = await EquipmentUsageService.getPendingApproval();
-      setEntries(data || []);
+
+      if (isMounted) {
+        setEntries(data || []);
+      }
     } catch (err) {
-      setError(err.message);
+      if (isMounted) {
+        setError(err.message);
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 
@@ -52,31 +68,43 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
   };
 
   const handleApprove = async () => {
-    if (!selectedEntry || !userSessionDetails?.userId) return;
+    if (!isMounted || !selectedEntry || !userSessionDetails?.userId) return;
 
     try {
       await EquipmentUsageService.approveEntry(selectedEntry.id, userSessionDetails.userId);
-      setShowApprovalModal(false);
-      setSelectedEntry(null);
-      loadPendingApproval();
-      if (onApprovalSubmitted) {
-        onApprovalSubmitted();
-      }
-    } catch (err) {
-      setError(err.message);
-    }
-  };
 
-  const handleReject = async (id) => {
-    if (window.confirm("Are you sure you want to reject this entry?")) {
-      try {
-        await EquipmentUsageService.rejectEntry(id);
+      if (isMounted) {
+        setShowApprovalModal(false);
+        setSelectedEntry(null);
         loadPendingApproval();
         if (onApprovalSubmitted) {
           onApprovalSubmitted();
         }
-      } catch (err) {
+      }
+    } catch (err) {
+      if (isMounted) {
         setError(err.message);
+      }
+    }
+  };
+
+  const handleReject = async (id) => {
+    if (!isMounted) return;
+
+    if (window.confirm("Are you sure you want to reject this entry?")) {
+      try {
+        await EquipmentUsageService.rejectEntry(id);
+
+        if (isMounted) {
+          loadPendingApproval();
+          if (onApprovalSubmitted) {
+            onApprovalSubmitted();
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message);
+        }
       }
     }
   };
@@ -181,7 +209,7 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
 
   function renderApprovalActions(entry) {
     return (
-      <OverflowMenu flipped>
+      <OverflowMenu flipped ariaLabel="Approval actions">
         <OverflowMenuItem
           itemText="Approve"
           onClick={() => handleApproveClick(entry)}

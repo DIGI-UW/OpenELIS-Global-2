@@ -71,6 +71,17 @@
         </createIndex>
     </changeSet>
 
+    <!-- Create sequence for equipment table -->
+    <changeSet id="create-equipment-sequence" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="equipment_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for equipment table.</comment>
+        <createSequence sequenceName="equipment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
     <!-- Create equipment usage entry table -->
     <changeSet id="equipment-usage-entry-table" author="openelis">
         <createTable tableName="equipment_usage_entry">
@@ -144,6 +155,17 @@
         <createIndex indexName="idx_usage_login_time" tableName="equipment_usage_entry">
             <column name="login_time"/>
         </createIndex>
+    </changeSet>
+
+    <!-- Create sequence for equipment usage entry table -->
+    <changeSet id="create-equipment-usage-entry-sequence" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="equipment_usage_entry_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for equipment_usage_entry table.</comment>
+        <createSequence sequenceName="equipment_usage_entry_seq" startValue="1" incrementBy="1"/>
     </changeSet>
 
     <!-- Create audit log table for equipment usage changes -->

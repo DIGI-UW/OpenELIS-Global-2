@@ -1,7 +1,36 @@
-/* Equipment Usage Log Styles */
+/* Equipment Usage Professional Styling */
 
 .equipment-usage-container {
-  padding: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+  min-height: 100vh;
+}
+
+/* Modal Enhancements */
+.equipment-usage-modal .cds--modal-container {
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.equipment-usage-modal .cds--modal-header {
+  background: linear-gradient(135deg, #0f62fe 0%, #4c9eff 100%);
+  color: white;
+  border-bottom: none;
+}
+
+.equipment-usage-modal .cds--modal-header__heading {
+  color: white;
+  font-weight: 600;
+}
+
+.equipment-usage-modal .cds--modal-close {
+  filter: brightness(0) invert(1);
+}
+
+.equipment-usage-modal .cds--modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 .equipment-usage-form {

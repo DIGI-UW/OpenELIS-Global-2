@@ -59,9 +59,20 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
     @Transactional
     public Equipment save(Equipment equipment) {
         if (equipment.getId() == null) {
+            // Set audit fields for new equipment
+            if (equipment.getCreatedDate() == null) {
+                equipment.setCreatedDate(java.time.LocalDateTime.now());
+            }
+            if (equipment.getModifiedDate() == null) {
+                equipment.setModifiedDate(java.time.LocalDateTime.now());
+            }
+            equipment.setLastupdatedFields(); // Set the BaseObject lastupdated field
             Long id = (Long) super.insert(equipment);
             return super.get(id);
         }
+        // Set audit fields for existing equipment updates
+        equipment.setModifiedDate(java.time.LocalDateTime.now());
+        equipment.setLastupdatedFields(); // Set the BaseObject lastupdated field
         return update(equipment);
     }
 

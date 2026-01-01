@@ -92,7 +92,9 @@ public class EquipmentUsageEntryDAOImpl extends BaseDAOImpl<EquipmentUsageEntry,
             CriteriaQuery<EquipmentUsageEntry> cq = cb.createQuery(EquipmentUsageEntry.class);
             Root<EquipmentUsageEntry> root = cq.from(EquipmentUsageEntry.class);
 
-            cq.select(root).where(cb.equal(root.get("entryStatus"), status)).orderBy(cb.desc(root.get("loginTime")));
+            // Use string comparison to avoid PostgreSQL type casting issues
+            cq.select(root).where(cb.equal(root.get("entryStatus").as(String.class), status.name()))
+                    .orderBy(cb.desc(root.get("loginTime")));
 
             return entityManager.createQuery(cq).getResultList();
         } catch (Exception e) {
@@ -122,7 +124,7 @@ public class EquipmentUsageEntryDAOImpl extends BaseDAOImpl<EquipmentUsageEntry,
 
             cq.select(root)
                     .where(cb.and(cb.equal(root.get("operator").get("id"), operatorId),
-                            cb.equal(root.get("entryStatus"), EntryStatus.DRAFT)))
+                            cb.equal(root.get("entryStatus").as(String.class), EntryStatus.DRAFT.name())))
                     .orderBy(cb.desc(root.get("loginTime")));
 
             return entityManager.createQuery(cq).getResultList();
@@ -197,7 +199,7 @@ public class EquipmentUsageEntryDAOImpl extends BaseDAOImpl<EquipmentUsageEntry,
                 predicates.add(cb.equal(root.get("department"), department));
             }
             if (status != null) {
-                predicates.add(cb.equal(root.get("entryStatus"), status));
+                predicates.add(cb.equal(root.get("entryStatus").as(String.class), status.name()));
             }
 
             cq.select(root).where(cb.and(predicates.toArray(new Predicate[0]))).orderBy(cb.desc(root.get("loginTime")));

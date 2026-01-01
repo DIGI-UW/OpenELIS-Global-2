@@ -71,7 +71,6 @@ const EquipmentManagement = () => {
   const handleDeleteEquipment = async (id) => {
     if (window.confirm("Are you sure you want to deactivate this equipment?")) {
       try {
-        // Deactivate equipment instead of deleting
         await EquipmentAPI.deactivate(id);
         await loadEquipment();
         setError(null);
@@ -99,7 +98,11 @@ const EquipmentManagement = () => {
       <Grid fullWidth={true} style={{ marginBottom: "1rem" }}>
         <Column lg={16} md={8} sm={4}>
           <Stack orientation="horizontal" gap={4}>
-            <Button kind="primary" renderIcon={Add} onClick={handleNewEquipment}>
+            <Button
+              kind="primary"
+              renderIcon={Add}
+              onClick={handleNewEquipment}
+            >
               <FormattedMessage
                 id="equipment.management.button.add"
                 defaultMessage="Add Equipment"
@@ -163,8 +166,12 @@ const EquipmentManagement = () => {
   );
 
   function renderActions(equipment) {
+    if (!equipment) {
+      return null;
+    }
+
     return (
-      <OverflowMenu flipped>
+      <OverflowMenu flipped ariaLabel="Equipment actions">
         <OverflowMenuItem
           itemText="Edit"
           onClick={() => handleEditEquipment(equipment)}
