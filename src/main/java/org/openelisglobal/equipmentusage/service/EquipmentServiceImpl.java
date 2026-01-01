@@ -104,20 +104,37 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
             return super.get(id);
         }
 
-        // Detach from session so audit can compare properly
-        equipmentDAO.evict(equipment);
+        // For updates: get fresh copy from DB, apply changes, then evict and update
+        Equipment dbEquipment = get(equipment.getId());
+        if (dbEquipment == null) {
+            throw new IllegalArgumentException("Equipment not found: " + equipment.getId());
+        }
 
-        equipment.setModifiedDate(java.time.LocalDateTime.now());
+        // Apply changes from the incoming equipment object to the fresh copy
+        dbEquipment.setName(equipment.getName());
+        dbEquipment.setSerialNumber(equipment.getSerialNumber());
+        dbEquipment.setDepartment(equipment.getDepartment());
+        dbEquipment.setManufacturer(equipment.getManufacturer());
+        dbEquipment.setModelNumber(equipment.getModelNumber());
+        dbEquipment.setPurchaseDate(equipment.getPurchaseDate());
+        dbEquipment.setLastCalibrationDate(equipment.getLastCalibrationDate());
+        dbEquipment.setNextCalibrationDue(equipment.getNextCalibrationDue());
+
+        dbEquipment.setModifiedDate(java.time.LocalDateTime.now());
         if (currentUserId != null && !currentUserId.trim().isEmpty()) {
-            equipment.setSysUserId(currentUserId);
+            dbEquipment.setSysUserId(currentUserId);
             SystemUser modifiedBy = systemUserService.get(currentUserId);
             if (modifiedBy != null) {
-                equipment.setModifiedBy(modifiedBy);
+                dbEquipment.setModifiedBy(modifiedBy);
             }
         }
 
-        equipment.setLastupdatedFields();
-        return update(equipment);
+        dbEquipment.setLastupdatedFields();
+
+        // Detach from session so audit can compare properly
+        equipmentDAO.evict(dbEquipment);
+
+        return update(dbEquipment);
     }
 
     @Override
