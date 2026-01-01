@@ -193,15 +193,24 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id} {...getRowProps({ row })}>
-                  {row.cells.map((cell) => (
-                    <TableCell key={cell.id}>
-                      {cell.info.header === "Equipment"
-                        ? row.original.equipment?.name
-                        : cell.info.header === "actions"
-                        ? renderActions(row.original)
-                        : cell.value}
-                    </TableCell>
-                  ))}
+                  {row.cells.map((cell) => {
+                    let cellContent;
+                    if (cell.info.header === "Equipment") {
+                      cellContent = row.original.equipment?.name || "—";
+                    } else if (cell.info.header === "actions") {
+                      cellContent = renderActions(row.original);
+                    } else if (typeof cell.value === "object" && cell.value !== null) {
+                      // Handle any remaining object values (shouldn't happen, but defensive)
+                      cellContent = "—";
+                    } else {
+                      cellContent = cell.value;
+                    }
+                    return (
+                      <TableCell key={cell.id}>
+                        {cellContent}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))}
             </TableBody>
