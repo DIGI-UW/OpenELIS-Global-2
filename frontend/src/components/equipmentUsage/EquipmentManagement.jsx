@@ -179,8 +179,8 @@ const EquipmentManagement = () => {
   );
 
   function renderActions(equipment) {
-    if (!equipment) {
-      return null;
+    if (!equipment || !equipment.id) {
+      return <span>—</span>;
     }
 
     return (
