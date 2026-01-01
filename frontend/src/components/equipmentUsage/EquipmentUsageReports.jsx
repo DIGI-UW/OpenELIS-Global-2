@@ -48,11 +48,18 @@ const EquipmentUsageReports = () => {
       const filters = {};
 
       if (reportType !== "all") {
-        filters.status = reportType === "pending" ? "DRAFT" :
-                        reportType === "approved" ? "APPROVED" :
-                        reportType === "by-equipment" ? "ALL" :
-                        reportType === "by-operator" ? "ALL" :
-                        reportType === "by-department" ? "ALL" : "ALL";
+        filters.status =
+          reportType === "pending"
+            ? "DRAFT"
+            : reportType === "approved"
+              ? "APPROVED"
+              : reportType === "by-equipment"
+                ? "ALL"
+                : reportType === "by-operator"
+                  ? "ALL"
+                  : reportType === "by-department"
+                    ? "ALL"
+                    : "ALL";
       }
 
       if (dateRange.start) {
@@ -85,7 +92,8 @@ const EquipmentUsageReports = () => {
   const formatDateForApi = (dateString) => {
     if (!dateString) return "";
     // Handle both ISO string and Date object
-    const date = typeof dateString === "string" ? new Date(dateString) : dateString;
+    const date =
+      typeof dateString === "string" ? new Date(dateString) : dateString;
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
@@ -145,7 +153,12 @@ const EquipmentUsageReports = () => {
           </DatePicker>
         </Column>
 
-        <Column lg={6} md={4} sm={4} style={{ display: "flex", alignItems: "flex-end" }}>
+        <Column
+          lg={6}
+          md={4}
+          sm={4}
+          style={{ display: "flex", alignItems: "flex-end" }}
+        >
           <Stack orientation="horizontal" gap={3}>
             <Button
               kind="primary"
@@ -167,11 +180,7 @@ const EquipmentUsageReports = () => {
                 defaultMessage="Export Excel"
               />
             </Button>
-            <Button
-              kind="ghost"
-              renderIcon={Printer}
-              onClick={handlePrint}
-            >
+            <Button kind="ghost" renderIcon={Printer} onClick={handlePrint}>
               <FormattedMessage
                 id="reports.button.print"
                 defaultMessage="Print"
@@ -198,10 +207,12 @@ const EquipmentUsageReports = () => {
         <h4>Report Types:</h4>
         <ul>
           <li>
-            <strong>All Entries:</strong> All equipment usage entries for the selected date range
+            <strong>All Entries:</strong> All equipment usage entries for the
+            selected date range
           </li>
           <li>
-            <strong>Pending Approval:</strong> Entries awaiting supervisor approval
+            <strong>Pending Approval:</strong> Entries awaiting supervisor
+            approval
           </li>
           <li>
             <strong>Approved Only:</strong> Approved entries only
@@ -219,8 +230,9 @@ const EquipmentUsageReports = () => {
 
         <h4>MNTD Format:</h4>
         <p>
-          All reports are formatted according to MNTD Equipment Usage Format 5.3-003,
-          including operator signature, approval status, and equipment condition tracking.
+          All reports are formatted according to MNTD Equipment Usage Format
+          5.3-003, including operator signature, approval status, and equipment
+          condition tracking.
         </p>
       </div>
 

@@ -30,7 +30,7 @@ const formatEquipmentStatus = (status) => {
     FUNCTIONAL: "Functional",
     UNDER_MAINTENANCE: "Under Maintenance",
     FAULTY: "Faulty",
-    CALIBRATION_REQUIRED: "Calibration Required"
+    CALIBRATION_REQUIRED: "Calibration Required",
   };
   return statusMap[status] || status;
 };
@@ -39,7 +39,7 @@ const formatEntryStatus = (status) => {
   const statusMap = {
     DRAFT: "Draft",
     SUBMITTED: "Submitted for Review",
-    APPROVED: "Approved"
+    APPROVED: "Approved",
   };
   return statusMap[status] || status;
 };
@@ -125,7 +125,8 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
         startDate: filters.startDate || null,
         endDate: filters.endDate || null,
       };
-      const data = await EquipmentUsageService.searchUsageEntries(searchFilters);
+      const data =
+        await EquipmentUsageService.searchUsageEntries(searchFilters);
       const transformedData = Array.isArray(data)
         ? data.map((item) => ({
             ...item,
@@ -181,7 +182,9 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
 
         {error && (
           <InlineNotification
-            title={<FormattedMessage id="common.error" defaultMessage="Error" />}
+            title={
+              <FormattedMessage id="common.error" defaultMessage="Error" />
+            }
             subtitle={error}
             kind="error"
             onClose={() => setError(null)}
@@ -190,12 +193,29 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
         )}
 
         {/* Filter Section */}
-        <div className="filter-section cds--subgrid" style={{ marginBottom: "2rem", padding: "1.5rem", backgroundColor: "#f9f9f9", borderRadius: "8px" }}>
+        <div
+          className="filter-section cds--subgrid"
+          style={{
+            marginBottom: "2rem",
+            padding: "1.5rem",
+            backgroundColor: "#f9f9f9",
+            borderRadius: "8px",
+          }}
+        >
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Heading size="sm" className="cds--margin-bottom-05">
-                <Filter size={20} style={{ marginRight: "0.5rem", verticalAlign: "text-bottom" }} />
-                <FormattedMessage id="common.filters" defaultMessage="Filters" />
+                <Filter
+                  size={20}
+                  style={{
+                    marginRight: "0.5rem",
+                    verticalAlign: "text-bottom",
+                  }}
+                />
+                <FormattedMessage
+                  id="common.filters"
+                  defaultMessage="Filters"
+                />
               </Heading>
             </Column>
           </Grid>
@@ -204,17 +224,25 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
             <Column lg={4} md={4} sm={4}>
               <Select
                 id="equipment-filter"
-                labelText={<FormattedMessage id="equipment.label" defaultMessage="Equipment" />}
+                labelText={
+                  <FormattedMessage
+                    id="equipment.label"
+                    defaultMessage="Equipment"
+                  />
+                }
                 placeholder="Select equipment..."
                 value={filters.equipment}
-                onChange={(e) => handleFilterChange("equipment", e.target.value)}
+                onChange={(e) =>
+                  handleFilterChange("equipment", e.target.value)
+                }
               >
-                <SelectItem
-                  value=""
-                  text="All Equipment"
-                />
+                <SelectItem value="" text="All Equipment" />
                 {equipment.map((eq) => (
-                  <SelectItem key={eq.id} value={eq.id.toString()} text={eq.name} />
+                  <SelectItem
+                    key={eq.id}
+                    value={eq.id.toString()}
+                    text={eq.name}
+                  />
                 ))}
               </Select>
             </Column>
@@ -222,34 +250,31 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
             <Column lg={4} md={4} sm={4}>
               <Select
                 id="status-filter"
-                labelText={<FormattedMessage id="equipment.usage.status" defaultMessage="Entry Status" />}
+                labelText={
+                  <FormattedMessage
+                    id="equipment.usage.status"
+                    defaultMessage="Entry Status"
+                  />
+                }
                 placeholder="Select status..."
                 value={filters.status}
                 onChange={(e) => handleFilterChange("status", e.target.value)}
               >
-                <SelectItem
-                  value=""
-                  text="All Statuses"
-                />
-                <SelectItem
-                  value="DRAFT"
-                  text="Draft"
-                />
-                <SelectItem
-                  value="SUBMITTED"
-                  text="Submitted for Review"
-                />
-                <SelectItem
-                  value="APPROVED"
-                  text="Approved"
-                />
+                <SelectItem value="" text="All Statuses" />
+                <SelectItem value="DRAFT" text="Draft" />
+                <SelectItem value="SUBMITTED" text="Submitted for Review" />
+                <SelectItem value="APPROVED" text="Approved" />
               </Select>
             </Column>
 
             <Column lg={4} md={4} sm={4}>
               <DatePicker
                 datePickerType="range"
-                value={filters.startDate && filters.endDate ? `${filters.startDate}/${filters.endDate}` : ""}
+                value={
+                  filters.startDate && filters.endDate
+                    ? `${filters.startDate}/${filters.endDate}`
+                    : ""
+                }
                 onChange={(dates) => {
                   if (dates && dates.length === 2) {
                     handleFilterChange("startDate", dates[0]);
@@ -263,7 +288,12 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
                 <DatePickerInput
                   id="start-date"
                   placeholder="mm/dd/yyyy"
-                  labelText={<FormattedMessage id="equipment.usage.date.range" defaultMessage="Date Range" />}
+                  labelText={
+                    <FormattedMessage
+                      id="equipment.usage.date.range"
+                      defaultMessage="Date Range"
+                    />
+                  }
                 />
                 <DatePickerInput
                   id="end-date"
@@ -273,7 +303,12 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
               </DatePicker>
             </Column>
 
-            <Column lg={4} md={4} sm={4} style={{ display: "flex", alignItems: "flex-end" }}>
+            <Column
+              lg={4}
+              md={4}
+              sm={4}
+              style={{ display: "flex", alignItems: "flex-end" }}
+            >
               <Stack orientation="horizontal" gap={3}>
                 <Button
                   kind="primary"
@@ -281,7 +316,10 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
                   onClick={handleSearch}
                   disabled={loading}
                 >
-                  <FormattedMessage id="common.button.search" defaultMessage="Search" />
+                  <FormattedMessage
+                    id="common.button.search"
+                    defaultMessage="Search"
+                  />
                 </Button>
                 <Button
                   kind="secondary"
@@ -289,7 +327,10 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
                   onClick={handleClearFilters}
                   disabled={loading}
                 >
-                  <FormattedMessage id="common.button.clear" defaultMessage="Clear Filters" />
+                  <FormattedMessage
+                    id="common.button.clear"
+                    defaultMessage="Clear Filters"
+                  />
                 </Button>
               </Stack>
             </Column>
@@ -311,7 +352,13 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
           </Grid>
 
           {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "3rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                padding: "3rem",
+              }}
+            >
               <Loading description="Loading..." />
             </div>
           ) : entries.length === 0 ? (
@@ -321,10 +368,16 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
                 padding: "3rem",
                 backgroundColor: "#f4f4f4",
                 borderRadius: "8px",
-                border: "1px dashed #c6c6c6"
+                border: "1px dashed #c6c6c6",
               }}
             >
-              <p style={{ fontSize: "1.125rem", color: "#525252", marginBottom: "0.5rem" }}>
+              <p
+                style={{
+                  fontSize: "1.125rem",
+                  color: "#525252",
+                  marginBottom: "0.5rem",
+                }}
+              >
                 <FormattedMessage
                   id="equipment.usage.history.no.results"
                   defaultMessage="No equipment usage records found"
@@ -343,31 +396,66 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
               headers={[
                 {
                   key: "id",
-                  header: <FormattedMessage id="equipment.usage.table.id" defaultMessage="Entry ID" />
+                  header: (
+                    <FormattedMessage
+                      id="equipment.usage.table.id"
+                      defaultMessage="Entry ID"
+                    />
+                  ),
                 },
                 {
                   key: "equipment",
-                  header: <FormattedMessage id="equipment.usage.table.equipment" defaultMessage="Equipment" />
+                  header: (
+                    <FormattedMessage
+                      id="equipment.usage.table.equipment"
+                      defaultMessage="Equipment"
+                    />
+                  ),
                 },
                 {
                   key: "operatorName",
-                  header: <FormattedMessage id="equipment.usage.table.operator" defaultMessage="Operator" />
+                  header: (
+                    <FormattedMessage
+                      id="equipment.usage.table.operator"
+                      defaultMessage="Operator"
+                    />
+                  ),
                 },
                 {
                   key: "loginTime",
-                  header: <FormattedMessage id="equipment.usage.table.datetime" defaultMessage="Login Date/Time" />
+                  header: (
+                    <FormattedMessage
+                      id="equipment.usage.table.datetime"
+                      defaultMessage="Login Date/Time"
+                    />
+                  ),
                 },
                 {
                   key: "equipmentStatus",
-                  header: <FormattedMessage id="equipment.usage.table.equipment.status" defaultMessage="Equipment Status" />
+                  header: (
+                    <FormattedMessage
+                      id="equipment.usage.table.equipment.status"
+                      defaultMessage="Equipment Status"
+                    />
+                  ),
                 },
                 {
                   key: "entryStatus",
-                  header: <FormattedMessage id="equipment.usage.table.entry.status" defaultMessage="Entry Status" />
+                  header: (
+                    <FormattedMessage
+                      id="equipment.usage.table.entry.status"
+                      defaultMessage="Entry Status"
+                    />
+                  ),
                 },
                 {
                   key: "approvedBy",
-                  header: <FormattedMessage id="equipment.usage.table.approved.by" defaultMessage="Approved By" />
+                  header: (
+                    <FormattedMessage
+                      id="equipment.usage.table.approved.by"
+                      defaultMessage="Approved By"
+                    />
+                  ),
                 },
               ]}
               render={({ rows, headers, getHeaderProps, getRowProps }) => (
@@ -375,7 +463,10 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
                   <TableHead>
                     <TableRow>
                       {headers.map((header) => (
-                        <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                        <TableHeader
+                          key={header.key}
+                          {...getHeaderProps({ header })}
+                        >
                           {header.header}
                         </TableHeader>
                       ))}
@@ -386,25 +477,42 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {
                           let cellContent;
-                          if (cell.info.header.props?.id === "equipment.usage.table.equipment") {
+                          if (
+                            cell.info.header.props?.id ===
+                            "equipment.usage.table.equipment"
+                          ) {
                             cellContent = row.original.equipment?.name || "—";
-                          } else if (cell.info.header.props?.id === "equipment.usage.table.approved.by") {
-                            cellContent = row.original.approvedBy?.username || "—";
-                          } else if (cell.info.header.props?.id === "equipment.usage.table.datetime") {
+                          } else if (
+                            cell.info.header.props?.id ===
+                            "equipment.usage.table.approved.by"
+                          ) {
+                            cellContent =
+                              row.original.approvedBy?.username || "—";
+                          } else if (
+                            cell.info.header.props?.id ===
+                            "equipment.usage.table.datetime"
+                          ) {
                             cellContent = new Date(cell.value).toLocaleString();
-                          } else if (cell.info.header.props?.id === "equipment.usage.table.equipment.status") {
+                          } else if (
+                            cell.info.header.props?.id ===
+                            "equipment.usage.table.equipment.status"
+                          ) {
                             cellContent = formatEquipmentStatus(cell.value);
-                          } else if (cell.info.header.props?.id === "equipment.usage.table.entry.status") {
+                          } else if (
+                            cell.info.header.props?.id ===
+                            "equipment.usage.table.entry.status"
+                          ) {
                             cellContent = formatEntryStatus(cell.value);
-                          } else if (typeof cell.value === "object" && cell.value !== null) {
+                          } else if (
+                            typeof cell.value === "object" &&
+                            cell.value !== null
+                          ) {
                             cellContent = "—";
                           } else {
                             cellContent = cell.value || "—";
                           }
                           return (
-                            <TableCell key={cell.id}>
-                              {cellContent}
-                            </TableCell>
+                            <TableCell key={cell.id}>{cellContent}</TableCell>
                           );
                         })}
                       </TableRow>

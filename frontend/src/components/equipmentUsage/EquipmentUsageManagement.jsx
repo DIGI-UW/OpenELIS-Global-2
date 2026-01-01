@@ -41,7 +41,10 @@ const EquipmentUsageManagement = () => {
         <Column lg={16} md={8} sm={4}>
           <div className="orderLegendBody">
             <h2>
-              <FormattedMessage id="equipment.management.title" defaultMessage="Equipment Management" />
+              <FormattedMessage
+                id="equipment.management.title"
+                defaultMessage="Equipment Management"
+              />
             </h2>
 
             <Tabs
@@ -50,19 +53,34 @@ const EquipmentUsageManagement = () => {
             >
               <TabList aria-label="Equipment management tabs" contained>
                 <Tab>
-                  <FormattedMessage id="equipment.management.tab.equipment" defaultMessage="Equipment" />
+                  <FormattedMessage
+                    id="equipment.management.tab.equipment"
+                    defaultMessage="Equipment"
+                  />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.management.tab.usage" defaultMessage="Usage Log" />
+                  <FormattedMessage
+                    id="equipment.management.tab.usage"
+                    defaultMessage="Usage Log"
+                  />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.management.tab.history" defaultMessage="History" />
+                  <FormattedMessage
+                    id="equipment.management.tab.history"
+                    defaultMessage="History"
+                  />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.management.tab.approval" defaultMessage="Approval" />
+                  <FormattedMessage
+                    id="equipment.management.tab.approval"
+                    defaultMessage="Approval"
+                  />
                 </Tab>
                 <Tab>
-                  <FormattedMessage id="equipment.management.tab.reports" defaultMessage="Reports" />
+                  <FormattedMessage
+                    id="equipment.management.tab.reports"
+                    defaultMessage="Reports"
+                  />
                 </Tab>
               </TabList>
 
@@ -84,7 +102,9 @@ const EquipmentUsageManagement = () => {
 
                 {/* Approval Tab - Supervisor approval */}
                 <TabPanel>
-                  <EquipmentUsageApproval onApprovalSubmitted={triggerRefresh} />
+                  <EquipmentUsageApproval
+                    onApprovalSubmitted={triggerRefresh}
+                  />
                 </TabPanel>
 
                 {/* Reports Tab - Export/Print */}

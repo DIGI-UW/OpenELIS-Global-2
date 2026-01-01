@@ -146,20 +146,20 @@ const EquipmentManagement = () => {
                   {row.cells.map((cell) => {
                     let cellContent;
                     if (cell.info.header === "Status") {
-                      cellContent = row.original.isActive === "Y" ? "Active" : "Inactive";
+                      cellContent =
+                        row.original.isActive === "Y" ? "Active" : "Inactive";
                     } else if (cell.info.header === "actions") {
                       cellContent = renderActions(row.original);
-                    } else if (typeof cell.value === "object" && cell.value !== null) {
+                    } else if (
+                      typeof cell.value === "object" &&
+                      cell.value !== null
+                    ) {
                       // Handle any remaining object values (shouldn't happen, but defensive)
                       cellContent = "—";
                     } else {
                       cellContent = cell.value;
                     }
-                    return (
-                      <TableCell key={cell.id}>
-                        {cellContent}
-                      </TableCell>
-                    );
+                    return <TableCell key={cell.id}>{cellContent}</TableCell>;
                   })}
                 </TableRow>
               ))}

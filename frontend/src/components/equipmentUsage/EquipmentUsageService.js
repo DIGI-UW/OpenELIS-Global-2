@@ -30,7 +30,9 @@ const get = (endpoint) => {
 const post = (endpoint, data) => {
   return new Promise((resolve, reject) => {
     // If endpoint is absolute path (starts with /rest), use it as-is; otherwise prepend BASE_PATH
-    const fullPath = endpoint.startsWith("/rest") ? endpoint : `${BASE_PATH}${endpoint}`;
+    const fullPath = endpoint.startsWith("/rest")
+      ? endpoint
+      : `${BASE_PATH}${endpoint}`;
     postToOpenElisServerJsonResponse(
       fullPath,
       JSON.stringify(data),
@@ -67,8 +69,7 @@ export const EquipmentAPI = {
   /**
    * Get all equipment (active and inactive)
    */
-  getAll: () =>
-    promisify(getFromOpenElisServer, `${EQUIPMENT_BASE_PATH}`),
+  getAll: () => promisify(getFromOpenElisServer, `${EQUIPMENT_BASE_PATH}`),
 
   /**
    * Get equipment for dropdown (active only)

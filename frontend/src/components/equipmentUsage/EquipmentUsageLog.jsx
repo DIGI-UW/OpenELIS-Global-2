@@ -106,7 +106,7 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
       }
     } catch (err) {
       // Handle error appropriately
-      console.error('Error submitting entry:', err);
+      console.error("Error submitting entry:", err);
     }
   };
 
@@ -204,17 +204,16 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
                       cellContent = row.original.equipment?.name || "—";
                     } else if (cell.info.header === "actions") {
                       cellContent = renderActions(row.original);
-                    } else if (typeof cell.value === "object" && cell.value !== null) {
+                    } else if (
+                      typeof cell.value === "object" &&
+                      cell.value !== null
+                    ) {
                       // Handle any remaining object values (shouldn't happen, but defensive)
                       cellContent = "—";
                     } else {
                       cellContent = cell.value;
                     }
-                    return (
-                      <TableCell key={cell.id}>
-                        {cellContent}
-                      </TableCell>
-                    );
+                    return <TableCell key={cell.id}>{cellContent}</TableCell>;
                   })}
                 </TableRow>
               ))}
@@ -234,6 +233,10 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
   );
 
   function renderActions(entry) {
+    if (!entry || !entry.id) {
+      return null;
+    }
+
     return (
       <OverflowMenu flipped ariaLabel="Equipment usage entry actions">
         <OverflowMenuItem

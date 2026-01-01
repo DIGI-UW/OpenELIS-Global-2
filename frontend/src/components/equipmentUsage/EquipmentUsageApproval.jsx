@@ -77,7 +77,10 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
     if (!isMounted || !selectedEntry || !userSessionDetails?.userId) return;
 
     try {
-      await EquipmentUsageService.approveEntry(selectedEntry.id, userSessionDetails.userId);
+      await EquipmentUsageService.approveEntry(
+        selectedEntry.id,
+        userSessionDetails.userId,
+      );
 
       if (isMounted) {
         setShowApprovalModal(false);
@@ -168,8 +171,8 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
                       {cell.info.header === "Equipment"
                         ? row.original.equipment?.name
                         : cell.info.header === "actions"
-                        ? renderApprovalActions(row.original)
-                        : cell.value}
+                          ? renderApprovalActions(row.original)
+                          : cell.value}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -199,7 +202,8 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
               <strong>Operator:</strong> {selectedEntry.operatorName}
             </p>
             <p>
-              <strong>Login Time:</strong> {new Date(selectedEntry.loginTime).toLocaleString()}
+              <strong>Login Time:</strong>{" "}
+              {new Date(selectedEntry.loginTime).toLocaleString()}
             </p>
             <p>
               <strong>Activities:</strong> {selectedEntry.activitiesDone}
@@ -214,6 +218,10 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
   );
 
   function renderApprovalActions(entry) {
+    if (!entry || !entry.id) {
+      return null;
+    }
+
     return (
       <OverflowMenu flipped ariaLabel="Approval actions">
         <OverflowMenuItem

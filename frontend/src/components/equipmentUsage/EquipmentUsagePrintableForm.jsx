@@ -3,7 +3,11 @@ import { FormattedMessage } from "react-intl";
 import { EquipmentUsageEntryAPI } from "./EquipmentUsageService";
 import "./EquipmentUsagePrintableForm.css";
 
-const EquipmentUsagePrintableForm = ({ entries = [], equipment = null, onClose = null }) => {
+const EquipmentUsagePrintableForm = ({
+  entries = [],
+  equipment = null,
+  onClose = null,
+}) => {
   const [filteredEntries, setFilteredEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -72,10 +76,7 @@ const EquipmentUsagePrintableForm = ({ entries = [], equipment = null, onClose =
 
   // Generate empty rows for printing (total rows per page: 15)
   const ROWS_PER_PAGE = 15;
-  const totalRows = Math.max(
-    filteredEntries.length,
-    ROWS_PER_PAGE
-  );
+  const totalRows = Math.max(filteredEntries.length, ROWS_PER_PAGE);
   const rows = Array.from({ length: totalRows }, (_, index) => {
     return filteredEntries[index] || null;
   });
@@ -88,11 +89,7 @@ const EquipmentUsagePrintableForm = ({ entries = [], equipment = null, onClose =
 
   return (
     <div className="printable-form-container">
-      {error && (
-        <div className="error-message">
-          {error}
-        </div>
-      )}
+      {error && <div className="error-message">{error}</div>}
 
       {pages.map((pageRows, pageIndex) => (
         <div key={pageIndex} className="form-page">
@@ -150,7 +147,9 @@ const EquipmentUsagePrintableForm = ({ entries = [], equipment = null, onClose =
                     {entry ? formatTime(entry.logoutTime) : ""}
                   </td>
                   <td className="col-signature">
-                    {entry && entry.approvalSignature ? entry.approvalSignature : ""}
+                    {entry && entry.approvalSignature
+                      ? entry.approvalSignature
+                      : ""}
                   </td>
                 </tr>
               ))}
@@ -181,28 +180,20 @@ const EquipmentUsagePrintableForm = ({ entries = [], equipment = null, onClose =
           </div>
 
           {/* Page Break (not visible on last page) */}
-          {pageIndex < pages.length - 1 && (
-            <div className="page-break"></div>
-          )}
+          {pageIndex < pages.length - 1 && <div className="page-break"></div>}
         </div>
       ))}
 
       {/* Print and Close buttons (hidden when printing) */}
       <div className="print-controls no-print">
-        <button
-          className="btn-print"
-          onClick={() => window.print()}
-        >
+        <button className="btn-print" onClick={() => window.print()}>
           <FormattedMessage
             id="equipment.usage.printable.button.print"
             defaultMessage="Print"
           />
         </button>
         {onClose && (
-          <button
-            className="btn-close"
-            onClick={onClose}
-          >
+          <button className="btn-close" onClick={onClose}>
             <FormattedMessage
               id="equipment.usage.printable.button.close"
               defaultMessage="Close"

@@ -38,7 +38,9 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
         department: equipment.department || "",
         manufacturer: equipment.manufacturer || "",
         modelNumber: equipment.modelNumber || "",
-        purchaseDate: equipment.purchaseDate ? equipment.purchaseDate.split("T")[0] : "",
+        purchaseDate: equipment.purchaseDate
+          ? equipment.purchaseDate.split("T")[0]
+          : "",
         lastCalibrationDate: equipment.lastCalibrationDate
           ? equipment.lastCalibrationDate.split("T")[0]
           : "",
@@ -140,7 +142,9 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
               id="serial-number"
               labelText="Serial Number"
               value={formData.serialNumber}
-              onChange={(e) => handleInputChange("serialNumber", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("serialNumber", e.target.value)
+              }
               placeholder="e.g., CENT-2024-001"
               required
             />
@@ -161,7 +165,9 @@ const EquipmentModal = ({ isOpen, onClose, equipment, isNew, onSubmit }) => {
               id="manufacturer"
               labelText="Manufacturer"
               value={formData.manufacturer}
-              onChange={(e) => handleInputChange("manufacturer", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("manufacturer", e.target.value)
+              }
               placeholder="e.g., Beckman Coulter, Siemens"
             />
 
