@@ -219,7 +219,7 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
 
   function renderApprovalActions(entry) {
     if (!entry || !entry.id) {
-      return null;
+      return <span>—</span>;
     }
 
     return (

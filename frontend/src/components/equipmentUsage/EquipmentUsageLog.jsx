@@ -234,7 +234,7 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
 
   function renderActions(entry) {
     if (!entry || !entry.id) {
-      return null;
+      return <span>—</span>;
     }
 
     return (
