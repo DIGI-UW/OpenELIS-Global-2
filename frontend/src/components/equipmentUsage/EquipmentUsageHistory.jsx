@@ -312,7 +312,7 @@ const EquipmentUsageHistory = ({ refreshTrigger }) => {
 
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: "3rem" }}>
-              <Loading description={<FormattedMessage id="common.loading" defaultMessage="Loading..." />} />
+              <Loading description="Loading..." />
             </div>
           ) : entries.length === 0 ? (
             <div
