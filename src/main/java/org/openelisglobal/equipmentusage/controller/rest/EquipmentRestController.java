@@ -32,6 +32,17 @@ public class EquipmentRestController extends BaseRestController {
     private EquipmentService equipmentService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Equipment>> getAll() {
+        try {
+            List<Equipment> equipment = equipmentService.getAll();
+            return ResponseEntity.ok(equipment);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping(value = "/active", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Equipment>> getAllActive() {
         try {
             List<Equipment> equipment = equipmentService.getAllActive();

@@ -22,6 +22,22 @@ public class EquipmentDAOImpl extends BaseDAOImpl<Equipment, Long> implements Eq
 
     @Override
     @Transactional(readOnly = true)
+    public List<Equipment> getAll() throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Equipment> cq = cb.createQuery(Equipment.class);
+            Root<Equipment> root = cq.from(Equipment.class);
+
+            cq.select(root).orderBy(cb.asc(root.get("name")));
+
+            return entityManager.createQuery(cq).getResultList();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting all equipment", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Equipment> getAllActive() throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();

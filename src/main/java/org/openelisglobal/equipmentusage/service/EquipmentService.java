@@ -8,6 +8,11 @@ import org.openelisglobal.equipmentusage.valueholder.Equipment;
 public interface EquipmentService extends BaseObjectService<Equipment, Long> {
 
     /**
+     * Get all equipment (active and inactive)
+     */
+    List<Equipment> getAll();
+
+    /**
      * Get all active equipment
      */
     List<Equipment> getAllActive();

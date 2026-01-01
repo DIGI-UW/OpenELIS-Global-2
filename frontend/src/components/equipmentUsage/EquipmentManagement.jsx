@@ -211,34 +211,40 @@ const EquipmentManagement = () => {
   const confirmDeactivation = async () => {
     if (equipmentToDeactivate) {
       try {
+        const action =
+          equipmentToDeactivate.isActive === "Y" ? "deactivate" : "activate";
+
         if (equipmentToDeactivate.isActive === "Y") {
           await EquipmentAPI.deactivate(equipmentToDeactivate.id);
-          addNotification({
-            title: intl.formatMessage({
-              id: "notification.title",
-              defaultMessage: "Success",
-            }),
-            message: intl.formatMessage({
-              id: "equipment.deactivate.success",
-              defaultMessage: "Equipment deactivated successfully",
-            }),
-            kind: NotificationKinds.success,
-          });
         } else {
           await EquipmentAPI.activate(equipmentToDeactivate.id);
-          addNotification({
-            title: intl.formatMessage({
-              id: "notification.title",
-              defaultMessage: "Success",
-            }),
-            message: intl.formatMessage({
-              id: "equipment.activate.success",
-              defaultMessage: "Equipment activated successfully",
-            }),
-            kind: NotificationKinds.success,
-          });
         }
+
+        // Show success notification
+        addNotification({
+          title: intl.formatMessage({
+            id: "notification.title",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage({
+            id:
+              action === "deactivate"
+                ? "equipment.deactivate.success"
+                : "equipment.activate.success",
+            defaultMessage:
+              action === "deactivate"
+                ? "Equipment deactivated successfully"
+                : "Equipment activated successfully",
+          }),
+          kind: NotificationKinds.success,
+        });
         setNotificationVisible(true);
+
+        // Close modal immediately
+        setIsConfirmModalOpen(false);
+        setEquipmentToDeactivate(null);
+
+        // Reload equipment data to reflect the change
         await loadEquipment();
       } catch (err) {
         const action =
@@ -256,10 +262,10 @@ const EquipmentManagement = () => {
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
+        setIsConfirmModalOpen(false);
+        setEquipmentToDeactivate(null);
       }
     }
-    setIsConfirmModalOpen(false);
-    setEquipmentToDeactivate(null);
   };
 
   const cancelDeactivation = () => {

@@ -9,6 +9,11 @@ import org.openelisglobal.equipmentusage.valueholder.Equipment;
 public interface EquipmentDAO extends BaseDAO<Equipment, Long> {
 
     /**
+     * Get all equipment (active and inactive)
+     */
+    List<Equipment> getAll() throws LIMSRuntimeException;
+
+    /**
      * Get all active equipment
      */
     List<Equipment> getAllActive() throws LIMSRuntimeException;

@@ -32,6 +32,12 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
 
     @Override
     @Transactional(readOnly = true)
+    public List<Equipment> getAll() {
+        return equipmentDAO.getAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Equipment> getAllActive() {
         return equipmentDAO.getAllActive();
     }
