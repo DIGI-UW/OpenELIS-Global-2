@@ -68,6 +68,11 @@
         <class>org.openelisglobal.notebook.valueholder.SampleRouting</class>
         <class>org.openelisglobal.notebook.valueholder.WorkflowPageTemplate</class>
 
+        <!-- Equipment Management entities -->
+        <class>org.openelisglobal.equipmentusage.valueholder.Equipment</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageEntry</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageAudit</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

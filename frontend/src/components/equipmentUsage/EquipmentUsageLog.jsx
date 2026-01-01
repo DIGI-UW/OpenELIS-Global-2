@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from "react";
 import {
   Button,
   DataTable,
+  TableContainer,
+  Table,
   TableHead,
   TableRow,
   TableHeader,
@@ -10,32 +12,36 @@ import {
   Grid,
   Column,
   Loading,
-  InlineNotification,
   Stack,
   OverflowMenu,
   OverflowMenuItem,
 } from "@carbon/react";
 import { Add, Edit, TrashCan, SendAlt } from "@carbon/icons-react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import EquipmentUsageModal from "./modals/EquipmentUsageModal";
+import EditUsageEntryModal from "./modals/EditUsageEntryModal";
 import EquipmentUsageService from "./EquipmentUsageService";
+import { NotificationContext } from "../layout/Layout";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
 const EquipmentUsageLog = ({ onEntrySubmitted }) => {
+  const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNew, setIsNew] = useState(true);
   const [isMounted, setIsMounted] = useState(true);
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
   useEffect(() => {
     setIsMounted(true);
     loadDrafts();
 
-    // Cleanup function to prevent memory leaks
     return () => {
       setIsMounted(false);
     };
@@ -45,23 +51,30 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
     if (!isMounted) return;
 
     setLoading(true);
-    setError(null);
     try {
       const allEntries = await EquipmentUsageService.getAllUsageEntries();
-      // Filter to show only DRAFT entries for current user (simplified)
       const userDrafts = allEntries
         .filter((entry) => entry.entryStatus === "DRAFT")
         .map((entry) => ({
           ...entry,
-          id: String(entry.id), // Convert ID to string for DataTable
+          id: String(entry.id),
         }));
 
       if (isMounted) {
         setEntries(userDrafts);
       }
     } catch (err) {
+      console.error("Error loading drafts:", err);
       if (isMounted) {
-        setError(err.message);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          message: err.message || intl.formatMessage({
+            id: "equipment.usage.load.error",
+            defaultMessage: "Failed to load usage entries"
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
       }
     } finally {
       if (isMounted) {
@@ -78,12 +91,16 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
 
   const handleEditEntry = (entry) => {
     setSelectedEntry(entry);
-    setIsNew(false);
-    setIsModalOpen(true);
+    setIsEditModalOpen(true);
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
+    setSelectedEntry(null);
+  };
+
+  const handleEditModalClose = () => {
+    setIsEditModalOpen(false);
     setSelectedEntry(null);
   };
 
@@ -93,11 +110,28 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
     try {
       if (isNew) {
         await EquipmentUsageService.createUsageEntry(entry);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          message: intl.formatMessage({
+            id: "equipment.usage.create.success",
+            defaultMessage: "Usage entry created successfully"
+          }),
+          kind: NotificationKinds.success,
+        });
       } else {
         await EquipmentUsageService.saveDraft(entry.id, entry);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          message: intl.formatMessage({
+            id: "equipment.usage.save.success",
+            defaultMessage: "Usage entry saved successfully"
+          }),
+          kind: NotificationKinds.success,
+        });
       }
 
       if (isMounted) {
+        setNotificationVisible(true);
         handleModalClose();
         loadDrafts();
         if (onEntrySubmitted) {
@@ -105,8 +139,57 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
         }
       }
     } catch (err) {
-      // Handle error appropriately
       console.error("Error submitting entry:", err);
+      if (isMounted) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          message: err.message || intl.formatMessage({
+            id: "equipment.usage.submit.error",
+            defaultMessage: "Failed to submit usage entry"
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+      }
+    }
+  };
+
+  const handleEditEntrySubmitted = async (entry) => {
+    if (!isMounted) return;
+
+    try {
+      await EquipmentUsageService.saveDraft(entry.id, entry);
+
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.update.success",
+          defaultMessage: "Usage entry updated successfully"
+        }),
+        kind: NotificationKinds.success,
+      });
+
+      if (isMounted) {
+        setNotificationVisible(true);
+        handleEditModalClose();
+        loadDrafts();
+        if (onEntrySubmitted) {
+          onEntrySubmitted();
+        }
+      }
+    } catch (err) {
+      console.error("Error updating entry:", err);
+      if (isMounted) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          message: err.message || intl.formatMessage({
+            id: "equipment.usage.update.error",
+            defaultMessage: "Failed to update usage entry"
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+      }
     }
   };
 
@@ -116,15 +199,34 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
     try {
       await EquipmentUsageService.submitForApproval(id);
 
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.submit.approval.success",
+          defaultMessage: "Usage entry submitted for approval successfully"
+        }),
+        kind: NotificationKinds.success,
+      });
+
       if (isMounted) {
+        setNotificationVisible(true);
         loadDrafts();
         if (onEntrySubmitted) {
           onEntrySubmitted();
         }
       }
     } catch (err) {
+      console.error("Error submitting for approval:", err);
       if (isMounted) {
-        setError(err.message);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          message: err.message || intl.formatMessage({
+            id: "equipment.usage.submit.approval.error",
+            defaultMessage: "Failed to submit usage entry for approval"
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
       }
     }
   };
@@ -139,8 +241,17 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
           loadDrafts();
         }
       } catch (err) {
+        console.error("Error deleting entry:", err);
         if (isMounted) {
-          setError(err.message);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+            message: err.message || intl.formatMessage({
+              id: "equipment.usage.delete.error",
+              defaultMessage: "Failed to delete usage entry"
+            }),
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
         }
       }
     }
@@ -152,14 +263,7 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
 
   return (
     <>
-      {error && (
-        <InlineNotification
-          title="Error"
-          subtitle={error}
-          kind="error"
-          onClose={() => setError(null)}
-        />
-      )}
+      {notificationVisible === true ? <AlertDialog /> : ""}
 
       <Grid fullWidth={true} style={{ marginBottom: "1rem" }}>
         <Column lg={16} md={8} sm={4}>
@@ -184,43 +288,100 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
           { key: "entryStatus", header: "Entry Status" },
           { key: "actions", header: "Actions" },
         ]}
-        render={({ rows, headers, getHeaderProps, getRowProps }) => (
-          <table className="cds--data-table cds--data-table--zebra">
-            <TableHead>
-              <TableRow>
-                {headers.map((header) => (
-                  <TableHeader key={header.key} {...getHeaderProps({ header })}>
-                    {header.header}
-                  </TableHeader>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.id} {...getRowProps({ row })}>
-                  {row.cells.map((cell) => {
-                    let cellContent;
-                    if (cell.info.header === "Equipment") {
-                      cellContent = row.original.equipment?.name || "—";
-                    } else if (cell.info.header === "actions") {
-                      cellContent = renderActions(row.original);
-                    } else if (
-                      typeof cell.value === "object" &&
-                      cell.value !== null
-                    ) {
-                      // Handle any remaining object values (shouldn't happen, but defensive)
-                      cellContent = "—";
-                    } else {
-                      cellContent = cell.value;
-                    }
-                    return <TableCell key={cell.id}>{cellContent}</TableCell>;
-                  })}
+      >
+        {({
+          rows,
+          headers,
+          getHeaderProps,
+          getRowProps,
+          getTableProps,
+          getTableContainerProps,
+        }) => (
+          <TableContainer {...getTableContainerProps()}>
+            <Table {...getTableProps()}>
+              <TableHead>
+                <TableRow>
+                  {headers.map((header) => (
+                    <TableHeader
+                      key={header.key}
+                      {...getHeaderProps({ header })}
+                    >
+                      {header.header}
+                    </TableHeader>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </table>
+              </TableHead>
+              <TableBody>
+                {rows.map((row, rowIndex) => {
+                  const entry = entries[rowIndex];
+                  return (
+                    <TableRow key={row.id} {...getRowProps({ row })}>
+                      {row.cells.map((cell) => {
+                        if (cell.info.header === "equipment") {
+                          return (
+                            <TableCell key={cell.id}>
+                              {entry?.equipment?.name || "—"}
+                            </TableCell>
+                          );
+                        }
+
+                        if (cell.info.header === "loginTime") {
+                          return (
+                            <TableCell key={cell.id}>
+                              {entry?.loginTime
+                                ? new Date(entry.loginTime).toLocaleString()
+                                : "—"}
+                            </TableCell>
+                          );
+                        }
+
+                        if (cell.info.header === "actions") {
+                          return (
+                            <TableCell key={cell.id}>
+                              <OverflowMenu
+                                flipped
+                                ariaLabel="Equipment usage entry actions"
+                              >
+                                <OverflowMenuItem
+                                  itemText="Edit"
+                                  onClick={() => handleEditEntry(entry)}
+                                />
+                                <OverflowMenuItem
+                                  itemText="Submit for Approval"
+                                  onClick={() =>
+                                    handleSubmitForApproval(entry.id)
+                                  }
+                                />
+                                <OverflowMenuItem
+                                  itemText="Delete"
+                                  onClick={() => handleDeleteEntry(entry.id)}
+                                  isDelete
+                                />
+                              </OverflowMenu>
+                            </TableCell>
+                          );
+                        }
+
+                        if (typeof cell.value === "object" && cell.value !== null) {
+                          return (
+                            <TableCell key={cell.id}>
+                              —
+                            </TableCell>
+                          );
+                        }
+
+                        return (
+                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      />
+      </DataTable>
 
       <EquipmentUsageModal
         isOpen={isModalOpen}
@@ -229,32 +390,15 @@ const EquipmentUsageLog = ({ onEntrySubmitted }) => {
         isNew={isNew}
         onSubmit={handleEntrySubmitted}
       />
+
+      <EditUsageEntryModal
+        isOpen={isEditModalOpen}
+        onClose={handleEditModalClose}
+        entry={selectedEntry}
+        onSubmit={handleEditEntrySubmitted}
+      />
     </>
   );
-
-  function renderActions(entry) {
-    if (!entry || !entry.id) {
-      return <span>—</span>;
-    }
-
-    return (
-      <OverflowMenu flipped ariaLabel="Equipment usage entry actions">
-        <OverflowMenuItem
-          itemText="Edit"
-          onClick={() => handleEditEntry(entry)}
-        />
-        <OverflowMenuItem
-          itemText="Submit for Approval"
-          onClick={() => handleSubmitForApproval(entry.id)}
-        />
-        <OverflowMenuItem
-          itemText="Delete"
-          onClick={() => handleDeleteEntry(entry.id)}
-          isDelete
-        />
-      </OverflowMenu>
-    );
-  }
 };
 
 export default EquipmentUsageLog;

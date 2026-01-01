@@ -204,6 +204,51 @@
         </createIndex>
     </changeSet>
 
+    <!-- Create sequence for equipment usage audit table -->
+    <changeSet id="create-equipment-usage-audit-sequence" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="equipment_usage_audit_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for equipment_usage_audit table.</comment>
+        <createSequence sequenceName="equipment_usage_audit_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- Add equipment table to reference_tables for audit trail support -->
+    <changeSet author="openelis" id="equipment-audit-trail-reference">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'EQUIPMENT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add equipment table to reference_tables for audit trail tracking</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="EQUIPMENT" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+
+    <!-- Add equipment_usage_entry table to reference_tables for audit trail support -->
+    <changeSet author="openelis" id="equipment-usage-entry-audit-trail-reference">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'EQUIPMENT_USAGE_ENTRY';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add equipment_usage_entry table to reference_tables for audit trail tracking</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="EQUIPMENT_USAGE_ENTRY" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+    </changeSet>
+
     <changeSet author="openelis" id="equipment-usage-log-add-submenu">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">

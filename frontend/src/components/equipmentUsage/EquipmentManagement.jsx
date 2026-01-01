@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Button,
   DataTable,
+  TableContainer,
+  Table,
   TableHead,
   TableRow,
   TableHeader,
@@ -10,23 +12,29 @@ import {
   Grid,
   Column,
   Loading,
-  InlineNotification,
   Stack,
   OverflowMenu,
   OverflowMenuItem,
+  Modal,
 } from "@carbon/react";
 import { Add, Edit, TrashCan } from "@carbon/icons-react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import EquipmentModal from "./modals/EquipmentModal";
 import { EquipmentAPI } from "./EquipmentUsageService";
+import { NotificationContext } from "../layout/Layout";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
 const EquipmentManagement = () => {
+  const intl = useIntl();
   const [equipmentList, setEquipmentList] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNew, setIsNew] = useState(true);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [equipmentToDeactivate, setEquipmentToDeactivate] = useState(null);
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
   useEffect(() => {
     loadEquipment();
@@ -34,19 +42,33 @@ const EquipmentManagement = () => {
 
   const loadEquipment = async () => {
     setLoading(true);
-    setError(null);
     try {
       const data = await EquipmentAPI.getAll();
       const transformedData = Array.isArray(data)
         ? data.map((item) => ({
-            ...item,
-            id: String(item.id), // Convert ID to string for DataTable
+            id: String(item.id),
+            name: item.name || "—",
+            serialNumber: item.serialNumber || "—",
+            department: item.department || "—",
+            manufacturer: item.manufacturer || "—",
+            modelNumber: item.modelNumber || "—",
+            isActive: item.isActive || "N",
+            // Keep original item for actions but don't spread other complex fields
+            _original: item
           }))
         : [];
       setEquipmentList(transformedData);
     } catch (err) {
-      setError(err.message || "Failed to load equipment");
       console.error("Error loading equipment:", err);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+        message: err.message || intl.formatMessage({
+          id: "equipment.load.error",
+          defaultMessage: "Failed to load equipment"
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
     } finally {
       setLoading(false);
     }
@@ -74,16 +96,57 @@ const EquipmentManagement = () => {
     await loadEquipment();
   };
 
-  const handleDeleteEquipment = async (id) => {
-    if (window.confirm("Are you sure you want to deactivate this equipment?")) {
+  const handleDeleteEquipment = (equipment) => {
+    setEquipmentToDeactivate(equipment);
+    setIsConfirmModalOpen(true);
+  };
+
+  const confirmDeactivation = async () => {
+    if (equipmentToDeactivate) {
       try {
-        await EquipmentAPI.deactivate(id);
+        if (equipmentToDeactivate.isActive === "Y") {
+          await EquipmentAPI.deactivate(equipmentToDeactivate.id);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+            message: intl.formatMessage({
+              id: "equipment.deactivate.success",
+              defaultMessage: "Equipment deactivated successfully"
+            }),
+            kind: NotificationKinds.success,
+          });
+        } else {
+          await EquipmentAPI.activate(equipmentToDeactivate.id);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+            message: intl.formatMessage({
+              id: "equipment.activate.success",
+              defaultMessage: "Equipment activated successfully"
+            }),
+            kind: NotificationKinds.success,
+          });
+        }
+        setNotificationVisible(true);
         await loadEquipment();
-        setError(null);
       } catch (err) {
-        setError("Failed to deactivate equipment: " + err.message);
+        const action = equipmentToDeactivate.isActive === "Y" ? "deactivate" : "activate";
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          message: intl.formatMessage({
+            id: `equipment.${action}.error`,
+            defaultMessage: `Failed to ${action} equipment`
+          }) + `: ${err.message}`,
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
       }
     }
+    setIsConfirmModalOpen(false);
+    setEquipmentToDeactivate(null);
+  };
+
+  const cancelDeactivation = () => {
+    setIsConfirmModalOpen(false);
+    setEquipmentToDeactivate(null);
   };
 
   if (loading && equipmentList.length === 0) {
@@ -92,14 +155,7 @@ const EquipmentManagement = () => {
 
   return (
     <>
-      {error && (
-        <InlineNotification
-          title="Error"
-          subtitle={error}
-          kind="error"
-          onClose={() => setError(null)}
-        />
-      )}
+      {notificationVisible === true ? <AlertDialog /> : ""}
 
       <Grid fullWidth={true} style={{ marginBottom: "1rem" }}>
         <Column lg={16} md={8} sm={4}>
@@ -129,44 +185,74 @@ const EquipmentManagement = () => {
           { key: "isActive", header: "Status" },
           { key: "actions", header: "Actions" },
         ]}
-        render={({ rows, headers, getHeaderProps, getRowProps }) => (
-          <table className="cds--data-table cds--data-table--zebra">
-            <TableHead>
-              <TableRow>
-                {headers.map((header) => (
-                  <TableHeader key={header.key} {...getHeaderProps({ header })}>
-                    {header.header}
-                  </TableHeader>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.id} {...getRowProps({ row })}>
-                  {row.cells.map((cell) => {
-                    let cellContent;
-                    if (cell.info.header === "Status") {
-                      cellContent =
-                        row.original.isActive === "Y" ? "Active" : "Inactive";
-                    } else if (cell.info.header === "actions") {
-                      cellContent = renderActions(row.original);
-                    } else if (
-                      typeof cell.value === "object" &&
-                      cell.value !== null
-                    ) {
-                      // Handle any remaining object values (shouldn't happen, but defensive)
-                      cellContent = "—";
-                    } else {
-                      cellContent = cell.value;
-                    }
-                    return <TableCell key={cell.id}>{cellContent}</TableCell>;
-                  })}
+      >
+        {({ rows, headers, getHeaderProps, getRowProps, getTableProps, getTableContainerProps }) => (
+          <TableContainer {...getTableContainerProps()}>
+            <Table {...getTableProps()}>
+              <TableHead>
+                <TableRow>
+                  {headers.map((header) => (
+                    <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      {header.header}
+                    </TableHeader>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </table>
+              </TableHead>
+              <TableBody>
+                {rows.map((row, rowIndex) => {
+                  const equipment = equipmentList[rowIndex];
+                  const originalEquipment = equipment?._original;
+                  return (
+                    <TableRow key={row.id} {...getRowProps({ row })}>
+                      {row.cells.map((cell) => {
+                        if (cell.info.header === "Status") {
+                          return (
+                            <TableCell key={cell.id}>
+                              {row.original.isActive === "Y" ? "Active" : "Inactive"}
+                            </TableCell>
+                          );
+                        }
+
+                        if (cell.info.header === "actions") {
+                          return (
+                            <TableCell key={cell.id}>
+                              <OverflowMenu flipped ariaLabel="Equipment actions">
+                                <OverflowMenuItem
+                                  itemText="Edit"
+                                  onClick={() => handleEditEquipment(originalEquipment)}
+                                />
+                                <OverflowMenuItem
+                                  itemText={originalEquipment?.isActive === "Y" ? "Deactivate" : "Activate"}
+                                  onClick={() => handleDeleteEquipment(originalEquipment)}
+                                  isDelete={originalEquipment?.isActive === "Y"}
+                                />
+                              </OverflowMenu>
+                            </TableCell>
+                          );
+                        }
+
+                        if (typeof cell.value === "object" && cell.value !== null) {
+                          return (
+                            <TableCell key={cell.id}>
+                              —
+                            </TableCell>
+                          );
+                        }
+
+                        return (
+                          <TableCell key={cell.id}>
+                            {cell.value}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      />
+      </DataTable>
 
       <EquipmentModal
         isOpen={isModalOpen}
@@ -175,28 +261,45 @@ const EquipmentManagement = () => {
         isNew={isNew}
         onSubmit={handleEquipmentSaved}
       />
+
+      <Modal
+        open={isConfirmModalOpen}
+        modalHeading={
+          equipmentToDeactivate?.isActive === "Y"
+            ? "Deactivate Equipment"
+            : "Activate Equipment"
+        }
+        primaryButtonText={
+          equipmentToDeactivate?.isActive === "Y" ? "Deactivate" : "Activate"
+        }
+        secondaryButtonText="Cancel"
+        onRequestSubmit={confirmDeactivation}
+        onRequestClose={cancelDeactivation}
+        danger={equipmentToDeactivate?.isActive === "Y"}
+        size="sm"
+      >
+        <p>
+          {equipmentToDeactivate?.isActive === "Y" ? (
+            <>
+              Are you sure you want to deactivate{" "}
+              <strong>{equipmentToDeactivate?.name}</strong>?
+              <br />
+              <br />
+              This equipment will no longer be available for new usage entries.
+            </>
+          ) : (
+            <>
+              Are you sure you want to activate{" "}
+              <strong>{equipmentToDeactivate?.name}</strong>?
+              <br />
+              <br />
+              This equipment will be available for new usage entries.
+            </>
+          )}
+        </p>
+      </Modal>
     </>
   );
-
-  function renderActions(equipment) {
-    if (!equipment || !equipment.id) {
-      return <span>—</span>;
-    }
-
-    return (
-      <OverflowMenu flipped ariaLabel="Equipment actions">
-        <OverflowMenuItem
-          itemText="Edit"
-          onClick={() => handleEditEquipment(equipment)}
-        />
-        <OverflowMenuItem
-          itemText={equipment.isActive === "Y" ? "Deactivate" : "Activate"}
-          onClick={() => handleDeleteEquipment(equipment.id)}
-          isDelete={equipment.isActive === "Y"}
-        />
-      </OverflowMenu>
-    );
-  }
 };
 
 export default EquipmentManagement;

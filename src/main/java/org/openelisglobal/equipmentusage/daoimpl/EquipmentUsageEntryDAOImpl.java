@@ -92,8 +92,8 @@ public class EquipmentUsageEntryDAOImpl extends BaseDAOImpl<EquipmentUsageEntry,
             CriteriaQuery<EquipmentUsageEntry> cq = cb.createQuery(EquipmentUsageEntry.class);
             Root<EquipmentUsageEntry> root = cq.from(EquipmentUsageEntry.class);
 
-            // Direct enum comparison
-            cq.select(root).where(cb.equal(root.get("entryStatus"), status))
+            // String-based enum comparison for PostgreSQL compatibility
+            cq.select(root).where(cb.equal(root.get("entryStatus"), status.name()))
                     .orderBy(cb.desc(root.get("loginTime")));
 
             return entityManager.createQuery(cq).getResultList();
@@ -124,7 +124,7 @@ public class EquipmentUsageEntryDAOImpl extends BaseDAOImpl<EquipmentUsageEntry,
 
             cq.select(root)
                     .where(cb.and(cb.equal(root.get("operator").get("id"), operatorId),
-                            cb.equal(root.get("entryStatus"), EntryStatus.DRAFT)))
+                            cb.equal(root.get("entryStatus"), EntryStatus.DRAFT.name())))
                     .orderBy(cb.desc(root.get("loginTime")));
 
             return entityManager.createQuery(cq).getResultList();
@@ -199,7 +199,7 @@ public class EquipmentUsageEntryDAOImpl extends BaseDAOImpl<EquipmentUsageEntry,
                 predicates.add(cb.equal(root.get("department"), department));
             }
             if (status != null) {
-                predicates.add(cb.equal(root.get("entryStatus"), status));
+                predicates.add(cb.equal(root.get("entryStatus"), status.name()));
             }
 
             cq.select(root).where(cb.and(predicates.toArray(new Predicate[0]))).orderBy(cb.desc(root.get("loginTime")));

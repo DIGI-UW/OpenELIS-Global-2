@@ -17,15 +17,19 @@ import {
   Modal,
 } from "@carbon/react";
 import { Checkmark, Close } from "@carbon/icons-react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import EquipmentUsageService from "./EquipmentUsageService";
+import { NotificationContext } from "../layout/Layout";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
 const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
+  const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [isMounted, setIsMounted] = useState(true);
@@ -44,7 +48,6 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
     if (!isMounted) return;
 
     setLoading(true);
-    setError(null);
     try {
       const data = await EquipmentUsageService.getPendingApproval();
       const transformedData = Array.isArray(data)
@@ -58,8 +61,17 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
         setEntries(transformedData);
       }
     } catch (err) {
+      console.error("Error loading pending approvals:", err);
       if (isMounted) {
-        setError(err.message);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          message: err.message || intl.formatMessage({
+            id: "equipment.approval.load.error",
+            defaultMessage: "Failed to load pending approvals"
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
       }
     } finally {
       if (isMounted) {
@@ -82,7 +94,17 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
         userSessionDetails.userId,
       );
 
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+        message: intl.formatMessage({
+          id: "equipment.approval.approve.success",
+          defaultMessage: "Entry approved successfully"
+        }),
+        kind: NotificationKinds.success,
+      });
+
       if (isMounted) {
+        setNotificationVisible(true);
         setShowApprovalModal(false);
         setSelectedEntry(null);
         loadPendingApproval();
@@ -91,8 +113,17 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
         }
       }
     } catch (err) {
+      console.error("Error approving entry:", err);
       if (isMounted) {
-        setError(err.message);
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+          message: err.message || intl.formatMessage({
+            id: "equipment.approval.approve.error",
+            defaultMessage: "Failed to approve entry"
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
       }
     }
   };
@@ -104,15 +135,34 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
       try {
         await EquipmentUsageService.rejectEntry(id);
 
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title", defaultMessage: "Success" }),
+          message: intl.formatMessage({
+            id: "equipment.approval.reject.success",
+            defaultMessage: "Entry rejected successfully"
+          }),
+          kind: NotificationKinds.success,
+        });
+
         if (isMounted) {
+          setNotificationVisible(true);
           loadPendingApproval();
           if (onApprovalSubmitted) {
             onApprovalSubmitted();
           }
         }
       } catch (err) {
+        console.error("Error rejecting entry:", err);
         if (isMounted) {
-          setError(err.message);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title", defaultMessage: "Error" }),
+            message: err.message || intl.formatMessage({
+              id: "equipment.approval.reject.error",
+              defaultMessage: "Failed to reject entry"
+            }),
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
         }
       }
     }
@@ -124,14 +174,7 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
 
   return (
     <>
-      {error && (
-        <InlineNotification
-          title="Error"
-          subtitle={error}
-          kind="error"
-          onClose={() => setError(null)}
-        />
-      )}
+      {notificationVisible === true ? <AlertDialog /> : ""}
 
       {entries.length === 0 && !loading && (
         <InlineNotification
@@ -169,10 +212,16 @@ const EquipmentUsageApproval = ({ onApprovalSubmitted }) => {
                   {row.cells.map((cell) => (
                     <TableCell key={cell.id}>
                       {cell.info.header === "Equipment"
-                        ? row.original.equipment?.name
-                        : cell.info.header === "actions"
+                        ? row.original.equipment?.name || "—"
+                        : cell.info.header === "Actions"
                           ? renderApprovalActions(row.original)
-                          : cell.value}
+                          : cell.info.header === "Date/Time"
+                            ? (row.original.loginTime
+                                ? new Date(row.original.loginTime).toLocaleString()
+                                : "—")
+                            : (typeof cell.value === "object" && cell.value !== null)
+                              ? "—"
+                              : cell.value}
                     </TableCell>
                   ))}
                 </TableRow>

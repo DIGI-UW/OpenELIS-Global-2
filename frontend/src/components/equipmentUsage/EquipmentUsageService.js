@@ -8,6 +8,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
+import config from "../../config.json";
 
 const BASE_PATH = "/rest/equipment-usage";
 
@@ -29,12 +30,8 @@ const get = (endpoint) => {
 
 const post = (endpoint, data) => {
   return new Promise((resolve, reject) => {
-    // If endpoint is absolute path (starts with /rest), use it as-is; otherwise prepend BASE_PATH
-    const fullPath = endpoint.startsWith("/rest")
-      ? endpoint
-      : `${BASE_PATH}${endpoint}`;
     postToOpenElisServerJsonResponse(
-      fullPath,
+      `${BASE_PATH}${endpoint}`,
       JSON.stringify(data),
       (json) => {
         if (json && (json.status >= 400 || json.statusCode >= 400)) {
@@ -61,9 +58,159 @@ const post = (endpoint, data) => {
   });
 };
 
+const put = (endpoint, data) => {
+  return new Promise((resolve, reject) => {
+    fetch(`${config.serverBaseUrl}${BASE_PATH}${endpoint}`, {
+      credentials: "include",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: data ? JSON.stringify(data) : null,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response
+            .json()
+            .then((errorJson) => {
+              if (errorJson.errors && typeof errorJson.errors === "object") {
+                const errorMessages = Object.entries(errorJson.errors)
+                  .map(([field, message]) => `${field}: ${message}`)
+                  .join(", ");
+                throw new Error(errorMessages);
+              }
+              throw new Error(
+                errorJson.message ||
+                  errorJson.error ||
+                  `Failed to update: HTTP ${response.status}`,
+              );
+            })
+            .catch((e) => {
+              if (e.message && !e.message.includes("HTTP")) {
+                throw e;
+              }
+              throw new Error(`Failed to update: HTTP ${response.status}`);
+            });
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return response.json();
+        }
+        return {};
+      })
+      .then((json) => resolve(json))
+      .catch((error) => reject(error));
+  });
+};
+
 // ==================== Equipment API ====================
 
 const EQUIPMENT_BASE_PATH = "/rest/equipment";
+
+// Equipment-specific helper functions that use the absolute path
+const equipmentPost = (endpoint, data) => {
+  return new Promise((resolve, reject) => {
+    fetch(`${config.serverBaseUrl}${EQUIPMENT_BASE_PATH}${endpoint}`, {
+      credentials: "include",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: JSON.stringify(data),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          // Handle HTTP error statuses (400, 500, etc.)
+          return response.text().then((text) => {
+            let errorMessage = `Request failed with status ${response.status}`;
+            try {
+              const json = JSON.parse(text);
+              if (json.errors && typeof json.errors === "object") {
+                const errorMessages = Object.entries(json.errors)
+                  .map(([field, message]) => `${field}: ${message}`)
+                  .join(", ");
+                errorMessage = errorMessages;
+              } else if (json.message || json.error) {
+                errorMessage = json.message || json.error;
+              }
+            } catch (e) {
+              // If response is not JSON, use default error message
+            }
+            throw new Error(errorMessage);
+          });
+        }
+        return response.json();
+      })
+      .then((json) => {
+        // Additional check for application-level errors
+        if (json && (json.status >= 400 || json.statusCode >= 400)) {
+          if (json.errors && typeof json.errors === "object") {
+            const errorMessages = Object.entries(json.errors)
+              .map(([field, message]) => `${field}: ${message}`)
+              .join(", ");
+            throw new Error(errorMessages);
+          }
+          throw new Error(
+            json.message ||
+              json.error ||
+              `Request failed with status ${json.status || json.statusCode}`,
+          );
+        }
+        resolve(json);
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+};
+
+const equipmentPut = (endpoint, data) => {
+  return new Promise((resolve, reject) => {
+    fetch(`${config.serverBaseUrl}${EQUIPMENT_BASE_PATH}${endpoint}`, {
+      credentials: "include",
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: data ? JSON.stringify(data) : null,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response
+            .json()
+            .then((errorJson) => {
+              if (errorJson.errors && typeof errorJson.errors === "object") {
+                const errorMessages = Object.entries(errorJson.errors)
+                  .map(([field, message]) => `${field}: ${message}`)
+                  .join(", ");
+                throw new Error(errorMessages);
+              }
+              throw new Error(
+                errorJson.message ||
+                  errorJson.error ||
+                  `Failed to update: HTTP ${response.status}`,
+              );
+            })
+            .catch((e) => {
+              if (e.message && !e.message.includes("HTTP")) {
+                throw e;
+              }
+              throw new Error(`Failed to update: HTTP ${response.status}`);
+            });
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          return response.json();
+        }
+        return {};
+      })
+      .then((json) => resolve(json))
+      .catch((error) => reject(error));
+  });
+};
 
 export const EquipmentAPI = {
   /**
@@ -95,22 +242,22 @@ export const EquipmentAPI = {
   /**
    * Create new equipment
    */
-  create: (equipment) => post(`${EQUIPMENT_BASE_PATH}`, equipment),
+  create: (equipment) => equipmentPost("", equipment),
 
   /**
    * Update equipment
    */
-  update: (id, equipment) => post(`${EQUIPMENT_BASE_PATH}/${id}`, equipment),
+  update: (id, equipment) => equipmentPut(`/${id}`, equipment),
 
   /**
    * Deactivate equipment
    */
-  deactivate: (id) => post(`${EQUIPMENT_BASE_PATH}/${id}/deactivate`, {}),
+  deactivate: (id) => equipmentPut(`/${id}/deactivate`, {}),
 
   /**
    * Activate equipment
    */
-  activate: (id) => post(`${EQUIPMENT_BASE_PATH}/${id}/activate`, {}),
+  activate: (id) => equipmentPut(`/${id}/activate`, {}),
 };
 
 // ==================== Equipment Usage Entry API ====================

@@ -1,5 +1,6 @@
 package org.openelisglobal.equipmentusage.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
@@ -59,12 +60,15 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     private String modelNumber;
 
     @Column(name = "purchase_date")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate purchaseDate;
 
     @Column(name = "last_calibration_date")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate lastCalibrationDate;
 
     @Column(name = "next_calibration_due")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate nextCalibrationDue;
 
     @Column(name = "is_active", nullable = false, length = 1)
@@ -75,6 +79,7 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     private SystemUser createdBy;
 
     @Column(name = "created_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
     private LocalDateTime createdDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -82,6 +87,7 @@ public class Equipment extends BaseObject<Long> implements Serializable {
     private SystemUser modifiedBy;
 
     @Column(name = "modified_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS")
     private LocalDateTime modifiedDate;
 
 

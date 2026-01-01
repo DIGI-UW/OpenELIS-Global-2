@@ -38,6 +38,11 @@ public interface EquipmentService extends BaseObjectService<Equipment, Long> {
     Equipment save(Equipment equipment);
 
     /**
+     * Create or update equipment master data with user context
+     */
+    Equipment save(Equipment equipment, String currentUserId);
+
+    /**
      * Deactivate equipment (soft delete)
      */
     void deactivateEquipment(Long equipmentId);

@@ -31,9 +31,6 @@ public class EquipmentUsageRestController extends BaseRestController {
     @Setter
     private EquipmentUsageEntryService equipmentUsageEntryService;
 
-    /**
-     * Get all usage entries
-     */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> getAll() {
         try {
@@ -45,9 +42,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get usage entry by ID
-     */
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EquipmentUsageEntry> getById(@PathVariable Long id) {
         try {
@@ -62,9 +56,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get usage entries by equipment ID
-     */
     @GetMapping(value = "/equipment/{equipmentId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> getByEquipmentId(@PathVariable Long equipmentId) {
         try {
@@ -76,9 +67,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get usage entries by equipment and date range
-     */
     @GetMapping(value = "/equipment/{equipmentId}/range", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> getByEquipmentAndDateRange(@PathVariable Long equipmentId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -93,9 +81,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get usage entries by operator
-     */
     @GetMapping(value = "/operator/{operatorId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> getByOperatorId(@PathVariable Long operatorId) {
         try {
@@ -107,9 +92,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get entries pending approval
-     */
     @GetMapping(value = "/pending-approval", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> getPendingApproval() {
         try {
@@ -121,9 +103,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get approved entries
-     */
     @GetMapping(value = "/approved", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> getApproved() {
         try {
@@ -135,9 +114,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get entries by department
-     */
     @GetMapping(value = "/department/{department}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> getByDepartment(@PathVariable String department) {
         try {
@@ -149,9 +125,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Advanced search with multiple filters
-     */
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EquipmentUsageEntry>> search(@RequestParam(required = false) Long equipmentId,
             @RequestParam(required = false) Long operatorId,
@@ -168,9 +141,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Create new usage entry (as DRAFT)
-     */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EquipmentUsageEntry> createEntry(@Valid @RequestBody EquipmentUsageEntry entry) {
         try {
@@ -182,9 +152,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Save entry as draft
-     */
     @PutMapping(value = "/{id}/draft", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EquipmentUsageEntry> saveDraft(@PathVariable Long id,
             @Valid @RequestBody EquipmentUsageEntry entry) {
@@ -198,9 +165,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Submit entry for approval
-     */
     @PutMapping(value = "/{id}/submit")
     public ResponseEntity<EquipmentUsageEntry> submitForApproval(@PathVariable Long id) {
         try {
@@ -212,9 +176,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Approve entry
-     */
     @PutMapping(value = "/{id}/approve")
     public ResponseEntity<EquipmentUsageEntry> approveEntry(@PathVariable Long id, @RequestParam Long approverId) {
         try {
@@ -226,9 +187,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Reject entry
-     */
     @PutMapping(value = "/{id}/reject")
     public ResponseEntity<EquipmentUsageEntry> rejectEntry(@PathVariable Long id) {
         try {
@@ -240,9 +198,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Check if entry can be edited
-     */
     @GetMapping(value = "/{id}/can-edit")
     public ResponseEntity<Boolean> canEditEntry(@PathVariable Long id) {
         try {
@@ -254,9 +209,6 @@ public class EquipmentUsageRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Check if entry can be approved
-     */
     @GetMapping(value = "/{id}/can-approve")
     public ResponseEntity<Boolean> canApproveEntry(@PathVariable Long id) {
         try {

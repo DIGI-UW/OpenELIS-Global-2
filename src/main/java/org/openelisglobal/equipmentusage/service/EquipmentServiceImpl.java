@@ -5,6 +5,8 @@ import java.util.Optional;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.equipmentusage.dao.EquipmentDAO;
 import org.openelisglobal.equipmentusage.valueholder.Equipment;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +16,9 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
 
     @Autowired
     private EquipmentDAO equipmentDAO;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     public EquipmentServiceImpl() {
         super(Equipment.class);
@@ -59,20 +64,54 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
     @Transactional
     public Equipment save(Equipment equipment) {
         if (equipment.getId() == null) {
-            // Set audit fields for new equipment
             if (equipment.getCreatedDate() == null) {
                 equipment.setCreatedDate(java.time.LocalDateTime.now());
             }
             if (equipment.getModifiedDate() == null) {
                 equipment.setModifiedDate(java.time.LocalDateTime.now());
             }
-            equipment.setLastupdatedFields(); // Set the BaseObject lastupdated field
+            equipment.setLastupdatedFields();
             Long id = (Long) super.insert(equipment);
             return super.get(id);
         }
-        // Set audit fields for existing equipment updates
         equipment.setModifiedDate(java.time.LocalDateTime.now());
-        equipment.setLastupdatedFields(); // Set the BaseObject lastupdated field
+        equipment.setLastupdatedFields();
+        return update(equipment);
+    }
+
+    @Override
+    @Transactional
+    public Equipment save(Equipment equipment, String currentUserId) {
+        if (equipment.getId() == null) {
+            if (equipment.getCreatedDate() == null) {
+                equipment.setCreatedDate(java.time.LocalDateTime.now());
+            }
+            if (equipment.getModifiedDate() == null) {
+                equipment.setModifiedDate(java.time.LocalDateTime.now());
+            }
+
+            if (currentUserId != null && !currentUserId.trim().isEmpty()) {
+                SystemUser createdBy = systemUserService.get(currentUserId);
+                if (createdBy != null) {
+                    equipment.setCreatedBy(createdBy);
+                    equipment.setModifiedBy(createdBy);
+                }
+            }
+
+            equipment.setLastupdatedFields();
+            Long id = (Long) super.insert(equipment);
+            return super.get(id);
+        }
+
+        equipment.setModifiedDate(java.time.LocalDateTime.now());
+        if (currentUserId != null && !currentUserId.trim().isEmpty()) {
+            SystemUser modifiedBy = systemUserService.get(currentUserId);
+            if (modifiedBy != null) {
+                equipment.setModifiedBy(modifiedBy);
+            }
+        }
+
+        equipment.setLastupdatedFields();
         return update(equipment);
     }
 

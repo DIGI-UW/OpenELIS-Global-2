@@ -1,5 +1,6 @@
 package org.openelisglobal.equipmentusage.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.Setter;
@@ -28,9 +29,6 @@ public class EquipmentRestController extends BaseRestController {
     @Setter
     private EquipmentService equipmentService;
 
-    /**
-     * Get all active equipment
-     */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Equipment>> getAllActive() {
         try {
@@ -42,9 +40,6 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get equipment for dropdown (active only)
-     */
     @GetMapping(value = "/dropdown", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Equipment>> getEquipmentForDropdown() {
         try {
@@ -56,9 +51,6 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get equipment by ID
-     */
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Equipment> getById(@PathVariable Long id) {
         try {
@@ -73,9 +65,6 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get equipment by serial number
-     */
     @GetMapping(value = "/serial/{serialNumber}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Equipment> getBySerialNumber(@PathVariable String serialNumber) {
         try {
@@ -87,9 +76,6 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Search equipment by name
-     */
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Equipment>> searchByName(@RequestParam String q) {
         try {
@@ -101,9 +87,6 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Get equipment by department
-     */
     @GetMapping(value = "/department/{department}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Equipment>> getByDepartment(@PathVariable String department) {
         try {
@@ -115,13 +98,11 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Create new equipment
-     */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Equipment> createEquipment(@Valid @RequestBody Equipment equipment) {
+    public ResponseEntity<Equipment> createEquipment(@Valid @RequestBody Equipment equipment, HttpServletRequest request) {
         try {
-            Equipment created = equipmentService.save(equipment);
+            String currentUserId = getSysUserId(request);
+            Equipment created = equipmentService.save(equipment, currentUserId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -129,14 +110,12 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Update equipment
-     */
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Equipment> updateEquipment(@PathVariable Long id, @Valid @RequestBody Equipment equipment) {
+    public ResponseEntity<Equipment> updateEquipment(@PathVariable Long id, @Valid @RequestBody Equipment equipment, HttpServletRequest request) {
         try {
             equipment.setId(id);
-            Equipment updated = equipmentService.save(equipment);
+            String currentUserId = getSysUserId(request);
+            Equipment updated = equipmentService.save(equipment, currentUserId);
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -144,9 +123,6 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Deactivate equipment
-     */
     @PutMapping(value = "/{id}/deactivate")
     public ResponseEntity<Void> deactivateEquipment(@PathVariable Long id) {
         try {
@@ -158,9 +134,6 @@ public class EquipmentRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Activate equipment
-     */
     @PutMapping(value = "/{id}/activate")
     public ResponseEntity<Void> activateEquipment(@PathVariable Long id) {
         try {
