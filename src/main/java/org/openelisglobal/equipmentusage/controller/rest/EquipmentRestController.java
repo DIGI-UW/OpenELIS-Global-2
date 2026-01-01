@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.Setter;
+import org.hibernate.ObjectNotFoundException;
+import org.hibernate.StaleStateException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.equipmentusage.service.EquipmentService;
@@ -59,6 +61,8 @@ public class EquipmentRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(equipment);
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -104,6 +108,8 @@ public class EquipmentRestController extends BaseRestController {
             String currentUserId = getSysUserId(request);
             Equipment created = equipmentService.save(equipment, currentUserId);
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -117,6 +123,8 @@ public class EquipmentRestController extends BaseRestController {
             String currentUserId = getSysUserId(request);
             Equipment updated = equipmentService.save(equipment, currentUserId);
             return ResponseEntity.ok(updated);
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

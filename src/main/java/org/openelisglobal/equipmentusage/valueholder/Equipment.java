@@ -1,6 +1,7 @@
 package org.openelisglobal.equipmentusage.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
@@ -76,6 +77,7 @@ public class Equipment extends BaseObject<Long> implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = true, foreignKey = @jakarta.persistence.ForeignKey(name = "fk_equipment_created_by"))
+    @JsonIgnore
     private SystemUser createdBy;
 
     @Column(name = "created_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
@@ -84,6 +86,7 @@ public class Equipment extends BaseObject<Long> implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "modified_by", nullable = true, foreignKey = @jakarta.persistence.ForeignKey(name = "fk_equipment_modified_by"))
+    @JsonIgnore
     private SystemUser modifiedBy;
 
     @Column(name = "modified_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")

@@ -4,44 +4,39 @@
     <system_user id="1" login_name="admin" last_name="Administrator"
         first_name="Admin" is_active="Y" is_employee="Y" />
 
-    <!-- Insert equipment data -->
-    <equipment id="1" name="Freezer Unit A" serial_number="SN-001"
+    <!-- Insert equipment data with IDs in 10000+ range to avoid sequence conflicts -->
+    <equipment id="10001" name="Freezer Unit A" serial_number="SN-001"
         department="Lab" manufacturer="Thermo Fisher" model_number="ULT-500"
         purchase_date="2022-01-15" last_calibration_date="2024-12-01"
         next_calibration_due="2025-06-01" is_active="Y"
         created_by="1" created_date="2025-01-01 12:00:00"
-        modified_by="1" modified_date="2025-01-01 12:00:00"
-        version="0" last_updated="2025-01-01 12:00:00" />
+        modified_by="1" modified_date="2025-01-01 12:00:00" />
 
-    <equipment id="2" name="Centrifuge B" serial_number="SN-002"
+    <equipment id="10002" name="Centrifuge B" serial_number="SN-002"
         department="Lab" manufacturer="Eppendorf" model_number="5810R"
         purchase_date="2021-06-10" last_calibration_date="2024-11-15"
         next_calibration_due="2025-05-15" is_active="Y"
         created_by="1" created_date="2025-01-01 12:00:00"
-        modified_by="1" modified_date="2025-01-01 12:00:00"
-        version="0" last_updated="2025-01-01 12:00:00" />
+        modified_by="1" modified_date="2025-01-01 12:00:00" />
 
-    <equipment id="3" name="Freezer Unit C" serial_number="SN-003"
+    <equipment id="10003" name="Freezer Unit C" serial_number="SN-003"
         department="Lab" manufacturer="Haier" model_number="DW-40L"
         purchase_date="2023-03-20" last_calibration_date="2024-09-01"
         next_calibration_due="2025-03-01" is_active="Y"
         created_by="1" created_date="2025-01-01 12:00:00"
-        modified_by="1" modified_date="2025-01-01 12:00:00"
-        version="0" last_updated="2025-01-01 12:00:00" />
+        modified_by="1" modified_date="2025-01-01 12:00:00" />
 
-    <equipment id="4" name="Incubator D" serial_number="SN-004"
+    <equipment id="10004" name="Incubator D" serial_number="SN-004"
         department="Lab" manufacturer="Memmert" model_number="ICP-400"
         purchase_date="2022-11-05" last_calibration_date="2024-10-20"
         next_calibration_due="2025-04-20" is_active="Y"
         created_by="1" created_date="2025-01-01 12:00:00"
-        modified_by="1" modified_date="2025-01-01 12:00:00"
-        version="0" last_updated="2025-01-01 12:00:00" />
+        modified_by="1" modified_date="2025-01-01 12:00:00" />
 
-    <equipment id="5" name="Balance E" serial_number="SN-005"
+    <equipment id="10005" name="Balance E" serial_number="SN-005"
         department="Lab" manufacturer="Ohaus" model_number="Explorer Pro"
         purchase_date="2020-05-12" last_calibration_date="2024-12-15"
         next_calibration_due="2025-06-15" is_active="Y"
         created_by="1" created_date="2025-01-01 12:00:00"
-        modified_by="1" modified_date="2025-01-01 12:00:00"
-        version="0" last_updated="2025-01-01 12:00:00" />
+        modified_by="1" modified_date="2025-01-01 12:00:00" />
 </dataset>

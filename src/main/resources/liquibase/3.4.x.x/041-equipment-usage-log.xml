@@ -270,4 +270,12 @@
         </insert>
     </changeSet>
 
+    <!-- Fix equipment sequence to start above test data range -->
+    <changeSet author="openelis" id="fix-equipment-sequence-for-tests">
+        <comment>Update equipment sequence to start from 20000 to avoid conflict with test data in 10000+ range</comment>
+        <sql>
+            SELECT setval('clinlims.equipment_seq', 20000, false);
+        </sql>
+    </changeSet>
+
 </databaseChangeLog>
