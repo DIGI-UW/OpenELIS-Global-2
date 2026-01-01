@@ -48,7 +48,17 @@ public interface EquipmentService extends BaseObjectService<Equipment, Long> {
     void deactivateEquipment(Long equipmentId);
 
     /**
+     * Deactivate equipment with user context for audit trail
+     */
+    void deactivateEquipment(Long equipmentId, String currentUserId);
+
+    /**
      * Activate equipment
      */
     void activateEquipment(Long equipmentId);
+
+    /**
+     * Activate equipment with user context for audit trail
+     */
+    void activateEquipment(Long equipmentId, String currentUserId);
 }

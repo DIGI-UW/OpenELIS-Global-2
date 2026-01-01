@@ -118,16 +118,46 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
     @Override
     @Transactional
     public void deactivateEquipment(Long equipmentId) {
+        deactivateEquipment(equipmentId, null);
+    }
+
+    @Override
+    @Transactional
+    public void deactivateEquipment(Long equipmentId, String currentUserId) {
         Equipment equipment = get(equipmentId);
         equipment.setIsActive("N");
+        equipment.setModifiedDate(java.time.LocalDateTime.now());
+        if (currentUserId != null && !currentUserId.trim().isEmpty()) {
+            equipment.setSysUserId(currentUserId);
+            SystemUser modifiedBy = systemUserService.get(currentUserId);
+            if (modifiedBy != null) {
+                equipment.setModifiedBy(modifiedBy);
+            }
+        }
+        equipment.setLastupdatedFields();
         update(equipment);
     }
 
     @Override
     @Transactional
     public void activateEquipment(Long equipmentId) {
+        activateEquipment(equipmentId, null);
+    }
+
+    @Override
+    @Transactional
+    public void activateEquipment(Long equipmentId, String currentUserId) {
         Equipment equipment = get(equipmentId);
         equipment.setIsActive("Y");
+        equipment.setModifiedDate(java.time.LocalDateTime.now());
+        if (currentUserId != null && !currentUserId.trim().isEmpty()) {
+            equipment.setSysUserId(currentUserId);
+            SystemUser modifiedBy = systemUserService.get(currentUserId);
+            if (modifiedBy != null) {
+                equipment.setModifiedBy(modifiedBy);
+            }
+        }
+        equipment.setLastupdatedFields();
         update(equipment);
     }
 }
