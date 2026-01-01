@@ -91,6 +91,7 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
             }
 
             if (currentUserId != null && !currentUserId.trim().isEmpty()) {
+                equipment.setSysUserId(currentUserId);
                 SystemUser createdBy = systemUserService.get(currentUserId);
                 if (createdBy != null) {
                     equipment.setCreatedBy(createdBy);
@@ -105,6 +106,7 @@ public class EquipmentServiceImpl extends AuditableBaseObjectServiceImpl<Equipme
 
         equipment.setModifiedDate(java.time.LocalDateTime.now());
         if (currentUserId != null && !currentUserId.trim().isEmpty()) {
+            equipment.setSysUserId(currentUserId);
             SystemUser modifiedBy = systemUserService.get(currentUserId);
             if (modifiedBy != null) {
                 equipment.setModifiedBy(modifiedBy);
