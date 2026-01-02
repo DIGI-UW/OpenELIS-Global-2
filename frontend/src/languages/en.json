@@ -3301,6 +3301,7 @@
   "equipment.usage.chooseEquipment": "Choose Equipment",
   "equipment.usage.useThisEquipment": "Use this equipment",
   "equipment.usage.logTable": "Equipment Usage Log",
+  "equipment.usage.emptyTable": "No usage records yet. Click 'Add Row' below to start recording equipment usage.",
   "equipment.usage.table.date": "Date",
   "equipment.usage.table.operatorName": "Operator Name",
   "equipment.usage.table.loginTime": "Login Time",

@@ -176,6 +176,23 @@
   border-radius: 4px;
 }
 
+/* Empty State */
+.emptyStateSection {
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-top: 12px;
+}
+
+.emptyStateSection p {
+  margin: 0;
+  font-size: 14px;
+  color: #525252;
+  line-height: 1.5;
+}
+
 .usageLogTable {
   width: 100%;
   border-collapse: collapse;

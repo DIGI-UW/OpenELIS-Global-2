@@ -101,18 +101,7 @@ const EquipmentUsageLog = () => {
   const [showChooseEquipmentModal, setShowChooseEquipmentModal] = useState(false);
 
   // Usage Log Table State
-  const [usageRows, setUsageRows] = useState([
-    {
-      id: 1,
-      date: getCurrentDate(),
-      operatorName: userSessionDetails?.firstName || "",
-      loginTime: getCurrentTime(),
-      activities: "",
-      equipmentStatus: "Functional",
-      logoutTime: getCurrentTime(),
-      signature: userSessionDetails?.firstName || "",
-    },
-  ]);
+  const [usageRows, setUsageRows] = useState([]);
 
   // Form State
   const [isSaving, setIsSaving] = useState(false);
@@ -460,35 +449,45 @@ const EquipmentUsageLog = () => {
               <h3>
                 <FormattedMessage id="equipment.usage.logTable" />
               </h3>
-              <div className="tableWrapper">
-                <table className="usageLogTable">
-                  <thead>
-                    <tr>
-                      <th>
-                        <FormattedMessage id="equipment.usage.table.date" />
-                      </th>
-                      <th>
-                        <FormattedMessage id="equipment.usage.table.operatorName" />
-                      </th>
-                      <th>
-                        <FormattedMessage id="equipment.usage.table.loginTime" />
-                      </th>
-                      <th>
-                        <FormattedMessage id="equipment.usage.table.activities" />
-                      </th>
-                      <th>
-                        <FormattedMessage id="equipment.usage.table.equipmentStatus" />
-                      </th>
-                      <th>
-                        <FormattedMessage id="equipment.usage.table.logoutTime" />
-                      </th>
-                      <th>
-                        <FormattedMessage id="equipment.usage.table.signature" />
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usageRows.map((row) => (
+              {usageRows.length === 0 ? (
+                <div className="emptyStateSection">
+                  <p>
+                    <FormattedMessage
+                      id="equipment.usage.emptyTable"
+                      defaultMessage="No usage records yet. Click 'Add Row' below to start recording equipment usage."
+                    />
+                  </p>
+                </div>
+              ) : (
+                <div className="tableWrapper">
+                  <table className="usageLogTable">
+                    <thead>
+                      <tr>
+                        <th>
+                          <FormattedMessage id="equipment.usage.table.date" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="equipment.usage.table.operatorName" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="equipment.usage.table.loginTime" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="equipment.usage.table.activities" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="equipment.usage.table.equipmentStatus" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="equipment.usage.table.logoutTime" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="equipment.usage.table.signature" />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usageRows.map((row) => (
                       <tr key={row.id}>
                         <td>
                           <DatePickerInput
@@ -569,10 +568,11 @@ const EquipmentUsageLog = () => {
                           />
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons - Bottom */}
