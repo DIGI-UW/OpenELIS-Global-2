@@ -246,28 +246,38 @@ const EquipmentUsageLog = () => {
       };
 
       CartridgeUsageAPI.recordUsage(consumeRequest, (response) => {
-        console.log("Usage recorded:", response);
-        notify({
-          kind: NotificationKinds.success,
-          title: "Success",
-          subtitle: intl.formatMessage({ id: "equipment.usage.message.submitted" }),
-        });
-        // Clear draft
-        localStorage.removeItem("equipmentUsageDraft");
-        // Reset form
-        setUsageRows([
-          {
-            id: 1,
-            date: "",
-            operatorName: "",
-            loginTime: "",
-            activities: "",
-            equipmentStatus: "Functional",
-            logoutTime: "",
-            signature: "",
-          },
-        ]);
-        setIsSubmitting(false);
+        if (response.ok) {
+          response.json().then((data) => {
+            console.log("Usage recorded:", data);
+
+            // Build a detailed message showing consumed lots
+            const consumedLotsInfo = data.consumedLots
+              ?.map(
+                (lot) =>
+                  `${lot.lotNumber || `Lot ${lot.lotId}`}: ${lot.quantityConsumed} unit(s) consumed (${lot.remainingQuantity} remaining)`
+              )
+              .join(", ") || "Consumption recorded";
+
+            notify({
+              kind: NotificationKinds.success,
+              title: "Success",
+              subtitle: intl.formatMessage(
+                { id: "equipment.usage.message.consumedLots" },
+                { lots: consumedLotsInfo }
+              ),
+            });
+
+            // Clear draft
+            localStorage.removeItem("equipmentUsageDraft");
+
+            // Reset form
+            setUsageRows([]);
+            setSelectedEquipment(null);
+            setIsSubmitting(false);
+          });
+        } else {
+          throw new Error("Failed to record usage");
+        }
       });
     } catch (error) {
       console.error("Error submitting usage:", error);

@@ -3341,6 +3341,7 @@
   "equipment.usage.message.saveDraft": "Draft saved successfully",
   "equipment.usage.message.submitted": "Usage submitted successfully",
   "equipment.usage.message.loadedDraft": "Draft loaded successfully",
+  "equipment.usage.message.consumedLots": "Consumption recorded: {lots}",
   "equipment.usage.noHistory": "No usage history found",
   "equipment.usage.reports.title": "Equipment Usage Report",
   "equipment.usage.reports.selectDateRange": "Select Date Range",
