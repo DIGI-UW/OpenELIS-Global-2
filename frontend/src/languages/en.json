@@ -3368,5 +3368,6 @@
   "common.clearFilters": "Clear Filters",
   "common.export": "Export",
   "common.print": "Print",
-  "common.close": "Close"
+  "common.close": "Close",
+  "common.clear": "Clear"
 }
