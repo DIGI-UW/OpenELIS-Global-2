@@ -5,21 +5,22 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <changeSet author="mherman22" id="equipment-usage-log-add-submenu">
+    <!-- Add Equipment Usage menu item as child of Inventory menu -->
+    <changeSet id="add-equipment-usage-menu" author="openelis">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_equipment_management';
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_equipment_usage';
             </sqlCheck>
         </preConditions>
-        <comment>Add Equipment Management as submenu item under Inventory menu</comment>
+        <comment>Add Equipment Usage tracking as submenu of Inventory Management</comment>
         <insert tableName="menu" schemaName="clinlims">
             <column name="id" valueSequenceNext="menu_seq" />
             <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')" />
-            <column name="presentation_order" value="2" />
-            <column name="element_id" value="menu_equipment_management" />
+            <column name="presentation_order" value="100" />
+            <column name="element_id" value="menu_equipment_usage" />
             <column name="action_url" value="/equipment-usage" />
-            <column name="display_key" value="sidenav.label.equipment.management" />
-            <column name="tool_tip_key" value="tooltip.equipment.management" />
+            <column name="display_key" value="sidenav.label.equipment.usage" />
+            <column name="tool_tip_key" value="sidenav.label.equipment.usage.tooltip" />
             <column name="new_window" valueBoolean="false" />
             <column name="is_active" valueBoolean="true" />
             <column name="hide_in_old_ui" valueBoolean="true" />
