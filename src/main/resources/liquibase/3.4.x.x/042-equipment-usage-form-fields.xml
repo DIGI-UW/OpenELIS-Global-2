@@ -40,12 +40,6 @@
         </addColumn>
 
         <addColumn schemaName="clinlims" tableName="inventory_usage">
-            <column name="usage_date" type="VARCHAR(50)" remarks="Date of equipment usage">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
-
-        <addColumn schemaName="clinlims" tableName="inventory_usage">
             <column name="approved_by" type="VARCHAR(255)" remarks="Name of person who approved the usage">
                 <constraints nullable="true"/>
             </column>
