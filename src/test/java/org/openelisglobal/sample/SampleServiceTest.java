@@ -12,6 +12,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.stream.Collectors;
 import java.util.List;
+import java.util.Arrays;
+import java.util.ArrayList;
 import org.dbunit.DatabaseUnitException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -23,6 +25,7 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.springframework.beans.factory.annotation.Autowired;
+
 
 public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
@@ -227,8 +230,8 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSamplesByStatusAndDomain_shouldReturnList() {
-        java.util.List<String> statuses = java.util.Arrays.asList("entered", "released");
-        java.util.List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "clinical");
+        List<String> statuses = Arrays.asList("entered", "released");
+        List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "clinical");
         Assert.assertTrue(
                 results.stream().allMatch(s -> statuses.contains(s.getStatus()))
         );
@@ -242,8 +245,8 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSamplesByAnalysisIds_shouldReturnList() {
-        java.util.List<String> analysisIds = new java.util.ArrayList<>();
-        java.util.List<Sample> results = sampleService.getSamplesByAnalysisIds(analysisIds);
+        List<String> analysisIds = new ArrayList<>();
+        List<Sample> results = sampleService.getSamplesByAnalysisIds(analysisIds);
         Assert.assertNotNull(results);
         Assert.assertTrue("Empty analysis IDs should return empty list", results.isEmpty());
     }
@@ -280,13 +283,13 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSamplesWithPendingQaEventsByService_shouldReturnList() {
-        java.util.List<Sample> results = sampleService.getSamplesWithPendingQaEventsByService(DEFAULT_ID);
+        List<Sample> results = sampleService.getSamplesWithPendingQaEventsByService(DEFAULT_ID);
         Assert.assertNotNull(results);
     }
 
     @Test
     public void getAllMissingFhirUuid_shouldReturnList() {
-        java.util.List<Sample> results = sampleService.getAllMissingFhirUuid();
+        List<Sample> results = sampleService.getAllMissingFhirUuid();
         Assert.assertNotNull(results);
     }
 
