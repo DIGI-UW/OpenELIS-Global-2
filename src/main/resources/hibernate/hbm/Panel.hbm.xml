@@ -18,6 +18,9 @@
         <property name="panelName" type="java.lang.String">
             <column name="NAME" length="20" />
         </property>
+        <property name="code" type="java.lang.String">
+            <column name="CODE" length="50" />
+        </property>
         <property name="description" type="java.lang.String">
             <column name="DESCRIPTION" length="60" not-null="true" />
         </property>

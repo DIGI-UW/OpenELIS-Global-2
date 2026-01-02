@@ -23,7 +23,8 @@
         sort_order="2" />
     <panel id="1" name="Test Panel"
         description="This is a test panel." is_active="Y"
-        name_localization_id="1" loinc="12345" />
+        name_localization_id="1" loinc="12345"
+        last_updated="2026-01-01 00:00:00" />
     <panel id="2" name="Duplicate Panel"
         description="Duplicate description" is_active="N"
         name_localization_id="1" loinc="67890" />

@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.panel.valueholder;
 
+import java.sql.Timestamp;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 import org.openelisglobal.common.valueholder.ValueHolder;
@@ -26,6 +27,7 @@ public class Panel extends EnumValueItemImpl {
 
     private String id;
     private String panelName;
+    private String code;
     private String description;
     private String loinc;
 
@@ -52,6 +54,14 @@ public class Panel extends EnumValueItemImpl {
 
     public void setPanelName(String panelName) {
         this.panelName = panelName;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public String getDescription() {
@@ -104,5 +114,15 @@ public class Panel extends EnumValueItemImpl {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    private Timestamp lastUpdated;
+
+    public Timestamp getLastUpdated() {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(Timestamp lastUpdated) {
+        this.lastUpdated = lastUpdated;
     }
 }

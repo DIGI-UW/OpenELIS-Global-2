@@ -180,4 +180,23 @@
         </rollback>
     </changeSet>
 
+    <!-- ========================================================= -->
+    <!-- Add last_updated column to panel table                    -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-007-add-last-updated" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="panel" columnName="last_updated"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="panel">
+            <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="panel" columnName="last_updated"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

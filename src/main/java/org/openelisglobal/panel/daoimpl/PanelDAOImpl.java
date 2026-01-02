@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.panel.daoimpl;
 
+import jakarta.persistence.OptimisticLockException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -187,6 +188,12 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             // duplicates
             String sql = "from Panel t where trim(lower(t.panelName)) = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            // Prevent auto-flush before executing this read-only duplicate check. Flushing
+            // here
+            // can cause pending updates on the managed entity to be applied too early and
+            // trigger optimistic locking failures when the object's version is null or
+            // otherwise mismatched.
+            query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getPanelName().toLowerCase().trim());
 
             // initialize with 0 (for new records where no id has been generated
@@ -221,6 +228,7 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             // duplicates
             String sql = "from Panel t where trim(lower(t.description)) = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getDescription().toLowerCase().trim());
 
             // initialize with 0 (for new records where no id has been generated
@@ -242,6 +250,62 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in duplicatePanelDescriptionExists()", e);
+        }
+    }
+
+    @Override
+    public boolean duplicatePanelCodeExists(Panel panel) throws LIMSRuntimeException {
+        try {
+
+            if (StringUtil.isNullorNill(panel.getCode())) {
+                return false;
+            }
+
+            List<Panel> list = new ArrayList<>();
+
+            String sql = "from Panel t where t.code = :param and t.id != :panelId";
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
+            query.setParameter("param", panel.getCode());
+
+            String panelId = "0";
+            if (!StringUtil.isNullorNill(panel.getId())) {
+                panelId = panel.getId();
+            }
+            query.setParameter("panelId", Integer.parseInt(panelId));
+
+            list = query.list();
+
+            return !list.isEmpty();
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in duplicatePanelCodeExists()", e);
+        }
+    }
+
+    @Override
+    public void updatePanelFields(Panel panel) throws LIMSRuntimeException {
+        try {
+            Session session = entityManager.unwrap(Session.class);
+
+            int updated = session.createNativeQuery("UPDATE panel " + "SET name = :name, " + "    code = :code, "
+                    + "    description = :description, " + "    loinc = :loinc, " + "    is_active = :active, "
+                    + "    lastupdated = :now " + "WHERE id = :id " +
+
+                    "").setParameter("name", panel.getPanelName()).setParameter("code", panel.getCode())
+                    .setParameter("description", panel.getDescription()).setParameter("loinc", panel.getLoinc())
+                    .setParameter("active", panel.getIsActive())
+                    .setParameter("now", new java.sql.Timestamp(System.currentTimeMillis()))
+                    .setParameter("id", Integer.parseInt(panel.getId())).executeUpdate();
+
+            if (updated != 1) {
+                throw new OptimisticLockException("Panel was modified concurrently");
+            }
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in updatePanelFields()", e);
         }
     }
 
@@ -296,6 +360,35 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
     public void clearIDMaps() {
         ID_NAME_MAP = null;
         ID_DESCRIPTION_MAP = null;
+    }
+
+    @Override
+    public String insert(Panel panel) {
+        try {
+            entityManager.createNativeQuery(
+                    "SELECT setval('clinlims.panel_seq', (SELECT CAST(COALESCE(MAX(id),0) AS bigint) FROM clinlims.panel) + 1)")
+                    .getSingleResult();
+        } catch (Exception e) {
+
+            LogEvent.logWarn(this.getClass().getSimpleName(), "insert", "Failed to sync panel_seq: " + e.getMessage());
+        }
+        return super.insert(panel);
+    }
+
+    @Override
+    public void ensureSequence() {
+        try {
+
+            Number maxId = (Number) entityManager.createNativeQuery("select coalesce(max(id),0) from clinlims.panel")
+                    .getSingleResult();
+
+            String sql = "select setval('clinlims.panel_seq', CAST(" + maxId.longValue() + " AS bigint), true)";
+            LogEvent.logDebug(this.getClass().getSimpleName(), "ensureSequence", "Executing SQL: " + sql);
+            entityManager.createNativeQuery(sql).getSingleResult();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ensureSequence()", e);
+        }
     }
 
     @Override

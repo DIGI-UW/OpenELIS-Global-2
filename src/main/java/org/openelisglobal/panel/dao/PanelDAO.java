@@ -62,7 +62,24 @@ public interface PanelDAO extends BaseDAO<Panel, String> {
 
     boolean duplicatePanelDescriptionExists(Panel panel);
 
+    boolean duplicatePanelCodeExists(Panel panel);
+
     void clearIDMaps();
 
+    /**
+     * Ensure the database sequence used for panel IDs is advanced to avoid
+     * collisions with preloaded dataset IDs (tests/liquibase may insert explicit
+     * IDs).
+     */
+    void ensureSequence();
+
     Panel getPanelByLoincCode(String loincCode);
+
+    /**
+     * Update panel fields without relying on optimistic locking (used when version
+     * is null or legacy rows exist). Implementations should update key fields and
+     * the lastupdated timestamp using a bulk JPQL update to avoid version-based
+     * WHERE checks failing on NULL values.
+     */
+    void updatePanelFields(Panel panel);
 }
