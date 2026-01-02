@@ -17,6 +17,7 @@ import java.sql.Timestamp;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.test.valueholder.TestSection;
 
 @Getter
 @Setter
@@ -61,4 +62,8 @@ public class InventoryUsage extends BaseObject<Long> {
     @Column(name = "performed_by_user", nullable = false)
     @NotNull
     private Integer performedByUser;
+
+    @ManyToOne
+    @JoinColumn(name = "lab_unit_id", nullable = true)
+    private TestSection labUnit;
 }

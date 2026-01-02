@@ -239,7 +239,8 @@
 
 /* Print Styles */
 @media print {
-  .equipmentUsageReportContainer > *:not(.printableReport):not(.reportActionsSection) {
+  .equipmentUsageReportContainer
+    > *:not(.printableReport):not(.reportActionsSection) {
     display: none;
   }
 

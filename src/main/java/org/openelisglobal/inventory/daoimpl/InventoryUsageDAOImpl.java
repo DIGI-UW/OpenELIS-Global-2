@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.daoimpl;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -67,6 +68,49 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> imp
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting usage by analysis ID", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryUsage> getByLabUnitId(String labUnitId) throws LIMSRuntimeException {
+        try {
+            String hql = "FROM InventoryUsage u WHERE u.labUnit.id = :labUnitId ORDER BY u.usageDate DESC";
+            Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);
+            query.setParameter("labUnitId", labUnitId);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting usage by lab unit ID", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException {
+        try {
+            String hql = "FROM InventoryUsage u WHERE u.usageDate >= :startDate AND u.usageDate <= :endDate ORDER BY u.usageDate DESC";
+            Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);
+            query.setParameter("startDate", startDate);
+            query.setParameter("endDate", endDate);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting usage by date range", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryUsage> getByItemIdAndDateRange(Long itemId, Timestamp startDate, Timestamp endDate)
+            throws LIMSRuntimeException {
+        try {
+            String hql = "FROM InventoryUsage u WHERE u.inventoryItem.id = :itemId AND u.usageDate >= :startDate AND u.usageDate <= :endDate ORDER BY u.usageDate DESC";
+            Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);
+            query.setParameter("itemId", itemId);
+            query.setParameter("startDate", startDate);
+            query.setParameter("endDate", endDate);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting usage by item ID and date range", e);
         }
     }
 }

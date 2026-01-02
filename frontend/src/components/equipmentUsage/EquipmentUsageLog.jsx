@@ -21,10 +21,11 @@ import {
   DropdownItem,
   TimePicker,
   TimePickerSelect,
+  Tile,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CartridgeUsageAPI from "./EquipmentUsageService";
 import ChooseEquipmentModal from "./modals/ChooseEquipment";
@@ -61,15 +62,16 @@ const EquipmentUsageLog = () => {
     useContext(NotificationContext);
 
   const notify = useCallback(
-    ({ kind = NotificationKinds.info, title, subtitle }) => {
+    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
       addNotification({
         kind,
         title,
         subtitle,
+        message,
       });
     },
-    [addNotification, setNotificationVisible]
+    [addNotification, setNotificationVisible],
   );
 
   // Helper function to format time as HH:MM
@@ -98,7 +100,8 @@ const EquipmentUsageLog = () => {
   const [equipmentError, setEquipmentError] = useState(null);
 
   // Modal State
-  const [showChooseEquipmentModal, setShowChooseEquipmentModal] = useState(false);
+  const [showChooseEquipmentModal, setShowChooseEquipmentModal] =
+    useState(false);
 
   // Usage Log Table State
   const [usageRows, setUsageRows] = useState([]);
@@ -106,6 +109,20 @@ const EquipmentUsageLog = () => {
   // Form State
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Metrics and Usage History State
+  const [metrics, setMetrics] = useState({
+    totalEquipmentCount: 0,
+    totalUsageRecords: 0,
+    usageByEquipment: [],
+    usageByLab: [],
+  });
+  const [usageHistory, setUsageHistory] = useState([]);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: "",
+    endDate: "",
+  });
 
   // Load Equipment (Cartridges) on Mount
   useEffect(() => {
@@ -120,7 +137,7 @@ const EquipmentUsageLog = () => {
               setEquipment(data);
             } else {
               setEquipmentError(
-                intl.formatMessage({ id: "equipment.error.loadFailed" })
+                intl.formatMessage({ id: "equipment.error.loadFailed" }),
               );
             }
             setLoadingEquipment(false);
@@ -128,15 +145,15 @@ const EquipmentUsageLog = () => {
           (error) => {
             console.error("Error loading equipment:", error);
             setEquipmentError(
-              intl.formatMessage({ id: "equipment.error.loadFailed" })
+              intl.formatMessage({ id: "equipment.error.loadFailed" }),
             );
             setLoadingEquipment(false);
-          }
+          },
         );
       } catch (error) {
         console.error("Error fetching equipment:", error);
         setEquipmentError(
-          intl.formatMessage({ id: "equipment.error.loadFailed" })
+          intl.formatMessage({ id: "equipment.error.loadFailed" }),
         );
         setLoadingEquipment(false);
       }
@@ -144,6 +161,49 @@ const EquipmentUsageLog = () => {
 
     fetchEquipment();
   }, [intl]);
+
+  // Fetch Metrics and Usage History
+  const fetchMetricsAndHistory = useCallback(() => {
+    if (!selectedEquipment) return;
+
+    setLoadingMetrics(true);
+
+    // Fetch metrics
+    CartridgeUsageAPI.getEquipmentUsageMetrics(
+      dateRange.startDate || null,
+      dateRange.endDate || null,
+      (data) => {
+        if (data && typeof data === "object") {
+          setMetrics(data);
+        }
+      },
+      (error) => {
+        console.error("Error loading metrics:", error);
+      },
+    );
+
+    // Fetch usage history for selected equipment
+    CartridgeUsageAPI.getEquipmentUsageHistory(
+      selectedEquipment.id,
+      dateRange.startDate || null,
+      dateRange.endDate || null,
+      (data) => {
+        if (data && Array.isArray(data)) {
+          setUsageHistory(data);
+        }
+        setLoadingMetrics(false);
+      },
+      (error) => {
+        console.error("Error loading usage history:", error);
+        setLoadingMetrics(false);
+      },
+    );
+  }, [selectedEquipment, dateRange]);
+
+  // Load metrics and history when equipment is selected or date range changes
+  useEffect(() => {
+    fetchMetricsAndHistory();
+  }, [fetchMetricsAndHistory]);
 
   // Handle Equipment Selection
   const handleSelectEquipment = (equipment) => {
@@ -176,7 +236,9 @@ const EquipmentUsageLog = () => {
   // Update row field
   const handleRowChange = (rowId, field, value) => {
     setUsageRows(
-      usageRows.map((row) => (row.id === rowId ? { ...row, [field]: value } : row))
+      usageRows.map((row) =>
+        row.id === rowId ? { ...row, [field]: value } : row,
+      ),
     );
   };
 
@@ -185,8 +247,10 @@ const EquipmentUsageLog = () => {
     if (!selectedEquipment) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: intl.formatMessage({ id: "equipment.usage.error.selectEquipment" }),
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.error.selectEquipment",
+        }),
       });
       return;
     }
@@ -202,28 +266,34 @@ const EquipmentUsageLog = () => {
       localStorage.setItem("equipmentUsageDraft", JSON.stringify(draftData));
       notify({
         kind: NotificationKinds.success,
-        title: "Success",
-        subtitle: intl.formatMessage({ id: "equipment.usage.message.saveDraft" }),
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.message.saveDraft",
+        }),
       });
     } catch (error) {
       console.error("Error saving draft:", error);
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: intl.formatMessage({ id: "equipment.usage.error.saveFailed" }),
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.error.saveFailed",
+        }),
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Submit to Server (Record Usage)
+  // Submit to Server (Record Equipment Usage - without inventory deduction)
   const handleSubmit = () => {
     if (!selectedEquipment) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: intl.formatMessage({ id: "equipment.usage.error.selectEquipment" }),
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.error.selectEquipment",
+        }),
       });
       return;
     }
@@ -231,60 +301,121 @@ const EquipmentUsageLog = () => {
     if (usageRows.length === 0) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: intl.formatMessage({ id: "equipment.usage.error.noRows" }),
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "equipment.usage.error.noRows" }),
       });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Record usage via inventory API
-      const consumeRequest = {
-        itemId: selectedEquipment.id,
-        quantity: usageRows.length, // Number of usage entries as quantity
-      };
-
-      CartridgeUsageAPI.recordUsage(consumeRequest, (response) => {
-        if (response.ok) {
-          response.json().then((data) => {
-            console.log("Usage recorded:", data);
-
-            // Build a detailed message showing consumed lots
-            const consumedLotsInfo = data.consumedLots
-              ?.map(
-                (lot) =>
-                  `${lot.lotNumber || `Lot ${lot.lotId}`}: ${lot.quantityConsumed} unit(s) consumed (${lot.remainingQuantity} remaining)`
-              )
-              .join(", ") || "Consumption recorded";
-
+      // Get the first available lot for this equipment
+      CartridgeUsageAPI.getAvailableLots(
+        selectedEquipment.id,
+        (lots) => {
+          if (!lots || lots.length === 0) {
             notify({
-              kind: NotificationKinds.success,
-              title: "Success",
-              subtitle: intl.formatMessage(
-                { id: "equipment.usage.message.consumedLots" },
-                { lots: consumedLotsInfo }
-              ),
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: intl.formatMessage({
+                id: "equipment.usage.error.noLotsAvailable",
+              }),
             });
-
-            // Clear draft
-            localStorage.removeItem("equipmentUsageDraft");
-
-            // Reset form
-            setUsageRows([]);
-            setSelectedEquipment(null);
             setIsSubmitting(false);
+            return;
+          }
+
+          // Use the first available lot
+          const lot = lots[0];
+          const usageRequest = {
+            itemId: selectedEquipment.id,
+            lotId: lot.id,
+            quantity: 1, // Equipment usage counts as 1 unit per log entry
+            labUnitId: userSessionDetails?.labUnit || "",
+          };
+
+          // Record equipment usage (without reducing inventory)
+          CartridgeUsageAPI.recordEquipmentUsage(
+            usageRequest,
+            (response) => {
+              console.log("=== USAGE RECORDED CALLBACK ===", response);
+              if (response.ok) {
+                response
+                  .json()
+                  .then((data) => {
+                    console.log("Equipment usage recorded:", data);
+
+                    notify({
+                      kind: NotificationKinds.success,
+                      title: intl.formatMessage({ id: "notification.success" }),
+                      message: intl.formatMessage({
+                        id: "equipment.usage.message.recordedSuccess",
+                      }),
+                    });
+
+                    // Clear draft
+                    localStorage.removeItem("equipmentUsageDraft");
+
+                    // Reset form
+                    setUsageRows([]);
+
+                    // Refresh metrics and history
+                    fetchMetricsAndHistory();
+
+                    setIsSubmitting(false);
+                  })
+                  .catch((error) => {
+                    console.error("Error parsing response:", error);
+                    notify({
+                      kind: NotificationKinds.error,
+                      title: intl.formatMessage({ id: "notification.error" }),
+                      message: "Failed to process response",
+                    });
+                    setIsSubmitting(false);
+                  });
+              } else {
+                console.error("Response not OK:", response.status);
+                notify({
+                  kind: NotificationKinds.error,
+                  title: intl.formatMessage({ id: "notification.error" }),
+                  message: intl.formatMessage({
+                    id: "equipment.usage.error.submitFailed",
+                  }),
+                });
+                setIsSubmitting(false);
+              }
+            },
+            (error) => {
+              console.error("Error submitting usage:", error);
+              notify({
+                kind: NotificationKinds.error,
+                title: intl.formatMessage({ id: "notification.error" }),
+                message: intl.formatMessage({
+                  id: "equipment.usage.error.submitFailed",
+                }),
+              });
+              setIsSubmitting(false);
+            },
+          );
+        },
+        (error) => {
+          console.error("Error loading lots:", error);
+          notify({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: "Failed to load available lots",
           });
-        } else {
-          throw new Error("Failed to record usage");
-        }
-      });
+          setIsSubmitting(false);
+        },
+      );
     } catch (error) {
       console.error("Error submitting usage:", error);
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: intl.formatMessage({ id: "equipment.usage.error.submitFailed" }),
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.error.submitFailed",
+        }),
       });
       setIsSubmitting(false);
     }
@@ -295,27 +426,30 @@ const EquipmentUsageLog = () => {
     try {
       const draftData = localStorage.getItem("equipmentUsageDraft");
       if (draftData) {
-        const { equipment: savedEquipment, rows: savedRows } = JSON.parse(draftData);
+        const { equipment: savedEquipment, rows: savedRows } =
+          JSON.parse(draftData);
         setSelectedEquipment(savedEquipment);
         setUsageRows(savedRows);
         notify({
           kind: NotificationKinds.success,
-          title: "Success",
-          subtitle: intl.formatMessage({ id: "equipment.usage.message.loadedDraft" }),
+          title: intl.formatMessage({ id: "notification.success" }),
+          message: intl.formatMessage({
+            id: "equipment.usage.message.loadedDraft",
+          }),
         });
       } else {
         notify({
           kind: NotificationKinds.error,
-          title: "Error",
-          subtitle: intl.formatMessage({ id: "equipment.usage.error.noDraft" }),
+          title: intl.formatMessage({ id: "notification.error" }),
+          message: intl.formatMessage({ id: "equipment.usage.error.noDraft" }),
         });
       }
     } catch (error) {
       console.error("Error loading draft:", error);
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
       });
     }
   };
@@ -342,8 +476,10 @@ const EquipmentUsageLog = () => {
     if (!selectedEquipment) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: intl.formatMessage({ id: "equipment.usage.error.selectEquipment" }),
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({
+          id: "equipment.usage.error.selectEquipment",
+        }),
       });
       return;
     }
@@ -352,6 +488,7 @@ const EquipmentUsageLog = () => {
 
   return (
     <>
+      <AlertDialog />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <div className="equipmentUsageContainer">
@@ -391,7 +528,9 @@ const EquipmentUsageLog = () => {
                   <div className="equipmentListSection">
                     <div className="equipmentItem">
                       <div className="equipmentItemContent">
-                        <span className="equipmentName">{selectedEquipment.name}</span>
+                        <span className="equipmentName">
+                          {selectedEquipment.name}
+                        </span>
                         <span className="equipmentSerial">
                           {selectedEquipment.catalogNumber || "No serial"}
                         </span>
@@ -448,7 +587,12 @@ const EquipmentUsageLog = () => {
                     <label>
                       <FormattedMessage id="equipment.department" />
                     </label>
-                    <input type="text" value="MNTD" readOnly className="detailsInput" />
+                    <input
+                      type="text"
+                      value="MNTD"
+                      readOnly
+                      className="detailsInput"
+                    />
                   </div>
                 </div>
               </div>
@@ -498,88 +642,118 @@ const EquipmentUsageLog = () => {
                     </thead>
                     <tbody>
                       {usageRows.map((row) => (
-                      <tr key={row.id}>
-                        <td>
-                          <DatePicker dateFormat="mm/dd/yyyy">
-                            <DatePickerInput
-                              id={`date-picker-${row.id}`}
-                              labelText="Date"
-                              placeholder="mm/dd/yyyy"
-                              value={row.date}
+                        <tr key={row.id}>
+                          <td>
+                            <DatePicker dateFormat="mm/dd/yyyy">
+                              <DatePickerInput
+                                id={`date-picker-${row.id}`}
+                                labelText="Date"
+                                placeholder="mm/dd/yyyy"
+                                value={row.date}
+                                onChange={(e) =>
+                                  handleRowChange(
+                                    row.id,
+                                    "date",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </DatePicker>
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={row.operatorName}
                               onChange={(e) =>
-                                handleRowChange(row.id, "date", e.target.value)
+                                handleRowChange(
+                                  row.id,
+                                  "operatorName",
+                                  e.target.value,
+                                )
                               }
+                              placeholder="Operator name"
+                              className="tableInput"
                             />
-                          </DatePicker>
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            value={row.operatorName}
-                            onChange={(e) =>
-                              handleRowChange(row.id, "operatorName", e.target.value)
-                            }
-                            placeholder="Operator name"
-                            className="tableInput"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="time"
-                            value={row.loginTime}
-                            onChange={(e) =>
-                              handleRowChange(row.id, "loginTime", e.target.value)
-                            }
-                            placeholder="HH:MM"
-                            className="tableInput"
-                          />
-                        </td>
-                        <td>
-                          <textarea
-                            value={row.activities}
-                            onChange={(e) =>
-                              handleRowChange(row.id, "activities", e.target.value)
-                            }
-                            placeholder="Activities"
-                            className="tableTextarea"
-                          />
-                        </td>
-                        <td>
-                          <select
-                            value={row.equipmentStatus}
-                            onChange={(e) =>
-                              handleRowChange(row.id, "equipmentStatus", e.target.value)
-                            }
-                            className="tableSelect"
-                          >
-                            <option value="Functional">Functional</option>
-                            <option value="Non-functional">Non-functional</option>
-                            <option value="Maintenance">Maintenance</option>
-                          </select>
-                        </td>
-                        <td>
-                          <input
-                            type="time"
-                            value={row.logoutTime}
-                            onChange={(e) =>
-                              handleRowChange(row.id, "logoutTime", e.target.value)
-                            }
-                            placeholder="HH:MM"
-                            className="tableInput"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            value={row.signature}
-                            onChange={(e) =>
-                              handleRowChange(row.id, "signature", e.target.value)
-                            }
-                            placeholder="Type name or upload"
-                            className="tableInput signatureInput"
-                          />
-                        </td>
-                      </tr>
+                          </td>
+                          <td>
+                            <input
+                              type="time"
+                              value={row.loginTime}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  row.id,
+                                  "loginTime",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="HH:MM"
+                              className="tableInput"
+                            />
+                          </td>
+                          <td>
+                            <textarea
+                              value={row.activities}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  row.id,
+                                  "activities",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Activities"
+                              className="tableTextarea"
+                            />
+                          </td>
+                          <td>
+                            <select
+                              value={row.equipmentStatus}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  row.id,
+                                  "equipmentStatus",
+                                  e.target.value,
+                                )
+                              }
+                              className="tableSelect"
+                            >
+                              <option value="Functional">Functional</option>
+                              <option value="Non-functional">
+                                Non-functional
+                              </option>
+                              <option value="Maintenance">Maintenance</option>
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="time"
+                              value={row.logoutTime}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  row.id,
+                                  "logoutTime",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="HH:MM"
+                              className="tableInput"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={row.signature}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  row.id,
+                                  "signature",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Type name or upload"
+                              className="tableInput signatureInput"
+                            />
+                          </td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
@@ -596,7 +770,9 @@ const EquipmentUsageLog = () => {
                 {usageRows.length > 1 && (
                   <Button
                     kind="danger"
-                    onClick={() => handleRemoveRow(usageRows[usageRows.length - 1].id)}
+                    onClick={() =>
+                      handleRemoveRow(usageRows[usageRows.length - 1].id)
+                    }
                   >
                     Remove Row
                   </Button>

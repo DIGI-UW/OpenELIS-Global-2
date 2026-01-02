@@ -46,7 +46,7 @@ const EquipmentUsagePrintableReport = () => {
         intl.formatMessage({
           id: "equipment.usage.error.selectDates",
           defaultMessage: "Please select both start and end dates",
-        })
+        }),
       );
       return;
     }
@@ -79,7 +79,7 @@ const EquipmentUsagePrintableReport = () => {
         intl.formatMessage({
           id: "equipment.usage.error.reportFailed",
           defaultMessage: "Failed to generate report",
-        })
+        }),
       );
       setLoading(false);
     }
@@ -97,7 +97,7 @@ const EquipmentUsagePrintableReport = () => {
         intl.formatMessage({
           id: "equipment.usage.error.noData",
           defaultMessage: "No data to export",
-        })
+        }),
       );
       return;
     }
@@ -258,9 +258,7 @@ const EquipmentUsagePrintableReport = () => {
                   />
                 </span>
                 <span className="summaryValue">
-                  {new Set(
-                    usageData.map((r) => r.inventoryItem?.id)
-                  ).size}
+                  {new Set(usageData.map((r) => r.inventoryItem?.id)).size}
                 </span>
               </div>
               <div className="summaryCard">
@@ -360,16 +358,10 @@ const EquipmentUsagePrintableReport = () => {
             <ButtonSet>
               <Button kind="secondary" onClick={handlePrint}>
                 <Printer size={16} style={{ marginRight: "8px" }} />
-                <FormattedMessage
-                  id="common.print"
-                  defaultMessage="Print"
-                />
+                <FormattedMessage id="common.print" defaultMessage="Print" />
               </Button>
               <Button kind="secondary" onClick={handleExportCSV}>
-                <FormattedMessage
-                  id="common.export"
-                  defaultMessage="Export"
-                />
+                <FormattedMessage id="common.export" defaultMessage="Export" />
               </Button>
             </ButtonSet>
           </div>

@@ -2594,5 +2594,17 @@
   "label.description": "Description",
   "label.timestamp": "Horodatage",
   "label.user": "Utilisateur",
-  "label.action": "Action"
+  "label.action": "Action",
+  "equipment.metrics.totalCount": "Équipement total",
+  "equipment.metrics.totalUsage": "Enregistrements d'utilisation totaux",
+  "equipment.metrics.activeLabs": "Laboratoires actifs",
+  "equipment.metrics.selectedUsage": "Utilisation de l'équipement sélectionné",
+  "equipment.usage.history.title": "Historique d'utilisation",
+  "equipment.usage.history.timestamp": "Horodatage",
+  "equipment.usage.history.user": "Utilisateur",
+  "equipment.usage.history.labUnit": "Laboratoire/Département",
+  "equipment.usage.history.lot": "Numéro de lot",
+  "equipment.usage.history.quantity": "Quantité",
+  "equipment.usage.message.recordedSuccess": "Utilisation de l'équipement enregistrée avec succès",
+  "equipment.usage.error.noLotsAvailable": "Aucun lot disponible pour l'équipement sélectionné"
 }

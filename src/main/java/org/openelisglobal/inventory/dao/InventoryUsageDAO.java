@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.dao;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -26,4 +27,20 @@ public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, Long> {
      * Get usage records by analysis ID
      */
     List<InventoryUsage> getByAnalysisId(Long analysisId) throws LIMSRuntimeException;
+
+    /**
+     * Get usage records by lab unit ID
+     */
+    List<InventoryUsage> getByLabUnitId(String labUnitId) throws LIMSRuntimeException;
+
+    /**
+     * Get usage records within a date range
+     */
+    List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
+
+    /**
+     * Get usage records for a specific item within a date range
+     */
+    List<InventoryUsage> getByItemIdAndDateRange(Long itemId, Timestamp startDate, Timestamp endDate)
+            throws LIMSRuntimeException;
 }

@@ -1,10 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  Modal,
-  TextInput,
-  Button,
-  Loading,
-} from "@carbon/react";
+import { Modal, TextInput, Button, Loading } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./ChooseEquipment.css";
 
@@ -19,7 +14,12 @@ import "./ChooseEquipment.css";
  * - Remove button to deselect
  * - Cancel/Close button
  */
-const ChooseEquipmentModal = ({ open, onClose, equipment, onSelectEquipment }) => {
+const ChooseEquipmentModal = ({
+  open,
+  onClose,
+  equipment,
+  onSelectEquipment,
+}) => {
   const intl = useIntl();
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -40,7 +40,7 @@ const ChooseEquipmentModal = ({ open, onClose, equipment, onSelectEquipment }) =
         (item.catalogNumber &&
           item.catalogNumber.toLowerCase().includes(lowerSearchTerm)) ||
         (item.manufacturer &&
-          item.manufacturer.toLowerCase().includes(lowerSearchTerm))
+          item.manufacturer.toLowerCase().includes(lowerSearchTerm)),
     );
   }, [equipment, searchTerm]);
 
@@ -147,7 +147,6 @@ const ChooseEquipmentModal = ({ open, onClose, equipment, onSelectEquipment }) =
             </div>
           )}
         </div>
-
       </div>
     </Modal>
   );

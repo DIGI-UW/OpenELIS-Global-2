@@ -86,7 +86,7 @@ const EquipmentUsageHistory = () => {
             setUsageRecords(filtered);
           } else {
             setError(
-              intl.formatMessage({ id: "equipment.usage.error.loadFailed" })
+              intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
             );
           }
           setLoading(false);
@@ -94,7 +94,7 @@ const EquipmentUsageHistory = () => {
       } catch (error) {
         console.error("Error fetching usage history:", error);
         setError(
-          intl.formatMessage({ id: "equipment.usage.error.loadFailed" })
+          intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
         );
         setLoading(false);
       }
@@ -115,9 +115,7 @@ const EquipmentUsageHistory = () => {
   // Export to CSV
   const handleExportCSV = () => {
     if (!usageRecords || usageRecords.length === 0) {
-      setError(
-        intl.formatMessage({ id: "equipment.usage.error.noRecords" })
-      );
+      setError(intl.formatMessage({ id: "equipment.usage.error.noRecords" }));
       return;
     }
 
@@ -186,9 +184,7 @@ const EquipmentUsageHistory = () => {
             })}
             placeholder="mm/dd/yyyy"
             value={filters.startDate}
-            onChange={(e) =>
-              handleFilterChange("startDate", e.target.value)
-            }
+            onChange={(e) => handleFilterChange("startDate", e.target.value)}
           />
           <DatePickerInput
             labelText={intl.formatMessage({
@@ -197,9 +193,7 @@ const EquipmentUsageHistory = () => {
             })}
             placeholder="mm/dd/yyyy"
             value={filters.endDate}
-            onChange={(e) =>
-              handleFilterChange("endDate", e.target.value)
-            }
+            onChange={(e) => handleFilterChange("endDate", e.target.value)}
           />
           <Button
             kind="ghost"
@@ -267,26 +261,13 @@ const EquipmentUsageHistory = () => {
                         ? new Date(record.usageDate).toLocaleDateString()
                         : "—"}
                     </td>
+                    <td>{record.inventoryItem?.name || "—"}</td>
+                    <td>{record.lot?.lotNumber || "—"}</td>
+                    <td>{record.quantityUsed || "—"}</td>
+                    <td>{record.performedByUser || "—"}</td>
+                    <td>{record.testResultId || "—"}</td>
                     <td>
-                      {record.inventoryItem?.name || "—"}
-                    </td>
-                    <td>
-                      {record.lot?.lotNumber || "—"}
-                    </td>
-                    <td>
-                      {record.quantityUsed || "—"}
-                    </td>
-                    <td>
-                      {record.performedByUser || "—"}
-                    </td>
-                    <td>
-                      {record.testResultId || "—"}
-                    </td>
-                    <td>
-                      <OverflowMenu
-                        flipped
-                        ariaLabel="Usage record actions"
-                      >
+                      <OverflowMenu flipped ariaLabel="Usage record actions">
                         <OverflowMenuItem
                           itemText={intl.formatMessage({
                             id: "common.view",

@@ -311,6 +311,120 @@
   }
 }
 
+/* Metrics Dashboard */
+.equipmentMetricsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .equipmentMetricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 672px) {
+  .equipmentMetricsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metricTile {
+  padding: 1.5rem;
+  text-align: center;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.metricTile:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.metricValue {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #0f62fe;
+  margin: 0.5rem 0;
+}
+
+.metricLabel {
+  font-size: 0.875rem;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+  margin: 0;
+}
+
+.usageHistorySection {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.dateRangeFilter {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.dateRangeFilter input {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Usage History Table */
+.usageHistoryTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  font-size: 13px;
+  margin-top: 1rem;
+}
+
+.usageHistoryTable thead {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.usageHistoryTable th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #161616;
+  white-space: nowrap;
+  border-right: 1px solid #e0e0e0;
+}
+
+.usageHistoryTable th:last-child {
+  border-right: none;
+}
+
+.usageHistoryTable tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.usageHistoryTable tbody tr:hover {
+  background-color: #f4f4f4;
+}
+
+.usageHistoryTable td {
+  padding: 12px 8px;
+  border-right: 1px solid #e0e0e0;
+  vertical-align: top;
+}
+
+.usageHistoryTable td:last-child {
+  border-right: none;
+}
+
 @media print {
   .equipmentUsageActions,
   .equipmentUsageActionsBottom {
@@ -329,6 +443,14 @@
   }
 
   .usageLogTable {
+    page-break-inside: avoid;
+  }
+
+  .equipmentMetricsGrid {
+    page-break-inside: avoid;
+  }
+
+  .usageHistoryTable {
     page-break-inside: avoid;
   }
 }
