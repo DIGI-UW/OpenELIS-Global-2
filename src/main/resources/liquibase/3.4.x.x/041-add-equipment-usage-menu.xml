@@ -5,8 +5,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Add Equipment Usage menu item as child of Inventory menu -->
-    <changeSet id="add-equipment-usage-menu" author="openelis">
+    <changeSet id="add-equipment-usage-menu" author="mherman22">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_equipment_usage';

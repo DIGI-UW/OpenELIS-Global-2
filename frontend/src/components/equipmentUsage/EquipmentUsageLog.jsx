@@ -24,24 +24,9 @@ import {
   TimePickerSelect,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import PageBreadCrumb from "../common/PageBreadCrumb";
 import CartridgeUsageAPI from "./EquipmentUsageService";
 import ChooseEquipmentModal from "./modals/ChooseEquipment";
 import "./EquipmentUsage.css";
-
-const breadcrumbs = [
-  { label: "home.label", link: "/", defaultMessage: "Home" },
-  {
-    label: "sidenav.label.inventory.management",
-    link: "/inventory",
-    defaultMessage: "Inventory Management",
-  },
-  {
-    label: "equipment.usage.title",
-    link: "/equipment-usage",
-    defaultMessage: "Equipment Usage",
-  },
-];
 
 /**
  * EquipmentUsageLog Component
@@ -318,7 +303,6 @@ const EquipmentUsageLog = () => {
 
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <div className="equipmentUsageContainer">
