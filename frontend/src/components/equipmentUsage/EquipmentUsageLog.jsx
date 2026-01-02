@@ -38,7 +38,7 @@ const breadcrumbs = [
   },
   {
     label: "equipment.usage.title",
-    link: "/cartridge-usage",
+    link: "/equipment-usage",
     defaultMessage: "Equipment Usage",
   },
 ];

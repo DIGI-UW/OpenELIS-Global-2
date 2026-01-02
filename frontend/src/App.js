@@ -473,7 +473,7 @@ export default function App() {
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/cartridge-usage"
+                  path="/equipment-usage"
                   exact
                   component={() => <EquipmentUsageManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
