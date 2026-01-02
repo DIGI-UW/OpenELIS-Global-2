@@ -1,0 +1,313 @@
+/* Equipment Usage Log Component Styles */
+
+.equipmentUsageContainer {
+  padding: 20px;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.equipmentUsageContainer h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #161616;
+}
+
+.equipmentUsageContainer h3 {
+  margin: 20px 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #161616;
+}
+
+/* Action Buttons Section */
+.equipmentUsageActions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  padding: 12px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.equipmentUsageActions button {
+  font-size: 12px;
+  height: 32px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.equipmentUsageActionsBottom {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Equipment Selection Section */
+.equipmentSelectionSection {
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.equipmentSelectionSection h3 {
+  margin-top: 0;
+}
+
+.equipmentListSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.equipmentItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  border-left: 4px solid #0043ce;
+}
+
+.equipmentItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.equipmentName {
+  font-weight: 600;
+  color: #161616;
+  font-size: 14px;
+}
+
+.equipmentSerial {
+  font-size: 12px;
+  color: #525252;
+}
+
+.removeEquipmentBtn {
+  margin-left: auto;
+  padding: 0 8px;
+  height: 28px;
+  font-size: 12px;
+}
+
+/* Equipment Details Section */
+.equipmentDetailsSection {
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.detailsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .detailsRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 672px) {
+  .detailsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detailField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detailField label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  text-transform: uppercase;
+  letter-spacing: 0.32px;
+}
+
+.detailsInput {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #f4f4f4;
+  font-size: 14px;
+  color: #161616;
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+/* Usage Log Table */
+.usageLogSection {
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin-top: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.usageLogTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  font-size: 13px;
+}
+
+.usageLogTable thead {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.usageLogTable th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #161616;
+  white-space: nowrap;
+  border-right: 1px solid #e0e0e0;
+}
+
+.usageLogTable th:last-child {
+  border-right: none;
+}
+
+.usageLogTable tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.usageLogTable tbody tr:hover {
+  background-color: #f4f4f4;
+}
+
+.usageLogTable td {
+  padding: 12px 8px;
+  border-right: 1px solid #e0e0e0;
+  vertical-align: top;
+}
+
+.usageLogTable td:last-child {
+  border-right: none;
+}
+
+/* Table Input Fields */
+.tableInput,
+.tableSelect {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 12px;
+  color: #161616;
+  background-color: #ffffff;
+}
+
+.tableInput:focus,
+.tableSelect:focus {
+  outline: 2px solid #0043ce;
+  outline-offset: -2px;
+  border-color: #0043ce;
+}
+
+.tableTextarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 12px;
+  color: #161616;
+  background-color: #ffffff;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.tableTextarea:focus {
+  outline: 2px solid #0043ce;
+  outline-offset: -2px;
+  border-color: #0043ce;
+}
+
+.signatureInput {
+  min-width: 150px;
+}
+
+/* Date Picker Input in Table */
+.tableInput[type="text"].bx--date-picker__input {
+  padding: 6px 8px;
+  height: 32px;
+}
+
+/* Notifications */
+.cds--inline-notification {
+  margin-bottom: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .equipmentUsageActions {
+    flex-direction: column;
+  }
+
+  .equipmentUsageActions button {
+    width: 100%;
+  }
+
+  .tableWrapper {
+    font-size: 12px;
+  }
+
+  .usageLogTable th,
+  .usageLogTable td {
+    padding: 8px 6px;
+  }
+}
+
+@media print {
+  .equipmentUsageActions,
+  .equipmentUsageActionsBottom {
+    display: none;
+  }
+
+  .equipmentUsageContainer {
+    background-color: white;
+    padding: 0;
+    margin: 0;
+  }
+
+  .tableWrapper {
+    page-break-inside: avoid;
+    border: 1px solid #000;
+  }
+
+  .usageLogTable {
+    page-break-inside: avoid;
+  }
+}
