@@ -1,13 +1,11 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Modal,
   TextInput,
   Button,
-  ButtonSet,
   Loading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Search } from "@carbon/icons-react";
 import "./ChooseEquipment.css";
 
 /**
@@ -134,12 +132,6 @@ const ChooseEquipmentModal = ({ open, onClose, equipment, onSelectEquipment }) =
                         defaultMessage: "Use this equipment",
                       })}
                     </Button>
-                    <Button kind="ghost" size="sm">
-                      {intl.formatMessage({
-                        id: "common.remove",
-                        defaultMessage: "Remove",
-                      })}
-                    </Button>
                   </div>
                 </li>
               ))}
@@ -156,23 +148,6 @@ const ChooseEquipmentModal = ({ open, onClose, equipment, onSelectEquipment }) =
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div className="modalFooter">
-          <ButtonSet>
-            <Button kind="secondary" onClick={handleClose}>
-              {intl.formatMessage({
-                id: "common.cancel",
-                defaultMessage: "Cancel",
-              })}
-            </Button>
-            <Button kind="primary" onClick={handleClose}>
-              {intl.formatMessage({
-                id: "common.close",
-                defaultMessage: "Close",
-              })}
-            </Button>
-          </ButtonSet>
-        </div>
       </div>
     </Modal>
   );
