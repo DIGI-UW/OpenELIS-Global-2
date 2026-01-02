@@ -352,12 +352,6 @@ const EquipmentUsageLog = () => {
 
             {/* Action Buttons - Top */}
             <div className="equipmentUsageActions">
-              <Button kind="secondary" size="sm">
-                <FormattedMessage id="equipment.usage.addRow" />
-              </Button>
-              <Button kind="secondary" size="sm">
-                <FormattedMessage id="equipment.usage.removeRow" />
-              </Button>
               <Button kind="secondary" size="sm" onClick={handleLoadSaved}>
                 <FormattedMessage id="equipment.usage.loadSaved" />
               </Button>
@@ -372,9 +366,6 @@ const EquipmentUsageLog = () => {
               </Button>
               <Button kind="primary" size="sm" onClick={handleSubmit}>
                 <FormattedMessage id="equipment.usage.submit" />
-              </Button>
-              <Button kind="ghost" size="sm">
-                <FormattedMessage id="equipment.usage.history" />
               </Button>
             </div>
 
@@ -577,14 +568,14 @@ const EquipmentUsageLog = () => {
             <div className="equipmentUsageActionsBottom">
               <ButtonSet>
                 <Button kind="secondary" onClick={handleAddRow}>
-                  <FormattedMessage id="equipment.usage.addRow" />
+                  Add Row
                 </Button>
                 {usageRows.length > 1 && (
                   <Button
                     kind="danger"
                     onClick={() => handleRemoveRow(usageRows[usageRows.length - 1].id)}
                   >
-                    <FormattedMessage id="equipment.usage.removeRow" />
+                    Remove Row
                   </Button>
                 )}
               </ButtonSet>
