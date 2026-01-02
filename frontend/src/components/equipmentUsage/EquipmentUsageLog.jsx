@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useCallback } from "react";
 import {
   Button,
   Grid,
@@ -13,7 +13,6 @@ import {
   TableCell,
   Modal,
   Loading,
-  InlineNotification,
   DatePicker,
   DatePickerInput,
   Select,
@@ -24,6 +23,8 @@ import {
   TimePickerSelect,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { NotificationContext } from "../layout/Layout";
+import { NotificationKinds } from "../common/CustomNotification";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CartridgeUsageAPI from "./EquipmentUsageService";
 import ChooseEquipmentModal from "./modals/ChooseEquipment";
@@ -56,6 +57,20 @@ import "./EquipmentUsage.css";
 const EquipmentUsageLog = () => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, subtitle }) => {
+      setNotificationVisible(true);
+      addNotification({
+        kind,
+        title,
+        subtitle,
+      });
+    },
+    [addNotification, setNotificationVisible]
+  );
 
   // Helper function to format time as HH:MM
   const formatTime = (date) => {
@@ -102,8 +117,6 @@ const EquipmentUsageLog = () => {
   // Form State
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [saveMessage, setSaveMessage] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
 
   // Load Equipment (Cartridges) on Mount
   useEffect(() => {
@@ -147,7 +160,6 @@ const EquipmentUsageLog = () => {
   const handleSelectEquipment = (equipment) => {
     setSelectedEquipment(equipment);
     setShowChooseEquipmentModal(false);
-    setErrorMessage(null);
   };
 
   // Add new row to usage log with auto-filled values
@@ -182,9 +194,11 @@ const EquipmentUsageLog = () => {
   // Save as Draft
   const handleSaveDraft = () => {
     if (!selectedEquipment) {
-      setErrorMessage(
-        intl.formatMessage({ id: "equipment.usage.error.selectEquipment" })
-      );
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        subtitle: intl.formatMessage({ id: "equipment.usage.error.selectEquipment" }),
+      });
       return;
     }
 
@@ -197,15 +211,18 @@ const EquipmentUsageLog = () => {
         savedAt: new Date().toISOString(),
       };
       localStorage.setItem("equipmentUsageDraft", JSON.stringify(draftData));
-      setSaveMessage(
-        intl.formatMessage({ id: "equipment.usage.message.saveDraft" })
-      );
-      setTimeout(() => setSaveMessage(null), 3000);
+      notify({
+        kind: NotificationKinds.success,
+        title: "Success",
+        subtitle: intl.formatMessage({ id: "equipment.usage.message.saveDraft" }),
+      });
     } catch (error) {
       console.error("Error saving draft:", error);
-      setErrorMessage(
-        intl.formatMessage({ id: "equipment.usage.error.saveFailed" })
-      );
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        subtitle: intl.formatMessage({ id: "equipment.usage.error.saveFailed" }),
+      });
     } finally {
       setIsSaving(false);
     }
@@ -214,16 +231,20 @@ const EquipmentUsageLog = () => {
   // Submit to Server (Record Usage)
   const handleSubmit = () => {
     if (!selectedEquipment) {
-      setErrorMessage(
-        intl.formatMessage({ id: "equipment.usage.error.selectEquipment" })
-      );
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        subtitle: intl.formatMessage({ id: "equipment.usage.error.selectEquipment" }),
+      });
       return;
     }
 
     if (usageRows.length === 0) {
-      setErrorMessage(
-        intl.formatMessage({ id: "equipment.usage.error.noRows" })
-      );
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        subtitle: intl.formatMessage({ id: "equipment.usage.error.noRows" }),
+      });
       return;
     }
 
@@ -237,9 +258,11 @@ const EquipmentUsageLog = () => {
 
       CartridgeUsageAPI.recordUsage(consumeRequest, (response) => {
         console.log("Usage recorded:", response);
-        setSaveMessage(
-          intl.formatMessage({ id: "equipment.usage.message.submitted" })
-        );
+        notify({
+          kind: NotificationKinds.success,
+          title: "Success",
+          subtitle: intl.formatMessage({ id: "equipment.usage.message.submitted" }),
+        });
         // Clear draft
         localStorage.removeItem("equipmentUsageDraft");
         // Reset form
@@ -255,14 +278,15 @@ const EquipmentUsageLog = () => {
             signature: "",
           },
         ]);
-        setTimeout(() => setSaveMessage(null), 3000);
         setIsSubmitting(false);
       });
     } catch (error) {
       console.error("Error submitting usage:", error);
-      setErrorMessage(
-        intl.formatMessage({ id: "equipment.usage.error.submitFailed" })
-      );
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        subtitle: intl.formatMessage({ id: "equipment.usage.error.submitFailed" }),
+      });
       setIsSubmitting(false);
     }
   };
@@ -275,20 +299,25 @@ const EquipmentUsageLog = () => {
         const { equipment: savedEquipment, rows: savedRows } = JSON.parse(draftData);
         setSelectedEquipment(savedEquipment);
         setUsageRows(savedRows);
-        setSaveMessage(
-          intl.formatMessage({ id: "equipment.usage.message.loadedDraft" })
-        );
-        setTimeout(() => setSaveMessage(null), 3000);
+        notify({
+          kind: NotificationKinds.success,
+          title: "Success",
+          subtitle: intl.formatMessage({ id: "equipment.usage.message.loadedDraft" }),
+        });
       } else {
-        setErrorMessage(
-          intl.formatMessage({ id: "equipment.usage.error.noDraft" })
-        );
+        notify({
+          kind: NotificationKinds.error,
+          title: "Error",
+          subtitle: intl.formatMessage({ id: "equipment.usage.error.noDraft" }),
+        });
       }
     } catch (error) {
       console.error("Error loading draft:", error);
-      setErrorMessage(
-        intl.formatMessage({ id: "equipment.usage.error.loadFailed" })
-      );
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        subtitle: intl.formatMessage({ id: "equipment.usage.error.loadFailed" }),
+      });
     }
   };
 
@@ -307,16 +336,16 @@ const EquipmentUsageLog = () => {
         signature: "",
       },
     ]);
-    setErrorMessage(null);
-    setSaveMessage(null);
   };
 
   // Print Report
   const handlePrint = () => {
     if (!selectedEquipment) {
-      setErrorMessage(
-        intl.formatMessage({ id: "equipment.usage.error.selectEquipment" })
-      );
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        subtitle: intl.formatMessage({ id: "equipment.usage.error.selectEquipment" }),
+      });
       return;
     }
     window.print();
@@ -331,24 +360,6 @@ const EquipmentUsageLog = () => {
             <h2>
               <FormattedMessage id="equipment.usage.title" />
             </h2>
-
-            {/* Notifications */}
-            {errorMessage && (
-              <InlineNotification
-                kind="error"
-                title="Error"
-                subtitle={errorMessage}
-                onClose={() => setErrorMessage(null)}
-              />
-            )}
-            {saveMessage && (
-              <InlineNotification
-                kind="success"
-                title="Success"
-                subtitle={saveMessage}
-                onClose={() => setSaveMessage(null)}
-              />
-            )}
 
             {/* Action Buttons - Top */}
             <div className="equipmentUsageActions">
