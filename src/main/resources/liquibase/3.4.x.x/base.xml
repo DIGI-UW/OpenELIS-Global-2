@@ -77,5 +77,6 @@
     <include file="liquibase/3.4.x.x/027-pathology-granular-workflow-pages.xml"/>
     <include file="liquibase/3.4.x.x/028-extend-sample-item-id-length.xml"/>
     <include file="liquibase/3.4.x.x/041-add-equipment-usage-menu.xml"/>
+    <include file="liquibase/3.4.x.x/042-equipment-usage-form-fields.xml"/>
 
 </databaseChangeLog>
