@@ -34,10 +34,6 @@ public class InventoryUsageDTO {
     private Integer performedByUserId;
     private String performedByUserName;
 
-    // Enriched lab unit data (not just ID)
-    private String labUnitId;
-    private String labUnitName;
-
     // Optional linked records
     private Long testResultId;
     private Long analysisId;

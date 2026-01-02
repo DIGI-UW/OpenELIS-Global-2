@@ -73,19 +73,6 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryUsage> getByLabUnitId(String labUnitId) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryUsage u WHERE u.labUnit.id = :labUnitId ORDER BY u.usageDate DESC";
-            Query<InventoryUsage> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryUsage.class);
-            query.setParameter("labUnitId", labUnitId);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting usage by lab unit ID", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryUsage u WHERE u.usageDate >= :startDate AND u.usageDate <= :endDate ORDER BY u.usageDate DESC";

@@ -1,7 +1,17 @@
-import { Grid, Column } from "@carbon/react";
+import { useState } from "react";
+import {
+  Grid,
+  Column,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+} from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import EquipmentUsageLog from "./EquipmentUsageLog";
+import EquipmentUsageDashboard from "./EquipmentUsageDashboard";
 import "./EquipmentUsage.css";
 
 const breadcrumbs = [
@@ -22,9 +32,23 @@ const breadcrumbs = [
  * EquipmentUsageManagement Component
  *
  * Main container for equipment (cartridge) usage tracking feature.
- * Displays the Equipment Usage Log form for recording cartridge consumption.
+ * Provides tabbed interface with:
+ * - Equipment Usage Log: Form for recording equipment usage
+ * - Usage Metrics Dashboard: Aggregated statistics and recent submissions
  */
 const EquipmentUsageManagement = () => {
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [dashboardKey, setDashboardKey] = useState(0);
+  const [lastSubmission, setLastSubmission] = useState(null);
+
+  const handleSubmitSuccess = (submissionData) => {
+    // Store submission and switch to metrics tab
+    setLastSubmission(submissionData);
+    setActiveTabIndex(1);
+    // Force dashboard to re-render with new submission
+    setDashboardKey((prev) => prev + 1);
+  };
+
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -34,11 +58,40 @@ const EquipmentUsageManagement = () => {
             <h2>
               <FormattedMessage
                 id="equipment.usage.title"
-                defaultMessage="Equipment Usage Log"
+                defaultMessage="Equipment Usage"
               />
             </h2>
 
-            <EquipmentUsageLog />
+            <Tabs
+              selectedIndex={activeTabIndex}
+              onChange={({ selectedIndex }) => setActiveTabIndex(selectedIndex)}
+            >
+              <TabList aria-label="Equipment Usage Tabs">
+                <Tab>
+                  <FormattedMessage
+                    id="equipment.usage.tab.log"
+                    defaultMessage="Usage Log"
+                  />
+                </Tab>
+                <Tab>
+                  <FormattedMessage
+                    id="equipment.usage.tab.metrics"
+                    defaultMessage="Metrics Dashboard"
+                  />
+                </Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>
+                  <EquipmentUsageLog onSubmitSuccess={handleSubmitSuccess} />
+                </TabPanel>
+                <TabPanel>
+                  <EquipmentUsageDashboard
+                    key={dashboardKey}
+                    initialSubmission={lastSubmission}
+                  />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </div>
         </Column>
       </Grid>

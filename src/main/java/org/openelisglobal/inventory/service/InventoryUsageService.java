@@ -67,19 +67,11 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
      * @param itemId       The inventory item ID
      * @param quantityUsed The quantity used
      * @param sysUserId    The user performing the action
-     * @param labUnitId    The lab unit/department using the equipment (optional)
+     * @param labUnitId    Deprecated, pass null
      * @return The created usage record
      */
     InventoryUsage recordEquipmentUsage(Long lotId, Long itemId, Double quantityUsed, String sysUserId,
             String labUnitId);
-
-    /**
-     * Get usage records by lab unit ID
-     *
-     * @param labUnitId The lab unit ID
-     * @return List of usage records for the lab unit
-     */
-    List<InventoryUsage> getByLabUnitId(String labUnitId);
 
     /**
      * Get usage records within a date range

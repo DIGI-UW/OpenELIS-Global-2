@@ -9,8 +9,6 @@ import org.openelisglobal.inventory.dao.InventoryUsageDAO;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
-import org.openelisglobal.test.dao.TestSectionDAO;
-import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +28,6 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
 
     @Autowired
     private InventoryItemDAO inventoryItemDAO;
-
-    @Autowired
-    private TestSectionDAO testSectionDAO;
 
     public InventoryUsageServiceImpl() {
         super(InventoryUsage.class);
@@ -149,7 +144,6 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
             throw new IllegalArgumentException("Quantity used must be greater than 0");
         }
 
-        // Create usage record without deducting quantity
         InventoryUsage usage = new InventoryUsage();
         usage.setLot(lot);
         usage.setInventoryItem(item);
@@ -158,23 +152,11 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
         usage.setSysUserId(sysUserId);
         usage.setPerformedByUser(Integer.valueOf(sysUserId));
 
-        // Set lab unit if provided
-        if (labUnitId != null && !labUnitId.isEmpty()) {
-            TestSection labUnit = testSectionDAO.get(labUnitId).orElse(null);
-            usage.setLabUnit(labUnit);
-        }
-
         Long id = insert(usage);
 
         // Do NOT deduct quantity - equipment usage only tracks usage, not consumption
         // Audit logging is automatic via auditTrailLog = true in constructor
         return get(id);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryUsage> getByLabUnitId(String labUnitId) {
-        return inventoryUsageDAO.getByLabUnitId(labUnitId);
     }
 
     @Override

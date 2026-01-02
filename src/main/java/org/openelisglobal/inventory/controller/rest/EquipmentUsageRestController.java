@@ -12,7 +12,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageMetricsDTO;
 import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageMetricsDTO.EquipmentUsageStat;
-import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageMetricsDTO.LabUsageStat;
 import org.openelisglobal.inventory.controller.rest.dto.InventoryUsageDTO;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
@@ -76,15 +75,9 @@ public class EquipmentUsageRestController extends BaseRestController {
 
             String sysUserId = String.valueOf(userSession.getSystemUserId());
 
-            // Use provided lab unit or get from session
-            String labUnitId = request.getLabUnitId();
-            if (labUnitId == null || labUnitId.isEmpty()) {
-                labUnitId = String.valueOf(userSession.getLoginLabUnit());
-            }
-
             // Record usage (without deducting quantity)
             InventoryUsage usage = usageService.recordEquipmentUsage(request.getLotId(), request.getItemId(),
-                    request.getQuantity(), sysUserId, labUnitId);
+                    request.getQuantity(), sysUserId, null);
 
             // Convert to enriched DTO
             InventoryUsageDTO dto = convertToDTO(usage);
@@ -93,6 +86,37 @@ public class EquipmentUsageRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get equipment usage history for all items with optional date range filter.
+     *
+     * @param startDate Optional start date (ISO 8601 format)
+     * @param endDate   Optional end date (ISO 8601 format)
+     * @return List of enriched usage records for all items
+     */
+    @GetMapping(value = "/history", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<InventoryUsageDTO>> getAllEquipmentUsageHistory(
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+        try {
+            List<InventoryUsage> usageList;
+
+            if (startDate != null && endDate != null) {
+                Timestamp start = Timestamp.valueOf(startDate.replace("T", " "));
+                Timestamp end = Timestamp.valueOf(endDate.replace("T", " "));
+                usageList = usageService.getByDateRange(start, end);
+            } else {
+                usageList = usageService.getAll();
+            }
+
+            List<InventoryUsageDTO> dtoList = usageList.stream().map(this::convertToDTO).collect(Collectors.toList());
+
+            return ResponseEntity.ok(dtoList);
+
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -173,43 +197,11 @@ public class EquipmentUsageRestController extends BaseRestController {
                 stat.setTotalQuantityUsed(stat.getTotalQuantityUsed() + usage.getQuantityUsed());
             });
 
-            // Aggregate by lab unit
-            Map<String, LabUsageStat> labStats = new HashMap<>();
-            usageList.stream().filter(usage -> usage.getLabUnit() != null).forEach(usage -> {
-                String labUnitId = usage.getLabUnit().getId();
-                LabUsageStat stat = labStats.computeIfAbsent(labUnitId, k -> {
-                    return LabUsageStat.builder().labUnitId(labUnitId)
-                            .labUnitName(usage.getLabUnit().getLocalizedName()).usageCount(0).build();
-                });
-                stat.setUsageCount(stat.getUsageCount() + 1);
-            });
-
             EquipmentUsageMetricsDTO metrics = EquipmentUsageMetricsDTO.builder()
                     .totalEquipmentCount(totalEquipmentCount).totalUsageRecords(usageList.size())
-                    .usageByEquipment(new ArrayList<>(equipmentStats.values()))
-                    .usageByLab(new ArrayList<>(labStats.values())).build();
+                    .usageByEquipment(new ArrayList<>(equipmentStats.values())).build();
 
             return ResponseEntity.ok(metrics);
-
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
-     * Get usage records for a specific lab/department.
-     *
-     * @param labUnitId The lab unit ID
-     * @return List of enriched usage records
-     */
-    @GetMapping(value = "/lab/{labUnitId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryUsageDTO>> getUsageByLabUnit(@PathVariable String labUnitId) {
-        try {
-            List<InventoryUsage> usageList = usageService.getByLabUnitId(labUnitId);
-            List<InventoryUsageDTO> dtoList = usageList.stream().map(this::convertToDTO).collect(Collectors.toList());
-
-            return ResponseEntity.ok(dtoList);
 
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -236,28 +228,12 @@ public class EquipmentUsageRestController extends BaseRestController {
             }
         }
 
-        String labUnitName = null;
-        String labUnitId = null;
-        if (usage.getLabUnit() != null) {
-            labUnitId = usage.getLabUnit().getId();
-            labUnitName = usage.getLabUnit().getLocalizedName();
-        }
-
-        InventoryUsageDTO dto = new InventoryUsageDTO();
-        dto.setId(usage.getId());
-        dto.setInventoryItemId(usage.getInventoryItem().getId());
-        dto.setInventoryItemName(usage.getInventoryItem().getName());
-        dto.setLotId(usage.getLot().getId());
-        dto.setLotNumber(usage.getLot().getLotNumber());
-        dto.setQuantityUsed(usage.getQuantityUsed());
-        dto.setUsageDate(usage.getUsageDate());
-        dto.setPerformedByUserId(usage.getPerformedByUser());
-        dto.setPerformedByUserName(userName);
-        dto.setLabUnitId(labUnitId);
-        dto.setLabUnitName(labUnitName);
-        dto.setTestResultId(usage.getTestResultId());
-        dto.setAnalysisId(usage.getAnalysisId());
-        return dto;
+        return InventoryUsageDTO.builder().id(usage.getId()).inventoryItemId(usage.getInventoryItem().getId())
+                .inventoryItemName(usage.getInventoryItem().getName()).lotId(usage.getLot().getId())
+                .lotNumber(usage.getLot().getLotNumber()).quantityUsed(usage.getQuantityUsed())
+                .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
+                .performedByUserName(userName).testResultId(usage.getTestResultId()).analysisId(usage.getAnalysisId())
+                .build();
     }
 
     /**

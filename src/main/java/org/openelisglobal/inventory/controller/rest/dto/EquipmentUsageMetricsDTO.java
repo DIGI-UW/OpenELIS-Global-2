@@ -23,7 +23,6 @@ public class EquipmentUsageMetricsDTO {
     private Integer totalEquipmentCount;
     private Integer totalUsageRecords;
     private List<EquipmentUsageStat> usageByEquipment;
-    private List<LabUsageStat> usageByLab;
 
     /**
      * Per-equipment usage statistics
@@ -38,19 +37,5 @@ public class EquipmentUsageMetricsDTO {
         private String equipmentName;
         private Integer usageCount;
         private Double totalQuantityUsed;
-    }
-
-    /**
-     * Per-lab usage statistics
-     */
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class LabUsageStat {
-        private String labUnitId;
-        private String labUnitName;
-        private Integer usageCount;
     }
 }

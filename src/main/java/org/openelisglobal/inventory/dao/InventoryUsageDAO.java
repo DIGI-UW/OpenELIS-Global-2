@@ -29,11 +29,6 @@ public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, Long> {
     List<InventoryUsage> getByAnalysisId(Long analysisId) throws LIMSRuntimeException;
 
     /**
-     * Get usage records by lab unit ID
-     */
-    List<InventoryUsage> getByLabUnitId(String labUnitId) throws LIMSRuntimeException;
-
-    /**
      * Get usage records within a date range
      */
     List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
