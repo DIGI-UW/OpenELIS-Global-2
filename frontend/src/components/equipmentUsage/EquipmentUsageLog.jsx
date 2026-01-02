@@ -490,15 +490,17 @@ const EquipmentUsageLog = () => {
                       {usageRows.map((row) => (
                       <tr key={row.id}>
                         <td>
-                          <DatePickerInput
-                            kind="single"
-                            dateFormat="mm/dd/yyyy"
-                            placeholder="mm/dd/yyyy"
-                            value={row.date}
-                            onChange={(e) =>
-                              handleRowChange(row.id, "date", e.target.value)
-                            }
-                          />
+                          <DatePicker dateFormat="mm/dd/yyyy">
+                            <DatePickerInput
+                              id={`date-picker-${row.id}`}
+                              labelText="Date"
+                              placeholder="mm/dd/yyyy"
+                              value={row.date}
+                              onChange={(e) =>
+                                handleRowChange(row.id, "date", e.target.value)
+                              }
+                            />
+                          </DatePicker>
                         </td>
                         <td>
                           <input
