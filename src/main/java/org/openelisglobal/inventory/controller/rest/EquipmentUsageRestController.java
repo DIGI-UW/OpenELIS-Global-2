@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageEntryDTO;
 import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageMetricsDTO;
 import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageMetricsDTO.EquipmentUsageStat;
 import org.openelisglobal.inventory.controller.rest.dto.InventoryUsageDTO;
@@ -81,6 +82,44 @@ public class EquipmentUsageRestController extends BaseRestController {
 
             // Convert to enriched DTO
             InventoryUsageDTO dto = convertToDTO(usage);
+            return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Record complete equipment usage entry with all form fields (activities,
+     * operator name, login/logout times, etc.). This endpoint captures the full
+     * submission from the Usage Log form.
+     *
+     * @param request Equipment usage entry request with all form data
+     * @return EquipmentUsageEntryDTO with enriched data for dashboard display
+     */
+    @PostMapping(value = "/submit", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<EquipmentUsageEntryDTO> submitEquipmentUsageEntry(
+            @RequestBody EquipmentUsageEntryRequest request, HttpServletRequest httpRequest) {
+        try {
+            // Get current user from session
+            UserSessionData userSession = (UserSessionData) httpRequest.getSession()
+                    .getAttribute(IActionConstants.USER_SESSION_DATA);
+            if (userSession == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            String sysUserId = String.valueOf(userSession.getSystemUserId());
+
+            // Record usage (without deducting quantity)
+            InventoryUsage usage = usageService.recordEquipmentUsage(request.getLotId(), request.getItemId(),
+                    request.getQuantity(), sysUserId, null);
+
+            // Convert to extended DTO with all form fields
+            EquipmentUsageEntryDTO dto = convertToEntryDTO(usage, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(dto);
 
         } catch (IllegalArgumentException e) {
@@ -234,6 +273,135 @@ public class EquipmentUsageRestController extends BaseRestController {
                 .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
                 .performedByUserName(userName).testResultId(usage.getTestResultId()).analysisId(usage.getAnalysisId())
                 .build();
+    }
+
+    /**
+     * Convert InventoryUsage entity and entry request to extended DTO with all form
+     * fields.
+     *
+     * @param usage   The InventoryUsage entity
+     * @param request The equipment usage entry request with form fields
+     * @return Extended DTO with all fields for dashboard display
+     */
+    private EquipmentUsageEntryDTO convertToEntryDTO(InventoryUsage usage, EquipmentUsageEntryRequest request) {
+        String userName = "Unknown User";
+        if (usage.getPerformedByUser() != null) {
+            try {
+                SystemUser user = systemUserService.get(usage.getPerformedByUser().toString());
+                if (user != null) {
+                    userName = user.getFirstName() + " " + user.getLastName();
+                }
+            } catch (Exception e) {
+                LogEvent.logError("Error retrieving user: " + usage.getPerformedByUser(), e);
+            }
+        }
+
+        return EquipmentUsageEntryDTO.builder().id(usage.getId()).inventoryItemId(usage.getInventoryItem().getId())
+                .inventoryItemName(usage.getInventoryItem().getName()).lotId(usage.getLot().getId())
+                .lotNumber(usage.getLot().getLotNumber()).quantityUsed(usage.getQuantityUsed())
+                .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
+                .performedByUserName(userName).testResultId(usage.getTestResultId()).analysisId(usage.getAnalysisId())
+                // Add form fields from request
+                .operatorName(request.getOperatorName()).loginTime(request.getLoginTime())
+                .logoutTime(request.getLogoutTime()).activities(request.getActivities())
+                .equipmentStatus(request.getEquipmentStatus()).date(request.getDate()).build();
+    }
+
+    /**
+     * Request body for recording complete equipment usage entry with all form
+     * fields.
+     */
+    public static class EquipmentUsageEntryRequest {
+        public Long itemId;
+        public Long lotId;
+        public Double quantity;
+        public String labUnitId;
+        public String operatorName;
+        public String loginTime;
+        public String logoutTime;
+        public String activities;
+        public String equipmentStatus;
+        public String date;
+
+        public Long getItemId() {
+            return itemId;
+        }
+
+        public void setItemId(Long itemId) {
+            this.itemId = itemId;
+        }
+
+        public Long getLotId() {
+            return lotId;
+        }
+
+        public void setLotId(Long lotId) {
+            this.lotId = lotId;
+        }
+
+        public Double getQuantity() {
+            return quantity;
+        }
+
+        public void setQuantity(Double quantity) {
+            this.quantity = quantity;
+        }
+
+        public String getLabUnitId() {
+            return labUnitId;
+        }
+
+        public void setLabUnitId(String labUnitId) {
+            this.labUnitId = labUnitId;
+        }
+
+        public String getOperatorName() {
+            return operatorName;
+        }
+
+        public void setOperatorName(String operatorName) {
+            this.operatorName = operatorName;
+        }
+
+        public String getLoginTime() {
+            return loginTime;
+        }
+
+        public void setLoginTime(String loginTime) {
+            this.loginTime = loginTime;
+        }
+
+        public String getLogoutTime() {
+            return logoutTime;
+        }
+
+        public void setLogoutTime(String logoutTime) {
+            this.logoutTime = logoutTime;
+        }
+
+        public String getActivities() {
+            return activities;
+        }
+
+        public void setActivities(String activities) {
+            this.activities = activities;
+        }
+
+        public String getEquipmentStatus() {
+            return equipmentStatus;
+        }
+
+        public void setEquipmentStatus(String equipmentStatus) {
+            this.equipmentStatus = equipmentStatus;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public void setDate(String date) {
+            this.date = date;
+        }
     }
 
     /**

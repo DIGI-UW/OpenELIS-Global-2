@@ -409,6 +409,32 @@ export const CartridgeUsageAPI = {
       signal,
     );
   },
+
+  /**
+   * Submit complete equipment usage entry with all form fields
+   * Records equipment usage with operator info, activities, login/logout times, etc.
+   * @param {object} entryRequest - {
+   *   itemId: number,
+   *   lotId: number,
+   *   quantity: number,
+   *   operatorName: string,
+   *   loginTime: string,
+   *   logoutTime: string,
+   *   activities: string,
+   *   equipmentStatus: string,
+   *   date: string
+   * }
+   * @returns {EquipmentUsageEntryDTO} Response with all submitted data plus database-generated fields
+   */
+  submitEquipmentUsageEntry: (entryRequest, callback, errorCallback = null) => {
+    const payload = JSON.stringify(entryRequest);
+    postToOpenElisServerFullResponse(
+      "/rest/equipment/usage/submit",
+      payload,
+      callback,
+      null,
+    );
+  },
 };
 
 export default CartridgeUsageAPI;

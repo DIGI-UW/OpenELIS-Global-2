@@ -1,5 +1,19 @@
 import { useState, useEffect, useCallback, useContext } from "react";
-import { Grid, Column, Tile, Button, Loading } from "@carbon/react";
+import {
+  Grid,
+  Column,
+  Tile,
+  Button,
+  Loading,
+  DataTable,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -43,10 +57,24 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
   });
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
-  // Recent Submission State
+  // Recent Submission State - Load from localStorage on mount
   const [recentSubmission, setRecentSubmission] = useState(
     initialSubmission || null,
   );
+  const [submissionRows, setSubmissionRows] = useState(() => {
+    // Try to load submissions from localStorage first
+    try {
+      const stored = localStorage.getItem("equipmentSubmissions");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (error) {
+      console.error("Error loading submissions from localStorage:", error);
+    }
+    // Fallback to initialSubmission
+    return initialSubmission ? [initialSubmission] : [];
+  });
 
   // Fetch Metrics on Mount
   useEffect(() => {
@@ -103,6 +131,17 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
   // Handle successful submission from EquipmentUsageLog
   const handleSubmitSuccess = useCallback((submissionData) => {
     setRecentSubmission(submissionData);
+    // Add row to submission table
+    setSubmissionRows((prevRows) => {
+      const updated = [submissionData, ...prevRows];
+      // Persist to localStorage
+      try {
+        localStorage.setItem("equipmentSubmissions", JSON.stringify(updated));
+      } catch (error) {
+        console.error("Error saving submissions to localStorage:", error);
+      }
+      return updated;
+    });
     // Refresh metrics to include the new submission
     CartridgeUsageAPI.getEquipmentUsageMetrics(
       null,
@@ -263,111 +302,137 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
               )}
             </div>
 
-            {/* Recent Submission Section */}
-            {recentSubmission && (
-              <div className="usageHistorySection">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  <h3 style={{ margin: 0 }}>
-                    <FormattedMessage
-                      id="equipment.usage.recentSubmission"
-                      defaultMessage="Recent Submission"
-                    />
-                  </h3>
-                  <Button kind="secondary" size="sm" onClick={handlePrint}>
-                    <FormattedMessage
-                      id="common.print"
-                      defaultMessage="Print"
-                    />
-                  </Button>
-                </div>
-
-                {/* Recent Submission Details */}
-                <div className="submissionDetailsSection">
-                  <div className="submissionDetailRow">
-                    <div className="submissionDetailField">
-                      <label>
-                        <FormattedMessage
-                          id="equipment.submission.id"
-                          defaultMessage="Record ID"
-                        />
-                      </label>
-                      <span className="submissionDetailValue">
-                        {recentSubmission.id}
-                      </span>
-                    </div>
-                    <div className="submissionDetailField">
-                      <label>
-                        <FormattedMessage
-                          id="equipment.submission.equipment"
-                          defaultMessage="Equipment"
-                        />
-                      </label>
-                      <span className="submissionDetailValue">
-                        {recentSubmission.inventoryItemName}
-                      </span>
-                    </div>
-                    <div className="submissionDetailField">
-                      <label>
-                        <FormattedMessage
-                          id="equipment.submission.lot"
-                          defaultMessage="Lot Number"
-                        />
-                      </label>
-                      <span className="submissionDetailValue">
-                        {recentSubmission.lotNumber}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="submissionDetailRow">
-                    <div className="submissionDetailField">
-                      <label>
-                        <FormattedMessage
-                          id="equipment.submission.quantity"
-                          defaultMessage="Quantity Used"
-                        />
-                      </label>
-                      <span className="submissionDetailValue">
-                        {recentSubmission.quantityUsed}
-                      </span>
-                    </div>
-                    <div className="submissionDetailField">
-                      <label>
-                        <FormattedMessage
-                          id="equipment.submission.user"
-                          defaultMessage="Performed By"
-                        />
-                      </label>
-                      <span className="submissionDetailValue">
-                        {recentSubmission.performedByUserName}
-                      </span>
-                    </div>
-                    <div className="submissionDetailField">
-                      <label>
-                        <FormattedMessage
-                          id="equipment.submission.date"
-                          defaultMessage="Usage Date"
-                        />
-                      </label>
-                      <span className="submissionDetailValue">
-                        {recentSubmission.usageDate
-                          ? new Date(recentSubmission.usageDate).toLocaleString(
-                              intl.locale,
-                            )
-                          : "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            {/* Equipment Usage Submissions DataTable */}
+            <div className="usageHistorySection">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <h3 style={{ margin: 0 }}>
+                  <FormattedMessage
+                    id="equipment.usage.submissions"
+                    defaultMessage="Equipment Usage Submissions"
+                  />
+                </h3>
+                <Button kind="secondary" size="sm" onClick={handlePrint}>
+                  <FormattedMessage id="common.print" defaultMessage="Print" />
+                </Button>
               </div>
-            )}
+
+              {/* Submissions DataTable */}
+              {submissionRows && submissionRows.length > 0 ? (
+                <div className="tableWrapper">
+                  <table className="usageHistoryTable">
+                    <thead>
+                      <tr>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.id"
+                            defaultMessage="Record ID"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.equipment"
+                            defaultMessage="Equipment"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.lot"
+                            defaultMessage="Lot Number"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.quantity"
+                            defaultMessage="Quantity Used"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.user"
+                            defaultMessage="Performed By"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.date"
+                            defaultMessage="Date"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.operatorName"
+                            defaultMessage="Operator Name"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.loginTime"
+                            defaultMessage="Login Time"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.logoutTime"
+                            defaultMessage="Logout Time"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.activities"
+                            defaultMessage="Activities Done"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.submission.equipmentStatus"
+                            defaultMessage="Equipment Status"
+                          />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissionRows.map((submission) => (
+                        <tr key={submission.id}>
+                          <td>{submission.id || "N/A"}</td>
+                          <td>{submission.inventoryItemName || "N/A"}</td>
+                          <td>{submission.lotNumber || "N/A"}</td>
+                          <td>{submission.quantityUsed || 0}</td>
+                          <td>{submission.performedByUserName || "N/A"}</td>
+                          <td>
+                            {submission.usageDate
+                              ? new Date(submission.usageDate).toLocaleString(
+                                  intl.locale,
+                                )
+                              : "N/A"}
+                          </td>
+                          <td>{submission.operatorName || "N/A"}</td>
+                          <td>{submission.loginTime || "N/A"}</td>
+                          <td>{submission.logoutTime || "N/A"}</td>
+                          <td>{submission.activities || "N/A"}</td>
+                          <td>{submission.equipmentStatus || "N/A"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="emptyStateSection">
+                  <p>
+                    <FormattedMessage
+                      id="equipment.usage.noSubmissions"
+                      defaultMessage="No equipment usage submissions yet"
+                    />
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </Column>
       </Grid>
