@@ -10,6 +10,7 @@ import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Arrays;
@@ -257,7 +258,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
         // Insert a known sample to find
         Sample sample = createSample("01/01/2024", "2024-999");
-        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setEnteredDate(Date.valueOf(LocalDate.of(2024, 1, 1)));
         sample.setId(null);
         sampleService.insertDataWithAccessionNumber(sample);
 
@@ -271,7 +272,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
         cleanRowsInCurrentConnection(new String[] { "sample", "sample_human" });
 
         Sample sample = createSample("01/01/2024", "2024-999");
-        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setEnteredDate(Date.valueOf(LocalDate.of(2024, 1, 1)));
         sample.setId(null); // Ensure ID is null so it inserts as new
 
         sampleService.insertDataWithAccessionNumber(sample);
@@ -304,7 +305,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void insertDataWithAccessionNumber_shouldRun() throws Exception {
         Sample sample = createSample("01/01/2024", "99999");
-        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setEnteredDate(Date.valueOf(LocalDate.of(2024, 1, 1)));
         sample.setId(null); // ensure new insert
 
         sampleService.insertDataWithAccessionNumber(sample);
@@ -319,7 +320,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void generateAccessionNumberAndInsert_shouldRun() throws Exception {
         Sample sample = createSample("01/01/2024", "88888");
-        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setEnteredDate(Date.valueOf(LocalDate.of(2024, 1, 1)));
         sample.setId(null);
 
         sampleService.generateAccessionNumberAndInsert(sample);
@@ -331,8 +332,8 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSamplesForSiteBetweenOrderDates_shouldReturnList() {
-        java.time.LocalDate start = java.time.LocalDate.of(2024, 1, 1);
-        java.time.LocalDate end = java.time.LocalDate.of(2024, 12, 31);
+        LocalDate start = LocalDate.of(2024, 1, 1);
+        LocalDate end = LocalDate.of(2024, 12, 31);
 
         List<Sample> results = sampleService.getSamplesForSiteBetweenOrderDates(DEFAULT_ID, start, end);
         Assert.assertNotNull(results);
@@ -340,8 +341,8 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getStudySamplesForSiteBetweenOrderDates_shouldReturnList() {
-        java.time.LocalDate start = java.time.LocalDate.of(2024, 1, 1);
-        java.time.LocalDate end = java.time.LocalDate.of(2024, 12, 31);
+        LocalDate start = LocalDate.of(2024, 1, 1);
+        LocalDate end = LocalDate.of(2024, 12, 31);
 
         List<Sample> results = sampleService.getStudySamplesForSiteBetweenOrderDates(DEFAULT_ID, start, end);
         Assert.assertNotNull(results);
