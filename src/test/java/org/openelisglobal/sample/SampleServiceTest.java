@@ -10,6 +10,7 @@ import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.stream.Collectors;
 import java.util.List;
 import org.dbunit.DatabaseUnitException;
 import org.junit.Assert;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
+    private static final String DEFAULT_ID = "1";
     @Autowired
     SampleService sampleService;
 
@@ -184,9 +186,10 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
         return sample;
     }
+
     @Test
     public void getAnalysis_shouldReturnAnalysesForSample() {
-        Sample sample = sampleService.get("1");
+        Sample sample = sampleService.get(DEFAULT_ID);
         Assert.assertNotNull(sample);
 
         List<Analysis> analyses = sampleService.getAnalysis(sample);
@@ -194,7 +197,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAnalysis_shouldReturnEmpty_whenSampleIsNotPersisted() {
+    public void getAnalysis_shouldReturnNull_whenSampleIsNotPersisted() {
         Sample transientSample = new Sample();
         List<Analysis> results = sampleService.getAnalysis(transientSample);
         Assert.assertNull(results);
@@ -202,10 +205,8 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getPatient_shouldReturnPatient_whenSampleExists() {
-        Sample sample = sampleService.get("1");
+        Sample sample = sampleService.get(DEFAULT_ID);
         Patient patient = sampleService.getPatient(sample);
-
-        Assert.assertNotNull(patient);
         Assert.assertNotNull(patient.getPerson());
     }
 
@@ -213,21 +214,24 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
     public void getSamplesForPatient_shouldReturnList_whenPatientExists() {
         List<Sample> samples = sampleService.getSamplesForPatient("1");
         Assert.assertNotNull(samples);
-        Assert.assertTrue(samples.size() > 0);
+        Assert.assertFalse("Patient 1 should have samples", samples.isEmpty());
     }
 
     @Test
     public void getData_shouldPopulateSampleDetails() {
-        Sample sample = sampleService.get("1");
+        Sample sample = sampleService.get(DEFAULT_ID);
         sampleService.getData(sample);
-        Assert.assertNotNull(sample);
+        Assert.assertNotNull(sample.getAccessionNumber());
+        Assert.assertNotNull(sample.getReceivedTimestamp());
     }
 
     @Test
     public void getSamplesByStatusAndDomain_shouldReturnList() {
         java.util.List<String> statuses = java.util.Arrays.asList("entered", "released");
         java.util.List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "clinical");
-        Assert.assertNotNull(results);
+        Assert.assertTrue(
+                results.stream().allMatch(s -> statuses.contains(s.getStatus()))
+        );
     }
 
     @Test
@@ -241,37 +245,42 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
         java.util.List<String> analysisIds = new java.util.ArrayList<>();
         java.util.List<Sample> results = sampleService.getSamplesByAnalysisIds(analysisIds);
         Assert.assertNotNull(results);
+        Assert.assertTrue("Empty analysis IDs should return empty list", results.isEmpty());
     }
 
     @Test
-    public void getLargestAccessionNumberMatchingPattern_shouldReturnResult() {
-        String result = sampleService.getLargestAccessionNumberMatchingPattern("2024", 4);
+    public void getLargestAccessionNumberMatchingPattern_shouldReturnResult() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "sample", "sample_human" });
+
+        // Insert a known sample to find
+        Sample sample = createSample("01/01/2024", "2024-999");
+        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setId(null);
+        sampleService.insertDataWithAccessionNumber(sample);
+
+        String result = sampleService.getLargestAccessionNumberMatchingPattern("2024", 8);
+        Assert.assertNotNull(result);
+        Assert.assertTrue(result.startsWith("2024"));
     }
 
     @Test
-    public void getLargestAccessionNumberWithPrefix_shouldReturnResult() {
+    public void getLargestAccessionNumberWithPrefix_shouldReturnResult() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "sample", "sample_human" });
+
+        Sample sample = createSample("01/01/2024", "2024-999");
+        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setId(null); // Ensure ID is null so it inserts as new
+
+        sampleService.insertDataWithAccessionNumber(sample);
+
         String result = sampleService.getLargestAccessionNumberWithPrefix("2024");
-    }
-
-    @Test
-    public void getPageOfSamples_shouldReturnList() {
-        try {
-            sampleService.getPageOfSamples(0);
-        } catch (Exception e) {
-        }
-    }
-
-    @Test
-    public void getSampleAdditionalFieldsForSample_shouldReturnList() {
-        try {
-            sampleService.getSampleAdditionalFieldsForSample("1");
-        } catch (Exception e) {
-        }
+        Assert.assertNotNull("Should find the sample we just inserted", result);
+        Assert.assertEquals("The result should match the inserted accession number", "2024-999", result);
     }
 
     @Test
     public void getSamplesWithPendingQaEventsByService_shouldReturnList() {
-        java.util.List<Sample> results = sampleService.getSamplesWithPendingQaEventsByService("1");
+        java.util.List<Sample> results = sampleService.getSamplesWithPendingQaEventsByService(DEFAULT_ID);
         Assert.assertNotNull(results);
     }
 
@@ -285,69 +294,97 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
     public void getAccessionNumber_shouldReturnString() {
         Sample sample = new Sample();
         sample.setAccessionNumber("123");
-        sampleService.getAccessionNumber(sample);
+        String result = sampleService.getAccessionNumber(sample);
+        Assert.assertEquals("123", result);
     }
 
     @Test
-    public void insertDataWithAccessionNumber_shouldRun() {
-        Sample sample = new Sample();
-        try {
-            sampleService.insertDataWithAccessionNumber(sample);
-        } catch (Exception e) {
-        }
+    public void insertDataWithAccessionNumber_shouldRun() throws Exception {
+        Sample sample = createSample("01/01/2024", "99999");
+        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setId(null); // ensure new insert
+
+        sampleService.insertDataWithAccessionNumber(sample);
+
+        Assert.assertNotNull(sample.getId());
+
+        Sample persisted = sampleService.get(sample.getId());
+        Assert.assertNotNull(persisted);
+        Assert.assertEquals("99999", persisted.getAccessionNumber());
     }
 
     @Test
-    public void generateAccessionNumberAndInsert_shouldRun() {
-        Sample sample = new Sample();
-        try {
-            sampleService.generateAccessionNumberAndInsert(sample);
-        } catch (Exception e) {
-        }
+    public void generateAccessionNumberAndInsert_shouldRun() throws Exception {
+        Sample sample = createSample("01/01/2024", "88888");
+        sample.setEnteredDate(java.sql.Date.valueOf(java.time.LocalDate.of(2024, 1, 1)));
+        sample.setId(null);
+
+        sampleService.generateAccessionNumberAndInsert(sample);
+
+        Assert.assertNotNull(sample.getAccessionNumber());
+        Assert.assertNotEquals("88888", sample.getAccessionNumber());
+
     }
 
     @Test
     public void getSamplesForSiteBetweenOrderDates_shouldReturnList() {
-        java.time.LocalDate now = java.time.LocalDate.now();
-        try {
-            sampleService.getSamplesForSiteBetweenOrderDates("1", now, now);
-        } catch (Exception e) {
-        }
+        java.time.LocalDate start = java.time.LocalDate.of(2024, 1, 1);
+        java.time.LocalDate end = java.time.LocalDate.of(2024, 12, 31);
+
+        List<Sample> results = sampleService.getSamplesForSiteBetweenOrderDates(DEFAULT_ID, start, end);
+        Assert.assertNotNull(results);
     }
 
     @Test
     public void getStudySamplesForSiteBetweenOrderDates_shouldReturnList() {
-        java.time.LocalDate now = java.time.LocalDate.now();
-        try {
-            sampleService.getStudySamplesForSiteBetweenOrderDates("1", now, now);
-        } catch (Exception e) {
-        }
+        java.time.LocalDate start = java.time.LocalDate.of(2024, 1, 1);
+        java.time.LocalDate end = java.time.LocalDate.of(2024, 12, 31);
+
+        List<Sample> results = sampleService.getStudySamplesForSiteBetweenOrderDates(DEFAULT_ID, start, end);
+        Assert.assertNotNull(results);
     }
     @Test
-    public void getSamplesWithPendingQaEvents_Detailed_shouldReturnList() {
-        Sample sample = new Sample();
-        sample.setId("1");
-        try {
-            sampleService.getSamplesWithPendingQaEvents(sample, true, "1", true);
-        } catch (Exception e) {
+    public void getTableReferenceId_shouldReturnConstant() {
+        String refId = org.openelisglobal.sample.service.SampleServiceImpl.getTableReferenceId();
+
+        Assert.assertNotNull("Table Reference ID should not be null", refId);
+        Assert.assertEquals("1", refId);
+    }
+    @Test
+    public void sampleContainsTest_shouldCheckTests() {
+        Sample sample = sampleService.get(DEFAULT_ID);
+        List<Analysis> analyses = sampleService.getAnalysis(sample);
+
+        // Case A: Test the "True" path (Loop finds a match)
+        if (analyses != null && !analyses.isEmpty()) {
+            String validTestId = analyses.get(0).getTest().getId();
+            boolean result = sampleService.sampleContainsTest(DEFAULT_ID, validTestId);
+            Assert.assertTrue("Should return true when test exists in sample", result);
         }
+
+        // Case B: Test the "False" path (Loop finishes without match)
+        boolean falseResult = sampleService.sampleContainsTest(DEFAULT_ID, "99999_NON_EXISTENT");
+        Assert.assertFalse("Should return false when test does not exist", falseResult);
     }
 
     @Test
-    public void getSampleStatusForDisplay_shouldReturnString() {
-        Sample sample = new Sample();
-        try {
-            sampleService.getSampleStatusForDisplay(sample);
-        } catch (Exception e) {
-        }
-    }
+    public void sampleContainsTestWithLoinc_shouldCheckLoinc() {
+        Sample sample = sampleService.get(DEFAULT_ID);
+        List<Analysis> analyses = sampleService.getAnalysis(sample);
 
-    @Test
-    public void getSamplesByPriority_shouldReturnList() {
-       try {
-            sampleService.getSamplesByPriority(null);
-        } catch (Exception e) {
+        // Case A: Test the "True" path
+        if (analyses != null && !analyses.isEmpty()) {
+            String validLoinc = analyses.get(0).getTest().getLoinc();
+            // Only test true if the seed data actually has a LOINC code
+            if (validLoinc != null) {
+                boolean result = sampleService.sampleContainsTestWithLoinc(DEFAULT_ID, validLoinc);
+                Assert.assertTrue("Should return true when LOINC matches", result);
+            }
         }
+
+        // Case B: Test the "False" path
+        boolean falseResult = sampleService.sampleContainsTestWithLoinc(DEFAULT_ID, "INVALID_LOINC_CODE");
+        Assert.assertFalse("Should return false when LOINC does not exist", falseResult);
     }
 }
 
