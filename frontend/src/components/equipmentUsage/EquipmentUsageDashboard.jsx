@@ -57,26 +57,14 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
   });
   const [loadingMetrics, setLoadingMetrics] = useState(true);
 
-  // Recent Submission State - Load from localStorage on mount
+  // Recent Submission State
   const [recentSubmission, setRecentSubmission] = useState(
     initialSubmission || null,
   );
-  const [submissionRows, setSubmissionRows] = useState(() => {
-    // Try to load submissions from localStorage first
-    try {
-      const stored = localStorage.getItem("equipmentSubmissions");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return Array.isArray(parsed) ? parsed : [];
-      }
-    } catch (error) {
-      console.error("Error loading submissions from localStorage:", error);
-    }
-    // Fallback to initialSubmission
-    return initialSubmission ? [initialSubmission] : [];
-  });
+  const [submissionRows, setSubmissionRows] = useState([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(true);
 
-  // Fetch Metrics on Mount
+  // Fetch Metrics and Submissions on Mount
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
@@ -119,7 +107,38 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
       }
     };
 
+    const fetchSubmissions = async () => {
+      setLoadingSubmissions(true);
+      try {
+        CartridgeUsageAPI.getEquipmentUsageSubmissions(
+          null,
+          null,
+          (data) => {
+            if (isMounted && Array.isArray(data)) {
+              setSubmissionRows(data);
+            }
+            if (isMounted) {
+              setLoadingSubmissions(false);
+            }
+          },
+          (error) => {
+            console.error("Error loading submissions:", error);
+            if (isMounted) {
+              setLoadingSubmissions(false);
+            }
+          },
+          controller.signal,
+        );
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
+        if (isMounted) {
+          setLoadingSubmissions(false);
+        }
+      }
+    };
+
     fetchMetrics();
+    fetchSubmissions();
 
     // Cleanup function
     return () => {
@@ -131,17 +150,21 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
   // Handle successful submission from EquipmentUsageLog
   const handleSubmitSuccess = useCallback((submissionData) => {
     setRecentSubmission(submissionData);
-    // Add row to submission table
-    setSubmissionRows((prevRows) => {
-      const updated = [submissionData, ...prevRows];
-      // Persist to localStorage
-      try {
-        localStorage.setItem("equipmentSubmissions", JSON.stringify(updated));
-      } catch (error) {
-        console.error("Error saving submissions to localStorage:", error);
-      }
-      return updated;
-    });
+
+    // Fetch fresh submissions from database (source of truth)
+    CartridgeUsageAPI.getEquipmentUsageSubmissions(
+      null,
+      null,
+      (data) => {
+        if (Array.isArray(data)) {
+          setSubmissionRows(data);
+        }
+      },
+      (error) => {
+        console.error("Error fetching updated submissions:", error);
+      },
+    );
+
     // Refresh metrics to include the new submission
     CartridgeUsageAPI.getEquipmentUsageMetrics(
       null,

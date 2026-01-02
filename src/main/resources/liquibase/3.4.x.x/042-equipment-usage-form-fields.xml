@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="claude" id="add-equipment-usage-form-fields">
+        <comment>Add columns to inventory_usage table to store equipment usage form fields
+            (operator name, activities, equipment status, approval info, etc.)
+        </comment>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="operator_name" type="VARCHAR(255)" remarks="Name of equipment operator">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="usage_activities" type="TEXT" remarks="Activities performed during equipment usage">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="equipment_status" type="VARCHAR(50)" remarks="Status of equipment (Functional, Non-functional, Maintenance)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="login_time" type="VARCHAR(50)" remarks="Time operator logged in to use equipment">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="logout_time" type="VARCHAR(50)" remarks="Time operator logged out from equipment">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="usage_date" type="VARCHAR(50)" remarks="Date of equipment usage">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="approved_by" type="VARCHAR(255)" remarks="Name of person who approved the usage">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn schemaName="clinlims" tableName="inventory_usage">
+            <column name="approval_date" type="VARCHAR(50)" remarks="Date of approval">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+    </changeSet>
+
+</databaseChangeLog>

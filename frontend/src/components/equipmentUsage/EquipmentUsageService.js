@@ -437,6 +437,27 @@ export const CartridgeUsageAPI = {
       null,
     );
   },
+
+  /**
+   * Fetch all equipment usage submissions from the database (source of truth)
+   * Returns complete entries with all form fields persisted to database
+   * Used by dashboard on page load to fetch submissions
+   * @param {string} startDate - Optional start date (ISO 8601 format)
+   * @param {string} endDate - Optional end date (ISO 8601 format)
+   */
+  getEquipmentUsageSubmissions: (
+    startDate = null,
+    endDate = null,
+    callback,
+    errorCallback = null,
+    signal = null,
+  ) => {
+    let url = "/rest/equipment/usage/submissions";
+    if (startDate && endDate) {
+      url += `?startDate=${startDate}&endDate=${endDate}`;
+    }
+    getFromOpenElisServer(url, callback, errorCallback, signal);
+  },
 };
 
 export default CartridgeUsageAPI;

@@ -118,6 +118,16 @@ public class EquipmentUsageRestController extends BaseRestController {
             InventoryUsage usage = usageService.recordEquipmentUsage(request.getLotId(), request.getItemId(),
                     request.getQuantity(), sysUserId, null);
 
+            // Populate form fields in usage record (persists to database)
+            usage.setOperatorName(request.getOperatorName());
+            usage.setLoginTime(request.getLoginTime());
+            usage.setLogoutTime(request.getLogoutTime());
+            usage.setActivities(request.getActivities());
+            usage.setEquipmentStatus(request.getEquipmentStatus());
+            usage.setApprovedBy(request.getApprovedBy());
+            usage.setApprovalDate(request.getApprovalDate());
+            usageService.save(usage);
+
             // Convert to extended DTO with all form fields
             EquipmentUsageEntryDTO dto = convertToEntryDTO(usage, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(dto);
@@ -125,6 +135,66 @@ public class EquipmentUsageRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get all equipment usage submissions with all form fields from the database.
+     * Returns entries created via the /submit endpoint, persisted to database. Used
+     * by dashboard to fetch submissions on page load (source of truth).
+     *
+     * @param startDate Optional start date (ISO 8601 format)
+     * @param endDate   Optional end date (ISO 8601 format)
+     * @return List of equipment usage entries with all form fields
+     */
+    @GetMapping(value = "/submissions", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<EquipmentUsageEntryDTO>> getEquipmentUsageSubmissions(
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+        try {
+            List<InventoryUsage> usageList;
+
+            if (startDate != null && endDate != null) {
+                Timestamp start = Timestamp.valueOf(startDate.replace("T", " "));
+                Timestamp end = Timestamp.valueOf(endDate.replace("T", " "));
+                usageList = usageService.getByDateRange(start, end);
+            } else {
+                usageList = usageService.getAll();
+            }
+
+            // Convert to extended DTO with form fields from database
+            List<EquipmentUsageEntryDTO> dtoList = usageList.stream().map(usage -> {
+                String userName = "Unknown User";
+                if (usage.getPerformedByUser() != null) {
+                    try {
+                        SystemUser user = systemUserService.get(usage.getPerformedByUser().toString());
+                        if (user != null) {
+                            userName = user.getFirstName() + " " + user.getLastName();
+                        }
+                    } catch (Exception e) {
+                        LogEvent.logError("Error retrieving user: " + usage.getPerformedByUser(), e);
+                    }
+                }
+
+                return EquipmentUsageEntryDTO.builder().id(usage.getId())
+                        .inventoryItemId(usage.getInventoryItem().getId())
+                        .inventoryItemName(usage.getInventoryItem().getName()).lotId(usage.getLot().getId())
+                        .lotNumber(usage.getLot().getLotNumber()).quantityUsed(usage.getQuantityUsed())
+                        .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
+                        .performedByUserName(userName).testResultId(usage.getTestResultId())
+                        .analysisId(usage.getAnalysisId())
+                        // Form fields from database
+                        .operatorName(usage.getOperatorName())
+                        .date(usage.getUsageDate() != null ? usage.getUsageDate().toString() : null)
+                        .loginTime(usage.getLoginTime()).activities(usage.getActivities())
+                        .equipmentStatus(usage.getEquipmentStatus()).logoutTime(usage.getLogoutTime())
+                        .approvedBy(usage.getApprovedBy()).approvalDate(usage.getApprovalDate()).build();
+            }).collect(Collectors.toList());
+
+            return ResponseEntity.ok(dtoList);
+
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
