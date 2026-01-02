@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Button,
   Grid,
@@ -24,6 +24,7 @@ import {
   TimePickerSelect,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CartridgeUsageAPI from "./EquipmentUsageService";
 import ChooseEquipmentModal from "./modals/ChooseEquipment";
 import "./EquipmentUsage.css";
@@ -54,6 +55,26 @@ import "./EquipmentUsage.css";
  */
 const EquipmentUsageLog = () => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+
+  // Helper function to format time as HH:MM
+  const formatTime = (date) => {
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
+  // Helper function to format date as mm/dd/yyyy
+  const formatDate = (date) => {
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
+
+  // Get current time formatted
+  const getCurrentTime = () => formatTime(new Date());
+  const getCurrentDate = () => formatDate(new Date());
 
   // Equipment Selection State
   const [selectedEquipment, setSelectedEquipment] = useState(null);
@@ -68,13 +89,13 @@ const EquipmentUsageLog = () => {
   const [usageRows, setUsageRows] = useState([
     {
       id: 1,
-      date: "",
-      operatorName: "",
-      loginTime: "",
+      date: getCurrentDate(),
+      operatorName: userSessionDetails?.firstName || "",
+      loginTime: getCurrentTime(),
       activities: "",
       equipmentStatus: "Functional",
-      logoutTime: "",
-      signature: "",
+      logoutTime: getCurrentTime(),
+      signature: userSessionDetails?.firstName || "",
     },
   ]);
 
@@ -129,17 +150,17 @@ const EquipmentUsageLog = () => {
     setErrorMessage(null);
   };
 
-  // Add new row to usage log
+  // Add new row to usage log with auto-filled values
   const handleAddRow = () => {
     const newRow = {
       id: Math.max(...usageRows.map((r) => r.id), 0) + 1,
-      date: "",
-      operatorName: "",
-      loginTime: "",
+      date: getCurrentDate(),
+      operatorName: userSessionDetails?.firstName || "",
+      loginTime: getCurrentTime(),
       activities: "",
       equipmentStatus: "Functional",
-      logoutTime: "",
-      signature: "",
+      logoutTime: getCurrentTime(),
+      signature: userSessionDetails?.firstName || "",
     };
     setUsageRows([...usageRows, newRow]);
   };
@@ -491,12 +512,12 @@ const EquipmentUsageLog = () => {
                         </td>
                         <td>
                           <input
-                            type="text"
+                            type="time"
                             value={row.loginTime}
                             onChange={(e) =>
                               handleRowChange(row.id, "loginTime", e.target.value)
                             }
-                            placeholder="--:-- --"
+                            placeholder="HH:MM"
                             className="tableInput"
                           />
                         </td>
@@ -525,12 +546,12 @@ const EquipmentUsageLog = () => {
                         </td>
                         <td>
                           <input
-                            type="text"
+                            type="time"
                             value={row.logoutTime}
                             onChange={(e) =>
                               handleRowChange(row.id, "logoutTime", e.target.value)
                             }
-                            placeholder="--:-- --"
+                            placeholder="HH:MM"
                             className="tableInput"
                           />
                         </td>
