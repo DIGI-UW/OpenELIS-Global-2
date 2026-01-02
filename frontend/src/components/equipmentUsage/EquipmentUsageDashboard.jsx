@@ -323,82 +323,94 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
                 </Button>
               </div>
 
-              {/* Submissions DataTable */}
-              {submissionRows && submissionRows.length > 0 ? (
-                <div className="tableWrapper">
-                  <table className="usageHistoryTable">
-                    <thead>
-                      <tr>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.id"
-                            defaultMessage="Record ID"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.equipment"
-                            defaultMessage="Equipment"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.lot"
-                            defaultMessage="Lot Number"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.quantity"
-                            defaultMessage="Quantity Used"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.user"
-                            defaultMessage="Performed By"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.date"
-                            defaultMessage="Date"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.operatorName"
-                            defaultMessage="Operator Name"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.loginTime"
-                            defaultMessage="Login Time"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.logoutTime"
-                            defaultMessage="Logout Time"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.activities"
-                            defaultMessage="Activities Done"
-                          />
-                        </th>
-                        <th>
-                          <FormattedMessage
-                            id="equipment.submission.equipmentStatus"
-                            defaultMessage="Equipment Status"
-                          />
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {submissionRows.map((submission) => (
+              {/* Submissions DataTable - Always visible */}
+              <div className="tableWrapper">
+                <table className="usageHistoryTable">
+                  <thead>
+                    <tr>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.id"
+                          defaultMessage="Record ID"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.equipment"
+                          defaultMessage="Equipment"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.lot"
+                          defaultMessage="Lot Number"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.quantity"
+                          defaultMessage="Quantity Used"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.user"
+                          defaultMessage="Performed By"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.date"
+                          defaultMessage="Date"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.operatorName"
+                          defaultMessage="Operator Name"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.loginTime"
+                          defaultMessage="Login Time"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.logoutTime"
+                          defaultMessage="Logout Time"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.activities"
+                          defaultMessage="Activities Done"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.equipmentStatus"
+                          defaultMessage="Equipment Status"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.approvedBy"
+                          defaultMessage="Approved By"
+                        />
+                      </th>
+                      <th>
+                        <FormattedMessage
+                          id="equipment.submission.approvalDate"
+                          defaultMessage="Approval Date"
+                        />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {submissionRows && submissionRows.length > 0 ? (
+                      submissionRows.map((submission) => (
                         <tr key={submission.id}>
                           <td>{submission.id || "N/A"}</td>
                           <td>{submission.inventoryItemName || "N/A"}</td>
@@ -417,21 +429,25 @@ const EquipmentUsageDashboard = ({ initialSubmission }) => {
                           <td>{submission.logoutTime || "N/A"}</td>
                           <td>{submission.activities || "N/A"}</td>
                           <td>{submission.equipmentStatus || "N/A"}</td>
+                          <td>{submission.approvedBy || "N/A"}</td>
+                          <td>{submission.approvalDate || "N/A"}</td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="emptyStateSection">
-                  <p>
-                    <FormattedMessage
-                      id="equipment.usage.noSubmissions"
-                      defaultMessage="No equipment usage submissions yet"
-                    />
-                  </p>
-                </div>
-              )}
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="13" style={{ textAlign: "center" }}>
+                          <em>
+                            <FormattedMessage
+                              id="equipment.usage.noSubmissions"
+                              defaultMessage="No submissions yet"
+                            />
+                          </em>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </Column>

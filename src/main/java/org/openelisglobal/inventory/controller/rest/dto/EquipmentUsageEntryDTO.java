@@ -42,9 +42,13 @@ public class EquipmentUsageEntryDTO {
 
     // Equipment usage form fields
     private String operatorName;
+    private String date;
     private String loginTime;
-    private String logoutTime;
     private String activities;
     private String equipmentStatus;
-    private String date;
+    private String logoutTime;
+
+    // Approval fields
+    private String approvedBy;
+    private String approvalDate;
 }

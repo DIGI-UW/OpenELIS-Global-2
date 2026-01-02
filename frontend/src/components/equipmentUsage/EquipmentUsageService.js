@@ -412,17 +412,19 @@ export const CartridgeUsageAPI = {
 
   /**
    * Submit complete equipment usage entry with all form fields
-   * Records equipment usage with operator info, activities, login/logout times, etc.
+   * Records equipment usage with operator info, activities, login/logout times, approval info, etc.
    * @param {object} entryRequest - {
    *   itemId: number,
    *   lotId: number,
    *   quantity: number,
    *   operatorName: string,
+   *   date: string,
    *   loginTime: string,
-   *   logoutTime: string,
    *   activities: string,
    *   equipmentStatus: string,
-   *   date: string
+   *   logoutTime: string,
+   *   approvedBy: string,
+   *   approvalDate: string
    * }
    * @returns {EquipmentUsageEntryDTO} Response with all submitted data plus database-generated fields
    */

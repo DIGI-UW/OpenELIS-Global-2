@@ -131,6 +131,8 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
       activities: "",
       equipmentStatus: "Functional",
       logoutTime: getCurrentTime(),
+      approvedBy: "",
+      approvalDate: "",
       signature: userSessionDetails?.firstName || "",
     };
     setUsageRows([...usageRows, newRow]);
@@ -235,11 +237,13 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
               quantity: 1, // Equipment usage counts as 1 unit per submission
               labUnitId: userSessionDetails?.labUnit || "",
               operatorName: row.operatorName,
+              date: row.date,
               loginTime: row.loginTime,
-              logoutTime: row.logoutTime,
               activities: row.activities,
               equipmentStatus: row.equipmentStatus,
-              date: row.date,
+              logoutTime: row.logoutTime,
+              approvedBy: row.approvedBy,
+              approvalDate: row.approvalDate,
             };
 
             // Submit to new endpoint that accepts all form data
@@ -467,6 +471,18 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                         </th>
                         <th>
                           <FormattedMessage
+                            id="equipment.usage.table.approvedBy"
+                            defaultMessage="Approved By"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
+                            id="equipment.usage.table.approvalDate"
+                            defaultMessage="Approval Date"
+                          />
+                        </th>
+                        <th>
+                          <FormattedMessage
                             id="equipment.usage.table.signature"
                             defaultMessage="Signature"
                           />
@@ -570,6 +586,38 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                               placeholder="HH:MM"
                               className="tableInput"
                             />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              value={row.approvedBy}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  row.id,
+                                  "approvedBy",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Approved by"
+                              className="tableInput"
+                            />
+                          </td>
+                          <td>
+                            <DatePicker dateFormat="mm/dd/yyyy">
+                              <DatePickerInput
+                                id={`approval-date-picker-${row.id}`}
+                                labelText="Approval Date"
+                                placeholder="mm/dd/yyyy"
+                                value={row.approvalDate}
+                                onChange={(e) =>
+                                  handleRowChange(
+                                    row.id,
+                                    "approvalDate",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </DatePicker>
                           </td>
                           <td>
                             <input

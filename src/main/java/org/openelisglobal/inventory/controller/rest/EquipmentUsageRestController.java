@@ -302,9 +302,10 @@ public class EquipmentUsageRestController extends BaseRestController {
                 .usageDate(usage.getUsageDate()).performedByUserId(usage.getPerformedByUser())
                 .performedByUserName(userName).testResultId(usage.getTestResultId()).analysisId(usage.getAnalysisId())
                 // Add form fields from request
-                .operatorName(request.getOperatorName()).loginTime(request.getLoginTime())
-                .logoutTime(request.getLogoutTime()).activities(request.getActivities())
-                .equipmentStatus(request.getEquipmentStatus()).date(request.getDate()).build();
+                .operatorName(request.getOperatorName()).date(request.getDate()).loginTime(request.getLoginTime())
+                .activities(request.getActivities()).equipmentStatus(request.getEquipmentStatus())
+                .logoutTime(request.getLogoutTime()).approvedBy(request.getApprovedBy())
+                .approvalDate(request.getApprovalDate()).build();
     }
 
     /**
@@ -317,11 +318,13 @@ public class EquipmentUsageRestController extends BaseRestController {
         public Double quantity;
         public String labUnitId;
         public String operatorName;
+        public String date;
         public String loginTime;
-        public String logoutTime;
         public String activities;
         public String equipmentStatus;
-        public String date;
+        public String logoutTime;
+        public String approvedBy;
+        public String approvalDate;
 
         public Long getItemId() {
             return itemId;
@@ -401,6 +404,22 @@ public class EquipmentUsageRestController extends BaseRestController {
 
         public void setDate(String date) {
             this.date = date;
+        }
+
+        public String getApprovedBy() {
+            return approvedBy;
+        }
+
+        public void setApprovedBy(String approvedBy) {
+            this.approvedBy = approvedBy;
+        }
+
+        public String getApprovalDate() {
+            return approvalDate;
+        }
+
+        public void setApprovalDate(String approvalDate) {
+            this.approvalDate = approvalDate;
         }
     }
 
