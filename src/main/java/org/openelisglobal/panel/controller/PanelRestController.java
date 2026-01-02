@@ -61,7 +61,6 @@ public class PanelRestController {
         return ResponseEntity.ok().build();
     }
 
-    // Lab Units endpoints
     @GetMapping("/{id}/lab-units")
     public ResponseEntity<List<String>> getLabUnits(@PathVariable String id) {
         List<String> labUnitIds = panelService.getLabUnitIds(id);
@@ -74,7 +73,6 @@ public class PanelRestController {
         return ResponseEntity.ok().build();
     }
 
-    // Sample Types endpoints
     @GetMapping("/{id}/sample-types")
     public ResponseEntity<List<String>> getSampleTypes(@PathVariable String id) {
         List<String> sampleTypeIds = panelService.getSampleTypeIds(id);
@@ -87,7 +85,6 @@ public class PanelRestController {
         return ResponseEntity.ok().build();
     }
 
-    // Panel Tests endpoints
     @GetMapping("/{id}/tests")
     public ResponseEntity<List<PanelTestForm>> getPanelTests(@PathVariable String id) {
         List<PanelTestForm> tests = panelService.getPanelTests(id);
@@ -134,7 +131,6 @@ public class PanelRestController {
         return ResponseEntity.ok().build();
     }
 
-    // Import/Export endpoints
     @PostMapping("/export")
     public ResponseEntity<Object> exportPanels(@RequestBody PanelExportRequest request) {
         Object result = panelService.exportPanels(request);

@@ -188,11 +188,6 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             // duplicates
             String sql = "from Panel t where trim(lower(t.panelName)) = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
-            // Prevent auto-flush before executing this read-only duplicate check. Flushing
-            // here
-            // can cause pending updates on the managed entity to be applied too early and
-            // trigger optimistic locking failures when the object's version is null or
-            // otherwise mismatched.
             query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getPanelName().toLowerCase().trim());
 
