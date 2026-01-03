@@ -24,6 +24,16 @@ import {
 } from "../utils/Utils";
 import { AlertDialog } from "../common/CustomNotification";
 
+// Table header constants for maintainability
+const HEADER_KEYS = {
+  ELECTRONIC_ORDER_ID: "electronicOrderId",
+  EXTERNAL_ORDER_ID: "externalOrderId",
+  STATUS: "status",
+  LAB_NUMBER: "labNumber",
+  QA_EVENT_ID: "qaEventId",
+  ACTIONS: "actions",
+};
+
 const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
   const intl = useIntl();
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -180,7 +190,8 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
       formData,
       (status) => {
         setIsSubmitting(false);
-        if (status === 200) {
+        if (status === 200 || status === 201 || status === 204) {
+          // Handle all success status codes
           setRejectModalOpen(false);
           setNotificationMessage(
             intl.formatMessage({
@@ -324,30 +335,34 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
                   <TableBody>
                     {rows.map((row) => {
                       const statusCell = row.cells.find(
-                        (cell) => cell.info.header === "status",
+                        (cell) => cell.info.header === HEADER_KEYS.STATUS,
                       );
-                      const isCancelled =
-                        statusCell?.value === "Cancelled" ||
-                        statusCell?.value === "Canceled";
+                      const isCancelled = statusCell?.value === "Cancelled";
                       const isDisabled =
                         row.cells.find(
-                          (cell) => cell.info.header === "labNumber",
+                          (cell) => cell.info.header === HEADER_KEYS.LAB_NUMBER,
                         )?.value ||
                         row.cells.find(
-                          (cell) => cell.info.header === "qaEventId",
+                          (cell) =>
+                            cell.info.header === HEADER_KEYS.QA_EVENT_ID,
                         )?.value ||
                         isCancelled;
 
                       return (
                         <TableRow key={row.id}>
                           {row.cells.map((cell) => {
-                            if (cell.info.header === "electronicOrderId") {
+                            if (
+                              cell.info.header ===
+                              HEADER_KEYS.ELECTRONIC_ORDER_ID
+                            ) {
                               return null; // Hidden column
                             }
-                            if (cell.info.header === "externalOrderId") {
+                            if (
+                              cell.info.header === HEADER_KEYS.EXTERNAL_ORDER_ID
+                            ) {
                               return null; // Hidden column
                             }
-                            if (cell.info.header === "actions") {
+                            if (cell.info.header === HEADER_KEYS.ACTIONS) {
                               return (
                                 <TableCell key={cell.id}>
                                   <div style={{ display: "flex", gap: "8px" }}>
@@ -359,7 +374,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
                                           row.cells.find(
                                             (c) =>
                                               c.info.header ===
-                                              "externalOrderId",
+                                              HEADER_KEYS.EXTERNAL_ORDER_ID,
                                           )?.value,
                                         )
                                       }
@@ -378,7 +393,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
                                           row.cells.find(
                                             (c) =>
                                               c.info.header ===
-                                              "electronicOrderId",
+                                              HEADER_KEYS.ELECTRONIC_ORDER_ID,
                                           )?.value,
                                         )
                                       }
