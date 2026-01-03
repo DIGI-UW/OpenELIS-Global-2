@@ -2,6 +2,7 @@ package org.openelisglobal.panel.controller;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.panel.form.PanelCreateForm;
 import org.openelisglobal.panel.form.PanelExportRequest;
 import org.openelisglobal.panel.form.PanelForm;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/rest/panel")
-public class PanelRestController {
+public class PanelRestController extends BaseRestController {
 
     private final PanelService panelService;
 
