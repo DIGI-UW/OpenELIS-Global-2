@@ -30,10 +30,18 @@ public class PanelLabUnitDAOImpl extends BaseDAOImpl<PanelLabUnit, String> imple
                 // Handle null case
                 panelId = "0";
             }
+
+            Integer panelIdInt;
+            try {
+                panelIdInt = Integer.parseInt(panelId.trim());
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getPanelLabUnitsByPanelId",
+                        "Invalid panelId format (must be numeric): " + panelId);
+                return list;
+            }
+
             Query<PanelLabUnit> query = entityManager.unwrap(Session.class).createQuery(sql, PanelLabUnit.class);
-            // Parse String panelId to Integer for numeric column comparison (matches
-            // TypeOfSamplePanelDAOImpl pattern)
-            query.setParameter("panelId", Integer.parseInt(panelId));
+            query.setParameter("panelId", panelIdInt);
             List<PanelLabUnit> panelLabUnits = query.list();
             return panelLabUnits;
         } catch (HibernateException e) {
@@ -44,5 +52,27 @@ public class PanelLabUnitDAOImpl extends BaseDAOImpl<PanelLabUnit, String> imple
         }
 
         return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PanelLabUnit> getPanelLabUnitsByPanelIds(List<Integer> panelIds) throws LIMSRuntimeException {
+        if (panelIds == null || panelIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            String sql = "FROM PanelLabUnit plu WHERE plu.panelId IN (:panelIds)";
+            Query<PanelLabUnit> query = entityManager.unwrap(Session.class).createQuery(sql, PanelLabUnit.class);
+            query.setParameterList("panelIds", panelIds);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getPanelLabUnitsByPanelIds");
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in PanelLabUnitDAOImpl getPanelLabUnitsByPanelIds()", e);
+        }
+
+        return new ArrayList<>();
     }
 }

@@ -38,4 +38,14 @@ public interface TypeOfSamplePanelDAO extends BaseDAO<TypeOfSamplePanel, String>
     List<TypeOfSamplePanel> getTypeOfSamplePanelsForSampleType(String sampleType);
 
     List<TypeOfSamplePanel> getTypeOfSamplePanelsForPanel(String panelId) throws LIMSRuntimeException;
+
+    /**
+     * Batch load TypeOfSamplePanels for multiple panel IDs in a single query to
+     * avoid N+1 query problem.
+     *
+     * @param panelIds list of panel IDs (as integers)
+     * @return list of all TypeOfSamplePanel records for the given panel IDs
+     * @throws LIMSRuntimeException
+     */
+    List<TypeOfSamplePanel> getTypeOfSamplePanelsForPanelIds(List<Integer> panelIds) throws LIMSRuntimeException;
 }

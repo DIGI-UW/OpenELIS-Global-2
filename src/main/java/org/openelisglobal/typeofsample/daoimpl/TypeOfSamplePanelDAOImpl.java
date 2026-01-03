@@ -162,4 +162,28 @@ public class TypeOfSamplePanelDAOImpl extends BaseDAOImpl<TypeOfSamplePanel, Str
 
         return list;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TypeOfSamplePanel> getTypeOfSamplePanelsForPanelIds(List<Integer> panelIds)
+            throws LIMSRuntimeException {
+        if (panelIds == null || panelIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            String sql = "FROM TypeOfSamplePanel tosp WHERE tosp.panelId IN (:panelIds)";
+            Query<TypeOfSamplePanel> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    TypeOfSamplePanel.class);
+            query.setParameterList("panelIds", panelIds);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getTypeOfSamplePanelsForPanelIds");
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in TypeOfSamplePanelDAOImpl getTypeOfSamplePanelsForPanelIds()", e);
+        }
+
+        return new ArrayList<>();
+    }
 }

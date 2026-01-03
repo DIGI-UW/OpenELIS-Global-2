@@ -1,11 +1,14 @@
 package org.openelisglobal.panel.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -247,24 +250,28 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
         // Filter by lab unit if specified
         if (labUnitId != null && !labUnitId.isEmpty()) {
+            // Batch load all lab units for all panels to avoid N+1 queries
+            Map<String, List<PanelLabUnit>> labUnitsMap = batchLoadPanelLabUnits(panels);
             List<Panel> filteredPanels = new ArrayList<>();
             for (Panel panel : panels) {
-                List<PanelLabUnit> labUnits = panelLabUnitService.getPanelLabUnitsByPanelId(panel.getId());
-                if (labUnits != null) {
-                    for (PanelLabUnit plu : labUnits) {
-                        if (labUnitId.equals(plu.getLabUnitId())) {
-                            filteredPanels.add(panel);
-                            break;
-                        }
+                List<PanelLabUnit> labUnits = labUnitsMap.getOrDefault(panel.getId(), new ArrayList<>());
+                for (PanelLabUnit plu : labUnits) {
+                    if (labUnitId.equals(plu.getLabUnitId())) {
+                        filteredPanels.add(panel);
+                        break;
                     }
                 }
             }
             panels = filteredPanels;
         }
 
+        // Batch load all related data to avoid N+1 queries
+        Map<String, List<PanelLabUnit>> labUnitsMap = batchLoadPanelLabUnits(panels);
+        Map<String, List<TypeOfSamplePanel>> sampleTypesMap = batchLoadTypeOfSamplePanels(panels);
+
         List<PanelForm> forms = new ArrayList<>();
         for (Panel p : panels) {
-            forms.add(toForm(p, false));
+            forms.add(toForm(p, false, labUnitsMap, sampleTypesMap));
         }
         return forms;
     }
@@ -352,6 +359,11 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     private PanelForm toForm(Panel p, boolean includeTests) {
+        return toForm(p, includeTests, null, null);
+    }
+
+    private PanelForm toForm(Panel p, boolean includeTests, Map<String, List<PanelLabUnit>> labUnitsMap,
+            Map<String, List<TypeOfSamplePanel>> sampleTypesMap) {
         PanelForm form = new PanelForm();
         form.setId(p.getId());
         form.setName(p.getPanelName());
@@ -361,14 +373,25 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         form.setDescription(p.getDescription());
         form.setActive("Y".equals(p.getIsActive()));
 
-        List<PanelLabUnit> labUnits = panelLabUnitService.getPanelLabUnitsByPanelId(p.getId());
+        // Use batch-loaded data if available, otherwise load individually
+        List<PanelLabUnit> labUnits;
+        if (labUnitsMap != null) {
+            labUnits = labUnitsMap.getOrDefault(p.getId(), new ArrayList<>());
+        } else {
+            labUnits = panelLabUnitService.getPanelLabUnitsByPanelId(p.getId());
+        }
         if (labUnits != null && !labUnits.isEmpty()) {
             form.setLabUnitIds(labUnits.stream().map(PanelLabUnit::getLabUnitId).collect(Collectors.toList()));
         } else {
             form.setLabUnitIds(new ArrayList<>());
         }
 
-        List<TypeOfSamplePanel> sampleTypes = typeOfSamplePanelService.getTypeOfSamplePanelsForPanel(p.getId());
+        List<TypeOfSamplePanel> sampleTypes;
+        if (sampleTypesMap != null) {
+            sampleTypes = sampleTypesMap.getOrDefault(p.getId(), new ArrayList<>());
+        } else {
+            sampleTypes = typeOfSamplePanelService.getTypeOfSamplePanelsForPanel(p.getId());
+        }
         if (sampleTypes != null && !sampleTypes.isEmpty()) {
             form.setSampleTypeIds(
                     sampleTypes.stream().map(TypeOfSamplePanel::getTypeOfSampleId).collect(Collectors.toList()));
@@ -381,6 +404,95 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         }
 
         return form;
+    }
+
+    /**
+     * Batch load PanelLabUnits for multiple panels in a single query to avoid N+1
+     * query problem.
+     *
+     * @param panels list of panels to load lab units for
+     * @return map of panelId -> List of PanelLabUnit
+     */
+    private Map<String, List<PanelLabUnit>> batchLoadPanelLabUnits(List<Panel> panels) {
+        Map<String, List<PanelLabUnit>> resultMap = new HashMap<>();
+        if (panels == null || panels.isEmpty()) {
+            return resultMap;
+        }
+
+        try {
+            // Convert panel IDs to integers for query
+            List<Integer> panelIds = panels.stream().map(p -> {
+                try {
+                    return Integer.parseInt(p.getId());
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            }).filter(id -> id != null).collect(Collectors.toList());
+
+            if (panelIds.isEmpty()) {
+                return resultMap;
+            }
+
+            // Batch load all PanelLabUnits in a single query using service method
+            List<PanelLabUnit> allLabUnits = panelLabUnitService.getPanelLabUnitsByPanelIds(panelIds);
+
+            // Group by panelId
+            for (PanelLabUnit plu : allLabUnits) {
+                String panelId = String.valueOf(plu.getPanelId());
+                resultMap.computeIfAbsent(panelId, k -> new ArrayList<>()).add(plu);
+            }
+        } catch (Exception e) {
+            // If batch loading fails, return empty map - individual queries will be used
+            // as fallback
+            LogEvent.logError(e);
+        }
+
+        return resultMap;
+    }
+
+    /**
+     * Batch load TypeOfSamplePanels for multiple panels in a single query to avoid
+     * N+1 query problem.
+     *
+     * @param panels list of panels to load sample types for
+     * @return map of panelId -> List of TypeOfSamplePanel
+     */
+    private Map<String, List<TypeOfSamplePanel>> batchLoadTypeOfSamplePanels(List<Panel> panels) {
+        Map<String, List<TypeOfSamplePanel>> resultMap = new HashMap<>();
+        if (panels == null || panels.isEmpty()) {
+            return resultMap;
+        }
+
+        try {
+            // Convert panel IDs to integers for query
+            List<Integer> panelIds = panels.stream().map(p -> {
+                try {
+                    return Integer.parseInt(p.getId());
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+            }).filter(id -> id != null).collect(Collectors.toList());
+
+            if (panelIds.isEmpty()) {
+                return resultMap;
+            }
+
+            // Batch load all TypeOfSamplePanels in a single query using service method
+            List<TypeOfSamplePanel> allSampleTypes = typeOfSamplePanelService
+                    .getTypeOfSamplePanelsForPanelIds(panelIds);
+
+            // Group by panelId
+            for (TypeOfSamplePanel tosp : allSampleTypes) {
+                String panelId = String.valueOf(tosp.getPanelId());
+                resultMap.computeIfAbsent(panelId, k -> new ArrayList<>()).add(tosp);
+            }
+        } catch (Exception e) {
+            // If batch loading fails, return empty map - individual queries will be used
+            // as fallback
+            LogEvent.logError(e);
+        }
+
+        return resultMap;
     }
 
     /**

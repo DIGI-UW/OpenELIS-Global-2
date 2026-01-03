@@ -28,4 +28,10 @@ public class PanelLabUnitServiceImpl extends AuditableBaseObjectServiceImpl<Pane
     public List<PanelLabUnit> getPanelLabUnitsByPanelId(String panelId) {
         return getBaseObjectDAO().getPanelLabUnitsByPanelId(panelId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PanelLabUnit> getPanelLabUnitsByPanelIds(List<Integer> panelIds) {
+        return getBaseObjectDAO().getPanelLabUnitsByPanelIds(panelIds);
+    }
 }
