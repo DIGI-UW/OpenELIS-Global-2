@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -290,7 +291,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         p.setDescription(req.getDescription());
         p.setLoinc(req.getLoincCode());
 
-        p.setIsActive(req.isActive() ? "Y" : "N");
+        p.setIsActive(req.isActive() ? IActionConstants.YES : IActionConstants.NO);
 
         Localization localization = new Localization();
         localization.setLocalizedValue(req.getName());
@@ -325,7 +326,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         toUpdate.setCode(req.getCode());
         toUpdate.setDescription(req.getDescription());
         toUpdate.setLoinc(req.getLoincCode());
-        toUpdate.setIsActive(req.isActive() ? "Y" : "N");
+        toUpdate.setIsActive(req.isActive() ? IActionConstants.YES : IActionConstants.NO);
 
         toUpdate.setLastupdated(existing.getLastupdated());
 

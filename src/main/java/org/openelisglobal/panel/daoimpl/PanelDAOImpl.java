@@ -284,13 +284,11 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
         try {
             Session session = entityManager.unwrap(Session.class);
 
-            int updated = session.createNativeQuery("UPDATE panel " + "SET name = :name, " + "    code = :code, "
-                    + "    description = :description, " + "    loinc = :loinc, " + "    is_active = :active, "
-                    + "    lastupdated = :now " + "WHERE id = :id " +
+            String sql = "UPDATE panel SET name = :name, code = :code, description = :description, loinc = :loinc, is_active = :active, lastupdated = :now WHERE id = :id";
 
-                    "").setParameter("name", panel.getPanelName()).setParameter("code", panel.getCode())
-                    .setParameter("description", panel.getDescription()).setParameter("loinc", panel.getLoinc())
-                    .setParameter("active", panel.getIsActive())
+            int updated = session.createNativeQuery(sql).setParameter("name", panel.getPanelName())
+                    .setParameter("code", panel.getCode()).setParameter("description", panel.getDescription())
+                    .setParameter("loinc", panel.getLoinc()).setParameter("active", panel.getIsActive())
                     .setParameter("now", new java.sql.Timestamp(System.currentTimeMillis()))
                     .setParameter("id", Integer.parseInt(panel.getId())).executeUpdate();
 
