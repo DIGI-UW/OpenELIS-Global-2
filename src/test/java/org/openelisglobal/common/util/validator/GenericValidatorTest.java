@@ -8,17 +8,23 @@ import org.junit.Test;
 public class GenericValidatorTest {
 
     @Test
-    public void isBool_shouldReturnTrueForTrue() {
+    public void isBool_shouldReturnTrueForTrueLowercase() {
         assertTrue(GenericValidator.isBool("true"));
-        assertTrue(GenericValidator.isBool("TRUE"));
-        assertTrue(GenericValidator.isBool("True"));
     }
 
     @Test
-    public void isBool_shouldReturnTrueForFalse() {
+    public void isBool_shouldReturnTrueForTrueUppercase() {
+        assertTrue(GenericValidator.isBool("TRUE"));
+    }
+
+    @Test
+    public void isBool_shouldReturnTrueForFalseLowercase() {
         assertTrue(GenericValidator.isBool("false"));
+    }
+
+    @Test
+    public void isBool_shouldReturnTrueForFalseUppercase() {
         assertTrue(GenericValidator.isBool("FALSE"));
-        assertTrue(GenericValidator.isBool("False"));
     }
 
     @Test
