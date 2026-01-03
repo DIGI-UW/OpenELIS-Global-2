@@ -147,7 +147,7 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
 
             // Apply filters
             if (itemType != null) {
-                predicates.add(cb.equal(root.get("itemType"), itemType));
+                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
             }
             if (isActive != null) {
                 String activeValue = isActive ? "Y" : "N";
@@ -197,7 +197,7 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
             var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
 
             if (itemType != null) {
-                predicates.add(cb.equal(root.get("itemType"), itemType));
+                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
             }
             if (isActive != null) {
                 String activeValue = isActive ? "Y" : "N";
@@ -244,6 +244,34 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
         case "is_active":
         case "active":
             return "isActive";
+        // Equipment-specific fields
+        case "equipmentcondition":
+        case "equipment_condition":
+            return "equipmentCondition";
+        case "modelnumber":
+        case "model_number":
+            return "modelNumber";
+        case "serialnumber":
+        case "serial_number":
+            return "serialNumber";
+        case "ahritag":
+        case "ahri_tag":
+            return "ahriTag";
+        case "installationdate":
+        case "installation_date":
+            return "installationDate";
+        case "lastservicedate":
+        case "last_service_date":
+            return "lastServiceDate";
+        case "lastmaintenancedate":
+        case "last_maintenance_date":
+            return "lastMaintenanceDate";
+        case "currentlocation":
+        case "current_location":
+            return "currentLocation";
+        // Reagent-specific fields
+        case "concentration":
+            return "concentration";
         default:
             // Default to name for safety
             return "name";

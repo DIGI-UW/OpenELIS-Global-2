@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -71,7 +77,7 @@ const InventoryDashboard = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("CARTRIDGE");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [page, setPage] = useState(1);
@@ -89,11 +95,23 @@ const InventoryDashboard = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedLotsForDisposal, setSelectedLotsForDisposal] = useState([]);
 
+  // Utility function to format dates safely
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "N/A";
+    try {
+      const date = new Date(dateValue);
+      return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+    } catch (error) {
+      console.warn("Date formatting error:", error);
+      return "N/A";
+    }
+  };
+
   const itemTypes = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
     { id: "REAGENT", text: "Reagent" },
+    { id: "CARTRIDGE", text: "Equipment" },
     { id: "RDT", text: "RDT" },
-    { id: "CARTRIDGE", text: "Cartridge" },
     { id: "ENZYME", text: "Enzyme" },
     { id: "ANTIBIOTICS", text: "Antibiotics" },
   ];
@@ -105,7 +123,120 @@ const InventoryDashboard = () => {
     { id: "EXPIRED", text: "Expired" },
   ];
 
-  const headers = [
+  // Equipment-specific headers (for CARTRIDGE type)
+  const equipmentHeaders = [
+    {
+      key: "name",
+      header: "Equipment Name",
+    },
+    {
+      key: "manufacturer",
+      header: "Manufacturer",
+    },
+    {
+      key: "modelNumber",
+      header: "Model",
+    },
+    {
+      key: "serialNumber",
+      header: "Serial Number",
+    },
+    {
+      key: "compatibleAnalyzers",
+      header: "Software",
+    },
+    {
+      key: "ahriTag",
+      header: "AHRI Tag",
+    },
+    {
+      key: "installationDate",
+      header: "Installation Date",
+    },
+    {
+      key: "currentLocation",
+      header: "Current Location",
+    },
+    {
+      key: "equipmentCondition",
+      header: "Equipment Condition (Functional/Non-functional)",
+    },
+    {
+      key: "lastServiceDate",
+      header: "Last Service Date",
+    },
+    {
+      key: "lastMaintenanceDate",
+      header: "Last Maintenance Date",
+    },
+    {
+      key: "actions",
+      header: "Action",
+    },
+  ];
+
+  // Reagent-specific headers (for REAGENT type)
+  const reagentHeaders = [
+    {
+      key: "name",
+      header: "Reagent Name",
+    },
+    {
+      key: "catalogNumber",
+      header: "Catalogue Number",
+    },
+    {
+      key: "manufacturer",
+      header: "Reagent Manufacturer",
+    },
+    {
+      key: "category",
+      header: "Reagent Category",
+    },
+    {
+      key: "concentration",
+      header: "Concentration",
+    },
+    {
+      key: "units",
+      header: "Unit of Measurement",
+    },
+    {
+      key: "currentQuantity",
+      header: "Quantity",
+    },
+    {
+      key: "dateReceived",
+      header: "Date Received",
+    },
+    {
+      key: "receivedBy",
+      header: "Received By",
+    },
+    {
+      key: "projectName",
+      header: "Project Received For",
+    },
+    {
+      key: "storageTemp",
+      header: "Storage Temp",
+    },
+    {
+      key: "storageLocation",
+      header: "Storage Location (Freezer)",
+    },
+    {
+      key: "storageBoxNo",
+      header: "Storage Location (Box No)",
+    },
+    {
+      key: "actions",
+      header: "Action",
+    },
+  ];
+
+  // Default headers for all types or when no specific filter is selected
+  const defaultHeaders = [
     {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
@@ -147,6 +278,17 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "label.button.action" }),
     },
   ];
+
+  // Select headers based on current type filter
+  const headers = useMemo(() => {
+    if (typeFilter === "CARTRIDGE") {
+      return equipmentHeaders;
+    } else if (typeFilter === "REAGENT") {
+      return reagentHeaders;
+    } else {
+      return defaultHeaders;
+    }
+  }, [typeFilter, intl]);
 
   useEffect(() => {
     fetchUnits();
@@ -346,22 +488,75 @@ const InventoryDashboard = () => {
       }
     }
 
-    return {
+    const baseData = {
       id: String(lot.id),
       name: item?.name || "Unknown",
-      projectName: projectDisplay,
-      lotNumber: lot.lotNumber,
-      itemType: item?.itemType || "",
+      manufacturer: item?.manufacturer || "N/A",
+      catalogNumber: item?.catalogNumber || "N/A",
+      category: item?.category || "N/A",
+      units: unitsDisplay,
       currentQuantity: `${lot.currentQuantity || 0}${unitsDisplay ? ` ${unitsDisplay}` : ""}`,
-      expirationDate: lot.expirationDate
-        ? new Date(lot.expirationDate).toLocaleDateString()
-        : "N/A",
-      dateOpened: lot.dateOpened
-        ? new Date(lot.dateOpened).toLocaleDateString()
-        : "Not Opened",
+      lotNumber: lot.lotNumber || "N/A",
+      projectName: projectDisplay,
       status: lot.status,
       stockStatus: stockStatus,
     };
+
+    // Equipment-specific row data (for CARTRIDGE items)
+    if (item?.itemType === "CARTRIDGE") {
+      return {
+        ...baseData,
+        // Map new equipment-specific fields
+        modelNumber: item?.modelNumber || "N/A",
+        serialNumber: item?.serialNumber || lot.lotNumber || "N/A",
+        compatibleAnalyzers: item?.compatibleAnalyzers || "N/A",
+        ahriTag: item?.ahriTag || "N/A",
+        installationDate: item?.installationDate
+          ? formatDate(item.installationDate)
+          : "N/A",
+        currentLocation: lot?.storagePath || item?.currentLocation || "N/A",
+        equipmentCondition: item?.equipmentCondition === "functional" ? "Functional" :
+                           item?.equipmentCondition === "non-functional" ? "Non-functional" :
+                           item?.equipmentCondition === "under-repair" ? "Under Repair" :
+                           item?.equipmentCondition === "decommissioned" ? "Decommissioned" :
+                           "Unknown",
+        lastServiceDate: item?.lastServiceDate
+          ? formatDate(item.lastServiceDate)
+          : "N/A",
+        lastMaintenanceDate: item?.lastMaintenanceDate
+          ? formatDate(item.lastMaintenanceDate)
+          : "N/A",
+      };
+    }
+
+    // Reagent-specific row data (for REAGENT items)
+    else if (item?.itemType === "REAGENT") {
+      return {
+        ...baseData,
+        concentration: item?.concentration || "N/A",
+        dateReceived: lot.receiptDate
+          ? new Date(lot.receiptDate).toLocaleDateString()
+          : "N/A",
+        receivedBy: lot.receivedBy || "N/A",
+        storageTemp: item?.storageRequirements || "N/A",
+        storageLocation: lot.specificStorageLocation || "N/A",
+        storageBoxNo: lot.storageBoxNumber || "N/A",
+      };
+    }
+
+    // Default row data for all other types or when viewing all types
+    else {
+      return {
+        ...baseData,
+        itemType: item?.itemType || "",
+        expirationDate: lot.expirationDate
+          ? new Date(lot.expirationDate).toLocaleDateString()
+          : "N/A",
+        dateOpened: lot.dateOpened
+          ? new Date(lot.dateOpened).toLocaleDateString()
+          : "Not Opened",
+      };
+    }
   });
 
   const handleLotSaved = () => {

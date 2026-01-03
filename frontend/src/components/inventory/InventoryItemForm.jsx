@@ -9,11 +9,64 @@ import {
   Stack,
   RadioButtonGroup,
   RadioButton,
+  DatePicker,
+  DatePickerInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI, NotebookDataAPI } from "./InventoryService";
+
+/**
+ * Convert date string from DatePickerInput (mm/dd/yyyy) to ISO format for backend
+ */
+const convertToISODateTime = (dateString) => {
+  if (!dateString || !dateString.trim()) {
+    return null;
+  }
+
+  try {
+    // If already in ISO format, return as-is
+    if (dateString.includes('T')) {
+      return dateString;
+    }
+
+    // Parse mm/dd/yyyy format
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      console.warn("Invalid date format:", dateString);
+      return null;
+    }
+
+    // Convert to ISO format expected by backend: yyyy-MM-dd'T'HH:mm:ss
+    return date.toISOString().slice(0, 19); // Remove milliseconds and Z
+  } catch (error) {
+    console.error("Error converting date:", dateString, error);
+    return null;
+  }
+};
+
+/**
+ * Convert ISO date format from backend to format suitable for DatePickerInput
+ */
+const convertFromISODateTime = (isoString) => {
+  if (!isoString || !isoString.trim()) {
+    return "";
+  }
+
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return "";
+    }
+
+    // Return in MM/DD/YYYY format for DatePickerInput
+    return date.toLocaleDateString('en-US');
+  } catch (error) {
+    console.error("Error converting ISO date:", isoString, error);
+    return "";
+  }
+};
 
 const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
   const intl = useIntl();
@@ -45,9 +98,18 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     stabilityAfterOpening: 0,
     dilutionNotes: "",
     storageRequirements: "",
-    // Cartridge-specific
+    concentration: "",
+    // Cartridge-specific (Equipment)
     compatibleAnalyzers: "",
     calibrationRequired: "N",
+    equipmentCondition: "functional",
+    modelNumber: "",
+    serialNumber: "",
+    ahriTag: "",
+    installationDate: "",
+    lastServiceDate: "",
+    lastMaintenanceDate: "",
+    currentLocation: "",
     // RDT-specific
     testsPerKit: 0,
     individualTracking: "N",
@@ -204,6 +266,17 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         // Cartridge-specific
         compatibleAnalyzers: item.compatibleAnalyzers || "",
         calibrationRequired: item.calibrationRequired || "N",
+        // Equipment-specific fields
+        equipmentCondition: item.equipmentCondition || "functional",
+        modelNumber: item.modelNumber || "",
+        serialNumber: item.serialNumber || "",
+        ahriTag: item.ahriTag || "",
+        currentLocation: item.currentLocation || "",
+        installationDate: convertFromISODateTime(item.installationDate) || "",
+        lastServiceDate: convertFromISODateTime(item.lastServiceDate) || "",
+        lastMaintenanceDate: convertFromISODateTime(item.lastMaintenanceDate) || "",
+        // Reagent-specific additional fields
+        concentration: item.concentration || "",
         // RDT-specific
         testsPerKit: item.testsPerKit || 0,
         individualTracking: item.individualTracking || "N",
@@ -228,6 +301,17 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         // Cartridge-specific
         compatibleAnalyzers: "",
         calibrationRequired: "N",
+        // Equipment-specific fields
+        equipmentCondition: "functional",
+        modelNumber: "",
+        serialNumber: "",
+        ahriTag: "",
+        currentLocation: "",
+        installationDate: "",
+        lastServiceDate: "",
+        lastMaintenanceDate: "",
+        // Reagent-specific additional fields
+        concentration: "",
         // RDT-specific
         testsPerKit: 0,
         individualTracking: "N",
@@ -298,7 +382,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
     if (formData.itemType === "CARTRIDGE") {
       if (!formData.compatibleAnalyzers?.trim()) {
-        setError("Compatible analyzers are required for cartridges");
+        setError("Compatible analyzers are required for equipment");
         return false;
       }
       if (
@@ -307,6 +391,19 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         formData.calibrationRequired !== "N"
       ) {
         setError("Calibration required must be Y or N");
+        return false;
+      }
+      if (!formData.modelNumber?.trim()) {
+        setError("Model number is required for equipment");
+        return false;
+      }
+      if (!formData.currentLocation?.trim()) {
+        setError("Current location is required for equipment");
+        return false;
+      }
+      const validConditions = ['functional', 'non-functional', 'under-repair', 'decommissioned'];
+      if (!validConditions.includes(formData.equipmentCondition)) {
+        setError("Invalid equipment condition selected");
         return false;
       }
     }
@@ -376,9 +473,25 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
           Number(formData.stabilityAfterOpening) || 0;
         sanitizedData.dilutionNotes = formData.dilutionNotes;
         sanitizedData.storageRequirements = formData.storageRequirements;
+        sanitizedData.concentration = formData.concentration;
       } else if (formData.itemType === "CARTRIDGE") {
         sanitizedData.compatibleAnalyzers = formData.compatibleAnalyzers;
         sanitizedData.calibrationRequired = formData.calibrationRequired;
+        sanitizedData.equipmentCondition = formData.equipmentCondition;
+        sanitizedData.modelNumber = formData.modelNumber;
+        sanitizedData.serialNumber = formData.serialNumber;
+        sanitizedData.ahriTag = formData.ahriTag;
+        sanitizedData.currentLocation = formData.currentLocation;
+        // Convert date strings to proper ISO format if provided
+        if (formData.installationDate) {
+          sanitizedData.installationDate = convertToISODateTime(formData.installationDate);
+        }
+        if (formData.lastServiceDate) {
+          sanitizedData.lastServiceDate = convertToISODateTime(formData.lastServiceDate);
+        }
+        if (formData.lastMaintenanceDate) {
+          sanitizedData.lastMaintenanceDate = convertToISODateTime(formData.lastMaintenanceDate);
+        }
       } else if (formData.itemType === "RDT") {
         sanitizedData.testsPerKit = Number(formData.testsPerKit) || 0;
         sanitizedData.individualTracking = formData.individualTracking;
@@ -524,6 +637,14 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                 required
               />
 
+              <TextInput
+                id="concentration"
+                labelText="Concentration"
+                value={formData.concentration}
+                onChange={(e) => handleChange("concentration", e.target.value)}
+                placeholder="e.g., 1 M, 5 mg/mL, 10x"
+              />
+
               <TextArea
                 id="dilutionNotes"
                 labelText={<FormattedMessage id="catalog.item.dilutionNotes" />}
@@ -574,6 +695,98 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                 <RadioButton labelText="Yes" value="Y" id="calibration-yes" />
                 <RadioButton labelText="No" value="N" id="calibration-no" />
               </RadioButtonGroup>
+
+              <TextInput
+                id="modelNumber"
+                labelText="Model Number"
+                value={formData.modelNumber}
+                onChange={(e) => handleChange("modelNumber", e.target.value)}
+                placeholder="e.g., QuantStudio-3, BX43"
+                required
+              />
+
+              <TextInput
+                id="serialNumber"
+                labelText="Serial Number"
+                value={formData.serialNumber}
+                onChange={(e) => handleChange("serialNumber", e.target.value)}
+                placeholder="e.g., QS3-2024-001"
+              />
+
+              <TextInput
+                id="ahriTag"
+                labelText="AHRI Tag"
+                value={formData.ahriTag}
+                onChange={(e) => handleChange("ahriTag", e.target.value)}
+                placeholder="e.g., AHRI-PCR-001"
+              />
+
+              <TextInput
+                id="currentLocation"
+                labelText="Current Location"
+                value={formData.currentLocation}
+                onChange={(e) => handleChange("currentLocation", e.target.value)}
+                placeholder="e.g., PCR Laboratory - Room 201"
+                required
+              />
+
+              <Dropdown
+                id="equipmentCondition"
+                titleText="Equipment Condition"
+                label="Select condition"
+                items={[
+                  { id: 'functional', text: 'Functional' },
+                  { id: 'non-functional', text: 'Non-functional' },
+                  { id: 'under-repair', text: 'Under Repair' },
+                  { id: 'decommissioned', text: 'Decommissioned' }
+                ]}
+                selectedItem={
+                  formData.equipmentCondition
+                    ? {
+                        id: formData.equipmentCondition,
+                        text: formData.equipmentCondition === 'functional' ? 'Functional' :
+                              formData.equipmentCondition === 'non-functional' ? 'Non-functional' :
+                              formData.equipmentCondition === 'under-repair' ? 'Under Repair' :
+                              formData.equipmentCondition === 'decommissioned' ? 'Decommissioned' :
+                              'Functional'
+                      }
+                    : null
+                }
+                onChange={({ selectedItem }) =>
+                  handleChange("equipmentCondition", selectedItem?.id || "")
+                }
+                required
+              />
+
+              <DatePicker datePickerType="single">
+                <DatePickerInput
+                  id="installationDate"
+                  placeholder="mm/dd/yyyy"
+                  labelText="Installation Date"
+                  value={formData.installationDate}
+                  onChange={(e) => handleChange("installationDate", e.target.value)}
+                />
+              </DatePicker>
+
+              <DatePicker datePickerType="single">
+                <DatePickerInput
+                  id="lastServiceDate"
+                  placeholder="mm/dd/yyyy"
+                  labelText="Last Service Date"
+                  value={formData.lastServiceDate}
+                  onChange={(e) => handleChange("lastServiceDate", e.target.value)}
+                />
+              </DatePicker>
+
+              <DatePicker datePickerType="single">
+                <DatePickerInput
+                  id="lastMaintenanceDate"
+                  placeholder="mm/dd/yyyy"
+                  labelText="Last Maintenance Date"
+                  value={formData.lastMaintenanceDate}
+                  onChange={(e) => handleChange("lastMaintenanceDate", e.target.value)}
+                />
+              </DatePicker>
             </>
           )}
 

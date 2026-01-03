@@ -31,6 +31,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
+    // Reagent/Equipment specific fields for lot entry
+    receivedBy: "",
+    storageLocation: "",
+    storageBoxNumber: "",
   });
 
   // Unified storage hierarchy selection state
@@ -78,6 +82,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",
+        // Load lot-specific fields
+        receivedBy: lot.receivedBy || "",
+        storageLocation: lot.specificStorageLocation || "",
+        storageBoxNumber: lot.storageBoxNumber || "",
       });
       // Note: For editing, we would need to load the storage hierarchy
       // based on lot.locationId and lot.locationType if available
@@ -86,20 +94,22 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   const fetchItems = async () => {
     try {
-      // Use paginated endpoint for lot entry modal
-      // TODO: Add search functionality to find items not in first 100 results
-      const response = await InventoryItemAPI.getPaged({
-        limit: 100, // Reasonable page size for dropdown selection
-        offset: 0,
-        sortBy: "name",
-        sortOrder: "asc",
+      // Use non-paginated endpoint to show all catalog items in dropdown
+      const response = await InventoryItemAPI.getAll({
         isActive: true,
       });
 
-      const allItems = response.items || [];
+      // getAll returns items directly, not wrapped in a pagination response
+      const allItems = response || [];
       const validItems = Array.isArray(allItems) ? allItems : [];
+
+      // Sort items by name for better UX
+      const sortedItems = validItems.sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+
       setItems(
-        validItems.map((item) => ({
+        sortedItems.map((item) => ({
           id: item.id,
           text: `${item.name} (${item.itemType})`,
           item: item,
@@ -215,6 +225,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           storagePath: storagePath,
           // Clear legacy storage location
           storageLocation: null,
+          // Lot-specific fields
+          receivedBy: formData.receivedBy || null,
+          specificStorageLocation: formData.storageLocation || null,
+          storageBoxNumber: formData.storageBoxNumber || null,
         });
       } else {
         // Create new lot with unified storage location
@@ -235,6 +249,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           locationId: locationInfo.locationId,
           locationType: locationInfo.locationType,
           storagePath: storagePath,
+          // Lot-specific fields
+          receivedBy: formData.receivedBy || null,
+          specificStorageLocation: formData.storageLocation || null,
+          storageBoxNumber: formData.storageBoxNumber || null,
         });
       }
       onSave();
@@ -432,6 +450,38 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             handleChange("status", selectedItem.id)
           }
         />
+
+        {/* Reagent-specific fields */}
+        {formData.inventoryItem?.itemType === "REAGENT" && (
+          <>
+            <TextInput
+              id="receivedBy"
+              labelText="Received By"
+              value={formData.receivedBy}
+              onChange={(e) => handleChange("receivedBy", e.target.value)}
+              placeholder="e.g., Dr. Smith, Lab Tech Johnson"
+              helperText="Person who received this reagent lot"
+            />
+
+            <TextInput
+              id="storageLocation"
+              labelText="Storage Location (Freezer)"
+              value={formData.storageLocation}
+              onChange={(e) => handleChange("storageLocation", e.target.value)}
+              placeholder="e.g., Freezer A1, Refrigerator B2"
+              helperText="Specific freezer or refrigerator location"
+            />
+
+            <TextInput
+              id="storageBoxNumber"
+              labelText="Storage Location (Box No)"
+              value={formData.storageBoxNumber}
+              onChange={(e) => handleChange("storageBoxNumber", e.target.value)}
+              placeholder="e.g., Box 001, Box 12A"
+              helperText="Specific box number within storage location"
+            />
+          </>
+        )}
 
         <TextInput
           id="barcode"

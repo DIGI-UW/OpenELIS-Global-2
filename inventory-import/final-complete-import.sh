@@ -136,7 +136,8 @@ with open(sql_file, 'w') as f:
 
     f.write(")\n")
     f.write("INSERT INTO clinlims.inventory_item (\n")
-    f.write("    id, fhir_uuid, name, description, project_name, item_type, units, is_active, last_updated, version\n")
+    f.write("    id, fhir_uuid, name, description, project_name, item_type, units, is_active, \n")
+    f.write("    stability_after_opening, concentration, storage_requirements, last_updated, version\n")
     f.write(")\n")
     f.write("SELECT\n")
     f.write("    nextval('clinlims.inventory_item_seq'),\n")
@@ -147,6 +148,9 @@ with open(sql_file, 'w') as f:
     f.write("    'REAGENT',\n")
     f.write("    'unit',\n")
     f.write("    'Y',\n")
+    f.write("    30,\n")  # Default 30 days stability after opening
+    f.write("    'Standard concentration',\n")  # Default concentration
+    f.write("    '2-8°C',\n")  # Default storage requirements
     f.write("    NOW(),\n")
     f.write("    1\n")
     f.write("FROM catalog_data cd(name, category, project_name);\n\n")
