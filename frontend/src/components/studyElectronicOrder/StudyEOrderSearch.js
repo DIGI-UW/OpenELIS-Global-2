@@ -15,6 +15,8 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds, AlertDialog } from "../common/CustomNotification";
 
+const SCROLL_OFFSET = 50;
+
 const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
   const intl = useIntl();
 
@@ -48,7 +50,6 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
   }, []);
 
   const handleElectronicOrders = (response) => {
-    console.log("Initial response:", response);
     if (response && response.organizationList) {
       setOrganizationOptions(response.organizationList);
     }
@@ -61,46 +62,39 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
     setPagination(false);
   };
 
+  const performSearch = (searchParams) => {
+    const params = new URLSearchParams(searchParams);
+    setLoading(true);
+    getFromOpenElisServer(
+      "/rest/StudyElectronicOrders?" + params.toString(),
+      parseEOrders,
+    );
+  };
+
   function searchByIdentifier() {
-    const params = new URLSearchParams({
+    performSearch({
       searchType: "IDENTIFIER",
       searchValue: searchValue,
     });
-    setLoading(true);
-    getFromOpenElisServer(
-      "/rest/StudyElectronicOrders?" + params.toString(),
-      parseEOrders,
-    );
   }
 
   function searchByFacility() {
-    const params = new URLSearchParams({
+    performSearch({
       searchType: "FACILITY",
       organizationId: organizationId,
     });
-    setLoading(true);
-    getFromOpenElisServer(
-      "/rest/StudyElectronicOrders?" + params.toString(),
-      parseEOrders,
-    );
   }
 
   function searchByDateAndStatus() {
-    const params = new URLSearchParams({
+    performSearch({
       searchType: "DATE_STATUS",
       startDate: startDate,
       endDate: endDate,
       statusId: statusId,
     });
-    setLoading(true);
-    getFromOpenElisServer(
-      "/rest/StudyElectronicOrders?" + params.toString(),
-      parseEOrders,
-    );
   }
 
   const parseEOrders = (response) => {
-    console.log("parseEOrders response:", response);
     setSearchCompleted(true);
     setLoading(false);
 
@@ -155,7 +149,7 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
 
     if (eOrderRef?.current) {
       window.scrollTo({
-        top: eOrderRef.current.offsetTop - 50,
+        top: eOrderRef.current.offsetTop - SCROLL_OFFSET,
         left: 0,
         behavior: "smooth",
       });
@@ -331,7 +325,7 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
                   hasIconOnly
                   id="loadpreviousresults"
                   onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
+                  disabled={!previousPage}
                   renderIcon={ArrowLeft}
                   iconDescription="previous"
                 ></Button>
@@ -339,7 +333,7 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
                   hasIconOnly
                   id="loadnextresults"
                   onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
+                  disabled={!nextPage}
                   renderIcon={ArrowRight}
                   iconDescription="next"
                 ></Button>
