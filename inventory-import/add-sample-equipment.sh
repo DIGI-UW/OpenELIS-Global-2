@@ -331,7 +331,7 @@ SELECT
     'PASSED',
     'ACTIVE',
     -- All equipment stored at Main Laboratory > Ultra-Low Freezer 1 > Shelf 1 > Rack 1 > Plate ULF1-S1-R1-003
-    (SELECT id FROM clinlims.storage_hierarchy WHERE name = 'Plate ULF1-S1-R1-003' LIMIT 1),
+    10002,
     'box',
     'Main Laboratory > Ultra-Low Freezer 1 > Shelf 1 > Rack 1 > Plate ULF1-S1-R1-003',
     NOW(),
