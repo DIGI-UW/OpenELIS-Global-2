@@ -2,8 +2,10 @@ package org.openelisglobal.panel.service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.action.IActionConstants;
@@ -234,35 +236,25 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     @Transactional(readOnly = true)
     public List<PanelForm> listForms(Boolean active, String labUnitId) {
         List<Panel> panels;
-        if (active == null) {
-            panels = getAllPanels();
-        } else if (Boolean.TRUE.equals(active)) {
-            panels = getAllActivePanels();
-        } else {
-            // No dedicated "inactive only" query exists, so filter in-memory.
-            panels = new ArrayList<>();
-            for (Panel panel : getAllPanels()) {
-                if (!"Y".equals(panel.getIsActive())) {
-                    panels.add(panel);
-                }
-            }
-        }
 
-        // Filter by lab unit if specified
+        // If lab unit filter is specified, filter at database level
         if (labUnitId != null && !labUnitId.isEmpty()) {
-            // Batch load all lab units for all panels to avoid N+1 queries
-            Map<String, List<PanelLabUnit>> labUnitsMap = batchLoadPanelLabUnits(panels);
-            List<Panel> filteredPanels = new ArrayList<>();
-            for (Panel panel : panels) {
-                List<PanelLabUnit> labUnits = labUnitsMap.getOrDefault(panel.getId(), new ArrayList<>());
-                for (PanelLabUnit plu : labUnits) {
-                    if (labUnitId.equals(plu.getLabUnitId())) {
-                        filteredPanels.add(panel);
-                        break;
+            panels = baseObjectDAO.getPanelsByLabUnitId(labUnitId, active);
+        } else {
+            // No lab unit filter - use standard queries
+            if (active == null) {
+                panels = getAllPanels();
+            } else if (Boolean.TRUE.equals(active)) {
+                panels = getAllActivePanels();
+            } else {
+                // No dedicated "inactive only" query exists, so filter in-memory.
+                panels = new ArrayList<>();
+                for (Panel panel : getAllPanels()) {
+                    if (!"Y".equals(panel.getIsActive())) {
+                        panels.add(panel);
                     }
                 }
             }
-            panels = filteredPanels;
         }
 
         // Batch load all related data to avoid N+1 queries
@@ -290,6 +282,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public PanelForm createForm(PanelCreateForm req) {
         Panel p = new Panel();
         p.setPanelName(req.getName());
@@ -496,24 +489,35 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     /**
-     * Sync lab unit associations for a panel. Deletes existing associations and
-     * creates new ones.
+     * Sync lab unit associations for a panel. Keeps existing matching records,
+     * deletes only removed items, and inserts only new items.
      *
      * @param panelId    the panel ID
      * @param labUnitIds list of lab unit IDs to associate (may be null or empty)
      */
     private void syncLabUnits(String panelId, List<String> labUnitIds) {
-        // Delete existing lab unit associations
         List<PanelLabUnit> existing = panelLabUnitService.getPanelLabUnitsByPanelId(panelId);
-        if (existing != null && !existing.isEmpty()) {
+        Set<String> newLabUnitIds = labUnitIds != null ? new HashSet<>(labUnitIds) : new HashSet<>();
+
+        // Build map of existing lab unit IDs to PanelLabUnit entities for efficient
+        // lookup
+        Map<String, PanelLabUnit> existingMap = new HashMap<>();
+        if (existing != null) {
             for (PanelLabUnit plu : existing) {
-                panelLabUnitService.delete(plu);
+                existingMap.put(plu.getLabUnitId(), plu);
             }
         }
 
-        // Create new lab unit associations
-        if (labUnitIds != null && !labUnitIds.isEmpty()) {
-            for (String labUnitId : labUnitIds) {
+        // Delete only removed items (in existing but not in new list)
+        for (Map.Entry<String, PanelLabUnit> entry : existingMap.entrySet()) {
+            if (!newLabUnitIds.contains(entry.getKey())) {
+                panelLabUnitService.delete(entry.getValue());
+            }
+        }
+
+        // Insert only new items (in new list but not in existing)
+        for (String labUnitId : newLabUnitIds) {
+            if (!existingMap.containsKey(labUnitId)) {
                 PanelLabUnit plu = new PanelLabUnit();
                 plu.setPanelId(panelId);
                 plu.setLabUnitId(labUnitId);
@@ -523,24 +527,36 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     /**
-     * Sync sample type associations for a panel. Deletes existing associations and
-     * creates new ones.
+     * Sync sample type associations for a panel. Keeps existing matching records,
+     * deletes only removed items, and inserts only new items.
      *
      * @param panelId       the panel ID
      * @param sampleTypeIds list of sample type IDs to associate (may be null or
      *                      empty)
      */
     private void syncSampleTypes(String panelId, List<String> sampleTypeIds) {
-        // Delete existing sample type associations
         List<TypeOfSamplePanel> existing = typeOfSamplePanelService.getTypeOfSamplePanelsForPanel(panelId);
-        if (existing != null && !existing.isEmpty()) {
+        Set<String> newSampleTypeIds = sampleTypeIds != null ? new HashSet<>(sampleTypeIds) : new HashSet<>();
+
+        // Build map of existing sample type IDs to TypeOfSamplePanel entities for
+        // efficient lookup
+        Map<String, TypeOfSamplePanel> existingMap = new HashMap<>();
+        if (existing != null) {
             for (TypeOfSamplePanel tosp : existing) {
-                typeOfSamplePanelService.delete(tosp);
+                existingMap.put(tosp.getTypeOfSampleId(), tosp);
             }
         }
 
-        if (sampleTypeIds != null && !sampleTypeIds.isEmpty()) {
-            for (String sampleTypeId : sampleTypeIds) {
+        // Delete only removed items (in existing but not in new list)
+        for (Map.Entry<String, TypeOfSamplePanel> entry : existingMap.entrySet()) {
+            if (!newSampleTypeIds.contains(entry.getKey())) {
+                typeOfSamplePanelService.delete(entry.getValue());
+            }
+        }
+
+        // Insert only new items (in new list but not in existing)
+        for (String sampleTypeId : newSampleTypeIds) {
+            if (!existingMap.containsKey(sampleTypeId)) {
                 TypeOfSamplePanel tosp = new TypeOfSamplePanel();
                 tosp.setPanelId(panelId);
                 tosp.setTypeOfSampleId(sampleTypeId);

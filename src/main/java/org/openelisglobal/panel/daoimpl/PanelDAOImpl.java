@@ -188,6 +188,14 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             // duplicates
             String sql = "from Panel t where trim(lower(t.panelName)) = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            // Use MANUAL flush mode to prevent auto-flushing pending changes in the
+            // session.
+            // This ensures the duplicate check queries only committed data in the database,
+            // not uncommitted entities in the current session (e.g., the entity being
+            // validated).
+            // Without this, Hibernate would auto-flush and include the entity being
+            // checked,
+            // causing false positives in duplicate detection.
             query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getPanelName().toLowerCase().trim());
 
@@ -207,10 +215,14 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
                 return false;
             }
 
-        } catch (RuntimeException e) {
+        } catch (HibernateException e) {
+            handleException(e, "duplicatePanelExists");
+        } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicatePanelExists()", e);
+            throw new LIMSRuntimeException("Error in duplicatePanelExists() - invalid parameter", e);
         }
+
+        return false;
     }
 
     @Override
@@ -223,6 +235,14 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             // duplicates
             String sql = "from Panel t where trim(lower(t.description)) = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            // Use MANUAL flush mode to prevent auto-flushing pending changes in the
+            // session.
+            // This ensures the duplicate check queries only committed data in the database,
+            // not uncommitted entities in the current session (e.g., the entity being
+            // validated).
+            // Without this, Hibernate would auto-flush and include the entity being
+            // checked,
+            // causing false positives in duplicate detection.
             query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getDescription().toLowerCase().trim());
 
@@ -242,10 +262,14 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
                 return false;
             }
 
-        } catch (RuntimeException e) {
+        } catch (HibernateException e) {
+            handleException(e, "duplicatePanelDescriptionExists");
+        } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicatePanelDescriptionExists()", e);
+            throw new LIMSRuntimeException("Error in duplicatePanelDescriptionExists() - invalid parameter", e);
         }
+
+        return false;
     }
 
     @Override
@@ -260,6 +284,14 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
 
             String sql = "from Panel t where t.code = :param and t.id != :panelId";
             Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            // Use MANUAL flush mode to prevent auto-flushing pending changes in the
+            // session.
+            // This ensures the duplicate check queries only committed data in the database,
+            // not uncommitted entities in the current session (e.g., the entity being
+            // validated).
+            // Without this, Hibernate would auto-flush and include the entity being
+            // checked,
+            // causing false positives in duplicate detection.
             query.setHibernateFlushMode(org.hibernate.FlushMode.MANUAL);
             query.setParameter("param", panel.getCode());
 
@@ -273,10 +305,14 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
 
             return !list.isEmpty();
 
-        } catch (RuntimeException e) {
+        } catch (HibernateException e) {
+            handleException(e, "duplicatePanelCodeExists");
+        } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicatePanelCodeExists()", e);
+            throw new LIMSRuntimeException("Error in duplicatePanelCodeExists() - invalid parameter", e);
         }
+
+        return false;
     }
 
     @Override
@@ -420,5 +456,34 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Panel> getPanelsByLabUnitId(String labUnitId, Boolean active) throws LIMSRuntimeException {
+        try {
+            // Build HQL query with subquery to filter by lab unit at database level
+            StringBuilder sql = new StringBuilder(
+                    "FROM Panel p WHERE p.id IN (SELECT plu.panelId FROM PanelLabUnit plu WHERE plu.labUnitId = :labUnitId)");
+
+            // Add active status filter if specified
+            if (active != null) {
+                if (Boolean.TRUE.equals(active)) {
+                    sql.append(" AND p.isActive = 'Y'");
+                } else {
+                    sql.append(" AND p.isActive != 'Y'");
+                }
+            }
+
+            sql.append(" ORDER BY p.panelName");
+
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql.toString(), Panel.class);
+            query.setParameter("labUnitId", labUnitId);
+
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Panel getPanelsByLabUnitId()", e);
+        }
     }
 }

@@ -71,4 +71,16 @@ public interface PanelDAO extends BaseDAO<Panel, String> {
     Panel getPanelByLoincCode(String loincCode);
 
     void updatePanelFields(Panel panel);
+
+    /**
+     * Get panels filtered by lab unit ID and optionally by active status. Filters
+     * at database level to avoid loading all panels into memory.
+     *
+     * @param labUnitId the lab unit ID to filter by
+     * @param active    optional active status filter (true = active only, false =
+     *                  inactive only, null = all)
+     * @return list of panels matching the criteria
+     * @throws LIMSRuntimeException
+     */
+    List<Panel> getPanelsByLabUnitId(String labUnitId, Boolean active) throws LIMSRuntimeException;
 }
