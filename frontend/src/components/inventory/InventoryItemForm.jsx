@@ -109,7 +109,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     installationDate: "",
     lastServiceDate: "",
     lastMaintenanceDate: "",
-    currentLocation: "",
     // RDT-specific
     testsPerKit: 0,
     individualTracking: "N",
@@ -271,7 +270,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         modelNumber: item.modelNumber || "",
         serialNumber: item.serialNumber || "",
         ahriTag: item.ahriTag || "",
-        currentLocation: item.currentLocation || "",
         installationDate: convertFromISODateTime(item.installationDate) || "",
         lastServiceDate: convertFromISODateTime(item.lastServiceDate) || "",
         lastMaintenanceDate: convertFromISODateTime(item.lastMaintenanceDate) || "",
@@ -306,7 +304,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         modelNumber: "",
         serialNumber: "",
         ahriTag: "",
-        currentLocation: "",
         installationDate: "",
         lastServiceDate: "",
         lastMaintenanceDate: "",
@@ -397,10 +394,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         setError("Model number is required for equipment");
         return false;
       }
-      if (!formData.currentLocation?.trim()) {
-        setError("Current location is required for equipment");
-        return false;
-      }
       const validConditions = ['functional', 'non-functional', 'under-repair', 'decommissioned'];
       if (!validConditions.includes(formData.equipmentCondition)) {
         setError("Invalid equipment condition selected");
@@ -481,7 +474,6 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         sanitizedData.modelNumber = formData.modelNumber;
         sanitizedData.serialNumber = formData.serialNumber;
         sanitizedData.ahriTag = formData.ahriTag;
-        sanitizedData.currentLocation = formData.currentLocation;
         // Convert date strings to proper ISO format if provided
         if (formData.installationDate) {
           sanitizedData.installationDate = convertToISODateTime(formData.installationDate);
@@ -721,42 +713,32 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                 placeholder="e.g., AHRI-PCR-001"
               />
 
-              <TextInput
-                id="currentLocation"
-                labelText="Current Location"
-                value={formData.currentLocation}
-                onChange={(e) => handleChange("currentLocation", e.target.value)}
-                placeholder="e.g., PCR Laboratory - Room 201"
-                required
-              />
 
-              <Dropdown
-                id="equipmentCondition"
-                titleText="Equipment Condition"
-                label="Select condition"
-                items={[
+              {(() => {
+                const conditionOptions = [
                   { id: 'functional', text: 'Functional' },
                   { id: 'non-functional', text: 'Non-functional' },
                   { id: 'under-repair', text: 'Under Repair' },
                   { id: 'decommissioned', text: 'Decommissioned' }
-                ]}
-                selectedItem={
-                  formData.equipmentCondition
-                    ? {
-                        id: formData.equipmentCondition,
-                        text: formData.equipmentCondition === 'functional' ? 'Functional' :
-                              formData.equipmentCondition === 'non-functional' ? 'Non-functional' :
-                              formData.equipmentCondition === 'under-repair' ? 'Under Repair' :
-                              formData.equipmentCondition === 'decommissioned' ? 'Decommissioned' :
-                              'Functional'
-                      }
-                    : null
-                }
-                onChange={({ selectedItem }) =>
-                  handleChange("equipmentCondition", selectedItem?.id || "")
-                }
-                required
-              />
+                ];
+                return (
+                  <Dropdown
+                    id="equipmentCondition"
+                    titleText="Equipment Condition"
+                    label="Select condition"
+                    items={conditionOptions}
+                    selectedItem={
+                      conditionOptions.find(item => item.id === formData.equipmentCondition) ||
+                      conditionOptions[0]
+                    }
+                    itemToString={(item) => (item ? item.text : "")}
+                    onChange={({ selectedItem }) =>
+                      handleChange("equipmentCondition", selectedItem?.id || "functional")
+                    }
+                    required
+                  />
+                );
+              })()}
 
               <DatePicker datePickerType="single">
                 <DatePickerInput

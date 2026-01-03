@@ -125,7 +125,55 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const handleStorageSelectionChange = useCallback((selection) => {
     setStorageSelection(selection);
     setError(null);
+
+    // Auto-populate manual storage fields from hierarchy selection
+    const storagePath = buildStoragePathFromSelection(selection);
+    const boxInfo = getBoxInfoFromSelection(selection);
+
+    // Update form data with auto-populated values
+    setFormData(prev => ({
+      ...prev,
+      storageLocation: boxInfo.freezerInfo || "", // Main storage device info
+      storageBoxNumber: boxInfo.boxNumber || "",  // Box/container number
+    }));
   }, []);
+
+  // Helper function to build storage path from selection object
+  const buildStoragePathFromSelection = (selection) => {
+    const parts = [];
+    if (selection.room) parts.push(selection.room.label);
+    if (selection.device) parts.push(selection.device.label);
+    if (selection.shelf) parts.push(selection.shelf.label);
+    if (selection.rack) parts.push(selection.rack.label);
+    if (selection.box) parts.push(selection.box.label);
+    return parts.join(" > ");
+  };
+
+  // Helper function to extract box and freezer info from selection
+  const getBoxInfoFromSelection = (selection) => {
+    let freezerInfo = "";
+    let boxNumber = "";
+
+    // Extract freezer/device info for "Storage Location (Freezer)"
+    if (selection.device) {
+      freezerInfo = selection.device.label;
+      if (selection.shelf) {
+        freezerInfo += ` - ${selection.shelf.label}`;
+      }
+      if (selection.rack) {
+        freezerInfo += ` - ${selection.rack.label}`;
+      }
+    } else if (selection.room) {
+      freezerInfo = selection.room.label;
+    }
+
+    // Extract box number for "Storage Location (Box No)"
+    if (selection.box) {
+      boxNumber = selection.box.label;
+    }
+
+    return { freezerInfo, boxNumber };
+  };
 
   // Build storage path from selection
   const buildStoragePath = () => {
@@ -467,18 +515,18 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               id="storageLocation"
               labelText="Storage Location (Freezer)"
               value={formData.storageLocation}
-              onChange={(e) => handleChange("storageLocation", e.target.value)}
-              placeholder="e.g., Freezer A1, Refrigerator B2"
-              helperText="Specific freezer or refrigerator location"
+              readOnly
+              placeholder="Auto-populated from storage hierarchy above"
+              helperText="Auto-filled from selected storage hierarchy (device + shelf + rack)"
             />
 
             <TextInput
               id="storageBoxNumber"
               labelText="Storage Location (Box No)"
               value={formData.storageBoxNumber}
-              onChange={(e) => handleChange("storageBoxNumber", e.target.value)}
-              placeholder="e.g., Box 001, Box 12A"
-              helperText="Specific box number within storage location"
+              readOnly
+              placeholder="Auto-populated from storage hierarchy above"
+              helperText="Auto-filled from selected box in storage hierarchy"
             />
           </>
         )}

@@ -288,10 +288,12 @@ INSERT INTO clinlims.inventory_item (
     1
 );
 
--- Insert equipment lots with realistic data
+-- Insert equipment lots with realistic data and unified storage location
 INSERT INTO clinlims.inventory_lot (
     id, fhir_uuid, inventory_item_id, lot_number, initial_quantity, current_quantity,
-    unit_size, expiration_date, qc_status, status, last_updated, version
+    unit_size, expiration_date, qc_status, status,
+    location_id, location_type, storage_path,
+    last_updated, version
 )
 SELECT
     nextval('clinlims.inventory_lot_seq'),
@@ -328,6 +330,10 @@ SELECT
     END,
     'PASSED',
     'ACTIVE',
+    -- All equipment stored at Main Laboratory > Ultra-Low Freezer 1 > Shelf 1 > Rack 1 > Plate ULF1-S1-R1-003
+    (SELECT id FROM clinlims.storage_hierarchy WHERE name = 'Plate ULF1-S1-R1-003' LIMIT 1),
+    'box',
+    'Main Laboratory > Ultra-Low Freezer 1 > Shelf 1 > Rack 1 > Plate ULF1-S1-R1-003',
     NOW(),
     1
 FROM clinlims.inventory_item ii

@@ -514,7 +514,7 @@ const InventoryDashboard = () => {
         installationDate: item?.installationDate
           ? formatDate(item.installationDate)
           : "N/A",
-        currentLocation: lot?.storagePath || item?.currentLocation || "N/A",
+        currentLocation: lot?.storagePath || "N/A",
         equipmentCondition: item?.equipmentCondition === "functional" ? "Functional" :
                            item?.equipmentCondition === "non-functional" ? "Non-functional" :
                            item?.equipmentCondition === "under-repair" ? "Under Repair" :
@@ -533,6 +533,8 @@ const InventoryDashboard = () => {
     else if (item?.itemType === "REAGENT") {
       return {
         ...baseData,
+        // Map catalogue number to lot number for reagents
+        catalogNumber: lot.lotNumber || "N/A",
         concentration: item?.concentration || "N/A",
         dateReceived: lot.receiptDate
           ? new Date(lot.receiptDate).toLocaleDateString()
