@@ -86,7 +86,17 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   const fetchItems = async () => {
     try {
-      const allItems = await InventoryItemAPI.getAll({ isActive: true });
+      // Use paginated endpoint for lot entry modal
+      // TODO: Add search functionality to find items not in first 100 results
+      const response = await InventoryItemAPI.getPaged({
+        limit: 100, // Reasonable page size for dropdown selection
+        offset: 0,
+        sortBy: "name",
+        sortOrder: "asc",
+        isActive: true,
+      });
+
+      const allItems = response.items || [];
       const validItems = Array.isArray(allItems) ? allItems : [];
       setItems(
         validItems.map((item) => ({

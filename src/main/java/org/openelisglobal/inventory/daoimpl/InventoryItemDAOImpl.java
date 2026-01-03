@@ -132,4 +132,121 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
             throw new LIMSRuntimeException("Error getting low stock items", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
+            Boolean isActive, String searchTerm) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<InventoryItem> cq = cb.createQuery(InventoryItem.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+
+            // Build predicates for filtering
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+
+            // Apply filters
+            if (itemType != null) {
+                predicates.add(cb.equal(root.get("itemType"), itemType));
+            }
+            if (isActive != null) {
+                String activeValue = isActive ? "Y" : "N";
+                predicates.add(cb.equal(root.get("isActive"), activeValue));
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                String searchPattern = "%" + searchTerm.toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("name")), searchPattern));
+            }
+
+            // Apply predicates
+            if (!predicates.isEmpty()) {
+                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            }
+
+            // Apply sorting
+            if (sortBy != null && !sortBy.trim().isEmpty()) {
+                String validatedSortBy = validateAndMapItemSortField(sortBy);
+                if ("desc".equalsIgnoreCase(sortOrder)) {
+                    cq.orderBy(cb.desc(root.get(validatedSortBy)));
+                } else {
+                    cq.orderBy(cb.asc(root.get(validatedSortBy)));
+                }
+            } else {
+                // Default sort by name
+                cq.orderBy(cb.asc(root.get("name")));
+            }
+
+            // Apply pagination
+            return entityManager.createQuery(cq).setFirstResult(offset).setMaxResults(limit).getResultList();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting paged inventory items", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+            Root<InventoryItem> root = cq.from(InventoryItem.class);
+
+            cq.select(cb.count(root));
+
+            // Build same predicates as getPagedItems
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+
+            if (itemType != null) {
+                predicates.add(cb.equal(root.get("itemType"), itemType));
+            }
+            if (isActive != null) {
+                String activeValue = isActive ? "Y" : "N";
+                predicates.add(cb.equal(root.get("isActive"), activeValue));
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                String searchPattern = "%" + searchTerm.toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("name")), searchPattern));
+            }
+
+            // Apply predicates
+            if (!predicates.isEmpty()) {
+                cq.where(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            }
+
+            return entityManager.createQuery(cq).getSingleResult();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting paged inventory items count", e);
+        }
+    }
+
+    /**
+     * Validates and maps sort field names to prevent injection and ensure valid
+     * fields
+     */
+    private String validateAndMapItemSortField(String sortBy) {
+        switch (sortBy.toLowerCase()) {
+        case "name":
+            return "name";
+        case "itemtype":
+        case "item_type":
+            return "itemType";
+        case "category":
+            return "category";
+        case "manufacturer":
+            return "manufacturer";
+        case "catalognumber":
+        case "catalog_number":
+            return "catalogNumber";
+        case "lowstockthreshold":
+        case "low_stock_threshold":
+            return "lowStockThreshold";
+        case "isactive":
+        case "is_active":
+        case "active":
+            return "isActive";
+        default:
+            // Default to name for safety
+            return "name";
+        }
+    }
 }

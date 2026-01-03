@@ -109,6 +109,31 @@ export const InventoryItemAPI = {
     return get(`/items/all${query ? `?${query}` : ""}`);
   },
 
+  // Get paginated items with server-side filtering and sorting
+  getPaged: (options = {}) => {
+    const {
+      limit = 20,
+      offset = 0,
+      sortBy = "name",
+      sortOrder = "asc",
+      itemType,
+      isActive,
+      search,
+    } = options;
+
+    const params = new URLSearchParams();
+    params.append("limit", limit);
+    params.append("offset", offset);
+    params.append("sortBy", sortBy);
+    params.append("sortOrder", sortOrder);
+
+    if (itemType && itemType !== "ALL") params.append("itemType", itemType);
+    if (isActive !== undefined) params.append("isActive", isActive);
+    if (search) params.append("search", search);
+
+    return get(`/items/paged?${params.toString()}`);
+  },
+
   getAllActive: () => get("/items"),
 
   getById: (id) => get(`/items/${id}`),
@@ -177,13 +202,36 @@ export const InventoryLotAPI = {
     return get(`/lots${query ? `?${query}` : ""}`);
   },
 
+  getPaged: (options = {}) => {
+    const {
+      limit = 20,
+      offset = 0,
+      sortBy = "expirationDate",
+      sortOrder = "asc",
+      itemType,
+      status,
+      search,
+    } = options;
+
+    const params = new URLSearchParams();
+    params.append("limit", limit);
+    params.append("offset", offset);
+    params.append("sortBy", sortBy);
+    params.append("sortOrder", sortOrder);
+
+    if (itemType && itemType !== "ALL") params.append("itemType", itemType);
+    if (status && status !== "ALL") params.append("status", status);
+    if (search) params.append("search", search);
+
+    return get(`/lots/paged?${params.toString()}`);
+  },
+
   getById: (id) => get(`/lots/${id}`),
 
   getAvailableByItem: (itemId) => get(`/lots/item/${itemId}/available`),
 
   getByItem: (itemId) => get(`/lots/item/${itemId}`),
 
-  // Get lots by unified storage location (room, device, shelf, rack, or box)
   getByUnifiedLocation: (locationId, locationType) =>
     get(
       `/lots/unified-location?locationId=${locationId}&locationType=${locationType}`,

@@ -60,8 +60,8 @@ const InventoryDashboard = () => {
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
   const [loading, setLoading] = useState(true);
-  const [unitMap, setUnitMap] = useState({}); // Unit ID to name mapping
-  const [projectMap, setProjectMap] = useState({}); // Project ID to name mapping
+  const [unitMap, setUnitMap] = useState({});
+  const [projectMap, setProjectMap] = useState({});
 
   const [metrics, setMetrics] = useState({
     totalLots: 0,
@@ -75,7 +75,8 @@ const InventoryDashboard = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [usageModalOpen, setUsageModalOpen] = useState(false);
@@ -85,7 +86,7 @@ const InventoryDashboard = () => {
   const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null); // For item-based FEFO usage
+  const [selectedItem, setSelectedItem] = useState(null);
   const [selectedLotsForDisposal, setSelectedLotsForDisposal] = useState([]);
 
   const itemTypes = [
@@ -150,7 +151,28 @@ const InventoryDashboard = () => {
   useEffect(() => {
     fetchUnits();
     fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        fetchLots();
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchLots();
+  }, [typeFilter, statusFilter, page, pageSize]);
+
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
   }, [typeFilter, statusFilter]);
 
   const fetchUnits = async () => {
@@ -158,7 +180,6 @@ const InventoryDashboard = () => {
       const unitsData = await InventoryItemAPI.getUnitOptions();
       const unitLookup = {};
       unitsData.forEach((unit) => {
-        // Use String() to ensure consistent key types for lookup
         unitLookup[String(unit.id)] = unit.text;
       });
       setUnitMap(unitLookup);
@@ -174,7 +195,7 @@ const InventoryDashboard = () => {
       const projectLookup = {};
       notebooks.forEach((notebook) => {
         projectLookup[notebook.id] = notebook.title;
-        projectLookup[String(notebook.id)] = notebook.title; // Handle both string and number IDs
+        projectLookup[String(notebook.id)] = notebook.title;
       });
       setProjectMap(projectLookup);
     } catch (error) {
@@ -185,31 +206,28 @@ const InventoryDashboard = () => {
   const fetchLots = async () => {
     setLoading(true);
     try {
-      const lotsResponse = await InventoryLotAPI.getAll({
+      const offset = (page - 1) * pageSize;
+
+      const response = await InventoryLotAPI.getPaged({
+        limit: pageSize,
+        offset: offset,
+        sortBy: "expirationDate",
+        sortOrder: "asc",
+        itemType: typeFilter !== "ALL" ? typeFilter : undefined,
         status: statusFilter !== "ALL" ? statusFilter : undefined,
+        search: searchTerm || undefined,
       });
 
-      const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
+      const validLots = Array.isArray(response.lots) ? response.lots : [];
       setLots(validLots);
-
-      const uniqueItemIds = [
-        ...new Set(
-          validLots.map((lot) => lot.inventoryItem?.id).filter(Boolean),
-        ),
-      ];
+      setTotalRecords(response.totalRecords || 0);
 
       const itemsMap = {};
-      await Promise.all(
-        uniqueItemIds.map(async (itemId) => {
-          try {
-            const item = await InventoryItemAPI.getById(itemId);
-            itemsMap[itemId] = item;
-          } catch (error) {
-            console.error(`Error fetching item ${itemId}:`, error);
-          }
-        }),
-      );
-
+      validLots.forEach((lot) => {
+        if (lot.inventoryItem && lot.inventoryItem.id) {
+          itemsMap[lot.inventoryItem.id] = lot.inventoryItem;
+        }
+      });
       setItems(itemsMap);
 
       calculateMetrics(validLots, itemsMap);
@@ -311,69 +329,19 @@ const InventoryDashboard = () => {
     return { type: "inStock", label: "In Stock", kind: "green" };
   };
 
-  const getFilteredLots = () => {
-    let filtered = lots;
-
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return (
-          lot.lotNumber?.toLowerCase().includes(searchLower) ||
-          lot.barcode?.toLowerCase().includes(searchLower) ||
-          item?.name?.toLowerCase().includes(searchLower)
-        );
-      });
-    }
-
-    if (typeFilter !== "ALL") {
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return item?.itemType === typeFilter;
-      });
-    }
-
-    if (statusFilter !== "ALL") {
-      filtered = filtered.filter((lot) => {
-        // Handle EXPIRED status specially - it's computed from expiration date
-        if (statusFilter === "EXPIRED") {
-          if (!lot.expirationDate) return false;
-          const expiryDate = new Date(lot.expirationDate);
-          const today = new Date();
-          return expiryDate < today;
-        }
-        // For other statuses, match against the lot's status field
-        return lot.status === statusFilter;
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredLots = getFilteredLots();
-
-  const paginatedLots = filteredLots.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
-
-  const rows = paginatedLots.map((lot) => {
+  const rows = lots.map((lot) => {
     const item = items[lot.inventoryItem?.id];
     const stockStatus = getStockStatus(lot);
 
-    // Get unit name from unit map using the unit ID
     const unitId = item?.units;
     const unitsDisplay = unitMap[unitId] || unitId || "";
 
-    // Get project name, handle both stored names and IDs
     const projectName = item?.projectName;
     let projectDisplay = "N/A";
     if (projectName) {
-      // If it's already a name (not a number), use it directly
       if (isNaN(projectName)) {
         projectDisplay = projectName;
       } else {
-        // It's an ID, resolve it to a name
         projectDisplay = projectMap[projectName] || projectName;
       }
     }
@@ -514,7 +482,7 @@ const InventoryDashboard = () => {
           const handleBatchDispose = () => {
             const selectedLots = selectedRows.map((row) => {
               const lotIndex = rows.findIndex((r) => r.id === row.id);
-              return paginatedLots[lotIndex];
+              return lots[lotIndex];
             });
             setSelectedLotsForDisposal(selectedLots);
             setSelectedLot(null);
@@ -523,7 +491,6 @@ const InventoryDashboard = () => {
 
           return (
             <>
-              {/* Filters Section - Outside DataTable to prevent dropdown overlap */}
               <div className="inventory-filters-section">
                 <div className="inventory-filters-container">
                   <div className="filter-group">
@@ -590,7 +557,6 @@ const InventoryDashboard = () => {
                 <TableToolbar>
                   <TableBatchActions
                     onCancel={() => {
-                      // Clear all selections when cancel is clicked
                       selectedRows.forEach((rowId) => selectRow(rowId));
                     }}
                     totalSelected={selectedRows.length}
@@ -641,7 +607,7 @@ const InventoryDashboard = () => {
                       </TableRow>
                     ) : (
                       rows.map((row, rowIndex) => {
-                        const lot = paginatedLots[rowIndex];
+                        const lot = lots[rowIndex];
                         return (
                           <TableRow key={row.id} {...getRowProps({ row })}>
                             <TableSelectRow {...getSelectionProps({ row })} />
@@ -778,7 +744,7 @@ const InventoryDashboard = () => {
                     page={page}
                     pageSize={pageSize}
                     pageSizes={[10, 20, 30, 40, 50]}
-                    totalItems={filteredLots.length}
+                    totalItems={totalRecords}
                     onChange={({ page, pageSize }) => {
                       setPage(page);
                       setPageSize(pageSize);
