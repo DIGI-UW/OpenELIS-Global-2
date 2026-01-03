@@ -9,6 +9,8 @@ import org.junit.Test;
 
 public class StringUtilTest {
 
+    private static final String VALID_INTEGER = "123";
+
     @Test
     public void isNullorNill_shouldReturnTrueForNull() {
         assertTrue(StringUtil.isNullorNill(null));
@@ -31,7 +33,7 @@ public class StringUtilTest {
 
     @Test
     public void isInteger_shouldReturnTrueForValidInteger() {
-        assertTrue(StringUtil.isInteger("123"));
+        assertTrue(StringUtil.isInteger(VALID_INTEGER));
         assertTrue(StringUtil.isInteger("-456"));
     }
 
@@ -43,7 +45,7 @@ public class StringUtilTest {
 
     @Test
     public void isNumeric_shouldReturnTrueForValidNumbers() {
-        assertTrue(StringUtil.isNumeric("123"));
+        assertTrue(StringUtil.isNumeric(VALID_INTEGER));
         assertTrue(StringUtil.isNumeric("3.14"));
         assertTrue(StringUtil.isNumeric("-45.67"));
     }
