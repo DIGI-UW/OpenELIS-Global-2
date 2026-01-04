@@ -7,13 +7,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageEntryDTO;
-import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageMetricsDTO;
-import org.openelisglobal.inventory.controller.rest.dto.EquipmentUsageMetricsDTO.EquipmentUsageStat;
-import org.openelisglobal.inventory.controller.rest.dto.InventoryUsageDTO;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
@@ -297,11 +299,9 @@ public class EquipmentUsageRestController extends BaseRestController {
             Map<Long, EquipmentUsageStat> equipmentStats = new HashMap<>();
             usageList.forEach(usage -> {
                 Long itemId = usage.getInventoryItem().getId();
-                EquipmentUsageStat stat = equipmentStats.computeIfAbsent(itemId, k -> {
-                    return EquipmentUsageStat.builder().equipmentId(itemId)
-                            .equipmentName(usage.getInventoryItem().getName()).usageCount(0).totalQuantityUsed(0.0)
-                            .build();
-                });
+                EquipmentUsageStat stat = equipmentStats.computeIfAbsent(itemId, k -> EquipmentUsageStat.builder().equipmentId(itemId)
+                        .equipmentName(usage.getInventoryItem().getName()).usageCount(0).totalQuantityUsed(0.0)
+                        .build());
                 stat.setUsageCount(stat.getUsageCount() + 1);
                 stat.setTotalQuantityUsed(stat.getTotalQuantityUsed() + usage.getQuantityUsed());
             });
@@ -382,6 +382,8 @@ public class EquipmentUsageRestController extends BaseRestController {
      * Request body for recording complete equipment usage entry with all form
      * fields.
      */
+    @Setter
+    @Getter
     public static class EquipmentUsageEntryRequest {
         public Long itemId;
         public Long lotId;
@@ -396,142 +398,106 @@ public class EquipmentUsageRestController extends BaseRestController {
         public String approvedBy;
         public String approvalDate;
 
-        public Long getItemId() {
-            return itemId;
-        }
-
-        public void setItemId(Long itemId) {
-            this.itemId = itemId;
-        }
-
-        public Long getLotId() {
-            return lotId;
-        }
-
-        public void setLotId(Long lotId) {
-            this.lotId = lotId;
-        }
-
-        public Double getQuantity() {
-            return quantity;
-        }
-
-        public void setQuantity(Double quantity) {
-            this.quantity = quantity;
-        }
-
-        public String getLabUnitId() {
-            return labUnitId;
-        }
-
-        public void setLabUnitId(String labUnitId) {
-            this.labUnitId = labUnitId;
-        }
-
-        public String getOperatorName() {
-            return operatorName;
-        }
-
-        public void setOperatorName(String operatorName) {
-            this.operatorName = operatorName;
-        }
-
-        public String getLoginTime() {
-            return loginTime;
-        }
-
-        public void setLoginTime(String loginTime) {
-            this.loginTime = loginTime;
-        }
-
-        public String getLogoutTime() {
-            return logoutTime;
-        }
-
-        public void setLogoutTime(String logoutTime) {
-            this.logoutTime = logoutTime;
-        }
-
-        public String getActivities() {
-            return activities;
-        }
-
-        public void setActivities(String activities) {
-            this.activities = activities;
-        }
-
-        public String getEquipmentStatus() {
-            return equipmentStatus;
-        }
-
-        public void setEquipmentStatus(String equipmentStatus) {
-            this.equipmentStatus = equipmentStatus;
-        }
-
-        public String getDate() {
-            return date;
-        }
-
-        public void setDate(String date) {
-            this.date = date;
-        }
-
-        public String getApprovedBy() {
-            return approvedBy;
-        }
-
-        public void setApprovedBy(String approvedBy) {
-            this.approvedBy = approvedBy;
-        }
-
-        public String getApprovalDate() {
-            return approvalDate;
-        }
-
-        public void setApprovalDate(String approvalDate) {
-            this.approvalDate = approvalDate;
-        }
     }
 
     /**
      * Request body for recording equipment usage.
      */
+    @Setter
+    @Getter
     public static class EquipmentUsageRequest {
         public Long itemId;
         public Long lotId;
         public Double quantity;
         public String labUnitId;
 
-        public Long getItemId() {
-            return itemId;
-        }
+    }
 
-        public void setItemId(Long itemId) {
-            this.itemId = itemId;
-        }
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class EquipmentUsageMetricsDTO {
 
-        public Long getLotId() {
-            return lotId;
-        }
+        private Integer totalEquipmentCount;
+        private Integer totalUsageRecords;
+        private List<EquipmentUsageStat> usageByEquipment;
+    }
 
-        public void setLotId(Long lotId) {
-            this.lotId = lotId;
-        }
+    /**
+     * Per-equipment usage statistics
+     */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class EquipmentUsageStat {
+        private Long equipmentId;
+        private String equipmentName;
+        private Integer usageCount;
+        private Double totalQuantityUsed;
+    }
 
-        public Double getQuantity() {
-            return quantity;
-        }
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class EquipmentUsageEntryDTO {
 
-        public void setQuantity(Double quantity) {
-            this.quantity = quantity;
-        }
+        // Base inventory usage fields
+        private Long id;
+        private Long inventoryItemId;
+        private String inventoryItemName;
+        private Long lotId;
+        private String lotNumber;
+        private Double quantityUsed;
+        private Timestamp usageDate;
 
-        public String getLabUnitId() {
-            return labUnitId;
-        }
+        // User information
+        private Integer performedByUserId;
+        private String performedByUserName;
 
-        public void setLabUnitId(String labUnitId) {
-            this.labUnitId = labUnitId;
-        }
+        // Optional linked records
+        private Long testResultId;
+        private Long analysisId;
+
+        // Equipment usage form fields
+        private String operatorName;
+        private String date;
+        private String loginTime;
+        private String activities;
+        private String equipmentStatus;
+        private String logoutTime;
+
+        // Approval fields
+        private String approvedBy;
+        private String approvalDate;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class InventoryUsageDTO {
+
+        private Long id;
+        private Long inventoryItemId;
+        private String inventoryItemName;
+        private Long lotId;
+        private String lotNumber;
+        private Double quantityUsed;
+        private Timestamp usageDate;
+
+        // Enriched user data (not just ID)
+        private Integer performedByUserId;
+        private String performedByUserName;
+
+        // Optional linked records
+        private Long testResultId;
+        private Long analysisId;
     }
 }

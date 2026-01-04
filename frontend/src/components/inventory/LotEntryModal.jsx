@@ -105,7 +105,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
       // Sort items by name for better UX
       const sortedItems = validItems.sort((a, b) =>
-        a.name.localeCompare(b.name)
+        a.name.localeCompare(b.name),
       );
 
       setItems(
@@ -131,10 +131,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     const boxInfo = getBoxInfoFromSelection(selection);
 
     // Update form data with auto-populated values
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       storageLocation: boxInfo.freezerInfo || "", // Main storage device info
-      storageBoxNumber: boxInfo.boxNumber || "",  // Box/container number
+      storageBoxNumber: boxInfo.boxNumber || "", // Box/container number
     }));
   }, []);
 

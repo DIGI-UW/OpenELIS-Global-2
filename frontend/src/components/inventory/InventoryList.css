@@ -138,3 +138,63 @@
     margin-top: 1rem;
   }
 }
+
+/* Reagent Table Column Grouping Styles */
+.reagent-group-header {
+  background-color: #f4f4f4 !important;
+  color: #161616 !important;
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+  text-align: center !important;
+  border: none !important;
+  padding: 0.75rem 0.5rem !important;
+  vertical-align: middle !important;
+}
+
+.reagent-column-header {
+  background-color: #ffffff !important;
+  color: #525252 !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  text-align: center !important;
+  border: none !important;
+  padding: 0.5rem 0.25rem !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Hover effects for grouped headers */
+.reagent-group-header:hover {
+  background-color: #e8e8e8 !important;
+}
+
+.reagent-column-header:hover {
+  background-color: #f8f8f8 !important;
+}
+
+/* Responsive design for grouped headers */
+@media (max-width: 1200px) {
+  .reagent-group-header {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.25rem !important;
+  }
+
+  .reagent-column-header {
+    font-size: 0.7rem !important;
+    padding: 0.375rem 0.125rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .reagent-group-header {
+    font-size: 0.75rem !important;
+    padding: 0.375rem 0.125rem !important;
+  }
+
+  .reagent-column-header {
+    font-size: 0.65rem !important;
+    padding: 0.25rem 0.0625rem !important;
+  }
+}

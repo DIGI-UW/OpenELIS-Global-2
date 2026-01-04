@@ -175,65 +175,122 @@ const InventoryDashboard = () => {
     },
   ];
 
-  // Reagent-specific headers (for REAGENT type)
+  // Reagent-specific headers with grouping (for REAGENT type)
   const reagentHeaders = [
     {
       key: "name",
       header: "Reagent Name",
+      group: "reagentIdentifier",
     },
     {
       key: "catalogNumber",
       header: "Catalogue Number",
+      group: "reagentIdentifier",
     },
     {
       key: "manufacturer",
       header: "Reagent Manufacturer",
+      group: "reagentIdentifier",
     },
     {
       key: "category",
       header: "Reagent Category",
+      group: "reagentIdentifier",
     },
     {
       key: "concentration",
       header: "Concentration",
+      group: "reagentQuantity",
     },
     {
       key: "units",
       header: "Unit of Measurement",
+      group: "reagentQuantity",
     },
     {
       key: "currentQuantity",
       header: "Quantity",
+      group: "reagentQuantity",
     },
     {
       key: "dateReceived",
       header: "Date Received",
+      group: "reagentReception",
     },
     {
       key: "receivedBy",
       header: "Received By",
+      group: "reagentReception",
     },
     {
       key: "projectName",
       header: "Project Received For",
+      group: "reagentReception",
     },
     {
       key: "storageTemp",
       header: "Storage Temp",
+      group: "reagentLocation",
     },
     {
       key: "storageLocation",
       header: "Storage Location (Freezer)",
+      group: "reagentLocation",
     },
     {
       key: "storageBoxNo",
       header: "Storage Location (Box No)",
+      group: "reagentLocation",
+    },
+    {
+      key: "dateRegistered",
+      header: "Date Registered",
+      group: "reagentUtilization",
+    },
+    {
+      key: "expirationDate",
+      header: "Expiration Date",
+      group: "reagentStatus",
+    },
+    {
+      key: "stockStatus",
+      header: "Stock Status",
+      group: "reagentStatus",
     },
     {
       key: "actions",
       header: "Action",
+      group: "reagentStatus",
     },
   ];
+
+  // Column group definitions for reagents
+  const reagentColumnGroups = {
+    reagentIdentifier: {
+      label: "Reagent Identifier",
+      columns: ["name", "catalogNumber", "manufacturer", "category"],
+    },
+    reagentQuantity: {
+      label: "Reagent Quantity",
+      columns: ["concentration", "units", "currentQuantity"],
+    },
+    reagentReception: {
+      label: "Reagent Reception",
+      columns: ["dateReceived", "receivedBy", "projectName"],
+    },
+    reagentLocation: {
+      label: "Reagent Location",
+      columns: ["storageTemp", "storageLocation", "storageBoxNo"],
+    },
+    reagentUtilization: {
+      label: "Reagent Utilization",
+      columns: ["dateRegistered"],
+    },
+    reagentStatus: {
+      label: "Reagent Status",
+      columns: ["expirationDate", "stockStatus", "actions"],
+    },
+  };
 
   // Default headers for all types or when no specific filter is selected
   const defaultHeaders = [
@@ -289,6 +346,51 @@ const InventoryDashboard = () => {
       return defaultHeaders;
     }
   }, [typeFilter, intl]);
+
+  // Helper function to render grouped headers for reagents
+  const renderGroupedHeaders = (
+    headers,
+    columnGroups,
+    getHeaderProps,
+    getSelectionProps,
+  ) => {
+    const groupOrder = Object.keys(columnGroups);
+
+    return (
+      <>
+        {/* Group header row */}
+        <TableRow>
+          <TableSelectAll {...getSelectionProps()} />
+          {groupOrder.map((groupKey) => {
+            const group = columnGroups[groupKey];
+            const colspan = group.columns.length;
+            return (
+              <TableHeader
+                key={groupKey}
+                colSpan={colspan}
+                className="reagent-group-header"
+              >
+                {group.label}
+              </TableHeader>
+            );
+          })}
+        </TableRow>
+        {/* Individual column header row */}
+        <TableRow>
+          <td></td> {/* Empty cell for selection column */}
+          {headers.map((header) => (
+            <TableHeader
+              key={header.key}
+              {...getHeaderProps({ header })}
+              className="reagent-column-header"
+            >
+              {header.header}
+            </TableHeader>
+          ))}
+        </TableRow>
+      </>
+    );
+  };
 
   useEffect(() => {
     fetchUnits();
@@ -515,11 +617,16 @@ const InventoryDashboard = () => {
           ? formatDate(item.installationDate)
           : "N/A",
         currentLocation: lot?.storagePath || "N/A",
-        equipmentCondition: item?.equipmentCondition === "functional" ? "Functional" :
-                           item?.equipmentCondition === "non-functional" ? "Non-functional" :
-                           item?.equipmentCondition === "under-repair" ? "Under Repair" :
-                           item?.equipmentCondition === "decommissioned" ? "Decommissioned" :
-                           "Unknown",
+        equipmentCondition:
+          item?.equipmentCondition === "functional"
+            ? "Functional"
+            : item?.equipmentCondition === "non-functional"
+              ? "Non-functional"
+              : item?.equipmentCondition === "under-repair"
+                ? "Under Repair"
+                : item?.equipmentCondition === "decommissioned"
+                  ? "Decommissioned"
+                  : "Unknown",
         lastServiceDate: item?.lastServiceDate
           ? formatDate(item.lastServiceDate)
           : "N/A",
@@ -543,6 +650,12 @@ const InventoryDashboard = () => {
         storageTemp: item?.storageRequirements || "N/A",
         storageLocation: lot.specificStorageLocation || "N/A",
         storageBoxNo: lot.storageBoxNumber || "N/A",
+        dateRegistered: lot.createdDate
+          ? new Date(lot.createdDate).toLocaleDateString()
+          : "N/A",
+        expirationDate: lot.expirationDate
+          ? new Date(lot.expirationDate).toLocaleDateString()
+          : "N/A",
       };
     }
 
@@ -777,17 +890,26 @@ const InventoryDashboard = () => {
 
                 <Table {...getTableProps()}>
                   <TableHead>
-                    <TableRow>
-                      <TableSelectAll {...getSelectionProps()} />
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
+                    {typeFilter === "REAGENT" ? (
+                      renderGroupedHeaders(
+                        headers,
+                        reagentColumnGroups,
+                        getHeaderProps,
+                        getSelectionProps,
+                      )
+                    ) : (
+                      <TableRow>
+                        <TableSelectAll {...getSelectionProps()} />
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    )}
                   </TableHead>
                   <TableBody>
                     {loading ? (

@@ -27,7 +27,7 @@ const convertToISODateTime = (dateString) => {
 
   try {
     // If already in ISO format, return as-is
-    if (dateString.includes('T')) {
+    if (dateString.includes("T")) {
       return dateString;
     }
 
@@ -61,7 +61,7 @@ const convertFromISODateTime = (isoString) => {
     }
 
     // Return in MM/DD/YYYY format for DatePickerInput
-    return date.toLocaleDateString('en-US');
+    return date.toLocaleDateString("en-US");
   } catch (error) {
     console.error("Error converting ISO date:", isoString, error);
     return "";
@@ -272,7 +272,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         ahriTag: item.ahriTag || "",
         installationDate: convertFromISODateTime(item.installationDate) || "",
         lastServiceDate: convertFromISODateTime(item.lastServiceDate) || "",
-        lastMaintenanceDate: convertFromISODateTime(item.lastMaintenanceDate) || "",
+        lastMaintenanceDate:
+          convertFromISODateTime(item.lastMaintenanceDate) || "",
         // Reagent-specific additional fields
         concentration: item.concentration || "",
         // RDT-specific
@@ -394,7 +395,12 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         setError("Model number is required for equipment");
         return false;
       }
-      const validConditions = ['functional', 'non-functional', 'under-repair', 'decommissioned'];
+      const validConditions = [
+        "functional",
+        "non-functional",
+        "under-repair",
+        "decommissioned",
+      ];
       if (!validConditions.includes(formData.equipmentCondition)) {
         setError("Invalid equipment condition selected");
         return false;
@@ -476,13 +482,19 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         sanitizedData.ahriTag = formData.ahriTag;
         // Convert date strings to proper ISO format if provided
         if (formData.installationDate) {
-          sanitizedData.installationDate = convertToISODateTime(formData.installationDate);
+          sanitizedData.installationDate = convertToISODateTime(
+            formData.installationDate,
+          );
         }
         if (formData.lastServiceDate) {
-          sanitizedData.lastServiceDate = convertToISODateTime(formData.lastServiceDate);
+          sanitizedData.lastServiceDate = convertToISODateTime(
+            formData.lastServiceDate,
+          );
         }
         if (formData.lastMaintenanceDate) {
-          sanitizedData.lastMaintenanceDate = convertToISODateTime(formData.lastMaintenanceDate);
+          sanitizedData.lastMaintenanceDate = convertToISODateTime(
+            formData.lastMaintenanceDate,
+          );
         }
       } else if (formData.itemType === "RDT") {
         sanitizedData.testsPerKit = Number(formData.testsPerKit) || 0;
@@ -713,13 +725,12 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                 placeholder="e.g., AHRI-PCR-001"
               />
 
-
               {(() => {
                 const conditionOptions = [
-                  { id: 'functional', text: 'Functional' },
-                  { id: 'non-functional', text: 'Non-functional' },
-                  { id: 'under-repair', text: 'Under Repair' },
-                  { id: 'decommissioned', text: 'Decommissioned' }
+                  { id: "functional", text: "Functional" },
+                  { id: "non-functional", text: "Non-functional" },
+                  { id: "under-repair", text: "Under Repair" },
+                  { id: "decommissioned", text: "Decommissioned" },
                 ];
                 return (
                   <Dropdown
@@ -728,12 +739,16 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                     label="Select condition"
                     items={conditionOptions}
                     selectedItem={
-                      conditionOptions.find(item => item.id === formData.equipmentCondition) ||
-                      conditionOptions[0]
+                      conditionOptions.find(
+                        (item) => item.id === formData.equipmentCondition,
+                      ) || conditionOptions[0]
                     }
                     itemToString={(item) => (item ? item.text : "")}
                     onChange={({ selectedItem }) =>
-                      handleChange("equipmentCondition", selectedItem?.id || "functional")
+                      handleChange(
+                        "equipmentCondition",
+                        selectedItem?.id || "functional",
+                      )
                     }
                     required
                   />
@@ -746,7 +761,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                   placeholder="mm/dd/yyyy"
                   labelText="Installation Date"
                   value={formData.installationDate}
-                  onChange={(e) => handleChange("installationDate", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("installationDate", e.target.value)
+                  }
                 />
               </DatePicker>
 
@@ -756,7 +773,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                   placeholder="mm/dd/yyyy"
                   labelText="Last Service Date"
                   value={formData.lastServiceDate}
-                  onChange={(e) => handleChange("lastServiceDate", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("lastServiceDate", e.target.value)
+                  }
                 />
               </DatePicker>
 
@@ -766,7 +785,9 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                   placeholder="mm/dd/yyyy"
                   labelText="Last Maintenance Date"
                   value={formData.lastMaintenanceDate}
-                  onChange={(e) => handleChange("lastMaintenanceDate", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("lastMaintenanceDate", e.target.value)
+                  }
                 />
               </DatePicker>
             </>
