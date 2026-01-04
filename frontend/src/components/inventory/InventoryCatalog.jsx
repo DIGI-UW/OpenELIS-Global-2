@@ -47,6 +47,9 @@ const InventoryCatalog = () => {
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [unitMap, setUnitMap] = useState({}); // Unit ID to name mapping
   const [itemTypes, setItemTypes] = useState([
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
@@ -55,9 +58,6 @@ const InventoryCatalog = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
-
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
 
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -121,7 +121,31 @@ const InventoryCatalog = () => {
 
   useEffect(() => {
     fetchUnits();
+  }, []);
+
+  // Debounce search term to avoid too many API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page !== 1) {
+        setPage(1); // Reset to first page when search term changes
+      } else {
+        fetchItems();
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Fetch items when filters or pagination change (but not search term directly)
+  useEffect(() => {
     fetchItems();
+  }, [typeFilter, statusFilter, page, pageSize]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
   }, [typeFilter, statusFilter]);
 
   const fetchUnits = async () => {
@@ -154,12 +178,28 @@ const InventoryCatalog = () => {
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const response = await InventoryItemAPI.getAll();
-      const processedItems = (response || []).map((item) => ({
+      // Calculate offset from page number (page is 1-indexed)
+      const offset = (page - 1) * pageSize;
+
+      // Use paginated endpoint with server-side filtering
+      const response = await InventoryItemAPI.getPaged({
+        limit: pageSize,
+        offset: offset,
+        sortBy: "name",
+        sortOrder: "asc",
+        itemType: typeFilter !== "ALL" ? typeFilter : undefined,
+        isActive:
+          statusFilter === "ALL" ? undefined : statusFilter === "ACTIVE",
+        search: searchTerm || undefined,
+      });
+
+      const catalogItems = response.items || [];
+      const processedItems = catalogItems.map((item) => ({
         ...item,
         isActive: item.isActive === "Y" || item.isActive === true,
       }));
       setItems(processedItems);
+      setTotalRecords(response.totalRecords || 0);
     } catch (error) {
       console.error("Error fetching catalog items:", error);
       setItems([]);
@@ -173,39 +213,8 @@ const InventoryCatalog = () => {
     }
   };
 
-  const getFilteredItems = () => {
-    let filtered = items;
-
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((item) =>
-        item.name?.toLowerCase().includes(searchLower),
-      );
-    }
-
-    if (typeFilter !== "ALL") {
-      filtered = filtered.filter((item) => item.itemType === typeFilter);
-    }
-
-    if (statusFilter !== "ALL") {
-      filtered = filtered.filter((item) => {
-        if (statusFilter === "ACTIVE") return item.isActive;
-        if (statusFilter === "INACTIVE") return !item.isActive;
-        return true;
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredItems = getFilteredItems();
-
-  const paginatedItems = filteredItems.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
-
-  const rows = paginatedItems.map((item) => {
+  // Server-side pagination - no need for client-side filtering
+  const rows = items.map((item) => {
     // Get unit name from unit map using the unit ID
     const unitId = item.units;
     const unitsDisplay = unitMap[unitId] || unitId || "";
@@ -380,7 +389,7 @@ const InventoryCatalog = () => {
                   </TableRow>
                 ) : (
                   rows.map((row, rowIndex) => {
-                    const item = paginatedItems[rowIndex];
+                    const item = items[rowIndex];
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {
@@ -457,7 +466,7 @@ const InventoryCatalog = () => {
                 page={page}
                 pageSize={pageSize}
                 pageSizes={[10, 20, 30, 40, 50]}
-                totalItems={filteredItems.length}
+                totalItems={totalRecords}
                 onChange={({ page, pageSize }) => {
                   setPage(page);
                   setPageSize(pageSize);

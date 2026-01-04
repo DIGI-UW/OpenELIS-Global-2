@@ -1,0 +1,186 @@
+/* Choose Equipment Modal Styles */
+
+.chooseEquipmentModal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Search Section */
+.searchSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.searchSection .cds--text-input__field-wrapper {
+  flex: 1;
+}
+
+/* Equipment Count */
+.equipmentCountSection {
+  padding: 8px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.equipmentCount {
+  font-size: 12px;
+  color: #525252;
+  font-weight: 500;
+}
+
+/* Equipment List */
+.equipmentListSection {
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.equipmentList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.equipmentListItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  gap: 12px;
+  width: 100%;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.equipmentListItem:last-child {
+  border-bottom: none;
+}
+
+.equipmentListItem:hover {
+  background-color: #f4f4f4;
+}
+
+.equipmentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.equipmentName {
+  font-weight: 600;
+  color: #161616;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.equipmentDetails {
+  display: flex;
+  gap: 12px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.equipmentSerial {
+  font-size: 12px;
+  color: #525252;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.equipmentSerial::before {
+  content: "Serial: ";
+  font-weight: 500;
+}
+
+.equipmentManufacturer {
+  font-size: 12px;
+  color: #818181;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.equipmentManufacturer::before {
+  content: "by ";
+  font-weight: 500;
+}
+
+.equipmentActions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.equipmentActions button {
+  font-size: 12px;
+  height: 32px;
+  padding: 0 12px;
+}
+
+/* No Results Section */
+.noResultsSection {
+  padding: 32px 16px;
+  text-align: center;
+  color: #525252;
+  background-color: #f4f4f4;
+}
+
+.noResultsSection p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Modal Footer */
+.modalFooter {
+  padding: 16px 0 0 0;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modalFooter .cds--btn-set {
+  gap: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 672px) {
+  .equipmentListSection {
+    max-height: 300px;
+  }
+
+  .equipmentListItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .equipmentActions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .equipmentActions button {
+    width: 100%;
+  }
+
+  .equipmentDetails {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

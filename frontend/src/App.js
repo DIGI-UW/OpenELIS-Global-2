@@ -56,6 +56,7 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import EquipmentUsageManagement from "./components/equipmentUsage/EquipmentUsageManagement";
 
 export default function App() {
   const defaultLocale =
@@ -480,6 +481,12 @@ export default function App() {
                   path="/inventory"
                   exact
                   component={() => <InventoryManagement />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/equipment-usage"
+                  exact
+                  component={() => <EquipmentUsageManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

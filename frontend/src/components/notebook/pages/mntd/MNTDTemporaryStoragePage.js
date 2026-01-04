@@ -48,8 +48,8 @@ import "../../workflow/NotebookWorkflow.css";
  * Data Points:
  * - Storage Hierarchy: Room, Freezer, Storage type, Rack, Box, Well/position
  *
- * Note: Environmental monitoring (temperature logging) has been moved to
- * Page 11 (MNTDEnvironmentalMonitoringPage) for flexible access control.
+ * Note: Environmental monitoring (temperature logging) is now available
+ * via Cold Storage Dashboard → Manual Log tab for lab-wide access.
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID

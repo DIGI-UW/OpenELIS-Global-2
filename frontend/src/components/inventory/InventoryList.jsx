@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   DataTable,
   TableContainer,
@@ -53,8 +53,8 @@ const InventoryList = () => {
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
   const [loading, setLoading] = useState(true);
-  const [unitMap, setUnitMap] = useState({}); // Unit ID to name mapping
-  const [projectMap, setProjectMap] = useState({}); // Project ID to name mapping
+  const [unitMap, setUnitMap] = useState({});
+  const [projectMap, setProjectMap] = useState({});
 
   const [metrics, setMetrics] = useState({
     totalLots: 0,
@@ -68,7 +68,8 @@ const InventoryList = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -166,7 +167,28 @@ const InventoryList = () => {
   useEffect(() => {
     fetchUnits();
     fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        fetchLots();
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchLots();
+  }, [typeFilter, statusFilter, page, pageSize]);
+
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
   }, [typeFilter, statusFilter]);
 
   const fetchUnits = async () => {
@@ -189,7 +211,7 @@ const InventoryList = () => {
       const projectLookup = {};
       notebooks.forEach((notebook) => {
         projectLookup[notebook.id] = notebook.title;
-        projectLookup[String(notebook.id)] = notebook.title; // Handle both string and number IDs
+        projectLookup[String(notebook.id)] = notebook.title;
       });
       setProjectMap(projectLookup);
     } catch (error) {
@@ -211,38 +233,35 @@ const InventoryList = () => {
   const fetchLots = async () => {
     setLoading(true);
     try {
-      const lotsResponse = await InventoryLotAPI.getAll({
+      const offset = (page - 1) * pageSize;
+
+      const response = await InventoryLotAPI.getPaged({
+        limit: pageSize,
+        offset: offset,
+        sortBy: "expirationDate",
+        sortOrder: "asc",
+        itemType: typeFilter !== "ALL" ? typeFilter : undefined,
         status: statusFilter !== "ALL" ? statusFilter : undefined,
+        search: searchTerm || undefined,
       });
 
-      const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
+      const validLots = Array.isArray(response.lots) ? response.lots : [];
       setLots(validLots);
-
-      const uniqueItemIds = [
-        ...new Set(
-          validLots.map((lot) => lot.inventoryItem?.id).filter(Boolean),
-        ),
-      ];
+      setTotalRecords(response.totalRecords || 0);
 
       const itemsMap = {};
-      await Promise.all(
-        uniqueItemIds.map(async (itemId) => {
-          try {
-            const item = await InventoryItemAPI.getById(itemId);
-            itemsMap[itemId] = item;
-          } catch (error) {
-            console.error(`Error fetching item ${itemId}:`, error);
-          }
-        }),
-      );
-
+      validLots.forEach((lot) => {
+        if (lot.inventoryItem && lot.inventoryItem.id) {
+          itemsMap[lot.inventoryItem.id] = lot.inventoryItem;
+        }
+      });
       setItems(itemsMap);
-
       calculateMetrics(validLots, itemsMap);
     } catch (error) {
       console.error("Error fetching inventory:", error);
       setLots([]);
       setItems({});
+      setTotalRecords(0);
       addNotification({
         kind: "error",
         title: intl.formatMessage({ id: "notification.error" }),
@@ -337,54 +356,19 @@ const InventoryList = () => {
     return { type: "inStock", label: "In Stock", kind: "green" };
   };
 
-  const getFilteredLots = () => {
-    let filtered = lots;
-
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return (
-          lot.lotNumber?.toLowerCase().includes(searchLower) ||
-          item?.name?.toLowerCase().includes(searchLower)
-        );
-      });
-    }
-
-    if (typeFilter !== "ALL") {
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return item?.itemType === typeFilter;
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredLots = getFilteredLots();
-
-  const paginatedLots = filteredLots.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
-
-  const rows = paginatedLots.map((lot) => {
+  const rows = lots.map((lot) => {
     const item = items[lot.inventoryItem?.id];
     const stockStatus = getStockStatus(lot);
 
-    // Get unit name from unit map using the unit ID
     const unitId = item?.units;
     const unitsDisplay = unitMap[unitId] || unitId || "N/A";
 
-    // Get project name, handle both stored names and IDs
     const projectName = item?.projectName;
     let projectDisplay = "N/A";
     if (projectName) {
-      // If it's already a name (not a number), use it directly
       if (isNaN(projectName)) {
         projectDisplay = projectName;
       } else {
-        // It's an ID, resolve it to a name
         projectDisplay = projectMap[projectName] || projectName;
       }
     }
@@ -486,11 +470,10 @@ const InventoryList = () => {
     setDetailsPanelOpen(true);
   };
 
-  // Handle open lot
   const handleOpenLot = async (lot) => {
     try {
       await InventoryLotAPI.open(lot.id);
-      fetchLots(); // Refresh the list
+      fetchLots();
       addNotification({
         kind: "success",
         title: intl.formatMessage({ id: "notification.success" }),
@@ -765,7 +748,7 @@ const InventoryList = () => {
                 page={page}
                 pageSize={pageSize}
                 pageSizes={[10, 20, 30, 40, 50]}
-                totalItems={filteredLots.length}
+                totalItems={totalRecords}
                 onChange={({ page, pageSize }) => {
                   setPage(page);
                   setPageSize(pageSize);

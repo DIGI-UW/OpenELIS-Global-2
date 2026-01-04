@@ -97,6 +97,10 @@
 
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
+        <!-- Equipment Management entities -->
+        <class>org.openelisglobal.equipmentusage.valueholder.Equipment</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageEntry</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageAudit</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"

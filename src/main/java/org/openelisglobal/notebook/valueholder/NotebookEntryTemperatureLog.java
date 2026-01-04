@@ -154,4 +154,5 @@ public class NotebookEntryTemperatureLog extends BaseObject<Integer> {
     public void setLoggedAt(Timestamp loggedAt) {
         this.loggedAt = loggedAt;
     }
+
 }

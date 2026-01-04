@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Add Equipment-Specific Fields to Inventory Item
+        ==============================================
+        Adds fields needed for equipment management:
+        - equipment_condition (functional/non-functional)
+        - model_number (separate from catalog_number)
+        - serial_number
+        - ahri_tag
+        - installation_date
+        - last_service_date
+        - last_maintenance_date
+        - current_location
+    -->
+
+    <changeSet id="add-equipment-fields-001" author="claude-code">
+        <comment>Add equipment-specific fields to inventory_item table</comment>
+
+        <!-- Equipment condition (functional/non-functional) -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="equipment_condition" type="VARCHAR(20)" defaultValue="functional">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Model number (separate from catalog number) -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="model_number" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Serial number -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="serial_number" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- AHRI tag -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="ahri_tag" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Installation date -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="installation_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Last service date -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="last_service_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Last maintenance date -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="last_maintenance_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Current location -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="current_location" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Reagent-specific fields -->
+        <!-- Concentration -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="concentration" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Received by (user who received the reagent) -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="received_by" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Storage location (freezer location) -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="storage_location" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Storage box number -->
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="storage_box_number" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add constraint for equipment condition -->
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_equipment_condition
+            CHECK (equipment_condition IN ('functional', 'non-functional', 'under-repair', 'decommissioned'));
+        </sql>
+    </changeSet>
+
+    <changeSet id="add-equipment-fields-002-indexes" author="claude-code">
+        <comment>Add indexes for new equipment fields</comment>
+
+        <createIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_equipment_condition">
+            <column name="equipment_condition"/>
+        </createIndex>
+
+        <createIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_serial_number">
+            <column name="serial_number"/>
+        </createIndex>
+
+        <createIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_current_location">
+            <column name="current_location"/>
+        </createIndex>
+
+        <createIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_storage_location">
+            <column name="storage_location"/>
+        </createIndex>
+
+        <createIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_concentration">
+            <column name="concentration"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="add-lot-specific-fields-001" author="claude-code">
+        <comment>Add lot-specific storage fields to inventory_lot table</comment>
+
+        <!-- Received by (person who received this specific lot) -->
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="received_by" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Specific storage location for this lot (freezer/refrigerator) -->
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="specific_storage_location" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Storage box number for this lot -->
+        <addColumn tableName="inventory_lot" schemaName="clinlims">
+            <column name="storage_box_number" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add indexes for performance -->
+        <createIndex tableName="inventory_lot" schemaName="clinlims" indexName="idx_inventory_lot_received_by">
+            <column name="received_by"/>
+        </createIndex>
+
+        <createIndex tableName="inventory_lot" schemaName="clinlims" indexName="idx_inventory_lot_specific_storage">
+            <column name="specific_storage_location"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

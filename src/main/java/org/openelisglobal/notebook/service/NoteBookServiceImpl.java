@@ -331,10 +331,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setProjectTimeline(noteBook.getProjectTimeline());
 
             // Handle allowedRoles based on notebook type
-            // 1. Parent templates (isTemplate=true, no parentNotebook): use own allowedRoles
-            // 2. Child instances (isTemplate=false, has parentNotebook): inherit from parent
+            // 1. Parent templates (isTemplate=true, no parentNotebook): use own
+            // allowedRoles
+            // 2. Child instances (isTemplate=false, has parentNotebook): inherit from
+            // parent
             // template
-            // 3. Entries (isTemplate=false, no parentNotebook, in entries collection): inherit
+            // 3. Entries (isTemplate=false, no parentNotebook, in entries collection):
+            // inherit
             // from parent template via findParentTemplate
             if (noteBook.isChildInstance()) {
                 // Child instance - get allowedRoles from parent template

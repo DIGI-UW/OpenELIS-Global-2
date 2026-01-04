@@ -61,4 +61,25 @@ public class InventoryUsage extends BaseObject<Long> {
     @Column(name = "performed_by_user", nullable = false)
     @NotNull
     private Integer performedByUser;
+
+    @Column(name = "operator_name")
+    private String operatorName;
+
+    @Column(name = "usage_activities", columnDefinition = "TEXT")
+    private String activities;
+
+    @Column(name = "equipment_status")
+    private String equipmentStatus;
+
+    @Column(name = "login_time")
+    private String loginTime;
+
+    @Column(name = "logout_time")
+    private String logoutTime;
+
+    @Column(name = "approved_by")
+    private String approvedBy;
+
+    @Column(name = "approval_date")
+    private String approvalDate;
 }

@@ -3,7 +3,9 @@ package org.openelisglobal.inventory.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -50,6 +52,66 @@ public class InventoryLotRestController extends BaseRestController {
                 }
             });
             return ResponseEntity.ok(lots);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get paginated lots with filtering and sorting
+     *
+     * @param limit     Maximum number of results per page (default: 20, max: 1000)
+     * @param offset    Number of results to skip (default: 0)
+     * @param sortBy    Field to sort by (default: expirationDate)
+     * @param sortOrder Sort direction: "asc" or "desc" (default: asc)
+     * @param itemType  Filter by item type: REAGENT, RDT, CARTRIDGE, HIV_KIT,
+     *                  SYPHILIS_KIT
+     * @param status    Filter by lot status: ACTIVE, IN_USE, EXPIRED, CONSUMED,
+     *                  DISPOSED, QUARANTINED
+     * @param search    Search term for lot number or item name
+     * @return Paginated response with lots and metadata
+     */
+    @GetMapping(value = "/paged", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getPagedLots(@RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "expirationDate") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder, @RequestParam(required = false) String itemType,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String search) {
+        try {
+            // Parse status parameter
+            LotStatus lotStatus = null;
+            if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+                try {
+                    lotStatus = LotStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest().build();
+                }
+            }
+
+            // Get paginated lots (eagerly loaded with inventoryItem)
+            List<InventoryLot> lots = inventoryLotService.getPagedLots(limit, offset, sortBy, sortOrder, itemType,
+                    lotStatus, search);
+
+            // Get total count for pagination metadata
+            Long totalRecords = inventoryLotService.getPagedLotsCount(itemType, lotStatus, search);
+
+            // Calculate pagination metadata
+            int currentPage = (offset / limit) + 1;
+            int totalPages = (int) Math.ceil((double) totalRecords / limit);
+            boolean hasMore = offset + limit < totalRecords;
+
+            // Build response following the existing pattern from
+            // InventoryAuditLogRestController
+            Map<String, Object> response = new HashMap<>();
+            response.put("lots", lots);
+            response.put("totalRecords", totalRecords);
+            response.put("limit", limit);
+            response.put("offset", offset);
+            response.put("currentPage", currentPage);
+            response.put("totalPages", totalPages);
+            response.put("hasMore", hasMore);
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

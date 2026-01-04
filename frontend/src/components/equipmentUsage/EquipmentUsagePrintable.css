@@ -1,0 +1,291 @@
+/* Equipment Usage Printable Report Styles */
+
+.equipmentUsageReportContainer {
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.equipmentUsageReportContainer h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #161616;
+}
+
+.equipmentUsageReportContainer h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #161616;
+}
+
+/* Report Filters */
+.reportFiltersSection {
+  padding: 16px;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  margin-bottom: 24px;
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+@media (max-width: 672px) {
+  .filterRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Printable Report */
+.printableReport {
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 24px;
+  margin-bottom: 20px;
+  page-break-inside: avoid;
+}
+
+.reportHeader {
+  border-bottom: 2px solid #0043ce;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.reportHeader h2 {
+  margin: 0 0 12px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #161616;
+}
+
+.reportMetadata {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.reportMetadata p {
+  margin: 0;
+  font-size: 12px;
+  color: #525252;
+}
+
+/* Summary Stats */
+.reportSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+@media (max-width: 1024px) {
+  .reportSummary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 672px) {
+  .reportSummary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  border-left: 4px solid #0043ce;
+}
+
+.summaryLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.summaryValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0043ce;
+}
+
+/* Report Table */
+.reportTableSection {
+  margin-bottom: 24px;
+  overflow-x: auto;
+  page-break-inside: avoid;
+}
+
+.reportTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  font-size: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.reportTable thead {
+  background-color: #f4f4f4;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.reportTable th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #161616;
+  white-space: nowrap;
+  border-right: 1px solid #e0e0e0;
+}
+
+.reportTable th:last-child {
+  border-right: none;
+}
+
+.reportTable tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  page-break-inside: avoid;
+}
+
+.reportTable tbody tr:hover {
+  background-color: #f4f4f4;
+}
+
+.reportTable td {
+  padding: 12px 8px;
+  border-right: 1px solid #e0e0e0;
+  color: #161616;
+}
+
+.reportTable td:last-child {
+  border-right: none;
+}
+
+.reportTable tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* Report Footer */
+.reportFooter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+  page-break-inside: avoid;
+}
+
+.reportFooter p {
+  margin: 0;
+  font-size: 12px;
+  color: #161616;
+}
+
+@media (max-width: 672px) {
+  .reportFooter {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Report Actions */
+.reportActionsSection {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+
+.reportActionsSection button {
+  font-size: 12px;
+  height: 32px;
+  padding: 0 12px;
+}
+
+/* No Data Message */
+.noDataMessage {
+  padding: 32px;
+  text-align: center;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+
+.noDataMessage p {
+  margin: 0;
+  font-size: 14px;
+  color: #525252;
+}
+
+/* Print Styles */
+@media print {
+  .equipmentUsageReportContainer
+    > *:not(.printableReport):not(.reportActionsSection) {
+    display: none;
+  }
+
+  .reportActionsSection {
+    display: none;
+  }
+
+  .printableReport {
+    border: none;
+    padding: 0;
+    margin: 0;
+    page-break-inside: avoid;
+  }
+
+  .reportTableSection {
+    page-break-inside: avoid;
+  }
+
+  .reportTable {
+    border: 1px solid #000;
+  }
+
+  .reportTable th {
+    border: 1px solid #000;
+  }
+
+  .reportTable td {
+    border: 1px solid #000;
+  }
+
+  .reportTable tbody tr:hover {
+    background-color: transparent;
+  }
+
+  .reportTable tbody tr:nth-child(even) {
+    background-color: transparent;
+  }
+
+  @page {
+    margin: 0.5in;
+    size: letter;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+  }
+}

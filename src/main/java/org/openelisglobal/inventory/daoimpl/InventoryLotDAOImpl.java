@@ -203,4 +203,136 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             throw new LIMSRuntimeException("Error getting lots by unified location", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryLot> getPagedLots(int limit, int offset, String sortBy, String sortOrder, String itemType,
+            LotStatus status, String searchTerm) throws LIMSRuntimeException {
+        try {
+            StringBuilder hql = new StringBuilder();
+            hql.append("FROM InventoryLot l ");
+            hql.append("JOIN FETCH l.inventoryItem i "); // Eager fetch to avoid N+1 problem
+            hql.append("WHERE 1=1 ");
+
+            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+                hql.append("AND i.itemType = :itemType ");
+            }
+            if (status != null) {
+                hql.append("AND l.status = :status ");
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                hql.append(
+                        "AND (LOWER(l.lotNumber) LIKE :searchTerm OR LOWER(i.name) LIKE :searchTerm OR LOWER(i.projectName) LIKE :searchTerm) ");
+            }
+
+            if (sortBy != null && !sortBy.trim().isEmpty()) {
+                String validatedSortBy = validateAndMapSortField(sortBy);
+                String validatedOrder = "desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC";
+                hql.append("ORDER BY ").append(validatedSortBy).append(" ").append(validatedOrder);
+            } else {
+                hql.append("ORDER BY l.expirationDate ASC NULLS LAST, l.calculatedExpiryAfterOpening ASC NULLS LAST");
+            }
+
+            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql.toString(),
+                    InventoryLot.class);
+
+            // Set parameters
+            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+                query.setParameter("itemType", itemType);
+            }
+            if (status != null) {
+                query.setParameter("status", status.name());
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
+            }
+
+            query.setFirstResult(offset);
+            query.setMaxResults(limit);
+
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting paged lots", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm) throws LIMSRuntimeException {
+        try {
+            // Build count query with same filters as getPagedLots
+            StringBuilder hql = new StringBuilder();
+            hql.append("SELECT COUNT(l.id) FROM InventoryLot l ");
+            hql.append("JOIN l.inventoryItem i ");
+            hql.append("WHERE 1=1 ");
+
+            // Apply same filters as getPagedLots
+            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+                hql.append("AND i.itemType = :itemType ");
+            }
+            if (status != null) {
+                hql.append("AND l.status = :status ");
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                hql.append(
+                        "AND (LOWER(l.lotNumber) LIKE :searchTerm OR LOWER(i.name) LIKE :searchTerm OR LOWER(i.projectName) LIKE :searchTerm) ");
+            }
+
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), Long.class);
+
+            // Set same parameters as getPagedLots
+            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+                query.setParameter("itemType", itemType);
+            }
+            if (status != null) {
+                query.setParameter("status", status.name());
+            }
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                query.setParameter("searchTerm", "%" + searchTerm.toLowerCase() + "%");
+            }
+
+            return query.uniqueResult();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting paged lots count", e);
+        }
+    }
+
+    /**
+     * Validates and maps sort field names to prevent SQL injection and ensure valid
+     * fields
+     */
+    private String validateAndMapSortField(String sortBy) {
+        switch (sortBy.toLowerCase()) {
+        case "expirationdate":
+        case "expiration_date":
+            return "l.expirationDate";
+        case "lotnumber":
+        case "lot_number":
+            return "l.lotNumber";
+        case "currentquantity":
+        case "current_quantity":
+        case "quantity":
+            return "l.currentQuantity";
+        case "status":
+            return "l.status";
+        case "qcstatus":
+        case "qc_status":
+            return "l.qcStatus";
+        case "dateopened":
+        case "date_opened":
+            return "l.dateOpened";
+        case "receiptdate":
+        case "receipt_date":
+            return "l.receiptDate";
+        case "name":
+        case "itemname":
+        case "item_name":
+            return "i.name";
+        case "itemtype":
+        case "item_type":
+            return "i.itemType";
+        default:
+            return "l.expirationDate";
+        }
+    }
 }

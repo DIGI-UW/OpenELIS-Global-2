@@ -63,3 +63,11 @@ volume/odoo/*
 # Generated test fixtures (derived from DBUnit XML, never commit)
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
+# Inventory import outputs and temporary files
+/inventory-import/logs/
+/inventory-import/*_import.sql
+/inventory-import/complete_*.sql
+/inventory-import/temp_*.py
+/inventory-import/~$*.xlsx
+# Keep the main Excel file but ignore temporary Excel files
+/inventory-import/~$*

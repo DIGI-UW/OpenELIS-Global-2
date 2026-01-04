@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -60,8 +66,8 @@ const InventoryDashboard = () => {
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
   const [loading, setLoading] = useState(true);
-  const [unitMap, setUnitMap] = useState({}); // Unit ID to name mapping
-  const [projectMap, setProjectMap] = useState({}); // Project ID to name mapping
+  const [unitMap, setUnitMap] = useState({});
+  const [projectMap, setProjectMap] = useState({});
 
   const [metrics, setMetrics] = useState({
     totalLots: 0,
@@ -71,11 +77,12 @@ const InventoryDashboard = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("CARTRIDGE");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [usageModalOpen, setUsageModalOpen] = useState(false);
@@ -85,14 +92,26 @@ const InventoryDashboard = () => {
   const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null); // For item-based FEFO usage
+  const [selectedItem, setSelectedItem] = useState(null);
   const [selectedLotsForDisposal, setSelectedLotsForDisposal] = useState([]);
+
+  // Utility function to format dates safely
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "N/A";
+    try {
+      const date = new Date(dateValue);
+      return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+    } catch (error) {
+      console.warn("Date formatting error:", error);
+      return "N/A";
+    }
+  };
 
   const itemTypes = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
     { id: "REAGENT", text: "Reagent" },
+    { id: "CARTRIDGE", text: "Equipment" },
     { id: "RDT", text: "RDT" },
-    { id: "CARTRIDGE", text: "Cartridge" },
     { id: "ENZYME", text: "Enzyme" },
     { id: "ANTIBIOTICS", text: "Antibiotics" },
   ];
@@ -104,7 +123,177 @@ const InventoryDashboard = () => {
     { id: "EXPIRED", text: "Expired" },
   ];
 
-  const headers = [
+  // Equipment-specific headers (for CARTRIDGE type)
+  const equipmentHeaders = [
+    {
+      key: "name",
+      header: "Equipment Name",
+    },
+    {
+      key: "manufacturer",
+      header: "Manufacturer",
+    },
+    {
+      key: "modelNumber",
+      header: "Model",
+    },
+    {
+      key: "serialNumber",
+      header: "Serial Number",
+    },
+    {
+      key: "compatibleAnalyzers",
+      header: "Software",
+    },
+    {
+      key: "ahriTag",
+      header: "AHRI Tag",
+    },
+    {
+      key: "installationDate",
+      header: "Installation Date",
+    },
+    {
+      key: "currentLocation",
+      header: "Current Location",
+    },
+    {
+      key: "equipmentCondition",
+      header: "Equipment Condition (Functional/Non-functional)",
+    },
+    {
+      key: "lastServiceDate",
+      header: "Last Service Date",
+    },
+    {
+      key: "lastMaintenanceDate",
+      header: "Last Maintenance Date",
+    },
+    {
+      key: "actions",
+      header: "Action",
+    },
+  ];
+
+  // Reagent-specific headers with grouping (for REAGENT type)
+  const reagentHeaders = [
+    {
+      key: "name",
+      header: "Reagent Name",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "catalogNumber",
+      header: "Catalogue Number",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "manufacturer",
+      header: "Reagent Manufacturer",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "category",
+      header: "Reagent Category",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "concentration",
+      header: "Concentration",
+      group: "reagentQuantity",
+    },
+    {
+      key: "units",
+      header: "Unit of Measurement",
+      group: "reagentQuantity",
+    },
+    {
+      key: "currentQuantity",
+      header: "Quantity",
+      group: "reagentQuantity",
+    },
+    {
+      key: "dateReceived",
+      header: "Date Received",
+      group: "reagentReception",
+    },
+    {
+      key: "receivedBy",
+      header: "Received By",
+      group: "reagentReception",
+    },
+    {
+      key: "projectName",
+      header: "Project Received For",
+      group: "reagentReception",
+    },
+    {
+      key: "storageTemp",
+      header: "Storage Temp",
+      group: "reagentLocation",
+    },
+    {
+      key: "storageLocation",
+      header: "Storage Location (Freezer)",
+      group: "reagentLocation",
+    },
+    {
+      key: "storageBoxNo",
+      header: "Storage Location (Box No)",
+      group: "reagentLocation",
+    },
+    {
+      key: "dateRegistered",
+      header: "Date Registered",
+      group: "reagentUtilization",
+    },
+    {
+      key: "expirationDate",
+      header: "Expiration Date",
+      group: "reagentStatus",
+    },
+    {
+      key: "stockStatus",
+      header: "Stock Status",
+      group: "reagentStatus",
+    },
+    {
+      key: "actions",
+      header: "Action",
+      group: "reagentStatus",
+    },
+  ];
+
+  // Column group definitions for reagents
+  const reagentColumnGroups = {
+    reagentIdentifier: {
+      label: "Reagent Identifier",
+      columns: ["name", "catalogNumber", "manufacturer", "category"],
+    },
+    reagentQuantity: {
+      label: "Reagent Quantity",
+      columns: ["concentration", "units", "currentQuantity"],
+    },
+    reagentReception: {
+      label: "Reagent Reception",
+      columns: ["dateReceived", "receivedBy", "projectName"],
+    },
+    reagentLocation: {
+      label: "Reagent Location",
+      columns: ["storageTemp", "storageLocation", "storageBoxNo"],
+    },
+    reagentUtilization: {
+      label: "Reagent Utilization",
+      columns: ["dateRegistered"],
+    },
+    reagentStatus: {
+      label: "Reagent Status",
+      columns: ["expirationDate", "stockStatus", "actions"],
+    },
+  };
+
+  // Default headers for all types or when no specific filter is selected
+  const defaultHeaders = [
     {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
@@ -147,10 +336,87 @@ const InventoryDashboard = () => {
     },
   ];
 
+  // Select headers based on current type filter
+  const headers = useMemo(() => {
+    if (typeFilter === "CARTRIDGE") {
+      return equipmentHeaders;
+    } else if (typeFilter === "REAGENT") {
+      return reagentHeaders;
+    } else {
+      return defaultHeaders;
+    }
+  }, [typeFilter, intl]);
+
+  // Helper function to render grouped headers for reagents
+  const renderGroupedHeaders = (
+    headers,
+    columnGroups,
+    getHeaderProps,
+    getSelectionProps,
+  ) => {
+    const groupOrder = Object.keys(columnGroups);
+
+    return (
+      <>
+        {/* Group header row */}
+        <TableRow>
+          <TableSelectAll {...getSelectionProps()} />
+          {groupOrder.map((groupKey) => {
+            const group = columnGroups[groupKey];
+            const colspan = group.columns.length;
+            return (
+              <TableHeader
+                key={groupKey}
+                colSpan={colspan}
+                className="reagent-group-header"
+              >
+                {group.label}
+              </TableHeader>
+            );
+          })}
+        </TableRow>
+        {/* Individual column header row */}
+        <TableRow>
+          <td></td> {/* Empty cell for selection column */}
+          {headers.map((header) => (
+            <TableHeader
+              key={header.key}
+              {...getHeaderProps({ header })}
+              className="reagent-column-header"
+            >
+              {header.header}
+            </TableHeader>
+          ))}
+        </TableRow>
+      </>
+    );
+  };
+
   useEffect(() => {
     fetchUnits();
     fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        fetchLots();
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchLots();
+  }, [typeFilter, statusFilter, page, pageSize]);
+
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
   }, [typeFilter, statusFilter]);
 
   const fetchUnits = async () => {
@@ -158,7 +424,6 @@ const InventoryDashboard = () => {
       const unitsData = await InventoryItemAPI.getUnitOptions();
       const unitLookup = {};
       unitsData.forEach((unit) => {
-        // Use String() to ensure consistent key types for lookup
         unitLookup[String(unit.id)] = unit.text;
       });
       setUnitMap(unitLookup);
@@ -174,7 +439,7 @@ const InventoryDashboard = () => {
       const projectLookup = {};
       notebooks.forEach((notebook) => {
         projectLookup[notebook.id] = notebook.title;
-        projectLookup[String(notebook.id)] = notebook.title; // Handle both string and number IDs
+        projectLookup[String(notebook.id)] = notebook.title;
       });
       setProjectMap(projectLookup);
     } catch (error) {
@@ -185,31 +450,28 @@ const InventoryDashboard = () => {
   const fetchLots = async () => {
     setLoading(true);
     try {
-      const lotsResponse = await InventoryLotAPI.getAll({
+      const offset = (page - 1) * pageSize;
+
+      const response = await InventoryLotAPI.getPaged({
+        limit: pageSize,
+        offset: offset,
+        sortBy: "expirationDate",
+        sortOrder: "asc",
+        itemType: typeFilter !== "ALL" ? typeFilter : undefined,
         status: statusFilter !== "ALL" ? statusFilter : undefined,
+        search: searchTerm || undefined,
       });
 
-      const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
+      const validLots = Array.isArray(response.lots) ? response.lots : [];
       setLots(validLots);
-
-      const uniqueItemIds = [
-        ...new Set(
-          validLots.map((lot) => lot.inventoryItem?.id).filter(Boolean),
-        ),
-      ];
+      setTotalRecords(response.totalRecords || 0);
 
       const itemsMap = {};
-      await Promise.all(
-        uniqueItemIds.map(async (itemId) => {
-          try {
-            const item = await InventoryItemAPI.getById(itemId);
-            itemsMap[itemId] = item;
-          } catch (error) {
-            console.error(`Error fetching item ${itemId}:`, error);
-          }
-        }),
-      );
-
+      validLots.forEach((lot) => {
+        if (lot.inventoryItem && lot.inventoryItem.id) {
+          itemsMap[lot.inventoryItem.id] = lot.inventoryItem;
+        }
+      });
       setItems(itemsMap);
 
       calculateMetrics(validLots, itemsMap);
@@ -311,89 +573,105 @@ const InventoryDashboard = () => {
     return { type: "inStock", label: "In Stock", kind: "green" };
   };
 
-  const getFilteredLots = () => {
-    let filtered = lots;
-
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return (
-          lot.lotNumber?.toLowerCase().includes(searchLower) ||
-          lot.barcode?.toLowerCase().includes(searchLower) ||
-          item?.name?.toLowerCase().includes(searchLower)
-        );
-      });
-    }
-
-    if (typeFilter !== "ALL") {
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return item?.itemType === typeFilter;
-      });
-    }
-
-    if (statusFilter !== "ALL") {
-      filtered = filtered.filter((lot) => {
-        // Handle EXPIRED status specially - it's computed from expiration date
-        if (statusFilter === "EXPIRED") {
-          if (!lot.expirationDate) return false;
-          const expiryDate = new Date(lot.expirationDate);
-          const today = new Date();
-          return expiryDate < today;
-        }
-        // For other statuses, match against the lot's status field
-        return lot.status === statusFilter;
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredLots = getFilteredLots();
-
-  const paginatedLots = filteredLots.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
-
-  const rows = paginatedLots.map((lot) => {
+  const rows = lots.map((lot) => {
     const item = items[lot.inventoryItem?.id];
     const stockStatus = getStockStatus(lot);
 
-    // Get unit name from unit map using the unit ID
     const unitId = item?.units;
     const unitsDisplay = unitMap[unitId] || unitId || "";
 
-    // Get project name, handle both stored names and IDs
     const projectName = item?.projectName;
     let projectDisplay = "N/A";
     if (projectName) {
-      // If it's already a name (not a number), use it directly
       if (isNaN(projectName)) {
         projectDisplay = projectName;
       } else {
-        // It's an ID, resolve it to a name
         projectDisplay = projectMap[projectName] || projectName;
       }
     }
 
-    return {
+    const baseData = {
       id: String(lot.id),
       name: item?.name || "Unknown",
-      projectName: projectDisplay,
-      lotNumber: lot.lotNumber,
-      itemType: item?.itemType || "",
+      manufacturer: item?.manufacturer || "N/A",
+      catalogNumber: item?.catalogNumber || "N/A",
+      category: item?.category || "N/A",
+      units: unitsDisplay,
       currentQuantity: `${lot.currentQuantity || 0}${unitsDisplay ? ` ${unitsDisplay}` : ""}`,
-      expirationDate: lot.expirationDate
-        ? new Date(lot.expirationDate).toLocaleDateString()
-        : "N/A",
-      dateOpened: lot.dateOpened
-        ? new Date(lot.dateOpened).toLocaleDateString()
-        : "Not Opened",
+      lotNumber: lot.lotNumber || "N/A",
+      projectName: projectDisplay,
       status: lot.status,
       stockStatus: stockStatus,
     };
+
+    // Equipment-specific row data (for CARTRIDGE items)
+    if (item?.itemType === "CARTRIDGE") {
+      return {
+        ...baseData,
+        // Map new equipment-specific fields
+        modelNumber: item?.modelNumber || "N/A",
+        serialNumber: item?.serialNumber || lot.lotNumber || "N/A",
+        compatibleAnalyzers: item?.compatibleAnalyzers || "N/A",
+        ahriTag: item?.ahriTag || "N/A",
+        installationDate: item?.installationDate
+          ? formatDate(item.installationDate)
+          : "N/A",
+        currentLocation: lot?.storagePath || "N/A",
+        equipmentCondition:
+          item?.equipmentCondition === "functional"
+            ? "Functional"
+            : item?.equipmentCondition === "non-functional"
+              ? "Non-functional"
+              : item?.equipmentCondition === "under-repair"
+                ? "Under Repair"
+                : item?.equipmentCondition === "decommissioned"
+                  ? "Decommissioned"
+                  : "Unknown",
+        lastServiceDate: item?.lastServiceDate
+          ? formatDate(item.lastServiceDate)
+          : "N/A",
+        lastMaintenanceDate: item?.lastMaintenanceDate
+          ? formatDate(item.lastMaintenanceDate)
+          : "N/A",
+      };
+    }
+
+    // Reagent-specific row data (for REAGENT items)
+    else if (item?.itemType === "REAGENT") {
+      return {
+        ...baseData,
+        // Map catalogue number to lot number for reagents
+        catalogNumber: lot.lotNumber || "N/A",
+        concentration: item?.concentration || "N/A",
+        dateReceived: lot.receiptDate
+          ? new Date(lot.receiptDate).toLocaleDateString()
+          : "N/A",
+        receivedBy: lot.receivedBy || "N/A",
+        storageTemp: item?.storageRequirements || "N/A",
+        storageLocation: lot.specificStorageLocation || "N/A",
+        storageBoxNo: lot.storageBoxNumber || "N/A",
+        dateRegistered: lot.createdDate
+          ? new Date(lot.createdDate).toLocaleDateString()
+          : "N/A",
+        expirationDate: lot.expirationDate
+          ? new Date(lot.expirationDate).toLocaleDateString()
+          : "N/A",
+      };
+    }
+
+    // Default row data for all other types or when viewing all types
+    else {
+      return {
+        ...baseData,
+        itemType: item?.itemType || "",
+        expirationDate: lot.expirationDate
+          ? new Date(lot.expirationDate).toLocaleDateString()
+          : "N/A",
+        dateOpened: lot.dateOpened
+          ? new Date(lot.dateOpened).toLocaleDateString()
+          : "Not Opened",
+      };
+    }
   });
 
   const handleLotSaved = () => {
@@ -514,7 +792,7 @@ const InventoryDashboard = () => {
           const handleBatchDispose = () => {
             const selectedLots = selectedRows.map((row) => {
               const lotIndex = rows.findIndex((r) => r.id === row.id);
-              return paginatedLots[lotIndex];
+              return lots[lotIndex];
             });
             setSelectedLotsForDisposal(selectedLots);
             setSelectedLot(null);
@@ -523,7 +801,6 @@ const InventoryDashboard = () => {
 
           return (
             <>
-              {/* Filters Section - Outside DataTable to prevent dropdown overlap */}
               <div className="inventory-filters-section">
                 <div className="inventory-filters-container">
                   <div className="filter-group">
@@ -590,7 +867,6 @@ const InventoryDashboard = () => {
                 <TableToolbar>
                   <TableBatchActions
                     onCancel={() => {
-                      // Clear all selections when cancel is clicked
                       selectedRows.forEach((rowId) => selectRow(rowId));
                     }}
                     totalSelected={selectedRows.length}
@@ -614,17 +890,26 @@ const InventoryDashboard = () => {
 
                 <Table {...getTableProps()}>
                   <TableHead>
-                    <TableRow>
-                      <TableSelectAll {...getSelectionProps()} />
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
+                    {typeFilter === "REAGENT" ? (
+                      renderGroupedHeaders(
+                        headers,
+                        reagentColumnGroups,
+                        getHeaderProps,
+                        getSelectionProps,
+                      )
+                    ) : (
+                      <TableRow>
+                        <TableSelectAll {...getSelectionProps()} />
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    )}
                   </TableHead>
                   <TableBody>
                     {loading ? (
@@ -641,7 +926,7 @@ const InventoryDashboard = () => {
                       </TableRow>
                     ) : (
                       rows.map((row, rowIndex) => {
-                        const lot = paginatedLots[rowIndex];
+                        const lot = lots[rowIndex];
                         return (
                           <TableRow key={row.id} {...getRowProps({ row })}>
                             <TableSelectRow {...getSelectionProps({ row })} />
@@ -778,7 +1063,7 @@ const InventoryDashboard = () => {
                     page={page}
                     pageSize={pageSize}
                     pageSizes={[10, 20, 30, 40, 50]}
-                    totalItems={filteredLots.length}
+                    totalItems={totalRecords}
                     onChange={({ page, pageSize }) => {
                       setPage(page);
                       setPageSize(pageSize);

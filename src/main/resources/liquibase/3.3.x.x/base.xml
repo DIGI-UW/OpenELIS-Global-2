@@ -38,11 +38,10 @@
   <include relativeToChangelogFile="true" file="019-make-audit-user-nullable.xml"/>
 
   <!-- Seed inventory reagents and instruments for MNTD workflow -->
-  <include relativeToChangelogFile="true" file="020-seed-inventory-reagents.xml"/>
-  <include relativeToChangelogFile="true" file="021-increase-inventory-quantities.xml"/>
   <include relativeToChangelogFile="true" file="020-register-inventory-audit-trail.xml"/>
-  <include relativeToChangelogFile="true" file="022-update-inventory-with-project-names.xml"/>
   <include relativeToChangelogFile="true" file="023-add-inventory-item-version.xml"/>
+  <include relativeToChangelogFile="true" file="026-add-equipment-fields.xml"/>
+  <include relativeToChangelogFile="true" file="027-consolidate-storage-locations.xml"/>
 
   <!-- Patient Merge (008-patient-merge) -->
   <include relativeToChangelogFile="true" file="019-patient-merge-create-audit-table.xml"/>
