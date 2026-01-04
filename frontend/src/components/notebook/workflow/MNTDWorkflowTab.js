@@ -58,7 +58,6 @@ const DEFAULT_MNTD_WORKFLOW_PAGES = [
   { id: "default-8", order: 8, title: "Test Execution & Raw Data Capture" },
   { id: "default-9", order: 9, title: "Sample Archiving" },
   { id: "default-10", order: 10, title: "Data Analysis & Export" },
-  { id: "default-11", order: 11, title: "Log Environmental Monitoring" },
 ];
 
 /**

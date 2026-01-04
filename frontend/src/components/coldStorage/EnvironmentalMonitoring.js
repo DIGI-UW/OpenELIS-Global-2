@@ -37,7 +37,16 @@ import {
   TileAboveTheFoldContent,
   TileBelowTheFoldContent,
 } from "@carbon/react";
-import { Add, Edit, Temperature, Warning, Snowflake, Building, Settings, VirtualPrivateCloud } from "@carbon/react/icons";
+import {
+  Add,
+  Edit,
+  Temperature,
+  Warning,
+  Snowflake,
+  Building,
+  Settings,
+  VirtualPrivateCloud,
+} from "@carbon/react/icons";
 import {
   fetchEnvironmentalLogs,
   fetchDashboardStatistics,
@@ -70,7 +79,7 @@ export default function EnvironmentalMonitoring() {
       setNotificationVisible(true);
       addNotification({ kind, title, subtitle });
     },
-    [addNotification, setNotificationVisible]
+    [addNotification, setNotificationVisible],
   );
 
   // State for environmental logs
@@ -78,7 +87,6 @@ export default function EnvironmentalMonitoring() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dashboardStats, setDashboardStats] = useState({});
-
 
   // Modal and form state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -116,18 +124,18 @@ export default function EnvironmentalMonitoring() {
 
   // Static storage unit type icons mapping
   const storageUnitTypeIcons = {
-    "ROOM": Building,
-    "FREEZER": Snowflake,
-    "EQUIPMENT_ANALYZER": Settings,
-    "MOVABLE_FRIDGE": VirtualPrivateCloud,
+    ROOM: Building,
+    FREEZER: Snowflake,
+    EQUIPMENT_ANALYZER: Settings,
+    MOVABLE_FRIDGE: VirtualPrivateCloud,
   };
 
   // Static storage unit type labels mapping
   const storageUnitTypeLabels = {
-    "ROOM": "Room",
-    "FREEZER": "Freezer",
-    "EQUIPMENT_ANALYZER": "Equipments / Analyzer",
-    "MOVABLE_FRIDGE": "Movable Fridge",
+    ROOM: "Room",
+    FREEZER: "Freezer",
+    EQUIPMENT_ANALYZER: "Equipments / Analyzer",
+    MOVABLE_FRIDGE: "Movable Fridge",
   };
 
   // Load environmental logs and dashboard stats on mount
@@ -145,20 +153,27 @@ export default function EnvironmentalMonitoring() {
       const storageTypesResponse = await fetchStorageUnitTypes();
       console.log("Storage types response:", storageTypesResponse);
       if (storageTypesResponse.success) {
-        const formattedStorageTypes = storageTypesResponse.storageUnitTypes.map(type => ({
-          id: type,
-          text: storageUnitTypeLabels[type] || type,
-          value: type
-        }));
+        const formattedStorageTypes = storageTypesResponse.storageUnitTypes.map(
+          (type) => ({
+            id: type,
+            text: storageUnitTypeLabels[type] || type,
+            value: type,
+          }),
+        );
         console.log("Formatted storage types:", formattedStorageTypes);
         setStorageUnitTypes(formattedStorageTypes);
       } else {
         // Fallback to static data if API fails
         console.log("API failed, using fallback storage types");
-        const fallbackTypes = ["ROOM", "FREEZER", "EQUIPMENT_ANALYZER", "MOVABLE_FRIDGE"].map(type => ({
+        const fallbackTypes = [
+          "ROOM",
+          "FREEZER",
+          "EQUIPMENT_ANALYZER",
+          "MOVABLE_FRIDGE",
+        ].map((type) => ({
           id: type,
           text: storageUnitTypeLabels[type] || type,
-          value: type
+          value: type,
         }));
         setStorageUnitTypes(fallbackTypes);
       }
@@ -176,21 +191,20 @@ export default function EnvironmentalMonitoring() {
       const projectsResponse = await fetchProjects();
       console.log("Projects response:", projectsResponse);
       if (projectsResponse.success) {
-        const formattedProjects = projectsResponse.projects.map(project => ({
+        const formattedProjects = projectsResponse.projects.map((project) => ({
           id: project.id,
           text: project.title || project.name || "Unknown Project",
-          value: project.title || project.name
+          value: project.title || project.name,
         }));
         console.log("Formatted projects:", formattedProjects);
         setProjects(formattedProjects);
       }
-
     } catch (error) {
       console.error("Error loading dropdown data:", error);
       notify({
         kind: NotificationKinds.error,
         title: "Error",
-        subtitle: "Failed to load dropdown data"
+        subtitle: "Failed to load dropdown data",
       });
     }
   };
@@ -202,9 +216,9 @@ export default function EnvironmentalMonitoring() {
 
       if (response.success) {
         // Convert numeric IDs to strings for DataTable compatibility
-        const logsWithStringIds = response.logs.map(log => ({
+        const logsWithStringIds = response.logs.map((log) => ({
           ...log,
-          id: String(log.id)
+          id: String(log.id),
         }));
         setEnvironmentalLogs(logsWithStringIds);
         setError(null);
@@ -243,7 +257,7 @@ export default function EnvironmentalMonitoring() {
 
   const handleInputChange = (field, value) => {
     console.log(`Field changed: ${field} = ${value} (${typeof value})`);
-    setEnvironmentalLog(prev => {
+    setEnvironmentalLog((prev) => {
       const updated = { ...prev, [field]: value };
 
       // Clear Movable Fridge specific fields when changing storage unit type
@@ -265,30 +279,58 @@ export default function EnvironmentalMonitoring() {
 
     if (!environmentalLog.storageUnitType) {
       console.log("Storage unit type missing");
-      errors.push(intl.formatMessage({ id: "environmental.validation.storageUnitType" }) || "Storage unit type is required");
+      errors.push(
+        intl.formatMessage({
+          id: "environmental.validation.storageUnitType",
+        }) || "Storage unit type is required",
+      );
     }
     if (!environmentalLog.storageUnitId?.trim()) {
       console.log("Storage unit ID missing");
-      errors.push(intl.formatMessage({ id: "environmental.validation.storageUnitId" }) || "Storage unit ID is required");
+      errors.push(
+        intl.formatMessage({ id: "environmental.validation.storageUnitId" }) ||
+          "Storage unit ID is required",
+      );
     }
-    if (environmentalLog.temperatureValue === null || environmentalLog.temperatureValue === undefined || environmentalLog.temperatureValue === "" || environmentalLog.temperatureValue === " ") {
-      console.log("Temperature value missing or invalid:", environmentalLog.temperatureValue, typeof environmentalLog.temperatureValue);
-      errors.push(intl.formatMessage({ id: "environmental.validation.temperature" }) || "Temperature is required");
+    if (
+      environmentalLog.temperatureValue === null ||
+      environmentalLog.temperatureValue === undefined ||
+      environmentalLog.temperatureValue === "" ||
+      environmentalLog.temperatureValue === " "
+    ) {
+      console.log(
+        "Temperature value missing or invalid:",
+        environmentalLog.temperatureValue,
+        typeof environmentalLog.temperatureValue,
+      );
+      errors.push(
+        intl.formatMessage({ id: "environmental.validation.temperature" }) ||
+          "Temperature is required",
+      );
     }
     if (!environmentalLog.checkedBy?.trim()) {
       console.log("Checked by missing");
-      errors.push(intl.formatMessage({ id: "environmental.validation.checkedBy" }) || "Checked by is required");
+      errors.push(
+        intl.formatMessage({ id: "environmental.validation.checkedBy" }) ||
+          "Checked by is required",
+      );
     }
 
     if (environmentalLog.storageUnitType === "MOVABLE_FRIDGE") {
       if (!environmentalLog.sampleType?.trim()) {
-        errors.push(intl.formatMessage({ id: "environmental.validation.sampleType" }));
+        errors.push(
+          intl.formatMessage({ id: "environmental.validation.sampleType" }),
+        );
       }
       if (!environmentalLog.projectName?.trim()) {
-        errors.push(intl.formatMessage({ id: "environmental.validation.projectName" }));
+        errors.push(
+          intl.formatMessage({ id: "environmental.validation.projectName" }),
+        );
       }
       if (!environmentalLog.sampleId?.trim()) {
-        errors.push(intl.formatMessage({ id: "environmental.validation.sampleId" }));
+        errors.push(
+          intl.formatMessage({ id: "environmental.validation.sampleId" }),
+        );
       }
     }
 
@@ -323,7 +365,9 @@ export default function EnvironmentalMonitoring() {
         notify({
           kind: NotificationKinds.error,
           title: "Error",
-          subtitle: response.message || intl.formatMessage({ id: "environmental.error" }),
+          subtitle:
+            response.message ||
+            intl.formatMessage({ id: "environmental.error" }),
         });
       }
     } catch (err) {
@@ -331,7 +375,8 @@ export default function EnvironmentalMonitoring() {
       notify({
         kind: NotificationKinds.error,
         title: "Error",
-        subtitle: err.message || intl.formatMessage({ id: "environmental.error" }),
+        subtitle:
+          err.message || intl.formatMessage({ id: "environmental.error" }),
       });
     } finally {
       setIsLoggingEnv(false);
@@ -377,13 +422,15 @@ export default function EnvironmentalMonitoring() {
   };
 
   // Filter logs based on search term and storage unit filter
-  const filteredLogs = environmentalLogs.filter(log => {
-    const matchesSearch = !searchTerm ||
+  const filteredLogs = environmentalLogs.filter((log) => {
+    const matchesSearch =
+      !searchTerm ||
       log.storageUnitId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.checkedBy?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.notes?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFilter = !storageTypeFilter || log.storageUnitType === storageTypeFilter;
+    const matchesFilter =
+      !storageTypeFilter || log.storageUnitType === storageTypeFilter;
 
     return matchesSearch && matchesFilter;
   });
@@ -399,11 +446,13 @@ export default function EnvironmentalMonitoring() {
     { key: "notes", header: "Notes" },
   ];
 
-  const tableRows = filteredLogs.map(log => ({
+  const tableRows = filteredLogs.map((log) => ({
     id: log.id,
     storageUnitType: (
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        {React.createElement(getStorageUnitIcon(log.storageUnitType), { size: 16 })}
+        {React.createElement(getStorageUnitIcon(log.storageUnitType), {
+          size: 16,
+        })}
         {log.storageUnitType.replace("_", " ")}
       </div>
     ),
@@ -412,7 +461,7 @@ export default function EnvironmentalMonitoring() {
       <span
         style={{
           color: isTemperatureOutOfRange(log) ? "#da1e28" : "inherit",
-          fontWeight: isTemperatureOutOfRange(log) ? "bold" : "normal"
+          fontWeight: isTemperatureOutOfRange(log) ? "bold" : "normal",
         }}
       >
         {log.temperatureValue}°{log.temperatureUnit || "C"}
@@ -437,7 +486,10 @@ export default function EnvironmentalMonitoring() {
   if (loading) {
     return (
       <div style={{ padding: "1rem 0", textAlign: "center" }}>
-        <FormattedMessage id="common.loading" defaultMessage="Loading environmental monitoring data..." />
+        <FormattedMessage
+          id="common.loading"
+          defaultMessage="Loading environmental monitoring data..."
+        />
       </div>
     );
   }
@@ -471,22 +523,27 @@ export default function EnvironmentalMonitoring() {
                   id="storage-unit-filter"
                   name="storageUnitFilter"
                   label={
-                    storageTypeFilter ?
-                      storageUnitTypes.find(type => type.value === storageTypeFilter)?.text || "All Storage Units" :
-                      "All Storage Units"
+                    storageTypeFilter
+                      ? storageUnitTypes.find(
+                          (type) => type.value === storageTypeFilter,
+                        )?.text || "All Storage Units"
+                      : "All Storage Units"
                   }
                   initialSelectedItem={
-                    storageTypeFilter ?
-                      [...[{ id: "", text: "All Storage Units" }], ...storageUnitTypes].find(type => type.value === storageTypeFilter) :
-                      { id: "", text: "All Storage Units" }
+                    storageTypeFilter
+                      ? [
+                          ...[{ id: "", text: "All Storage Units" }],
+                          ...storageUnitTypes,
+                        ].find((type) => type.value === storageTypeFilter)
+                      : { id: "", text: "All Storage Units" }
                   }
                   items={[
                     { id: "", text: "All Storage Units", value: "" },
-                    ...storageUnitTypes.map(type => ({
+                    ...storageUnitTypes.map((type) => ({
                       id: type.value,
                       text: type.text,
-                      value: type.value
-                    }))
+                      value: type.value,
+                    })),
                   ]}
                   itemToString={(item) => (item ? item.text : "")}
                   onChange={(event) => {
@@ -501,7 +558,10 @@ export default function EnvironmentalMonitoring() {
                     setIsModalOpen(true);
                   }}
                 >
-                  <FormattedMessage id="environmental.submit" defaultMessage="Log Reading" />
+                  <FormattedMessage
+                    id="environmental.submit"
+                    defaultMessage="Log Reading"
+                  />
                 </Button>
               </TableToolbarContent>
             </TableToolbar>
@@ -509,7 +569,10 @@ export default function EnvironmentalMonitoring() {
               <TableHead>
                 <TableRow>
                   {headers.map((header) => (
-                    <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                    <TableHeader
+                      key={header.key}
+                      {...getHeaderProps({ header })}
+                    >
                       {header.header}
                     </TableHeader>
                   ))}
@@ -546,7 +609,9 @@ export default function EnvironmentalMonitoring() {
 
       {/* No data state */}
       {filteredLogs.length === 0 && !loading && (
-        <div style={{ textAlign: "center", padding: "3rem 0", color: "#6f6f6f" }}>
+        <div
+          style={{ textAlign: "center", padding: "3rem 0", color: "#6f6f6f" }}
+        >
           <Temperature size={48} style={{ opacity: 0.3 }} />
           <p style={{ marginTop: "1rem" }}>
             <FormattedMessage
@@ -575,10 +640,16 @@ export default function EnvironmentalMonitoring() {
               id="storage-unit-type"
               labelText={<FormattedMessage id="environmental.storageUnit" />}
               value={environmentalLog.storageUnitType}
-              onChange={(event) => handleInputChange("storageUnitType", event.target.value)}
+              onChange={(event) =>
+                handleInputChange("storageUnitType", event.target.value)
+              }
             >
-              {storageUnitTypes.map(type => (
-                <SelectItem key={type.value} value={type.value} text={type.text} />
+              {storageUnitTypes.map((type) => (
+                <SelectItem
+                  key={type.value}
+                  value={type.value}
+                  text={type.text}
+                />
               ))}
             </Select>
 
@@ -586,9 +657,13 @@ export default function EnvironmentalMonitoring() {
             <TextInput
               id="storage-unit-id"
               labelText={<FormattedMessage id="environmental.unitId" />}
-              placeholder={intl.formatMessage({ id: "environmental.unitId.placeholder" })}
+              placeholder={intl.formatMessage({
+                id: "environmental.unitId.placeholder",
+              })}
               value={environmentalLog.storageUnitId}
-              onChange={(event) => handleInputChange("storageUnitId", event.target.value)}
+              onChange={(event) =>
+                handleInputChange("storageUnitId", event.target.value)
+              }
               required
             />
 
@@ -596,7 +671,9 @@ export default function EnvironmentalMonitoring() {
             <NumberInput
               id="temperature-value"
               label={<FormattedMessage id="environmental.temperature" />}
-              placeholder={intl.formatMessage({ id: "environmental.temperature.placeholder" })}
+              placeholder={intl.formatMessage({
+                id: "environmental.temperature.placeholder",
+              })}
               value={environmentalLog.temperatureValue}
               onChange={(event, { value }) => {
                 console.log("Temperature change:", value);
@@ -611,19 +688,29 @@ export default function EnvironmentalMonitoring() {
               name="temperature-unit"
               value={environmentalLog.temperatureUnit}
               onChange={(value) => handleInputChange("temperatureUnit", value)}
-              legendText={<FormattedMessage id="environmental.temperatureUnit" />}
+              legendText={
+                <FormattedMessage id="environmental.temperatureUnit" />
+              }
             >
               <RadioButton labelText="Celsius (°C)" value="C" id="celsius" />
-              <RadioButton labelText="Fahrenheit (°F)" value="F" id="fahrenheit" />
+              <RadioButton
+                labelText="Fahrenheit (°F)"
+                value="F"
+                id="fahrenheit"
+              />
             </RadioButtonGroup>
 
             {/* Humidity */}
             <NumberInput
               id="humidity-value"
               label={<FormattedMessage id="environmental.humidity" />}
-              placeholder={intl.formatMessage({ id: "environmental.humidity.placeholder" })}
+              placeholder={intl.formatMessage({
+                id: "environmental.humidity.placeholder",
+              })}
               value={environmentalLog.humidityValue}
-              onChange={(event, { value }) => handleInputChange("humidityValue", value)}
+              onChange={(event, { value }) =>
+                handleInputChange("humidityValue", value)
+              }
               min={0}
               max={100}
             />
@@ -633,7 +720,9 @@ export default function EnvironmentalMonitoring() {
               id="interval-type"
               labelText={<FormattedMessage id="environmental.interval" />}
               value={environmentalLog.intervalType}
-              onChange={(event) => handleInputChange("intervalType", event.target.value)}
+              onChange={(event) =>
+                handleInputChange("intervalType", event.target.value)
+              }
             >
               <SelectItem value="AM" text="AM" />
               <SelectItem value="PM" text="PM" />
@@ -643,26 +732,40 @@ export default function EnvironmentalMonitoring() {
             <TextInput
               id="checked-by"
               labelText={<FormattedMessage id="environmental.checkedBy" />}
-              placeholder={intl.formatMessage({ id: "environmental.checkedBy.placeholder" })}
+              placeholder={intl.formatMessage({
+                id: "environmental.checkedBy.placeholder",
+              })}
               value={environmentalLog.checkedBy}
-              onChange={(event) => handleInputChange("checkedBy", event.target.value)}
+              onChange={(event) =>
+                handleInputChange("checkedBy", event.target.value)
+              }
               required
             />
 
             {/* Checked Date/Time */}
             <TextInput
               id="checked-datetime"
-              labelText={<FormattedMessage id="environmental.checkedDateTime" />}
+              labelText={
+                <FormattedMessage id="environmental.checkedDateTime" />
+              }
               type="datetime-local"
               value={environmentalLog.checkedDateTime}
-              onChange={(event) => handleInputChange("checkedDateTime", event.target.value)}
+              onChange={(event) =>
+                handleInputChange("checkedDateTime", event.target.value)
+              }
             />
 
             {/* Movable Fridge Specific Fields */}
             {environmentalLog.storageUnitType === "MOVABLE_FRIDGE" && (
               <ExpandableTile className="movable-fridge-section">
                 <TileAboveTheFoldContent>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
                     <VirtualPrivateCloud size={20} />
                     <strong>
                       <FormattedMessage
@@ -677,47 +780,78 @@ export default function EnvironmentalMonitoring() {
                     {/* Sample Type Dropdown */}
                     <Select
                       id="sample-type"
-                      labelText={<FormattedMessage id="environmental.movableFridge.sampleType" />}
+                      labelText={
+                        <FormattedMessage id="environmental.movableFridge.sampleType" />
+                      }
                       value={environmentalLog.sampleType}
-                      onChange={(event) => handleInputChange("sampleType", event.target.value)}
+                      onChange={(event) =>
+                        handleInputChange("sampleType", event.target.value)
+                      }
                       required
                     >
                       <SelectItem value="" text="Select a sample type" />
-                      {sampleTypes.map(type => (
-                        <SelectItem key={type.id} value={type.id} text={type.value} />
+                      {sampleTypes.map((type) => (
+                        <SelectItem
+                          key={type.id}
+                          value={type.id}
+                          text={type.value}
+                        />
                       ))}
                     </Select>
 
                     {/* Project Name Dropdown */}
                     <Select
                       id="project-name"
-                      labelText={<FormattedMessage id="environmental.movableFridge.projectName" />}
+                      labelText={
+                        <FormattedMessage id="environmental.movableFridge.projectName" />
+                      }
                       value={environmentalLog.projectName}
-                      onChange={(event) => handleInputChange("projectName", event.target.value)}
+                      onChange={(event) =>
+                        handleInputChange("projectName", event.target.value)
+                      }
                       required
                     >
                       <SelectItem value="" text="Select a project" />
-                      {projects.map(project => (
-                        <SelectItem key={project.id} value={project.value} text={project.text} />
+                      {projects.map((project) => (
+                        <SelectItem
+                          key={project.id}
+                          value={project.value}
+                          text={project.text}
+                        />
                       ))}
                     </Select>
 
                     {/* Sample ID - keep as text input for now, can add lookup later */}
                     <TextInput
                       id="sample-id"
-                      labelText={<FormattedMessage id="environmental.movableFridge.sampleId" />}
-                      placeholder={intl.formatMessage({ id: "environmental.movableFridge.sampleId.placeholder" })}
+                      labelText={
+                        <FormattedMessage id="environmental.movableFridge.sampleId" />
+                      }
+                      placeholder={intl.formatMessage({
+                        id: "environmental.movableFridge.sampleId.placeholder",
+                      })}
                       value={environmentalLog.sampleId}
-                      onChange={(event) => handleInputChange("sampleId", event.target.value)}
+                      onChange={(event) =>
+                        handleInputChange("sampleId", event.target.value)
+                      }
                       required
                     />
 
                     <TextArea
                       id="additional-details"
-                      labelText={<FormattedMessage id="environmental.movableFridge.additionalDetails" />}
-                      placeholder={intl.formatMessage({ id: "environmental.movableFridge.additionalDetails.placeholder" })}
+                      labelText={
+                        <FormattedMessage id="environmental.movableFridge.additionalDetails" />
+                      }
+                      placeholder={intl.formatMessage({
+                        id: "environmental.movableFridge.additionalDetails.placeholder",
+                      })}
                       value={environmentalLog.additionalDetails}
-                      onChange={(event) => handleInputChange("additionalDetails", event.target.value)}
+                      onChange={(event) =>
+                        handleInputChange(
+                          "additionalDetails",
+                          event.target.value,
+                        )
+                      }
                       rows={3}
                     />
                   </Stack>
@@ -729,9 +863,13 @@ export default function EnvironmentalMonitoring() {
             <TextArea
               id="notes"
               labelText={<FormattedMessage id="environmental.notes" />}
-              placeholder={intl.formatMessage({ id: "environmental.notes.placeholder" })}
+              placeholder={intl.formatMessage({
+                id: "environmental.notes.placeholder",
+              })}
               value={environmentalLog.notes}
-              onChange={(event) => handleInputChange("notes", event.target.value)}
+              onChange={(event) =>
+                handleInputChange("notes", event.target.value)
+              }
               rows={3}
             />
           </Stack>

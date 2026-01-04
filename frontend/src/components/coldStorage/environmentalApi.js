@@ -19,12 +19,14 @@ export const fetchEnvironmentalLogs = async (filters = {}) => {
   const queryString = params.toString() ? `?${params.toString()}` : "";
 
   try {
-    const response = await getFromOpenElisServerV2(`/rest/environmental-monitoring/logs${queryString}`);
+    const response = await getFromOpenElisServerV2(
+      `/rest/environmental-monitoring/logs${queryString}`,
+    );
     // getFromOpenElisServerV2 returns the direct response, not wrapped in {success: true}
     return {
       success: true,
-      logs: Array.isArray(response) ? response : (response?.logs || []),
-      count: Array.isArray(response) ? response.length : (response?.count || 0)
+      logs: Array.isArray(response) ? response : response?.logs || [],
+      count: Array.isArray(response) ? response.length : response?.count || 0,
     };
   } catch (error) {
     console.error("Error fetching environmental logs:", error);
@@ -32,7 +34,7 @@ export const fetchEnvironmentalLogs = async (filters = {}) => {
       success: false,
       logs: [],
       count: 0,
-      error: error.message || "Failed to fetch environmental logs"
+      error: error.message || "Failed to fetch environmental logs",
     };
   }
 };
@@ -46,13 +48,13 @@ export const fetchDashboardStatistics = async (storageUnitType = null) => {
     const response = await getFromOpenElisServerV2(endpoint);
     return {
       success: true,
-      ...response
+      ...response,
     };
   } catch (error) {
     console.error("Error fetching dashboard statistics:", error);
     return {
       success: false,
-      error: error.message || "Failed to fetch dashboard statistics"
+      error: error.message || "Failed to fetch dashboard statistics",
     };
   }
 };
@@ -63,24 +65,27 @@ export const createEnvironmentalLog = async (logData) => {
       "/rest/environmental-monitoring/log",
       JSON.stringify(logData),
       (response) => {
-        if (response && (response.status >= 400 || response.statusCode >= 400)) {
+        if (
+          response &&
+          (response.status >= 400 || response.statusCode >= 400)
+        ) {
           reject(
             new Error(
               response.message ||
                 response.error ||
-                `Request failed with status ${response.status || response.statusCode}`
-            )
+                `Request failed with status ${response.status || response.statusCode}`,
+            ),
           );
         } else {
           resolve({
             success: true,
-            data: response
+            data: response,
           });
         }
       },
       (error) => {
         reject(new Error(error || "Failed to create environmental log"));
-      }
+      },
     );
   });
 };
@@ -113,11 +118,13 @@ export const searchEnvironmentalLogs = async (filters = {}) => {
   const queryString = params.toString() ? `?${params.toString()}` : "";
 
   try {
-    const response = await getFromOpenElisServerV2(`/rest/environmental-monitoring/search${queryString}`);
+    const response = await getFromOpenElisServerV2(
+      `/rest/environmental-monitoring/search${queryString}`,
+    );
     return {
       success: true,
-      logs: Array.isArray(response) ? response : (response?.logs || []),
-      count: Array.isArray(response) ? response.length : (response?.count || 0)
+      logs: Array.isArray(response) ? response : response?.logs || [],
+      count: Array.isArray(response) ? response.length : response?.count || 0,
     };
   } catch (error) {
     console.error("Error searching environmental logs:", error);
@@ -125,75 +132,85 @@ export const searchEnvironmentalLogs = async (filters = {}) => {
       success: false,
       logs: [],
       count: 0,
-      error: error.message || "Failed to search environmental logs"
+      error: error.message || "Failed to search environmental logs",
     };
   }
 };
 
 export const fetchTemperatureRanges = async () => {
   try {
-    const response = await getFromOpenElisServerV2("/rest/environmental-monitoring/temperature-ranges");
+    const response = await getFromOpenElisServerV2(
+      "/rest/environmental-monitoring/temperature-ranges",
+    );
     return {
       success: true,
-      ranges: response?.ranges || response || {}
+      ranges: response?.ranges || response || {},
     };
   } catch (error) {
     console.error("Error fetching temperature ranges:", error);
     return {
       success: false,
       ranges: {},
-      error: error.message || "Failed to fetch temperature ranges"
+      error: error.message || "Failed to fetch temperature ranges",
     };
   }
 };
 
 export const fetchStorageUnitTypes = async () => {
   try {
-    const response = await getFromOpenElisServerV2("/rest/environmental-monitoring/storage-unit-types");
+    const response = await getFromOpenElisServerV2(
+      "/rest/environmental-monitoring/storage-unit-types",
+    );
     return {
       success: true,
-      storageUnitTypes: Array.isArray(response) ? response : (response?.storageUnitTypes || [])
+      storageUnitTypes: Array.isArray(response)
+        ? response
+        : response?.storageUnitTypes || [],
     };
   } catch (error) {
     console.error("Error fetching storage unit types:", error);
     return {
       success: false,
       storageUnitTypes: [],
-      error: error.message || "Failed to fetch storage unit types"
+      error: error.message || "Failed to fetch storage unit types",
     };
   }
 };
 
 export const fetchSampleTypes = async () => {
   try {
-    const response = await getFromOpenElisServerV2("/rest/displayList/SAMPLE_TYPE_ACTIVE");
+    const response = await getFromOpenElisServerV2(
+      "/rest/displayList/SAMPLE_TYPE_ACTIVE",
+    );
     return {
       success: true,
-      sampleTypes: Array.isArray(response) ? response : []
+      sampleTypes: Array.isArray(response) ? response : [],
     };
   } catch (error) {
     console.error("Error fetching sample types:", error);
     return {
       success: false,
       sampleTypes: [],
-      error: error.message || "Failed to fetch sample types"
+      error: error.message || "Failed to fetch sample types",
     };
   }
 };
 
 export const fetchProjects = async () => {
   try {
-    const response = await getFromOpenElisServerV2("/rest/notebook/dashboard/notebooks");
+    const response = await getFromOpenElisServerV2(
+      "/rest/notebook/dashboard/notebooks",
+    );
     return {
       success: true,
-      projects: Array.isArray(response) ? response : []
+      projects: Array.isArray(response) ? response : [],
     };
   } catch (error) {
     console.error("Error fetching projects:", error);
     return {
       success: false,
       projects: [],
-      error: error.message || "Failed to fetch projects"
+      error: error.message || "Failed to fetch projects",
     };
   }
 };
@@ -218,11 +235,13 @@ export const searchSampleIds = async (filters = {}) => {
 
   try {
     // TODO: This endpoint doesn't exist yet - need to implement or use existing sample search
-    const response = await getFromOpenElisServerV2(`/rest/environmental-monitoring/sample-id-lookup${queryString}`);
+    const response = await getFromOpenElisServerV2(
+      `/rest/environmental-monitoring/sample-id-lookup${queryString}`,
+    );
     return {
       success: true,
-      sampleIds: Array.isArray(response) ? response : (response?.sampleIds || []),
-      count: Array.isArray(response) ? response.length : (response?.count || 0)
+      sampleIds: Array.isArray(response) ? response : response?.sampleIds || [],
+      count: Array.isArray(response) ? response.length : response?.count || 0,
     };
   } catch (error) {
     console.error("Error searching sample IDs:", error);
@@ -230,7 +249,7 @@ export const searchSampleIds = async (filters = {}) => {
       success: false,
       sampleIds: [],
       count: 0,
-      error: error.message || "Failed to search sample IDs"
+      error: error.message || "Failed to search sample IDs",
     };
   }
 };
