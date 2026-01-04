@@ -3459,7 +3459,7 @@
   "environmental.validation.checkedBy": "Checked by is required",
   "environmental.validation.sampleType": "Sample type is required for Movable Fridge",
   "environmental.validation.projectName": "Project name is required for Movable Fridge",
-  "environmental.validation.sampleId": "Sample ID is required for Movable Fridge"
+  "environmental.validation.sampleId": "Sample ID is required for Movable Fridge",
   "notebook.virology.manifest.title": "Import Virology Samples from Delivery Manifest",
   "notebook.virology.manifest.step1": "Upload a CSV file with virology sample reception metadata. Review the expected data points below before uploading.",
   "notebook.virology.manifest.step2": "Map your CSV columns to the expected reception metadata fields. All required fields (marked with *) must be mapped.",
@@ -3533,5 +3533,5 @@
   "notebook.sample.source": "Source",
   "notebook.sample.testType": "Test Type",
   "notebook.sample.project": "Project/Study",
-  "notebook.sample.batchId": "Batch ID",
+  "notebook.sample.batchId": "Batch ID"
 }

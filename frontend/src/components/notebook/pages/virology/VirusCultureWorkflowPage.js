@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Grid,
   Column,
@@ -32,7 +32,7 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   IconButton,
-} from '@carbon/react';
+} from "@carbon/react";
 import {
   Add,
   View,
@@ -45,16 +45,25 @@ import {
   Chemistry,
   Temperature,
   CheckmarkFilled,
-} from '@carbon/react/icons';
-import { FormattedMessage, useIntl } from 'react-intl';
-import { getFromOpenElisServer, postToOpenElisServer } from '../../../utils/Utils';
-import { NotificationContext } from '../../../layout/Layout';
+} from "@carbon/react/icons";
+import { FormattedMessage, useIntl } from "react-intl";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+} from "../../../utils/Utils";
+import { NotificationContext } from "../../../layout/Layout";
 
 /**
  * Stage 2: Virus Culture Growth Workflow Page
  * Implements the 9-step virus culture process from media preparation to packaging
  */
-const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdate, notebookEntry }) => {
+const VirusCultureWorkflowPage = ({
+  entryId,
+  pageData,
+  progress,
+  onProgressUpdate,
+  notebookEntry,
+}) => {
   const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const [cultureBatches, setCultureBatches] = useState([]);
@@ -69,104 +78,104 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
   // Form states
   const [createBatchForm, setCreateBatchForm] = useState({
     notebookPageSampleId: null,
-    virusStrain: '',
-    cellLine: '',
-    notes: ''
+    virusStrain: "",
+    cellLine: "",
+    notes: "",
   });
 
   const [stepForm, setStepForm] = useState({
-    qualityResult: 'NOT_APPLICABLE',
-    notes: ''
+    qualityResult: "NOT_APPLICABLE",
+    notes: "",
   });
 
   // Available options (would normally come from API)
   const virusStrains = [
-    'SARS-CoV-2',
-    'Influenza A (H1N1)',
-    'Influenza A (H3N2)',
-    'Influenza B',
-    'Respiratory Syncytial Virus (RSV)',
-    'Adenovirus',
-    'Human Metapneumovirus',
-    'Parainfluenza Virus',
+    "SARS-CoV-2",
+    "Influenza A (H1N1)",
+    "Influenza A (H3N2)",
+    "Influenza B",
+    "Respiratory Syncytial Virus (RSV)",
+    "Adenovirus",
+    "Human Metapneumovirus",
+    "Parainfluenza Virus",
   ];
 
   const cellLines = [
-    'Vero E6',
-    'Vero CCL-81',
-    'MDCK',
-    'A549',
-    'HEp-2',
-    'LLC-MK2',
-    'HELA',
-    'BHK-21',
+    "Vero E6",
+    "Vero CCL-81",
+    "MDCK",
+    "A549",
+    "HEp-2",
+    "LLC-MK2",
+    "HELA",
+    "BHK-21",
   ];
 
   // Workflow steps configuration
   const workflowSteps = [
     {
-      name: 'MEDIA_PREPARATION',
-      label: 'Media Preparation',
-      description: 'Select and prepare culture media, reagents, and equipment',
+      name: "MEDIA_PREPARATION",
+      label: "Media Preparation",
+      description: "Select and prepare culture media, reagents, and equipment",
       icon: Chemistry,
-      order: 1
+      order: 1,
     },
     {
-      name: 'STERILIZATION',
-      label: 'Sterilization',
-      description: 'Autoclave and filter sterilization procedures',
+      name: "STERILIZATION",
+      label: "Sterilization",
+      description: "Autoclave and filter sterilization procedures",
       icon: Temperature,
-      order: 2
+      order: 2,
     },
     {
-      name: 'CELL_CULTURE',
-      label: 'Cell Culture',
-      description: 'Grow host cells to appropriate confluence',
+      name: "CELL_CULTURE",
+      label: "Cell Culture",
+      description: "Grow host cells to appropriate confluence",
       icon: Microscope,
-      order: 3
+      order: 3,
     },
     {
-      name: 'QUALITY_CONTROL',
-      label: 'Quality Control',
-      description: 'Validate cell viability and sterility',
+      name: "QUALITY_CONTROL",
+      label: "Quality Control",
+      description: "Validate cell viability and sterility",
       icon: CheckmarkFilled,
-      order: 4
+      order: 4,
     },
     {
-      name: 'VIRUS_CULTURE',
-      label: 'Virus Culture',
-      description: 'Inoculate cells with virus samples',
+      name: "VIRUS_CULTURE",
+      label: "Virus Culture",
+      description: "Inoculate cells with virus samples",
       icon: Chemistry,
-      order: 5
+      order: 5,
     },
     {
-      name: 'DARK_ROOM_IMAGING',
-      label: 'Dark Room Imaging',
-      description: 'Imaging and fluorescence analysis',
+      name: "DARK_ROOM_IMAGING",
+      label: "Dark Room Imaging",
+      description: "Imaging and fluorescence analysis",
       icon: View,
-      order: 6
+      order: 6,
     },
     {
-      name: 'FORMULATION',
-      label: 'Formulation',
-      description: 'Prepare viral product with stabilizers',
+      name: "FORMULATION",
+      label: "Formulation",
+      description: "Prepare viral product with stabilizers",
       icon: Chemistry,
-      order: 7
+      order: 7,
     },
     {
-      name: 'FEEDING',
-      label: 'Feeding',
-      description: 'Maintain culture with regular feeding',
+      name: "FEEDING",
+      label: "Feeding",
+      description: "Maintain culture with regular feeding",
       icon: Time,
-      order: 8
+      order: 8,
     },
     {
-      name: 'PACKAGING',
-      label: 'Packaging',
-      description: 'Final product packaging and labeling',
+      name: "PACKAGING",
+      label: "Packaging",
+      description: "Final product packaging and labeling",
       icon: Checkmark,
-      order: 9
-    }
+      order: 9,
+    },
   ];
 
   // Load data on component mount
@@ -189,11 +198,16 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
       `/rest/notebook/page/${pageData.id}/samples`,
       (response) => {
         if (response && response.samples) {
-          console.log(`Loaded ${response.samples.length} samples for virus culture workflow page`);
+          console.log(
+            `Loaded ${response.samples.length} samples for virus culture workflow page`,
+          );
 
           // Auto-create virus culture batches for samples that don't have them
-          response.samples.forEach(sample => {
-            if (sample.status === 'PENDING' || sample.status === 'IN_PROGRESS') {
+          response.samples.forEach((sample) => {
+            if (
+              sample.status === "PENDING" ||
+              sample.status === "IN_PROGRESS"
+            ) {
               autoCreateVirusCultureBatch(sample);
             }
           });
@@ -201,9 +215,9 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
         setLoading(false);
       },
       (error) => {
-        console.error('Failed to load notebook page samples:', error);
+        console.error("Failed to load notebook page samples:", error);
         setLoading(false);
-      }
+      },
     );
   }, [pageData?.id]);
 
@@ -216,43 +230,48 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
           // No existing batch, create one automatically
           const batchRequest = {
             notebookPageSampleId: sample.id,
-            virusStrain: 'Pending Assignment',
-            cellLine: 'Vero E6',
-            notes: `Auto-created batch for sample ${sample.accessionNumber || sample.sampleItemId}`
+            virusStrain: "Pending Assignment",
+            cellLine: "Vero E6",
+            notes: `Auto-created batch for sample ${sample.accessionNumber || sample.sampleItemId}`,
           };
 
           postToOpenElisServer(
-            '/rest/notebook/virology/culture/batch',
+            "/rest/notebook/virology/culture/batch",
             batchRequest,
             (createResponse) => {
               if (createResponse && createResponse.success) {
-                console.log(`Auto-created virus culture batch ${createResponse.batchNumber} for sample ${sample.sampleItemId}`);
+                console.log(
+                  `Auto-created virus culture batch ${createResponse.batchNumber} for sample ${sample.sampleItemId}`,
+                );
                 // Reload batches to show the new one
                 loadCultureBatches();
               } else {
-                console.error('Failed to auto-create virus culture batch:', createResponse);
+                console.error(
+                  "Failed to auto-create virus culture batch:",
+                  createResponse,
+                );
               }
             },
             (error) => {
-              console.error('Error auto-creating virus culture batch:', error);
-            }
+              console.error("Error auto-creating virus culture batch:", error);
+            },
           );
         }
       },
       (error) => {
-        console.error('Error checking existing batches for sample:', error);
-      }
+        console.error("Error checking existing batches for sample:", error);
+      },
     );
   }, []);
 
   const loadDashboardData = useCallback(() => {
     getFromOpenElisServer(
-      '/rest/notebook/virology/culture/dashboard',
+      "/rest/notebook/virology/culture/dashboard",
       (response) => {
         if (response && response.success) {
           setDashboardData(response);
         }
-      }
+      },
     );
   }, []);
 
@@ -261,15 +280,15 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
 
     setLoading(true);
     getFromOpenElisServer(
-      '/rest/notebook/virology/culture/batches/active',
+      "/rest/notebook/virology/culture/batches/active",
       (response) => {
         setLoading(false);
         if (response && response.success) {
           setCultureBatches(response.batches || []);
         } else {
-          console.error('Failed to load virus culture batches');
+          console.error("Failed to load virus culture batches");
         }
-      }
+      },
     );
   }, [entryId]);
 
@@ -283,33 +302,37 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
           setSelectedBatch(response.batch);
           setWorkflowStatus(response.workflowStatus || []);
         } else {
-          console.error('Failed to load batch details');
+          console.error("Failed to load batch details");
         }
-      }
+      },
     );
   }, []);
 
   const handleCreateBatch = () => {
     setLoading(true);
     postToOpenElisServer(
-      '/rest/notebook/virology/culture/batch',
+      "/rest/notebook/virology/culture/batch",
       JSON.stringify(createBatchForm),
       (response) => {
         setLoading(false);
         if (response && response.success) {
-          console.log(`Virus culture batch ${response.batchNumber} created successfully`);
+          console.log(
+            `Virus culture batch ${response.batchNumber} created successfully`,
+          );
           setShowCreateModal(false);
           setCreateBatchForm({
             notebookPageSampleId: null,
-            virusStrain: '',
-            cellLine: '',
-            notes: ''
+            virusStrain: "",
+            cellLine: "",
+            notes: "",
           });
           loadCultureBatches();
         } else {
-          console.error(response?.message || 'Failed to create virus culture batch');
+          console.error(
+            response?.message || "Failed to create virus culture batch",
+          );
         }
-      }
+      },
     );
   };
 
@@ -317,16 +340,16 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
     setLoading(true);
     postToOpenElisServer(
       `/rest/notebook/virology/culture/batch/${batchId}/step/${stepName}/start`,
-      '{}',
+      "{}",
       (response) => {
         setLoading(false);
         if (response && response.success) {
           console.log(`${getStepLabel(stepName)} started successfully`);
           loadBatchDetails(batchId);
         } else {
-          console.error(response?.message || 'Failed to start step');
+          console.error(response?.message || "Failed to start step");
         }
-      }
+      },
     );
   };
 
@@ -340,74 +363,89 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
       (response) => {
         setLoading(false);
         if (response && response.success) {
-          console.log(`${getStepLabel(currentStep.stepName)} completed successfully`);
+          console.log(
+            `${getStepLabel(currentStep.stepName)} completed successfully`,
+          );
           setShowStepModal(false);
-          setStepForm({ qualityResult: 'NOT_APPLICABLE', notes: '' });
+          setStepForm({ qualityResult: "NOT_APPLICABLE", notes: "" });
           loadBatchDetails(selectedBatch.id);
 
           // If this was the final step (PACKAGING), mark the notebook page sample as completed
-          if (currentStep.stepName === 'PACKAGING') {
-            updateNotebookPageSampleStatus(selectedBatch.notebookPageSampleId, 'COMPLETED');
+          if (currentStep.stepName === "PACKAGING") {
+            updateNotebookPageSampleStatus(
+              selectedBatch.notebookPageSampleId,
+              "COMPLETED",
+            );
           }
         } else {
-          console.error(response?.message || 'Failed to complete step');
+          console.error(response?.message || "Failed to complete step");
         }
-      }
+      },
     );
   };
 
-  const updateNotebookPageSampleStatus = useCallback((notebookPageSampleId, status) => {
-    if (!notebookPageSampleId || !pageData?.id) return;
+  const updateNotebookPageSampleStatus = useCallback(
+    (notebookPageSampleId, status) => {
+      if (!notebookPageSampleId || !pageData?.id) return;
 
-    console.log(`Updating notebook page sample ${notebookPageSampleId} status to ${status}`);
+      console.log(
+        `Updating notebook page sample ${notebookPageSampleId} status to ${status}`,
+      );
 
-    // Update the notebook page sample status to sync with virus culture workflow progress
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-      JSON.stringify({
-        sampleIds: [notebookPageSampleId],
-        status: status
-      }),
-      (response) => {
-        if (response && response.success) {
-          console.log(`Successfully updated notebook page sample status to ${status}`);
-          // Notify parent component about progress update
-          if (onProgressUpdate) {
-            onProgressUpdate();
+      // Update the notebook page sample status to sync with virus culture workflow progress
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: [notebookPageSampleId],
+          status: status,
+        }),
+        (response) => {
+          if (response && response.success) {
+            console.log(
+              `Successfully updated notebook page sample status to ${status}`,
+            );
+            // Notify parent component about progress update
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
+          } else {
+            console.error(
+              "Failed to update notebook page sample status:",
+              response,
+            );
           }
-        } else {
-          console.error('Failed to update notebook page sample status:', response);
-        }
-      },
-      (error) => {
-        console.error('Error updating notebook page sample status:', error);
-      }
-    );
-  }, [pageData?.id, onProgressUpdate]);
+        },
+        (error) => {
+          console.error("Error updating notebook page sample status:", error);
+        },
+      );
+    },
+    [pageData?.id, onProgressUpdate],
+  );
 
   const getStepLabel = (stepName) => {
-    const step = workflowSteps.find(s => s.name === stepName);
+    const step = workflowSteps.find((s) => s.name === stepName);
     return step ? step.label : stepName;
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return '—';
+    if (!dateString) return "—";
     try {
       return new Date(dateString).toLocaleDateString();
     } catch (error) {
-      return '—';
+      return "—";
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'COMPLETED':
+      case "COMPLETED":
         return <Checkmark size={16} className="status-completed" />;
-      case 'IN_PROGRESS':
+      case "IN_PROGRESS":
         return <Time size={16} className="status-in-progress" />;
-      case 'FAILED':
+      case "FAILED":
         return <Error size={16} className="status-failed" />;
-      case 'ON_HOLD':
+      case "ON_HOLD":
         return <Warning size={16} className="status-warning" />;
       default:
         return <Time size={16} className="status-pending" />;
@@ -416,66 +454,82 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
 
   const getStatusTag = (status) => {
     const statusMap = {
-      'PENDING': { type: 'gray', text: 'Pending' },
-      'IN_PROGRESS': { type: 'blue', text: 'In Progress' },
-      'COMPLETED': { type: 'green', text: 'Completed' },
-      'FAILED': { type: 'red', text: 'Failed' },
-      'ON_HOLD': { type: 'yellow', text: 'On Hold' },
-      'SKIPPED': { type: 'gray', text: 'Skipped' }
+      PENDING: { type: "gray", text: "Pending" },
+      IN_PROGRESS: { type: "blue", text: "In Progress" },
+      COMPLETED: { type: "green", text: "Completed" },
+      FAILED: { type: "red", text: "Failed" },
+      ON_HOLD: { type: "yellow", text: "On Hold" },
+      SKIPPED: { type: "gray", text: "Skipped" },
     };
 
-    const config = statusMap[status] || statusMap['PENDING'];
+    const config = statusMap[status] || statusMap["PENDING"];
     return <Tag type={config.type}>{config.text}</Tag>;
   };
 
   const batchTableHeaders = [
-    { key: 'batchId', header: 'Batch ID' },
-    { key: 'virusStrain', header: 'Virus Strain' },
-    { key: 'cellLine', header: 'Cell Line' },
-    { key: 'status', header: 'Status' },
-    { key: 'createdDate', header: 'Created' },
-    { key: 'progress', header: 'Progress' },
-    { key: 'actions', header: 'Actions' }
+    { key: "batchId", header: "Batch ID" },
+    { key: "virusStrain", header: "Virus Strain" },
+    { key: "cellLine", header: "Cell Line" },
+    { key: "status", header: "Status" },
+    { key: "createdDate", header: "Created" },
+    { key: "progress", header: "Progress" },
+    { key: "actions", header: "Actions" },
   ];
 
   const renderBatchRow = (batch) => ({
     id: batch.id,
     batchId: batch.batchId,
-    virusStrain: batch.virusStrain || '—',
-    cellLine: batch.cellLineUsed || '—',
+    virusStrain: batch.virusStrain || "—",
+    cellLine: batch.cellLineUsed || "—",
     status: getStatusTag(batch.status),
     createdDate: formatDate(batch.createdDate),
     progress: `${batch.completedSteps || 0}/9 steps`,
     actions: (
       <OverflowMenu>
-        <OverflowMenuItem itemText="View Details" onClick={() => loadBatchDetails(batch.id)} />
-        <OverflowMenuItem itemText="Continue Workflow" onClick={() => loadBatchDetails(batch.id)} />
+        <OverflowMenuItem
+          itemText="View Details"
+          onClick={() => loadBatchDetails(batch.id)}
+        />
+        <OverflowMenuItem
+          itemText="Continue Workflow"
+          onClick={() => loadBatchDetails(batch.id)}
+        />
       </OverflowMenu>
-    )
+    ),
   });
 
   const renderWorkflowProgress = () => {
     if (!workflowStatus.length) return null;
 
-    const currentStepIndex = workflowStatus.findIndex(step => step.status === 'IN_PROGRESS');
-    const completedSteps = workflowStatus.filter(step => step.status === 'COMPLETED').length;
+    const currentStepIndex = workflowStatus.findIndex(
+      (step) => step.status === "IN_PROGRESS",
+    );
+    const completedSteps = workflowStatus.filter(
+      (step) => step.status === "COMPLETED",
+    ).length;
 
     return (
       <div className="workflow-progress">
-        <ProgressIndicator currentIndex={currentStepIndex >= 0 ? currentStepIndex : completedSteps}>
+        <ProgressIndicator
+          currentIndex={
+            currentStepIndex >= 0 ? currentStepIndex : completedSteps
+          }
+        >
           {workflowSteps.map((step, index) => {
-            const stepStatus = workflowStatus.find(ws => ws.stepName === step.name);
-            const status = stepStatus ? stepStatus.status : 'PENDING';
+            const stepStatus = workflowStatus.find(
+              (ws) => ws.stepName === step.name,
+            );
+            const status = stepStatus ? stepStatus.status : "PENDING";
 
             return (
               <ProgressStep
                 key={step.name}
                 label={step.label}
                 description={step.description}
-                complete={status === 'COMPLETED'}
-                current={status === 'IN_PROGRESS'}
-                invalid={status === 'FAILED'}
-                disabled={status === 'PENDING'}
+                complete={status === "COMPLETED"}
+                current={status === "IN_PROGRESS"}
+                invalid={status === "FAILED"}
+                disabled={status === "PENDING"}
               />
             );
           })}
@@ -491,43 +545,48 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
       <div className="workflow-steps">
         <h4>Workflow Steps</h4>
         <DataTable
-          rows={workflowStatus.map(step => ({
+          rows={workflowStatus.map((step) => ({
             id: step.id,
             stepName: getStepLabel(step.stepName),
             status: getStatusTag(step.status),
-            assignedTo: step.assignedTo ? step.assignedTo.login : '—',
-            startedDate: step.startedDate ? formatDate(step.startedDate) : '—',
-            completedDate: step.completedDate ? formatDate(step.completedDate) : '—',
-            actions: step.status === 'PENDING' ? (
-              <Button
-                kind="primary"
-                size="sm"
-                renderIcon={Play}
-                onClick={() => handleStartStep(selectedBatch.id, step.stepName)}
-              >
-                Start
-              </Button>
-            ) : step.status === 'IN_PROGRESS' ? (
-              <Button
-                kind="secondary"
-                size="sm"
-                renderIcon={Checkmark}
-                onClick={() => {
-                  setCurrentStep(step);
-                  setShowStepModal(true);
-                }}
-              >
-                Complete
-              </Button>
-            ) : null
+            assignedTo: step.assignedTo ? step.assignedTo.login : "—",
+            startedDate: step.startedDate ? formatDate(step.startedDate) : "—",
+            completedDate: step.completedDate
+              ? formatDate(step.completedDate)
+              : "—",
+            actions:
+              step.status === "PENDING" ? (
+                <Button
+                  kind="primary"
+                  size="sm"
+                  renderIcon={Play}
+                  onClick={() =>
+                    handleStartStep(selectedBatch.id, step.stepName)
+                  }
+                >
+                  Start
+                </Button>
+              ) : step.status === "IN_PROGRESS" ? (
+                <Button
+                  kind="secondary"
+                  size="sm"
+                  renderIcon={Checkmark}
+                  onClick={() => {
+                    setCurrentStep(step);
+                    setShowStepModal(true);
+                  }}
+                >
+                  Complete
+                </Button>
+              ) : null,
           }))}
           headers={[
-            { key: 'stepName', header: 'Step' },
-            { key: 'status', header: 'Status' },
-            { key: 'assignedTo', header: 'Assigned To' },
-            { key: 'startedDate', header: 'Started' },
-            { key: 'completedDate', header: 'Completed' },
-            { key: 'actions', header: 'Actions' }
+            { key: "stepName", header: "Step" },
+            { key: "status", header: "Status" },
+            { key: "assignedTo", header: "Assigned To" },
+            { key: "startedDate", header: "Started" },
+            { key: "completedDate", header: "Completed" },
+            { key: "actions", header: "Actions" },
           ]}
         >
           {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
@@ -536,7 +595,10 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
                 <TableHead>
                   <TableRow>
                     {headers.map((header) => (
-                      <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                      <TableHeader
+                        key={header.key}
+                        {...getHeaderProps({ header })}
+                      >
                         {header.header}
                       </TableHeader>
                     ))}
@@ -570,13 +632,17 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
       <Column lg={3} md={2} sm={2}>
         <Tile className="dashboard-tile">
           <h4>Completed Today</h4>
-          <div className="metric-value">{dashboardData.completedToday || 0}</div>
+          <div className="metric-value">
+            {dashboardData.completedToday || 0}
+          </div>
         </Tile>
       </Column>
       <Column lg={3} md={2} sm={2}>
         <Tile className="dashboard-tile">
           <h4>Requiring Attention</h4>
-          <div className="metric-value">{dashboardData.requiresAttention || 0}</div>
+          <div className="metric-value">
+            {dashboardData.requiresAttention || 0}
+          </div>
         </Tile>
       </Column>
       <Column lg={3} md={2} sm={2}>
@@ -599,19 +665,38 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
           <Column lg={8} md={4} sm={4}>
             <div className="batch-info">
               <h4>Batch Information</h4>
-              <p><strong>Virus Strain:</strong> {selectedBatch.virusStrain}</p>
-              <p><strong>Cell Line:</strong> {selectedBatch.cellLineUsed}</p>
-              <p><strong>Passage Number:</strong> {selectedBatch.passageNumber}</p>
-              <p><strong>Status:</strong> {getStatusTag(selectedBatch.status)}</p>
-              <p><strong>Created:</strong> {formatDate(selectedBatch.createdDate)}</p>
+              <p>
+                <strong>Virus Strain:</strong> {selectedBatch.virusStrain}
+              </p>
+              <p>
+                <strong>Cell Line:</strong> {selectedBatch.cellLineUsed}
+              </p>
+              <p>
+                <strong>Passage Number:</strong> {selectedBatch.passageNumber}
+              </p>
+              <p>
+                <strong>Status:</strong> {getStatusTag(selectedBatch.status)}
+              </p>
+              <p>
+                <strong>Created:</strong>{" "}
+                {formatDate(selectedBatch.createdDate)}
+              </p>
               {selectedBatch.cultureStartDate && (
-                <p><strong>Culture Started:</strong> {formatDate(selectedBatch.cultureStartDate)}</p>
+                <p>
+                  <strong>Culture Started:</strong>{" "}
+                  {formatDate(selectedBatch.cultureStartDate)}
+                </p>
               )}
               {selectedBatch.temperatureCelsius && (
-                <p><strong>Temperature:</strong> {selectedBatch.temperatureCelsius}°C</p>
+                <p>
+                  <strong>Temperature:</strong>{" "}
+                  {selectedBatch.temperatureCelsius}°C
+                </p>
               )}
               {selectedBatch.co2Percentage && (
-                <p><strong>CO₂:</strong> {selectedBatch.co2Percentage}%</p>
+                <p>
+                  <strong>CO₂:</strong> {selectedBatch.co2Percentage}%
+                </p>
               )}
             </div>
           </Column>
@@ -648,7 +733,10 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
 
       {loading && <Loading />}
 
-      <Tabs selectedIndex={activeTab} onChange={({ selectedIndex }) => setActiveTab(selectedIndex)}>
+      <Tabs
+        selectedIndex={activeTab}
+        onChange={({ selectedIndex }) => setActiveTab(selectedIndex)}
+      >
         <TabList aria-label="Virus Culture Workflow Tabs">
           <Tab>Dashboard</Tab>
           <Tab>Active Batches</Tab>
@@ -661,13 +749,22 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
               rows={cultureBatches.map(renderBatchRow)}
               headers={batchTableHeaders}
             >
-              {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
+              {({
+                rows,
+                headers,
+                getTableProps,
+                getHeaderProps,
+                getRowProps,
+              }) => (
                 <TableContainer title="Active Culture Batches">
                   <Table {...getTableProps()}>
                     <TableHead>
                       <TableRow>
                         {headers.map((header) => (
-                          <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
                             {header.header}
                           </TableHeader>
                         ))}
@@ -692,7 +789,9 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
               renderBatchDetails()
             ) : (
               <Tile>
-                <p>Select a batch from the Active Batches tab to view details.</p>
+                <p>
+                  Select a batch from the Active Batches tab to view details.
+                </p>
               </Tile>
             )}
           </TabPanel>
@@ -713,13 +812,15 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
             <Select
               id="virus-strain-select"
               value={createBatchForm.virusStrain}
-              onChange={(e) => setCreateBatchForm({
-                ...createBatchForm,
-                virusStrain: e.target.value
-              })}
+              onChange={(e) =>
+                setCreateBatchForm({
+                  ...createBatchForm,
+                  virusStrain: e.target.value,
+                })
+              }
             >
               <SelectItem value="" text="Select virus strain..." />
-              {virusStrains.map(strain => (
+              {virusStrains.map((strain) => (
                 <SelectItem key={strain} value={strain} text={strain} />
               ))}
             </Select>
@@ -729,13 +830,15 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
             <Select
               id="cell-line-select"
               value={createBatchForm.cellLine}
-              onChange={(e) => setCreateBatchForm({
-                ...createBatchForm,
-                cellLine: e.target.value
-              })}
+              onChange={(e) =>
+                setCreateBatchForm({
+                  ...createBatchForm,
+                  cellLine: e.target.value,
+                })
+              }
             >
               <SelectItem value="" text="Select cell line..." />
-              {cellLines.map(cellLine => (
+              {cellLines.map((cellLine) => (
                 <SelectItem key={cellLine} value={cellLine} text={cellLine} />
               ))}
             </Select>
@@ -748,10 +851,12 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
               rows={3}
               placeholder="Enter any notes about this batch..."
               value={createBatchForm.notes}
-              onChange={(e) => setCreateBatchForm({
-                ...createBatchForm,
-                notes: e.target.value
-              })}
+              onChange={(e) =>
+                setCreateBatchForm({
+                  ...createBatchForm,
+                  notes: e.target.value,
+                })
+              }
             />
           </FormGroup>
         </Form>
@@ -761,7 +866,7 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
       <Modal
         open={showStepModal}
         onRequestClose={() => setShowStepModal(false)}
-        modalHeading={`Complete Step: ${currentStep ? getStepLabel(currentStep.stepName) : ''}`}
+        modalHeading={`Complete Step: ${currentStep ? getStepLabel(currentStep.stepName) : ""}`}
         primaryButtonText="Complete Step"
         secondaryButtonText="Cancel"
         onRequestSubmit={handleCompleteStep}
@@ -771,10 +876,12 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
             <Select
               id="quality-result-select"
               value={stepForm.qualityResult}
-              onChange={(e) => setStepForm({
-                ...stepForm,
-                qualityResult: e.target.value
-              })}
+              onChange={(e) =>
+                setStepForm({
+                  ...stepForm,
+                  qualityResult: e.target.value,
+                })
+              }
             >
               <SelectItem value="NOT_APPLICABLE" text="Not Applicable" />
               <SelectItem value="PASSED" text="Passed" />
@@ -790,15 +897,16 @@ const VirusCultureWorkflowPage = ({ entryId, pageData, progress, onProgressUpdat
               rows={3}
               placeholder="Enter any notes about completing this step..."
               value={stepForm.notes}
-              onChange={(e) => setStepForm({
-                ...stepForm,
-                notes: e.target.value
-              })}
+              onChange={(e) =>
+                setStepForm({
+                  ...stepForm,
+                  notes: e.target.value,
+                })
+              }
             />
           </FormGroup>
         </Form>
       </Modal>
-
     </div>
   );
 };
