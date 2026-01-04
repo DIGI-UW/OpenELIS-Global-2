@@ -22,6 +22,7 @@ import {
   Select,
   SelectItem,
   Stack,
+  RadioButton,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -271,24 +272,19 @@ function UserManagement() {
   const renderCell = (cell, row) => {
     if (cell.info.header === "select") {
       return (
-        <TableSelectRow
-          key={cell.id}
-          id={cell.id}
-          checked={selectedRowIds.includes(row.id)}
-          name="selectRowCheckbox"
-          ariaLabel="selectRows"
-          onSelect={() => {
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":active"),
-            );
-
-            if (selectedRowIds.includes(row.id)) {
-              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
-            } else {
-              setSelectedRowIds([...selectedRowIds, row.id]);
-            }
-          }}
-        />
+        <TableCell key={cell.id}>
+          <RadioButton
+            id={row.id}
+            name="select-user-radio"
+            labelText=""
+            hideLabel
+            checked={selectedRowIds.includes(row.id)}
+            onChange={() => {
+              // This ensures only one ID is in the array at a time
+              setSelectedRowIds([row.id]);
+            }}
+          />
+        </TableCell>
       );
     } else {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
@@ -554,21 +550,7 @@ function UserManagement() {
                             {rows.map((row) => (
                               <TableRow
                                 key={row.id}
-                                onClick={() => {
-                                  const id = row.id;
-                                  const CombinedUserID = row.combinedUserID;
-                                  const isSelected =
-                                    selectedRowIds.includes(id);
-                                  if (isSelected) {
-                                    setSelectedRowIds(
-                                      selectedRowIds.filter(
-                                        (selectedId) => selectedId !== id,
-                                      ),
-                                    );
-                                  } else {
-                                    setSelectedRowIds([...selectedRowIds, id]);
-                                  }
-                                }}
+                                onClick={() => setSelectedRowIds([row.id])}
                               >
                                 {row.cells.map((cell) => renderCell(cell, row))}
                               </TableRow>
