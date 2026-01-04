@@ -86,7 +86,7 @@ const ReferredOut = () => {
   // Transform locationCodes to options format
   const locationOptions = locationCodes.map((locationcode) => ({
     value: locationcode.id,
-    text: locationcode.value,
+    label: locationcode.value,
   }));
 
   return (
@@ -123,20 +123,14 @@ const ReferredOut = () => {
                   <Column lg={4} md={8} sm={4}>
                     <FormDatePickerField
                       name="startDate"
-                      labelText={intl.formatMessage({
-                        id: "select.start.date.referredTests",
-                        defaultMessage: "Start Date",
-                      })}
+                      label="select.start.date.referredTests"
                       autofillDate={true}
                     />
                   </Column>
                   <Column lg={4} md={8} sm={4}>
                     <FormDatePickerField
                       name="endDate"
-                      labelText={intl.formatMessage({
-                        id: "select.end.date.referredTests",
-                        defaultMessage: "End Date",
-                      })}
+                      label="select.end.date.referredTests"
                       autofillDate={true}
                     />
                   </Column>
@@ -154,10 +148,7 @@ const ReferredOut = () => {
                     {locationOptions.length > 0 && (
                       <FormSelectField
                         name="locationCode"
-                        labelText={intl.formatMessage({
-                          id: "select.referral.centre",
-                          defaultMessage: "Laboratory",
-                        })}
+                        label="select.referral.centre"
                         options={locationOptions}
                         required={true}
                       />
