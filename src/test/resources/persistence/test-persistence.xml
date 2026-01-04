@@ -95,6 +95,11 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryAuditLog</class>
 
+        <!-- Equipment Management entities -->
+        <class>org.openelisglobal.equipmentusage.valueholder.Equipment</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageEntry</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageAudit</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />

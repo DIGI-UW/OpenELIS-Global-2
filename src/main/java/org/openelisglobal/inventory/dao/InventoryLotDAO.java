@@ -69,4 +69,24 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      * @return List of lots at the specified location
      */
     List<InventoryLot> getByUnifiedLocation(Integer locationId, String locationType) throws LIMSRuntimeException;
+
+    /**
+     * Get paginated lots with filtering and sorting
+     *
+     * @param limit      Maximum number of results to return
+     * @param offset     Number of results to skip
+     * @param sortBy     Field to sort by (e.g., "expirationDate", "lotNumber")
+     * @param sortOrder  Sort direction ("asc" or "desc")
+     * @param itemType   Filter by inventory item type (optional)
+     * @param status     Filter by lot status (optional)
+     * @param searchTerm Search term for lot number or item name (optional)
+     * @return List of paginated lots
+     */
+    List<InventoryLot> getPagedLots(int limit, int offset, String sortBy, String sortOrder, String itemType,
+            LotStatus status, String searchTerm) throws LIMSRuntimeException;
+
+    /**
+     * Get total count of lots matching the same filters as getPagedLots
+     */
+    Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm) throws LIMSRuntimeException;
 }

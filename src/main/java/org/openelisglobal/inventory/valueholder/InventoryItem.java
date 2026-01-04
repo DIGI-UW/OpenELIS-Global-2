@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
@@ -16,6 +17,7 @@ import jakarta.persistence.Version;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -90,6 +92,9 @@ public class InventoryItem extends BaseObject<Long> {
     @Size(max = 2000)
     private String dilutionNotes;
 
+    @Column(name = "concentration", length = 100)
+    private String concentration;
+
     // CARTRIDGE-specific fields
     @Column(name = "compatible_analyzers", length = 500)
     @Size(max = 500)
@@ -97,6 +102,34 @@ public class InventoryItem extends BaseObject<Long> {
 
     @Column(name = "calibration_required", length = 1)
     private String calibrationRequired = "N";
+
+    // Equipment-specific fields (for CARTRIDGE items)
+    @Column(name = "equipment_condition", length = 20)
+    private String equipmentCondition;
+
+    @Column(name = "model_number", length = 100)
+    private String modelNumber;
+
+    @Column(name = "serial_number", length = 100)
+    private String serialNumber;
+
+    @Column(name = "ahri_tag", length = 50)
+    private String ahriTag;
+
+    @Column(name = "installation_date")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime installationDate;
+
+    @Column(name = "last_service_date")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime lastServiceDate;
+
+    @Column(name = "last_maintenance_date")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime lastMaintenanceDate;
+
+    @Column(name = "current_location", length = 255)
+    private String currentLocation;
 
     // RDT-specific fields
     @Column(name = "tests_per_kit")

@@ -53,6 +53,7 @@ import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEnt
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import EquipmentUsageManagement from "./components/equipmentUsage/EquipmentUsageManagement";
 
 export default function App() {
   let i18nConfig = {
@@ -469,6 +470,12 @@ export default function App() {
                   path="/inventory"
                   exact
                   component={() => <InventoryManagement />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/equipment-usage"
+                  exact
+                  component={() => <EquipmentUsageManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

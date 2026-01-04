@@ -31,7 +31,6 @@ import {
   MNTDTestExecutionPage,
   MNTDSampleArchivingPage,
   MNTDDataAnalysisPage,
-  MNTDEnvironmentalMonitoringPage,
 } from "../pages/mntd";
 import "./NotebookWorkflow.css";
 
@@ -47,7 +46,6 @@ import "./NotebookWorkflow.css";
  * Page 8: Test Execution & Raw Data Capture
  * Page 9: Sample Archiving (Retention or Disposal) - End of sample lifecycle
  * Page 10: Data Analysis & Export
- * Page 11: Log Environmental Monitoring - Temperature logging (independent of sample workflow)
  */
 const DEFAULT_MNTD_WORKFLOW_PAGES = [
   { id: "default-1", order: 1, title: "Sample Intake / Sample Creation" },
@@ -60,7 +58,6 @@ const DEFAULT_MNTD_WORKFLOW_PAGES = [
   { id: "default-8", order: 8, title: "Test Execution & Raw Data Capture" },
   { id: "default-9", order: 9, title: "Sample Archiving" },
   { id: "default-10", order: 10, title: "Data Analysis & Export" },
-  { id: "default-11", order: 11, title: "Log Environmental Monitoring" },
 ];
 
 /**
@@ -469,18 +466,6 @@ function MNTDWorkflowTab({ notebookId, entryId: propEntryId }) {
         return (
           <MNTDDataAnalysisPage
             key={`dataanalysis-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-            notebookId={notebook?.id}
-          />
-        );
-      case 11:
-        // Page 11: Log Environmental Monitoring
-        return (
-          <MNTDEnvironmentalMonitoringPage
-            key={`envmonitoring-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}

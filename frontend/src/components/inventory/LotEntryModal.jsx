@@ -31,6 +31,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
+    // Reagent/Equipment specific fields for lot entry
+    receivedBy: "",
+    storageLocation: "",
+    storageBoxNumber: "",
   });
 
   // Unified storage hierarchy selection state
@@ -78,6 +82,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",
+        // Load lot-specific fields
+        receivedBy: lot.receivedBy || "",
+        storageLocation: lot.specificStorageLocation || "",
+        storageBoxNumber: lot.storageBoxNumber || "",
       });
       // Note: For editing, we would need to load the storage hierarchy
       // based on lot.locationId and lot.locationType if available
@@ -86,10 +94,22 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   const fetchItems = async () => {
     try {
-      const allItems = await InventoryItemAPI.getAll({ isActive: true });
+      // Use non-paginated endpoint to show all catalog items in dropdown
+      const response = await InventoryItemAPI.getAll({
+        isActive: true,
+      });
+
+      // getAll returns items directly, not wrapped in a pagination response
+      const allItems = response || [];
       const validItems = Array.isArray(allItems) ? allItems : [];
+
+      // Sort items by name for better UX
+      const sortedItems = validItems.sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+
       setItems(
-        validItems.map((item) => ({
+        sortedItems.map((item) => ({
           id: item.id,
           text: `${item.name} (${item.itemType})`,
           item: item,
@@ -105,7 +125,55 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const handleStorageSelectionChange = useCallback((selection) => {
     setStorageSelection(selection);
     setError(null);
+
+    // Auto-populate manual storage fields from hierarchy selection
+    const storagePath = buildStoragePathFromSelection(selection);
+    const boxInfo = getBoxInfoFromSelection(selection);
+
+    // Update form data with auto-populated values
+    setFormData((prev) => ({
+      ...prev,
+      storageLocation: boxInfo.freezerInfo || "", // Main storage device info
+      storageBoxNumber: boxInfo.boxNumber || "", // Box/container number
+    }));
   }, []);
+
+  // Helper function to build storage path from selection object
+  const buildStoragePathFromSelection = (selection) => {
+    const parts = [];
+    if (selection.room) parts.push(selection.room.label);
+    if (selection.device) parts.push(selection.device.label);
+    if (selection.shelf) parts.push(selection.shelf.label);
+    if (selection.rack) parts.push(selection.rack.label);
+    if (selection.box) parts.push(selection.box.label);
+    return parts.join(" > ");
+  };
+
+  // Helper function to extract box and freezer info from selection
+  const getBoxInfoFromSelection = (selection) => {
+    let freezerInfo = "";
+    let boxNumber = "";
+
+    // Extract freezer/device info for "Storage Location (Freezer)"
+    if (selection.device) {
+      freezerInfo = selection.device.label;
+      if (selection.shelf) {
+        freezerInfo += ` - ${selection.shelf.label}`;
+      }
+      if (selection.rack) {
+        freezerInfo += ` - ${selection.rack.label}`;
+      }
+    } else if (selection.room) {
+      freezerInfo = selection.room.label;
+    }
+
+    // Extract box number for "Storage Location (Box No)"
+    if (selection.box) {
+      boxNumber = selection.box.label;
+    }
+
+    return { freezerInfo, boxNumber };
+  };
 
   // Build storage path from selection
   const buildStoragePath = () => {
@@ -205,6 +273,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           storagePath: storagePath,
           // Clear legacy storage location
           storageLocation: null,
+          // Lot-specific fields
+          receivedBy: formData.receivedBy || null,
+          specificStorageLocation: formData.storageLocation || null,
+          storageBoxNumber: formData.storageBoxNumber || null,
         });
       } else {
         // Create new lot with unified storage location
@@ -225,6 +297,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           locationId: locationInfo.locationId,
           locationType: locationInfo.locationType,
           storagePath: storagePath,
+          // Lot-specific fields
+          receivedBy: formData.receivedBy || null,
+          specificStorageLocation: formData.storageLocation || null,
+          storageBoxNumber: formData.storageBoxNumber || null,
         });
       }
       onSave();
@@ -422,6 +498,38 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             handleChange("status", selectedItem.id)
           }
         />
+
+        {/* Reagent-specific fields */}
+        {formData.inventoryItem?.itemType === "REAGENT" && (
+          <>
+            <TextInput
+              id="receivedBy"
+              labelText="Received By"
+              value={formData.receivedBy}
+              onChange={(e) => handleChange("receivedBy", e.target.value)}
+              placeholder="e.g., Dr. Smith, Lab Tech Johnson"
+              helperText="Person who received this reagent lot"
+            />
+
+            <TextInput
+              id="storageLocation"
+              labelText="Storage Location (Freezer)"
+              value={formData.storageLocation}
+              readOnly
+              placeholder="Auto-populated from storage hierarchy above"
+              helperText="Auto-filled from selected storage hierarchy (device + shelf + rack)"
+            />
+
+            <TextInput
+              id="storageBoxNumber"
+              labelText="Storage Location (Box No)"
+              value={formData.storageBoxNumber}
+              readOnly
+              placeholder="Auto-populated from storage hierarchy above"
+              helperText="Auto-filled from selected box in storage hierarchy"
+            />
+          </>
+        )}
 
         <TextInput
           id="barcode"

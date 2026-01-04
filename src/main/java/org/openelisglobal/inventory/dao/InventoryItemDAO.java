@@ -40,4 +40,24 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
     List<InventoryItem> getLowStockItems() throws LIMSRuntimeException;
 
     List<ItemType> getAllItemTypes();
+
+    /**
+     * Get paginated inventory items with filtering and sorting
+     *
+     * @param limit      Maximum number of results to return
+     * @param offset     Number of results to skip
+     * @param sortBy     Field to sort by (e.g., "name", "itemType")
+     * @param sortOrder  Sort direction ("asc" or "desc")
+     * @param itemType   Filter by item type (optional)
+     * @param isActive   Filter by active status (optional)
+     * @param searchTerm Search term for item name (optional)
+     * @return List of paginated items
+     */
+    List<InventoryItem> getPagedItems(int limit, int offset, String sortBy, String sortOrder, ItemType itemType,
+            Boolean isActive, String searchTerm) throws LIMSRuntimeException;
+
+    /**
+     * Get total count of items matching the same filters as getPagedItems
+     */
+    Long getPagedItemsCount(ItemType itemType, Boolean isActive, String searchTerm) throws LIMSRuntimeException;
 }

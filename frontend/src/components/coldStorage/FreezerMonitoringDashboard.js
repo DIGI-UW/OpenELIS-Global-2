@@ -39,6 +39,7 @@ import {
 import { CheckmarkFilled, View } from "@carbon/icons-react";
 import "./FreezerMonitoringDashboard.scss";
 import CorrectiveActions from "./CorrectiveActions";
+import EnvironmentalMonitoring from "./EnvironmentalMonitoring";
 import HistoricalTrends from "./HistoricalTrends";
 import Reports from "./Reports";
 import Settings from "./Settings";
@@ -428,13 +429,14 @@ function FreezerMonitoringDashboard({ intl }) {
                 onChange={({ selectedIndex }) => {
                   setSelectedTabIndex(selectedIndex);
                   // Clear preselected freezer when switching away from Historical Trends tab
-                  if (selectedIndex !== 2) {
+                  if (selectedIndex !== 3) {
                     setPreselectedFreezerId(null);
                   }
                 }}
               >
                 <TabList aria-label="Cold storage sections" contained>
                   <Tab>Dashboard</Tab>
+                  <Tab>Manual Log</Tab>
                   <Tab>Corrective Actions</Tab>
                   <Tab>Historical Trends</Tab>
                   <Tab>Reports</Tab>
@@ -893,6 +895,10 @@ function FreezerMonitoringDashboard({ intl }) {
                         </p>
                       </Column>
                     </Grid>
+                  </TabPanel>
+
+                  <TabPanel>
+                    <EnvironmentalMonitoring />
                   </TabPanel>
 
                   <TabPanel>

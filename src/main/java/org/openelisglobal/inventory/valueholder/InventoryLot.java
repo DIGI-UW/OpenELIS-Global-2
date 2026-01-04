@@ -107,6 +107,16 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "unit_size", length = 100)
     private String unitSize;
 
+    // Lot-specific fields for reagents and equipment
+    @Column(name = "received_by", length = 255)
+    private String receivedBy;
+
+    @Column(name = "specific_storage_location", length = 255)
+    private String specificStorageLocation;
+
+    @Column(name = "storage_box_number", length = 50)
+    private String storageBoxNumber;
+
     @Version
     @Column(name = "version", nullable = false)
     private Integer version = 0;

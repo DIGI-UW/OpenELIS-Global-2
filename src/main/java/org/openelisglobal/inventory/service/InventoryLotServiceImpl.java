@@ -376,4 +376,30 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     public List<InventoryLot> getByUnifiedLocation(Integer locationId, String locationType) {
         return inventoryLotDAO.getByUnifiedLocation(locationId, locationType);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryLot> getPagedLots(int limit, int offset, String sortBy, String sortOrder, String itemType,
+            LotStatus status, String searchTerm) {
+        // Validate and constrain limit to prevent performance issues
+        if (limit > 1000) {
+            limit = 1000;
+        }
+        if (limit < 1) {
+            limit = 20; // Default page size
+        }
+
+        // Ensure offset is non-negative
+        if (offset < 0) {
+            offset = 0;
+        }
+
+        return inventoryLotDAO.getPagedLots(limit, offset, sortBy, sortOrder, itemType, status, searchTerm);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Long getPagedLotsCount(String itemType, LotStatus status, String searchTerm) {
+        return inventoryLotDAO.getPagedLotsCount(itemType, status, searchTerm);
+    }
 }

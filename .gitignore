@@ -56,3 +56,12 @@ volume/odoo/*
 .cursor/
 **/*checksum*.properties
 **/*checksums*.properties
+
+# Inventory import outputs and temporary files
+/inventory-import/logs/
+/inventory-import/*_import.sql
+/inventory-import/complete_*.sql
+/inventory-import/temp_*.py
+/inventory-import/~$*.xlsx
+# Keep the main Excel file but ignore temporary Excel files
+/inventory-import/~$*

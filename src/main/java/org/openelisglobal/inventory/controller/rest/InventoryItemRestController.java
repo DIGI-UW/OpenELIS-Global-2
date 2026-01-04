@@ -2,7 +2,9 @@ package org.openelisglobal.inventory.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
@@ -73,6 +75,59 @@ public class InventoryItemRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(items);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get paginated inventory items with filtering and sorting
+     *
+     * @param limit     Maximum number of results per page (default: 20, max: 1000)
+     * @param offset    Number of results to skip (default: 0)
+     * @param sortBy    Field to sort by (default: name)
+     * @param sortOrder Sort direction: "asc" or "desc" (default: asc)
+     * @param itemType  Filter by item type: REAGENT, RDT, CARTRIDGE, HIV_KIT,
+     *                  SYPHILIS_KIT
+     * @param isActive  Filter by active status: true/false
+     * @param search    Search term for item name
+     * @return Paginated response with items and metadata
+     */
+    @GetMapping(value = "/paged", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getPagedItems(@RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder, @RequestParam(required = false) String itemType,
+            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String search) {
+        try {
+            ItemType type = null;
+            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+                try {
+                    type = ItemType.valueOf(itemType.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest().build();
+                }
+            }
+
+            List<InventoryItem> items = inventoryItemService.getPagedItems(limit, offset, sortBy, sortOrder, type,
+                    isActive, search);
+
+            Long totalRecords = inventoryItemService.getPagedItemsCount(type, isActive, search);
+
+            int currentPage = (offset / limit) + 1;
+            int totalPages = (int) Math.ceil((double) totalRecords / limit);
+            boolean hasMore = offset + limit < totalRecords;
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("items", items);
+            response.put("totalRecords", totalRecords);
+            response.put("limit", limit);
+            response.put("offset", offset);
+            response.put("currentPage", currentPage);
+            response.put("totalPages", totalPages);
+            response.put("hasMore", hasMore);
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
