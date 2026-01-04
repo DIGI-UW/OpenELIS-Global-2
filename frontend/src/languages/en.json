@@ -3876,7 +3876,6 @@
   "notebook.medlab.qc.action.fail": "Fail - Apply Action",
   "notebook.grid.linkedOrder": "Linked Order",
   "label.applying": "Applying...",
-  "environmental.validation.sampleId": "Sample ID is required for Movable Fridge",
   "notebook.virology.manifest.title": "Import Virology Samples from Delivery Manifest",
   "notebook.virology.manifest.step1": "Upload a CSV file with virology sample reception metadata. Review the expected data points below before uploading.",
   "notebook.virology.manifest.step2": "Map your CSV columns to the expected reception metadata fields. All required fields (marked with *) must be mapped.",
