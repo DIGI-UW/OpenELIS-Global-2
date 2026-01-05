@@ -4,16 +4,10 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useContext,
 } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Tile,
-  InlineNotification,
-  Tag,
-} from "@carbon/react";
-import { Upload, Checkmark } from "@carbon/react/icons";
+import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
+import { Upload, Checkmark, ArrowRight } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -21,6 +15,8 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import VirologyManifestImportModal from "../../workflow/VirologyManifestImportModal";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -57,15 +53,27 @@ function VirologySampleReceptionPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+  const [selectedCompletedSampleIds, setSelectedCompletedSampleIds] = useState(
+    [],
+  );
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
 
   const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Notification helper function
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, subtitle }) => {
+      setNotificationVisible(true);
+      addNotification({ kind, title, subtitle });
+    },
+    [addNotification, setNotificationVisible],
+  );
 
   // Load samples for this page
   useEffect(() => {
@@ -90,8 +98,6 @@ function VirologySampleReceptionPage({
     }
 
     setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
 
     getFromOpenElisServer(
       `/rest/notebook/page/${pageData.id}/samples`,
@@ -150,28 +156,35 @@ function VirologySampleReceptionPage({
 
   const markAsVerified = useCallback(() => {
     if (selectedSampleIds.length === 0) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Notification",
+        }),
+        subtitle: intl.formatMessage({
           id: "notebook.page.virology.error.noSelection",
           defaultMessage: "Please select at least one sample.",
         }),
-      );
+      });
       return;
     }
 
     if (!hasRealPageId) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        subtitle: intl.formatMessage({
           id: "notebook.page.virology.error.noPage",
           defaultMessage:
             "Cannot update samples: Page not properly initialized.",
         }),
-      );
+      });
       return;
     }
-
-    setError(null);
-    setSuccessMessage(null);
 
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
@@ -181,8 +194,13 @@ function VirologySampleReceptionPage({
       }),
       (status) => {
         if (status === 200) {
-          setSuccessMessage(
-            intl.formatMessage(
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({
+              id: "notification.title",
+              defaultMessage: "Success",
+            }),
+            subtitle: intl.formatMessage(
               {
                 id: "notebook.page.virology.success.verified",
                 defaultMessage:
@@ -190,19 +208,24 @@ function VirologySampleReceptionPage({
               },
               { count: selectedSampleIds.length },
             ),
-          );
+          });
           setSelectedSampleIds([]);
           loadPageSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          setError(
-            intl.formatMessage({
+          notify({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            subtitle: intl.formatMessage({
               id: "notebook.page.virology.error.status",
               defaultMessage: "Failed to verify samples. Please try again.",
             }),
-          );
+          });
         }
       },
     );
@@ -213,6 +236,108 @@ function VirologySampleReceptionPage({
     loadPageSamples,
     onProgressUpdate,
     pageData?.id,
+    notify,
+  ]);
+
+  // Progress verified samples to Virus Culture stage
+  const progressToVirusCulture = useCallback(() => {
+    const verifiedSamples = samples.filter(
+      (s) =>
+        selectedCompletedSampleIds.includes(s.id) && s.status === "COMPLETED",
+    );
+
+    if (verifiedSamples.length === 0) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({
+          id: "notification.title",
+          defaultMessage: "Notification",
+        }),
+        subtitle: intl.formatMessage({
+          id: "notebook.page.virology.error.noVerifiedSelection",
+          defaultMessage:
+            "Please select verified samples to progress to Virus Culture stage.",
+        }),
+      });
+      return;
+    }
+
+    // Validate that all selected samples have complete reception metadata
+    const incompleteMetadata = verifiedSamples.filter(
+      (s) => !s.receptionDateTime || !s.source || !s.testType,
+    );
+
+    if (incompleteMetadata.length > 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        subtitle: intl.formatMessage({
+          id: "notebook.page.virology.error.incompleteMetadata",
+          defaultMessage:
+            "Some selected samples have incomplete reception metadata. Please verify all required fields are completed.",
+        }),
+      });
+      return;
+    }
+
+    // Progress samples to virus culture stage
+    postToOpenElisServer(
+      `/rest/notebook/virology/progression/advance`,
+      JSON.stringify({
+        entryId: parseInt(entryId),
+        fromStage: "stage1_reception",
+        toStage: "stage2_culture",
+        sampleIds: verifiedSamples.map((s) => parseInt(s.id)),
+      }),
+      (status) => {
+        if (status === 200) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({
+              id: "notification.title",
+              defaultMessage: "Success",
+            }),
+            subtitle: intl.formatMessage(
+              {
+                id: "notebook.page.virology.success.progressed",
+                defaultMessage:
+                  "Successfully progressed {count} sample(s) to Virus Culture stage. Samples are now ready for culture batch creation.",
+              },
+              { count: verifiedSamples.length },
+            ),
+          });
+          setSelectedCompletedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          notify({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            subtitle: intl.formatMessage({
+              id: "notebook.page.virology.error.progression",
+              defaultMessage:
+                "Failed to progress samples to Virus Culture stage. Please try again.",
+            }),
+          });
+        }
+      },
+    );
+  }, [
+    selectedCompletedSampleIds,
+    samples,
+    entryId,
+    intl,
+    loadPageSamples,
+    onProgressUpdate,
+    notify,
   ]);
 
   // Split samples into pending/in-progress and completed
@@ -373,38 +498,22 @@ function VirologySampleReceptionPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={markAsVerified}
-          >
-            <FormattedMessage
-              id="notebook.page.virology.markAsVerified"
-              defaultMessage="Mark as Verified ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+          <>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={markAsVerified}
+            >
+              <FormattedMessage
+                id="notebook.page.virology.markAsVerified"
+                defaultMessage="Mark as Verified ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </>
         )}
       </div>
-
-      {/* Errors / Success */}
-      {error && (
-        <InlineNotification
-          kind="error"
-          title={error}
-          hideCloseButton
-          lowContrast
-        />
-      )}
-      {successMessage && (
-        <InlineNotification
-          kind="success"
-          title={successMessage}
-          hideCloseButton
-          lowContrast
-        />
-      )}
 
       {/* Pending / In Progress Samples Table */}
       <div className="sample-table-section">
@@ -482,12 +591,40 @@ function VirologySampleReceptionPage({
             <SampleGrid
               gridId="completed-samples"
               samples={completedSamples}
-              showSelection={false}
+              selectedIds={selectedCompletedSampleIds}
+              onSelectionChange={setSelectedCompletedSampleIds}
+              showSelection={true}
               loading={loading}
               additionalColumns={getAdditionalColumns(intl)}
             />
           )}
         </div>
+
+        {/* Progression Actions for Completed Samples */}
+        {selectedCompletedSampleIds.length > 0 && (
+          <div
+            className="progression-actions-bar"
+            style={{
+              marginTop: "1rem",
+              padding: "1rem",
+              backgroundColor: "#f4f4f4",
+              borderRadius: "4px",
+            }}
+          >
+            <Button
+              kind="primary"
+              size="sm"
+              renderIcon={ArrowRight}
+              onClick={progressToVirusCulture}
+            >
+              <FormattedMessage
+                id="notebook.page.virology.progressToVirusCulture"
+                defaultMessage="Progress to Virus Culture ({count})"
+                values={{ count: selectedCompletedSampleIds.length }}
+              />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Global Empty state - only show when no samples at all */}

@@ -68,7 +68,7 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         query.setMaxResults(1);
 
         List<VirusCultureWorkflowStatus> results = query.getResultList();
-        return results.isEmpty() ? null : results.get(0);
+        return results.isEmpty() ? null : results.getFirst();
     }
 
     @Override
@@ -81,7 +81,7 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.status = :status ORDER BY vws.stepOrder ASC";
         Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
                 .createQuery(hql, VirusCultureWorkflowStatus.class);
-        query.setParameter("status", status);
+        query.setParameter("status", status.name());
 
         return query.getResultList();
     }
@@ -101,7 +101,7 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         query.setMaxResults(1);
 
         List<VirusCultureWorkflowStatus> results = query.getResultList();
-        return results.isEmpty() ? null : results.get(0);
+        return results.isEmpty() ? null : results.getFirst();
     }
 
     @Override
@@ -119,7 +119,7 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         query.setMaxResults(1);
 
         List<VirusCultureWorkflowStatus> results = query.getResultList();
-        return results.isEmpty() ? null : results.get(0);
+        return results.isEmpty() ? null : results.getFirst();
     }
 
     @Override
