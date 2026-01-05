@@ -24,6 +24,7 @@ import ImmunologyArchivingPage from "../pages/immunology/ImmunologyArchivingPage
 import ImmunologyDataAnalysisPage from "../pages/immunology/ImmunologyDataAnalysisPage";
 import VirologySampleReceptionPage from "../pages/virology/VirologySampleReceptionPage";
 import VirusCultureWorkflowPage from "../pages/virology/VirusCultureWorkflowPage";
+import VaccineevelopmentPage from "../pages/virology/VaccineevelopmentPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -341,16 +342,18 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
             />
           );
         case 3:
-          // Stage 3: Vaccine Development (Partially External)
+          // Stage 3: Vaccine Development (Specialized)
           // Virus isolation, titer measurement, genome sequencing,
-          // seed virus production, preclinical trials, clinical trials
+          // seed virus production, preclinical trials with specific data capture
           return (
-            <AssaysPage
+            <VaccineevelopmentPage
               key={`virology-vaccine-dev-${page.id}`}
               entryId={entryId}
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
+              notebookInstruments={notebook?.analyzers}
             />
           );
         default:

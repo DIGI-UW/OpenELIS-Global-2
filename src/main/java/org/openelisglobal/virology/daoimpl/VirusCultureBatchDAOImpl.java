@@ -38,7 +38,7 @@ public class VirusCultureBatchDAOImpl extends BaseDAOImpl<VirusCultureBatch, Int
         query.setMaxResults(1);
 
         List<VirusCultureBatch> results = query.getResultList();
-        return results.isEmpty() ? null : results.get(0);
+        return results.isEmpty() ? null : results.getFirst();
     }
 
     @Override
@@ -81,7 +81,7 @@ public class VirusCultureBatchDAOImpl extends BaseDAOImpl<VirusCultureBatch, Int
         String hql = "FROM VirusCultureBatch vcb WHERE vcb.status = :status ORDER BY vcb.createdDate DESC";
         Query<VirusCultureBatch> query = entityManager.unwrap(Session.class)
                 .createQuery(hql, VirusCultureBatch.class);
-        query.setParameter("status", status);
+        query.setParameter("status", status.name());
 
         return query.getResultList();
     }
@@ -160,7 +160,7 @@ public class VirusCultureBatchDAOImpl extends BaseDAOImpl<VirusCultureBatch, Int
         String hql = "SELECT COUNT(vcb) FROM VirusCultureBatch vcb WHERE vcb.status = :status";
         Query<Long> query = entityManager.unwrap(Session.class)
                 .createQuery(hql, Long.class);
-        query.setParameter("status", status);
+        query.setParameter("status", status.name());
 
         return query.getSingleResult();
     }
