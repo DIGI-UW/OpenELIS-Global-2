@@ -53,6 +53,9 @@
             <column name="titer_unit" type="VARCHAR(50)"/>
             <column name="final_batch_id" type="VARCHAR(255)"/>
             <column name="created_by" type="INTEGER"/>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
             <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
             <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
         </createTable>
@@ -619,5 +622,39 @@
     <!-- NOTE: Trigger creation removed to avoid complex SQL parsing issues -->
     <!-- Workflow steps will be initialized programmatically in the service layer -->
     <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- FHIR UUID COLUMN ADDITION (for existing installations)  -->
+    <!-- Add missing fhir_uuid column to virus_culture_batch     -->
+    <!-- ======================================================== -->
+    <changeSet id="add-virus-culture-batch-fhir-uuid" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="virus_culture_batch" schemaName="clinlims"/>
+                <not>
+                    <columnExists tableName="virus_culture_batch" columnName="fhir_uuid" schemaName="clinlims"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Add missing fhir_uuid column to virus_culture_batch table for existing installations</comment>
+
+        <!-- Add the fhir_uuid column -->
+        <addColumn tableName="virus_culture_batch" schemaName="clinlims">
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Generate UUIDs for existing records -->
+        <sql>
+            UPDATE clinlims.virus_culture_batch
+            SET fhir_uuid = gen_random_uuid()
+            WHERE fhir_uuid IS NULL;
+        </sql>
+
+        <!-- Make the column non-nullable and unique after populating existing records -->
+        <addNotNullConstraint tableName="virus_culture_batch" columnName="fhir_uuid" schemaName="clinlims"/>
+        <addUniqueConstraint tableName="virus_culture_batch" columnNames="fhir_uuid" schemaName="clinlims" constraintName="uk_virus_culture_batch_fhir_uuid"/>
+    </changeSet>
 
 </databaseChangeLog>

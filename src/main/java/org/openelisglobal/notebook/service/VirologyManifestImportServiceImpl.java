@@ -117,6 +117,9 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
     private NotebookPageSampleService notebookPageSampleService;
 
     @Autowired
+    private NoteBookPageService noteBookPageService;
+
+    @Autowired
     private IStatusService statusService;
 
     @Override
@@ -432,6 +435,17 @@ public class VirologyManifestImportServiceImpl implements VirologyManifestImport
             if (firstPageId != null) {
                 NotebookPageSample nps = notebookPageSampleService.getByPageIdAndSampleItemId(firstPageId,
                         Integer.parseInt(itemId));
+
+                // If NotebookPageSample record doesn't exist, create it
+                if (nps == null) {
+                    nps = new NotebookPageSample();
+                    nps.setNotebookPage(noteBookPageService.get(firstPageId));
+                    nps.setSampleItemId(itemId);
+                    nps.setStatus(NotebookPageSample.Status.PENDING);
+                    nps.setData(new HashMap<>());
+                    notebookPageSampleService.insert(nps);
+                }
+
                 if (nps != null) {
                     Map<String, Object> data = nps.getData() != null ? new HashMap<>(nps.getData()) : new HashMap<>();
 
