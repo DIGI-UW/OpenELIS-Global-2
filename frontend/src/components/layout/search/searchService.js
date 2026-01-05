@@ -163,5 +163,6 @@ export const useAutocomplete = (props) => {
     onClick,
     onKeyDown,
     onDelete,
+    setTextValue,
   };
 };
