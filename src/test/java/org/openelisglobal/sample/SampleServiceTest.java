@@ -2,8 +2,7 @@ package org.openelisglobal.sample;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertEquals;
+
 import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -11,10 +10,9 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.util.stream.Collectors;
-import java.util.List;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.dbunit.DatabaseUnitException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -26,7 +24,6 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.springframework.beans.factory.annotation.Autowired;
-
 
 public class SampleServiceTest extends BaseWebContextSensitiveTest {
 
@@ -233,9 +230,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
     public void getSamplesByStatusAndDomain_shouldReturnList() {
         List<String> statuses = Arrays.asList("entered", "released");
         List<Sample> results = sampleService.getSamplesByStatusAndDomain(statuses, "clinical");
-        Assert.assertTrue(
-                results.stream().allMatch(s -> statuses.contains(s.getStatus()))
-        );
+        Assert.assertTrue(results.stream().allMatch(s -> statuses.contains(s.getStatus())));
     }
 
     @Test
@@ -347,6 +342,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
         List<Sample> results = sampleService.getStudySamplesForSiteBetweenOrderDates(DEFAULT_ID, start, end);
         Assert.assertNotNull(results);
     }
+
     @Test
     public void getTableReferenceId_shouldReturnConstant() {
         String refId = org.openelisglobal.sample.service.SampleServiceImpl.getTableReferenceId();
@@ -354,6 +350,7 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertNotNull("Table Reference ID should not be null", refId);
         Assert.assertEquals("1", refId);
     }
+
     @Test
     public void sampleContainsTest_shouldCheckTests() {
         Sample sample = sampleService.get(DEFAULT_ID);
@@ -391,4 +388,3 @@ public class SampleServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertFalse("Should return false when LOINC does not exist", falseResult);
     }
 }
-
