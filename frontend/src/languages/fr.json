@@ -426,6 +426,7 @@
   "field.sex": "Sexe",
   "field.significantDigits": "Chiffres significatifs",
   "field.testSection": "Section des tests",
+  "field.select.testSection": "Select Test Section",
   "field.testUnit": "Unité de test",
   "field.uom": "Unité de mesure",
   "field.validRange": "Plage valide",
