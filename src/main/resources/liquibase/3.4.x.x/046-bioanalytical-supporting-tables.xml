@@ -258,13 +258,11 @@
             <column name="measurement_date" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
-            <column name="logged_manually" type="BOOLEAN">
+            <column name="logged_manually" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
-                <defaultValueBoolean>false</defaultValueBoolean>
             </column>
-            <column name="alert_triggered" type="BOOLEAN">
+            <column name="alert_triggered" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
-                <defaultValueBoolean>false</defaultValueBoolean>
             </column>
             <column name="corrective_action_taken" type="VARCHAR(500)">
                 <constraints nullable="true"/>
@@ -331,13 +329,11 @@
             <column name="target_sample_count" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
-            <column name="retention_period_days" type="INTEGER" remarks="Default 730 days (2 years) for bioequivalence">
+            <column name="retention_period_days" type="INTEGER" remarks="Default 730 days (2 years) for bioequivalence" defaultValueNumeric="730">
                 <constraints nullable="false"/>
-                <defaultValue>730</defaultValue>
             </column>
-            <column name="regulatory_submission_required" type="BOOLEAN">
+            <column name="regulatory_submission_required" type="BOOLEAN" defaultValueBoolean="false">
                 <constraints nullable="false"/>
-                <defaultValueBoolean>false</defaultValueBoolean>
             </column>
             <column name="date_created" type="TIMESTAMP">
                 <constraints nullable="false"/>
@@ -392,9 +388,8 @@
             <column name="expected_retention_until" type="DATE" remarks="Calculated based on study retention period">
                 <constraints nullable="true"/>
             </column>
-            <column name="regulatory_submission_included" type="BOOLEAN">
+            <column name="regulatory_submission_included" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
-                <defaultValueBoolean>true</defaultValueBoolean>
             </column>
             <column name="date_created" type="TIMESTAMP">
                 <constraints nullable="false"/>
