@@ -1,5 +1,7 @@
 package org.openelisglobal.environmentalmonitoring.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -7,10 +9,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
-import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.environmentalmonitoring.form.LabEnvironmentalLogForm;
 import org.openelisglobal.environmentalmonitoring.service.LabEnvironmentalLogService;
 import org.openelisglobal.environmentalmonitoring.valueholder.LabEnvironmentalLog;
@@ -29,8 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
  * REST Controller for Lab Environmental Monitoring.
  * <p>
  * Handles HTTP requests for lab-wide environmental logging including
- * temperature and humidity tracking across different storage units.
- * Controllers are singletons - NO class-level variables for thread safety.
+ * temperature and humidity tracking across different storage units. Controllers
+ * are singletons - NO class-level variables for thread safety.
  */
 @RestController
 @RequestMapping("/rest/environmental-monitoring")
@@ -44,14 +44,13 @@ public class LabEnvironmentalLogController extends BaseRestController {
     /**
      * Log a new environmental reading.
      *
-     * @param form The environmental log form data
+     * @param form    The environmental log form data
      * @param request HTTP servlet request for user context
      * @return ResponseEntity with created log or error
      */
     @PostMapping("/log")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> logEnvironmentalReading(
-            @Valid @RequestBody LabEnvironmentalLogForm form,
+    public ResponseEntity<Map<String, Object>> logEnvironmentalReading(@Valid @RequestBody LabEnvironmentalLogForm form,
             HttpServletRequest request) {
         try {
             // Get user ID from session (NO @Transactional in controller)
@@ -63,27 +62,20 @@ public class LabEnvironmentalLogController extends BaseRestController {
             // Service handles all business logic and transaction management
             LabEnvironmentalLog savedLog = labEnvironmentalLogService.logEnvironmentalReading(log, userId);
 
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Environmental log saved successfully",
-                "logId", savedLog.getId()
-            ));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Environmental log saved successfully", "logId",
+                    savedLog.getId()));
 
         } catch (IllegalArgumentException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "logEnvironmentalReading",
                     "Validation error: " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Validation error: " + e.getMessage()
-            ));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Validation error: " + e.getMessage()));
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "logEnvironmentalReading",
                     "Unexpected error: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Failed to save environmental log"
-            ));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to save environmental log"));
         }
     }
 
@@ -91,46 +83,37 @@ public class LabEnvironmentalLogController extends BaseRestController {
      * Get environmental logs by storage unit type.
      *
      * @param storageUnitType The storage unit type filter
-     * @param limit Maximum number of results (default 100)
-     * @param offset Starting offset for pagination (default 0)
+     * @param limit           Maximum number of results (default 100)
+     * @param offset          Starting offset for pagination (default 0)
      * @return ResponseEntity with logs list
      */
     @GetMapping("/logs")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getEnvironmentalLogs(
-            @RequestParam(required = false) String storageUnitType,
-            @RequestParam(defaultValue = "100") int limit,
+            @RequestParam(required = false) String storageUnitType, @RequestParam(defaultValue = "100") int limit,
             @RequestParam(defaultValue = "0") int offset) {
         try {
             List<LabEnvironmentalLog> logs;
 
             if (storageUnitType != null && !storageUnitType.trim().isEmpty()) {
-                LabEnvironmentalLog.StorageUnitType type =
-                    LabEnvironmentalLog.StorageUnitType.valueOf(storageUnitType.toUpperCase());
+                LabEnvironmentalLog.StorageUnitType type = LabEnvironmentalLog.StorageUnitType
+                        .valueOf(storageUnitType.toUpperCase());
                 logs = labEnvironmentalLogService.getLogsByStorageUnitType(type, limit, offset);
             } else {
                 logs = labEnvironmentalLogService.getRecentLogs(limit);
             }
 
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "logs", logs,
-                "count", logs.size()
-            ));
+            return ResponseEntity.ok(Map.of("success", true, "logs", logs, "count", logs.size()));
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Invalid storage unit type: " + storageUnitType
-            ));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Invalid storage unit type: " + storageUnitType));
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "getEnvironmentalLogs",
                     "Error retrieving logs: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Failed to retrieve environmental logs"
-            ));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to retrieve environmental logs"));
         }
     }
 
@@ -148,8 +131,8 @@ public class LabEnvironmentalLogController extends BaseRestController {
             Map<String, Object> stats;
 
             if (storageUnitType != null && !storageUnitType.trim().isEmpty()) {
-                LabEnvironmentalLog.StorageUnitType type =
-                    LabEnvironmentalLog.StorageUnitType.valueOf(storageUnitType.toUpperCase());
+                LabEnvironmentalLog.StorageUnitType type = LabEnvironmentalLog.StorageUnitType
+                        .valueOf(storageUnitType.toUpperCase());
                 stats = labEnvironmentalLogService.getDashboardStatisticsForType(type);
             } else {
                 stats = labEnvironmentalLogService.getDashboardStatistics();
@@ -159,18 +142,14 @@ public class LabEnvironmentalLogController extends BaseRestController {
             return ResponseEntity.ok(stats);
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Invalid storage unit type: " + storageUnitType
-            ));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Invalid storage unit type: " + storageUnitType));
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "getDashboardStatistics",
                     "Error compiling dashboard statistics: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Failed to retrieve dashboard statistics"
-            ));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to retrieve dashboard statistics"));
         }
     }
 
@@ -183,29 +162,23 @@ public class LabEnvironmentalLogController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getTemperatureRanges() {
         try {
-            Map<String, Object> ranges = Map.of(
-                "success", true,
-                "ranges", Map.of(
-                    "ROOM", labEnvironmentalLogService.getTemperatureRange(
-                        LabEnvironmentalLog.StorageUnitType.ROOM, "C"),
-                    "FREEZER", labEnvironmentalLogService.getTemperatureRange(
-                        LabEnvironmentalLog.StorageUnitType.FREEZER, "C"),
-                    "EQUIPMENT_ANALYZER", labEnvironmentalLogService.getTemperatureRange(
-                        LabEnvironmentalLog.StorageUnitType.EQUIPMENT_ANALYZER, "C"),
-                    "MOVABLE_FRIDGE", labEnvironmentalLogService.getTemperatureRange(
-                        LabEnvironmentalLog.StorageUnitType.MOVABLE_FRIDGE, "C")
-                )
-            );
+            Map<String, Object> ranges = Map.of("success", true, "ranges", Map.of("ROOM",
+                    labEnvironmentalLogService.getTemperatureRange(LabEnvironmentalLog.StorageUnitType.ROOM, "C"),
+                    "FREEZER",
+                    labEnvironmentalLogService.getTemperatureRange(LabEnvironmentalLog.StorageUnitType.FREEZER, "C"),
+                    "EQUIPMENT_ANALYZER",
+                    labEnvironmentalLogService
+                            .getTemperatureRange(LabEnvironmentalLog.StorageUnitType.EQUIPMENT_ANALYZER, "C"),
+                    "MOVABLE_FRIDGE", labEnvironmentalLogService
+                            .getTemperatureRange(LabEnvironmentalLog.StorageUnitType.MOVABLE_FRIDGE, "C")));
 
             return ResponseEntity.ok(ranges);
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "getTemperatureRanges",
                     "Error retrieving temperature ranges: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Failed to retrieve temperature ranges"
-            ));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to retrieve temperature ranges"));
         }
     }
 
@@ -213,24 +186,21 @@ public class LabEnvironmentalLogController extends BaseRestController {
      * Search environmental logs with multiple criteria.
      *
      * @param storageUnitType Optional storage unit type filter
-     * @param storageUnitId Optional storage unit ID filter
-     * @param startDate Optional start date filter (yyyy-MM-dd HH:mm:ss)
-     * @param endDate Optional end date filter (yyyy-MM-dd HH:mm:ss)
-     * @param checkedBy Optional checked by user filter
-     * @param limit Maximum number of results (default 50)
-     * @param offset Starting offset for pagination (default 0)
+     * @param storageUnitId   Optional storage unit ID filter
+     * @param startDate       Optional start date filter (yyyy-MM-dd HH:mm:ss)
+     * @param endDate         Optional end date filter (yyyy-MM-dd HH:mm:ss)
+     * @param checkedBy       Optional checked by user filter
+     * @param limit           Maximum number of results (default 50)
+     * @param offset          Starting offset for pagination (default 0)
      * @return ResponseEntity with filtered logs
      */
     @GetMapping("/search")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> searchEnvironmentalLogs(
             @RequestParam(required = false) String storageUnitType,
-            @RequestParam(required = false) String storageUnitId,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String checkedBy,
-            @RequestParam(defaultValue = "50") int limit,
-            @RequestParam(defaultValue = "0") int offset) {
+            @RequestParam(required = false) String storageUnitId, @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate, @RequestParam(required = false) String checkedBy,
+            @RequestParam(defaultValue = "50") int limit, @RequestParam(defaultValue = "0") int offset) {
         try {
             // Parse parameters
             LabEnvironmentalLog.StorageUnitType type = null;
@@ -248,46 +218,35 @@ public class LabEnvironmentalLogController extends BaseRestController {
             }
 
             // Service handles all search logic
-            List<LabEnvironmentalLog> logs = labEnvironmentalLogService.searchLogs(
-                type, storageUnitId, startTimestamp, endTimestamp, checkedBy, limit, offset);
+            List<LabEnvironmentalLog> logs = labEnvironmentalLogService.searchLogs(type, storageUnitId, startTimestamp,
+                    endTimestamp, checkedBy, limit, offset);
 
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "logs", logs,
-                "count", logs.size()
-            ));
+            return ResponseEntity.ok(Map.of("success", true, "logs", logs, "count", logs.size()));
 
         } catch (ParseException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Invalid date format. Use yyyy-MM-dd HH:mm:ss"
-            ));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Invalid date format. Use yyyy-MM-dd HH:mm:ss"));
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", "Invalid parameter: " + e.getMessage()
-            ));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "Invalid parameter: " + e.getMessage()));
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "searchEnvironmentalLogs",
                     "Error searching logs: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "success", false,
-                "message", "Failed to search environmental logs"
-            ));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to search environmental logs"));
         }
     }
 
     /**
-     * Convert form DTO to entity.
-     * Helper method to transform client data to domain entity.
+     * Convert form DTO to entity. Helper method to transform client data to domain
+     * entity.
      */
     private LabEnvironmentalLog convertFormToEntity(LabEnvironmentalLogForm form) {
         LabEnvironmentalLog log = new LabEnvironmentalLog();
 
-        log.setStorageUnitType(LabEnvironmentalLog.StorageUnitType.valueOf(
-            form.getStorageUnitType().toUpperCase()));
+        log.setStorageUnitType(LabEnvironmentalLog.StorageUnitType.valueOf(form.getStorageUnitType().toUpperCase()));
         log.setStorageUnitId(form.getStorageUnitId());
         log.setIntervalType(form.getIntervalType());
         log.setTemperatureValue(form.getTemperatureValue());
@@ -311,8 +270,8 @@ public class LabEnvironmentalLogController extends BaseRestController {
     }
 
     /**
-     * Get all storage unit types for dropdown.
-     * Similar to inventory item types endpoint.
+     * Get all storage unit types for dropdown. Similar to inventory item types
+     * endpoint.
      *
      * @return ResponseEntity with list of storage unit type strings
      */
@@ -320,8 +279,7 @@ public class LabEnvironmentalLogController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<List<String>> getStorageUnitTypes() {
         try {
-            List<String> types = Arrays.stream(LabEnvironmentalLog.StorageUnitType.values())
-                    .map(Enum::name)
+            List<String> types = Arrays.stream(LabEnvironmentalLog.StorageUnitType.values()).map(Enum::name)
                     .collect(Collectors.toList());
             return ResponseEntity.ok(types);
         } catch (Exception e) {

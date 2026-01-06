@@ -1,0 +1,699 @@
+openapi: 3.0.3
+info:
+  title: Bioanalytical Laboratory - Analyzer Data Integration API
+  description: |
+    API for analytical instrument data capture, validation, and QC trending.
+
+    Supports integration with 11+ analytical instruments:
+    - Chromatography: HPLC (UV-Vis), LC-MS/MS
+    - Dissolution: USP II apparatus
+    - Physical tests: Hardness, friability, disintegration testers
+    - Environmental: Temperature/humidity monitoring systems
+
+    Part of the Bioanalytical & Bioequivalence Laboratory Notebook feature.
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Support
+    url: https://github.com/I-TECH-UW/OpenELIS-Global-2
+
+servers:
+  - url: /rest/notebook/bioanalytical
+    description: Bioanalytical lab API base path
+
+tags:
+  - name: Instrument Configuration
+    description: List and configure analytical instruments
+  - name: Analyzer Data Upload
+    description: Upload raw instrument data files
+  - name: Data Validation
+    description: Validate analyzer output against acceptance criteria
+  - name: QC Trending
+    description: Quality control trend analysis and Westgard rule detection
+
+paths:
+  /instruments:
+    get:
+      summary: Get list of supported analytical instruments
+      description: |
+        Retrieve all supported analytical instruments for automatic data integration.
+        Includes LC-MS/MS, HPLC, dissolution apparatus, and physical testing equipment.
+      operationId: getSupportedInstruments
+      tags:
+        - Instrument Configuration
+      responses:
+        '200':
+          description: Instruments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstrumentsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /instruments/{instrumentType}/formats:
+    get:
+      summary: Get supported file formats for instrument type
+      description: |
+        Retrieve list of supported file formats for a specific instrument type.
+
+        Supported formats by instrument type:
+        - **LC-MS/MS**: mzML (raw data), CSV (peak summary)
+        - **HPLC**: CDF (NetCDF binary format), CSV (chromatogram data)
+        - **Dissolution**: CSV (time-concentration data)
+        - **Physical Tests**: CSV (results summary)
+        - **Environmental**: CSV (temperature, humidity readings)
+      operationId: getSupportedFileFormats
+      tags:
+        - Instrument Configuration
+      parameters:
+        - name: instrumentType
+          in: path
+          description: Instrument type (e.g., "LC-MS/MS", "HPLC", "Dissolution")
+          required: true
+          schema:
+            type: string
+            enum:
+              - LC-MS/MS
+              - HPLC
+              - Dissolution
+              - Hardness
+              - Friability
+              - Disintegration
+              - Stability Chamber
+              - Environmental Monitor
+      responses:
+        '200':
+          description: File formats retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileFormatsResponse'
+        '400':
+          description: Invalid instrument type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/analyzer-data/upload:
+    post:
+      summary: Upload raw analyzer data file
+      description: |
+        Parse and validate raw instrument output file (chromatogram, spectrum, CSV).
+
+        **Workflow**:
+        1. Accept multipart form with file and instrument type
+        2. Save file to temporary location
+        3. Parse file based on instrument type
+        4. Extract calibration curve, sample results, QC data
+        5. Validate data against acceptance criteria
+        6. Store in database (analytical_raw_file table)
+        7. Return parsed data summary
+
+        **Accepted file types**:
+        - mzML: LC-MS/MS raw data
+        - CDF: HPLC chromatogram data
+        - CSV: All instruments (text-based results)
+        - PDF: Instrument reports (optional)
+      operationId: uploadAnalyzerData
+      tags:
+        - Analyzer Data Upload
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Raw analyzer data file
+                instrumentType:
+                  type: string
+                  description: Type of instrument that generated data
+                  example: "LC-MS/MS"
+              required:
+                - file
+                - instrumentType
+      responses:
+        '200':
+          description: File uploaded and parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerUploadResponse'
+        '400':
+          description: Bad request (invalid file format, unsupported instrument)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/analyzer-data/validate:
+    post:
+      summary: Validate parsed analyzer data
+      description: |
+        Validate extracted analyzer data against bioanalytical acceptance criteria.
+
+        **Validation criteria**:
+        - **Calibration curve**: r² ≥ 0.99 (analytical methods)
+        - **QC results**: Pass rate ≥ 80% (bioanalytical requirement)
+        - **Sample concentration**: Within expected range (±15% for assay, variable for bioanalytical)
+        - **System suitability**: %RSD ≤ 2% (HPLC), ≤ 5% (LC-MS/MS)
+
+        **Response includes**:
+        - Acceptance status for calibration and QC
+        - Detailed pass/fail reasons
+        - Warning messages for borderline results
+        - Overall validation status (PASS/FAIL/CONDITIONAL)
+      operationId: validateAnalyzerData
+      tags:
+        - Data Validation
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzerValidationRequest'
+      responses:
+        '200':
+          description: Validation completed (PASS or FAIL)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerValidationResponse'
+        '400':
+          description: Bad request (missing or invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/qc-trending:
+    get:
+      summary: Get QC trending data and Levey-Jennings chart
+      description: |
+        Retrieve QC trending data with statistical analysis and out-of-control pattern detection.
+
+        **Returns**:
+        - Historical QC measurements for date range
+        - Statistical summary: mean, SD, %CV
+        - Control limits: lower/upper 3σ bounds
+        - Levey-Jennings chart points for visualization
+        - Westgard multi-rule detection results (if out-of-control found)
+
+        **Westgard rules implemented**:
+        - **1-3S**: One point beyond 3 standard deviations
+        - **2-2S**: Two consecutive points beyond 2SD on same side
+        - **R-4S**: Range between consecutive points exceeds 4SD
+        - **4-1S**: Four consecutive points beyond 1SD on same side
+        - **10X**: Ten consecutive points on same side of mean
+      operationId: getQCTrending
+      tags:
+        - QC Trending
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: instrumentId
+          in: query
+          description: Instrument ID for filtering
+          required: true
+          schema:
+            type: string
+            example: "HPLC-001"
+        - name: qcLevel
+          in: query
+          description: QC level (LOW, MEDIUM, HIGH)
+          required: true
+          schema:
+            type: string
+            enum:
+              - LOW
+              - MEDIUM
+              - HIGH
+        - name: numberOfDays
+          in: query
+          description: Days of historical data to include (default 30)
+          required: false
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+      responses:
+        '200':
+          description: QC trending data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QCTrendingResponse'
+        '400':
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notebook entry or instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /instruments/{instrumentId}/quality:
+    get:
+      summary: Get instrument quality metrics
+      description: |
+        Retrieve instrument performance metrics including uptime, maintenance history, and analytical success rates.
+
+        **Metrics include**:
+        - **Uptime percentage**: Operational vs downtime
+        - **Maintenance events**: Preventive and corrective maintenance in last 30 days
+        - **Analytical success rate**: Percentage of analyses accepted without re-run
+        - **Calibration acceptance rate**: Curve success rate
+        - **System suitability rate**: Successful system suitability checks
+      operationId: getInstrumentQuality
+      tags:
+        - Instrument Configuration
+      parameters:
+        - name: instrumentId
+          in: path
+          description: Instrument ID (e.g., "HPLC-001", "LCMSMS-001")
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Instrument quality metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstrumentQualityResponse'
+        '404':
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    InstrumentsResponse:
+      type: object
+      properties:
+        instruments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Instrument'
+        total:
+          type: integer
+          description: Total number of supported instruments
+
+    Instrument:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "LCMSMS-001"
+        type:
+          type: string
+          example: "LC-MS/MS"
+        manufacturer:
+          type: string
+          example: "Shimadzu"
+        model:
+          type: string
+          example: "8050"
+        location:
+          type: string
+          example: "Room 304 - Analytical Lab"
+        status:
+          type: string
+          enum:
+            - OPERATIONAL
+            - MAINTENANCE
+            - OFFLINE
+          example: "OPERATIONAL"
+
+    FileFormatsResponse:
+      type: object
+      properties:
+        instrumentType:
+          type: string
+          example: "LC-MS/MS"
+        supportedFormats:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileFormat'
+        total:
+          type: integer
+
+    FileFormat:
+      type: object
+      properties:
+        extension:
+          type: string
+          example: "mzML"
+        description:
+          type: string
+          example: "LC-MS/MS raw data format"
+        mimeType:
+          type: string
+          example: "application/mzml+xml"
+
+    AnalyzerUploadResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: True if file parsed successfully
+        message:
+          type: string
+          example: "File uploaded and parsed successfully"
+        instrumentType:
+          type: string
+          example: "LC-MS/MS"
+        analysisDate:
+          type: string
+          format: date-time
+        totalSamples:
+          type: integer
+          description: Number of samples in analysis
+        calibrationCurve:
+          $ref: '#/components/schemas/CalibrationCurveData'
+        totalQCResults:
+          type: integer
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Non-critical warnings
+        errors:
+          type: array
+          items:
+            type: string
+          description: Parsing errors (partial success if present)
+        partialSuccess:
+          type: boolean
+          description: True if some data parsed but errors occurred
+
+    CalibrationCurveData:
+      type: object
+      properties:
+        rSquared:
+          type: number
+          format: double
+          example: 0.9956
+          description: R² value (goodness of fit)
+        slope:
+          type: number
+          format: double
+          example: 12450.5
+        intercept:
+          type: number
+          format: double
+          example: -125.3
+        concentrationRangeLow:
+          type: number
+          format: double
+          example: 0.1
+        concentrationRangeHigh:
+          type: number
+          format: double
+          example: 1000.0
+        status:
+          type: string
+          enum:
+            - ACCEPTABLE
+            - MARGINAL
+            - UNACCEPTABLE
+          example: "ACCEPTABLE"
+
+    AnalyzerValidationRequest:
+      type: object
+      required:
+        - calibrationRSquared
+        - qcPassCount
+        - qcTotalCount
+      properties:
+        calibrationRSquared:
+          type: number
+          format: double
+          description: Calibration curve R² value
+          example: 0.9956
+        qcPassCount:
+          type: integer
+          description: Number of QC results that passed
+          example: 8
+        qcTotalCount:
+          type: integer
+          description: Total number of QC results
+          example: 10
+
+    AnalyzerValidationResponse:
+      type: object
+      properties:
+        overallValidation:
+          type: string
+          enum:
+            - PASS
+            - FAIL
+            - CONDITIONAL
+          example: "PASS"
+        calibrationAccepted:
+          type: boolean
+          description: Calibration curve meets r² ≥ 0.99 requirement
+        qcAccepted:
+          type: boolean
+          description: QC pass rate meets ≥ 80% requirement
+        qcPassRate:
+          type: string
+          example: "80.0%"
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Non-critical warnings (borderline results)
+
+    QCTrendingResponse:
+      type: object
+      properties:
+        instrumentId:
+          type: string
+          example: "HPLC-001"
+        qcLevel:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        statistics:
+          $ref: '#/components/schemas/QCStatistics'
+        chartPoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeveyJenningsPoint'
+          description: Points for Levey-Jennings trend chart
+        outOfControlPatterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/WestgardDetection'
+          description: Detected Westgard rule violations
+
+    QCStatistics:
+      type: object
+      properties:
+        meanValue:
+          type: number
+          format: double
+          example: 99.5
+        standardDeviation:
+          type: number
+          format: double
+          example: 1.2
+        coefficientOfVariation:
+          type: number
+          format: double
+          example: 1.21
+          description: "%CV (SD/Mean * 100)"
+        lowerControlLimit:
+          type: number
+          format: double
+          example: 95.9
+          description: Mean - 3SD
+        upperControlLimit:
+          type: number
+          format: double
+          example: 103.1
+          description: Mean + 3SD
+        targetValue:
+          type: number
+          format: double
+          example: 100.0
+        passCount:
+          type: integer
+        failCount:
+          type: integer
+        passRate:
+          type: number
+          format: double
+          example: 98.5
+
+    LeveyJenningsPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        value:
+          type: number
+          format: double
+        status:
+          type: string
+          enum:
+            - NORMAL
+            - OUT_OF_CONTROL
+        outOfControl:
+          type: boolean
+
+    WestgardDetection:
+      type: object
+      properties:
+        ruleName:
+          type: string
+          enum:
+            - 1-3S
+            - 2-2S
+            - R-4S
+            - 4-1S
+            - 10X
+          description: Westgard rule detected
+        description:
+          type: string
+          example: "One point beyond 3 standard deviations from mean"
+        affectedPointIndices:
+          type: array
+          items:
+            type: integer
+          description: Indices of affected QC measurements
+
+    InstrumentQualityResponse:
+      type: object
+      properties:
+        instrumentId:
+          type: string
+          example: "HPLC-001"
+        instrumentType:
+          type: string
+          example: "HPLC"
+        uptimePercentage:
+          type: number
+          format: double
+          example: 98.5
+          description: Operational uptime in last 30 days
+        maintenanceEventsLastMonth:
+          type: integer
+          example: 2
+        analyticalSuccessRate:
+          type: number
+          format: double
+          example: 99.2
+          description: Percentage of analyses accepted without re-run
+        calibrationAcceptanceRate:
+          type: number
+          format: double
+          example: 99.8
+          description: Percentage of calibration curves meeting r² ≥ 0.99
+        systemSuitabilityRate:
+          type: number
+          format: double
+          example: 99.5
+          description: Percentage of system suitability checks passed
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        timestamp:
+          type: string
+          format: date-time
+          description: When error occurred
+        status:
+          type: integer
+          description: HTTP status code

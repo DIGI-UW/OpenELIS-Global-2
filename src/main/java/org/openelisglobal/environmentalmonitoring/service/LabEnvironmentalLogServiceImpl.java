@@ -15,8 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for LabEnvironmentalLog business operations.
  *
- * Handles validation, business logic, and data compilation for environmental monitoring.
- * All transactions start here (NOT in controllers).
+ * Handles validation, business logic, and data compilation for environmental
+ * monitoring. All transactions start here (NOT in controllers).
  */
 @Service
 @Transactional
@@ -81,8 +81,7 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
             LabEnvironmentalLog savedLog = save(log);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "logEnvironmentalReading",
-                    "Environmental log created for " + log.getStorageUnitType() +
-                    " unit: " + log.getStorageUnitId());
+                    "Environmental log created for " + log.getStorageUnitType() + " unit: " + log.getStorageUnitId());
 
             return savedLog;
 
@@ -95,10 +94,8 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional(readOnly = true)
-    public List<LabEnvironmentalLog> getLogsByStorageUnitType(
-            LabEnvironmentalLog.StorageUnitType storageUnitType,
-            int limit,
-            int offset) {
+    public List<LabEnvironmentalLog> getLogsByStorageUnitType(LabEnvironmentalLog.StorageUnitType storageUnitType,
+            int limit, int offset) {
         try {
             List<LabEnvironmentalLog> logs = labEnvironmentalLogDAO.findByStorageUnitType(storageUnitType);
 
@@ -134,19 +131,16 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional(readOnly = true)
-    public List<LabEnvironmentalLog> getLogsInDateRange(
-            LabEnvironmentalLog.StorageUnitType storageUnitType,
-            Timestamp startDate,
-            Timestamp endDate) {
+    public List<LabEnvironmentalLog> getLogsInDateRange(LabEnvironmentalLog.StorageUnitType storageUnitType,
+            Timestamp startDate, Timestamp endDate) {
         try {
             if (storageUnitType != null) {
                 return labEnvironmentalLogDAO.findByStorageUnitTypeAndDateRange(storageUnitType, startDate, endDate);
             } else {
                 // Return logs for all storage unit types within date range
-                return labEnvironmentalLogDAO.findAllOrderedByDate().stream()
-                    .filter(log -> !log.getCheckedDateTime().before(startDate) &&
-                                  !log.getCheckedDateTime().after(endDate))
-                    .toList();
+                return labEnvironmentalLogDAO.findAllOrderedByDate().stream().filter(
+                        log -> !log.getCheckedDateTime().before(startDate) && !log.getCheckedDateTime().after(endDate))
+                        .toList();
             }
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "getLogsInDateRange",
@@ -176,8 +170,8 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
                 // Calculate out-of-range for each type
                 Map<String, Double> tempRange = getTemperatureRange(type, "C");
                 if (tempRange.get("min") != null && tempRange.get("max") != null) {
-                    long typeOutOfRange = labEnvironmentalLogDAO.countOutOfRangeTemperature(
-                        type, tempRange.get("min"), tempRange.get("max"));
+                    long typeOutOfRange = labEnvironmentalLogDAO.countOutOfRangeTemperature(type, tempRange.get("min"),
+                            tempRange.get("max"));
                     outOfRangeLogs += typeOutOfRange;
                 }
 
@@ -215,8 +209,8 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
             // Calculate out-of-range count
             Map<String, Double> tempRange = getTemperatureRange(storageUnitType, "C");
             if (tempRange.get("min") != null && tempRange.get("max") != null) {
-                long outOfRange = labEnvironmentalLogDAO.countOutOfRangeTemperature(
-                    storageUnitType, tempRange.get("min"), tempRange.get("max"));
+                long outOfRange = labEnvironmentalLogDAO.countOutOfRangeTemperature(storageUnitType,
+                        tempRange.get("min"), tempRange.get("max"));
                 stats.put("outOfRangeLogs", outOfRange);
             } else {
                 stats.put("outOfRangeLogs", 0L);
@@ -233,9 +227,7 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isTemperatureInRange(
-            LabEnvironmentalLog.StorageUnitType storageUnitType,
-            Double temperatureValue,
+    public boolean isTemperatureInRange(LabEnvironmentalLog.StorageUnitType storageUnitType, Double temperatureValue,
             String temperatureUnit) {
         try {
             Map<String, Double> range = getTemperatureRange(storageUnitType, temperatureUnit);
@@ -252,8 +244,7 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Double> getTemperatureRange(
-            LabEnvironmentalLog.StorageUnitType storageUnitType,
+    public Map<String, Double> getTemperatureRange(LabEnvironmentalLog.StorageUnitType storageUnitType,
             String temperatureUnit) {
         Map<String, Double> range = new HashMap<>();
 
@@ -261,26 +252,26 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
         double minC, maxC;
 
         switch (storageUnitType) {
-            case FREEZER:
-                minC = -25.0;
-                maxC = -15.0;
-                break;
-            case ROOM:
-                minC = 15.0;
-                maxC = 25.0;
-                break;
-            case EQUIPMENT_ANALYZER:
-                minC = 2.0;
-                maxC = 8.0;
-                break;
-            case MOVABLE_FRIDGE:
-                minC = 2.0;
-                maxC = 8.0;
-                break;
-            default:
-                range.put("min", null);
-                range.put("max", null);
-                return range;
+        case FREEZER:
+            minC = -25.0;
+            maxC = -15.0;
+            break;
+        case ROOM:
+            minC = 15.0;
+            maxC = 25.0;
+            break;
+        case EQUIPMENT_ANALYZER:
+            minC = 2.0;
+            maxC = 8.0;
+            break;
+        case MOVABLE_FRIDGE:
+            minC = 2.0;
+            maxC = 8.0;
+            break;
+        default:
+            range.put("min", null);
+            range.put("max", null);
+            return range;
         }
 
         // Convert to Fahrenheit if needed
@@ -299,17 +290,15 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional(readOnly = true)
-    public List<LabEnvironmentalLog> getOutOfRangeLogs(
-            LabEnvironmentalLog.StorageUnitType storageUnitType,
-            int limit) {
+    public List<LabEnvironmentalLog> getOutOfRangeLogs(LabEnvironmentalLog.StorageUnitType storageUnitType, int limit) {
         try {
             Map<String, Double> tempRange = getTemperatureRange(storageUnitType, "C");
             if (tempRange.get("min") == null || tempRange.get("max") == null) {
                 return List.of(); // No range defined
             }
 
-            List<LabEnvironmentalLog> logs = labEnvironmentalLogDAO.findOutOfRangeTemperature(
-                storageUnitType, tempRange.get("min"), tempRange.get("max"));
+            List<LabEnvironmentalLog> logs = labEnvironmentalLogDAO.findOutOfRangeTemperature(storageUnitType,
+                    tempRange.get("min"), tempRange.get("max"));
 
             // Apply limit
             return logs.subList(0, Math.min(limit, logs.size()));
@@ -348,14 +337,8 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional(readOnly = true)
-    public List<LabEnvironmentalLog> searchLogs(
-            LabEnvironmentalLog.StorageUnitType storageUnitType,
-            String storageUnitId,
-            Timestamp startDate,
-            Timestamp endDate,
-            String checkedBy,
-            int limit,
-            int offset) {
+    public List<LabEnvironmentalLog> searchLogs(LabEnvironmentalLog.StorageUnitType storageUnitType,
+            String storageUnitId, Timestamp startDate, Timestamp endDate, String checkedBy, int limit, int offset) {
         try {
             // For now, use basic filtering. In a production environment,
             // this would be implemented as a proper search query in the DAO.
@@ -363,29 +346,22 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
 
             // Apply filters
             if (storageUnitType != null) {
-                logs = logs.stream()
-                    .filter(log -> log.getStorageUnitType() == storageUnitType)
-                    .toList();
+                logs = logs.stream().filter(log -> log.getStorageUnitType() == storageUnitType).toList();
             }
 
             if (storageUnitId != null && !storageUnitId.trim().isEmpty()) {
-                logs = logs.stream()
-                    .filter(log -> log.getStorageUnitId().contains(storageUnitId))
-                    .toList();
+                logs = logs.stream().filter(log -> log.getStorageUnitId().contains(storageUnitId)).toList();
             }
 
             if (startDate != null && endDate != null) {
-                logs = logs.stream()
-                    .filter(log -> !log.getCheckedDateTime().before(startDate) &&
-                                  !log.getCheckedDateTime().after(endDate))
-                    .toList();
+                logs = logs.stream().filter(
+                        log -> !log.getCheckedDateTime().before(startDate) && !log.getCheckedDateTime().after(endDate))
+                        .toList();
             }
 
             if (checkedBy != null && !checkedBy.trim().isEmpty()) {
-                logs = logs.stream()
-                    .filter(log -> log.getCheckedBy() != null &&
-                                  log.getCheckedBy().toLowerCase().contains(checkedBy.toLowerCase()))
-                    .toList();
+                logs = logs.stream().filter(log -> log.getCheckedBy() != null
+                        && log.getCheckedBy().toLowerCase().contains(checkedBy.toLowerCase())).toList();
             }
 
             // Apply pagination
@@ -394,8 +370,7 @@ public class LabEnvironmentalLogServiceImpl extends AuditableBaseObjectServiceIm
             return logs.subList(start, end);
 
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "searchLogs",
-                    "Error searching logs: " + e.getMessage());
+            LogEvent.logError(this.getClass().getSimpleName(), "searchLogs", "Error searching logs: " + e.getMessage());
             throw new RuntimeException("Failed to search logs", e);
         }
     }

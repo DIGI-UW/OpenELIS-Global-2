@@ -9,7 +9,8 @@ import org.openelisglobal.environmentalmonitoring.valueholder.LabEnvironmentalLo
  * DAO interface for LabEnvironmentalLog entities.
  *
  * Provides data access methods for lab-wide environmental monitoring logs
- * including temperature and humidity tracking across different storage unit types.
+ * including temperature and humidity tracking across different storage unit
+ * types.
  */
 public interface LabEnvironmentalLogDAO extends BaseDAO<LabEnvironmentalLog, Long> {
 
@@ -17,7 +18,8 @@ public interface LabEnvironmentalLogDAO extends BaseDAO<LabEnvironmentalLog, Lon
      * Find all environmental logs by storage unit type.
      *
      * @param storageUnitType The type of storage unit (ROOM, FREEZER, etc.)
-     * @return List of logs for the specified storage unit type, ordered by checked date/time descending
+     * @return List of logs for the specified storage unit type, ordered by checked
+     *         date/time descending
      */
     List<LabEnvironmentalLog> findByStorageUnitType(LabEnvironmentalLog.StorageUnitType storageUnitType);
 
@@ -25,7 +27,8 @@ public interface LabEnvironmentalLogDAO extends BaseDAO<LabEnvironmentalLog, Lon
      * Find all environmental logs by storage unit ID.
      *
      * @param storageUnitId The specific storage unit identifier
-     * @return List of logs for the specified storage unit, ordered by checked date/time descending
+     * @return List of logs for the specified storage unit, ordered by checked
+     *         date/time descending
      */
     List<LabEnvironmentalLog> findByStorageUnitId(String storageUnitId);
 
@@ -33,29 +36,25 @@ public interface LabEnvironmentalLogDAO extends BaseDAO<LabEnvironmentalLog, Lon
      * Find environmental logs by storage unit type and date range.
      *
      * @param storageUnitType The type of storage unit
-     * @param startDate Start of date range (inclusive)
-     * @param endDate End of date range (inclusive)
-     * @return List of logs within the date range, ordered by checked date/time descending
+     * @param startDate       Start of date range (inclusive)
+     * @param endDate         End of date range (inclusive)
+     * @return List of logs within the date range, ordered by checked date/time
+     *         descending
      */
-    List<LabEnvironmentalLog> findByStorageUnitTypeAndDateRange(
-        LabEnvironmentalLog.StorageUnitType storageUnitType,
-        Timestamp startDate,
-        Timestamp endDate
-    );
+    List<LabEnvironmentalLog> findByStorageUnitTypeAndDateRange(LabEnvironmentalLog.StorageUnitType storageUnitType,
+            Timestamp startDate, Timestamp endDate);
 
     /**
      * Find environmental logs by storage unit ID and date range.
      *
      * @param storageUnitId The specific storage unit identifier
-     * @param startDate Start of date range (inclusive)
-     * @param endDate End of date range (inclusive)
-     * @return List of logs within the date range, ordered by checked date/time descending
+     * @param startDate     Start of date range (inclusive)
+     * @param endDate       End of date range (inclusive)
+     * @return List of logs within the date range, ordered by checked date/time
+     *         descending
      */
-    List<LabEnvironmentalLog> findByStorageUnitIdAndDateRange(
-        String storageUnitId,
-        Timestamp startDate,
-        Timestamp endDate
-    );
+    List<LabEnvironmentalLog> findByStorageUnitIdAndDateRange(String storageUnitId, Timestamp startDate,
+            Timestamp endDate);
 
     /**
      * Count environmental logs by storage unit type.
@@ -77,33 +76,28 @@ public interface LabEnvironmentalLogDAO extends BaseDAO<LabEnvironmentalLog, Lon
      * Find environmental logs with temperature values outside specified range.
      *
      * @param storageUnitType The type of storage unit
-     * @param minTemp Minimum acceptable temperature
-     * @param maxTemp Maximum acceptable temperature
-     * @return List of logs with out-of-range temperatures, ordered by checked date/time descending
+     * @param minTemp         Minimum acceptable temperature
+     * @param maxTemp         Maximum acceptable temperature
+     * @return List of logs with out-of-range temperatures, ordered by checked
+     *         date/time descending
      */
-    List<LabEnvironmentalLog> findOutOfRangeTemperature(
-        LabEnvironmentalLog.StorageUnitType storageUnitType,
-        Double minTemp,
-        Double maxTemp
-    );
+    List<LabEnvironmentalLog> findOutOfRangeTemperature(LabEnvironmentalLog.StorageUnitType storageUnitType,
+            Double minTemp, Double maxTemp);
 
     /**
      * Count environmental logs with temperature values outside specified range.
      *
      * @param storageUnitType The type of storage unit
-     * @param minTemp Minimum acceptable temperature
-     * @param maxTemp Maximum acceptable temperature
+     * @param minTemp         Minimum acceptable temperature
+     * @param maxTemp         Maximum acceptable temperature
      * @return Count of logs with out-of-range temperatures
      */
-    long countOutOfRangeTemperature(
-        LabEnvironmentalLog.StorageUnitType storageUnitType,
-        Double minTemp,
-        Double maxTemp
-    );
+    long countOutOfRangeTemperature(LabEnvironmentalLog.StorageUnitType storageUnitType, Double minTemp,
+            Double maxTemp);
 
     /**
-     * Find all environmental logs ordered by checked date/time descending.
-     * Used for lab-wide overview dashboard.
+     * Find all environmental logs ordered by checked date/time descending. Used for
+     * lab-wide overview dashboard.
      *
      * @return All environmental logs ordered by most recent first
      */

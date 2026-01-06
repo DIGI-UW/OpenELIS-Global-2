@@ -67,6 +67,7 @@ import TBWorkflowTab from "./workflow/TBWorkflowTab";
 import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
 import BacteriologyWorkflowTab from "./workflow/BacteriologyWorkflowTab";
 import PathologyWorkflowTab from "./workflow/PathologyWorkflowTab";
+import BioanalyticalWorkflowTab from "./workflow/BioanalyticalWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -1199,13 +1200,19 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("bioanalytical") && (
+                <BioanalyticalWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
               !noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("malaria and neglected tropical disease") &&
               !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
               !noteBookData?.title?.toLowerCase().includes("bacteriology") &&
-              !noteBookData?.title?.toLowerCase().includes("pathology") && (
+              !noteBookData?.title?.toLowerCase().includes("pathology") &&
+              !noteBookData?.title?.toLowerCase().includes("bioanalytical") && (
                 <NotebookWorkflowTab notebookId={noteBookData.id} />
               )}
             {/* Use accordion view for templates or when no ID is available */}

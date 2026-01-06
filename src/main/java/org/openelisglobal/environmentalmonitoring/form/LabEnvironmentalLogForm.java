@@ -1,8 +1,8 @@
 package org.openelisglobal.environmentalmonitoring.form;
 
-import java.sql.Timestamp;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.sql.Timestamp;
 
 /**
  * Form DTO for LabEnvironmentalLog client-server communication.
