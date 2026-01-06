@@ -26,6 +26,12 @@ public class LabUnitForm extends BaseForm {
 
     private Integer sortOrder;
 
+    private Integer displayOrder;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Size(max = 50, message = "labunit.externalId.maxsize")
+    private String externalId;
+
     private Boolean active = true;
 
     // For bulk operations
@@ -81,6 +87,22 @@ public class LabUnitForm extends BaseForm {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     public Boolean getActive() {

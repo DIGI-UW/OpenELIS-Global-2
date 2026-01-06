@@ -30,8 +30,14 @@ public class LabUnit extends BaseObject<String> {
     @jakarta.persistence.Column(name = "parent_lab_unit_id", length = 36)
     private String parentLabUnitId;
 
-    @jakarta.persistence.Column(name = "sort_order")
+@jakarta.persistence.Column(name = "sort_order")
     private Integer sortOrder;
+
+    @jakarta.persistence.Column(name = "display_order")
+    private Integer displayOrder;
+
+    @jakarta.persistence.Column(name = "external_id", length = 50)
+    private String externalId;
 
     @jakarta.persistence.Column(name = "is_active", length = 1)
     private String isActive = "Y";
@@ -115,6 +121,22 @@ public class LabUnit extends BaseObject<String> {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     public String getActive() {
