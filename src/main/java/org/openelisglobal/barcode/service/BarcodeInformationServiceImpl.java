@@ -20,16 +20,36 @@ public class BarcodeInformationServiceImpl implements BarcodeInformationService 
         updateSiteInfo("widthOrderLabels", Float.toString(form.getWidthOrderLabels()), "text", sysUserId);
         updateSiteInfo("heightSpecimenLabels", Float.toString(form.getHeightSpecimenLabels()), "text", sysUserId);
         updateSiteInfo("widthSpecimenLabels", Float.toString(form.getWidthSpecimenLabels()), "text", sysUserId);
+        // updateSiteInfo("heightAliquotLabels",
+        // Float.toString(form.getHeightAliquotLabels()), "text", sysUserId);
+        // updateSiteInfo("widthAliquotLabels",
+        // Float.toString(form.getWidthAliquotLabels()), "text", sysUserId);
         updateSiteInfo("heightBlockLabels", Float.toString(form.getHeightBlockLabels()), "text", sysUserId);
         updateSiteInfo("widthBlockLabels", Float.toString(form.getWidthBlockLabels()), "text", sysUserId);
         updateSiteInfo("heightSlideLabels", Float.toString(form.getHeightSlideLabels()), "text", sysUserId);
         updateSiteInfo("widthSlideLabels", Float.toString(form.getWidthSlideLabels()), "text", sysUserId);
+        updateSiteInfo("heightFreezerLabels", Float.toString(form.getHeightFreezerLabels()), "text", sysUserId);
+        updateSiteInfo("widthFreezerLabels", Float.toString(form.getWidthFreezerLabels()), "text", sysUserId);
 
         updateSiteInfo("numMaxOrderLabels", Integer.toString(form.getNumMaxOrderLabels()), "text", sysUserId);
         updateSiteInfo("numMaxSpecimenLabels", Integer.toString(form.getNumMaxSpecimenLabels()), "text", sysUserId);
+        // updateSiteInfo("numMaxAliquotLabels",
+        // Integer.toString(form.getNumMaxAliquotLabels()), "text", sysUserId);
+        updateSiteInfo("numMaxSlideLabels", Integer.toString(form.getNumMaxSlideLabels()), "text", sysUserId);
+        updateSiteInfo("numMaxBlockLabels", Integer.toString(form.getNumMaxBlockLabels()), "text", sysUserId);
+        updateSiteInfo("numMaxFreezerLabels", Integer.toString(form.getNumMaxFreezerLabels()), "text", sysUserId);
 
         updateSiteInfo("numDefaultOrderLabels", Integer.toString(form.getNumDefaultOrderLabels()), "text", sysUserId);
         updateSiteInfo("numDefaultSpecimenLabels", Integer.toString(form.getNumDefaultSpecimenLabels()), "text",
+                sysUserId);
+        // updateSiteInfo("numDefaultAliquotLabels",
+        // Integer.toString(form.getNumDefaultAliquotLabels()), "text",
+        // sysUserId);
+        updateSiteInfo("numDefaultSlideLabels", Integer.toString(form.getNumDefaultSlideLabels()), "text",
+                sysUserId);
+        updateSiteInfo("numDefaultBlockLabels", Integer.toString(form.getNumDefaultBlockLabels()), "text",
+                sysUserId);
+        updateSiteInfo("numDefaultFreezerLabels", Integer.toString(form.getNumDefaultFreezerLabels()), "text",
                 sysUserId);
 
         updateSiteInfo("collectionDateCheck", Boolean.toString(form.getCollectionDateCheck()), "boolean", sysUserId);

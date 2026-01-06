@@ -30,10 +30,17 @@ public class BarcodeConfigurationRestController extends BaseController {
     private static final String FWD_SUCCESS_INSERT = "success_insert";
     private static final String FWD_FAIL_INSERT = "fail_insert";
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "heightOrderLabels", "heightSpecimenLabels",
-            "heightBlockLabels", "heightSlideLabels", "widthOrderLabels", "widthSpecimenLabels", "widthBlockLabels",
-            "widthSlideLabels", "collectionDateCheck", "collectedByCheck", "testsCheck", "patientSexCheck",
-            "numMaxOrderLabels", "numMaxSpecimenLabels", "numDefaultOrderLabels", "numDefaultSpecimenLabels",
+    private static final String[] ALLOWED_FIELDS = new String[] { //
+            "heightOrderLabels", "heightSpecimenLabels", "heightBlockLabels", "heightSlideLabels",
+            "heightFreezerLabels",
+            "widthOrderLabels", "widthSpecimenLabels", "widthBlockLabels", "widthSlideLabels",
+            "widthFreezerLabels", //
+            "collectionDateCheck", "collectedByCheck", "testsCheck", "patientSexCheck", //
+            "numMaxOrderLabels", "numMaxSpecimenLabels", "numMaxBlockLabels", "numMaxSlideLabels",
+            "numMaxFreezerLabels", //
+            "numDefaultOrderLabels", " numDefaultSpecimenLabels", "numDefaultSlideLabels",
+            "numDefaultBlockLabels",
+            "numDefaultFreezerLabels", //
             "prePrintDontUseAltAccession", "prePrintAltAccessionPrefix" };
 
     @Autowired
@@ -85,6 +92,10 @@ public class BarcodeConfigurationRestController extends BaseController {
         String heightBlockLabels = ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.BLOCK_BARCODE_HEIGHT);
         String widthBlockLabels = ConfigurationProperties.getInstance().getPropertyValue(Property.BLOCK_BARCODE_WIDTH);
+        String heightFreezerLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.FREEZER_BARCODE_HEIGHT);
+        String widthFreezerLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.FREEZER_BARCODE_WIDTH);
         // set the dimension values
         form.setHeightOrderLabels(Float.parseFloat(heightOrderLabels));
         form.setWidthOrderLabels(Float.parseFloat(widthOrderLabels));
@@ -94,6 +105,8 @@ public class BarcodeConfigurationRestController extends BaseController {
         form.setWidthSlideLabels(Float.parseFloat(widthSlideLabels));
         form.setHeightBlockLabels(Float.parseFloat(heightBlockLabels));
         form.setWidthBlockLabels(Float.parseFloat(widthBlockLabels));
+        form.setHeightFreezerLabels(Float.parseFloat(heightFreezerLabels));
+        form.setWidthFreezerLabels(Float.parseFloat(widthFreezerLabels));
 
         // get the maximum print values
         String numMaxOrderLabels = ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_PRINTED);
@@ -101,10 +114,19 @@ public class BarcodeConfigurationRestController extends BaseController {
                 .getPropertyValue(Property.MAX_SPECIMEN_PRINTED);
         String numMaxAliquotLabels = ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.MAX_ALIQUOT_PRINTED);
+        String numMaxSlideLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.MAX_SLIDE_PRINTED);
+        String numMaxBlockLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.MAX_BLOCK_PRINTED);
+        String numMaxFreezerLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.MAX_FREEZER_PRINTED);
         // set the maximum print values
         form.setNumMaxOrderLabels(Integer.parseInt(numMaxOrderLabels));
         form.setNumMaxSpecimenLabels(Integer.parseInt(numMaxSpecimenLabels));
         form.setNumMaxAliquotLabels(Integer.parseInt(numMaxAliquotLabels));
+        form.setNumMaxSlideLabels(Integer.parseInt(numMaxSlideLabels));
+        form.setNumMaxBlockLabels(Integer.parseInt(numMaxBlockLabels));
+        form.setNumMaxFreezerLabels(Integer.parseInt(numMaxFreezerLabels));
 
         // get the default print values
         String numDefaultOrderLabels = ConfigurationProperties.getInstance()
@@ -113,10 +135,19 @@ public class BarcodeConfigurationRestController extends BaseController {
                 .getPropertyValue(Property.DEFAULT_SPECIMEN_PRINTED);
         String numDefaultAliquotLabels = ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.DEFAULT_ALIQUOT_PRINTED);
+        String numDefaultSlideLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.DEFAULT_SLIDE_PRINTED);
+        String numDefaultBlockLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.DEFAULT_BLOCK_PRINTED);
+        String numDefaultFreezerLabels = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.DEFAULT_FREEZER_PRINTED);
         // set the maximum print values
         form.setNumDefaultOrderLabels(Integer.parseInt(numDefaultOrderLabels));
         form.setNumDefaultSpecimenLabels(Integer.parseInt(numDefaultSpecimenLabels));
         form.setNumDefaultAliquotLabels(Integer.parseInt(numDefaultAliquotLabels));
+        form.setNumDefaultSlideLabels(Integer.parseInt(numDefaultSlideLabels));
+        form.setNumDefaultBlockLabels(Integer.parseInt(numDefaultBlockLabels));
+        form.setNumDefaultFreezerLabels(Integer.parseInt(numDefaultFreezerLabels));
 
         // get the optional specimen values
         String collectionDateCheck = ConfigurationProperties.getInstance()

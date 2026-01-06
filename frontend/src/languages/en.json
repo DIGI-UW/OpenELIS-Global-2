@@ -1616,6 +1616,7 @@
   "siteInfo.title.default.barcode.order.none": "None",
   "siteInfo.title.default.barcode.slide": "Slide",
   "siteInfo.title.default.barcode.specimen": "Specimen",
+  "siteInfo.title.default.barcode.freezer": "Freezer",
   "siteInfo.title.default.barcode.width": "Width",
   "siteInfo.title.max.barcode": "Maximum Bar Code Labels",
   "started.date": "Started Date",
