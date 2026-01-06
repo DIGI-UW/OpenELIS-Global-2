@@ -512,6 +512,12 @@
             <version>2.7.3</version>
             <scope>test</scope>
         </dependency>
+        <!-- Explicit dependency to override curvesapi 1.06 which has 403 errors from Maven Central -->
+        <dependency>
+            <groupId>com.github.virtuald</groupId>
+            <artifactId>curvesapi</artifactId>
+            <version>1.07</version>
+        </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
