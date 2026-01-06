@@ -1,957 +1,1050 @@
-import React, { useState, useRef, useContext } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Modal,
-  Button,
-  FileUploader,
-  Grid,
-  Column,
-  ProgressBar,
-  InlineNotification,
+  FileUploaderDropContainer,
+  FileUploaderItem,
   Select,
   SelectItem,
-  TextInput,
-  Checkbox,
+  Button,
+  InlineNotification,
+  Tag,
   Loading,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
+  StructuredListWrapper,
+  StructuredListHead,
+  StructuredListRow,
+  StructuredListCell,
+  StructuredListBody,
+  Accordion,
+  AccordionItem,
 } from "@carbon/react";
+import { Upload, Checkmark, Warning, Information } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationContext } from "../../layout/Layout";
 import config from "../../../config.json";
 import "./BioanalyticalManifestImportModal.css";
 
 /**
- * BioanalyticalManifestImportModal - CSV manifest import interface for bioanalytical samples.
- *
- * Features:
- * - File upload (CSV format)
- * - Column mapping configuration
- * - Preview before import
- * - Error display and handling
- * - Progress tracking
- * - Pagination for large result sets
- *
- * Required CSV columns:
- * - Sample ID, Sample Type, Source Origin, Requested Tests, Date/Time of Receipt, Receiving Personnel
- *
- * Optional CSV columns:
- * - Project/Study Association, Storage Condition, Sample Volume, Transport Temperature, Verification Status, Notes
- *
- * @param {Object} props
- * @param {boolean} props.isOpen - Modal open state
- * @param {function} props.onClose - Callback to close modal
- * @param {number} props.entryId - Notebook entry ID for import
- * @param {function} props.onSuccess - Callback after successful import
+ * Expected dataPoints for Bioanalytical Sample Reception Manifest.
+ * Aligned with the bioanalytical workflow reception metadata requirements.
+ */
+const EXPECTED_DATA_POINTS = {
+  required: [
+    {
+      key: "uniqueSampleId",
+      label: "Sample ID",
+      description: "Unique identifier for the sample (can retain original or assign new)",
+      example: "BIO-2024-001-A, PK-STUDY-001",
+    },
+    {
+      key: "sourceOrigin",
+      label: "Source Origin",
+      description: "Laboratory or external client providing the sample",
+      example: "Medical Laboratory, External Client, CRO Partner",
+    },
+    {
+      key: "requestedTests",
+      label: "Requested Tests",
+      description: "Analytical tests to be performed on the sample",
+      example: "Assay, Dissolution, LC-MS/MS, HPLC, Bioequivalence",
+    },
+    {
+      key: "dateTimeOfReceipt",
+      label: "Date/Time of Receipt",
+      description: "Date and time when sample was received (YYYY-MM-DD HH:MM or 'now')",
+      example: "2024-01-15 14:30, now",
+    },
+    {
+      key: "receivingPersonnel",
+      label: "Receiving Personnel",
+      description: "Name of person who received the sample",
+      example: "Dr. Sarah Johnson, Lab Tech Mike",
+    },
+  ],
+  sampleType: {
+    key: "sampleType",
+    label: "Sample Type",
+    description: "Type of bioanalytical sample (validated against Bioanalytical lab types)",
+    example: "API, Tablet, Plasma, Serum, Urine, etc.",
+  },
+  optional: [
+    {
+      key: "projectStudyAssociation",
+      label: "Project/Study Association",
+      description: "Study or project identifier for bioequivalence or pharmaceutical testing",
+      example: "BE-2024-001, STAB-API-001, PK-STUDY-002",
+    },
+    {
+      key: "storageConditionPrior",
+      label: "Storage Condition Prior",
+      description: "Storage condition before testing",
+      example: "Room Temperature, Refrigerated (2-8°C), Frozen (-20°C)",
+    },
+    {
+      key: "sampleVolume",
+      label: "Sample Volume/Quantity",
+      description: "Volume or quantity of the sample with units",
+      example: "5 mL, 100 mg, 2 tablets",
+    },
+    {
+      key: "transportTemperature",
+      label: "Transport Temperature",
+      description: "Temperature during transport in Celsius",
+      example: "4°C, -20°C, Ambient",
+    },
+    {
+      key: "manifestVerificationStatus",
+      label: "Manifest Verification Status",
+      description: "Status of manifest verification",
+      example: "Verified, Pending, Discrepancy",
+    },
+    {
+      key: "subjectId",
+      label: "Subject/Patient ID",
+      description: "Subject or patient identifier for bioequivalence studies",
+      example: "SUBJ-001, P-101",
+    },
+    {
+      key: "timepoint",
+      label: "Timepoint",
+      description: "Sampling timepoint for pharmacokinetic studies",
+      example: "Pre-dose, 1h, 2h, 4h, 8h, 24h",
+    },
+    {
+      key: "notes",
+      label: "Notes/Comments",
+      description: "Additional notes or observations",
+      example: "Sample received in good condition, requires HPLC analysis",
+    },
+  ],
+  autoGenerated: [
+    {
+      key: "accessionNumber",
+      label: "Accession Number",
+      description: "System-generated laboratory accession number",
+    },
+    {
+      key: "barcodeQrCode",
+      label: "Barcode/QR Code",
+      description: "System-generated scannable identifier",
+    },
+  ],
+};
+
+/**
+ * BioanalyticalManifestImportModal - CSV import modal for Bioanalytical workflow.
+ * Supports mapping bioanalytical-specific reception metadata columns.
  */
 function BioanalyticalManifestImportModal({
-  isOpen,
+  open,
   onClose,
   entryId,
   onSuccess,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible } = useContext(NotificationContext);
 
-  // File upload state
-  const [files, setFiles] = useState([]);
-  const fileInputRef = useRef(null);
-
-  // Column mapping state
+  const [file, setFile] = useState(null);
+  const [fileError, setFileError] = useState(null);
+  const [csvHeaders, setCsvHeaders] = useState([]);
   const [columnMapping, setColumnMapping] = useState({
-    uniqueSampleIdColumn: "Sample ID",
-    sampleTypeColumn: "Sample Type",
-    sourceOriginColumn: "Source Origin",
-    requestedTestsColumn: "Requested Tests",
-    dateTimeOfReceiptColumn: "Date/Time of Receipt",
-    receivingPersonnelColumn: "Receiving Personnel",
-    projectStudyAssociationColumn: "Project/Study",
-    storageConditionPriorColumn: "Storage Condition",
-    sampleVolumeColumn: "Sample Volume",
-    transportTemperatureColumn: "Transport Temperature",
-    manifestVerificationStatusColumn: "Verification Status",
-    notesColumn: "Notes",
+    // Required fields
+    uniqueSampleIdColumn: "",
+    sourceOriginColumn: "",
+    requestedTestsColumn: "",
+    dateTimeOfReceiptColumn: "",
+    receivingPersonnelColumn: "",
+    // Sample type (validated against Bioanalytical lab types)
+    sampleTypeColumn: "",
+    // Optional fields
+    projectStudyAssociationColumn: "",
+    storageConditionPriorColumn: "",
+    sampleVolumeColumn: "",
+    transportTemperatureColumn: "",
+    manifestVerificationStatusColumn: "",
+    subjectIdColumn: "",
+    timepointColumn: "",
+    notesColumn: "",
   });
 
-  // Import state
-  const [step, setStep] = useState("upload"); // upload, mapping, preview, importing, results
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-
-  // Preview and results state
+  const [step, setStep] = useState(1);
   const [previewData, setPreviewData] = useState(null);
-  const [importResults, setImportResults] = useState(null);
-  const [errors, setErrors] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [previewErrors, setPreviewErrors] = useState([]);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
-  // Pagination state
-  const [previewPage, setPreviewPage] = useState(0);
-  const previewPageSize = 10;
+  // Dynamic sample types from backend
+  const [validSampleTypes, setValidSampleTypes] = useState([]);
+  const [isSampleTypesLoading, setIsSampleTypesLoading] = useState(false);
 
-  const handleFileChange = (event) => {
-    const uploadedFiles = event.target.files;
-    if (uploadedFiles && uploadedFiles.length > 0) {
-      setFiles(Array.from(uploadedFiles));
-      setErrors([]);
-      setErrorMessage("");
-    }
-  };
-
-  const handleColumnMappingChange = (field, value) => {
-    setColumnMapping((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handlePreview = async () => {
-    if (!files || files.length === 0) {
-      setErrorMessage("Please select a CSV file to preview");
-      return;
-    }
-
-    if (!entryId) {
-      setErrorMessage("Entry ID is required");
-      return;
-    }
-
-    setIsLoadingPreview(true);
-    setErrors([]);
-    setErrorMessage("");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", files[0]);
-      formData.append("mapping", JSON.stringify(columnMapping));
-
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bioanalytical/entry/${entryId}/samples/preview-manifest`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: formData,
+  // Fetch valid sample types from backend when modal opens
+  useEffect(() => {
+    if (open) {
+      setIsSampleTypesLoading(true);
+      fetch(`${config.serverBaseUrl}/rest/notebook/bioanalytical/sample-types`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
         },
-      );
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.sampleTypes) {
+            setValidSampleTypes(data.sampleTypes.map((st) => st.description));
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to fetch sample types:", error);
+          // Fallback to hardcoded values
+          setValidSampleTypes([
+            "API", "Tablet", "Capsule", "Suspension", "Plasma", "Serum", "Urine",
+            "Whole Blood", "Reference Standard", "Excipient", "Stability Sample"
+          ]);
+        })
+        .finally(() => {
+          setIsSampleTypesLoading(false);
+        });
+    }
+  }, [open]);
 
-      const data = await response.json();
+  /**
+   * Auto-detect and map CSV columns based on header names.
+   * Matches against expected column keys (case-insensitive).
+   */
+  const autoMapColumns = useCallback((headers) => {
+    // Map of expected column keys to their form field names
+    const columnKeyToField = {
+      uniquesampleid: "uniqueSampleIdColumn",
+      sampleid: "uniqueSampleIdColumn",
+      id: "uniqueSampleIdColumn",
+      sourceorigin: "sourceOriginColumn",
+      source: "sourceOriginColumn",
+      origin: "sourceOriginColumn",
+      laboratory: "sourceOriginColumn",
+      client: "sourceOriginColumn",
+      requestedtests: "requestedTestsColumn",
+      tests: "requestedTestsColumn",
+      test: "requestedTestsColumn",
+      analysis: "requestedTestsColumn",
+      datetimeofreceipt: "dateTimeOfReceiptColumn",
+      receiptdatetime: "dateTimeOfReceiptColumn",
+      receiptdate: "dateTimeOfReceiptColumn",
+      receptiondatetime: "dateTimeOfReceiptColumn",
+      receiveddate: "dateTimeOfReceiptColumn",
+      receivingpersonnel: "receivingPersonnelColumn",
+      personnel: "receivingPersonnelColumn",
+      receivedby: "receivingPersonnelColumn",
+      receiver: "receivingPersonnelColumn",
+      sampletype: "sampleTypeColumn",
+      type: "sampleTypeColumn",
+      projectstudyassociation: "projectStudyAssociationColumn",
+      project: "projectStudyAssociationColumn",
+      study: "projectStudyAssociationColumn",
+      projectname: "projectStudyAssociationColumn",
+      studyid: "projectStudyAssociationColumn",
+      storagecontitionprior: "storageConditionPriorColumn",
+      storage: "storageConditionPriorColumn",
+      storagecondition: "storageConditionPriorColumn",
+      condition: "storageConditionPriorColumn",
+      samplevolume: "sampleVolumeColumn",
+      volume: "sampleVolumeColumn",
+      quantity: "sampleVolumeColumn",
+      amount: "sampleVolumeColumn",
+      transporttemperature: "transportTemperatureColumn",
+      transport: "transportTemperatureColumn",
+      temperature: "transportTemperatureColumn",
+      temp: "transportTemperatureColumn",
+      manifestverificationstatus: "manifestVerificationStatusColumn",
+      verification: "manifestVerificationStatusColumn",
+      status: "manifestVerificationStatusColumn",
+      verificationstatus: "manifestVerificationStatusColumn",
+      subjectid: "subjectIdColumn",
+      subject: "subjectIdColumn",
+      patientid: "subjectIdColumn",
+      patient: "subjectIdColumn",
+      timepoint: "timepointColumn",
+      time: "timepointColumn",
+      sampling: "timepointColumn",
+      notes: "notesColumn",
+      note: "notesColumn",
+      comments: "notesColumn",
+      comment: "notesColumn",
+      remarks: "notesColumn",
+      observation: "notesColumn",
+    };
 
-      if (!response.ok) {
-        setErrorMessage(data.error || "Failed to preview manifest");
-        if (data.errors) {
-          setErrors(data.errors);
-        }
+    const newMapping = {
+      uniqueSampleIdColumn: "",
+      sourceOriginColumn: "",
+      requestedTestsColumn: "",
+      dateTimeOfReceiptColumn: "",
+      receivingPersonnelColumn: "",
+      sampleTypeColumn: "",
+      projectStudyAssociationColumn: "",
+      storageConditionPriorColumn: "",
+      sampleVolumeColumn: "",
+      transportTemperatureColumn: "",
+      manifestVerificationStatusColumn: "",
+      subjectIdColumn: "",
+      timepointColumn: "",
+      notesColumn: "",
+    };
+
+    headers.forEach((header) => {
+      // Normalize header: lowercase, remove spaces/underscores/hyphens
+      const normalizedHeader = header
+        .toLowerCase()
+        .replace(/[\s_-]/g, "")
+        .replace(/[/\\]/g, "");
+
+      const fieldName = columnKeyToField[normalizedHeader];
+      if (fieldName) {
+        newMapping[fieldName] = header;
+      }
+    });
+
+    return newMapping;
+  }, []);
+
+  const handleFileAdded = useCallback(
+    (event, { addedFiles }) => {
+      const addedFile = addedFiles[0];
+      if (!addedFile) return;
+
+      if (!addedFile.name.endsWith(".csv")) {
+        setFileError(
+          intl.formatMessage({
+            id: "notebook.bioanalytical.manifest.error.invalidFileType",
+            defaultMessage: "Please upload a CSV file",
+          }),
+        );
         return;
       }
 
-      setPreviewData(data);
-      setPreviewPage(0);
-      setStep("preview");
+      setFile(addedFile);
+      setFileError(null);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        const firstLine = text.split("\n")[0];
+        const headers = firstLine
+          .split(",")
+          .map((h) => h.trim().replace(/"/g, ""));
+        setCsvHeaders(headers);
+
+        // Auto-map columns based on header names
+        const autoMappedColumns = autoMapColumns(headers);
+        setColumnMapping(autoMappedColumns);
+
+        setStep(2);
+      };
+      reader.readAsText(addedFile);
+    },
+    [intl, autoMapColumns],
+  );
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setCsvHeaders([]);
+    setColumnMapping({
+      uniqueSampleIdColumn: "",
+      sourceOriginColumn: "",
+      requestedTestsColumn: "",
+      dateTimeOfReceiptColumn: "",
+      receivingPersonnelColumn: "",
+      sampleTypeColumn: "",
+      projectStudyAssociationColumn: "",
+      storageConditionPriorColumn: "",
+      sampleVolumeColumn: "",
+      transportTemperatureColumn: "",
+      manifestVerificationStatusColumn: "",
+      subjectIdColumn: "",
+      timepointColumn: "",
+      notesColumn: "",
+    });
+    setPreviewData(null);
+    setPreviewErrors([]);
+    setStep(1);
+  };
+
+  const handleMappingChange = (field, value) => {
+    setColumnMapping((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // All 5 required fields must be mapped
+  const requiredColumnsMapped =
+    columnMapping.uniqueSampleIdColumn &&
+    columnMapping.sourceOriginColumn &&
+    columnMapping.requestedTestsColumn &&
+    columnMapping.dateTimeOfReceiptColumn &&
+    columnMapping.receivingPersonnelColumn;
+
+  const buildFormData = () => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append(
+      "mapping",
+      new Blob([JSON.stringify(columnMapping)], { type: "application/json" }),
+    );
+    return formData;
+  };
+
+  const handlePreview = async () => {
+    if (!file || !entryId) return;
+    setIsPreviewLoading(true);
+    setPreviewErrors([]);
+
+    try {
+      const endpoint = `${config.serverBaseUrl}/rest/notebook/bioanalytical/entry/${entryId}/samples/preview-manifest`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: buildFormData(),
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setPreviewData(data);
+        setPreviewErrors(data.errors || []);
+        setStep(3);
+      } else {
+        setPreviewErrors(
+          data.errors || [
+            {
+              rowNumber: 0,
+              column: "file",
+              message: data.error || "Preview failed",
+            },
+          ],
+        );
+      }
     } catch (error) {
-      console.error("Preview error:", error);
-      setErrorMessage(`Preview failed: ${error.message}`);
+      setPreviewErrors([
+        { rowNumber: 0, column: "file", message: error.message },
+      ]);
     } finally {
-      setIsLoadingPreview(false);
+      setIsPreviewLoading(false);
     }
   };
 
   const handleImport = async () => {
-    if (!files || files.length === 0) {
-      setErrorMessage("Please select a CSV file to import");
-      return;
-    }
-
-    if (!entryId) {
-      setErrorMessage("Entry ID is required");
-      return;
-    }
-
+    if (!file || !entryId) return;
     setIsImporting(true);
-    setImportProgress(0);
-    setErrors([]);
-    setErrorMessage("");
+    setPreviewErrors([]);
 
     try {
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setImportProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + Math.random() * 20;
-        });
-      }, 300);
-
-      const formData = new FormData();
-      formData.append("file", files[0]);
-      formData.append("mapping", JSON.stringify(columnMapping));
-
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bioanalytical/entry/${entryId}/samples/import-manifest`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: formData,
+      const endpoint = `${config.serverBaseUrl}/rest/notebook/bioanalytical/entry/${entryId}/samples/create-from-manifest`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: buildFormData(),
+        credentials: "include",
+        headers: {
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
         },
-      );
-
-      clearInterval(progressInterval);
-      setImportProgress(100);
+      });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        setErrorMessage(data.error || "Failed to import manifest");
-        if (data.errors) {
-          setErrors(data.errors);
-        }
-        return;
-      }
-
-      setImportResults(data);
-      setStep("results");
-
-      // Notify parent component of success
-      if (onSuccess) {
-        setTimeout(() => {
+      if (response.ok && data.success) {
+        setStep(4);
+        if (onSuccess) {
           onSuccess(data);
-        }, 1000);
+        }
+      } else {
+        setPreviewErrors(
+          data.errors || [
+            {
+              rowNumber: 0,
+              column: "import",
+              message: data.error || "Import failed",
+            },
+          ],
+        );
       }
     } catch (error) {
-      console.error("Import error:", error);
-      setErrorMessage(`Import failed: ${error.message}`);
+      setPreviewErrors([
+        { rowNumber: 0, column: "import", message: error.message },
+      ]);
     } finally {
       setIsImporting(false);
     }
   };
 
-  const handleReset = () => {
-    setFiles([]);
-    setStep("upload");
-    setPreviewData(null);
-    setImportResults(null);
-    setErrors([]);
-    setErrorMessage("");
-    setImportProgress(0);
-  };
-
   const handleClose = () => {
-    handleReset();
+    handleRemoveFile();
     onClose();
   };
 
-  const getPaginatedRows = () => {
-    if (!previewData || !previewData.rows) {
-      return [];
-    }
-    const startIdx = previewPage * previewPageSize;
-    return previewData.rows.slice(startIdx, startIdx + previewPageSize);
-  };
-
-  const getTotalPages = () => {
-    if (!previewData || !previewData.rows) {
-      return 0;
-    }
-    return Math.ceil(previewData.rows.length / previewPageSize);
-  };
+  const mappingField = (field, labelId) => (
+    <Select
+      id={`mapping-${field}`}
+      labelText={intl.formatMessage({ id: labelId })}
+      value={columnMapping[field]}
+      onChange={(e) => handleMappingChange(field, e.target.value)}
+    >
+      <SelectItem value="" text={intl.formatMessage({ id: "label.select" })} />
+      {csvHeaders.map((header) => (
+        <SelectItem key={header} value={header} text={header} />
+      ))}
+    </Select>
+  );
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={open}
       onRequestClose={handleClose}
-      modalHeading={
-        <FormattedMessage
-          id="notebook.bioanalytical.manifest.import.title"
-          defaultMessage="Import Sample Manifest"
-        />
-      }
-      primaryButtonText={
-        step === "upload" || step === "mapping"
-          ? intl.formatMessage({
-              id: "notebook.bioanalytical.manifest.preview",
-              defaultMessage: "Preview",
-            })
-          : step === "preview"
-            ? intl.formatMessage({
-                id: "notebook.bioanalytical.manifest.import",
-                defaultMessage: "Import",
-              })
-            : intl.formatMessage({
-                id: "notebook.bioanalytical.manifest.close",
-                defaultMessage: "Close",
-              })
-      }
-      secondaryButtonText={intl.formatMessage({
-        id: "notebook.bioanalytical.manifest.cancel",
-        defaultMessage: "Cancel",
+      modalHeading={intl.formatMessage({
+        id: "notebook.bioanalytical.manifest.title",
+        defaultMessage: "Import Bioanalytical Samples from CSV Manifest",
       })}
-      onRequestSubmit={
-        step === "upload" || step === "mapping"
-          ? handlePreview
-          : step === "preview"
-            ? handleImport
-            : handleClose
+      primaryButtonText={
+        step === 1
+          ? intl.formatMessage({ id: "label.button.next" })
+          : step === 2
+            ? intl.formatMessage({ id: "notebook.manifest.preview" })
+            : step === 3
+              ? intl.formatMessage({ id: "notebook.manifest.import" })
+              : intl.formatMessage({ id: "label.button.close" })
       }
-      size="lg"
+      secondaryButtonText={
+        step > 1 && step < 4
+          ? intl.formatMessage({ id: "label.button.back", defaultMessage: "Back" })
+          : intl.formatMessage({ id: "label.button.cancel", defaultMessage: "Cancel" })
+      }
+      secondaryButtonKind="tertiary"
+      onRequestSubmit={() => {
+        if (step === 1 && file) setStep(2);
+        else if (step === 2) handlePreview();
+        else if (step === 3) handleImport();
+        else handleClose();
+      }}
+      onSecondarySubmit={() => {
+        if (step > 1 && step < 4) {
+          setStep(step - 1);
+        } else {
+          handleClose();
+        }
+      }}
+      primaryButtonDisabled={
+        (step === 1 && !file) ||
+        (step === 2 && !requiredColumnsMapped) ||
+        (step === 3 && previewErrors.length > 0) ||
+        isPreviewLoading ||
+        isImporting
+      }
+      size="md"
     >
-      <div className="manifest-import-container">
-        {/* Step 1: File Upload */}
-        {(step === "upload" || step === "mapping") && (
-          <div className="step-content">
-            <h3>
+      <div className="manifest-import-modal">
+        {step === 1 && (
+          <div className="upload-step">
+            <p className="step-description">
               <FormattedMessage
-                id="notebook.bioanalytical.manifest.step1.title"
-                defaultMessage="Step 1: Select CSV File"
+                id="notebook.bioanalytical.manifest.step1"
+                defaultMessage="Upload a CSV file with bioanalytical sample reception metadata. Review the expected data points below before uploading."
               />
-            </h3>
+            </p>
 
-            <FileUploader
-              accept={[".csv"]}
-              buttonKind="primary"
-              buttonLabel={intl.formatMessage({
-                id: "notebook.bioanalytical.manifest.selectFile",
-                defaultMessage: "Select File",
-              })}
-              filenameStatus="edit"
-              iconDescription={intl.formatMessage({
-                id: "notebook.bioanalytical.manifest.deleteFile",
-                defaultMessage: "Delete File",
-              })}
-              labelDescription={intl.formatMessage({
-                id: "notebook.bioanalytical.manifest.fileDescription",
-                defaultMessage: "CSV file (comma-separated values)",
-              })}
-              labelTitle={intl.formatMessage({
-                id: "notebook.bioanalytical.manifest.uploadLabel",
-                defaultMessage: "Upload CSV manifest file",
-              })}
-              multiple={false}
-              onChange={handleFileChange}
-              ref={fileInputRef}
-            />
-
-            {files && files.length > 0 && (
-              <div style={{ marginTop: "1rem" }}>
-                <InlineNotification
-                  kind="success"
-                  title={intl.formatMessage({
-                    id: "notebook.bioanalytical.manifest.fileSelected",
-                    defaultMessage: "File Selected",
-                  })}
-                  subtitle={files[0].name}
-                  lowContrast
-                />
-              </div>
-            )}
-
-            {/* Column Mapping */}
-            {files && files.length > 0 && step === "mapping" && (
-              <div style={{ marginTop: "2rem" }}>
-                <h3>
-                  <FormattedMessage
-                    id="notebook.bioanalytical.manifest.step2.title"
-                    defaultMessage="Step 2: Configure Column Mapping"
-                  />
-                </h3>
-
-                <p>
-                  <FormattedMessage
-                    id="notebook.bioanalytical.manifest.columnMappingHelp"
-                    defaultMessage="Specify which CSV columns correspond to sample data fields. Required fields are marked with *."
-                  />
-                </p>
-
-                <Grid>
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      labelText={
-                        <span>
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.column.sampleId"
-                            defaultMessage="Sample ID *"
-                          />
-                        </span>
-                      }
-                      value={columnMapping.uniqueSampleIdColumn}
-                      onChange={(e) =>
-                        handleColumnMappingChange(
-                          "uniqueSampleIdColumn",
-                          e.target.value,
-                        )
-                      }
-                      disabled
-                      helperText={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.required",
-                        defaultMessage: "Required field",
-                      })}
-                    />
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      labelText={
-                        <span>
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.column.sampleType"
-                            defaultMessage="Sample Type *"
-                          />
-                        </span>
-                      }
-                      value={columnMapping.sampleTypeColumn}
-                      onChange={(e) =>
-                        handleColumnMappingChange(
-                          "sampleTypeColumn",
-                          e.target.value,
-                        )
-                      }
-                      disabled
-                      helperText={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.required",
-                        defaultMessage: "Required field",
-                      })}
-                    />
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      labelText={
-                        <span>
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.column.sourceOrigin"
-                            defaultMessage="Source Origin *"
-                          />
-                        </span>
-                      }
-                      value={columnMapping.sourceOriginColumn}
-                      onChange={(e) =>
-                        handleColumnMappingChange(
-                          "sourceOriginColumn",
-                          e.target.value,
-                        )
-                      }
-                      disabled
-                      helperText={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.required",
-                        defaultMessage: "Required field",
-                      })}
-                    />
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      labelText={
-                        <span>
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.column.requestedTests"
-                            defaultMessage="Requested Tests *"
-                          />
-                        </span>
-                      }
-                      value={columnMapping.requestedTestsColumn}
-                      onChange={(e) =>
-                        handleColumnMappingChange(
-                          "requestedTestsColumn",
-                          e.target.value,
-                        )
-                      }
-                      disabled
-                      helperText={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.required",
-                        defaultMessage: "Required field",
-                      })}
-                    />
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      labelText={
-                        <span>
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.column.dateTime"
-                            defaultMessage="Date/Time of Receipt *"
-                          />
-                        </span>
-                      }
-                      value={columnMapping.dateTimeOfReceiptColumn}
-                      onChange={(e) =>
-                        handleColumnMappingChange(
-                          "dateTimeOfReceiptColumn",
-                          e.target.value,
-                        )
-                      }
-                      disabled
-                      helperText={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.required",
-                        defaultMessage: "Required field",
-                      })}
-                    />
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <TextInput
-                      labelText={
-                        <span>
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.column.personnel"
-                            defaultMessage="Receiving Personnel *"
-                          />
-                        </span>
-                      }
-                      value={columnMapping.receivingPersonnelColumn}
-                      onChange={(e) =>
-                        handleColumnMappingChange(
-                          "receivingPersonnelColumn",
-                          e.target.value,
-                        )
-                      }
-                      disabled
-                      helperText={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.required",
-                        defaultMessage: "Required field",
-                      })}
-                    />
-                  </Column>
-                </Grid>
-
-                <div style={{ marginTop: "1.5rem" }}>
-                  <p style={{ fontWeight: "bold", marginBottom: "1rem" }}>
+            {/* Expected Data Points Section */}
+            <Accordion className="expected-datapoints-accordion">
+              <AccordionItem
+                title={
+                  <span className="accordion-title">
+                    <Information size={16} />
                     <FormattedMessage
-                      id="notebook.bioanalytical.manifest.optionalFields"
-                      defaultMessage="Optional Fields:"
+                      id="notebook.bioanalytical.manifest.expectedColumns"
+                      defaultMessage="Expected CSV Columns & Data Points"
                     />
-                  </p>
-
-                  <Grid>
-                    <Column lg={8} md={4} sm={4}>
-                      <TextInput
-                        labelText={intl.formatMessage({
-                          id: "notebook.bioanalytical.manifest.column.project",
-                          defaultMessage: "Project/Study Association",
-                        })}
-                        value={columnMapping.projectStudyAssociationColumn}
-                        onChange={(e) =>
-                          handleColumnMappingChange(
-                            "projectStudyAssociationColumn",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </Column>
-
-                    <Column lg={8} md={4} sm={4}>
-                      <TextInput
-                        labelText={intl.formatMessage({
-                          id: "notebook.bioanalytical.manifest.column.storage",
-                          defaultMessage: "Storage Condition",
-                        })}
-                        value={columnMapping.storageConditionPriorColumn}
-                        onChange={(e) =>
-                          handleColumnMappingChange(
-                            "storageConditionPriorColumn",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </Column>
-
-                    <Column lg={8} md={4} sm={4}>
-                      <TextInput
-                        labelText={intl.formatMessage({
-                          id: "notebook.bioanalytical.manifest.column.volume",
-                          defaultMessage: "Sample Volume",
-                        })}
-                        value={columnMapping.sampleVolumeColumn}
-                        onChange={(e) =>
-                          handleColumnMappingChange(
-                            "sampleVolumeColumn",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </Column>
-                  </Grid>
-                </div>
-              </div>
-            )}
-
-            {errorMessage && (
-              <div style={{ marginTop: "1rem" }}>
-                <InlineNotification
-                  kind="error"
-                  title={intl.formatMessage({
-                    id: "notebook.bioanalytical.manifest.error",
-                    defaultMessage: "Error",
-                  })}
-                  subtitle={errorMessage}
-                  lowContrast
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 2: Preview */}
-        {step === "preview" && (
-          <div className="step-content">
-            <h3>
-              <FormattedMessage
-                id="notebook.bioanalytical.manifest.step3.title"
-                defaultMessage="Step 3: Preview Data"
-              />
-            </h3>
-
-            {previewData && (
-              <div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <InlineNotification
-                    kind="info"
-                    title={intl.formatMessage({
-                      id: "notebook.bioanalytical.manifest.previewSummary",
-                      defaultMessage: "Preview Summary",
-                    })}
-                    subtitle={intl.formatMessage(
-                      {
-                        id: "notebook.bioanalytical.manifest.previewStats",
-                        defaultMessage:
-                          "Total rows: {totalRows}, Valid rows: {validRows}, Errors: {errorCount}",
-                      },
-                      {
-                        totalRows: previewData.totalRows,
-                        validRows: previewData.validRows,
-                        errorCount: previewData.errors?.length || 0,
-                      },
-                    )}
-                    lowContrast
-                  />
-                </div>
-
-                {previewData.errors && previewData.errors.length > 0 && (
-                  <div style={{ marginBottom: "1.5rem" }}>
-                    <h4>
+                  </span>
+                }
+                open={!file}
+              >
+                <div className="datapoints-container">
+                  {/* Required Fields */}
+                  <div className="datapoints-section">
+                    <h5 className="section-title required-title">
                       <FormattedMessage
-                        id="notebook.bioanalytical.manifest.validationErrors"
-                        defaultMessage="Validation Errors"
+                        id="notebook.bioanalytical.manifest.requiredFields"
+                        defaultMessage="Required Fields"
                       />
-                    </h4>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
+                      <Tag type="red" size="sm">
+                        {EXPECTED_DATA_POINTS.required.length}
+                      </Tag>
+                    </h5>
+                    <StructuredListWrapper isCondensed>
+                      <StructuredListHead>
+                        <StructuredListRow head>
+                          <StructuredListCell head>
                             <FormattedMessage
-                              id="notebook.bioanalytical.manifest.row"
-                              defaultMessage="Row"
-                            />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage
-                              id="notebook.bioanalytical.manifest.column"
+                              id="label.column"
                               defaultMessage="Column"
                             />
-                          </TableHeader>
-                          <TableHeader>
+                          </StructuredListCell>
+                          <StructuredListCell head>
                             <FormattedMessage
-                              id="notebook.bioanalytical.manifest.message"
-                              defaultMessage="Message"
+                              id="label.description"
+                              defaultMessage="Description"
                             />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {previewData.errors.slice(0, 5).map((error, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{error.rowNumber}</TableCell>
-                            <TableCell>{error.column}</TableCell>
-                            <TableCell>{error.message}</TableCell>
-                          </TableRow>
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage
+                              id="label.example"
+                              defaultMessage="Example"
+                            />
+                          </StructuredListCell>
+                        </StructuredListRow>
+                      </StructuredListHead>
+                      <StructuredListBody>
+                        {EXPECTED_DATA_POINTS.required.map((field) => (
+                          <StructuredListRow key={field.key}>
+                            <StructuredListCell>
+                              <strong>{field.label}</strong>
+                              <br />
+                              <code className="column-key">{field.key}</code>
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {field.description}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              <code>{field.example}</code>
+                            </StructuredListCell>
+                          </StructuredListRow>
                         ))}
-                      </TableBody>
-                    </Table>
-                    {previewData.errors.length > 5 && (
-                      <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
-                        {intl.formatMessage(
-                          {
-                            id: "notebook.bioanalytical.manifest.moreErrors",
-                            defaultMessage: "...and {count} more errors",
-                          },
-                          { count: previewData.errors.length - 5 },
-                        )}
-                      </p>
-                    )}
+                      </StructuredListBody>
+                    </StructuredListWrapper>
                   </div>
-                )}
 
-                {previewData.rows && previewData.rows.length > 0 && (
-                  <div>
-                    <h4>
+                  {/* Sample Type Field (Validated) */}
+                  <div className="datapoints-section">
+                    <h5 className="section-title sampletype-title">
                       <FormattedMessage
-                        id="notebook.bioanalytical.manifest.samplePreview"
-                        defaultMessage="Sample Data Preview"
+                        id="notebook.bioanalytical.manifest.sampleTypeField"
+                        defaultMessage="Sample Type (Validated)"
                       />
-                    </h4>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
+                      <Tag type="purple" size="sm">
+                        1
+                      </Tag>
+                    </h5>
+                    <StructuredListWrapper isCondensed>
+                      <StructuredListHead>
+                        <StructuredListRow head>
+                          <StructuredListCell head>
                             <FormattedMessage
-                              id="notebook.bioanalytical.manifest.sampleId"
-                              defaultMessage="Sample ID"
+                              id="label.column"
+                              defaultMessage="Column"
                             />
-                          </TableHeader>
-                          <TableHeader>
+                          </StructuredListCell>
+                          <StructuredListCell head>
                             <FormattedMessage
-                              id="notebook.bioanalytical.manifest.type"
-                              defaultMessage="Type"
+                              id="label.description"
+                              defaultMessage="Description"
                             />
-                          </TableHeader>
-                          <TableHeader>
+                          </StructuredListCell>
+                          <StructuredListCell head>
                             <FormattedMessage
-                              id="notebook.bioanalytical.manifest.origin"
-                              defaultMessage="Origin"
+                              id="notebook.bioanalytical.manifest.validValues"
+                              defaultMessage="Valid Values"
                             />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage
-                              id="notebook.bioanalytical.manifest.tests"
-                              defaultMessage="Tests"
-                            />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {getPaginatedRows().map((row, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{row.uniqueSampleId}</TableCell>
-                            <TableCell>{row.sampleType}</TableCell>
-                            <TableCell>{row.sourceOrigin}</TableCell>
-                            <TableCell>{row.requestedTests}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-
-                    {getTotalPages() > 1 && (
-                      <div style={{ marginTop: "1rem", textAlign: "center" }}>
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setPreviewPage(Math.max(0, previewPage - 1))
-                          }
-                          disabled={previewPage === 0}
-                        >
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.previous"
-                            defaultMessage="Previous"
-                          />
-                        </Button>
-                        <span style={{ margin: "0 1rem" }}>
-                          {previewPage + 1} / {getTotalPages()}
-                        </span>
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setPreviewPage(
-                              Math.min(getTotalPages() - 1, previewPage + 1),
-                            )
-                          }
-                          disabled={previewPage >= getTotalPages() - 1}
-                        >
-                          <FormattedMessage
-                            id="notebook.bioanalytical.manifest.next"
-                            defaultMessage="Next"
-                          />
-                        </Button>
-                      </div>
-                    )}
+                          </StructuredListCell>
+                        </StructuredListRow>
+                      </StructuredListHead>
+                      <StructuredListBody>
+                        <StructuredListRow>
+                          <StructuredListCell>
+                            <strong>
+                              {EXPECTED_DATA_POINTS.sampleType.label}
+                            </strong>
+                            <br />
+                            <code className="column-key">
+                              {EXPECTED_DATA_POINTS.sampleType.key}
+                            </code>
+                          </StructuredListCell>
+                          <StructuredListCell>
+                            {EXPECTED_DATA_POINTS.sampleType.description}
+                          </StructuredListCell>
+                          <StructuredListCell>
+                            <div className="valid-values-list">
+                              {isSampleTypesLoading ? (
+                                <Loading
+                                  small
+                                  withOverlay={false}
+                                  description="Loading sample types..."
+                                />
+                              ) : validSampleTypes.length > 0 ? (
+                                validSampleTypes.map((value, idx) => (
+                                  <Tag key={idx} type="outline" size="sm">
+                                    {value}
+                                  </Tag>
+                                ))
+                              ) : (
+                                <span className="no-sample-types">
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.manifest.noSampleTypes"
+                                    defaultMessage="No sample types configured. Contact administrator."
+                                  />
+                                </span>
+                              )}
+                            </div>
+                          </StructuredListCell>
+                        </StructuredListRow>
+                      </StructuredListBody>
+                    </StructuredListWrapper>
                   </div>
-                )}
-              </div>
-            )}
 
-            {errorMessage && (
-              <div style={{ marginTop: "1rem" }}>
-                <InlineNotification
-                  kind="error"
-                  title={intl.formatMessage({
-                    id: "notebook.bioanalytical.manifest.error",
-                    defaultMessage: "Error",
+                  {/* Optional Fields */}
+                  <div className="datapoints-section">
+                    <h5 className="section-title optional-title">
+                      <FormattedMessage
+                        id="notebook.bioanalytical.manifest.optionalFields"
+                        defaultMessage="Optional Fields"
+                      />
+                      <Tag type="blue" size="sm">
+                        {EXPECTED_DATA_POINTS.optional.length}
+                      </Tag>
+                    </h5>
+                    <StructuredListWrapper isCondensed>
+                      <StructuredListHead>
+                        <StructuredListRow head>
+                          <StructuredListCell head>
+                            <FormattedMessage
+                              id="label.column"
+                              defaultMessage="Column"
+                            />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage
+                              id="label.description"
+                              defaultMessage="Description"
+                            />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage
+                              id="label.example"
+                              defaultMessage="Example"
+                            />
+                          </StructuredListCell>
+                        </StructuredListRow>
+                      </StructuredListHead>
+                      <StructuredListBody>
+                        {EXPECTED_DATA_POINTS.optional.map((field) => (
+                          <StructuredListRow key={field.key}>
+                            <StructuredListCell>
+                              <strong>{field.label}</strong>
+                              <br />
+                              <code className="column-key">{field.key}</code>
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {field.description}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              <code>{field.example}</code>
+                            </StructuredListCell>
+                          </StructuredListRow>
+                        ))}
+                      </StructuredListBody>
+                    </StructuredListWrapper>
+                  </div>
+
+                  {/* Auto-Generated Fields */}
+                  <div className="datapoints-section">
+                    <h5 className="section-title auto-title">
+                      <FormattedMessage
+                        id="notebook.bioanalytical.manifest.autoGeneratedFields"
+                        defaultMessage="Auto-Generated Fields (Do not include in CSV)"
+                      />
+                      <Tag type="green" size="sm">
+                        {EXPECTED_DATA_POINTS.autoGenerated.length}
+                      </Tag>
+                    </h5>
+                    <StructuredListWrapper isCondensed>
+                      <StructuredListHead>
+                        <StructuredListRow head>
+                          <StructuredListCell head>
+                            <FormattedMessage
+                              id="label.field"
+                              defaultMessage="Field"
+                            />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage
+                              id="label.description"
+                              defaultMessage="Description"
+                            />
+                          </StructuredListCell>
+                        </StructuredListRow>
+                      </StructuredListHead>
+                      <StructuredListBody>
+                        {EXPECTED_DATA_POINTS.autoGenerated.map((field) => (
+                          <StructuredListRow key={field.key}>
+                            <StructuredListCell>
+                              <strong>{field.label}</strong>
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {field.description}
+                            </StructuredListCell>
+                          </StructuredListRow>
+                        ))}
+                      </StructuredListBody>
+                    </StructuredListWrapper>
+                  </div>
+                </div>
+              </AccordionItem>
+            </Accordion>
+
+            {/* File Upload */}
+            <div className="file-upload-section">
+              {!file ? (
+                <FileUploaderDropContainer
+                  accept={[".csv"]}
+                  labelText={intl.formatMessage({
+                    id: "notebook.bioanalytical.manifest.dropzone",
+                    defaultMessage:
+                      "Drag and drop a CSV file here or click to upload",
                   })}
-                  subtitle={errorMessage}
-                  lowContrast
+                  onAddFiles={handleFileAdded}
                 />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 3: Importing */}
-        {step === "importing" && (
-          <div className="step-content" style={{ textAlign: "center" }}>
-            <Loading description="Importing samples..." />
-            <div style={{ marginTop: "2rem" }}>
-              <ProgressBar
-                label={intl.formatMessage({
-                  id: "notebook.bioanalytical.manifest.importProgress",
-                  defaultMessage: "Import Progress",
-                })}
-                value={importProgress}
-                max={100}
-              />
+              ) : (
+                <FileUploaderItem
+                  name={file.name}
+                  status="edit"
+                  onDelete={handleRemoveFile}
+                />
+              )}
             </div>
+            {fileError && (
+              <InlineNotification
+                kind="error"
+                title={fileError}
+                lowContrast
+                hideCloseButton
+              />
+            )}
           </div>
         )}
 
-        {/* Step 4: Results */}
-        {step === "results" && (
-          <div className="step-content">
-            <h3>
+        {step === 2 && (
+          <div className="mapping-step">
+            <p className="step-description">
               <FormattedMessage
-                id="notebook.bioanalytical.manifest.step4.title"
-                defaultMessage="Import Complete"
+                id="notebook.bioanalytical.manifest.step2"
+                defaultMessage="Map your CSV columns to the expected reception metadata fields. All required fields (marked with *) must be mapped."
               />
-            </h3>
+            </p>
 
-            {importResults && (
-              <div>
-                {importResults.success && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <InlineNotification
-                      kind="success"
-                      title={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.importSuccess",
-                        defaultMessage: "Import Successful",
-                      })}
-                      subtitle={intl.formatMessage(
-                        {
-                          id: "notebook.bioanalytical.manifest.samplesCreated",
-                          defaultMessage:
-                            "{count} samples created successfully",
-                        },
-                        { count: importResults.totalCreated },
-                      )}
-                      lowContrast
-                    />
-                  </div>
-                )}
-
-                {!importResults.success && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <InlineNotification
-                      kind="error"
-                      title={intl.formatMessage({
-                        id: "notebook.bioanalytical.manifest.importFailed",
-                        defaultMessage: "Import Failed",
-                      })}
-                      subtitle={intl.formatMessage(
-                        {
-                          id: "notebook.bioanalytical.manifest.samplesFailedCount",
-                          defaultMessage: "{count} samples failed to create",
-                        },
-                        {
-                          count:
-                            importResults.totalRequested -
-                            importResults.totalCreated,
-                        },
-                      )}
-                      lowContrast
-                    />
-                  </div>
-                )}
-
-                {importResults.createdSampleIds &&
-                  importResults.createdSampleIds.length > 0 && (
-                    <div style={{ marginBottom: "1rem" }}>
-                      <h4>
-                        <FormattedMessage
-                          id="notebook.bioanalytical.manifest.createdSamples"
-                          defaultMessage="Created Sample IDs"
-                        />
-                      </h4>
-                      <div
-                        style={{
-                          maxHeight: "200px",
-                          overflow: "auto",
-                          padding: "0.5rem",
-                          backgroundColor: "#f4f4f4",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        {importResults.createdSampleIds.map((id, idx) => (
-                          <div key={idx} style={{ fontSize: "0.875rem" }}>
-                            {id}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+            {/* Required Fields Section */}
+            <div className="mapping-section">
+              <h5 className="mapping-section-title">
+                <FormattedMessage
+                  id="notebook.bioanalytical.manifest.requiredMappings"
+                  defaultMessage="Required Fields"
+                />
+                <Tag type="red" size="sm">
+                  5
+                </Tag>
+              </h5>
+              <div className="mapping-grid">
+                <div className="mapping-field required">
+                  {mappingField(
+                    "uniqueSampleIdColumn",
+                    "notebook.bioanalytical.manifest.column.uniqueSampleId",
                   )}
+                  <span className="required-marker">*</span>
+                </div>
+                <div className="mapping-field required">
+                  {mappingField(
+                    "sourceOriginColumn",
+                    "notebook.bioanalytical.manifest.column.sourceOrigin",
+                  )}
+                  <span className="required-marker">*</span>
+                </div>
+                <div className="mapping-field required">
+                  {mappingField(
+                    "requestedTestsColumn",
+                    "notebook.bioanalytical.manifest.column.requestedTests",
+                  )}
+                  <span className="required-marker">*</span>
+                </div>
+                <div className="mapping-field required">
+                  {mappingField(
+                    "dateTimeOfReceiptColumn",
+                    "notebook.bioanalytical.manifest.column.dateTimeOfReceipt",
+                  )}
+                  <span className="required-marker">*</span>
+                </div>
+                <div className="mapping-field required">
+                  {mappingField(
+                    "receivingPersonnelColumn",
+                    "notebook.bioanalytical.manifest.column.receivingPersonnel",
+                  )}
+                  <span className="required-marker">*</span>
+                </div>
+              </div>
+            </div>
 
-                {importResults.errors && importResults.errors.length > 0 && (
-                  <div>
-                    <h4>
-                      <FormattedMessage
-                        id="notebook.bioanalytical.manifest.importErrors"
-                        defaultMessage="Import Errors"
-                      />
-                    </h4>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage
-                              id="notebook.bioanalytical.manifest.row"
-                              defaultMessage="Row"
-                            />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage
-                              id="notebook.bioanalytical.manifest.column"
-                              defaultMessage="Column"
-                            />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage
-                              id="notebook.bioanalytical.manifest.message"
-                              defaultMessage="Message"
-                            />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {importResults.errors.slice(0, 10).map((error, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{error.rowNumber}</TableCell>
-                            <TableCell>{error.column}</TableCell>
-                            <TableCell>{error.message}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    {importResults.errors.length > 10 && (
-                      <p style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}>
-                        {intl.formatMessage(
-                          {
-                            id: "notebook.bioanalytical.manifest.moreErrors",
-                            defaultMessage: "...and {count} more errors",
-                          },
-                          { count: importResults.errors.length - 10 },
-                        )}
-                      </p>
-                    )}
-                  </div>
+            {/* Sample Type Field Section (Validated) */}
+            <div className="mapping-section">
+              <h5 className="mapping-section-title">
+                <FormattedMessage
+                  id="notebook.bioanalytical.manifest.sampleTypeMappings"
+                  defaultMessage="Sample Type (Validated)"
+                />
+                <Tag type="purple" size="sm">
+                  1
+                </Tag>
+              </h5>
+              <p className="mapping-section-info">
+                <FormattedMessage
+                  id="notebook.bioanalytical.manifest.sampleTypeInfo"
+                  defaultMessage="Sample type must match one of the valid Bioanalytical lab types. Invalid types will be rejected during validation."
+                />
+              </p>
+              <div className="mapping-grid">
+                {mappingField(
+                  "sampleTypeColumn",
+                  "notebook.bioanalytical.manifest.column.sampleType",
                 )}
               </div>
+            </div>
+
+            {/* Optional Fields Section */}
+            <div className="mapping-section">
+              <h5 className="mapping-section-title">
+                <FormattedMessage
+                  id="notebook.bioanalytical.manifest.optionalMappings"
+                  defaultMessage="Optional Fields"
+                />
+                <Tag type="blue" size="sm">
+                  8
+                </Tag>
+              </h5>
+              <div className="mapping-grid">
+                {mappingField(
+                  "projectStudyAssociationColumn",
+                  "notebook.bioanalytical.manifest.column.projectStudyAssociation",
+                )}
+                {mappingField(
+                  "storageConditionPriorColumn",
+                  "notebook.bioanalytical.manifest.column.storageConditionPrior",
+                )}
+                {mappingField(
+                  "sampleVolumeColumn",
+                  "notebook.bioanalytical.manifest.column.sampleVolume",
+                )}
+                {mappingField(
+                  "transportTemperatureColumn",
+                  "notebook.bioanalytical.manifest.column.transportTemperature",
+                )}
+                {mappingField(
+                  "manifestVerificationStatusColumn",
+                  "notebook.bioanalytical.manifest.column.manifestVerificationStatus",
+                )}
+                {mappingField(
+                  "subjectIdColumn",
+                  "notebook.bioanalytical.manifest.column.subjectId",
+                )}
+                {mappingField(
+                  "timepointColumn",
+                  "notebook.bioanalytical.manifest.column.timepoint",
+                )}
+                {mappingField(
+                  "notesColumn",
+                  "notebook.bioanalytical.manifest.column.notes",
+                )}
+              </div>
+            </div>
+
+            {previewErrors.length > 0 && (
+              <InlineNotification
+                kind="error"
+                title={intl.formatMessage({
+                  id: "notebook.manifest.validationErrors",
+                  defaultMessage: "Validation Errors",
+                })}
+                subtitle={
+                  <ul className="error-list">
+                    {previewErrors.map((error, idx) => (
+                      <li key={idx}>
+                        {error.rowNumber > 0 ? `Row ${error.rowNumber}: ` : ""}
+                        {error.message}
+                      </li>
+                    ))}
+                  </ul>
+                }
+                lowContrast
+                hideCloseButton
+              />
             )}
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="preview-step">
+            {isPreviewLoading ? (
+              <Loading withOverlay={false} description="Loading preview..." />
+            ) : (
+              <>
+                {previewErrors.length > 0 && (
+                  <InlineNotification
+                    kind="error"
+                    title={intl.formatMessage({
+                      id: "notebook.manifest.validationErrors",
+                      defaultMessage: "Validation Errors",
+                    })}
+                    subtitle={
+                      <ul className="error-list">
+                        {previewErrors.map((error, idx) => (
+                          <li key={idx}>
+                            {error.rowNumber > 0
+                              ? `Row ${error.rowNumber}: `
+                              : ""}
+                            {error.message}
+                          </li>
+                        ))}
+                      </ul>
+                    }
+                    lowContrast
+                    hideCloseButton
+                  />
+                )}
+
+                {previewData && previewErrors.length === 0 && (
+                  <div className="preview-summary">
+                    <Tag type="blue">
+                      <FormattedMessage
+                        id="notebook.manifest.preview.rows"
+                        defaultMessage="{count} rows"
+                        values={{ count: previewData.totalRows }}
+                      />
+                    </Tag>
+                    <Tag type="green">
+                      <FormattedMessage
+                        id="notebook.manifest.preview.samples"
+                        defaultMessage="{count} samples to create"
+                        values={{ count: previewData.totalSamplesToCreate }}
+                      />
+                    </Tag>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="success-step">
+            <Checkmark size={48} className="success-icon" />
+            <h3>
+              <FormattedMessage
+                id="notebook.manifest.success.title"
+                defaultMessage="Import Successful"
+              />
+            </h3>
+            <p>
+              <FormattedMessage
+                id="notebook.bioanalytical.manifest.success.message"
+                defaultMessage="Bioanalytical samples have been created and linked to the notebook entry with reception metadata."
+              />
+            </p>
           </div>
         )}
       </div>

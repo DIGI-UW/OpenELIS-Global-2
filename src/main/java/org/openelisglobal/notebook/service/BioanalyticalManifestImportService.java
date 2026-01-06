@@ -31,7 +31,8 @@ public interface BioanalyticalManifestImportService {
             String dateTimeOfReceipt, String receivingPersonnel,
             // Optional fields
             String projectStudyAssociation, String storageConditionPrior, String sampleVolume,
-            String transportTemperature, String manifestVerificationStatus, String notes) {
+            String transportTemperature, String manifestVerificationStatus, String subjectId,
+            String timepoint, String notes) {
     }
 
     record ParseError(int rowNumber, String column, String message) {

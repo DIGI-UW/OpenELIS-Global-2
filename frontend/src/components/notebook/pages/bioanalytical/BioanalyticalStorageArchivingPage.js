@@ -764,7 +764,12 @@ function BioanalyticalStorageArchivingPage({
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="arch-check-1" checked={true} readOnly />
+                          <Checkbox
+                            id="arch-check-1"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="arch-check-1"
                             style={{
@@ -779,7 +784,12 @@ function BioanalyticalStorageArchivingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="arch-check-2" checked={true} readOnly />
+                          <Checkbox
+                            id="arch-check-2"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="arch-check-2"
                             style={{
@@ -794,7 +804,12 @@ function BioanalyticalStorageArchivingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="arch-check-3" checked={true} readOnly />
+                          <Checkbox
+                            id="arch-check-3"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="arch-check-3"
                             style={{
@@ -809,7 +824,12 @@ function BioanalyticalStorageArchivingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="arch-check-4" checked={true} readOnly />
+                          <Checkbox
+                            id="arch-check-4"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="arch-check-4"
                             style={{
@@ -824,7 +844,12 @@ function BioanalyticalStorageArchivingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="arch-check-5" checked={true} readOnly />
+                          <Checkbox
+                            id="arch-check-5"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="arch-check-5"
                             style={{
@@ -858,6 +883,7 @@ function BioanalyticalStorageArchivingPage({
                       </label>
                       <TextArea
                         id="archival-notes"
+                        labelText=""
                         placeholder={intl.formatMessage({
                           id: "notebook.bioanalytical.storage.archivalNotesPlaceholder",
                           defaultMessage:

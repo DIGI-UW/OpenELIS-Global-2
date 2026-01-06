@@ -242,6 +242,8 @@ public class BioanalyticalManifestImportController extends BaseRestController {
                 rowMap.put("sampleVolume", row.sampleVolume());
                 rowMap.put("transportTemperature", row.transportTemperature());
                 rowMap.put("manifestVerificationStatus", row.manifestVerificationStatus());
+                rowMap.put("subjectId", row.subjectId());
+                rowMap.put("timepoint", row.timepoint());
                 rowMap.put("notes", row.notes());
                 return rowMap;
             }).toList());

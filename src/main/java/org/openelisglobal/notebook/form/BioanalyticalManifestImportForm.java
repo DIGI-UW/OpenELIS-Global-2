@@ -23,6 +23,8 @@ public class BioanalyticalManifestImportForm {
     private String sampleVolumeColumn;
     private String transportTemperatureColumn;
     private String manifestVerificationStatusColumn;
+    private String subjectIdColumn;
+    private String timepointColumn;
     private String notesColumn;
 
     public BioanalyticalManifestImportForm() {
@@ -117,6 +119,22 @@ public class BioanalyticalManifestImportForm {
 
     public void setManifestVerificationStatusColumn(String manifestVerificationStatusColumn) {
         this.manifestVerificationStatusColumn = manifestVerificationStatusColumn;
+    }
+
+    public String getSubjectIdColumn() {
+        return subjectIdColumn;
+    }
+
+    public void setSubjectIdColumn(String subjectIdColumn) {
+        this.subjectIdColumn = subjectIdColumn;
+    }
+
+    public String getTimepointColumn() {
+        return timepointColumn;
+    }
+
+    public void setTimepointColumn(String timepointColumn) {
+        this.timepointColumn = timepointColumn;
     }
 
     public String getNotesColumn() {

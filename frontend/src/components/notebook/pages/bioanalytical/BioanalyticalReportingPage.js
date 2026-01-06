@@ -484,7 +484,12 @@ function BioanalyticalReportingPage({
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="qa-check-1" checked={true} readOnly />
+                          <Checkbox
+                            id="qa-check-1"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="qa-check-1"
                             style={{
@@ -499,7 +504,12 @@ function BioanalyticalReportingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="qa-check-2" checked={true} readOnly />
+                          <Checkbox
+                            id="qa-check-2"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="qa-check-2"
                             style={{
@@ -514,7 +524,12 @@ function BioanalyticalReportingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="qa-check-3" checked={true} readOnly />
+                          <Checkbox
+                            id="qa-check-3"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="qa-check-3"
                             style={{
@@ -529,7 +544,12 @@ function BioanalyticalReportingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="qa-check-4" checked={true} readOnly />
+                          <Checkbox
+                            id="qa-check-4"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="qa-check-4"
                             style={{
@@ -544,7 +564,12 @@ function BioanalyticalReportingPage({
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
-                          <Checkbox id="qa-check-5" checked={true} readOnly />
+                          <Checkbox
+                            id="qa-check-5"
+                            checked={true}
+                            readOnly
+                            labelText=""
+                          />
                           <label
                             htmlFor="qa-check-5"
                             style={{
@@ -578,6 +603,7 @@ function BioanalyticalReportingPage({
                       </label>
                       <TextArea
                         id="qa-comments"
+                        labelText=""
                         placeholder={intl.formatMessage({
                           id: "notebook.bioanalytical.reporting.qaCommentsPlaceholder",
                           defaultMessage:
@@ -601,6 +627,7 @@ function BioanalyticalReportingPage({
                         id="qa-approve"
                         checked={qaApproved}
                         onChange={(e) => setQaApproved(e.target.checked)}
+                        labelText=""
                       />
                       <label
                         htmlFor="qa-approve"
