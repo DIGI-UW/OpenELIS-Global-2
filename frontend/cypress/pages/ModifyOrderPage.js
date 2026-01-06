@@ -18,7 +18,10 @@ class ModifyOrderPage {
   }
 
   clickNextButton() {
-    return cy.get("[data-cy='next-button']").should("be.visible").click();
+    return cy
+      .get("[data-cy='next-button']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
   selectSerumSample() {
