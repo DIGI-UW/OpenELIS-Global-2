@@ -23,6 +23,8 @@
             <column name="organization_id" type="numeric(10,0)"/>
             <column name="parent_lab_unit_id" type="VARCHAR(36)"/>
             <column name="sort_order" type="numeric(10,0)"/>
+            <column name="display_order" type="numeric(10,0)"/>
+            <column name="external_id" type="VARCHAR(50)"/>
             <column name="is_active" type="VARCHAR(1)" defaultValue="Y">
                 <constraints nullable="false"/>
             </column>
@@ -138,6 +140,173 @@
             <delete tableName="lab_unit">
                 <where>id = 'ROOT-LAB-UNIT'</where>
             </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-005-create-workflow-assignment-table" author="ogc-189-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_workflow"/>
+            </not>
+        </preConditions>
+        <createTable tableName="lab_unit_workflow">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="workflow_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_default" type="BOOLEAN" defaultValue="FALSE"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createSequence sequenceName="lab_unit_workflow_seq" startValue="1" incrementBy="1"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_workflow"
+            baseColumnNames="lab_unit_id"
+            referencedTableName="lab_unit"
+            referencedColumnNames="id"
+            constraintName="fk_lab_unit_workflow_lab_unit"
+            onDelete="CASCADE"/>
+
+        <addUniqueConstraint 
+            tableName="lab_unit_workflow" 
+            columnNames="lab_unit_id, workflow_id"
+            constraintName="uk_lab_unit_workflow"/>
+
+        <rollback>
+            <dropSequence sequenceName="lab_unit_workflow_seq"/>
+            <dropTable tableName="lab_unit_workflow"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-006-create-program-assignment-table" author="ogc-189-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_program"/>
+            </not>
+        </preConditions>
+        <createTable tableName="lab_unit_program">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="program_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_order_form_id" type="VARCHAR(36)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createSequence sequenceName="lab_unit_program_seq" startValue="1" incrementBy="1"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_program"
+            baseColumnNames="lab_unit_id"
+            referencedTableName="lab_unit"
+            referencedColumnNames="id"
+            constraintName="fk_lab_unit_program_lab_unit"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_program"
+            baseColumnNames="default_order_form_id"
+            referencedTableName="questionnaire"
+            referencedColumnNames="id"
+            constraintName="fk_lab_unit_program_form"
+            onDelete="SET NULL"/>
+
+        <addUniqueConstraint 
+            tableName="lab_unit_program" 
+            columnNames="lab_unit_id, program_id"
+            constraintName="uk_lab_unit_program"/>
+
+        <rollback>
+            <dropSequence sequenceName="lab_unit_program_seq"/>
+            <dropTable tableName="lab_unit_program"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-007-create-project-assignment-table" author="ogc-189-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_project"/>
+            </not>
+        </preConditions>
+        <createTable tableName="lab_unit_project">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createSequence sequenceName="lab_unit_project_seq" startValue="1" incrementBy="1"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_project"
+            baseColumnNames="lab_unit_id"
+            referencedTableName="lab_unit"
+            referencedColumnNames="id"
+            constraintName="fk_lab_unit_project_lab_unit"
+            onDelete="CASCADE"/>
+
+        <addUniqueConstraint 
+            tableName="lab_unit_project" 
+            columnNames="lab_unit_id, project_id"
+            constraintName="uk_lab_unit_project"/>
+
+        <rollback>
+            <dropSequence sequenceName="lab_unit_project_seq"/>
+            <dropTable tableName="lab_unit_project"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-008-create-import-log-table" author="ogc-189-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_import_log"/>
+            </not>
+        </preConditions>
+        <createTable tableName="lab_unit_import_log">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="import_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="imported_by" type="VARCHAR(36)"/>
+            <column name="file_name" type="VARCHAR(255)"/>
+            <column name="lab_units_created" type="numeric(10,0)" defaultValue="0"/>
+            <column name="lab_units_updated" type="numeric(10,0)" defaultValue="0"/>
+            <column name="tests_assigned" type="numeric(10,0)" defaultValue="0"/>
+            <column name="panels_assigned" type="numeric(10,0)" defaultValue="0"/>
+            <column name="warnings" type="TEXT"/>
+            <column name="import_data" type="JSONB"/>
+        </createTable>
+
+        <createSequence sequenceName="lab_unit_import_log_seq" startValue="1" incrementBy="1"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_import_log"
+            baseColumnNames="imported_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_lab_unit_import_log_user"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropSequence sequenceName="lab_unit_import_log_seq"/>
+            <dropTable tableName="lab_unit_import_log"/>
         </rollback>
     </changeSet>
 
