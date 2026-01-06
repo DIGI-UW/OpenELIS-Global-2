@@ -90,18 +90,48 @@ public class MenuUtil {
 
     /**
      * Recursively filter out menus that should be hidden in React UI
+     *
+     * @param menuItems The list of menu items to filter (can be null)
+     * @return A new filtered list with only menus that should be visible in React
+     *         UI
      */
     private static List<MenuItem> filterMenuForReactUI(List<MenuItem> menuItems) {
+        // Handle null input
+        if (menuItems == null) {
+            return new ArrayList<>();
+        }
+
         List<MenuItem> filtered = new ArrayList<>();
 
         for (MenuItem menuItem : menuItems) {
+            // Skip null menu items
+            if (menuItem == null) {
+                continue;
+            }
+
             Menu menu = menuItem.getMenu();
+            // Skip if menu is null
+            if (menu == null) {
+                continue;
+            }
+
             // Skip menus that should be hidden in new UI
             if (menu.getIsActive() && !menu.isHideInNewUI()) {
                 MenuItem filteredItem = new MenuItem();
+                // Create a new MenuItem wrapper with reference to the same Menu entity
+                // Note: Menu objects are database entities and should NOT be copied.
+                // We create new MenuItem objects to build a new tree structure,
+                // but they reference the same Menu entities (which are read-only in this
+                // context).
+                // This is intentional and correct for filtering operations.
                 filteredItem.setMenu(menu);
-                // Recursively filter children
-                filteredItem.setChildMenus(filterMenuForReactUI(menuItem.getChildMenus()));
+
+                // Recursively filter children, handling null childMenus
+                List<MenuItem> childMenus = menuItem.getChildMenus();
+                List<MenuItem> filteredChildren = filterMenuForReactUI(
+                        childMenus != null ? childMenus : new ArrayList<>());
+                filteredItem.setChildMenus(filteredChildren);
+
                 filtered.add(filteredItem);
             }
         }
