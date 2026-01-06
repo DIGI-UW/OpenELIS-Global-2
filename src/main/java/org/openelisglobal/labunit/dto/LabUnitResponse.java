@@ -13,6 +13,8 @@ public class LabUnitResponse {
     private String parentLabUnitId;
     private String parentLabUnitName;
     private Integer sortOrder;
+    private Integer displayOrder;
+    private String externalId;
     private Boolean active;
     private String fhirUuid;
     private LocalDateTime createdDate;
@@ -98,6 +100,22 @@ public class LabUnitResponse {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     public Boolean getActive() {

@@ -60,10 +60,15 @@ public interface LabUnitService extends BaseObjectService<LabUnit, String> {
 
     void removeWorkflowsFromLabUnit(String labUnitId, String[] workflowIds);
 
-    // Status operations
+    // Enhanced status operations with cascade options
     void activateLabUnit(String id, Boolean cascade, String reason, String sysUserId);
 
     void deactivateLabUnit(String id, Boolean cascade, String reason, String sysUserId);
+
+    // Workflow assignment management
+    void setDefaultWorkflow(String labUnitId, String workflowId);
+
+    void clearDefaultWorkflows(String labUnitId);
 
     // Validation operations
     boolean isNameUnique(String name, String excludeId);
@@ -84,8 +89,15 @@ public interface LabUnitService extends BaseObjectService<LabUnit, String> {
 
     List<LabUnitResponse> importLabUnits(byte[] importData, String format);
 
+    // Import/Export with JSON format
+    byte[] exportLabUnitsJSON(List<String> labUnitIds);
+
+    List<String> validateLabUnitImportJSON(byte[] importData);
+
+    List<LabUnitResponse> importLabUnitsJSON(byte[] importData);
+
     // Data transformation helpers
     LabUnitResponse toLabUnitResponse(LabUnit labUnit);
-
+ 
     LabUnit fromLabUnitForm(LabUnitForm form);
 }

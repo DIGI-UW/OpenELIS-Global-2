@@ -399,6 +399,38 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
         }
     }
 
+    @Override
+    @Transactional
+    public void setDefaultWorkflow(String labUnitId, String workflowId) {
+        try {
+            LabUnit labUnit = labUnitDAO.getLabUnitById(labUnitId);
+            if (labUnit == null) {
+                throw new LIMSRuntimeException("Lab unit not found: " + labUnitId);
+            }
+
+            // Implementation placeholder for setting default workflow
+            refreshDisplayLists();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error setting default workflow for lab unit", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void clearDefaultWorkflows(String labUnitId) {
+        try {
+            LabUnit labUnit = labUnitDAO.getLabUnitById(labUnitId);
+            if (labUnit == null) {
+                throw new LIMSRuntimeException("Lab unit not found: " + labUnitId);
+            }
+
+            // Implementation placeholder for clearing default workflows
+            refreshDisplayLists();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error clearing default workflows for lab unit", e);
+        }
+    }
+
     // Status operations
     @Override
     @Transactional
@@ -497,17 +529,40 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
 
     @Override
     @Transactional(readOnly = true)
+    public List<LabUnitResponse> importLabUnits(byte[] importData, String format) {
+        // Implementation placeholder for import
+        return new ArrayList<>();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportLabUnitsJSON(List<String> labUnitIds) {
+        // Implementation placeholder for JSON export
+        return new byte[0];
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<String> validateLabUnitImport(byte[] importData, String format) {
         // Implementation placeholder for import validation
         return new ArrayList<>();
     }
 
     @Override
-    @Transactional
-    public List<LabUnitResponse> importLabUnits(byte[] importData, String format) {
-        // Implementation placeholder for import
+    @Transactional(readOnly = true)
+    public List<String> validateLabUnitImportJSON(byte[] importData) {
+        // Implementation placeholder for JSON import validation
         return new ArrayList<>();
     }
+
+    @Override
+    @Transactional
+    public List<LabUnitResponse> importLabUnitsJSON(byte[] importData) {
+        // Implementation placeholder for JSON import
+        return new ArrayList<>();
+    }
+
+
 
     @Override
     @Transactional(readOnly = true)
