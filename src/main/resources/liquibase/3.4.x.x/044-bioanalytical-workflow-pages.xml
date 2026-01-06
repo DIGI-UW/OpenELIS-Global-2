@@ -5,26 +5,18 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- ======================================================== -->
-    <!-- BIOANALYTICAL & BIOEQUIVALENCE LABORATORY WORKFLOW PAGES -->
-    <!-- Predefined page templates for 5-stage bioanalytical workflow -->
-    <!-- ======================================================== -->
-
-    <!-- ======================================================== -->
-    <!-- PAGE 1: SAMPLE RECEPTION & REGISTRATION -->
-    <!-- ======================================================== -->
-    <changeSet id="insert-bioanalytical-sample-reception-template" author="openelis-bioanalytical">
+    <!-- Insert bioanalytical workflow page templates -->
+    <changeSet id="insert-bioanalytical-workflow-page-templates" author="openelis-bioanalytical">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.workflow_page_template
-                WHERE name = 'Sample Reception' AND workflow_category = 'BIOANALYTICAL'
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'BIOANALYTICAL'
             </sqlCheck>
         </preConditions>
-        <comment>Insert Sample Reception &amp; Registration workflow page template for Bioanalytical lab</comment>
+        <comment>Insert predefined bioanalytical workflow page templates</comment>
 
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="id" valueComputed="(SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.workflow_page_template)"/>
             <column name="name" value="Sample Reception &amp; Registration"/>
             <column name="display_key" value="workflow.bioanalytical.sampleReception"/>
             <column name="description" value="Receive samples (biological or pharmaceutical), assign identifiers, register metadata, and link to source laboratory or client"/>
@@ -36,28 +28,8 @@
             <column name="workflow_category" value="BIOANALYTICAL"/>
         </insert>
 
-        <rollback>
-            <delete tableName="workflow_page_template" schemaName="clinlims">
-                <where>name = 'Sample Reception &amp; Registration' AND workflow_category = 'BIOANALYTICAL'</where>
-            </delete>
-        </rollback>
-    </changeSet>
-
-    <!-- ======================================================== -->
-    <!-- PAGE 2: TEST ASSIGNMENT & PREPARATION -->
-    <!-- ======================================================== -->
-    <changeSet id="insert-bioanalytical-test-assignment-template" author="openelis-bioanalytical">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.workflow_page_template
-                WHERE name = 'Test Assignment &amp; Preparation' AND workflow_category = 'BIOANALYTICAL'
-            </sqlCheck>
-        </preConditions>
-        <comment>Insert Test Assignment &amp; Preparation workflow page template for Bioanalytical lab</comment>
-
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="id" valueComputed="(SELECT COALESCE(MAX(id), 0) + 2 FROM clinlims.workflow_page_template)"/>
             <column name="name" value="Test Assignment &amp; Preparation"/>
             <column name="display_key" value="workflow.bioanalytical.testAssignment"/>
             <column name="description" value="Allocate test responsibilities, select analytical methodology (HPLC, LC-MS/MS, dissolution, etc.), and document sample preparation steps"/>
@@ -69,28 +41,8 @@
             <column name="workflow_category" value="BIOANALYTICAL"/>
         </insert>
 
-        <rollback>
-            <delete tableName="workflow_page_template" schemaName="clinlims">
-                <where>name = 'Test Assignment &amp; Preparation' AND workflow_category = 'BIOANALYTICAL'</where>
-            </delete>
-        </rollback>
-    </changeSet>
-
-    <!-- ======================================================== -->
-    <!-- PAGE 3: ANALYTICAL TEST EXECUTION -->
-    <!-- ======================================================== -->
-    <changeSet id="insert-bioanalytical-analytical-execution-template" author="openelis-bioanalytical">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.workflow_page_template
-                WHERE name = 'Analytical Test Execution' AND workflow_category = 'BIOANALYTICAL'
-            </sqlCheck>
-        </preConditions>
-        <comment>Insert Analytical Test Execution workflow page template for Bioanalytical lab</comment>
-
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="id" valueComputed="(SELECT COALESCE(MAX(id), 0) + 3 FROM clinlims.workflow_page_template)"/>
             <column name="name" value="Analytical Test Execution"/>
             <column name="display_key" value="workflow.bioanalytical.analyticalExecution"/>
             <column name="description" value="Execute analytical tests, capture raw instrument data, document QC results, and perform quality control checks"/>
@@ -102,28 +54,8 @@
             <column name="workflow_category" value="BIOANALYTICAL"/>
         </insert>
 
-        <rollback>
-            <delete tableName="workflow_page_template" schemaName="clinlims">
-                <where>name = 'Analytical Test Execution' AND workflow_category = 'BIOANALYTICAL'</where>
-            </delete>
-        </rollback>
-    </changeSet>
-
-    <!-- ======================================================== -->
-    <!-- PAGE 4: REPORTING & RELEASE -->
-    <!-- ======================================================== -->
-    <changeSet id="insert-bioanalytical-reporting-template" author="openelis-bioanalytical">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.workflow_page_template
-                WHERE name = 'Reporting &amp; Release' AND workflow_category = 'BIOANALYTICAL'
-            </sqlCheck>
-        </preConditions>
-        <comment>Insert Reporting &amp; Release workflow page template for Bioanalytical lab</comment>
-
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="id" valueComputed="(SELECT COALESCE(MAX(id), 0) + 4 FROM clinlims.workflow_page_template)"/>
             <column name="name" value="Reporting &amp; Release"/>
             <column name="display_key" value="workflow.bioanalytical.reporting"/>
             <column name="description" value="Compile analytical results, validate against acceptance criteria, perform multi-level review, and release reports"/>
@@ -135,28 +67,8 @@
             <column name="workflow_category" value="BIOANALYTICAL"/>
         </insert>
 
-        <rollback>
-            <delete tableName="workflow_page_template" schemaName="clinlims">
-                <where>name = 'Reporting &amp; Release' AND workflow_category = 'BIOANALYTICAL'</where>
-            </delete>
-        </rollback>
-    </changeSet>
-
-    <!-- ======================================================== -->
-    <!-- PAGE 5: POST-TEST STORAGE & ARCHIVING -->
-    <!-- ======================================================== -->
-    <changeSet id="insert-bioanalytical-storage-archiving-template" author="openelis-bioanalytical">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.workflow_page_template
-                WHERE name = 'Post-Test Storage &amp; Archiving' AND workflow_category = 'BIOANALYTICAL'
-            </sqlCheck>
-        </preConditions>
-        <comment>Insert Post-Test Storage &amp; Archiving workflow page template for Bioanalytical lab</comment>
-
         <insert tableName="workflow_page_template" schemaName="clinlims">
-            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="id" valueComputed="(SELECT COALESCE(MAX(id), 0) + 5 FROM clinlims.workflow_page_template)"/>
             <column name="name" value="Post-Test Storage &amp; Archiving"/>
             <column name="display_key" value="workflow.bioanalytical.storageArchiving"/>
             <column name="description" value="Document sample storage hierarchy, retention periods, environmental monitoring, and data archiving"/>
@@ -168,9 +80,14 @@
             <column name="workflow_category" value="BIOANALYTICAL"/>
         </insert>
 
+        <!-- Update sequence to be consistent with inserted data -->
+        <sql>
+            SELECT setval('clinlims.workflow_page_template_seq', (SELECT COALESCE(MAX(id), 0) FROM clinlims.workflow_page_template));
+        </sql>
+
         <rollback>
             <delete tableName="workflow_page_template" schemaName="clinlims">
-                <where>name = 'Post-Test Storage &amp; Archiving' AND workflow_category = 'BIOANALYTICAL'</where>
+                <where>workflow_category = 'BIOANALYTICAL'</where>
             </delete>
         </rollback>
     </changeSet>

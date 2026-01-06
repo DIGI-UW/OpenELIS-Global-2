@@ -64,7 +64,6 @@
             <column name="page_order" value="1"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BATCH_VERIFICATION"/>
-            <column name="allowed_roles" value="Sample Receivers,Chemical Analysts,Pharmacists,Lab Supervisors"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
@@ -100,7 +99,6 @@
             <column name="page_order" value="2"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="allowed_roles" value="Chemical Analysts,Pharmacists,Lab Supervisors"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
@@ -136,7 +134,6 @@
             <column name="page_order" value="3"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
-            <column name="allowed_roles" value="Chemical Analysts,Pharmacists,Lab Supervisors"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
@@ -172,7 +169,6 @@
             <column name="page_order" value="4"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="AGGREGATION"/>
-            <column name="allowed_roles" value="Chemical Analysts,Pharmacists,Lab Supervisors,Study Directors,QA Officers,Data Managers"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
@@ -208,7 +204,6 @@
             <column name="page_order" value="5"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BATCH_VERIFICATION"/>
-            <column name="allowed_roles" value="Chemical Analysts,Pharmacists,Lab Supervisors,Biorepository"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>

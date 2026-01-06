@@ -302,7 +302,6 @@ function BioanalyticalManifestImportModal({
             ? handleImport
             : handleClose
       }
-      onRequestClose={handleClose}
       size="lg"
     >
       <div className="manifest-import-container">

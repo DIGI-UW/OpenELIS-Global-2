@@ -1,0 +1,35 @@
+.manifest-import-container {
+  padding: 0;
+}
+
+.manifest-import-container .step-content {
+  padding: 1rem 0;
+}
+
+.manifest-import-container .step-content h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+.manifest-import-container .step-content h4 {
+  margin: 1.5rem 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+.manifest-import-container .step-content h5 {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+.manifest-import-container .step-content p {
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #525252;
+}
