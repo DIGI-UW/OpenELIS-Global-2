@@ -873,22 +873,66 @@ to result, verify all actions documented with user, timestamp, and action type.
 
 ## Dependencies
 
-### Existing Services to Reuse
+### Existing Services to Reuse (Backend)
 
-- **PatientService**: Patient registration and lookup
-- **SampleService/SampleItemService**: Core sample management
-- **StorageService**: Hierarchical storage assignment
-- **AnalyzerService**: Analyzer configuration and interfacing
-- **UserService**: User authentication and authorization
-- **AuditService**: Audit trail logging
+The following existing backend services will be reused directly or extended:
+
+| Service                     | Package                    | Reuse Strategy | Notes                                    |
+| --------------------------- | -------------------------- | -------------- | ---------------------------------------- |
+| **PatientService**          | `patient.service`          | REUSE AS-IS    | Patient registration and lookup          |
+| **SampleService**           | `sample.service`           | REUSE AS-IS    | Core sample tracking                     |
+| **SampleItemService**       | `sampleitem.service`       | EXTEND         | Add collection_temperature, custom_label |
+| **SampleManagementService** | `sampleitem.service`       | REUSE AS-IS    | Aliquoting, test management              |
+| **StorageLocationService**  | `storage.service`          | REUSE AS-IS    | Full hierarchy support exists            |
+| **SampleStorageService**    | `storage.service`          | REUSE AS-IS    | Assignment, movement, disposal           |
+| **AnalyzerService**         | `analyzer.service`         | REUSE AS-IS    | Instrument integration                   |
+| **AnalysisService**         | `analysis.service`         | REUSE AS-IS    | Test order lifecycle                     |
+| **ResultService**           | `result.service`           | EXTEND         | Add panic value alerting                 |
+| **ResultValidationService** | `resultvalidation.service` | REUSE AS-IS    | Approval workflow                        |
+| **NoteBookService**         | `notebook.service`         | REUSE          | Workflow templating framework            |
+| **QaEventService**          | `qaevent.service`          | REUSE          | Adapt for sample QC events               |
+| **NoteService**             | `note.service`             | REUSE AS-IS    | Documentation attachment                 |
+| **AuditTrailService**       | `audittrail.dao`           | REUSE AS-IS    | Compliance logging                       |
+
+### Existing UI Components to Reuse (Frontend)
+
+The following existing React components will be reused or extended:
+
+| Component                         | Path                 | Reuse Strategy | Notes                           |
+| --------------------------------- | -------------------- | -------------- | ------------------------------- |
+| **StorageDashboard.jsx**          | `storage/`           | REUSE AS-IS    | Complete storage management     |
+| **SampleReceptionPage.js**        | `notebook/pages/`    | EXTEND         | Add QC checklist for medlab     |
+| **InitialProcessingPage.js**      | `notebook/pages/`    | EXTEND         | Add department-specific methods |
+| **ChildSampleCreationPage.js**    | `notebook/pages/`    | REUSE AS-IS    | Aliquot creation                |
+| **ResultCompilationPage.js**      | `notebook/pages/`    | REUSE AS-IS    | Result export/delivery          |
+| **FreezerMonitoringDashboard.js** | `coldStorage/`       | EXTEND         | Add twice-daily schedule        |
+| **SearchResultForm.js**           | `resultPage/`        | REUSE AS-IS    | Result entry/viewing            |
+| **Validation.js**                 | `validation/`        | EXTEND         | Add department queue filtering  |
+| **Dashboard.tsx**                 | `home/`              | EXTEND         | Add medlab-specific metrics     |
+| **Workplan.js**                   | `workplan/`          | REUSE AS-IS    | Worklist management             |
+| **SampleGrid.js**                 | `notebook/workflow/` | REUSE AS-IS    | Sample display grid             |
+| **StorageHierarchySelector.js**   | `notebook/workflow/` | REUSE AS-IS    | Location picker                 |
+| **BoxLayoutViewer.js**            | `notebook/workflow/` | REUSE AS-IS    | Box visualization               |
 
 ### New Components Required
 
-- Medical Lab workflow pages (React components with Carbon Design System)
-- Quality control dashboard and Levey-Jennings charting
-- Environmental monitoring module
-- Disposal and archiving workflow
-- Enhanced reporting/analytics engine
+Only the following genuinely new components are needed:
+
+**Backend (New Entities/Services):**
+
+- **QualityCheck** entity + service - Sample-type-specific QC criteria
+- **TransportPackaging** entity + service - IATA PI650 compliance tracking
+- **QCResult** entity + service - Levey-Jennings QC data
+- **EquipmentUsageLog** entity - Instrument usage tracking
+
+**Frontend (New Pages):**
+
+- **PatientOrderEntryPage.js** - Simplified inline patient registration + lab
+  order form
+- **SampleCollectionPage.js** - Create samples from orders
+- **MedLabQCDashboard.js** - Levey-Jennings charting (Carbon Charts)
+- **TransportPackagingForm.js** - IATA PI650 compliance form
+- **QualityCheckForm.js** - Sample-type-specific QC criteria checklist
 
 ## Out of Scope
 
@@ -901,32 +945,56 @@ to result, verify all actions documented with user, timestamp, and action type.
 
 ## UI Pages Summary
 
-Based on the requirements, the following pages are needed:
+The Medical Lab workflow is implemented as a **Notebook workflow** using the
+existing notebook framework. All pages are embedded within the Notebook - users
+never navigate away from the workflow context.
 
-1. **Patient/Participant Registration** - Demographics, enrollment, scheduled
-   collections
-2. **Lab Order Entry** - Test selection, patient linking, order management
-3. **Sample Collection** - Collection form with labeling and container selection
-4. **Sample Reception** - Barcode scanning, quality checks, accept/reject
-   workflow
-5. **Transport Packaging Validation** - Primary/secondary/tertiary packaging
-   documentation
-6. **Sample Allocation** - Department routing, worklist assignment
-7. **Storage Management** - Hierarchical location selection, box mapping, sample
-   lookup
-8. **Environmental Monitoring** - Temperature recording, alert dashboard,
-   excursion management
-9. **Sample Processing** - Department-specific processing forms, aliquot
-   creation
-10. **Testing Worklist** - Department worklists, instrument worklist generation
-11. **Result Entry** - Manual entry, result review, editing
-12. **QC Dashboard** - Daily QC entry, Levey-Jennings charts, EQA tracking
-13. **Result Validation** - Department-specific approval queues, validation
-    workflow
-14. **Result Reporting** - Report generation, printing, delivery documentation
-15. **Laboratory Dashboard** - KPIs, TAT metrics, QC rates, equipment usage
-16. **Sample Utilization** - Usage tracking, depletion management
-17. **Disposal Management** - Disposal workflow, compliance documentation
-18. **Archive/Biobank Transfer** - Archiving workflow, transfer documentation
-19. **Administration** - Reference ranges, retention policies, accreditation
-    settings
+### Architecture
+
+- **Patient-centric workflow**: Patient → Order → Sample → Processing → Results
+- **Sample tracking**: Cross-cutting concern visible in every page via
+  `SampleGrid.js`
+- **Status progression**:
+  `COLLECTED → RECEIVED → ACCEPTED → ALLOCATED → PROCESSING → TESTED → VALIDATED → REPORTED → STORED/DISPOSED`
+
+### Medical Lab Notebook Pages
+
+| #   | Page                         | Description                                                       | Strategy | Base Component                  |
+| --- | ---------------------------- | ----------------------------------------------------------------- | -------- | ------------------------------- |
+| 1   | **Patient & Lab Order**      | Register patient (with inline search), create lab order           | NEW      | `PatientOrderEntryPage.js`      |
+| 2   | **Sample Collection**        | Record specimen collection: container, label, collector, time     | NEW      | `SampleCollectionPage.js`       |
+| 3   | **Sample Reception**         | Receive at lab: scan barcode, verify order, check transport       | EXTEND   | `SampleReceptionPage.js`        |
+| 4   | **Quality Control**          | Sample-type-specific QC (hemolysis, volume, delay), accept/reject | NEW      | `QualityCheckPage.js`           |
+| 5   | **Transport Packaging**      | IATA PI650 compliance documentation (P2)                          | NEW      | `TransportPackagingPage.js`     |
+| 6   | **Sample Allocation**        | Route to departments based on ordered tests                       | EXTEND   | `SampleRoutingPage.js`          |
+| 7   | **Sample Processing**        | Centrifugation, smears, staining, aliquot creation                | EXTEND   | `InitialProcessingPage.js`      |
+| 8   | **Storage Assignment**       | Assign samples to storage locations                               | EMBED    | `StorageHierarchySelector.js`   |
+| 9   | **Environmental Monitoring** | Temperature recording, alerts, excursions                         | EMBED    | `FreezerMonitoringDashboard.js` |
+| 10  | **Testing & Worklist**       | Analyzer worklist, result import, manual entry                    | EXTEND   | `AnalysisPage.js`               |
+| 11  | **QC Dashboard**             | Levey-Jennings charts, Westgard rules, calibration, EQA           | NEW      | `QCDashboardPage.js`            |
+| 12  | **Result Validation**        | Department queues, approve/reject/retest workflow                 | EMBED    | `Validation.js`                 |
+| 13  | **Result Reporting**         | Generate reports, track delivery                                  | REUSE    | `ResultCompilationPage.js`      |
+| 14  | **Lab Dashboard**            | TAT metrics, acceptance rates, equipment usage, KPIs              | EMBED    | `Dashboard.tsx` components      |
+| 15  | **Sample Utilization**       | Track usage, mark depletion                                       | EXTEND   | `SampleGrid.js` + actions       |
+| 16  | **Disposal/Archiving**       | Dispose or archive with compliance documentation                  | REUSE    | `EndOfProjectArchivingPage.js`  |
+
+### Strategy Legend
+
+- **NEW**: Create new page component for medlab
+- **EXTEND**: Modify existing notebook page to add medlab-specific features
+- **EMBED**: Wrap existing component to display within notebook page
+- **REUSE**: Use existing notebook page as-is
+
+### Workflow Context
+
+The notebook maintains patient context throughout all pages:
+
+```javascript
+workflowContext = {
+  patientId: "12345",
+  patientName: "John Doe",
+  orderId: "ORD-2024-001",
+  orderedTests: ["CBC", "LFT", "FBS"],
+  samples: [...] // All samples linked to this patient/order
+}
+```

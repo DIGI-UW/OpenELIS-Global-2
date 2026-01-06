@@ -16,9 +16,7 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      */
     List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId);
 
-    /**
-     * Get lots by inventory item ID
-     */
+    /** Get lots by inventory item ID */
     List<InventoryLot> getByInventoryItemId(Long itemId);
 
     /**
@@ -26,24 +24,16 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      */
     List<InventoryLot> getExpiringLots(int daysFromNow);
 
-    /**
-     * Get expired lots that are still marked as ACTIVE
-     */
+    /** Get expired lots that are still marked as ACTIVE */
     List<InventoryLot> getExpiredActiveLots();
 
-    /**
-     * Get lot by lot number
-     */
+    /** Get lot by lot number */
     InventoryLot getByLotNumber(String lotNumber);
 
-    /**
-     * Get lot by FHIR UUID
-     */
+    /** Get lot by FHIR UUID */
     InventoryLot getByFhirUuid(String fhirUuid);
 
-    /**
-     * Get total current quantity for an item across all lots
-     */
+    /** Get total current quantity for an item across all lots */
     Double getTotalCurrentQuantity(Long itemId);
 
     /**
@@ -67,9 +57,7 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      */
     InventoryLot updateQCStatus(Long lotId, QCStatus qcStatus, String notes, String sysUserId);
 
-    /**
-     * Update lot status
-     */
+    /** Update lot status */
     InventoryLot updateLotStatus(Long lotId, LotStatus status, String sysUserId);
 
     /**
@@ -94,14 +82,10 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      */
     InventoryLot disposeLot(Long lotId, String reason, String notes, String sysUserId);
 
-    /**
-     * Check if a lot is expired based on effective expiration date
-     */
+    /** Check if a lot is expired based on effective expiration date */
     boolean isLotExpired(Long lotId);
 
-    /**
-     * Check if a lot is available for use
-     */
+    /** Check if a lot is available for use */
     boolean isLotAvailable(Long lotId);
 
     /**

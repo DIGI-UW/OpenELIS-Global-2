@@ -5,9 +5,7 @@ import java.util.UUID;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-/**
- * Form bean for NotebookPageSample operations.
- */
+/** Form bean for NotebookPageSample operations. */
 public class NotebookPageSampleForm {
 
     private Integer id;

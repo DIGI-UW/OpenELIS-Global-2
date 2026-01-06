@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- Seed Notebook Experiment Types -->
+    <!-- Adds dictionary entries for the notebook_experiment_type category -->
+    <!-- ======================================================== -->
+
+    <changeSet id="seed-notebook-experiment-types" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary
+                WHERE dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')
+            </sqlCheck>
+        </preConditions>
+        <comment>Seeds notebook experiment type dictionary entries</comment>
+
+        <!-- Immunology -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Immunology" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="IMMUNO" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="10" />
+        </insert>
+
+        <!-- Clinical Chemistry -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Clinical Chemistry" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="CHEM" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="20" />
+        </insert>
+
+        <!-- Hematology -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Hematology" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="HEMA" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="30" />
+        </insert>
+
+        <!-- Microbiology -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Microbiology" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="MICRO" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="40" />
+        </insert>
+
+        <!-- Serology -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Serology" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="SERO" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="50" />
+        </insert>
+
+        <!-- Molecular Biology -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Molecular Biology" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="MOLBIO" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="60" />
+        </insert>
+
+        <!-- Parasitology -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Parasitology" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="PARA" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="70" />
+        </insert>
+
+        <!-- Urinalysis -->
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="dict_entry" value="Urinalysis" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="URINE" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')" />
+            <column name="sort_order" value="80" />
+        </insert>
+
+        <rollback>
+            <delete tableName="dictionary" schemaName="clinlims">
+                <where>dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'notebook_experiment_type')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

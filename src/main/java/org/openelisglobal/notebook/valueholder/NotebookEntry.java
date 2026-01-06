@@ -31,6 +31,7 @@ import org.openelisglobal.validation.annotations.SafeHtml;
  * NotebookEntry - Represents an instance of lab work based on a notebook
  * template.
  *
+ * <p>
  * This entity holds the actual work data (samples, status, comments) while
  * referencing the parent NoteBook (template) for shared metadata like pages,
  * protocol, and workflow structure.
@@ -217,23 +218,17 @@ public class NotebookEntry extends BaseObject<Integer> {
         this.comments = comments;
     }
 
-    /**
-     * Add a sample to this entry.
-     */
+    /** Add a sample to this entry. */
     public void addSample(SampleItem sample) {
         getSamples().add(sample);
     }
 
-    /**
-     * Remove a sample from this entry.
-     */
+    /** Remove a sample from this entry. */
     public void removeSample(SampleItem sample) {
         getSamples().remove(sample);
     }
 
-    /**
-     * Add a comment to this entry.
-     */
+    /** Add a comment to this entry. */
     public void addComment(NotebookEntryComment comment) {
         comment.setNotebookEntry(this);
         getComments().add(comment);

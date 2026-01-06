@@ -350,7 +350,8 @@ public class ManifestImportServiceTest {
             return String.valueOf(Math.abs(item.getExternalId().hashCode()));
         });
 
-        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, new ArrayList<>(),
+                "testUser");
 
         // 10 + 15 + 20 + 5 = 50 total samples
         assertEquals(50, result.totalRequested());
@@ -382,7 +383,7 @@ public class ManifestImportServiceTest {
             return "1000";
         });
 
-        manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        manifestImportService.createSamplesForEntry(100, manifest, new ArrayList<>(), "testUser");
 
         assertEquals(3, capturedItems.size());
         assertEquals("GRP-001-001", capturedItems.get(0).getExternalId());
@@ -407,7 +408,7 @@ public class ManifestImportServiceTest {
         when(typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(any(), eq(true))).thenReturn(wholeBlood);
         when(sampleItemService.insert(any(SampleItem.class))).thenReturn("1000");
 
-        manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        manifestImportService.createSamplesForEntry(100, manifest, new ArrayList<>(), "testUser");
 
         // Verify samples are linked to notebook
         verify(notebookSampleEntryService).linkSamplesToNotebook(eq(100), anyList());
@@ -425,7 +426,8 @@ public class ManifestImportServiceTest {
         when(noteBookService.get(999)).thenReturn(null);
         when(notebookEntryService.getMatch("id", 999)).thenReturn(Optional.empty());
 
-        ManifestImportResult result = manifestImportService.createSamplesForEntry(999, manifest, "testUser");
+        ManifestImportResult result = manifestImportService.createSamplesForEntry(999, manifest, new ArrayList<>(),
+                "testUser");
 
         assertEquals(0, result.totalCreated());
         assertEquals(1, result.errors().size());
@@ -458,7 +460,8 @@ public class ManifestImportServiceTest {
                 .thenReturn(serum);
         when(sampleItemService.insert(any(SampleItem.class))).thenReturn("1000");
 
-        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, "testUser");
+        ManifestImportResult result = manifestImportService.createSamplesForEntry(100, manifest, new ArrayList<>(),
+                "testUser");
 
         // Only 5 samples from second row, first row skipped
         assertEquals(5, result.totalRequested());

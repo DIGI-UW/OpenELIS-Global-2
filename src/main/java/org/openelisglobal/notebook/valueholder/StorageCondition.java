@@ -4,11 +4,11 @@ package org.openelisglobal.notebook.valueholder;
  * Storage condition types for post-analysis sample storage. Defines temperature
  * ranges and display names for different storage requirements.
  *
+ * <p>
  * Per US6: Store processed samples under defined conditions (refrigerated,
  * frozen, etc.)
  */
 public enum StorageCondition {
-
     REFRIGERATED("Refrigerated (2-8°C)", "2-8°C"),
 
     FROZEN_MINUS20("Frozen (-20°C)", "-20°C"),

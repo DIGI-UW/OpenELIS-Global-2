@@ -18,30 +18,45 @@ implementation and testing.
 
 ## Path Conventions
 
-- **Backend**: `src/main/java/org/openelisglobal/`
-- **Frontend**: `frontend/src/components/medlab/`
+- **Backend (new module)**: `src/main/java/org/openelisglobal/medlab/`
+- **Frontend (notebook pages)**: `frontend/src/components/notebook/pages/`
+- **Frontend (workflow)**: `frontend/src/components/notebook/workflow/`
 - **Tests (Backend)**: `src/test/java/org/openelisglobal/medlab/`
 - **Tests (Frontend)**: `frontend/cypress/e2e/`
 - **Liquibase**: `src/main/resources/liquibase/3.x.x/`
 - **i18n**: `frontend/src/languages/`
 
+## Reuse Strategy
+
+This implementation follows a **reuse-first approach**:
+
+- **NEW**: Only create genuinely new components (8 frontend pages, 4 backend
+  entities)
+- **EXTEND**: Modify existing components to add medlab-specific features
+- **EMBED**: Wrap existing components within notebook pages
+- **REUSE**: Use existing components as-is
+
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Create medlab module structure and foundational configuration
+**Purpose**: Create medlab module structure and notebook template configuration
 
 - [ ] T001 Create medlab module package structure at
       src/main/java/org/openelisglobal/medlab/ with subdirectories:
       valueholder/, dao/, service/, controller/rest/, form/
-- [ ] T002 [P] Create medlab frontend component directory at
-      frontend/src/components/medlab/
-- [ ] T003 [P] Add medlab route configuration in frontend/src/App.js or routing
-      configuration
+- [ ] T002 [P] Create MedLab notebook template configuration in NoteBookService
+      defining 16-page workflow sequence
+- [ ] T003 [P] Add medlab notebook route in frontend/src/App.js pointing to
+      existing notebook framework
 - [ ] T004 [P] Create base i18n keys structure for medlab in
-      frontend/src/languages/en.json
+      frontend/src/languages/en.json (~200 keys)
 - [ ] T005 [P] Create base i18n keys structure for medlab in
-      frontend/src/languages/fr.json
+      frontend/src/languages/fr.json (~200 keys)
+- [ ] T005a [P] Create Liquibase migration to add "Medical Lab" experiment type
+      to dictionary table in
+      src/main/resources/liquibase/3.5.x.x/007-notebook-experiment-types.xml
+      (currently added directly to DB, needs migration for deployments)
 
 ---
 
@@ -52,40 +67,35 @@ be implemented
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Create Liquibase changelog for Patient extension (participant
-      columns) in
-      src/main/resources/liquibase/3.x.x/011-patient-participant-columns.xml
-- [ ] T007 Create Liquibase changelog for SampleItem extension (medlab columns)
-      in src/main/resources/liquibase/3.x.x/010-sample-item-medlab-columns.xml
-- [ ] T008 [P] Create SampleAllocation entity Liquibase changelog in
-      src/main/resources/liquibase/3.x.x/009-sample-allocation.xml
-- [ ] T009 [P] Create QualityCheck entity Liquibase changelog in
+**Note**: Patient and SampleItem entities are REUSED AS-IS - no schema changes
+needed
+
+- [ ] T006 [P] Create QualityCheck entity Liquibase changelog in
       src/main/resources/liquibase/3.x.x/001-quality-check.xml
-- [ ] T010 [P] Create TransportPackaging entity Liquibase changelog in
+- [ ] T007 [P] Create TransportPackaging entity Liquibase changelog in
       src/main/resources/liquibase/3.x.x/002-transport-packaging.xml
-- [ ] T011 [P] Create EnvironmentalReading entity Liquibase changelog in
-      src/main/resources/liquibase/3.x.x/003-environmental-reading.xml
-- [ ] T012 [P] Create ProcessingRecord entity Liquibase changelog in
-      src/main/resources/liquibase/3.x.x/004-processing-record.xml
-- [ ] T013 [P] Create QCResult entity Liquibase changelog in
-      src/main/resources/liquibase/3.x.x/005-qc-result.xml
-- [ ] T014 [P] Create ValidationRecord entity Liquibase changelog in
-      src/main/resources/liquibase/3.x.x/006-validation-record.xml
-- [ ] T015 [P] Create DisposalRecord entity Liquibase changelog in
-      src/main/resources/liquibase/3.x.x/007-disposal-record.xml
-- [ ] T016 [P] Create EquipmentUsageLog entity Liquibase changelog in
-      src/main/resources/liquibase/3.x.x/008-equipment-usage-log.xml
-- [ ] T017 Update master Liquibase changelog to include all new changesets
-- [ ] T018 Run database migration and verify schema creation
+- [ ] T008 [P] Create QCResult entity Liquibase changelog in
+      src/main/resources/liquibase/3.x.x/003-qc-result.xml
+- [ ] T009 [P] Create EquipmentUsageLog entity Liquibase changelog in
+      src/main/resources/liquibase/3.x.x/004-equipment-usage-log.xml
+- [ ] T010 Update master Liquibase changelog to include all new changesets
+- [ ] T011 Run database migration and verify schema creation
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
 ---
 
-## Phase 3: User Story 1 - Patient/Participant Registration and Lab Orders (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Patient Registration and Lab Orders (Priority: P1) 🎯 MVP
 
-**Goal**: Register patients/participants and create lab orders - entry point for
-all workflows
+**Goal**: Register patients and create lab orders - entry point for all
+workflows
+
+**Strategy**: REUSE existing PatientService and LabOrder. Create NEW
+PatientOrderEntryPage.js as simplified inline form for notebook Page 1.
+
+> **TODO (Future Enhancement)**: Add "participant" support for research studies
+> with enrollment status, study ID, and scheduled collection dates. This would
+> extend PatientService with ParticipantService wrapper. Track in separate spec.
 
 **Independent Test**: Register a new patient with demographic data, create a lab
 order for CBC and Chemistry panel, verify patient and order appear in the
@@ -95,36 +105,31 @@ system.
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T019 [P] [US1] Create ParticipantServiceTest in
-      src/test/java/org/openelisglobal/medlab/service/ParticipantServiceTest.java
-- [ ] T020 [P] [US1] Create Cypress E2E test for patient registration in
+- [ ] T012 [P] [US1] Create Cypress E2E test for patient registration in
       frontend/cypress/e2e/medlabPatientRegistration.cy.js
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] Extend Patient valueholder with participant fields
-      (is_participant, study_id, enrollment_status, enrollment_date) in
-      src/main/java/org/openelisglobal/patient/valueholder/Patient.java
-- [ ] T022 [P] [US1] Create ParticipantService interface in
-      src/main/java/org/openelisglobal/patient/service/ParticipantService.java
-- [ ] T023 [US1] Create ParticipantServiceImpl with scheduled collection support
-      in
-      src/main/java/org/openelisglobal/patient/service/ParticipantServiceImpl.java
-- [ ] T024 [US1] Create ParticipantController REST endpoints in
-      src/main/java/org/openelisglobal/patient/controller/rest/ParticipantController.java
-- [ ] T025 [US1] Verify existing LabOrder/TestRequest integration supports
+**Backend (REUSE - verify only):**
+
+- [ ] T013 [US1] Verify existing PatientService meets medlab requirements
+- [ ] T014 [US1] Verify existing LabOrder/TestRequest integration supports
       medlab workflow
-- [ ] T026 [P] [US1] Create PatientRegistration.js React component in
-      frontend/src/components/medlab/PatientRegistration.js
-- [ ] T027 [P] [US1] Create LabOrderEntry.js React component in
-      frontend/src/components/medlab/LabOrderEntry.js
-- [ ] T028 [US1] Add i18n keys for US1 (patient registration, lab orders) to
+
+**Frontend (NEW - Page 1):**
+
+- [ ] T015 [P] [US1] Create PatientOrderEntryPage.js in
+      frontend/src/components/notebook/pages/PatientOrderEntryPage.js - Inline
+      patient search (reuse patient search logic) - Minimal patient form (name,
+      sex, age, contact) - Lab order section with test checkboxes - Link to
+      CreatePatientForm.js for "Advanced Registration"
+- [ ] T016 [US1] Add i18n keys for US1 (patient registration, lab orders) to
       en.json and fr.json
-- [ ] T029 [US1] Integrate PatientRegistration and LabOrderEntry with API
-      endpoints
+- [ ] T017 [US1] Register PatientOrderEntryPage as Page 1 in MedLab notebook
+      template
 
 **Checkpoint**: User Story 1 complete - patients can be registered and lab
-orders created
+orders created within notebook workflow
 
 ---
 
@@ -133,35 +138,39 @@ orders created
 **Goal**: Collect samples from patients, label them, and record collection
 details
 
+**Strategy**: REUSE existing SampleService and SampleItemService. Create NEW
+SampleCollectionPage.js for notebook Page 2.
+
 **Independent Test**: Create a sample collection for an existing lab order,
 enter sample type (Whole Blood/EDTA), apply label, verify sample appears in
 tracking queue.
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T030 [P] [US2] Create SampleCollectionServiceTest in
-      src/test/java/org/openelisglobal/medlab/service/SampleCollectionServiceTest.java
-- [ ] T031 [P] [US2] Create Cypress E2E test for sample collection in
+- [ ] T018 [P] [US2] Create Cypress E2E test for sample collection in
       frontend/cypress/e2e/medlabSampleCollection.cy.js
 
 ### Implementation for User Story 2
 
-- [ ] T032 [P] [US2] Extend SampleItem valueholder with medlab fields
-      (sample_category, collection_temp, medlab_status, parent_sample_id) in
-      src/main/java/org/openelisglobal/sample/valueholder/SampleItem.java
-- [ ] T033 [P] [US2] Create SampleCollectionForm in
-      src/main/java/org/openelisglobal/medlab/form/SampleCollectionForm.java
-- [ ] T034 [US2] Create SampleCollectionService extending existing SampleService
-      in
-      src/main/java/org/openelisglobal/medlab/service/SampleCollectionService.java
-- [ ] T035 [US2] Create SampleCollectionController REST endpoints in
-      src/main/java/org/openelisglobal/medlab/controller/rest/SampleCollectionController.java
-- [ ] T036 [P] [US2] Create SampleCollection.js React component with container
-      type selection in frontend/src/components/medlab/SampleCollection.js
-- [ ] T037 [US2] Add i18n keys for US2 (sample collection, labeling) to en.json
+**Backend (REUSE - verify only):**
+
+- [ ] T019 [US2] Verify existing SampleService and SampleItemService meet medlab
+      requirements
+- [ ] T020 [US2] Verify barcode generation service exists
+      (BarcodeParsingService)
+
+**Frontend (NEW - Page 2):**
+
+- [ ] T021 [P] [US2] Create SampleCollectionPage.js in
+      frontend/src/components/notebook/pages/SampleCollectionPage.js - Display
+      patient context from Page 1 (workflowContext) - Sample creation form
+      linked to lab order - Container type selection (vacutainer, cryovial,
+      urine cup, etc.) - Free-text label field - Collection time and collector
+      ID
+- [ ] T022 [US2] Add i18n keys for US2 (sample collection, labeling) to en.json
       and fr.json
-- [ ] T038 [US2] Integrate SampleCollection with barcode generation and API
-      endpoints
+- [ ] T023 [US2] Register SampleCollectionPage as Page 2 in MedLab notebook
+      template
 
 **Checkpoint**: User Story 2 complete - samples can be collected and labeled
 
@@ -172,44 +181,36 @@ tracking queue.
 **Goal**: Receive samples, perform QC checks, accept or reject based on
 sample-type-specific criteria
 
-**Independent Test**: Receive 5 samples, mark 4 as accepted (QC pass), reject 1
-for hemolysis, verify rejection triggers corrective action workflow.
+**Strategy**: EXTEND existing SampleReceptionPage.js to add medlab QC hooks.
+Create NEW QualityCheck entity and QualityCheckPage.js.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T039 [P] [US3] Create SampleReceptionServiceTest in
-      src/test/java/org/openelisglobal/medlab/service/SampleReceptionServiceTest.java
-- [ ] T040 [P] [US3] Create QualityCheckDAOTest in
-      src/test/java/org/openelisglobal/medlab/dao/QualityCheckDAOTest.java
-- [ ] T041 [P] [US3] Create Cypress E2E test for sample reception in
+- [ ] T024 [P] [US3] Create QualityCheckServiceTest in
+      src/test/java/org/openelisglobal/medlab/service/QualityCheckServiceTest.java
+- [ ] T025 [P] [US3] Create Cypress E2E test for sample reception in
       frontend/cypress/e2e/medlabSampleReception.cy.js
 
 ### Implementation for User Story 3
 
-- [ ] T042 [P] [US3] Create QualityCheck valueholder entity in
-      src/main/java/org/openelisglobal/medlab/valueholder/QualityCheck.java
-- [ ] T043 [P] [US3] Create QualityCheckDAO interface in
-      src/main/java/org/openelisglobal/medlab/dao/QualityCheckDAO.java
-- [ ] T044 [US3] Create QualityCheckDAOImpl in
-      src/main/java/org/openelisglobal/medlab/dao/QualityCheckDAOImpl.java
-- [ ] T045 [P] [US3] Create QualityCheckForm in
-      src/main/java/org/openelisglobal/medlab/form/QualityCheckForm.java
-- [ ] T046 [US3] Create SampleReceptionService interface in
-      src/main/java/org/openelisglobal/medlab/service/SampleReceptionService.java
-- [ ] T047 [US3] Create SampleReceptionServiceImpl with sample-type-specific QC
-      criteria (Chemistry, Hematology, Stool, Urine, Microbiology) in
-      src/main/java/org/openelisglobal/medlab/service/SampleReceptionServiceImpl.java
-- [ ] T048 [US3] Create SampleReceptionController REST endpoints in
-      src/main/java/org/openelisglobal/medlab/controller/rest/SampleReceptionController.java
-- [ ] T049 [P] [US3] Create SampleReception.js React component with QC checklist
-      UI in frontend/src/components/medlab/SampleReception.js
-- [ ] T050 [US3] Add i18n keys for US3 (reception, QC criteria, accept/reject)
-      to en.json and fr.json
-- [ ] T051 [US3] Implement corrective action workflow (recollection, return to
-      submitter)
+**Backend (NEW - QualityCheck entity):**
 
-**Checkpoint**: User Story 3 complete - samples can be received with QC
-validation
+- [ ] T026 [P] [US3] Create QualityCheck valueholder in
+      src/main/java/org/openelisglobal/medlab/valueholder/QualityCheck.java
+- [ ] T027 [P] [US3] Create QualityCheckDAO + impl in medlab/dao/
+- [ ] T028 [US3] Create QualityCheckService with sample-type-specific criteria
+      (Chemistry: hemolysis/lipemia; Hematology: clotting; Stool: delay >30min)
+- [ ] T029 [US3] Create QualityCheckController REST endpoints
+
+**Frontend (EXTEND Page 3 + NEW Page 4):**
+
+- [ ] T030 [US3] EXTEND SampleReceptionPage.js - Add medlab QC hooks for
+      notebook integration
+- [ ] T031 [P] [US3] Create QualityCheckPage.js in notebook/pages/ with
+      sample-type-specific QC checklist
+- [ ] T032 [US3] Add i18n keys for US3 to en.json and fr.json
+
+**Checkpoint**: US3 complete - samples received with QC validation
 
 ---
 

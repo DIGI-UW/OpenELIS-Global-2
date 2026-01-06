@@ -183,9 +183,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         }
     }
 
-    /**
-     * Validate required fields for REAGENT item type
-     */
+    /** Validate required fields for REAGENT item type */
     private void validateReagentFields(InventoryItem item) {
         if (item.getStabilityAfterOpening() == null || item.getStabilityAfterOpening() <= 0) {
             throw new IllegalArgumentException(
@@ -194,9 +192,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         // dilutionNotes is recommended but not strictly required
     }
 
-    /**
-     * Validate required fields for CARTRIDGE item type
-     */
+    /** Validate required fields for CARTRIDGE item type */
     private void validateCartridgeFields(InventoryItem item) {
         if (item.getCompatibleAnalyzers() == null || item.getCompatibleAnalyzers().trim().isEmpty()) {
             throw new IllegalArgumentException("Compatible analyzers are required for cartridges");
@@ -209,9 +205,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         }
     }
 
-    /**
-     * Validate required fields for RDT item type
-     */
+    /** Validate required fields for RDT item type */
     private void validateRDTFields(InventoryItem item) {
         if (item.getTestsPerKit() == null || item.getTestsPerKit() <= 0) {
             throw new IllegalArgumentException("Tests per kit is required for RDTs and must be greater than 0");
@@ -224,9 +218,7 @@ public class InventoryItemServiceImpl extends AuditableBaseObjectServiceImpl<Inv
         }
     }
 
-    /**
-     * Validate required fields for HIV_KIT and SYPHILIS_KIT item types
-     */
+    /** Validate required fields for HIV_KIT and SYPHILIS_KIT item types */
     private void validateKitFields(InventoryItem item) {
         if (item.getSourceOrganization() == null || item.getSourceOrganization().trim().isEmpty()) {
             throw new IllegalArgumentException("Source organization is required for HIV/Syphilis kits");

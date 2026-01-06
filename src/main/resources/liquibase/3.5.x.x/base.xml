@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- OGC-XXX: Medical Laboratory Workflow Feature -->
+    <!-- Includes: QualityCheck, TransportPackaging, QCResult, -->
+    <!-- EquipmentUsageLog tables for complete lab workflow -->
+    <!-- ======================================================== -->
+
+    <include file="liquibase/3.5.x.x/001-quality-check.xml"/>
+    <include file="liquibase/3.5.x.x/002-transport-packaging.xml"/>
+    <include file="liquibase/3.5.x.x/003-qc-result.xml"/>
+    <include file="liquibase/3.5.x.x/004-equipment-usage-log.xml"/>
+    <include file="liquibase/3.5.x.x/005-medlab-workflow-templates.xml"/>
+    <include file="liquibase/3.5.x.x/006-notebook-page-id.xml"/>
+    <include file="liquibase/3.5.x.x/007-notebook-experiment-types.xml"/>
+    <include file="liquibase/3.5.x.x/008-medlab-notebook-template.xml"/>
+
+</databaseChangeLog>

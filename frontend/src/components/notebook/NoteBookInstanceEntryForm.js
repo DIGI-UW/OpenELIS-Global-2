@@ -68,6 +68,7 @@ import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
 import BacteriologyWorkflowTab from "./workflow/BacteriologyWorkflowTab";
 import PathologyWorkflowTab from "./workflow/PathologyWorkflowTab";
 import BioanalyticalWorkflowTab from "./workflow/BioanalyticalWorkflowTab";
+import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -168,7 +169,6 @@ const NoteBookInstanceEntryForm = () => {
     noteBookForm.comments = comments
       .filter((c) => c.id === null)
       .map((c) => ({ id: null, text: c.text }));
-    console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
         ? "/rest/notebook/update/" + notebookentryid
@@ -182,7 +182,6 @@ const NoteBookInstanceEntryForm = () => {
 
   const handleSubmited = async (response) => {
     var body = await response.json();
-    console.log("Response status:", response.status, "Body:", body);
     var status = response.status;
     setIsSubmitting(false);
     setNotificationVisible(true);
@@ -474,6 +473,7 @@ const NoteBookInstanceEntryForm = () => {
   };
 
   const loadInitialData = (data) => {
+    console.log("Loading data", { data });
     if (componentMounted.current) {
       if (data && data.id) {
         // If this is an instance (isTemplate=false) and we have templateId from backend,
@@ -1205,6 +1205,13 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              noteBookData?.title
+                ?.toLowerCase()
+                .includes("medical laboratory") && (
+                <MedLabWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
               !noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
               !noteBookData?.title
                 ?.toLowerCase()
@@ -1212,7 +1219,10 @@ const NoteBookInstanceEntryForm = () => {
               !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
               !noteBookData?.title?.toLowerCase().includes("bacteriology") &&
               !noteBookData?.title?.toLowerCase().includes("pathology") &&
-              !noteBookData?.title?.toLowerCase().includes("bioanalytical") && (
+              !noteBookData?.title?.toLowerCase().includes("bioanalytical") &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("medical laboratory") && (
                 <NotebookWorkflowTab notebookId={noteBookData.id} />
               )}
             {/* Use accordion view for templates or when no ID is available */}
@@ -1241,7 +1251,8 @@ const NoteBookInstanceEntryForm = () => {
                   )}
                   {noteBookData?.pages?.length > 0 && (
                     <Accordion>
-                      {noteBookData.pages
+                      {[...noteBookData.pages]
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))
                         .filter((page) => {
                           // During entry creation (CREATE mode), show ALL pages - no restrictions
                           // Page-level role restrictions only apply when viewing/editing existing entries

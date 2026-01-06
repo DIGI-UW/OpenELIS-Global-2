@@ -315,9 +315,7 @@ public class NotebookArchivingController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for transfer operation.
-     */
+    /** Request body for transfer operation. */
     public static class TransferRequest {
         private List<Integer> sampleItemIds;
         private String locationId;

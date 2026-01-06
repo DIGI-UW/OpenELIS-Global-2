@@ -16,9 +16,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-/**
- * NotebookEntryComment - Comments specific to a notebook entry (instance).
- */
+/** NotebookEntryComment - Comments specific to a notebook entry (instance). */
 @Entity
 @Table(name = "notebook_entry_comment")
 public class NotebookEntryComment extends BaseObject<Integer> {

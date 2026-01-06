@@ -113,9 +113,7 @@ public interface ResultCompilationService {
      */
     List<DeliveryRecord> getDeliveryHistory(Integer notebookId);
 
-    /**
-     * Validation summary statistics.
-     */
+    /** Validation summary statistics. */
     record ValidationSummary(long total, long valid, long invalid, long inconclusive, long pending) {
     }
 
@@ -140,9 +138,7 @@ public interface ResultCompilationService {
         return summary.total() > 0 ? (summary.inconclusive() * 100.0 / summary.total()) : 0;
     }
 
-    /**
-     * Export options for result compilation.
-     */
+    /** Export options for result compilation. */
     record ExportOptions(boolean includeInvalid, boolean includeInconclusive, boolean includeRawData,
             List<String> columns, String dateFormat, String title) {
     }

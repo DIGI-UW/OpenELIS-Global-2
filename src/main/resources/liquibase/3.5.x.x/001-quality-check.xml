@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- QUALITY_CHECK TABLE -->
+    <!-- Tracks sample quality control checks during reception -->
+    <!-- Supports sample-type-specific QC criteria -->
+    <!-- ======================================================== -->
+    <changeSet id="create-quality-check-sequence" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="quality_check_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for quality_check table.</comment>
+        <createSequence sequenceName="quality_check_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-quality-check-table" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="quality_check" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating QUALITY_CHECK table for sample QC during reception in medical lab workflow.</comment>
+        <createTable tableName="quality_check">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="quality_check_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_quality_check"/>
+            </column>
+            <column name="sample_item_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="checked_by" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="delay_minutes" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="delay_passed" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="true"/>
+            </column>
+            <column name="volume_ml" type="DECIMAL(5,2)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="volume_passed" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="true"/>
+            </column>
+            <column name="hemolysis" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lipemia" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="icterus" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="clotting" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="anticoagulant_type" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="contamination" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="container_proper" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="true"/>
+            </column>
+            <column name="leakage" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="overall_status" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rejection_reason" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="corrective_action" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="true" unique="true" uniqueConstraintName="uq_qc_fhir_uuid"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-quality-check-foreign-keys" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to quality_check table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="quality_check"
+            baseColumnNames="checked_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_qc_checked_by"/>
+    </changeSet>
+
+    <changeSet id="add-quality-check-status-check" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for overall_status values.</comment>
+        <sql>
+            ALTER TABLE clinlims.quality_check
+            ADD CONSTRAINT chk_qc_overall_status
+            CHECK (overall_status IN ('ACCEPTED', 'REJECTED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.quality_check DROP CONSTRAINT IF EXISTS chk_qc_overall_status;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-quality-check-anticoagulant-check" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for anticoagulant_type values.</comment>
+        <sql>
+            ALTER TABLE clinlims.quality_check
+            ADD CONSTRAINT chk_qc_anticoagulant
+            CHECK (anticoagulant_type IS NULL OR anticoagulant_type IN ('EDTA', 'CITRATE', 'HEPARIN', 'FLUORIDE'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.quality_check DROP CONSTRAINT IF EXISTS chk_qc_anticoagulant;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-quality-check-corrective-action-check" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for corrective_action values.</comment>
+        <sql>
+            ALTER TABLE clinlims.quality_check
+            ADD CONSTRAINT chk_qc_corrective_action
+            CHECK (corrective_action IS NULL OR corrective_action IN ('RECOLLECTION', 'RETURN_TO_SUBMITTER'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.quality_check DROP CONSTRAINT IF EXISTS chk_qc_corrective_action;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-quality-check-indexes" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="quality_check" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="quality_check" indexName="idx_qc_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="quality_check" indexName="idx_qc_status">
+            <column name="overall_status"/>
+        </createIndex>
+        <createIndex tableName="quality_check" indexName="idx_qc_date">
+            <column name="check_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-quality-check-reference-table" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'QUALITY_CHECK'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating QUALITY_CHECK reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="QUALITY_CHECK"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='QUALITY_CHECK'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

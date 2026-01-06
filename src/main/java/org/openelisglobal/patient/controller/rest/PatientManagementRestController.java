@@ -139,7 +139,9 @@ public class PatientManagementRestController extends BaseRestController {
         for (PatientIdentity identity : patientInfo.getPatientIdentities()) {
             identity.setSysUserId(getSysUserId(request));
         }
-        patientInfo.getPatientContact().setSysUserId(getSysUserId(request));
+        if (patientInfo.getPatientContact() != null) {
+            patientInfo.getPatientContact().setSysUserId(getSysUserId(request));
+        }
     }
 
     private void initMembers(Patient patient) {
