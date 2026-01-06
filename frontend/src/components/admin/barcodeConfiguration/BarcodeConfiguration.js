@@ -61,7 +61,7 @@ function BarcodeConfiguration() {
     }
   };
 
-  function handleDefaultOrderLablesValue(e) {
+  function handleDefaultOrderLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numDefaultOrderLabels: parseFloat(e.target.value),
@@ -69,7 +69,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleDefaultSpecimenLablesValue(e) {
+  function handleDefaultSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numDefaultSpecimenLabels: parseFloat(e.target.value),
@@ -77,7 +77,31 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleMaxOrderLablesValue(e) {
+  function handleDefaultSlideLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numDefaultSlideLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleDefaultBlockLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numDefaultBlockLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleDefaultFreezerLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numDefaultFreezerLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxOrderLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numMaxOrderLabels: parseFloat(e.target.value),
@@ -85,10 +109,34 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleMaxSpecimenLablesValue(e) {
+  function handleMaxSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numMaxSpecimenLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxSlideLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numMaxSlideLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxBlockLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numMaxBlockLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxFreezerLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numMaxFreezerLabels: parseFloat(e.target.value),
     });
     setSaveButton(false);
   }
@@ -109,7 +157,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleHeightSpecimenLablesValue(e) {
+  function handleHeightSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       heightSpecimenLabels: parseFloat(e.target.value),
@@ -117,7 +165,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleWidthSpecimenLablesValue(e) {
+  function handleWidthSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       widthSpecimenLabels: parseFloat(e.target.value),
@@ -125,7 +173,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleHeightBlockLablesValue(e) {
+  function handleHeightBlockLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       heightBlockLabels: parseFloat(e.target.value),
@@ -133,7 +181,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleWidthBlockLablesValue(e) {
+  function handleWidthBlockLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       widthBlockLabels: parseFloat(e.target.value),
@@ -141,7 +189,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleHeightSlideLablesValue(e) {
+  function handleHeightSlideLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       heightSlideLabels: parseFloat(e.target.value),
@@ -149,11 +197,27 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleWidthSlideLablesValue(e) {
+  function handleWidthSlideLabelsValue(e) {
     setSaveButton(false);
     setBarcodeFormValues({
       ...barcodeFromValues,
       widthSlideLabels: parseFloat(e.target.value),
+    });
+  }
+
+  function handleHeightFreezerLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      heightFreezerLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleWidthFreezerLabelsValue(e) {
+    setSaveButton(false);
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      widthFreezerLabels: parseFloat(e.target.value),
     });
   }
 
@@ -255,15 +319,15 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.order" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.order",
+                              })}
                               invalid={errors.order && touched.order}
                               invalidText={errors.order}
                               value={values.numDefaultOrderLabels}
-                              onChange={(e) => handleDefaultOrderLablesValue(e)}
+                              onChange={(e) => handleDefaultOrderLabelsValue(e)}
                               min={0}
                             />
                           )}
@@ -274,14 +338,71 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.specimen" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.specimen",
+                              })}
                               value={values.numDefaultSpecimenLabels}
                               onChange={(e) =>
-                                handleDefaultSpecimenLablesValue(e)
+                                handleDefaultSpecimenLabelsValue(e)
+                              }
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="slide">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.slide",
+                              })}
+                              invalid={errors.slide && touched.slide}
+                              invalidText={errors.slide}
+                              value={values.numDefaultSlideLabels}
+                              onChange={(e) => handleDefaultSlideLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="specimen">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.block",
+                              })}
+                              value={values.numDefaultBlockLabels}
+                              onChange={(e) => handleDefaultBlockLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="order">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.freezer",
+                              })}
+                              invalid={errors.freezer && touched.freezer}
+                              invalidText={errors.freezer}
+                              value={values.numDefaultFreezerLabels}
+                              onChange={(e) =>
+                                handleDefaultFreezerLabelsValue(e)
                               }
                               min={0}
                             />
@@ -303,13 +424,13 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.order" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.order",
+                              })}
                               value={values.numMaxOrderLabels}
-                              onChange={(e) => handleMaxOrderLablesValue(e)}
+                              onChange={(e) => handleMaxOrderLabelsValue(e)}
                               min={0}
                             />
                           )}
@@ -320,13 +441,64 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.specimen" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.specimen",
+                              })}
                               value={values.numMaxSpecimenLabels}
-                              onChange={(e) => handleMaxSpecimenLablesValue(e)}
+                              onChange={(e) => handleMaxSpecimenLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="maxSlide">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.slide",
+                              })}
+                              value={values.numMaxSlideLabels}
+                              onChange={(e) => handleMaxSlideLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="maxBlock">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.block",
+                              })}
+                              value={values.numMaxBlockLabels}
+                              onChange={(e) => handleMaxBlockLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="maxFreezer">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.freezer",
+                              })}
+                              value={values.numMaxFreezerLabels}
+                              onChange={(e) => handleMaxFreezerLabelsValue(e)}
                               min={0}
                             />
                           )}
@@ -428,9 +600,9 @@ function BarcodeConfiguration() {
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.collectiondatetime" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.collectiondatetime",
+                                  })}
                                 />
                                 <Checkbox
                                   id="collectedBy"
@@ -443,9 +615,9 @@ function BarcodeConfiguration() {
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.collectedBy" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.collectedBy",
+                                  })}
                                 />
                                 <Checkbox
                                   id="tests"
@@ -458,9 +630,9 @@ function BarcodeConfiguration() {
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.tests" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.tests",
+                                  })}
                                 />
                                 <Checkbox
                                   id="patientsexfull"
@@ -473,9 +645,9 @@ function BarcodeConfiguration() {
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.patientsexfull" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientsexfull",
+                                  })}
                                 />
                               </div>
                             </Column>
@@ -501,9 +673,9 @@ function BarcodeConfiguration() {
                           });
                           setSaveButton(false);
                         }}
-                        labelText={
-                          <FormattedMessage id="labno.alt.prefix.use" />
-                        }
+                        labelText={intl.formatMessage({
+                          id: "labno.alt.prefix.use",
+                        })}
                       />
                       <br />
                       <Grid fullWidth={true}>
@@ -515,7 +687,7 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 // name="lable-prefix"
-                                className="defalut"
+                                className="default"
                                 type="text"
                                 id={field.name}
                                 labelText=""
@@ -573,14 +745,14 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightOrderLabels}
                                 onChange={(e) =>
                                   handleHeightOrderLabelsValue(e)
@@ -595,14 +767,14 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthOrderLabels}
                                 onChange={(e) => handleWidthOrderLabelsValue(e)}
                                 min={0}
@@ -618,17 +790,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightSpecimenLabels}
                                 onChange={(e) =>
-                                  handleHeightSpecimenLablesValue(e)
+                                  handleHeightSpecimenLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -640,17 +812,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthSpecimenLabels}
                                 onChange={(e) =>
-                                  handleWidthSpecimenLablesValue(e)
+                                  handleWidthSpecimenLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -668,17 +840,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightBlockLabels}
                                 onChange={(e) =>
-                                  handleHeightBlockLablesValue(e)
+                                  handleHeightBlockLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -689,16 +861,16 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthBlockLabels}
-                                onChange={(e) => handleWidthBlockLablesValue(e)}
+                                onChange={(e) => handleWidthBlockLabelsValue(e)}
                                 min={0}
                               />
                             )}
@@ -712,17 +884,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightSlideLabels}
                                 onChange={(e) =>
-                                  handleHeightSlideLablesValue(e)
+                                  handleHeightSlideLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -734,16 +906,63 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthSlideLabels}
-                                onChange={(e) => handleWidthSlideLablesValue(e)}
+                                onChange={(e) => handleWidthSlideLabelsValue(e)}
+                                min={0}
+                              />
+                            )}
+                          </Field>
+                        </Column>
+                        <Column lg={8} md={4} sm={2}>
+                          <FormattedMessage id="siteInfo.title.default.barcode.freezer" />
+                          <br />
+                          <br />
+                          <Field name="height-freezer">
+                            {({ field }) => (
+                              <TextInput
+                                id={field.name}
+                                className="default"
+                                type="number"
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
+                                value={values.heightFreezerLabels}
+                                onChange={(e) =>
+                                  handleHeightFreezerLabelsValue(e)
+                                }
+                                min={0}
+                              />
+                            )}
+                          </Field>
+
+                          <br />
+                          <Field name="width-freezer">
+                            {({ field }) => (
+                              <TextInput
+                                id={field.name}
+                                className="default"
+                                type="number"
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
+                                value={values.widthFreezerLabels}
+                                onChange={(e) =>
+                                  handleWidthFreezerLabelsValue(e)
+                                }
                                 min={0}
                               />
                             )}

@@ -1,10 +1,11 @@
 package org.openelisglobal.barcode.form;
 
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.Range;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.ValidationHelper;
+
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public class BarcodeConfigurationForm extends BaseForm {
 
@@ -18,6 +19,15 @@ public class BarcodeConfigurationForm extends BaseForm {
     private int numMaxAliquotLabels;
 
     @Range(min = 0, max = 2000)
+    private int numMaxSlideLabels;
+
+    @Range(min = 0, max = 2000)
+    private int numMaxBlockLabels;
+
+    @Range(min = 0, max = 2000)
+    private int numMaxFreezerLabels;
+
+    @Range(min = 0, max = 2000)
     private int numDefaultOrderLabels;
 
     @Range(min = 0, max = 2000)
@@ -25,6 +35,15 @@ public class BarcodeConfigurationForm extends BaseForm {
 
     @Range(min = 0, max = 2000)
     private int numDefaultAliquotLabels;
+
+    @Range(min = 0, max = 2000)
+    private int numDefaultSlideLabels;
+
+    @Range(min = 0, max = 2000)
+    private int numDefaultBlockLabels;
+
+    @Range(min = 0, max = 2000)
+    private int numDefaultFreezerLabels;
 
     @Range(min = 0, max = 1000)
     private float heightOrderLabels;
@@ -49,6 +68,12 @@ public class BarcodeConfigurationForm extends BaseForm {
 
     @Range(min = 0, max = 1000)
     private float widthSlideLabels;
+
+    @Range(min = 0, max = 1000)
+    private float heightFreezerLabels;
+
+    @Range(min = 0, max = 1000)
+    private float widthFreezerLabels;
 
     private boolean collectionDateCheck;
 
@@ -91,8 +116,32 @@ public class BarcodeConfigurationForm extends BaseForm {
         return numMaxAliquotLabels;
     }
 
-    public void setMaxNumAliquotLabels(int numMaxAliquotLabels) {
+    public void setNumMaxAliquotLabels(int numMaxAliquotLabels) {
         this.numMaxAliquotLabels = numMaxAliquotLabels;
+    }
+
+    public int getNumMaxSlideLabels() {
+        return numMaxSlideLabels;
+    }
+
+    public void setNumMaxSlideLabels(int numMaxSlideLabels) {
+        this.numMaxSlideLabels = numMaxSlideLabels;
+    }
+
+    public int getNumMaxBlockLabels() {
+        return numMaxBlockLabels;
+    }
+
+    public void setNumMaxBlockLabels(int numMaxBlockLabels) {
+        this.numMaxBlockLabels = numMaxBlockLabels;
+    }
+
+    public int getNumMaxFreezerLabels() {
+        return numMaxFreezerLabels;
+    }
+
+    public void setNumMaxFreezerLabels(int numMaxFreezerLabels) {
+        this.numMaxFreezerLabels = numMaxFreezerLabels;
     }
 
     public float getHeightOrderLabels() {
@@ -157,6 +206,22 @@ public class BarcodeConfigurationForm extends BaseForm {
 
     public void setWidthSlideLabels(float widthSlideLabels) {
         this.widthSlideLabels = widthSlideLabels;
+    }
+
+    public float getHeightFreezerLabels() {
+        return heightFreezerLabels;
+    }
+
+    public void setHeightFreezerLabels(float heightFreezerLabels) {
+        this.heightFreezerLabels = heightFreezerLabels;
+    }
+
+    public float getWidthFreezerLabels() {
+        return widthFreezerLabels;
+    }
+
+    public void setWidthFreezerLabels(float widthFreezerLabels) {
+        this.widthFreezerLabels = widthFreezerLabels;
     }
 
     public boolean getCollectionDateCheck() {
@@ -231,8 +296,28 @@ public class BarcodeConfigurationForm extends BaseForm {
         this.numDefaultAliquotLabels = numDefaultAliquotLabels;
     }
 
-    public void setNumMaxAliquotLabels(int numMaxAliquotLabels) {
-        this.numMaxAliquotLabels = numMaxAliquotLabels;
+    public int getNumDefaultSlideLabels() {
+        return numDefaultSlideLabels;
+    }
+
+    public void setNumDefaultSlideLabels(int numDefaultSlideLabels) {
+        this.numDefaultSlideLabels = numDefaultSlideLabels;
+    }
+
+    public int getNumDefaultBlockLabels() {
+        return numDefaultBlockLabels;
+    }
+
+    public void setNumDefaultBlockLabels(int numDefaultBlockLabels) {
+        this.numDefaultBlockLabels = numDefaultBlockLabels;
+    }
+
+    public int getNumDefaultFreezerLabels() {
+        return numDefaultFreezerLabels;
+    }
+
+    public void setNumDefaultFreezerLabels(int numDefaultFreezerLabels) {
+        this.numDefaultFreezerLabels = numDefaultFreezerLabels;
     }
 
     public boolean getCollectedByCheck() {

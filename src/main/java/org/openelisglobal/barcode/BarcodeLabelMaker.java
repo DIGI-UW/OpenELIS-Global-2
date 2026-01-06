@@ -29,6 +29,7 @@ import java.util.Set;
 import javax.imageio.ImageIO;
 import org.openelisglobal.barcode.labeltype.BlankLabel;
 import org.openelisglobal.barcode.labeltype.BlockLabel;
+import org.openelisglobal.barcode.labeltype.FreezerLabel;
 import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.OrderLabel;
 import org.openelisglobal.barcode.labeltype.SlideLabel;
@@ -191,6 +192,9 @@ public class BarcodeLabelMaker {
             labels.add(label);
         } else if ("slide".equals(type)) {
             SlideLabel label = new SlideLabel(code);
+            labels.add(label);
+        } else if ("freezer".equals(type)) {
+            FreezerLabel label = new FreezerLabel(code);
             labels.add(label);
         }
     }

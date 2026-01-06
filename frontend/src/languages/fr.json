@@ -1615,6 +1615,7 @@
   "siteInfo.title.default.barcode.order": "Commande",
   "siteInfo.title.default.barcode.order.none": "Aucune",
   "siteInfo.title.default.barcode.slide": "Lame",
+  "siteInfo.title.default.barcode.freezer": "Congélateur",
   "siteInfo.title.default.barcode.specimen": "Échantillon",
   "siteInfo.title.default.barcode.width": "Largeur",
   "siteInfo.title.max.barcode": "Nombre maximum d'étiquettes de code-barres",

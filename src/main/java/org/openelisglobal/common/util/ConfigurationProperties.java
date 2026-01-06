@@ -190,10 +190,16 @@ public abstract class ConfigurationProperties {
         MAX_ORDER_PRINTED("numMaxOrderLabels", "text"), // Max number of order labels that can be printed
         MAX_SPECIMEN_PRINTED("numMaxSpecimenLabels", "text"), // Max number of specimen labels that can be printed
         MAX_ALIQUOT_PRINTED("numMaxAliquotLabels", "text"), // Max number of aliquots that can be printed
+        MAX_SLIDE_PRINTED("numMaxSlideLabels", "text"), // Max number of slides that can be printed
+        MAX_BLOCK_PRINTED("numMaxBlockLabels", "text"), // Max number of block labels that can be printed
+        MAX_FREEZER_PRINTED("numMaxFreezerLabels", "text"), // Max number of freezer labels that can be printed
         DEFAULT_ORDER_PRINTED("numDefaultOrderLabels", "text"), // Max number of order labels that can be printed
         DEFAULT_SPECIMEN_PRINTED("numDefaultSpecimenLabels", "text"), // Max number of specimen labels that can be
                                                                       // printed
         DEFAULT_ALIQUOT_PRINTED("numDefaultAliquotLabels", "text"), // Max number of aliquots that can be printed
+        DEFAULT_SLIDE_PRINTED("numDefaultSlideLabels", "text"), // Max number of slides that can be printed
+        DEFAULT_BLOCK_PRINTED("numDefaultBlockLabels", "text"), // Max number of block labels that can be printed
+        DEFAULT_FREEZER_PRINTED("numDefaultFreezerLabels", "text"), // Max number of freezer labels that can be printed
         ORDER_BARCODE_HEIGHT("heightOrderLabels", "text"), // Height of the order barcode
         ORDER_BARCODE_WIDTH("widthOrderLabels", "text"), // Width of the order barcode
         SPECIMEN_BARCODE_HEIGHT("heightSpecimenLabels", "text"), // Height of the specimen barcode
@@ -205,6 +211,8 @@ public abstract class ConfigurationProperties {
         BLOCK_BARCODE_WIDTH("widthBlockLabels", "text"), //
         SLIDE_BARCODE_HEIGHT("heightSlideLabels", "text"), //
         SLIDE_BARCODE_WIDTH("widthSlideLabels", "text"), //
+        FREEZER_BARCODE_HEIGHT("heightFreezerLabels", "text"), //
+        FREEZER_BARCODE_WIDTH("widthFreezerLabels", "text"), //
         STORAGE_LOCATION_BARCODE_HEIGHT("heightStorageLocationLabels", "text"), // Height of storage location barcode
                                                                                 // labels
         STORAGE_LOCATION_BARCODE_WIDTH("widthStorageLocationLabels", "text"), // Width of storage location barcode
@@ -234,7 +242,7 @@ public abstract class ConfigurationProperties {
         CONTACT_TRACING("contactTracingEnabled", "text"), //
         REQUIRE_LAB_UNIT_AT_LOGIN("requireLabUnitAtLogin", "text"), //
         ENABLE_CLIENT_REGISTRY("enableClientRegistry", "text"), // if true, then client registry search option is
-        BAR_CODE_TYPE("BarCodeType", "text");
+        BAR_CODE_TYPE("BarCodeType", "text"),;
 
         // visible on
         // the ui
