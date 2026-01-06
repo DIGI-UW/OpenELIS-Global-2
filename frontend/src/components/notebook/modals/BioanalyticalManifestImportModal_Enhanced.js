@@ -33,13 +33,15 @@ const EXPECTED_DATA_POINTS = {
     {
       label: "Sample ID",
       key: "uniqueSampleId",
-      description: "Unique identifier for the sample (can retain original or assign new)",
+      description:
+        "Unique identifier for the sample (can retain original or assign new)",
       example: "BIO-2024-001-A, PK-STUDY-001",
     },
     {
       label: "Sample Type",
       key: "sampleType",
-      description: "Type of bioanalytical sample (API, tablet, biological matrix)",
+      description:
+        "Type of bioanalytical sample (API, tablet, biological matrix)",
       example: "API, Tablet, Plasma, Serum, Urine",
     },
     {
@@ -57,7 +59,8 @@ const EXPECTED_DATA_POINTS = {
     {
       label: "Date/Time of Receipt",
       key: "dateTimeOfReceipt",
-      description: "Date and time when sample was received (YYYY-MM-DD HH:MM or 'now')",
+      description:
+        "Date and time when sample was received (YYYY-MM-DD HH:MM or 'now')",
       example: "2024-01-15 14:30, now",
     },
     {
@@ -71,11 +74,21 @@ const EXPECTED_DATA_POINTS = {
     {
       label: "Sample Type (Validated)",
       key: "sampleType",
-      description: "Sample type validated against Bioanalytical & Bioequivalence Laboratory types",
+      description:
+        "Sample type validated against Bioanalytical & Bioequivalence Laboratory types",
       example: "API, Tablet, Capsule, Plasma, Serum, Urine",
       validValues: [
-        "API", "Tablet", "Capsule", "Suspension", "Plasma", "Serum", "Urine",
-        "Whole Blood", "Reference Standard", "Excipient", "Stability Sample"
+        "API",
+        "Tablet",
+        "Capsule",
+        "Suspension",
+        "Plasma",
+        "Serum",
+        "Urine",
+        "Whole Blood",
+        "Reference Standard",
+        "Excipient",
+        "Stability Sample",
       ],
     },
   ],
@@ -83,14 +96,16 @@ const EXPECTED_DATA_POINTS = {
     {
       label: "Project/Study Association",
       key: "projectStudyAssociation",
-      description: "Study or project identifier for bioequivalence or pharmaceutical testing",
+      description:
+        "Study or project identifier for bioequivalence or pharmaceutical testing",
       example: "BE-2024-001, STAB-API-001, PK-STUDY-002",
     },
     {
       label: "Storage Condition Prior",
       key: "storageConditionPrior",
       description: "Storage condition before testing",
-      example: "Room Temperature, Refrigerated (2-8°C), Frozen (-20°C), Ultra-frozen (-80°C)",
+      example:
+        "Room Temperature, Refrigerated (2-8°C), Frozen (-20°C), Ultra-frozen (-80°C)",
     },
     {
       label: "Sample Volume",
@@ -319,7 +334,7 @@ function BioanalyticalManifestImportModal({
       "dateTimeOfReceiptColumn",
       "receivingPersonnelColumn",
     ];
-    return requiredFields.every(field => columnMapping[field] !== "");
+    return requiredFields.every((field) => columnMapping[field] !== "");
   };
 
   const handleFileChange = (files) => {
@@ -327,7 +342,7 @@ function BioanalyticalManifestImportModal({
       const selectedFile = files[0];
 
       // Validate file type
-      if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
+      if (!selectedFile.name.toLowerCase().endsWith(".csv")) {
         setNotificationVisible({
           type: "error",
           message: "Please select a CSV file.",
@@ -341,9 +356,11 @@ function BioanalyticalManifestImportModal({
       const reader = new FileReader();
       reader.onload = (e) => {
         const csv = e.target.result;
-        const lines = csv.split('\n');
+        const lines = csv.split("\n");
         if (lines.length > 0) {
-          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+          const headers = lines[0]
+            .split(",")
+            .map((h) => h.trim().replace(/"/g, ""));
           setCsvHeaders(headers);
 
           // Auto-map columns
@@ -834,7 +851,7 @@ function BioanalyticalManifestImportModal({
   );
 
   const renderMappingField = (label, fieldKey, required = false) => (
-    <div className={`mapping-field ${required ? 'required' : ''}`}>
+    <div className={`mapping-field ${required ? "required" : ""}`}>
       <Select
         id={`mapping-${fieldKey}`}
         labelText={required ? `${label} *` : label}
@@ -858,7 +875,7 @@ function BioanalyticalManifestImportModal({
             {renderDataPointsReference()}
             <div style={{ marginTop: "2rem" }}>
               <FileUploaderDropContainer
-                accept={['.csv']}
+                accept={[".csv"]}
                 labelText="Drag and drop CSV file here or click to upload"
                 multiple={false}
                 name="csvFile"
@@ -899,15 +916,33 @@ function BioanalyticalManifestImportModal({
                   id="notebook.bioanalytical.manifest.requiredFieldsMapping"
                   defaultMessage="Required Fields"
                 />
-                <Tag type="red" size="sm">6</Tag>
+                <Tag type="red" size="sm">
+                  6
+                </Tag>
               </h5>
               <div className="mapping-grid">
                 {renderMappingField("Sample ID", "uniqueSampleIdColumn", true)}
                 {renderMappingField("Sample Type", "sampleTypeColumn", true)}
-                {renderMappingField("Source Origin", "sourceOriginColumn", true)}
-                {renderMappingField("Requested Tests", "requestedTestsColumn", true)}
-                {renderMappingField("Date/Time of Receipt", "dateTimeOfReceiptColumn", true)}
-                {renderMappingField("Receiving Personnel", "receivingPersonnelColumn", true)}
+                {renderMappingField(
+                  "Source Origin",
+                  "sourceOriginColumn",
+                  true,
+                )}
+                {renderMappingField(
+                  "Requested Tests",
+                  "requestedTestsColumn",
+                  true,
+                )}
+                {renderMappingField(
+                  "Date/Time of Receipt",
+                  "dateTimeOfReceiptColumn",
+                  true,
+                )}
+                {renderMappingField(
+                  "Receiving Personnel",
+                  "receivingPersonnelColumn",
+                  true,
+                )}
               </div>
             </div>
 
@@ -918,7 +953,9 @@ function BioanalyticalManifestImportModal({
                   id="notebook.bioanalytical.manifest.sampleTypeValidation"
                   defaultMessage="Sample Type Validation"
                 />
-                <Tag type="purple" size="sm">Validated</Tag>
+                <Tag type="purple" size="sm">
+                  Validated
+                </Tag>
               </h5>
               <p className="mapping-section-info">
                 <FormattedMessage
@@ -935,14 +972,28 @@ function BioanalyticalManifestImportModal({
                   id="notebook.bioanalytical.manifest.optionalFieldsMapping"
                   defaultMessage="Optional Fields"
                 />
-                <Tag type="blue" size="sm">8</Tag>
+                <Tag type="blue" size="sm">
+                  8
+                </Tag>
               </h5>
               <div className="mapping-grid">
-                {renderMappingField("Project/Study Association", "projectStudyAssociationColumn")}
-                {renderMappingField("Storage Condition Prior", "storageConditionPriorColumn")}
+                {renderMappingField(
+                  "Project/Study Association",
+                  "projectStudyAssociationColumn",
+                )}
+                {renderMappingField(
+                  "Storage Condition Prior",
+                  "storageConditionPriorColumn",
+                )}
                 {renderMappingField("Sample Volume", "sampleVolumeColumn")}
-                {renderMappingField("Transport Temperature", "transportTemperatureColumn")}
-                {renderMappingField("Verification Status", "manifestVerificationStatusColumn")}
+                {renderMappingField(
+                  "Transport Temperature",
+                  "transportTemperatureColumn",
+                )}
+                {renderMappingField(
+                  "Verification Status",
+                  "manifestVerificationStatusColumn",
+                )}
                 {renderMappingField("Subject/Patient ID", "subjectIdColumn")}
                 {renderMappingField("Timepoint", "timepointColumn")}
                 {renderMappingField("Notes", "notesColumn")}
@@ -972,7 +1023,8 @@ function BioanalyticalManifestImportModal({
                     })}
                     subtitle={intl.formatMessage({
                       id: "notebook.bioanalytical.manifest.errorsFound",
-                      defaultMessage: "Please fix the following errors before importing:",
+                      defaultMessage:
+                        "Please fix the following errors before importing:",
                     })}
                     lowContrast
                   />
@@ -982,7 +1034,8 @@ function BioanalyticalManifestImportModal({
                   <ul className="error-list">
                     {previewErrors.map((error, index) => (
                       <li key={index}>
-                        Row {error.rowNumber}, Column "{error.column}": {error.message}
+                        Row {error.rowNumber}, Column "{error.column}":{" "}
+                        {error.message}
                       </li>
                     ))}
                   </ul>
@@ -1038,8 +1091,16 @@ function BioanalyticalManifestImportModal({
       primaryButtonText={modalConfig.primaryButtonText}
       primaryButtonDisabled={modalConfig.primaryButtonDisabled}
       onRequestSubmit={modalConfig.onRequestSubmit}
-      secondaryButtonText={modalConfig.showSecondaryButton ? modalConfig.secondaryButtonText : undefined}
-      onSecondarySubmit={modalConfig.showSecondaryButton ? modalConfig.onSecondarySubmit : undefined}
+      secondaryButtonText={
+        modalConfig.showSecondaryButton
+          ? modalConfig.secondaryButtonText
+          : undefined
+      }
+      onSecondarySubmit={
+        modalConfig.showSecondaryButton
+          ? modalConfig.onSecondarySubmit
+          : undefined
+      }
       size="lg"
       className="manifest-import-modal"
     >

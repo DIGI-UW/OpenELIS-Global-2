@@ -76,6 +76,8 @@ function BioanalyticalSampleReceptionPage({
     // Core reception data
     sampleId: "",
     sourceOrigin: "",
+    sourceType: "", // NEW: Medical Lab vs. External distinction
+    sourceLaboratory: "", // NEW: Source lab tracking
     requestedTests: "",
     dateTimeOfReceipt: "",
     receivingPersonnel: "",
@@ -86,15 +88,51 @@ function BioanalyticalSampleReceptionPage({
     sampleVolume: "",
     transportTemperature: "",
 
-    // Study integration
+    // Enhanced Study integration
     projectStudyAssociation: "",
+    bioequivalenceProtocol: "", // NEW: BE protocol linking
+    studyPhase: "", // NEW: Study phase tracking
     subjectId: "",
     timepoint: "",
+    timepointDescription: "", // NEW: Enhanced timepoint info
+    pkParameter: "", // NEW: PK parameter flag
     manifestVerificationStatus: "",
+
+    // Chain of custody
+    chainOfCustody: "", // NEW: Transfer tracking
 
     // Administrative
     notes: "",
   });
+
+  // NEW: Source type options for Medical Lab vs. External distinction
+  const sourceTypes = [
+    { id: "medical_lab", label: "Medical Laboratory", description: "Processed biological samples from clinical site lab" },
+    { id: "external_client", label: "External Client", description: "Pharmaceutical samples from researchers or sponsors" },
+    { id: "cro", label: "Contract Research Organization (CRO)", description: "Samples from external CRO partners" },
+    { id: "biorepository", label: "Biorepository", description: "Long-term stored samples transferred for analysis" },
+  ];
+
+  // NEW: Bioequivalence study phases
+  const studyPhases = [
+    { id: "screening", label: "Screening", description: "Pre-study qualification samples" },
+    { id: "treatment_a", label: "Treatment A (Reference)", description: "Reference formulation dosing period" },
+    { id: "treatment_b", label: "Treatment B (Test)", description: "Test formulation dosing period" },
+    { id: "washout", label: "Washout Period", description: "Between-period washout samples" },
+    { id: "follow_up", label: "Follow-up", description: "Post-study safety samples" },
+  ];
+
+  // NEW: Enhanced pharmacokinetic timepoints
+  const pkTimepoints = [
+    { id: "pre_dose", label: "Pre-dose (0h)", description: "Baseline sample before dosing", pkParam: "baseline" },
+    { id: "0.5h", label: "0.5 hours post-dose", description: "Early absorption phase", pkParam: "absorption" },
+    { id: "1h", label: "1 hour post-dose", description: "Absorption phase", pkParam: "absorption" },
+    { id: "2h", label: "2 hours post-dose", description: "Peak concentration window", pkParam: "cmax" },
+    { id: "4h", label: "4 hours post-dose", description: "Post-peak distribution", pkParam: "distribution" },
+    { id: "8h", label: "8 hours post-dose", description: "Elimination phase", pkParam: "elimination" },
+    { id: "12h", label: "12 hours post-dose", description: "Late elimination", pkParam: "elimination" },
+    { id: "24h", label: "24 hours post-dose", description: "Terminal elimination", pkParam: "terminal" },
+  ];
 
   const handleImportModalOpen = () => {
     setIsImportModalOpen(true);
@@ -110,7 +148,8 @@ function BioanalyticalSampleReceptionPage({
         intl.formatMessage(
           {
             id: "notebook.bioanalytical.reception.importSuccess",
-            defaultMessage: "{count} samples imported successfully for Stage 1 reception",
+            defaultMessage:
+              "{count} samples imported successfully for Stage 1 reception",
           },
           { count: results.totalCreated || 0 },
         ),
@@ -152,9 +191,9 @@ function BioanalyticalSampleReceptionPage({
   };
 
   const handleMetadataChange = (field, value) => {
-    setEditingMetadata(prev => ({
+    setEditingMetadata((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -166,7 +205,7 @@ function BioanalyticalSampleReceptionPage({
       intl.formatMessage({
         id: "notebook.bioanalytical.reception.metadataSaved",
         defaultMessage: "Sample metadata updated successfully",
-      })
+      }),
     );
   };
 
@@ -228,7 +267,7 @@ function BioanalyticalSampleReceptionPage({
           intl.formatMessage({
             id: "notebook.bioanalytical.stage1.error.loadSamples",
             defaultMessage: "Failed to load samples. Please refresh the page.",
-          })
+          }),
         );
         setSamples([]);
         setIsLoading(false);
@@ -295,7 +334,10 @@ function BioanalyticalSampleReceptionPage({
       {/* Stage 1 Progress Overview */}
       <Grid fullWidth style={{ marginBottom: "1.5rem" }}>
         <Column lg={16} md={8} sm={4}>
-          <div className="progress-tiles" style={{ display: "flex", gap: "1rem" }}>
+          <div
+            className="progress-tiles"
+            style={{ display: "flex", gap: "1rem" }}
+          >
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
@@ -312,7 +354,15 @@ function BioanalyticalSampleReceptionPage({
                   defaultMessage="Biological Samples"
                 />
               </span>
-              <span className="progress-value">{samples.filter(s => ['Plasma', 'Serum', 'Urine', 'Whole Blood'].includes(s.sampleType)).length}</span>
+              <span className="progress-value">
+                {
+                  samples.filter((s) =>
+                    ["Plasma", "Serum", "Urine", "Whole Blood"].includes(
+                      s.sampleType,
+                    ),
+                  ).length
+                }
+              </span>
             </Tile>
             <Tile className="progress-tile">
               <span className="progress-label">
@@ -321,7 +371,15 @@ function BioanalyticalSampleReceptionPage({
                   defaultMessage="Pharmaceutical Samples"
                 />
               </span>
-              <span className="progress-value">{samples.filter(s => ['API', 'Tablet', 'Capsule', 'Suspension'].includes(s.sampleType)).length}</span>
+              <span className="progress-value">
+                {
+                  samples.filter((s) =>
+                    ["API", "Tablet", "Capsule", "Suspension"].includes(
+                      s.sampleType,
+                    ),
+                  ).length
+                }
+              </span>
             </Tile>
             <Tile className="progress-tile">
               <span className="progress-label">
@@ -330,7 +388,9 @@ function BioanalyticalSampleReceptionPage({
                   defaultMessage="Study Linked"
                 />
               </span>
-              <span className="progress-value">{samples.filter(s => s.projectStudyAssociation).length}</span>
+              <span className="progress-value">
+                {samples.filter((s) => s.projectStudyAssociation).length}
+              </span>
             </Tile>
           </div>
         </Column>
@@ -368,7 +428,10 @@ function BioanalyticalSampleReceptionPage({
       )}
 
       {/* 3-Tab Design for Stage 1 Components */}
-      <Tabs selectedIndex={selectedTab} onChange={(evt) => setSelectedTab(evt.selectedIndex)}>
+      <Tabs
+        selectedIndex={selectedTab}
+        onChange={(evt) => setSelectedTab(evt.selectedIndex)}
+      >
         <TabList aria-label="Stage 1 sample reception components">
           <Tab>
             <FormattedMessage
@@ -413,8 +476,21 @@ function BioanalyticalSampleReceptionPage({
                     </div>
 
                     {/* Stage 1 Requirements Mapping */}
-                    <div style={{ marginBottom: "2rem", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
-                      <h4 style={{ marginBottom: "1rem", fontSize: "1rem", fontWeight: "600" }}>
+                    <div
+                      style={{
+                        marginBottom: "2rem",
+                        padding: "1rem",
+                        backgroundColor: "#f4f4f4",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      <h4
+                        style={{
+                          marginBottom: "1rem",
+                          fontSize: "1rem",
+                          fontWeight: "600",
+                        }}
+                      >
                         <FormattedMessage
                           id="notebook.bioanalytical.stage1.import.requirements"
                           defaultMessage="How Manifest Import Addresses Stage 1 Requirements:"
@@ -422,8 +498,16 @@ function BioanalyticalSampleReceptionPage({
                       </h4>
 
                       <div style={{ display: "grid", gap: "1rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="blue" size="sm">1</Tag>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="blue" size="sm">
+                            1
+                          </Tag>
                           <span style={{ fontSize: "0.875rem" }}>
                             <FormattedMessage
                               id="notebook.bioanalytical.stage1.import.req1"
@@ -432,8 +516,16 @@ function BioanalyticalSampleReceptionPage({
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="green" size="sm">2</Tag>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="green" size="sm">
+                            2
+                          </Tag>
                           <span style={{ fontSize: "0.875rem" }}>
                             <FormattedMessage
                               id="notebook.bioanalytical.stage1.import.req2"
@@ -442,8 +534,16 @@ function BioanalyticalSampleReceptionPage({
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="purple" size="sm">3</Tag>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="purple" size="sm">
+                            3
+                          </Tag>
                           <span style={{ fontSize: "0.875rem" }}>
                             <FormattedMessage
                               id="notebook.bioanalytical.stage1.import.req3"
@@ -452,8 +552,16 @@ function BioanalyticalSampleReceptionPage({
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="red" size="sm">4</Tag>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="red" size="sm">
+                            4
+                          </Tag>
                           <span style={{ fontSize: "0.875rem" }}>
                             <FormattedMessage
                               id="notebook.bioanalytical.stage1.import.req4"
@@ -462,8 +570,16 @@ function BioanalyticalSampleReceptionPage({
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="cyan" size="sm">5</Tag>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="cyan" size="sm">
+                            5
+                          </Tag>
                           <span style={{ fontSize: "0.875rem" }}>
                             <FormattedMessage
                               id="notebook.bioanalytical.stage1.import.req5"
@@ -483,7 +599,13 @@ function BioanalyticalSampleReceptionPage({
                         />
                       </h4>
 
-                      <p style={{ marginBottom: "1.5rem", fontSize: "0.875rem", color: "#525252" }}>
+                      <p
+                        style={{
+                          marginBottom: "1.5rem",
+                          fontSize: "0.875rem",
+                          color: "#525252",
+                        }}
+                      >
                         <FormattedMessage
                           id="notebook.bioanalytical.stage1.import.help"
                           defaultMessage="Upload CSV manifest to import samples with complete Stage 1 metadata. The system handles both biological samples from clinical sites and pharmaceutical samples from research clients."
@@ -528,19 +650,40 @@ function BioanalyticalSampleReceptionPage({
                   </div>
 
                   {/* Sample Type Breakdown */}
-                  <div style={{ marginBottom: "1.5rem", display: "flex", gap: "1rem" }}>
+                  <div
+                    style={{
+                      marginBottom: "1.5rem",
+                      display: "flex",
+                      gap: "1rem",
+                    }}
+                  >
                     <Tag type="blue">
                       <FormattedMessage
                         id="notebook.bioanalytical.stage1.samples.biological"
                         defaultMessage="Biological: {count}"
-                        values={{ count: samples.filter(s => ['Plasma', 'Serum', 'Urine', 'Whole Blood'].includes(s.sampleType)).length }}
+                        values={{
+                          count: samples.filter((s) =>
+                            [
+                              "Plasma",
+                              "Serum",
+                              "Urine",
+                              "Whole Blood",
+                            ].includes(s.sampleType),
+                          ).length,
+                        }}
                       />
                     </Tag>
                     <Tag type="green">
                       <FormattedMessage
                         id="notebook.bioanalytical.stage1.samples.pharmaceutical"
                         defaultMessage="Pharmaceutical: {count}"
-                        values={{ count: samples.filter(s => ['API', 'Tablet', 'Capsule', 'Suspension'].includes(s.sampleType)).length }}
+                        values={{
+                          count: samples.filter((s) =>
+                            ["API", "Tablet", "Capsule", "Suspension"].includes(
+                              s.sampleType,
+                            ),
+                          ).length,
+                        }}
                       />
                     </Tag>
                   </div>
@@ -597,51 +740,62 @@ function BioanalyticalSampleReceptionPage({
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {samples.length > 0 ? samples.map((sample, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell>{sample.uniqueSampleId}</TableCell>
-                              <TableCell>
-                                <Tag
-                                  type={sample.sampleType === "Plasma" ? "blue" : "green"}
-                                  size="sm"
-                                >
-                                  {sample.sampleType}
-                                </Tag>
-                              </TableCell>
-                              <TableCell>{sample.sourceOrigin}</TableCell>
-                              <TableCell>{sample.requestedTests}</TableCell>
-                              <TableCell>{sample.projectStudyAssociation}</TableCell>
-                              <TableCell>
-                                <Tag
-                                  type={
-                                    sample.status === "PENDING"
-                                      ? "gray"
-                                      : sample.status === "IN_PROGRESS"
+                          {samples.length > 0 ? (
+                            samples.map((sample, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell>{sample.uniqueSampleId}</TableCell>
+                                <TableCell>
+                                  <Tag
+                                    type={
+                                      sample.sampleType === "Plasma"
                                         ? "blue"
                                         : "green"
-                                  }
-                                  size="sm"
-                                >
-                                  {sample.status}
-                                </Tag>
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  kind="ghost"
-                                  size="sm"
-                                  renderIcon={Edit}
-                                  onClick={() => handleSampleSelect(sample)}
-                                >
-                                  <FormattedMessage
-                                    id="notebook.bioanalytical.stage1.samples.edit"
-                                    defaultMessage="Edit Metadata"
-                                  />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          )) : (
+                                    }
+                                    size="sm"
+                                  >
+                                    {sample.sampleType}
+                                  </Tag>
+                                </TableCell>
+                                <TableCell>{sample.sourceOrigin}</TableCell>
+                                <TableCell>{sample.requestedTests}</TableCell>
+                                <TableCell>
+                                  {sample.projectStudyAssociation}
+                                </TableCell>
+                                <TableCell>
+                                  <Tag
+                                    type={
+                                      sample.status === "PENDING"
+                                        ? "gray"
+                                        : sample.status === "IN_PROGRESS"
+                                          ? "blue"
+                                          : "green"
+                                    }
+                                    size="sm"
+                                  >
+                                    {sample.status}
+                                  </Tag>
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    renderIcon={Edit}
+                                    onClick={() => handleSampleSelect(sample)}
+                                  >
+                                    <FormattedMessage
+                                      id="notebook.bioanalytical.stage1.samples.edit"
+                                      defaultMessage="Edit Metadata"
+                                    />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
                             <TableRow>
-                              <TableCell colSpan="7" style={{ textAlign: "center", padding: "2rem" }}>
+                              <TableCell
+                                colSpan="7"
+                                style={{ textAlign: "center", padding: "2rem" }}
+                              >
                                 <FormattedMessage
                                   id="notebook.bioanalytical.stage1.samples.empty"
                                   defaultMessage="No samples received yet. Import a CSV manifest from the 'Manifest Import' tab to add samples."
@@ -682,52 +836,121 @@ function BioanalyticalSampleReceptionPage({
                     <Form>
                       {/* Core Reception Data - Stage 1 Requirements 3 & 4 */}
                       <div style={{ marginBottom: "2rem" }}>
-                        <h5 style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="purple" size="sm">3</Tag>
+                        <h5
+                          style={{
+                            marginBottom: "1rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="purple" size="sm">
+                            3
+                          </Tag>
                           <FormattedMessage
                             id="notebook.bioanalytical.stage1.metadata.core"
                             defaultMessage="Sample Identifier & Core Reception Data"
                           />
                         </h5>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "repeat(auto-fit, minmax(300px, 1fr))",
+                            gap: "1rem",
+                          }}
+                        >
                           <TextInput
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.sampleId",
-                              defaultMessage: "Sample ID (with source linkage)"
+                              defaultMessage: "Sample ID (with source linkage)",
                             })}
                             value={editingMetadata.sampleId || ""}
-                            onChange={(e) => handleMetadataChange("sampleId", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange("sampleId", e.target.value)
+                            }
                             helperText="Retain original or assign new with source tracking"
+                          />
+
+                          <Select
+                            id="source-type"
+                            labelText={intl.formatMessage({
+                              id: "notebook.bioanalytical.stage1.metadata.sourceType",
+                              defaultMessage: "Source Type *",
+                            })}
+                            value={editingMetadata.sourceType || ""}
+                            onChange={(e) =>
+                              handleMetadataChange("sourceType", e.target.value)
+                            }
+                          >
+                            <SelectItem
+                              value=""
+                              text="-- Select source type --"
+                            />
+                            {sourceTypes.map((type) => (
+                              <SelectItem
+                                key={type.id}
+                                value={type.id}
+                                text={`${type.label} - ${type.description}`}
+                              />
+                            ))}
+                          </Select>
+
+                          <TextInput
+                            labelText={intl.formatMessage({
+                              id: "notebook.bioanalytical.stage1.metadata.sourceLaboratory",
+                              defaultMessage: "Source Laboratory/Client",
+                            })}
+                            value={editingMetadata.sourceLaboratory || ""}
+                            onChange={(e) =>
+                              handleMetadataChange("sourceLaboratory", e.target.value)
+                            }
+                            helperText="Specific laboratory or client organization name"
                           />
 
                           <TextInput
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.sourceOrigin",
-                              defaultMessage: "Source Origin"
+                              defaultMessage: "Source Origin Details",
                             })}
                             value={editingMetadata.sourceOrigin || ""}
-                            onChange={(e) => handleMetadataChange("sourceOrigin", e.target.value)}
-                            helperText="Medical Laboratory / External Client / Researcher"
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "sourceOrigin",
+                                e.target.value,
+                              )
+                            }
+                            helperText="Additional source information or reference number"
                           />
 
                           <TextInput
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.dateTimeOfReceipt",
-                              defaultMessage: "Date/Time of Receipt"
+                              defaultMessage: "Date/Time of Receipt",
                             })}
                             value={editingMetadata.dateTimeOfReceipt || ""}
-                            onChange={(e) => handleMetadataChange("dateTimeOfReceipt", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "dateTimeOfReceipt",
+                                e.target.value,
+                              )
+                            }
                             helperText="YYYY-MM-DD HH:MM"
                           />
 
                           <TextInput
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.receivingPersonnel",
-                              defaultMessage: "Receiving Personnel"
+                              defaultMessage: "Receiving Personnel",
                             })}
                             value={editingMetadata.receivingPersonnel || ""}
-                            onChange={(e) => handleMetadataChange("receivingPersonnel", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "receivingPersonnel",
+                                e.target.value,
+                              )
+                            }
                             helperText="Person who received the sample"
                           />
                         </div>
@@ -735,64 +958,111 @@ function BioanalyticalSampleReceptionPage({
 
                       {/* Sample Classification - Stage 1 Requirement 4 */}
                       <div style={{ marginBottom: "2rem" }}>
-                        <h5 style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="red" size="sm">4</Tag>
+                        <h5
+                          style={{
+                            marginBottom: "1rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="red" size="sm">
+                            4
+                          </Tag>
                           <FormattedMessage
                             id="notebook.bioanalytical.stage1.metadata.classification"
                             defaultMessage="Metadata Registration (Sample Type, Tests, Storage)"
                           />
                         </h5>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "repeat(auto-fit, minmax(300px, 1fr))",
+                            gap: "1rem",
+                          }}
+                        >
                           <Select
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.sampleType",
-                              defaultMessage: "Sample Type"
+                              defaultMessage: "Sample Type",
                             })}
                             value={editingMetadata.sampleType || ""}
-                            onChange={(e) => handleMetadataChange("sampleType", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange("sampleType", e.target.value)
+                            }
                           >
                             <option value="">Select sample type...</option>
                             <option value="Plasma">Plasma (Biological)</option>
                             <option value="Serum">Serum (Biological)</option>
                             <option value="Urine">Urine (Biological)</option>
                             <option value="API">API (Pharmaceutical)</option>
-                            <option value="Tablet">Tablet (Pharmaceutical)</option>
-                            <option value="Capsule">Capsule (Pharmaceutical)</option>
+                            <option value="Tablet">
+                              Tablet (Pharmaceutical)
+                            </option>
+                            <option value="Capsule">
+                              Capsule (Pharmaceutical)
+                            </option>
                           </Select>
 
                           <TextInput
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.requestedTests",
-                              defaultMessage: "Requested Tests"
+                              defaultMessage: "Requested Tests",
                             })}
                             value={editingMetadata.requestedTests || ""}
-                            onChange={(e) => handleMetadataChange("requestedTests", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "requestedTests",
+                                e.target.value,
+                              )
+                            }
                             helperText="Assay, Dissolution, LC-MS/MS, HPLC, Bioequivalence"
                           />
 
                           <Select
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.storageConditionPrior",
-                              defaultMessage: "Storage Condition Prior"
+                              defaultMessage: "Storage Condition Prior",
                             })}
                             value={editingMetadata.storageConditionPrior || ""}
-                            onChange={(e) => handleMetadataChange("storageConditionPrior", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "storageConditionPrior",
+                                e.target.value,
+                              )
+                            }
                           >
-                            <option value="">Select storage condition...</option>
-                            <option value="Room Temperature">Room Temperature</option>
-                            <option value="Refrigerated (2-8°C)">Refrigerated (2-8°C)</option>
-                            <option value="Frozen (-20°C)">Frozen (-20°C)</option>
-                            <option value="Ultra-frozen (-80°C)">Ultra-frozen (-80°C)</option>
+                            <option value="">
+                              Select storage condition...
+                            </option>
+                            <option value="Room Temperature">
+                              Room Temperature
+                            </option>
+                            <option value="Refrigerated (2-8°C)">
+                              Refrigerated (2-8°C)
+                            </option>
+                            <option value="Frozen (-20°C)">
+                              Frozen (-20°C)
+                            </option>
+                            <option value="Ultra-frozen (-80°C)">
+                              Ultra-frozen (-80°C)
+                            </option>
                           </Select>
 
                           <TextInput
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.sampleVolume",
-                              defaultMessage: "Sample Volume/Quantity"
+                              defaultMessage: "Sample Volume/Quantity",
                             })}
                             value={editingMetadata.sampleVolume || ""}
-                            onChange={(e) => handleMetadataChange("sampleVolume", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "sampleVolume",
+                                e.target.value,
+                              )
+                            }
                             helperText="5 mL, 100 mg, 2 tablets"
                           />
                         </div>
@@ -800,52 +1070,163 @@ function BioanalyticalSampleReceptionPage({
 
                       {/* Study Integration - Stage 1 Requirement 5 */}
                       <div style={{ marginBottom: "2rem" }}>
-                        <h5 style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Tag type="cyan" size="sm">5</Tag>
+                        <h5
+                          style={{
+                            marginBottom: "1rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <Tag type="cyan" size="sm">
+                            5
+                          </Tag>
                           <FormattedMessage
                             id="notebook.bioanalytical.stage1.metadata.study"
                             defaultMessage="Study Linking (Bioequivalence Studies)"
                           />
                         </h5>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "repeat(auto-fit, minmax(300px, 1fr))",
+                            gap: "1rem",
+                          }}
+                        >
                           <TextInput
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.projectStudyAssociation",
-                              defaultMessage: "Project/Study Association"
+                              defaultMessage: "Project/Study Association",
                             })}
-                            value={editingMetadata.projectStudyAssociation || ""}
-                            onChange={(e) => handleMetadataChange("projectStudyAssociation", e.target.value)}
+                            value={
+                              editingMetadata.projectStudyAssociation || ""
+                            }
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "projectStudyAssociation",
+                                e.target.value,
+                              )
+                            }
                             helperText="BE-2024-001, STAB-API-001, PK-STUDY-002"
                           />
 
                           <TextInput
                             labelText={intl.formatMessage({
+                              id: "notebook.bioanalytical.stage1.metadata.bioequivalenceProtocol",
+                              defaultMessage: "Bioequivalence Protocol ID",
+                            })}
+                            value={editingMetadata.bioequivalenceProtocol || ""}
+                            onChange={(e) =>
+                              handleMetadataChange("bioequivalenceProtocol", e.target.value)
+                            }
+                            helperText="BE-PROTO-001, FDA-BE-2024-XYZ (for BE studies only)"
+                          />
+
+                          <Select
+                            id="study-phase"
+                            labelText={intl.formatMessage({
+                              id: "notebook.bioanalytical.stage1.metadata.studyPhase",
+                              defaultMessage: "Study Phase",
+                            })}
+                            value={editingMetadata.studyPhase || ""}
+                            onChange={(e) =>
+                              handleMetadataChange("studyPhase", e.target.value)
+                            }
+                          >
+                            <SelectItem
+                              value=""
+                              text="-- Select study phase --"
+                            />
+                            {studyPhases.map((phase) => (
+                              <SelectItem
+                                key={phase.id}
+                                value={phase.id}
+                                text={`${phase.label} - ${phase.description}`}
+                              />
+                            ))}
+                          </Select>
+
+                          <TextInput
+                            labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.subjectId",
-                              defaultMessage: "Subject/Patient ID"
+                              defaultMessage: "Subject/Patient ID",
                             })}
                             value={editingMetadata.subjectId || ""}
-                            onChange={(e) => handleMetadataChange("subjectId", e.target.value)}
+                            onChange={(e) =>
+                              handleMetadataChange("subjectId", e.target.value)
+                            }
                             helperText="SUBJ-001, P-101 (for bioequivalence studies)"
+                          />
+
+                          <Select
+                            id="pk-timepoint"
+                            labelText={intl.formatMessage({
+                              id: "notebook.bioanalytical.stage1.metadata.timepoint",
+                              defaultMessage: "Pharmacokinetic Timepoint *",
+                            })}
+                            value={editingMetadata.timepoint || ""}
+                            onChange={(e) => {
+                              const selectedTimepoint = pkTimepoints.find(tp => tp.id === e.target.value);
+                              handleMetadataChange("timepoint", e.target.value);
+                              handleMetadataChange("timepointDescription", selectedTimepoint?.description || "");
+                              handleMetadataChange("pkParameter", selectedTimepoint?.pkParam || "");
+                            }}
+                          >
+                            <SelectItem
+                              value=""
+                              text="-- Select timepoint --"
+                            />
+                            {pkTimepoints.map((timepoint) => (
+                              <SelectItem
+                                key={timepoint.id}
+                                value={timepoint.id}
+                                text={`${timepoint.label} - ${timepoint.description}`}
+                              />
+                            ))}
+                          </Select>
+
+                          <TextInput
+                            labelText={intl.formatMessage({
+                              id: "notebook.bioanalytical.stage1.metadata.timepointDescription",
+                              defaultMessage: "Timepoint Details",
+                            })}
+                            value={editingMetadata.timepointDescription || ""}
+                            onChange={(e) =>
+                              handleMetadataChange("timepointDescription", e.target.value)
+                            }
+                            helperText="Auto-populated from PK timepoint selection"
+                            disabled={!!editingMetadata.timepoint}
                           />
 
                           <TextInput
                             labelText={intl.formatMessage({
-                              id: "notebook.bioanalytical.stage1.metadata.timepoint",
-                              defaultMessage: "Timepoint"
+                              id: "notebook.bioanalytical.stage1.metadata.pkParameter",
+                              defaultMessage: "Target PK Parameter",
                             })}
-                            value={editingMetadata.timepoint || ""}
-                            onChange={(e) => handleMetadataChange("timepoint", e.target.value)}
-                            helperText="Pre-dose, 1h, 2h, 4h, 8h, 24h"
+                            value={editingMetadata.pkParameter || ""}
+                            onChange={(e) =>
+                              handleMetadataChange("pkParameter", e.target.value)
+                            }
+                            helperText="Cmax, AUC, Tmax, elimination phase"
+                            disabled={!!editingMetadata.timepoint}
                           />
 
                           <Select
                             labelText={intl.formatMessage({
                               id: "notebook.bioanalytical.stage1.metadata.manifestVerificationStatus",
-                              defaultMessage: "Manifest Verification Status"
+                              defaultMessage: "Manifest Verification Status",
                             })}
-                            value={editingMetadata.manifestVerificationStatus || ""}
-                            onChange={(e) => handleMetadataChange("manifestVerificationStatus", e.target.value)}
+                            value={
+                              editingMetadata.manifestVerificationStatus || ""
+                            }
+                            onChange={(e) =>
+                              handleMetadataChange(
+                                "manifestVerificationStatus",
+                                e.target.value,
+                              )
+                            }
                           >
                             <option value="">Select status...</option>
                             <option value="Verified">Verified</option>
@@ -860,10 +1241,12 @@ function BioanalyticalSampleReceptionPage({
                         <TextArea
                           labelText={intl.formatMessage({
                             id: "notebook.bioanalytical.stage1.metadata.notes",
-                            defaultMessage: "Notes/Comments"
+                            defaultMessage: "Notes/Comments",
                           })}
                           value={editingMetadata.notes || ""}
-                          onChange={(e) => handleMetadataChange("notes", e.target.value)}
+                          onChange={(e) =>
+                            handleMetadataChange("notes", e.target.value)
+                          }
                           helperText="Additional observations and notes"
                           rows={3}
                         />
@@ -882,7 +1265,13 @@ function BioanalyticalSampleReceptionPage({
                       </Button>
                     </Form>
                   ) : (
-                    <div style={{ textAlign: "center", padding: "2rem", color: "#525252" }}>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "2rem",
+                        color: "#525252",
+                      }}
+                    >
                       <FormattedMessage
                         id="notebook.bioanalytical.stage1.metadata.noSelection"
                         defaultMessage="Select a sample from the 'Received Samples' tab to edit its Stage 1 metadata."

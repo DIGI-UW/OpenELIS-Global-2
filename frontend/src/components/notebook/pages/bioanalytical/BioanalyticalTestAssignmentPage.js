@@ -32,38 +32,59 @@ const ANALYTICAL_METHODS = [
   {
     id: "HPLC_UV_VIS",
     name: "HPLC / UV-Vis",
-    description: "High Performance Liquid Chromatography with UV-Visible detection",
+    description:
+      "High Performance Liquid Chromatography with UV-Visible detection",
     applications: ["Drug concentration", "Assay", "Content uniformity"],
-    suitableFor: ["API", "Tablet", "Capsule", "Suspension"]
+    suitableFor: ["API", "Tablet", "Capsule", "Suspension"],
   },
   {
     id: "LC_MS_MS",
     name: "LC-MS/MS",
     description: "Liquid Chromatography with Tandem Mass Spectrometry",
-    applications: ["Pharmacokinetic analysis", "Bioanalytical testing", "Metabolite identification"],
-    suitableFor: ["Plasma", "Serum", "Urine", "Whole Blood", "API"]
+    applications: [
+      "Pharmacokinetic analysis",
+      "Bioanalytical testing",
+      "Metabolite identification",
+    ],
+    suitableFor: ["Plasma", "Serum", "Urine", "Whole Blood", "API"],
   },
   {
     id: "DISSOLUTION_USP",
     name: "Dissolution (USP I/II)",
-    description: "Dissolution testing using USP Apparatus I (Basket) or II (Paddle)",
-    applications: ["Pharmaceutical quality testing", "Release profile", "Bioequivalence"],
-    suitableFor: ["Tablet", "Capsule", "Suspension"]
+    description:
+      "Dissolution testing using USP Apparatus I (Basket) or II (Paddle)",
+    applications: [
+      "Pharmaceutical quality testing",
+      "Release profile",
+      "Bioequivalence",
+    ],
+    suitableFor: ["Tablet", "Capsule", "Suspension"],
   },
   {
     id: "PHYSICAL_TESTING",
     name: "Hardness / Friability / Disintegration Test",
     description: "Physical testing for pharmaceutical dosage forms",
     applications: ["Physical testing", "Quality control", "Batch release"],
-    suitableFor: ["Tablet", "Capsule"]
+    suitableFor: ["Tablet", "Capsule"],
   },
   {
     id: "IDENTITY_TEST",
     name: "Identity Test",
     description: "Verification of pharmaceutical substances and products",
-    applications: ["Identity verification", "Raw material testing", "QC testing"],
-    suitableFor: ["API", "Tablet", "Capsule", "Suspension", "Reference Standard", "Excipient"]
-  }
+    applications: [
+      "Identity verification",
+      "Raw material testing",
+      "QC testing",
+    ],
+    suitableFor: [
+      "API",
+      "Tablet",
+      "Capsule",
+      "Suspension",
+      "Reference Standard",
+      "Excipient",
+    ],
+  },
 ];
 
 /**
@@ -74,20 +95,20 @@ const STAFF_ROLES = [
     id: "CHEMICAL_ANALYST",
     name: "Chemical Analyst",
     specialties: ["HPLC_UV_VIS", "LC_MS_MS", "IDENTITY_TEST"],
-    description: "Specialist in analytical chemistry and instrumentation"
+    description: "Specialist in analytical chemistry and instrumentation",
   },
   {
     id: "PHARMACIST",
     name: "Pharmacist",
     specialties: ["DISSOLUTION_USP", "PHYSICAL_TESTING", "IDENTITY_TEST"],
-    description: "Licensed pharmacist for pharmaceutical testing"
+    description: "Licensed pharmacist for pharmaceutical testing",
   },
   {
     id: "RESEARCHER",
     name: "Researcher",
     specialties: ["LC_MS_MS", "HPLC_UV_VIS", "DISSOLUTION_USP"],
-    description: "Research scientist for method development"
-  }
+    description: "Research scientist for method development",
+  },
 ];
 
 /**
@@ -132,16 +153,16 @@ function BioanalyticalTestAssignmentPage({
     qcLevels: {
       low: { concentration: "", tolerance: "" },
       medium: { concentration: "", tolerance: "" },
-      high: { concentration: "", tolerance: "" }
+      high: { concentration: "", tolerance: "" },
     },
     acceptanceCriteria: {
       rSquaredMin: "0.995",
       slopeRange: { min: "0.8", max: "1.2" },
-      interceptMax: "20"
+      interceptMax: "20",
     },
     samplePreparation: "",
     expectedAnalysisDate: "",
-    notes: ""
+    notes: "",
   });
 
   // UI states
@@ -167,7 +188,7 @@ function BioanalyticalTestAssignmentPage({
             headers: {
               "X-CSRF-Token": localStorage.getItem("CSRF"),
             },
-          }
+          },
         );
 
         if (response.ok) {
@@ -184,7 +205,7 @@ function BioanalyticalTestAssignmentPage({
           intl.formatMessage({
             id: "notebook.bioanalytical.testassignment.loadError",
             defaultMessage: "Failed to load samples. Please refresh the page.",
-          })
+          }),
         );
       } finally {
         setIsLoading(false);
@@ -206,16 +227,15 @@ function BioanalyticalTestAssignmentPage({
 
   // Utility functions for method compatibility
   const getCompatibleMethods = useCallback((sampleType) => {
-    return ANALYTICAL_METHODS.filter(method =>
-      method.suitableFor.includes(sampleType) ||
-      method.suitableFor.includes("All")
+    return ANALYTICAL_METHODS.filter(
+      (method) =>
+        method.suitableFor.includes(sampleType) ||
+        method.suitableFor.includes("All"),
     );
   }, []);
 
   const getRecommendedStaff = useCallback((methodId) => {
-    return STAFF_ROLES.filter(role =>
-      role.specialties.includes(methodId)
-    );
+    return STAFF_ROLES.filter((role) => role.specialties.includes(methodId));
   }, []);
 
   // Show assignment form when samples are selected
@@ -235,50 +255,55 @@ function BioanalyticalTestAssignmentPage({
 
   // Handle form field changes
   const handleConfigChange = useCallback((field, value, subField = null) => {
-    setAssignmentConfig(prev => {
+    setAssignmentConfig((prev) => {
       if (subField) {
         return {
           ...prev,
           [field]: {
             ...prev[field],
-            [subField]: value
-          }
+            [subField]: value,
+          },
         };
       }
       return {
         ...prev,
-        [field]: value
+        [field]: value,
       };
     });
   }, []);
 
   // Handle QC level changes
   const handleQcLevelChange = useCallback((level, field, value) => {
-    setAssignmentConfig(prev => ({
+    setAssignmentConfig((prev) => ({
       ...prev,
       qcLevels: {
         ...prev.qcLevels,
         [level]: {
           ...prev.qcLevels[level],
-          [field]: value
-        }
-      }
+          [field]: value,
+        },
+      },
     }));
   }, []);
 
   // Handle acceptance criteria changes
-  const handleAcceptanceCriteriaChange = useCallback((field, value, subField = null) => {
-    setAssignmentConfig(prev => ({
-      ...prev,
-      acceptanceCriteria: {
-        ...prev.acceptanceCriteria,
-        [field]: subField ? {
-          ...prev.acceptanceCriteria[field],
-          [subField]: value
-        } : value
-      }
-    }));
-  }, []);
+  const handleAcceptanceCriteriaChange = useCallback(
+    (field, value, subField = null) => {
+      setAssignmentConfig((prev) => ({
+        ...prev,
+        acceptanceCriteria: {
+          ...prev.acceptanceCriteria,
+          [field]: subField
+            ? {
+                ...prev.acceptanceCriteria[field],
+                [subField]: value,
+              }
+            : value,
+        },
+      }));
+    },
+    [],
+  );
 
   // Main test assignment function with backend API call
   const handleTestAssignment = useCallback(async () => {
@@ -313,11 +338,15 @@ function BioanalyticalTestAssignmentPage({
       return;
     }
 
-    if (!assignmentConfig.samplePreparation || assignmentConfig.samplePreparation.trim().length === 0) {
+    if (
+      !assignmentConfig.samplePreparation ||
+      assignmentConfig.samplePreparation.trim().length === 0
+    ) {
       setErrorMessage(
         intl.formatMessage({
           id: "notebook.bioanalytical.testassignment.preparationRequired",
-          defaultMessage: "Please document the sample preparation method according to the selected analytical method requirements",
+          defaultMessage:
+            "Please document the sample preparation method according to the selected analytical method requirements",
         }),
       );
       return;
@@ -336,11 +365,11 @@ function BioanalyticalTestAssignmentPage({
         instrumentId: assignmentConfig.instrumentId,
         qcConfiguration: {
           levels: assignmentConfig.qcLevels,
-          acceptanceCriteria: assignmentConfig.acceptanceCriteria
+          acceptanceCriteria: assignmentConfig.acceptanceCriteria,
         },
         samplePreparation: assignmentConfig.samplePreparation,
         expectedAnalysisDate: assignmentConfig.expectedAnalysisDate,
-        notes: assignmentConfig.notes
+        notes: assignmentConfig.notes,
       };
 
       // Use existing bulk operation endpoint to store test assignment data
@@ -355,7 +384,7 @@ function BioanalyticalTestAssignmentPage({
         expectedAnalysisDate: assignmentConfig.expectedAnalysisDate,
         notes: assignmentConfig.notes,
         assignmentDate: new Date().toISOString(),
-        assignmentStatus: "ASSIGNED"
+        assignmentStatus: "ASSIGNED",
       };
 
       const response = await fetch(
@@ -370,9 +399,9 @@ function BioanalyticalTestAssignmentPage({
           body: JSON.stringify({
             sampleIds: Array.from(selectedSamples),
             data: testAssignmentData,
-            userId: "SYSTEM" // Will be replaced with actual user ID from session
+            userId: "SYSTEM", // Will be replaced with actual user ID from session
           }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -380,27 +409,31 @@ function BioanalyticalTestAssignmentPage({
 
         // Update local state - track which samples have assignments
         const newAssignments = {};
-        Array.from(selectedSamples).forEach(sampleId => {
+        Array.from(selectedSamples).forEach((sampleId) => {
           newAssignments[sampleId] = {
             ...testAssignmentData,
-            count: 1
+            count: 1,
           };
         });
 
-        setTestAssignments(prev => ({
+        setTestAssignments((prev) => ({
           ...prev,
-          ...newAssignments
+          ...newAssignments,
         }));
 
         setSuccessMessage(
           intl.formatMessage(
             {
               id: "notebook.bioanalytical.testassignment.success",
-              defaultMessage: "Tests assigned to {count} samples using {method}",
+              defaultMessage:
+                "Tests assigned to {count} samples using {method}",
             },
             {
               count: selectedSamples.size,
-              method: ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod)?.name || "selected method"
+              method:
+                ANALYTICAL_METHODS.find(
+                  (m) => m.id === assignmentConfig.analyticalMethod,
+                )?.name || "selected method",
             },
           ),
         );
@@ -415,16 +448,16 @@ function BioanalyticalTestAssignmentPage({
           qcLevels: {
             low: { concentration: "", tolerance: "" },
             medium: { concentration: "", tolerance: "" },
-            high: { concentration: "", tolerance: "" }
+            high: { concentration: "", tolerance: "" },
           },
           acceptanceCriteria: {
             rSquaredMin: "0.995",
             slopeRange: { min: "0.8", max: "1.2" },
-            interceptMax: "20"
+            interceptMax: "20",
           },
           samplePreparation: "",
           expectedAnalysisDate: "",
-          notes: ""
+          notes: "",
         });
 
         // Notify parent component of progress update
@@ -433,7 +466,9 @@ function BioanalyticalTestAssignmentPage({
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || errorData.error || "Test assignment failed");
+        throw new Error(
+          errorData.message || errorData.error || "Test assignment failed",
+        );
       }
     } catch (error) {
       console.error("Test assignment error:", error);
@@ -443,8 +478,8 @@ function BioanalyticalTestAssignmentPage({
             id: "notebook.bioanalytical.testassignment.assignmentError",
             defaultMessage: "Failed to assign tests: {error}",
           },
-          { error: error.message }
-        )
+          { error: error.message },
+        ),
       );
     } finally {
       setIsAssigning(false);
@@ -637,7 +672,14 @@ function BioanalyticalTestAssignmentPage({
 
       {/* Test Assignment Configuration Form */}
       {showAssignmentForm && (
-        <Grid style={{ marginTop: "2rem", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
+        <Grid
+          style={{
+            marginTop: "2rem",
+            padding: "1rem",
+            backgroundColor: "#f4f4f4",
+            borderRadius: "4px",
+          }}
+        >
           <Column lg={16} md={8} sm={4}>
             <div className="section-header">
               <h4>
@@ -668,7 +710,9 @@ function BioanalyticalTestAssignmentPage({
                         />
                       }
                       value={assignmentConfig.analyticalMethod}
-                      onChange={(e) => handleConfigChange("analyticalMethod", e.target.value)}
+                      onChange={(e) =>
+                        handleConfigChange("analyticalMethod", e.target.value)
+                      }
                       helperText={
                         <FormattedMessage
                           id="notebook.bioanalytical.testassignment.methodHelp"
@@ -697,10 +741,16 @@ function BioanalyticalTestAssignmentPage({
                         />
                       }
                       value={assignmentConfig.assignedStaff}
-                      onChange={(e) => handleConfigChange("assignedStaff", e.target.value)}
+                      onChange={(e) =>
+                        handleConfigChange("assignedStaff", e.target.value)
+                      }
                       helperText={
                         assignmentConfig.analyticalMethod
-                          ? `Recommended: ${getRecommendedStaff(assignmentConfig.analyticalMethod).map(s => s.name).join(", ")}`
+                          ? `Recommended: ${getRecommendedStaff(
+                              assignmentConfig.analyticalMethod,
+                            )
+                              .map((s) => s.name)
+                              .join(", ")}`
                           : "Staff assignment based on test category and method"
                       }
                     >
@@ -730,7 +780,9 @@ function BioanalyticalTestAssignmentPage({
                         />
                       }
                       value={assignmentConfig.instrumentId}
-                      onChange={(e) => handleConfigChange("instrumentId", e.target.value)}
+                      onChange={(e) =>
+                        handleConfigChange("instrumentId", e.target.value)
+                      }
                       helperText={
                         <FormattedMessage
                           id="notebook.bioanalytical.testassignment.instrumentHelp"
@@ -761,7 +813,12 @@ function BioanalyticalTestAssignmentPage({
                         }
                         placeholder="YYYY-MM-DD"
                         value={assignmentConfig.expectedAnalysisDate}
-                        onChange={(e) => handleConfigChange("expectedAnalysisDate", e.target.value)}
+                        onChange={(e) =>
+                          handleConfigChange(
+                            "expectedAnalysisDate",
+                            e.target.value,
+                          )
+                        }
                       />
                     </DatePicker>
                   </Column>
@@ -776,7 +833,13 @@ function BioanalyticalTestAssignmentPage({
                     defaultMessage="QC Levels Configuration"
                   />
                 </h5>
-                <p style={{ color: "#525252", fontSize: "0.875rem", marginBottom: "1rem" }}>
+                <p
+                  style={{
+                    color: "#525252",
+                    fontSize: "0.875rem",
+                    marginBottom: "1rem",
+                  }}
+                >
                   <FormattedMessage
                     id="notebook.bioanalytical.testassignment.qcLevelInfo"
                     defaultMessage="QC Levels: Low (LLOQ - 2x LLOQ), Medium (30% span), High (near upper limit)"
@@ -792,7 +855,13 @@ function BioanalyticalTestAssignmentPage({
                       min={0}
                       step={0.1}
                       value={assignmentConfig.qcLevels.low.concentration}
-                      onChange={(e) => handleQcLevelChange("low", "concentration", e.target.value)}
+                      onChange={(e) =>
+                        handleQcLevelChange(
+                          "low",
+                          "concentration",
+                          e.target.value,
+                        )
+                      }
                       style={{ marginBottom: "0.5rem" }}
                     />
                     <NumberInput
@@ -802,7 +871,9 @@ function BioanalyticalTestAssignmentPage({
                       max={50}
                       step={0.1}
                       value={assignmentConfig.qcLevels.low.tolerance}
-                      onChange={(e) => handleQcLevelChange("low", "tolerance", e.target.value)}
+                      onChange={(e) =>
+                        handleQcLevelChange("low", "tolerance", e.target.value)
+                      }
                     />
                   </Column>
 
@@ -814,7 +885,13 @@ function BioanalyticalTestAssignmentPage({
                       min={0}
                       step={0.1}
                       value={assignmentConfig.qcLevels.medium.concentration}
-                      onChange={(e) => handleQcLevelChange("medium", "concentration", e.target.value)}
+                      onChange={(e) =>
+                        handleQcLevelChange(
+                          "medium",
+                          "concentration",
+                          e.target.value,
+                        )
+                      }
                       style={{ marginBottom: "0.5rem" }}
                     />
                     <NumberInput
@@ -824,7 +901,13 @@ function BioanalyticalTestAssignmentPage({
                       max={50}
                       step={0.1}
                       value={assignmentConfig.qcLevels.medium.tolerance}
-                      onChange={(e) => handleQcLevelChange("medium", "tolerance", e.target.value)}
+                      onChange={(e) =>
+                        handleQcLevelChange(
+                          "medium",
+                          "tolerance",
+                          e.target.value,
+                        )
+                      }
                     />
                   </Column>
 
@@ -836,7 +919,13 @@ function BioanalyticalTestAssignmentPage({
                       min={0}
                       step={0.1}
                       value={assignmentConfig.qcLevels.high.concentration}
-                      onChange={(e) => handleQcLevelChange("high", "concentration", e.target.value)}
+                      onChange={(e) =>
+                        handleQcLevelChange(
+                          "high",
+                          "concentration",
+                          e.target.value,
+                        )
+                      }
                       style={{ marginBottom: "0.5rem" }}
                     />
                     <NumberInput
@@ -846,7 +935,9 @@ function BioanalyticalTestAssignmentPage({
                       max={50}
                       step={0.1}
                       value={assignmentConfig.qcLevels.high.tolerance}
-                      onChange={(e) => handleQcLevelChange("high", "tolerance", e.target.value)}
+                      onChange={(e) =>
+                        handleQcLevelChange("high", "tolerance", e.target.value)
+                      }
                     />
                   </Column>
                 </Grid>
@@ -870,7 +961,12 @@ function BioanalyticalTestAssignmentPage({
                       max={1.0}
                       step={0.001}
                       value={assignmentConfig.acceptanceCriteria.rSquaredMin}
-                      onChange={(e) => handleAcceptanceCriteriaChange("rSquaredMin", e.target.value)}
+                      onChange={(e) =>
+                        handleAcceptanceCriteriaChange(
+                          "rSquaredMin",
+                          e.target.value,
+                        )
+                      }
                     />
                   </Column>
 
@@ -879,13 +975,25 @@ function BioanalyticalTestAssignmentPage({
                       id="slope-min"
                       labelText="Slope Range Min"
                       value={assignmentConfig.acceptanceCriteria.slopeRange.min}
-                      onChange={(e) => handleAcceptanceCriteriaChange("slopeRange", e.target.value, "min")}
+                      onChange={(e) =>
+                        handleAcceptanceCriteriaChange(
+                          "slopeRange",
+                          e.target.value,
+                          "min",
+                        )
+                      }
                     />
                     <TextInput
                       id="slope-max"
                       labelText="Slope Range Max"
                       value={assignmentConfig.acceptanceCriteria.slopeRange.max}
-                      onChange={(e) => handleAcceptanceCriteriaChange("slopeRange", e.target.value, "max")}
+                      onChange={(e) =>
+                        handleAcceptanceCriteriaChange(
+                          "slopeRange",
+                          e.target.value,
+                          "max",
+                        )
+                      }
                       style={{ marginTop: "0.5rem" }}
                     />
                   </Column>
@@ -898,7 +1006,12 @@ function BioanalyticalTestAssignmentPage({
                       max={100}
                       step={1}
                       value={assignmentConfig.acceptanceCriteria.interceptMax}
-                      onChange={(e) => handleAcceptanceCriteriaChange("interceptMax", e.target.value)}
+                      onChange={(e) =>
+                        handleAcceptanceCriteriaChange(
+                          "interceptMax",
+                          e.target.value,
+                        )
+                      }
                     />
                   </Column>
                 </Grid>
@@ -914,16 +1027,40 @@ function BioanalyticalTestAssignmentPage({
                 </h5>
 
                 {assignmentConfig.analyticalMethod && (
-                  <div style={{ marginBottom: "1rem", padding: "1rem", backgroundColor: "#e8f4f8", borderRadius: "4px", border: "1px solid #0072c3" }}>
+                  <div
+                    style={{
+                      marginBottom: "1rem",
+                      padding: "1rem",
+                      backgroundColor: "#e8f4f8",
+                      borderRadius: "4px",
+                      border: "1px solid #0072c3",
+                    }}
+                  >
                     <h6 style={{ color: "#161616", marginBottom: "0.5rem" }}>
-                      {ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod)?.name} Preparation Steps:
+                      {
+                        ANALYTICAL_METHODS.find(
+                          (m) => m.id === assignmentConfig.analyticalMethod,
+                        )?.name
+                      }{" "}
+                      Preparation Steps:
                     </h6>
                     <ol style={{ marginLeft: "1rem", color: "#525252" }}>
-                      {ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod)?.preparationSteps.map((step, index) => (
-                        <li key={index} style={{ marginBottom: "0.25rem" }}>{step}</li>
+                      {ANALYTICAL_METHODS.find(
+                        (m) => m.id === assignmentConfig.analyticalMethod,
+                      )?.preparationSteps.map((step, index) => (
+                        <li key={index} style={{ marginBottom: "0.25rem" }}>
+                          {step}
+                        </li>
                       ))}
                     </ol>
-                    <p style={{ marginTop: "0.5rem", fontStyle: "italic", color: "#525252", fontSize: "0.875rem" }}>
+                    <p
+                      style={{
+                        marginTop: "0.5rem",
+                        fontStyle: "italic",
+                        color: "#525252",
+                        fontSize: "0.875rem",
+                      }}
+                    >
                       <FormattedMessage
                         id="notebook.bioanalytical.testassignment.methodGuidance"
                         defaultMessage="Follow these method-specific preparation steps. Document any deviations or additional procedures below."
@@ -942,12 +1079,14 @@ function BioanalyticalTestAssignmentPage({
                   }
                   placeholder={
                     assignmentConfig.analyticalMethod
-                      ? `Document how you will follow the ${ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod)?.name} preparation steps above. Include any specific parameters, deviations, or additional procedures...`
+                      ? `Document how you will follow the ${ANALYTICAL_METHODS.find((m) => m.id === assignmentConfig.analyticalMethod)?.name} preparation steps above. Include any specific parameters, deviations, or additional procedures...`
                       : "Select an analytical method above to see method-specific preparation requirements..."
                   }
                   rows={6}
                   value={assignmentConfig.samplePreparation}
-                  onChange={(e) => handleConfigChange("samplePreparation", e.target.value)}
+                  onChange={(e) =>
+                    handleConfigChange("samplePreparation", e.target.value)
+                  }
                   helperText={
                     <FormattedMessage
                       id="notebook.bioanalytical.testassignment.preparationHelp"
@@ -965,23 +1104,53 @@ function BioanalyticalTestAssignmentPage({
                         defaultMessage="Method Requirements & Considerations:"
                       />
                     </h6>
-                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                    <div
+                      style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
+                    >
                       <div style={{ flex: 1, minWidth: "250px" }}>
-                        <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "0.5rem" }}>
+                        <p
+                          style={{
+                            fontSize: "0.875rem",
+                            color: "#525252",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
                           <strong>Applications:</strong>
                         </p>
-                        <ul style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "#525252" }}>
-                          {ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod)?.applications.map((app, index) => (
+                        <ul
+                          style={{
+                            marginLeft: "1rem",
+                            fontSize: "0.875rem",
+                            color: "#525252",
+                          }}
+                        >
+                          {ANALYTICAL_METHODS.find(
+                            (m) => m.id === assignmentConfig.analyticalMethod,
+                          )?.applications.map((app, index) => (
                             <li key={index}>{app}</li>
                           ))}
                         </ul>
                       </div>
                       <div style={{ flex: 1, minWidth: "250px" }}>
-                        <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "0.5rem" }}>
+                        <p
+                          style={{
+                            fontSize: "0.875rem",
+                            color: "#525252",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
                           <strong>Suitable Sample Types:</strong>
                         </p>
-                        <ul style={{ marginLeft: "1rem", fontSize: "0.875rem", color: "#525252" }}>
-                          {ANALYTICAL_METHODS.find(m => m.id === assignmentConfig.analyticalMethod)?.suitableFor.map((type, index) => (
+                        <ul
+                          style={{
+                            marginLeft: "1rem",
+                            fontSize: "0.875rem",
+                            color: "#525252",
+                          }}
+                        >
+                          {ANALYTICAL_METHODS.find(
+                            (m) => m.id === assignmentConfig.analyticalMethod,
+                          )?.suitableFor.map((type, index) => (
                             <li key={index}>{type}</li>
                           ))}
                         </ul>
@@ -1013,7 +1182,12 @@ function BioanalyticalTestAssignmentPage({
                 <Button
                   kind="primary"
                   onClick={handleTestAssignment}
-                  disabled={isAssigning || !assignmentConfig.analyticalMethod || !assignmentConfig.assignedStaff || !assignmentConfig.samplePreparation?.trim()}
+                  disabled={
+                    isAssigning ||
+                    !assignmentConfig.analyticalMethod ||
+                    !assignmentConfig.assignedStaff ||
+                    !assignmentConfig.samplePreparation?.trim()
+                  }
                 >
                   {isAssigning ? (
                     <Loading description="Assigning tests..." small />
@@ -1062,7 +1236,13 @@ function BioanalyticalTestAssignmentPage({
                 />
               </p>
 
-              <div style={{ marginTop: "1.5rem", color: "#525252", fontSize: "0.875rem" }}>
+              <div
+                style={{
+                  marginTop: "1.5rem",
+                  color: "#525252",
+                  fontSize: "0.875rem",
+                }}
+              >
                 <p>
                   <FormattedMessage
                     id="notebook.bioanalytical.testassignment.totalAssignments"
