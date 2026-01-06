@@ -28,10 +28,10 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="notebook_entry_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_arf_notebook_entry" referencedTableSchemaName="clinlims" referencedTableName="notebook_entry" referencedColumnName="id"/>
+                <constraints nullable="false"/>
             </column>
             <column name="instrument_id" type="INTEGER">
-                <constraints nullable="true" foreignKeyName="fk_arf_instrument" referencedTableSchemaName="clinlims" referencedTableName="instrument" referencedColumnName="id"/>
+                <constraints nullable="true"/>
             </column>
             <column name="filename" type="VARCHAR(255)">
                 <constraints nullable="false"/>
@@ -54,7 +54,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="uploaded_by_id" type="INTEGER">
-                <constraints nullable="false" foreignKeyName="fk_arf_uploaded_by" referencedTableSchemaName="clinlims" referencedTableName="systemuser" referencedColumnName="id"/>
+                <constraints nullable="false"/>
             </column>
             <column name="date_created" type="TIMESTAMP">
                 <constraints nullable="false"/>
@@ -95,10 +95,10 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="notebook_entry_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_cc_notebook_entry" referencedTableSchemaName="clinlims" referencedTableName="notebook_entry" referencedColumnName="id"/>
+                <constraints nullable="false"/>
             </column>
             <column name="instrument_id" type="INTEGER">
-                <constraints nullable="true" foreignKeyName="fk_cc_instrument" referencedTableSchemaName="clinlims" referencedTableName="instrument" referencedColumnName="id"/>
+                <constraints nullable="true"/>
             </column>
             <column name="curve_equation" type="VARCHAR(500)">
                 <constraints nullable="true"/>
@@ -134,7 +134,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="analyst_id" type="INTEGER">
-                <constraints nullable="false" foreignKeyName="fk_cc_analyst" referencedTableSchemaName="clinlims" referencedTableName="systemuser" referencedColumnName="id"/>
+                <constraints nullable="false"/>
             </column>
             <column name="date_created" type="TIMESTAMP">
                 <constraints nullable="false"/>
@@ -175,10 +175,10 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="notebook_entry_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_qcr_notebook_entry" referencedTableSchemaName="clinlims" referencedTableName="notebook_entry" referencedColumnName="id"/>
+                <constraints nullable="false"/>
             </column>
             <column name="instrument_id" type="INTEGER">
-                <constraints nullable="true" foreignKeyName="fk_qcr_instrument" referencedTableSchemaName="clinlims" referencedTableName="instrument" referencedColumnName="id"/>
+                <constraints nullable="true"/>
             </column>
             <column name="qc_level" type="VARCHAR(20)">
                 <constraints nullable="false"/>
@@ -254,7 +254,7 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="notebook_entry_id" type="BIGINT">
-                <constraints nullable="true" foreignKeyName="fk_em_notebook_entry" referencedTableSchemaName="clinlims" referencedTableName="notebook_entry" referencedColumnName="id"/>
+                <constraints nullable="true"/>
             </column>
             <column name="storage_location_id" type="INTEGER">
                 <constraints nullable="true"/>
@@ -392,10 +392,10 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="sample_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_besa_sample" referencedTableSchemaName="clinlims" referencedTableName="sample" referencedColumnName="id"/>
+                <constraints nullable="false"/>
             </column>
             <column name="study_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_besa_study" referencedTableSchemaName="clinlims" referencedTableName="bioequivalence_study" referencedColumnName="id"/>
+                <constraints nullable="false"/>
             </column>
             <column name="subject_id" type="VARCHAR(100)">
                 <constraints nullable="false"/>
