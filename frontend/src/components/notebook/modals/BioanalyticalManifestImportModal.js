@@ -31,7 +31,8 @@ const EXPECTED_DATA_POINTS = {
     {
       key: "uniqueSampleId",
       label: "Sample ID",
-      description: "Unique identifier for the sample (can retain original or assign new)",
+      description:
+        "Unique identifier for the sample (can retain original or assign new)",
       example: "BIO-2024-001-A, PK-STUDY-001",
     },
     {
@@ -49,7 +50,8 @@ const EXPECTED_DATA_POINTS = {
     {
       key: "dateTimeOfReceipt",
       label: "Date/Time of Receipt",
-      description: "Date and time when sample was received (YYYY-MM-DD HH:MM or 'now')",
+      description:
+        "Date and time when sample was received (YYYY-MM-DD HH:MM or 'now')",
       example: "2024-01-15 14:30, now",
     },
     {
@@ -62,14 +64,16 @@ const EXPECTED_DATA_POINTS = {
   sampleType: {
     key: "sampleType",
     label: "Sample Type",
-    description: "Type of bioanalytical sample (validated against Bioanalytical lab types)",
+    description:
+      "Type of bioanalytical sample (validated against Bioanalytical lab types)",
     example: "API, Tablet, Plasma, Serum, Urine, etc.",
   },
   optional: [
     {
       key: "projectStudyAssociation",
       label: "Project/Study Association",
-      description: "Study or project identifier for bioequivalence or pharmaceutical testing",
+      description:
+        "Study or project identifier for bioequivalence or pharmaceutical testing",
       example: "BE-2024-001, STAB-API-001, PK-STUDY-002",
     },
     {
@@ -178,13 +182,16 @@ function BioanalyticalManifestImportModal({
   useEffect(() => {
     if (open) {
       setIsSampleTypesLoading(true);
-      fetch(`${config.serverBaseUrl}/rest/notebook/bioanalytical/sample-types`, {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": localStorage.getItem("CSRF"),
+      fetch(
+        `${config.serverBaseUrl}/rest/notebook/bioanalytical/sample-types`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
         },
-      })
+      )
         .then((response) => response.json())
         .then((data) => {
           if (data.sampleTypes) {
@@ -195,8 +202,17 @@ function BioanalyticalManifestImportModal({
           console.error("Failed to fetch sample types:", error);
           // Fallback to hardcoded values
           setValidSampleTypes([
-            "API", "Tablet", "Capsule", "Suspension", "Plasma", "Serum", "Urine",
-            "Whole Blood", "Reference Standard", "Excipient", "Stability Sample"
+            "API",
+            "Tablet",
+            "Capsule",
+            "Suspension",
+            "Plasma",
+            "Serum",
+            "Urine",
+            "Whole Blood",
+            "Reference Standard",
+            "Excipient",
+            "Stability Sample",
           ]);
         })
         .finally(() => {
@@ -509,10 +525,15 @@ function BioanalyticalManifestImportModal({
       }
       secondaryButtonText={
         step > 1 && step < 4
-          ? intl.formatMessage({ id: "label.button.back", defaultMessage: "Back" })
-          : intl.formatMessage({ id: "label.button.cancel", defaultMessage: "Cancel" })
+          ? intl.formatMessage({
+              id: "label.button.back",
+              defaultMessage: "Back",
+            })
+          : intl.formatMessage({
+              id: "label.button.cancel",
+              defaultMessage: "Cancel",
+            })
       }
-      secondaryButtonKind="tertiary"
       onRequestSubmit={() => {
         if (step === 1 && file) setStep(2);
         else if (step === 2) handlePreview();

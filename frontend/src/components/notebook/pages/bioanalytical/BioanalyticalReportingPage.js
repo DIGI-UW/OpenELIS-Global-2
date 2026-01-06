@@ -249,7 +249,10 @@ function BioanalyticalReportingPage({
         </div>
       )}
 
-      <Tabs selectedIndex={selectedTab} onChange={setSelectedTab}>
+      <Tabs
+        selectedIndex={selectedTab}
+        onChange={(evt) => setSelectedTab(evt.selectedIndex)}
+      >
         <TabList aria-label="Reporting and QA tabs">
           <Tab>
             <FormattedMessage
