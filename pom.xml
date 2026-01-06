@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -189,6 +189,10 @@
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
                     <artifactId>bcprov-jdk16</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcmail-jdk16</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -512,7 +516,8 @@
             <version>2.7.3</version>
             <scope>test</scope>
         </dependency>
-        <!-- Explicit dependency to override curvesapi 1.06 which has 403 errors from Maven Central -->
+        <!-- Explicit dependency to override curvesapi 1.06 which has 403 errors
+            from Maven Central -->
         <dependency>
             <groupId>com.github.virtuald</groupId>
             <artifactId>curvesapi</artifactId>
@@ -992,6 +997,23 @@
                 <groupId>jakarta.activation</groupId>
                 <artifactId>jakarta.activation-api</artifactId>
                 <version>2.1.3</version>
+            </dependency>
+            <!-- Force Bouncy Castle versions to prevent 403 errors from Maven Central
+                for older versions -->
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>1.78</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>1.78</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcutil-jdk18on</artifactId>
+                <version>1.78</version>
             </dependency>
 
         </dependencies>
