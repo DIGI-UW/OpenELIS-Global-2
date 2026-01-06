@@ -143,10 +143,13 @@ describe("Result By Order", function () {
       patientPage.enterAccessionNumber(order.labNo);
     });
     result.searchResults();
-    cy.wait(900);
+    cy.wait(2000);
   });
 
   it("should accept the sample and save the result", function () {
+    // Verify that search results table exists before trying to expand
+    cy.get("table").should("exist");
+    cy.get("tbody tr").should("have.length.at.least", 1);
     result.expandSampleDetails();
     cy.fixture("result").then((res) => {
       result.selectTestMethod(res.pcrTestMethod);

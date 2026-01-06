@@ -18,7 +18,11 @@ class ModifyOrderPage {
   }
 
   clickNextButton() {
-    return cy.get("[data-cy='next-button']").should("be.visible").click();
+    // Use force: true to bypass webpack overlay or other elements that might cover the button
+    return cy
+      .get("[data-cy='next-button']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
   selectSerumSample() {

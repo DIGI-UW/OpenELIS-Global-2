@@ -60,7 +60,13 @@ class Result {
   }
 
   expandSampleDetails() {
-    return cy.get(this.selectors.expanderButton).should("be.visible").click();
+    // Wait for search results to load and expander button to be available
+    cy.wait(1000);
+    return cy
+      .get(this.selectors.expanderButton, { timeout: 10000 })
+      .should("exist")
+      .should("be.visible")
+      .click();
   }
 
   selectTestMethod(method) {

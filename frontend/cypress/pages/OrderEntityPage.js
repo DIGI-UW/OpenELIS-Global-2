@@ -59,6 +59,26 @@ class OrderEntityPage {
     cy.get("[data-cy='generate-labNumber']").click();
   }
 
+  captureAndSaveLabNumber() {
+    // Wait for the generate button click to process
+    cy.wait(1000);
+    // Wait for the lab number to be generated and populated
+    cy.get("#labNo", { timeout: 10000 })
+      .should("not.have.value", "")
+      .should("be.visible")
+      .invoke("val")
+      .then((labNo) => {
+        expect(labNo).to.not.be.empty;
+        // Save the captured lab number to the fixture file
+        cy.readFile("cypress/fixtures/Patient.json").then((patient) => {
+          patient.labNo = labNo;
+          cy.writeFile("cypress/fixtures/Patient.json", patient);
+        });
+        // Also log it for debugging
+        cy.log(`Captured Lab Number: ${labNo}`);
+      });
+  }
+
   validateAcessionNumber(order) {
     cy.intercept("GET", `**/rest/SampleEntryAccessionNumberValidation**`).as(
       "accessionNoValidation",

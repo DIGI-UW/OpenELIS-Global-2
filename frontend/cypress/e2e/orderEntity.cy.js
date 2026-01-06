@@ -67,6 +67,8 @@ describe("Order Entity", function () {
       });
     });
     orderEntityPage.generateLabOrderNumber();
+    // Capture the generated lab number and save to fixture for use by other tests
+    orderEntityPage.captureAndSaveLabNumber();
   });
 
   it("Select site name", function () {
