@@ -14,13 +14,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
+import org.hibernate.Hibernate;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.notebook.form.BioanalyticalManifestImportForm;
 import org.openelisglobal.notebook.service.BioanalyticalManifestImportService.BioanalyticalManifestImportResult;
 import org.openelisglobal.notebook.service.BioanalyticalManifestImportService.BioanalyticalManifestRow;
 import org.openelisglobal.notebook.service.BioanalyticalManifestImportService.ParseError;
 import org.openelisglobal.notebook.service.BioanalyticalManifestImportService.ParsedManifest;
+import org.openelisglobal.notebook.valueholder.NoteBook;
+import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -101,6 +111,15 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
 
     @Autowired
     private NotebookEntryService notebookEntryService;
+
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
+    private NotebookPageSampleService notebookPageSampleService;
 
     @Autowired
     private IStatusService statusService;
@@ -241,22 +260,114 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
 
         Optional<NotebookEntry> optEntry = notebookEntryService.getMatch("id", entryId);
         if (optEntry.isEmpty()) {
-            errors.add(new ParseError(0, "entryId", "Notebook entry with ID " + entryId + " not found"));
-            return new BioanalyticalManifestImportResult(manifest.rows().size(), 0, errors, createdSampleIds);
+            errors.add(new ParseError(0, "entry", "Notebook entry not found: " + entryId));
+            return new BioanalyticalManifestImportResult(0, 0, errors, createdSampleIds);
         }
 
-        // TODO: Implement full sample creation workflow
-        // This is a placeholder that validates manifest structure only
-        for (BioanalyticalManifestRow row : manifest.rows()) {
-            if (row.uniqueSampleId() == null || row.uniqueSampleId().isEmpty()) {
-                errors.add(new ParseError(row.rowNumber(), "uniqueSampleId", "Sample ID is required"));
-            } else {
-                createdSampleIds.add(row.uniqueSampleId());
+        NotebookEntry entry = optEntry.get();
+        NoteBook notebook = entry.getNotebook();
+        Integer firstPageId = null;
+        if (notebook != null) {
+            Hibernate.initialize(notebook.getPages());
+            List<NoteBookPage> pages = new ArrayList<>(notebook.getPages());
+            pages.sort((a, b) -> {
+                Integer o1 = a.getOrder() != null ? a.getOrder() : Integer.MAX_VALUE;
+                Integer o2 = b.getOrder() != null ? b.getOrder() : Integer.MAX_VALUE;
+                return o1.compareTo(o2);
+            });
+            if (!pages.isEmpty()) {
+                firstPageId = pages.get(0).getId();
             }
         }
 
-        return new BioanalyticalManifestImportResult(manifest.rows().size(), createdSampleIds.size(), errors,
-                createdSampleIds);
+        String sampleEnteredStatusId = statusService.getStatusID(SampleStatus.Entered);
+        if (sampleEnteredStatusId == null || "-1".equals(sampleEnteredStatusId)) {
+            sampleEnteredStatusId = "20";
+        }
+
+        int totalRequested = manifest.rows().size();
+        int totalCreated = 0;
+
+        for (BioanalyticalManifestRow row : manifest.rows()) {
+            try {
+                Sample parentSample = new Sample();
+                parentSample.setSysUserId(sysUserId);
+                parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
+                parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
+                String sampleIdDb = sampleService.generateAccessionNumberAndInsert(parentSample);
+                parentSample.setId(sampleIdDb);
+
+                SampleItem item = new SampleItem();
+                item.setSample(parentSample);
+                item.setExternalId(row.uniqueSampleId());
+                item.setSortOrder("1");
+                item.setStatusId(sampleEnteredStatusId);
+                item.setSysUserId(sysUserId);
+
+                String itemId = sampleItemService.insert(item);
+                item.setId(itemId);
+                totalCreated++;
+                createdSampleIds.add(parentSample.getAccessionNumber());
+
+                notebookEntryService.addSample(entryId, item, sysUserId);
+
+                if (firstPageId != null) {
+                    NotebookPageSample nps = notebookPageSampleService.getByPageIdAndSampleItemId(firstPageId,
+                            Integer.parseInt(itemId));
+                    if (nps != null) {
+                        Map<String, Object> data = getData(row, nps, parentSample);
+                        nps.setData(data);
+                        notebookPageSampleService.update(nps);
+                    }
+                }
+
+            } catch (Exception e) {
+                errors.add(new ParseError(row.rowNumber(), "sample", "Error creating sample: " + e.getMessage()));
+            }
+        }
+
+        return new BioanalyticalManifestImportResult(totalRequested, totalCreated, errors,
+                createdSampleIds.stream().distinct().toList());
+    }
+
+    private Map<String, Object> getData(BioanalyticalManifestRow row, NotebookPageSample nps, Sample parentSample) {
+        Map<String, Object> data = nps.getData() != null ? new HashMap<>(nps.getData()) : new HashMap<>();
+        data.put("barcodeQrCode", generateBarcodeQrCode(parentSample.getAccessionNumber()));
+        data.put("uniqueSampleId", row.uniqueSampleId());
+        data.put("sampleType", row.sampleType());
+        data.put("sourceOrigin", row.sourceOrigin());
+        data.put("requestedTests", row.requestedTests());
+        data.put("dateTimeOfReceipt", row.dateTimeOfReceipt());
+        data.put("receivingPersonnel", row.receivingPersonnel());
+
+        if (row.projectStudyAssociation() != null && !row.projectStudyAssociation().isBlank()) {
+            data.put("projectStudyAssociation", row.projectStudyAssociation());
+        }
+        if (row.storageConditionPrior() != null && !row.storageConditionPrior().isBlank()) {
+            data.put("storageConditionPrior", row.storageConditionPrior());
+        }
+        if (row.sampleVolume() != null && !row.sampleVolume().isBlank()) {
+            data.put("sampleVolume", row.sampleVolume());
+        }
+        if (row.transportTemperature() != null && !row.transportTemperature().isBlank()) {
+            data.put("transportTemperature", row.transportTemperature());
+        }
+        if (row.manifestVerificationStatus() != null && !row.manifestVerificationStatus().isBlank()) {
+            data.put("manifestVerificationStatus", row.manifestVerificationStatus());
+        }
+        if (row.notes() != null && !row.notes().isBlank()) {
+            data.put("notes", row.notes());
+        }
+
+        data.put("sampleCategory", "Bioanalytical");
+        return data;
+    }
+
+    /**
+     * Generate a barcode/QR code value based on unique sample ID.
+     */
+    private String generateBarcodeQrCode(String uniqueSampleId) {
+        return "QR-" + uniqueSampleId;
     }
 
     @Override

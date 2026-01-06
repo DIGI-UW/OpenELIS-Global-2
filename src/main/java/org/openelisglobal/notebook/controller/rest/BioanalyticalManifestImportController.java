@@ -231,14 +231,12 @@ public class BioanalyticalManifestImportController extends BaseRestController {
             response.put("rows", parsed.rows().stream().map(row -> {
                 Map<String, Object> rowMap = new HashMap<>();
                 rowMap.put("rowNumber", row.rowNumber());
-                // Required fields
                 rowMap.put("uniqueSampleId", row.uniqueSampleId());
                 rowMap.put("sampleType", row.sampleType());
                 rowMap.put("sourceOrigin", row.sourceOrigin());
                 rowMap.put("requestedTests", row.requestedTests());
                 rowMap.put("dateTimeOfReceipt", row.dateTimeOfReceipt());
                 rowMap.put("receivingPersonnel", row.receivingPersonnel());
-                // Optional fields
                 rowMap.put("projectStudyAssociation", row.projectStudyAssociation());
                 rowMap.put("storageConditionPrior", row.storageConditionPrior());
                 rowMap.put("sampleVolume", row.sampleVolume());
