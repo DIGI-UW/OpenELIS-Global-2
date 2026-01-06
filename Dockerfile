@@ -23,12 +23,12 @@ RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 COPY ./dataexport /build/dataexport
 WORKDIR /build/dataexport/dataexport-core
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
+    mvn org.apache.maven.plugins:maven-dependency-plugin:3.6.1:go-offline
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 WORKDIR /build/dataexport/
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
+    mvn org.apache.maven.plugins:maven-dependency-plugin:3.6.1:go-offline
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 
@@ -39,7 +39,7 @@ WORKDIR /build
 
 COPY ./pom.xml /build/pom.xml
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
+    mvn org.apache.maven.plugins:maven-dependency-plugin:3.6.1:go-offline
 
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
