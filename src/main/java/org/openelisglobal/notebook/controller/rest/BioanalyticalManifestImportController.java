@@ -81,7 +81,6 @@ public class BioanalyticalManifestImportController extends BaseRestController {
         List<Map<String, String>> allSampleTypes = bioanalyticalManifestImportService
                 .getValidBioanalyticalSampleTypes();
 
-        // Apply filter if provided
         List<Map<String, String>> filtered = allSampleTypes;
         if (filter != null && !filter.isBlank()) {
             String filterLower = filter.toLowerCase();

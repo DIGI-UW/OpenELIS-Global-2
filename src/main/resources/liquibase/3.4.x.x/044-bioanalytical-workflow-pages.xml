@@ -21,7 +21,7 @@
                 WHERE name = 'Sample Reception' AND workflow_category = 'BIOANALYTICAL'
             </sqlCheck>
         </preConditions>
-        <comment>Insert Sample Reception & Registration workflow page template for Bioanalytical lab</comment>
+        <comment>Insert Sample Reception &amp; Registration workflow page template for Bioanalytical lab</comment>
 
         <insert tableName="workflow_page_template" schemaName="clinlims">
             <column name="id" valueSequenceNext="workflow_page_template_seq"/>

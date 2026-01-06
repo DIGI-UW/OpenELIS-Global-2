@@ -123,7 +123,6 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
                 columnIndex.put(headers[i].trim().toLowerCase(), i);
             }
 
-            // Required field indexes
             Integer uniqueSampleIdIdx = getColumnIndex(columnIndex, columnMapping.getUniqueSampleIdColumn());
             Integer sampleTypeIdx = getColumnIndex(columnIndex, columnMapping.getSampleTypeColumn());
             Integer sourceOriginIdx = getColumnIndex(columnIndex, columnMapping.getSourceOriginColumn());
@@ -131,7 +130,6 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
             Integer dateTimeOfReceiptIdx = getColumnIndex(columnIndex, columnMapping.getDateTimeOfReceiptColumn());
             Integer receivingPersonnelIdx = getColumnIndex(columnIndex, columnMapping.getReceivingPersonnelColumn());
 
-            // Optional field indexes
             Integer projectStudyAssociationIdx = getColumnIndex(columnIndex,
                     columnMapping.getProjectStudyAssociationColumn());
             Integer storageConditionPriorIdx = getColumnIndex(columnIndex,
@@ -183,7 +181,6 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
         List<ParseError> errors = new ArrayList<>();
 
         for (BioanalyticalManifestRow row : manifest.rows()) {
-            // Validate required fields
             if (row.uniqueSampleId() == null || row.uniqueSampleId().isBlank()) {
                 errors.add(new ParseError(row.rowNumber(), "uniqueSampleId", "Sample ID is required"));
             }
@@ -297,8 +294,6 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
         }
         return result;
     }
-
-    // ==================== Helper Methods ====================
 
     private String[] parseCSVLine(String line) {
         List<String> result = new ArrayList<>();
