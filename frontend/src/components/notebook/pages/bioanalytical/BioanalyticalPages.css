@@ -292,6 +292,10 @@
   flex-shrink: 0;
 }
 
+.cds--btn .cds--btn__icon {
+  position: static;
+}
+
 .cds--btn--primary {
   background-color: #0f62fe;
   color: white;
