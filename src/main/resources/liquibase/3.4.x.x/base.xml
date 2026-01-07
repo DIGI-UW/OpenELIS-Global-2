@@ -81,5 +81,6 @@
     <include file="liquibase/3.4.x.x/044-bioanalytical-workflow-pages.xml"/>
     <include file="liquibase/3.4.x.x/045-bioanalytical-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/046-bioanalytical-supporting-tables.xml"/>
+    <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles.xml"/>
 
 </databaseChangeLog>

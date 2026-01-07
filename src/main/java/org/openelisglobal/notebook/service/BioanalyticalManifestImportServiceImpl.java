@@ -65,11 +65,11 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
      */
     private static final Set<String> VALID_BIOANALYTICAL_SAMPLE_TYPES = Set.of(
             // Biological matrices - from Medical Laboratory
-            "plasma - edta", "plasma - heparin", "plasma - serum separator", "serum", "urine", "cerebrospinal fluid",
-            "saliva", "hair", "nail", "other biological matrix",
+            "plasma", "plasma - edta", "plasma - heparin", "plasma - serum separator", "serum", "urine",
+            "cerebrospinal fluid", "saliva", "hair", "nail", "whole blood", "other biological matrix",
 
             // Pharmaceutical products - API forms
-            "api - powder", "api - solution",
+            "api", "api - powder", "api - solution",
 
             // Pharmaceutical products - solid dosage
             "tablet", "capsule",
@@ -90,12 +90,16 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
      */
     private static final Set<String> VALID_BIOANALYTICAL_TESTS = Set.of(
             // Bioanalytical tests
-            "drug concentration (hplc)", "drug concentration (lc-ms/ms)", "pharmacokinetic analysis",
-            "biomarker quantification", "metabolite identification",
+            "lc-ms/ms", "lc-ms/ms, bioequivalence", "drug concentration (hplc)", "drug concentration (lc-ms/ms)",
+            "pharmacokinetic analysis", "biomarker quantification", "metabolite identification", "bioequivalence",
+
+            // HPLC methods
+            "hplc", "hplc, assay", "hplc uv-vis", "hplc-dad", "hplc-fl",
 
             // Pharmaceutical quality tests - chemical
-            "assay", "assay (hplc)", "assay (titration)", "identity test", "identity test (uv)", "identity test (ftir)",
-            "purity test", "related substances", "moisture content",
+            "assay", "assay, dissolution", "assay, dissolution, content uniformity", "assay (hplc)",
+            "assay (titration)", "identity test", "identity test (uv)", "identity test (ftir)", "purity test",
+            "related substances", "moisture content",
 
             // Pharmaceutical quality tests - physical
             "dissolution", "dissolution (usp apparatus i)", "dissolution (usp apparatus ii)", "disintegration",
@@ -104,9 +108,18 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
     /**
      * Valid source origins for bioanalytical samples.
      */
-    private static final Set<String> VALID_SOURCE_ORIGINS = Set.of("medical laboratory", "medical lab",
-            "medical lab (ctd-be)", "internal researcher", "external client", "contract research organization", "cro",
-            "pharmaceutical company");
+    private static final Set<String> VALID_SOURCE_ORIGINS = Set.of(
+            // Medical laboratories
+            "medical laboratory", "medical lab", "medical lab (ctd-be)", "medical laboratory - clinical site a",
+            "medical laboratory - clinical site b", "medical laboratory - clinical site c",
+
+            // External clients and partners
+            "external client", "external client - pharma research inc", "external client - cro partner",
+            "pharmaceutical company", "contract research organization", "cro",
+
+            // Research facilities
+            "internal researcher", "researcher", "researcher - university lab", "researcher - formulation lab",
+            "university lab", "formulation lab");
 
     @Autowired
     private NotebookEntryService notebookEntryService;
@@ -157,6 +170,8 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
                     columnMapping.getTransportTemperatureColumn());
             Integer manifestVerificationStatusIdx = getColumnIndex(columnIndex,
                     columnMapping.getManifestVerificationStatusColumn());
+            Integer subjectIdIdx = getColumnIndex(columnIndex, columnMapping.getSubjectIdColumn());
+            Integer timepointIdx = getColumnIndex(columnIndex, columnMapping.getTimepointColumn());
             Integer notesIdx = getColumnIndex(columnIndex, columnMapping.getNotesColumn());
 
             String line;
@@ -180,11 +195,14 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
                 String sampleVolume = getFieldValue(fields, sampleVolumeIdx);
                 String transportTemperature = getFieldValue(fields, transportTemperatureIdx);
                 String manifestVerificationStatus = getFieldValue(fields, manifestVerificationStatusIdx);
+                String subjectId = getFieldValue(fields, subjectIdIdx);
+                String timepoint = getFieldValue(fields, timepointIdx);
                 String notes = getFieldValue(fields, notesIdx);
 
                 rows.add(new BioanalyticalManifestRow(rowNumber, uniqueSampleId, sampleType, sourceOrigin,
                         requestedTests, dateTimeOfReceipt, receivingPersonnel, projectStudyAssociation,
-                        storageConditionPrior, sampleVolume, transportTemperature, manifestVerificationStatus, notes));
+                        storageConditionPrior, sampleVolume, transportTemperature, manifestVerificationStatus,
+                        subjectId, timepoint, notes));
             }
 
         } catch (IOException e) {

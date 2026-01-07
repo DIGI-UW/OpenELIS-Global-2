@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useContext } from "react";
 import {
   Modal,
   FileUploaderDropContainer,
@@ -6,7 +6,6 @@ import {
   Select,
   SelectItem,
   Button,
-  InlineNotification,
   Tag,
   Loading,
   StructuredListWrapper,
@@ -19,6 +18,8 @@ import {
 } from "@carbon/react";
 import { Upload, Checkmark, Warning, Information } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import config from "../../../config.json";
 import "./BioanalyticalManifestImportModal.css";
 
@@ -145,8 +146,31 @@ function BioanalyticalManifestImportModal({
 }) {
   const intl = useIntl();
 
+  // Notification context
+  const {
+    notificationVisible,
+    setNotificationVisible,
+    addNotification,
+    notifications,
+  } = useContext(NotificationContext);
+
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, subtitle, message }) => {
+      setNotificationVisible(true);
+      addNotification({
+        kind,
+        title: title || intl.formatMessage({
+          id: kind === NotificationKinds.error ? "notification.error" : "notification.success",
+          defaultMessage: kind === NotificationKinds.error ? "Error" : "Success",
+        }),
+        subtitle,
+        message,
+      });
+    },
+    [addNotification, setNotificationVisible, intl],
+  );
+
   const [file, setFile] = useState(null);
-  const [fileError, setFileError] = useState(null);
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [columnMapping, setColumnMapping] = useState({
     // Required fields
@@ -326,17 +350,17 @@ function BioanalyticalManifestImportModal({
       if (!addedFile) return;
 
       if (!addedFile.name.endsWith(".csv")) {
-        setFileError(
-          intl.formatMessage({
+        notify({
+          kind: NotificationKinds.error,
+          message: intl.formatMessage({
             id: "notebook.bioanalytical.manifest.error.invalidFileType",
             defaultMessage: "Please upload a CSV file",
           }),
-        );
+        });
         return;
       }
 
       setFile(addedFile);
-      setFileError(null);
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -451,7 +475,7 @@ function BioanalyticalManifestImportModal({
     setPreviewErrors([]);
 
     try {
-      const endpoint = `${config.serverBaseUrl}/rest/notebook/bioanalytical/entry/${entryId}/samples/create-from-manifest`;
+      const endpoint = `${config.serverBaseUrl}/rest/notebook/bioanalytical/entry/${entryId}/samples/import-manifest`;
       const response = await fetch(endpoint, {
         method: "POST",
         body: buildFormData(),
@@ -832,14 +856,6 @@ function BioanalyticalManifestImportModal({
                 />
               )}
             </div>
-            {fileError && (
-              <InlineNotification
-                kind="error"
-                title={fileError}
-                lowContrast
-                hideCloseButton
-              />
-            )}
           </div>
         )}
 
@@ -975,25 +991,22 @@ function BioanalyticalManifestImportModal({
             </div>
 
             {previewErrors.length > 0 && (
-              <InlineNotification
-                kind="error"
-                title={intl.formatMessage({
-                  id: "notebook.manifest.validationErrors",
-                  defaultMessage: "Validation Errors",
-                })}
-                subtitle={
-                  <ul className="error-list">
-                    {previewErrors.map((error, idx) => (
-                      <li key={idx}>
-                        {error.rowNumber > 0 ? `Row ${error.rowNumber}: ` : ""}
-                        {error.message}
-                      </li>
-                    ))}
-                  </ul>
-                }
-                lowContrast
-                hideCloseButton
-              />
+              <div className="validation-errors">
+                <h4 style={{ color: '#da1e28', marginBottom: '0.5rem' }}>
+                  <FormattedMessage
+                    id="notebook.manifest.validationErrors"
+                    defaultMessage="Validation Errors"
+                  />
+                </h4>
+                <ul className="error-list" style={{ color: '#da1e28', margin: 0, paddingLeft: '1rem' }}>
+                  {previewErrors.map((error, idx) => (
+                    <li key={idx}>
+                      {error.rowNumber > 0 ? `Row ${error.rowNumber}: ` : ""}
+                      {error.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}
@@ -1005,27 +1018,22 @@ function BioanalyticalManifestImportModal({
             ) : (
               <>
                 {previewErrors.length > 0 && (
-                  <InlineNotification
-                    kind="error"
-                    title={intl.formatMessage({
-                      id: "notebook.manifest.validationErrors",
-                      defaultMessage: "Validation Errors",
-                    })}
-                    subtitle={
-                      <ul className="error-list">
-                        {previewErrors.map((error, idx) => (
-                          <li key={idx}>
-                            {error.rowNumber > 0
-                              ? `Row ${error.rowNumber}: `
-                              : ""}
-                            {error.message}
-                          </li>
-                        ))}
-                      </ul>
-                    }
-                    lowContrast
-                    hideCloseButton
-                  />
+                  <div className="validation-errors">
+                    <h4 style={{ color: '#da1e28', marginBottom: '0.5rem' }}>
+                      <FormattedMessage
+                        id="notebook.manifest.validationErrors"
+                        defaultMessage="Validation Errors"
+                      />
+                    </h4>
+                    <ul className="error-list" style={{ color: '#da1e28', margin: 0, paddingLeft: '1rem' }}>
+                      {previewErrors.map((error, idx) => (
+                        <li key={idx}>
+                          {error.rowNumber > 0 ? `Row ${error.rowNumber}: ` : ""}
+                          {error.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
 
                 {previewData && previewErrors.length === 0 && (

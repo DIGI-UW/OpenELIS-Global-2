@@ -1131,35 +1131,6 @@ function BioanalyticalAnalyticalExecutionPage({
         </p>
       </div>
 
-      {errorMessage && (
-        <div style={{ marginBottom: "1rem" }}>
-          <InlineNotification
-            kind="error"
-            title={intl.formatMessage({
-              id: "notebook.bioanalytical.execution.error",
-              defaultMessage: "Error",
-            })}
-            subtitle={errorMessage}
-            lowContrast
-            onCloseButtonClick={() => setErrorMessage("")}
-          />
-        </div>
-      )}
-
-      {successMessage && (
-        <div style={{ marginBottom: "1rem" }}>
-          <InlineNotification
-            kind="success"
-            title={intl.formatMessage({
-              id: "notebook.bioanalytical.execution.success",
-              defaultMessage: "Success",
-            })}
-            subtitle={successMessage}
-            lowContrast
-            onCloseButtonClick={() => setSuccessMessage("")}
-          />
-        </div>
-      )}
 
       <Tabs
         selectedIndex={selectedTab}
@@ -3547,7 +3518,10 @@ function BioanalyticalAnalyticalExecutionPage({
                           disabled={!analystReview.comments}
                           onClick={() => {
                             setReviewStatus("ANALYST_REJECTED");
-                            setErrorMessage("Analyst review rejected. Data requires correction before QA review.");
+                            notify({
+                              kind: NotificationKinds.error,
+                              message: "Analyst review rejected. Data requires correction before QA review.",
+                            });
                           }}
                         >
                           <FormattedMessage
@@ -3863,7 +3837,10 @@ function BioanalyticalAnalyticalExecutionPage({
                               );
 
                               setReviewStatus("QA_REJECTED");
-                              setErrorMessage("QA review rejected. Data requires correction before manager approval.");
+                              notify({
+                                kind: NotificationKinds.error,
+                                message: "QA review rejected. Data requires correction before manager approval.",
+                              });
                             }}
                           >
                             <FormattedMessage
@@ -4087,7 +4064,10 @@ function BioanalyticalAnalyticalExecutionPage({
                             );
 
                             setReviewStatus("FINAL_APPROVED");
-                            setSuccessMessage("Final manager approval completed. Data authorized for external release.");
+                            notify({
+                              kind: NotificationKinds.success,
+                              message: "Final manager approval completed. Data authorized for external release.",
+                            });
                             // Auto-navigate to Audit Trail to show complete workflow
                             setSelectedTab(9); // Audit Trail is now tab 9
                           }}
@@ -4114,7 +4094,10 @@ function BioanalyticalAnalyticalExecutionPage({
                             );
 
                             setReviewStatus("MANAGER_REJECTED");
-                            setErrorMessage("Manager approval rejected. Data requires resolution before release.");
+                            notify({
+                              kind: NotificationKinds.error,
+                              message: "Manager approval rejected. Data requires resolution before release.",
+                            });
                           }}
                         >
                           <FormattedMessage

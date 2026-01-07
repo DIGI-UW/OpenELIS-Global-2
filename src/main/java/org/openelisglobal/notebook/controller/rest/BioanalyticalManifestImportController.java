@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.form.BioanalyticalManifestImportForm;
 import org.openelisglobal.notebook.service.BioanalyticalManifestImportService;
 import org.openelisglobal.notebook.service.BioanalyticalManifestImportService.BioanalyticalManifestImportResult;
@@ -265,26 +266,31 @@ public class BioanalyticalManifestImportController extends BaseRestController {
      * Import manifest CSV and create samples in the notebook entry. This is the
      * actual import endpoint that persists data to database.
      *
-     * @param entryId The notebook entry ID
-     * @param file    The CSV file to import
-     * @param form    Column mapping configuration
-     * @param request HTTP request (for user session data)
+     * @param entryId     The notebook entry ID
+     * @param file        The CSV file to import
+     * @param form        Column mapping configuration
+     * @param httpRequest HTTP request (for user session data)
      * @return Import result with created sample IDs and any errors
      */
     @PostMapping(value = "/entry/{entryId}/samples/import-manifest", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> importManifestForEntry(@PathVariable("entryId") Integer entryId,
             @RequestPart("file") MultipartFile file, @RequestPart("mapping") BioanalyticalManifestImportForm form,
-            HttpServletRequest request) {
+            HttpServletRequest httpRequest) {
 
         Optional<NotebookEntry> optEntry = notebookEntryService.getMatch("id", entryId);
         if (optEntry.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        try (InputStream inputStream = file.getInputStream()) {
-            String userId = "SYSTEM";
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
 
+        try (InputStream inputStream = file.getInputStream()) {
             ParsedManifest parsed = bioanalyticalManifestImportService.parseManifestCsv(inputStream, form);
             List<ParseError> validationErrors = bioanalyticalManifestImportService.validateManifest(parsed);
 
@@ -303,7 +309,7 @@ public class BioanalyticalManifestImportController extends BaseRestController {
             }
 
             BioanalyticalManifestImportResult result = bioanalyticalManifestImportService.createSamplesForEntry(entryId,
-                    parsed, userId);
+                    parsed, sysUserId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", result.errors().isEmpty());
@@ -326,5 +332,14 @@ public class BioanalyticalManifestImportController extends BaseRestController {
             errorResponse.put("error", "Failed to read CSV file: " + e.getMessage());
             return ResponseEntity.badRequest().body(errorResponse);
         }
+    }
+
+    @Override
+    protected String getSysUserId(HttpServletRequest request) {
+        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+        if (usd == null) {
+            return null;
+        }
+        return String.valueOf(usd.getSystemUserId());
     }
 }
