@@ -445,11 +445,7 @@ function BioanalyticalSampleReceptionPage({
                   renderIcon={Edit}
                   onClick={() => setIsBulkApplyModalOpen(true)}
                 >
-                  <FormattedMessage
-                    id="notebook.bioanalytical.stage1.editMetadata"
-                    defaultMessage="Edit Metadata ({count})"
-                    values={{ count: selectedSampleIds.length }}
-                  />
+                  Edit Metadata ({selectedSampleIds.length})
                 </Button>
 
                 <Button
@@ -458,11 +454,7 @@ function BioanalyticalSampleReceptionPage({
                   renderIcon={Checkmark}
                   onClick={markAsVerified}
                 >
-                  <FormattedMessage
-                    id="notebook.bioanalytical.stage1.markVerified"
-                    defaultMessage="Mark as Verified ({count})"
-                    values={{ count: selectedSampleIds.length }}
-                  />
+                  Mark as Verified ({selectedSampleIds.length})
                 </Button>
               </>
             )}
