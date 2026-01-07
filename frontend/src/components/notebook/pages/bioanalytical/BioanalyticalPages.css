@@ -283,6 +283,13 @@
   padding: 0.5rem 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cds--btn svg {
+  flex-shrink: 0;
 }
 
 .cds--btn--primary {
