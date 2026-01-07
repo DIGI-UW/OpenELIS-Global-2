@@ -181,9 +181,9 @@ function BioanalyticalTestAssignmentPage({
       try {
         const stage1DataMap = {};
 
-        // Fetch all pages for this entry to find Stage 1 (page order 1)
-        const pagesResponse = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/pages`,
+        // Step 1: Get entry details to find the notebook ID
+        const entryResponse = await fetch(
+          `${config.serverBaseUrl}/rest/notebook-entry/${entryId}`,
           {
             method: "GET",
             credentials: "include",
@@ -194,46 +194,82 @@ function BioanalyticalTestAssignmentPage({
           },
         );
 
-        if (pagesResponse.ok) {
-          const pagesData = await pagesResponse.json();
-          const stage1Page = Array.isArray(pagesData)
-            ? pagesData.find((p) => p.pageOrder === 1 || p.displayOrder === 1)
-            : pagesData[0];
+        if (!entryResponse.ok) {
+          console.debug("Could not fetch entry details");
+          return stage1DataMap;
+        }
 
-          // If we found Stage 1, fetch its samples
-          if (stage1Page && stage1Page.id) {
-            const stage1Response = await fetch(
-              `${config.serverBaseUrl}/rest/notebook/page/${stage1Page.id}/samples`,
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "X-CSRF-Token": localStorage.getItem("CSRF"),
-                  "Content-Type": "application/json",
-                },
-              },
-            );
+        const entryData = await entryResponse.json();
+        const notebookId =
+          entryData.notebook?.id || entryData.notebookInstanceId;
 
-            if (stage1Response.ok) {
-              const stage1Samples = await stage1Response.json();
-              const stage1Array = Array.isArray(stage1Samples)
-                ? stage1Samples
-                : stage1Samples.samples || [];
+        if (!notebookId) {
+          console.debug("No notebook ID found in entry");
+          return stage1DataMap;
+        }
 
-              // Map Stage 1 sample data by sampleItemId
-              stage1Array.forEach((sample) => {
-                if (sample.sampleItemId && sample.data) {
-                  stage1DataMap[sample.sampleItemId] = sample.data;
-                }
-              });
+        // Step 2: Get all pages for this notebook
+        const notebookResponse = await fetch(
+          `${config.serverBaseUrl}/rest/notebook/view/${notebookId}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+              "Content-Type": "application/json",
+            },
+          },
+        );
 
-              console.debug(
-                "Loaded Stage 1 reference data for",
-                Object.keys(stage1DataMap).length,
-                "samples",
-              );
+        if (!notebookResponse.ok) {
+          console.debug("Could not fetch notebook details");
+          return stage1DataMap;
+        }
+
+        const notebookData = await notebookResponse.json();
+        const pages = notebookData.pages || [];
+
+        // Find Stage 1 page (usually the first page by order)
+        const stage1Page = pages.find(
+          (p) => p.displayOrder === 1 || p.order === 1,
+        );
+
+        if (!stage1Page || !stage1Page.id) {
+          console.debug("Could not find Stage 1 page");
+          return stage1DataMap;
+        }
+
+        // Step 3: Fetch samples from Stage 1 page
+        const stage1Response = await fetch(
+          `${config.serverBaseUrl}/rest/notebook/page/${stage1Page.id}/samples`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (stage1Response.ok) {
+          const stage1Samples = await stage1Response.json();
+          const stage1Array = Array.isArray(stage1Samples)
+            ? stage1Samples
+            : stage1Samples.samples || [];
+
+          // Map Stage 1 sample data by sampleItemId
+          stage1Array.forEach((sample) => {
+            if (sample.sampleItemId && sample.data) {
+              stage1DataMap[sample.sampleItemId] = sample.data;
             }
-          }
+          });
+
+          console.debug(
+            "Loaded Stage 1 reference data for",
+            Object.keys(stage1DataMap).length,
+            "samples",
+          );
         }
 
         return stage1DataMap;
