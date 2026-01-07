@@ -253,15 +253,15 @@ function BioanalyticalAnalyticalExecutionPage({
         if (response.ok) {
           const data = await response.json();
           // All samples on this page should have test assignments from Stage 2
-          const samplesWithAssignments = (Array.isArray(data) ? data : data.samples || []).filter(
-            (sample) => {
-              return (
-                sample.data &&
-                sample.data.analyticalMethod &&
-                sample.data.assignedStaff
-              );
-            },
-          );
+          const samplesWithAssignments = (
+            Array.isArray(data) ? data : data.samples || []
+          ).filter((sample) => {
+            return (
+              sample.data &&
+              sample.data.analyticalMethod &&
+              sample.data.assignedStaff
+            );
+          });
           setAssignedSamples(samplesWithAssignments);
         } else {
           console.error("Failed to load assigned samples:", response.status);
@@ -3794,6 +3794,7 @@ function BioanalyticalAnalyticalExecutionPage({
                         }}
                       >
                         <TextInput
+                          id="reviewingAnalystId"
                           labelText="Reviewing Analyst ID *"
                           value={analystReview.reviewerId}
                           onChange={(e) =>
@@ -3806,6 +3807,7 @@ function BioanalyticalAnalyticalExecutionPage({
                         />
 
                         <TextInput
+                          id="reviewingAnalystName"
                           labelText="Reviewing Analyst Name *"
                           value={analystReview.reviewerName}
                           onChange={(e) =>
@@ -4850,6 +4852,7 @@ function BioanalyticalAnalyticalExecutionPage({
                       }}
                     >
                       <TextInput
+                        id="auditUserId"
                         labelText="User ID"
                         placeholder="Filter by user..."
                         value={auditFilters.userId}
@@ -4861,6 +4864,7 @@ function BioanalyticalAnalyticalExecutionPage({
                         }
                       />
                       <Select
+                        id="auditActionType"
                         labelText="Action Type"
                         value={auditFilters.action}
                         onChange={(e) =>
@@ -4891,6 +4895,7 @@ function BioanalyticalAnalyticalExecutionPage({
                       </Select>
                       <DatePicker dateFormat="Y-m-d" datePickerType="single">
                         <DatePickerInput
+                          id="auditStartDate"
                           labelText="Start Date"
                           placeholder="YYYY-MM-DD"
                           value={auditFilters.startDate}
@@ -4904,6 +4909,7 @@ function BioanalyticalAnalyticalExecutionPage({
                       </DatePicker>
                       <DatePicker dateFormat="Y-m-d" datePickerType="single">
                         <DatePickerInput
+                          id="auditEndDate"
                           labelText="End Date"
                           placeholder="YYYY-MM-DD"
                           value={auditFilters.endDate}

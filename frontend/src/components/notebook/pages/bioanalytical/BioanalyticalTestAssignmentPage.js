@@ -170,7 +170,82 @@ function BioanalyticalTestAssignmentPage({
   const [successMessage, setSuccessMessage] = useState("");
   const [showAssignmentForm, setShowAssignmentForm] = useState(false);
 
-  // Load samples from Stage 1 on component mount
+  // Fetch Stage 1 sample data for reference (to display sampleType, requestedTests, etc.)
+  // Stage 1 is the Sample Reception & Registration page (usually the first page)
+  const fetchStage1DataForSamples = useCallback(
+    async (sampleItemIds) => {
+      if (!entryId || sampleItemIds.length === 0) {
+        return {};
+      }
+
+      try {
+        const stage1DataMap = {};
+
+        // Fetch all pages for this entry to find Stage 1 (page order 1)
+        const pagesResponse = await fetch(
+          `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/pages`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (pagesResponse.ok) {
+          const pagesData = await pagesResponse.json();
+          const stage1Page = Array.isArray(pagesData)
+            ? pagesData.find((p) => p.pageOrder === 1 || p.displayOrder === 1)
+            : pagesData[0];
+
+          // If we found Stage 1, fetch its samples
+          if (stage1Page && stage1Page.id) {
+            const stage1Response = await fetch(
+              `${config.serverBaseUrl}/rest/notebook/page/${stage1Page.id}/samples`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "X-CSRF-Token": localStorage.getItem("CSRF"),
+                  "Content-Type": "application/json",
+                },
+              },
+            );
+
+            if (stage1Response.ok) {
+              const stage1Samples = await stage1Response.json();
+              const stage1Array = Array.isArray(stage1Samples)
+                ? stage1Samples
+                : stage1Samples.samples || [];
+
+              // Map Stage 1 sample data by sampleItemId
+              stage1Array.forEach((sample) => {
+                if (sample.sampleItemId && sample.data) {
+                  stage1DataMap[sample.sampleItemId] = sample.data;
+                }
+              });
+
+              console.debug(
+                "Loaded Stage 1 reference data for",
+                Object.keys(stage1DataMap).length,
+                "samples",
+              );
+            }
+          }
+        }
+
+        return stage1DataMap;
+      } catch (error) {
+        console.debug("Error fetching Stage 1 reference data:", error);
+        return {};
+      }
+    },
+    [entryId],
+  );
+
+  // Load samples from Stage 2 on component mount
   useEffect(() => {
     const loadSamples = async () => {
       // Only load if we have a valid page ID (not a placeholder)
@@ -201,7 +276,51 @@ function BioanalyticalTestAssignmentPage({
             Array.isArray(data) ? data.length : data.samples?.length || 0,
             "samples",
           );
-          setSamples(Array.isArray(data) ? data : data.samples || []);
+
+          const rawSamples = Array.isArray(data) ? data : data.samples || [];
+
+          // Fetch Stage 1 reference data for all samples
+          const stage1DataMap = await fetchStage1DataForSamples(
+            rawSamples.map((s) => s.sampleItemId),
+          );
+
+          // Transform samples to extract JSONB data fields
+          const transformedSamples = rawSamples.map((sample) => {
+            const sampleDataFields = sample.data || {};
+            const stage1Data = stage1DataMap[sample.sampleItemId] || {};
+
+            return {
+              ...sample,
+              // Extract fields from Stage 2 JSONB data object
+              sampleType:
+                sampleDataFields.sampleType ||
+                stage1Data.sampleType ||
+                sample.sampleType,
+              requestedTests:
+                sampleDataFields.requestedTests ||
+                stage1Data.requestedTests ||
+                sample.requestedTests,
+              timepoint:
+                sampleDataFields.timepoint ||
+                stage1Data.timepoint ||
+                sample.timepoint,
+              sourceOrigin:
+                sampleDataFields.sourceOrigin ||
+                stage1Data.sourceOrigin ||
+                sample.sourceOrigin,
+              // Spread all JSONB fields to make them available
+              ...stage1Data,
+              ...sampleDataFields,
+            };
+          });
+
+          console.debug(
+            "Transformed Stage 2 samples with Stage 1 reference:",
+            transformedSamples.length,
+            transformedSamples,
+          );
+
+          setSamples(transformedSamples);
         } else {
           console.error("Failed to load samples:", response.status);
           setSamples([]);
@@ -221,7 +340,7 @@ function BioanalyticalTestAssignmentPage({
     };
 
     loadSamples();
-  }, [entryId, intl]);
+  }, [entryId, intl, pageData?.id, fetchStage1DataForSamples]);
 
   const toggleSampleSelection = (sampleId) => {
     const newSelection = new Set(selectedSamples);
@@ -626,7 +745,9 @@ function BioanalyticalTestAssignmentPage({
                               {sample.accessionNumber || "-"}
                             </TableCell>
                             <TableCell>
-                              {sample.sampleType?.name || "-"}
+                              {typeof sample.sampleType === "object"
+                                ? sample.sampleType?.name || "-"
+                                : sample.sampleType || "-"}
                             </TableCell>
                             <TableCell>
                               {Array.isArray(sample.requestedTests)
