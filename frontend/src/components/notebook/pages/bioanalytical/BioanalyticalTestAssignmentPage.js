@@ -180,6 +180,111 @@ const STAFF_ROLES = [
 ];
 
 /**
+ * Bioanalytical analyzers/instruments available per SRS requirements
+ */
+const ANALYZERS = [
+  {
+    id: "1",
+    machine: "LC-MS/MS",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Automatic",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "2",
+    machine: "HPLC",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Automatic",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "3",
+    machine: "Dissolution Apparatus",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Both",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "4",
+    machine: "Disintegration Tester",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Manual",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "5",
+    machine: "Hardness Tester",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Manual",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "6",
+    machine: "Friability Tester",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Manual",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "7",
+    machine: "Stability Chamber",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Automatic",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "8",
+    machine: "UV-Vis Spectrophotometer",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Both",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "9",
+    machine: "FTIR",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Both",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "10",
+    machine: "Freezers (-20°C, -80°C)",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Manual",
+    lisManual: "No",
+    status: "Active",
+  },
+  {
+    id: "11",
+    machine: "Millipore Water Purification",
+    model: "-",
+    dataOutput: "Yes",
+    integration: "Automatic",
+    lisManual: "No",
+    status: "Active",
+  },
+];
+
+/**
  * BioanalyticalTestAssignmentPage - Stage 2 of bioanalytical workflow.
  *
  * Features:
@@ -1016,7 +1121,7 @@ function BioanalyticalTestAssignmentPage({
                   labelText={
                     <FormattedMessage
                       id="notebook.bioanalytical.testassignment.instrument"
-                      defaultMessage="Instrument"
+                      defaultMessage="Analyzer / Instrument"
                     />
                   }
                   value={assignmentConfig.instrumentId}
@@ -1026,16 +1131,16 @@ function BioanalyticalTestAssignmentPage({
                   helperText={
                     <FormattedMessage
                       id="notebook.bioanalytical.testassignment.instrumentHelp"
-                      defaultMessage="Select the instrument for analysis"
+                      defaultMessage="Select the analyzer/instrument for analysis"
                     />
                   }
                 >
-                  <SelectItem value="" text="Select instrument..." />
-                  {(templateInstruments || []).map((instrument) => (
+                  <SelectItem value="" text="Select analyzer..." />
+                  {ANALYZERS.map((analyzer) => (
                     <SelectItem
-                      key={instrument.id}
-                      value={instrument.id}
-                      text={`${instrument.name} - ${instrument.description || instrument.type}`}
+                      key={analyzer.id}
+                      value={analyzer.id}
+                      text={`${analyzer.machine} (${analyzer.integration})`}
                     />
                   ))}
                 </Select>
