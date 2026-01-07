@@ -566,6 +566,44 @@ function BioanalyticalTestAssignmentPage({
     loadSamples();
   }, [entryId, intl, pageData?.id, fetchStage1DataForSamples, notify]);
 
+  // Load existing test assignments from samples on component mount or when samples change
+  useEffect(() => {
+    if (samples && samples.length > 0) {
+      const assignments = {};
+      samples.forEach((sample) => {
+        // Extract test assignment data from the sample's JSONB data
+        if (sample.data && sample.data.analyticalMethod) {
+          assignments[sample.id] = {
+            analyticalMethod: sample.data.analyticalMethod,
+            assignedStaff: sample.data.assignedStaff || "",
+            instrumentId: sample.data.instrumentId || "",
+            qcLevels: sample.data.qcLevels || {
+              low: { concentration: "", tolerance: "" },
+              medium: { concentration: "", tolerance: "" },
+              high: { concentration: "", tolerance: "" },
+            },
+            acceptanceCriteria: sample.data.acceptanceCriteria || {
+              rSquaredMin: "0.995",
+              slopeRange: { min: "0.8", max: "1.2" },
+              interceptMax: "20",
+            },
+            samplePreparation: sample.data.samplePreparation || "",
+            expectedAnalysisDate: sample.data.expectedAnalysisDate || "",
+            notes: sample.data.notes || "",
+          };
+        }
+      });
+      if (Object.keys(assignments).length > 0) {
+        console.debug(
+          "Loaded test assignments for",
+          Object.keys(assignments).length,
+          "samples from backend",
+        );
+        setTestAssignments(assignments);
+      }
+    }
+  }, [samples]);
+
   const toggleSampleSelection = (sampleId) => {
     const newSelection = new Set(selectedSamples);
     if (newSelection.has(sampleId)) {
@@ -1242,7 +1280,16 @@ function BioanalyticalTestAssignmentPage({
               </Column>
 
               <Column lg={8} md={4} sm={4}>
-                <DatePicker dateFormat="Y-m-d" datePickerType="single">
+                <DatePicker
+                  dateFormat="Y-m-d"
+                  datePickerType="single"
+                  onChange={(dates) => {
+                    if (dates && dates.length > 0) {
+                      const dateStr = dates[0].toISOString().split("T")[0];
+                      handleConfigChange("expectedAnalysisDate", dateStr);
+                    }
+                  }}
+                >
                   <DatePickerInput
                     id="expected-analysis-date"
                     labelText={
@@ -1253,9 +1300,6 @@ function BioanalyticalTestAssignmentPage({
                     }
                     placeholder="YYYY-MM-DD"
                     value={assignmentConfig.expectedAnalysisDate}
-                    onChange={(e) =>
-                      handleConfigChange("expectedAnalysisDate", e.target.value)
-                    }
                   />
                 </DatePicker>
               </Column>
@@ -1294,8 +1338,8 @@ function BioanalyticalTestAssignmentPage({
                   step={0.1}
                   defaultValue={5}
                   value={assignmentConfig.qcLevels.low.concentration}
-                  onChange={(e) =>
-                    handleQcLevelChange("low", "concentration", e.target.value)
+                  onChange={({ value }) =>
+                    handleQcLevelChange("low", "concentration", String(value))
                   }
                   style={{ marginBottom: "0.5rem" }}
                 />
@@ -1307,8 +1351,8 @@ function BioanalyticalTestAssignmentPage({
                   step={0.1}
                   defaultValue={20}
                   value={assignmentConfig.qcLevels.low.tolerance}
-                  onChange={(e) =>
-                    handleQcLevelChange("low", "tolerance", e.target.value)
+                  onChange={({ value }) =>
+                    handleQcLevelChange("low", "tolerance", String(value))
                   }
                 />
               </Column>
@@ -1323,11 +1367,11 @@ function BioanalyticalTestAssignmentPage({
                   step={0.1}
                   defaultValue={50}
                   value={assignmentConfig.qcLevels.medium.concentration}
-                  onChange={(e) =>
+                  onChange={({ value }) =>
                     handleQcLevelChange(
                       "medium",
                       "concentration",
-                      e.target.value,
+                      String(value),
                     )
                   }
                   style={{ marginBottom: "0.5rem" }}
@@ -1340,8 +1384,8 @@ function BioanalyticalTestAssignmentPage({
                   step={0.1}
                   defaultValue={20}
                   value={assignmentConfig.qcLevels.medium.tolerance}
-                  onChange={(e) =>
-                    handleQcLevelChange("medium", "tolerance", e.target.value)
+                  onChange={({ value }) =>
+                    handleQcLevelChange("medium", "tolerance", String(value))
                   }
                 />
               </Column>
@@ -1356,8 +1400,8 @@ function BioanalyticalTestAssignmentPage({
                   step={0.1}
                   defaultValue={500}
                   value={assignmentConfig.qcLevels.high.concentration}
-                  onChange={(e) =>
-                    handleQcLevelChange("high", "concentration", e.target.value)
+                  onChange={({ value }) =>
+                    handleQcLevelChange("high", "concentration", String(value))
                   }
                   style={{ marginBottom: "0.5rem" }}
                 />
@@ -1369,8 +1413,8 @@ function BioanalyticalTestAssignmentPage({
                   step={0.1}
                   defaultValue={20}
                   value={assignmentConfig.qcLevels.high.tolerance}
-                  onChange={(e) =>
-                    handleQcLevelChange("high", "tolerance", e.target.value)
+                  onChange={({ value }) =>
+                    handleQcLevelChange("high", "tolerance", String(value))
                   }
                 />
               </Column>
@@ -1396,11 +1440,8 @@ function BioanalyticalTestAssignmentPage({
                   step={0.001}
                   defaultValue={0.995}
                   value={assignmentConfig.acceptanceCriteria.rSquaredMin}
-                  onChange={(e) =>
-                    handleAcceptanceCriteriaChange(
-                      "rSquaredMin",
-                      e.target.value,
-                    )
+                  onChange={({ value }) =>
+                    handleAcceptanceCriteriaChange("rSquaredMin", String(value))
                   }
                 />
               </Column>
@@ -1442,10 +1483,10 @@ function BioanalyticalTestAssignmentPage({
                   step={1}
                   defaultValue={20}
                   value={assignmentConfig.acceptanceCriteria.interceptMax}
-                  onChange={(e) =>
+                  onChange={({ value }) =>
                     handleAcceptanceCriteriaChange(
                       "interceptMax",
-                      e.target.value,
+                      String(value),
                     )
                   }
                 />
