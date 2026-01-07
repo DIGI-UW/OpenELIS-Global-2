@@ -621,7 +621,7 @@ const NoteBookInstanceEntryForm = () => {
                 hour12: false,
               });
             }
-            return { ...item, id: index + 1, time: formattedTime };
+            return { ...item, id: String(index + 1), time: formattedTime };
           });
           setAuditTrailItems(updatedAuditTrailItems);
         } else {

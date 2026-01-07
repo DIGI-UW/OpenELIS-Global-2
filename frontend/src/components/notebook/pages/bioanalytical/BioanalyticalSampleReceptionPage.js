@@ -54,7 +54,11 @@ function BioanalyticalSampleReceptionPage({
   const [isBulkApplyModalOpen, setIsBulkApplyModalOpen] = useState(false);
 
   // Progress tracking
-  const pendingSamples = samples.filter((s) => s.status === "PENDING");
+  // Include both PENDING and IN_PROGRESS statuses as "pending" for the workflow
+  // IN_PROGRESS means samples have been opened/started but not yet completed
+  const pendingSamples = samples.filter(
+    (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+  );
   const completedSamples = samples.filter((s) => s.status === "COMPLETED");
   const pendingCount = pendingSamples.length;
   const completedCount = completedSamples.length;
@@ -214,33 +218,78 @@ function BioanalyticalSampleReceptionPage({
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load samples: HTTP ${response.status}`);
+        }
+        return response.json();
+      })
       .then((data) => {
-        if (Array.isArray(data)) {
-          const transformedSamples = data.map((sample) => ({
-            id: String(sample.id || sample.sampleItemId),
-            externalId: sample.externalId,
-            accessionNumber: sample.accessionNumber,
-            sampleType: sample.sampleType || sample.typeOfSample?.description,
-            status: sample.pageStatus || sample.status || "PENDING",
+        console.debug(
+          "Loaded samples for bioanalytical page:",
+          pageData.id,
+          "Count:",
+          Array.isArray(data) ? data.length : 0,
+          "Data:",
+          data,
+        );
 
-            // Stage 1 bioanalytical-specific metadata from JSONB data
-            uniqueSampleId: sample.data?.uniqueSampleId || sample.externalId,
-            sourceOrigin: sample.data?.sourceOrigin,
-            requestedTests: sample.data?.requestedTests,
-            dateTimeOfReceipt: sample.data?.dateTimeOfReceipt,
-            receivingPersonnel: sample.data?.receivingPersonnel,
-            projectStudyAssociation: sample.data?.projectStudyAssociation,
-            storageConditionPrior: sample.data?.storageConditionPrior,
-            sampleVolume: sample.data?.sampleVolume,
-            transportTemperature: sample.data?.transportTemperature,
-            manifestVerificationStatus: sample.data?.manifestVerificationStatus,
-            subjectId: sample.data?.subjectId,
-            timepoint: sample.data?.timepoint,
-            notes: sample.data?.notes,
-          }));
+        if (Array.isArray(data)) {
+          const transformedSamples = data.map((sample) => {
+            // Combine base sample properties with all data JSONB fields
+            // This ensures any bulk-applied values are captured
+            const sampleDataFields = sample.data || {};
+            const sampleStatus =
+              sample.pageStatus || sample.status || "PENDING";
+
+            console.debug(
+              "Sample transform debug:",
+              sample.externalId,
+              "pageStatus:",
+              sample.pageStatus,
+              "status:",
+              sample.status,
+              "final status:",
+              sampleStatus,
+            );
+
+            return {
+              id: String(sample.id || sample.sampleItemId),
+              externalId: sample.externalId,
+              accessionNumber: sample.accessionNumber,
+              sampleType: sample.sampleType || sample.typeOfSample?.description,
+              status: sampleStatus,
+
+              // Stage 1 bioanalytical-specific metadata from JSONB data
+              // Spread all JSONB data fields to capture bulk-applied values
+              ...sampleDataFields,
+
+              // Ensure these core fields have fallbacks
+              uniqueSampleId:
+                sampleDataFields.uniqueSampleId || sample.externalId,
+              projectStudyAssociation: sampleDataFields.projectStudyAssociation,
+              storageConditionPrior: sampleDataFields.storageConditionPrior,
+              manifestVerificationStatus:
+                sampleDataFields.manifestVerificationStatus,
+              timepoint: sampleDataFields.timepoint,
+              sourceOrigin: sampleDataFields.sourceOrigin,
+              requestedTests: sampleDataFields.requestedTests,
+              dateTimeOfReceipt: sampleDataFields.dateTimeOfReceipt,
+              receivingPersonnel: sampleDataFields.receivingPersonnel,
+              sampleVolume: sampleDataFields.sampleVolume,
+              transportTemperature: sampleDataFields.transportTemperature,
+              subjectId: sampleDataFields.subjectId,
+              notes: sampleDataFields.notes,
+            };
+          });
+          console.debug(
+            "Transformed samples:",
+            transformedSamples.length,
+            transformedSamples,
+          );
           setSamples(transformedSamples);
         } else {
+          console.warn("Response data is not an array:", data);
           setSamples([]);
         }
         setIsLoading(false);
@@ -467,7 +516,7 @@ function BioanalyticalSampleReceptionPage({
               loading={isLoading}
               additionalColumns={[
                 {
-                  key: "accessionNumber",
+                  key: "pending-accessionNumber",
                   header: intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.column.accessionNumber",
                     defaultMessage: "Accession Number",
@@ -489,7 +538,7 @@ function BioanalyticalSampleReceptionPage({
                   },
                 },
                 {
-                  key: "uniqueSampleId",
+                  key: "pending-uniqueSampleId",
                   header: intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.column.uniqueSampleId",
                     defaultMessage: "Sample ID",
@@ -512,7 +561,7 @@ function BioanalyticalSampleReceptionPage({
                   },
                 },
                 {
-                  key: "projectStudyAssociation",
+                  key: "pending-projectStudyAssociation",
                   header: intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.column.projectStudyAssociation",
                     defaultMessage: "Project/Study",
@@ -527,7 +576,7 @@ function BioanalyticalSampleReceptionPage({
                   },
                 },
                 {
-                  key: "storageConditionPrior",
+                  key: "pending-storageConditionPrior",
                   header: intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.column.storageCondition",
                     defaultMessage: "Storage Condition",
@@ -556,7 +605,7 @@ function BioanalyticalSampleReceptionPage({
                   },
                 },
                 {
-                  key: "manifestVerificationStatus",
+                  key: "pending-manifestVerificationStatus",
                   header: intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.column.verificationStatus",
                     defaultMessage: "Verification Status",
@@ -581,7 +630,7 @@ function BioanalyticalSampleReceptionPage({
                   },
                 },
                 {
-                  key: "timepoint",
+                  key: "pending-timepoint",
                   header: intl.formatMessage({
                     id: "notebook.bioanalytical.stage1.column.timepoint",
                     defaultMessage: "Timepoint",
@@ -636,7 +685,7 @@ function BioanalyticalSampleReceptionPage({
             loading={isLoading}
             additionalColumns={[
               {
-                key: "accessionNumber",
+                key: "verified-accessionNumber",
                 header: intl.formatMessage({
                   id: "notebook.bioanalytical.stage1.column.accessionNumber",
                   defaultMessage: "Accession Number",
@@ -655,7 +704,7 @@ function BioanalyticalSampleReceptionPage({
                 },
               },
               {
-                key: "uniqueSampleId",
+                key: "verified-uniqueSampleId",
                 header: intl.formatMessage({
                   id: "notebook.bioanalytical.stage1.column.uniqueSampleId",
                   defaultMessage: "Sample ID",
@@ -675,7 +724,7 @@ function BioanalyticalSampleReceptionPage({
                 },
               },
               {
-                key: "sampleType",
+                key: "verified-sampleType",
                 header: intl.formatMessage({
                   id: "notebook.bioanalytical.stage1.column.sampleType",
                   defaultMessage: "Sample Type",
@@ -707,7 +756,7 @@ function BioanalyticalSampleReceptionPage({
                 },
               },
               {
-                key: "projectStudyAssociation",
+                key: "verified-projectStudyAssociation",
                 header: intl.formatMessage({
                   id: "notebook.bioanalytical.stage1.column.projectStudyAssociation",
                   defaultMessage: "Project/Study",
@@ -722,7 +771,7 @@ function BioanalyticalSampleReceptionPage({
                 },
               },
               {
-                key: "requestedTests",
+                key: "verified-requestedTests",
                 header: intl.formatMessage({
                   id: "notebook.bioanalytical.stage1.column.requestedTests",
                   defaultMessage: "Requested Tests",
@@ -762,7 +811,7 @@ function BioanalyticalSampleReceptionPage({
                 },
               },
               {
-                key: "timepoint",
+                key: "verified-timepoint",
                 header: intl.formatMessage({
                   id: "notebook.bioanalytical.stage1.column.timepoint",
                   defaultMessage: "Timepoint",
@@ -906,8 +955,16 @@ function BioanalyticalSampleReceptionPage({
             {
               key: "timepoint",
               label: "Collection Timepoint",
-              type: "text",
-              placeholder: "e.g., Pre-dose, 2h post-dose, Day 7",
+              type: "dropdown",
+              options: [
+                { id: "Pre-dose", text: "Pre-dose" },
+                { id: "1h", text: "1h post-dose" },
+                { id: "2h", text: "2h post-dose" },
+                { id: "4h", text: "4h post-dose" },
+                { id: "8h", text: "8h post-dose" },
+                { id: "24h", text: "24h post-dose" },
+                { id: "Other", text: "Other (specify in notes)" },
+              ],
             },
 
             // Administrative
@@ -952,10 +1009,14 @@ function BioanalyticalSampleReceptionPage({
               ),
             });
             setSelectedSampleIds([]); // Clear selection
-            loadPageSamples(); // Refresh data
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
+
+            // Refresh data with a small delay to ensure modal closes and state updates
+            setTimeout(() => {
+              loadPageSamples();
+              if (onProgressUpdate) {
+                onProgressUpdate();
+              }
+            }, 300);
           }}
         />
       )}
