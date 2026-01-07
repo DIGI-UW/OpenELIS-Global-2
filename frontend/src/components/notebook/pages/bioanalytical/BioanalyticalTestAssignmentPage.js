@@ -317,6 +317,8 @@ function BioanalyticalTestAssignmentPage({
   // Loading and data states
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
+  const [notebookId, setNotebookId] = useState(null);
   const [samples, setSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState(new Set());
   const [testAssignments, setTestAssignments] = useState({});
@@ -383,17 +385,19 @@ function BioanalyticalTestAssignmentPage({
         }
 
         const entryData = await entryResponse.json();
-        const notebookId =
-          entryData.notebook?.id || entryData.notebookInstanceId;
+        const nbId = entryData.notebook?.id || entryData.notebookInstanceId;
 
-        if (!notebookId) {
+        if (!nbId) {
           console.debug("No notebook ID found in entry");
           return stage1DataMap;
         }
 
+        // Store notebook ID for later use in advancement
+        setNotebookId(nbId);
+
         // Step 2: Get all pages for this notebook
         const notebookResponse = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/view/${notebookId}`,
+          `${config.serverBaseUrl}/rest/notebook/view/${nbId}`,
           {
             method: "GET",
             credentials: "include",
@@ -938,6 +942,170 @@ function BioanalyticalTestAssignmentPage({
     notify,
   ]);
 
+  // Handle marking samples complete and advancing to Stage 3 (Analytical Execution)
+  const handleMarkCompleteAndAdvance = useCallback(async () => {
+    // Get samples that have test assignments (completed)
+    const assignedSamples = samples.filter(
+      (s) => testAssignments[s.id] && s.status !== "COMPLETED",
+    );
+
+    if (assignedSamples.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.noAssignedSamples",
+          defaultMessage:
+            "No samples with test assignments to move to the next stage. Please assign tests first.",
+        }),
+      });
+      return;
+    }
+
+    setIsAdvancing(true);
+
+    try {
+      // Get sample IDs as strings
+      const sampleIds = assignedSamples.map((s) => String(s.id));
+
+      // Step 1: Mark samples as COMPLETED on Stage 2
+      const statusResponse = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          body: JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
+        },
+      );
+
+      if (!statusResponse.ok) {
+        throw new Error("Failed to mark samples as completed");
+      }
+
+      // Step 2: Advance samples to Stage 3 (Analytical Execution)
+      // Stage 3 is displayOrder/pageIndex 3
+      if (!notebookId) {
+        console.warn(
+          "notebookId not available, cannot advance samples to Stage 3",
+        );
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.testassignment.completed",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage(
+            {
+              id: "notebook.bioanalytical.testassignment.completeSuccess",
+              defaultMessage:
+                "Successfully marked {count} samples as complete.",
+            },
+            { count: assignedSamples.length },
+          ),
+        });
+        if (onProgressUpdate) {
+          onProgressUpdate();
+        }
+        setIsAdvancing(false);
+        return;
+      }
+
+      const advanceResponse = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/${notebookId}/samples/advance-string`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          body: JSON.stringify({
+            sampleIds: sampleIds,
+            fromPageId: pageData.id,
+            toPageIndex: 3, // Stage 3: Analytical Execution
+          }),
+        },
+      );
+
+      if (advanceResponse.ok) {
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.testassignment.completed",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage(
+            {
+              id: "notebook.bioanalytical.testassignment.completeAndAdvanceSuccess",
+              defaultMessage:
+                "Successfully completed {count} samples and advanced to Analytical Execution stage.",
+            },
+            { count: assignedSamples.length },
+          ),
+        });
+      } else {
+        // Samples marked complete but advance failed - show partial success
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.testassignment.completed",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage(
+            {
+              id: "notebook.bioanalytical.testassignment.completeSuccess",
+              defaultMessage:
+                "Successfully marked {count} samples as complete.",
+            },
+            { count: assignedSamples.length },
+          ),
+        });
+        console.warn(
+          "Failed to advance samples to Stage 3:",
+          advanceResponse.status,
+        );
+      }
+
+      // Refresh progress and reload samples
+      if (onProgressUpdate) {
+        onProgressUpdate();
+      }
+    } catch (error) {
+      console.error("Error completing and advancing samples:", error);
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage(
+          {
+            id: "notebook.bioanalytical.testassignment.advanceError",
+            defaultMessage: "Failed to complete and advance samples: {error}",
+          },
+          { error: error.message },
+        ),
+      });
+    } finally {
+      setIsAdvancing(false);
+    }
+  }, [
+    samples,
+    testAssignments,
+    notebookId,
+    pageData?.id,
+    intl,
+    notify,
+    onProgressUpdate,
+  ]);
+
   return (
     <div className="bioanalytical-page">
       <div className="page-instructions">
@@ -1134,6 +1302,34 @@ function BioanalyticalTestAssignmentPage({
                         values={{ count: selectedSamples.size }}
                       />
                     </Button>
+                  </div>
+                )}
+
+                {/* Show completion button if samples have test assignments */}
+                {samples.filter((s) => testAssignments[s.id]).length > 0 && (
+                  <div style={{ marginTop: "1.5rem" }}>
+                    <Button
+                      kind="secondary"
+                      onClick={handleMarkCompleteAndAdvance}
+                      disabled={isAdvancing}
+                    >
+                      <FormattedMessage
+                        id="notebook.bioanalytical.testassignment.completeAndAdvance"
+                        defaultMessage="Mark Complete & Move to Next Stage"
+                      />
+                    </Button>
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                        marginTop: "0.5rem",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="notebook.bioanalytical.testassignment.completeNote"
+                        defaultMessage="Moves all samples with assigned tests to Analytical Execution (Stage 3)"
+                      />
+                    </p>
                   </div>
                 )}
               </>
