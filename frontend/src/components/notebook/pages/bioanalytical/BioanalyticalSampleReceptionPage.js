@@ -562,6 +562,23 @@ function BioanalyticalSampleReceptionPage({
                     id: "notebook.sample.status",
                     defaultMessage: "Status",
                   }),
+                  render: (value, sample) => {
+                    const status = sample?.status || value || "PENDING";
+                    return (
+                      <Tag
+                        size="sm"
+                        type={
+                          status === "COMPLETED"
+                            ? "green"
+                            : status === "IN_PROGRESS"
+                              ? "blue"
+                              : "red"
+                        }
+                      >
+                        {status}
+                      </Tag>
+                    );
+                  },
                 },
               ]}
               additionalColumns={[
@@ -687,10 +704,83 @@ function BioanalyticalSampleReceptionPage({
                   }),
                   render: (value, sample) => {
                     const timepoint = sample?.timepoint || value;
-                    return timepoint ? (
-                      <div style={{ fontSize: "0.875rem" }}>⏱️ {timepoint}</div>
-                    ) : (
-                      "-"
+                    if (!timepoint) return "-";
+
+                    // Color code timepoints for quick visualization
+                    const getTimepointColor = (tp) => {
+                      const lowerTp = tp?.toLowerCase() || "";
+                      if (lowerTp.includes("pre")) return "purple";
+                      if (lowerTp.includes("1h")) return "blue";
+                      if (lowerTp.includes("2h")) return "cyan";
+                      if (lowerTp.includes("4h")) return "teal";
+                      if (lowerTp.includes("8h")) return "blue";
+                      if (lowerTp.includes("24h")) return "green";
+                      return "gray";
+                    };
+
+                    return (
+                      <Tag size="sm" type={getTimepointColor(timepoint)}>
+                        {timepoint}
+                      </Tag>
+                    );
+                  },
+                },
+                {
+                  key: "pending-requestedTests",
+                  header: intl.formatMessage({
+                    id: "notebook.bioanalytical.stage1.column.requestedTests",
+                    defaultMessage: "Requested Tests",
+                  }),
+                  render: (value, sample) => {
+                    const tests = sample?.requestedTests || value;
+                    if (!tests) return "-";
+
+                    // Handle both string (single test) and array (multiple tests) formats
+                    const testArray = Array.isArray(tests)
+                      ? tests
+                      : typeof tests === "string"
+                        ? tests.split(",").map((t) => t.trim())
+                        : [tests];
+
+                    // Define distinct colors for different test types
+                    const getTestColor = (test) => {
+                      const lowerTest = test?.toLowerCase() || "";
+                      if (lowerTest.includes("bioavail")) return "blue";
+                      if (lowerTest.includes("phar") || lowerTest.includes("pk")) return "cyan";
+                      if (lowerTest.includes("stability")) return "purple";
+                      if (lowerTest.includes("impurity")) return "teal";
+                      if (lowerTest.includes("assay")) return "green";
+                      return "gray";
+                    };
+
+                    return (
+                      <div style={{ fontSize: "0.875rem" }}>
+                        {testArray.slice(0, 2).map((test, index) => (
+                          <Tag
+                            key={index}
+                            size="sm"
+                            type={getTestColor(test)}
+                            style={{
+                              marginRight: "0.25rem",
+                              marginBottom: "0.125rem",
+                            }}
+                          >
+                            {test}
+                          </Tag>
+                        ))}
+                        {testArray.length > 2 && (
+                          <Tag
+                            size="sm"
+                            type="gray"
+                            style={{
+                              marginRight: "0.25rem",
+                              marginBottom: "0.125rem",
+                            }}
+                          >
+                            +{testArray.length - 2}
+                          </Tag>
+                        )}
+                      </div>
                     );
                   },
                 },
@@ -783,6 +873,23 @@ function BioanalyticalSampleReceptionPage({
                   id: "notebook.sample.status",
                   defaultMessage: "Status",
                 }),
+                render: (value, sample) => {
+                  const status = sample?.status || value || "PENDING";
+                  return (
+                    <Tag
+                      size="sm"
+                      type={
+                        status === "COMPLETED"
+                          ? "green"
+                          : status === "IN_PROGRESS"
+                            ? "blue"
+                            : "red"
+                      }
+                    >
+                      {status}
+                    </Tag>
+                  );
+                },
               },
             ]}
             additionalColumns={[
@@ -888,13 +995,25 @@ function BioanalyticalSampleReceptionPage({
                     : typeof tests === "string"
                       ? tests.split(",").map((t) => t.trim())
                       : [tests];
+
+                  // Define distinct colors for different test types
+                  const getTestColor = (test) => {
+                    const lowerTest = test?.toLowerCase() || "";
+                    if (lowerTest.includes("bioavail")) return "blue";
+                    if (lowerTest.includes("phar") || lowerTest.includes("pk")) return "cyan";
+                    if (lowerTest.includes("stability")) return "purple";
+                    if (lowerTest.includes("impurity")) return "teal";
+                    if (lowerTest.includes("assay")) return "green";
+                    return "gray";
+                  };
+
                   return (
                     <div style={{ fontSize: "0.875rem" }}>
                       {testArray.slice(0, 2).map((test, index) => (
                         <Tag
                           key={index}
                           size="sm"
-                          type="outline"
+                          type={getTestColor(test)}
                           style={{
                             marginRight: "0.25rem",
                             marginBottom: "0.125rem",
@@ -904,9 +1023,16 @@ function BioanalyticalSampleReceptionPage({
                         </Tag>
                       ))}
                       {testArray.length > 2 && (
-                        <span style={{ color: "#6f6f6f", fontSize: "0.75rem" }}>
-                          +{testArray.length - 2} more
-                        </span>
+                        <Tag
+                          size="sm"
+                          type="gray"
+                          style={{
+                            marginRight: "0.25rem",
+                            marginBottom: "0.125rem",
+                          }}
+                        >
+                          +{testArray.length - 2}
+                        </Tag>
                       )}
                     </div>
                   );
@@ -920,10 +1046,24 @@ function BioanalyticalSampleReceptionPage({
                 }),
                 render: (value, sample) => {
                   const timepoint = sample?.timepoint || value;
-                  return timepoint ? (
-                    <div style={{ fontSize: "0.875rem" }}>⏱️ {timepoint}</div>
-                  ) : (
-                    "-"
+                  if (!timepoint) return "-";
+
+                  // Color code timepoints for quick visualization
+                  const getTimepointColor = (tp) => {
+                    const lowerTp = tp?.toLowerCase() || "";
+                    if (lowerTp.includes("pre")) return "purple";
+                    if (lowerTp.includes("1h")) return "blue";
+                    if (lowerTp.includes("2h")) return "cyan";
+                    if (lowerTp.includes("4h")) return "teal";
+                    if (lowerTp.includes("8h")) return "blue";
+                    if (lowerTp.includes("24h")) return "green";
+                    return "gray";
+                  };
+
+                  return (
+                    <Tag size="sm" type={getTimepointColor(timepoint)}>
+                      {timepoint}
+                    </Tag>
                   );
                 },
               },
