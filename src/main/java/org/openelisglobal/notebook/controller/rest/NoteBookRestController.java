@@ -1421,8 +1421,16 @@ public class NoteBookRestController extends BaseRestController {
                     // Check if sample already exists on target page using string-based lookup
                     var existing = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, targetPageId);
                     if (existing == null) {
-                        // Create new page sample record on target page with string ID
-                        notebookPageSampleService.createPageSampleForPageString(targetPageId, sampleId, Status.PENDING);
+                        // Fetch data from source page if provided (for data preservation during page advancement)
+                        java.util.Map<String, Object> dataToPreserve = null;
+                        if (request.getFromPageId() != null) {
+                            var sourcePageSample = notebookPageSampleService.getBySampleItemIdAndPageId(sampleId, request.getFromPageId());
+                            if (sourcePageSample != null && sourcePageSample.getData() != null) {
+                                dataToPreserve = new java.util.HashMap<>(sourcePageSample.getData());
+                            }
+                        }
+                        // Create new page sample record on target page with string ID, preserving data from source page
+                        notebookPageSampleService.createPageSampleForPageString(targetPageId, sampleId, Status.PENDING, dataToPreserve);
                         advancedCount++;
                     }
                 } catch (Exception e) {

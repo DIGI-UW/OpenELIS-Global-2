@@ -479,6 +479,12 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Override
     @Transactional
     public void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status) {
+        createPageSampleForPageString(pageId, sampleItemId, status, null);
+    }
+
+    @Override
+    @Transactional
+    public void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status, java.util.Map<String, Object> data) {
         if (pageId == null || sampleItemId == null || sampleItemId.isEmpty()) {
             return;
         }
@@ -498,6 +504,10 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         nps.setNotebookPage(page);
         nps.setSampleItemId(sampleItemId);
         nps.setStatus(status != null ? status : Status.PENDING);
+        // Set initial data from source page (preserves test assignments, metadata, etc.)
+        if (data != null && !data.isEmpty()) {
+            nps.setData(data);
+        }
         insert(nps);
     }
 

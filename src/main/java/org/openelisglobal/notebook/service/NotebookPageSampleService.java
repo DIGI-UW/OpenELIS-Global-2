@@ -142,6 +142,16 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
     void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status);
 
     /**
+     * Create a page sample with initial data (used for page advancement to preserve data from previous page).
+     *
+     * @param pageId       the page ID
+     * @param sampleItemId the sample item ID (as String)
+     * @param status       the initial status (e.g., PENDING)
+     * @param data         the initial JSONB data to copy from source page
+     */
+    void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status, Map<String, Object> data);
+
+    /**
      * Get all page samples for a notebook (across all pages).
      *
      * @param notebookId the notebook ID
