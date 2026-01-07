@@ -135,7 +135,9 @@ function BioanalyticalReportingPage({
       if (response.ok) {
         const data = await response.json();
         // Filter samples that have been approved from Stage 3
-        const approvedSamples = (Array.isArray(data) ? data : data.samples || []).filter((sample) => {
+        const approvedSamples = (
+          Array.isArray(data) ? data : data.samples || []
+        ).filter((sample) => {
           return (
             sample.data &&
             sample.data.executionStatus === "EXECUTED" &&
@@ -232,7 +234,9 @@ function BioanalyticalReportingPage({
 
       if (response.ok) {
         const data = await response.json();
-        const executedSamples = (Array.isArray(data) ? data : data.samples || []).filter((sample) => {
+        const executedSamples = (
+          Array.isArray(data) ? data : data.samples || []
+        ).filter((sample) => {
           return (
             sample.data &&
             sample.data.executionStatus === "EXECUTED" &&

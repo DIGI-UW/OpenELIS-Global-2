@@ -147,9 +147,8 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                     NoteBookPage currentPageDebug = noteBookService.getPage(pageId);
                     if (currentPageDebug != null) {
                         LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
-                                "T150: Current page details - id=" + currentPageDebug.getId()
-                                        + " title='" + currentPageDebug.getTitle() + "' order="
-                                        + currentPageDebug.getOrder());
+                                "T150: Current page details - id=" + currentPageDebug.getId() + " title='"
+                                        + currentPageDebug.getTitle() + "' order=" + currentPageDebug.getOrder());
                     }
 
                     nextPage = noteBookService.getNextPage(pageId);

@@ -177,7 +177,9 @@ function BioanalyticalStorageArchivingPage({
       if (response.ok) {
         const data = await response.json();
         // Filter samples that have been approved and submitted from Stage 4
-        const stage4CompletedSamples = (Array.isArray(data) ? data : data.samples || []).filter((sample) => {
+        const stage4CompletedSamples = (
+          Array.isArray(data) ? data : data.samples || []
+        ).filter((sample) => {
           return (
             sample.data &&
             sample.data.executionStatus === "EXECUTED" &&

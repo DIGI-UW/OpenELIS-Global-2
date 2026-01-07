@@ -746,7 +746,11 @@ function BioanalyticalSampleReceptionPage({
                     const getTestColor = (test) => {
                       const lowerTest = test?.toLowerCase() || "";
                       if (lowerTest.includes("bioavail")) return "blue";
-                      if (lowerTest.includes("phar") || lowerTest.includes("pk")) return "cyan";
+                      if (
+                        lowerTest.includes("phar") ||
+                        lowerTest.includes("pk")
+                      )
+                        return "cyan";
                       if (lowerTest.includes("stability")) return "purple";
                       if (lowerTest.includes("impurity")) return "teal";
                       if (lowerTest.includes("assay")) return "green";
@@ -1000,7 +1004,8 @@ function BioanalyticalSampleReceptionPage({
                   const getTestColor = (test) => {
                     const lowerTest = test?.toLowerCase() || "";
                     if (lowerTest.includes("bioavail")) return "blue";
-                    if (lowerTest.includes("phar") || lowerTest.includes("pk")) return "cyan";
+                    if (lowerTest.includes("phar") || lowerTest.includes("pk"))
+                      return "cyan";
                     if (lowerTest.includes("stability")) return "purple";
                     if (lowerTest.includes("impurity")) return "teal";
                     if (lowerTest.includes("assay")) return "green";

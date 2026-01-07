@@ -874,7 +874,7 @@ function BioanalyticalTestAssignmentPage({
           !assignmentConfig.assignedStaff ||
           !assignmentConfig.samplePreparation?.trim()
         }
-        size="lg"
+        size="md"
       >
         <Form>
           {/* Analytical Method Selection */}
@@ -1030,7 +1030,9 @@ function BioanalyticalTestAssignmentPage({
                   id="qc-low-concentration"
                   label="Concentration (ng/mL)"
                   min={0}
+                  max={10000}
                   step={0.1}
+                  defaultValue={5}
                   value={assignmentConfig.qcLevels.low.concentration}
                   onChange={(e) =>
                     handleQcLevelChange("low", "concentration", e.target.value)
@@ -1043,6 +1045,7 @@ function BioanalyticalTestAssignmentPage({
                   min={0}
                   max={50}
                   step={0.1}
+                  defaultValue={20}
                   value={assignmentConfig.qcLevels.low.tolerance}
                   onChange={(e) =>
                     handleQcLevelChange("low", "tolerance", e.target.value)
@@ -1056,7 +1059,9 @@ function BioanalyticalTestAssignmentPage({
                   id="qc-medium-concentration"
                   label="Concentration (ng/mL)"
                   min={0}
+                  max={10000}
                   step={0.1}
+                  defaultValue={50}
                   value={assignmentConfig.qcLevels.medium.concentration}
                   onChange={(e) =>
                     handleQcLevelChange(
@@ -1073,6 +1078,7 @@ function BioanalyticalTestAssignmentPage({
                   min={0}
                   max={50}
                   step={0.1}
+                  defaultValue={20}
                   value={assignmentConfig.qcLevels.medium.tolerance}
                   onChange={(e) =>
                     handleQcLevelChange("medium", "tolerance", e.target.value)
@@ -1086,7 +1092,9 @@ function BioanalyticalTestAssignmentPage({
                   id="qc-high-concentration"
                   label="Concentration (ng/mL)"
                   min={0}
+                  max={10000}
                   step={0.1}
+                  defaultValue={500}
                   value={assignmentConfig.qcLevels.high.concentration}
                   onChange={(e) =>
                     handleQcLevelChange("high", "concentration", e.target.value)
@@ -1099,6 +1107,7 @@ function BioanalyticalTestAssignmentPage({
                   min={0}
                   max={50}
                   step={0.1}
+                  defaultValue={20}
                   value={assignmentConfig.qcLevels.high.tolerance}
                   onChange={(e) =>
                     handleQcLevelChange("high", "tolerance", e.target.value)
@@ -1125,6 +1134,7 @@ function BioanalyticalTestAssignmentPage({
                   min={0.5}
                   max={1.0}
                   step={0.001}
+                  defaultValue={0.995}
                   value={assignmentConfig.acceptanceCriteria.rSquaredMin}
                   onChange={(e) =>
                     handleAcceptanceCriteriaChange(
@@ -1170,6 +1180,7 @@ function BioanalyticalTestAssignmentPage({
                   min={0}
                   max={100}
                   step={1}
+                  defaultValue={20}
                   value={assignmentConfig.acceptanceCriteria.interceptMax}
                   onChange={(e) =>
                     handleAcceptanceCriteriaChange(
