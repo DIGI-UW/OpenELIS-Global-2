@@ -20,6 +20,15 @@ import {
   NumberInput,
   DatePicker,
   DatePickerInput,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../../config.json";
@@ -835,553 +844,503 @@ function BioanalyticalTestAssignmentPage({
         </Column>
       </Grid>
 
-      {/* Test Assignment Configuration Form */}
-      {showAssignmentForm && (
-        <Grid
-          style={{
-            marginTop: "2rem",
-            padding: "1rem",
-            backgroundColor: "#f4f4f4",
-            borderRadius: "4px",
-          }}
-        >
-          <Column lg={16} md={8} sm={4}>
-            <div className="section-header">
-              <h4>
-                <FormattedMessage
-                  id="notebook.bioanalytical.testassignment.configurationForm"
-                  defaultMessage="Test Assignment Configuration"
-                />
-              </h4>
-              <p>
-                <FormattedMessage
-                  id="notebook.bioanalytical.testassignment.configurationHelp"
-                  defaultMessage="Configure analytical methods, staff assignments, and QC parameters for the selected samples."
-                />
-              </p>
-            </div>
-
-            <Form style={{ marginTop: "1.5rem" }}>
-              {/* Analytical Method Selection */}
-              <FormGroup>
-                <Grid>
-                  <Column lg={8} md={4} sm={4}>
-                    <Select
-                      id="analytical-method"
-                      labelText={
-                        <FormattedMessage
-                          id="notebook.bioanalytical.testassignment.analyticalMethod"
-                          defaultMessage="Analytical Method *"
-                        />
-                      }
-                      value={assignmentConfig.analyticalMethod}
-                      onChange={(e) =>
-                        handleConfigChange("analyticalMethod", e.target.value)
-                      }
-                      helperText={
-                        <FormattedMessage
-                          id="notebook.bioanalytical.testassignment.methodHelp"
-                          defaultMessage="Select the analytical method based on sample type and test requirements"
-                        />
-                      }
-                    >
-                      <SelectItem value="" text="Select analytical method..." />
-                      {ANALYTICAL_METHODS.map((method) => (
-                        <SelectItem
-                          key={method.id}
-                          value={method.id}
-                          text={`${method.name} - ${method.description}`}
-                        />
-                      ))}
-                    </Select>
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <Select
-                      id="assigned-staff"
-                      labelText={
-                        <FormattedMessage
-                          id="notebook.bioanalytical.testassignment.assignedStaff"
-                          defaultMessage="Assigned Staff *"
-                        />
-                      }
-                      value={assignmentConfig.assignedStaff}
-                      onChange={(e) =>
-                        handleConfigChange("assignedStaff", e.target.value)
-                      }
-                      helperText={
-                        assignmentConfig.analyticalMethod
-                          ? `Recommended: ${getRecommendedStaff(
-                              assignmentConfig.analyticalMethod,
-                            )
-                              .map((s) => s.name)
-                              .join(", ")}`
-                          : "Staff assignment based on test category and method"
-                      }
-                    >
-                      <SelectItem value="" text="Select staff member..." />
-                      {STAFF_ROLES.map((role) => (
-                        <SelectItem
-                          key={role.id}
-                          value={role.id}
-                          text={`${role.name} - ${role.description}`}
-                        />
-                      ))}
-                    </Select>
-                  </Column>
-                </Grid>
-              </FormGroup>
-
-              {/* Instrument Selection */}
-              <FormGroup>
-                <Grid>
-                  <Column lg={8} md={4} sm={4}>
-                    <Select
-                      id="instrument-id"
-                      labelText={
-                        <FormattedMessage
-                          id="notebook.bioanalytical.testassignment.instrument"
-                          defaultMessage="Instrument"
-                        />
-                      }
-                      value={assignmentConfig.instrumentId}
-                      onChange={(e) =>
-                        handleConfigChange("instrumentId", e.target.value)
-                      }
-                      helperText={
-                        <FormattedMessage
-                          id="notebook.bioanalytical.testassignment.instrumentHelp"
-                          defaultMessage="Select the instrument for analysis"
-                        />
-                      }
-                    >
-                      <SelectItem value="" text="Select instrument..." />
-                      {(templateInstruments || []).map((instrument) => (
-                        <SelectItem
-                          key={instrument.id}
-                          value={instrument.id}
-                          text={`${instrument.name} - ${instrument.description || instrument.type}`}
-                        />
-                      ))}
-                    </Select>
-                  </Column>
-
-                  <Column lg={8} md={4} sm={4}>
-                    <DatePicker dateFormat="Y-m-d" datePickerType="single">
-                      <DatePickerInput
-                        id="expected-analysis-date"
-                        labelText={
-                          <FormattedMessage
-                            id="notebook.bioanalytical.testassignment.expectedDate"
-                            defaultMessage="Expected Analysis Date"
-                          />
-                        }
-                        placeholder="YYYY-MM-DD"
-                        value={assignmentConfig.expectedAnalysisDate}
-                        onChange={(e) =>
-                          handleConfigChange(
-                            "expectedAnalysisDate",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </DatePicker>
-                  </Column>
-                </Grid>
-              </FormGroup>
-
-              {/* QC Levels Configuration */}
-              <FormGroup>
-                <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
-                  <FormattedMessage
-                    id="notebook.bioanalytical.testassignment.qcLevelsTitle"
-                    defaultMessage="QC Levels Configuration"
-                  />
-                </h5>
-                <p
-                  style={{
-                    color: "#525252",
-                    fontSize: "0.875rem",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  <FormattedMessage
-                    id="notebook.bioanalytical.testassignment.qcLevelInfo"
-                    defaultMessage="QC Levels: Low (LLOQ - 2x LLOQ), Medium (30% span), High (near upper limit)"
-                  />
-                </p>
-
-                <Grid>
-                  <Column lg={5} md={3} sm={4}>
-                    <h6>Low QC Level</h6>
-                    <NumberInput
-                      id="qc-low-concentration"
-                      label="Concentration (ng/mL)"
-                      min={0}
-                      step={0.1}
-                      value={assignmentConfig.qcLevels.low.concentration}
-                      onChange={(e) =>
-                        handleQcLevelChange(
-                          "low",
-                          "concentration",
-                          e.target.value,
-                        )
-                      }
-                      style={{ marginBottom: "0.5rem" }}
-                    />
-                    <NumberInput
-                      id="qc-low-tolerance"
-                      label="Tolerance (%)"
-                      min={0}
-                      max={50}
-                      step={0.1}
-                      value={assignmentConfig.qcLevels.low.tolerance}
-                      onChange={(e) =>
-                        handleQcLevelChange("low", "tolerance", e.target.value)
-                      }
-                    />
-                  </Column>
-
-                  <Column lg={5} md={3} sm={4}>
-                    <h6>Medium QC Level</h6>
-                    <NumberInput
-                      id="qc-medium-concentration"
-                      label="Concentration (ng/mL)"
-                      min={0}
-                      step={0.1}
-                      value={assignmentConfig.qcLevels.medium.concentration}
-                      onChange={(e) =>
-                        handleQcLevelChange(
-                          "medium",
-                          "concentration",
-                          e.target.value,
-                        )
-                      }
-                      style={{ marginBottom: "0.5rem" }}
-                    />
-                    <NumberInput
-                      id="qc-medium-tolerance"
-                      label="Tolerance (%)"
-                      min={0}
-                      max={50}
-                      step={0.1}
-                      value={assignmentConfig.qcLevels.medium.tolerance}
-                      onChange={(e) =>
-                        handleQcLevelChange(
-                          "medium",
-                          "tolerance",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </Column>
-
-                  <Column lg={5} md={2} sm={4}>
-                    <h6>High QC Level</h6>
-                    <NumberInput
-                      id="qc-high-concentration"
-                      label="Concentration (ng/mL)"
-                      min={0}
-                      step={0.1}
-                      value={assignmentConfig.qcLevels.high.concentration}
-                      onChange={(e) =>
-                        handleQcLevelChange(
-                          "high",
-                          "concentration",
-                          e.target.value,
-                        )
-                      }
-                      style={{ marginBottom: "0.5rem" }}
-                    />
-                    <NumberInput
-                      id="qc-high-tolerance"
-                      label="Tolerance (%)"
-                      min={0}
-                      max={50}
-                      step={0.1}
-                      value={assignmentConfig.qcLevels.high.tolerance}
-                      onChange={(e) =>
-                        handleQcLevelChange("high", "tolerance", e.target.value)
-                      }
-                    />
-                  </Column>
-                </Grid>
-              </FormGroup>
-
-              {/* Acceptance Criteria */}
-              <FormGroup>
-                <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
-                  <FormattedMessage
-                    id="notebook.bioanalytical.testassignment.acceptanceCriteriaTitle"
-                    defaultMessage="Acceptance Criteria"
-                  />
-                </h5>
-
-                <Grid>
-                  <Column lg={5} md={3} sm={4}>
-                    <NumberInput
-                      id="r-squared-min"
-                      label="R² Minimum"
-                      min={0.5}
-                      max={1.0}
-                      step={0.001}
-                      value={assignmentConfig.acceptanceCriteria.rSquaredMin}
-                      onChange={(e) =>
-                        handleAcceptanceCriteriaChange(
-                          "rSquaredMin",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </Column>
-
-                  <Column lg={5} md={3} sm={4}>
-                    <TextInput
-                      id="slope-min"
-                      labelText="Slope Range Min"
-                      value={assignmentConfig.acceptanceCriteria.slopeRange.min}
-                      onChange={(e) =>
-                        handleAcceptanceCriteriaChange(
-                          "slopeRange",
-                          e.target.value,
-                          "min",
-                        )
-                      }
-                    />
-                    <TextInput
-                      id="slope-max"
-                      labelText="Slope Range Max"
-                      value={assignmentConfig.acceptanceCriteria.slopeRange.max}
-                      onChange={(e) =>
-                        handleAcceptanceCriteriaChange(
-                          "slopeRange",
-                          e.target.value,
-                          "max",
-                        )
-                      }
-                      style={{ marginTop: "0.5rem" }}
-                    />
-                  </Column>
-
-                  <Column lg={5} md={2} sm={4}>
-                    <NumberInput
-                      id="intercept-max"
-                      label="Intercept Max (%)"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={assignmentConfig.acceptanceCriteria.interceptMax}
-                      onChange={(e) =>
-                        handleAcceptanceCriteriaChange(
-                          "interceptMax",
-                          e.target.value,
-                        )
-                      }
-                    />
-                  </Column>
-                </Grid>
-              </FormGroup>
-
-              {/* Method-Specific Sample Preparation */}
-              <FormGroup>
-                <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
-                  <FormattedMessage
-                    id="notebook.bioanalytical.testassignment.methodSpecificPreparation"
-                    defaultMessage="Sample Preparation According to Method Requirements"
-                  />
-                </h5>
-
-                {assignmentConfig.analyticalMethod && (
-                  <div
-                    style={{
-                      marginBottom: "1rem",
-                      padding: "1rem",
-                      backgroundColor: "#e8f4f8",
-                      borderRadius: "4px",
-                      border: "1px solid #0072c3",
-                    }}
-                  >
-                    <h6 style={{ color: "#161616", marginBottom: "0.5rem" }}>
-                      {
-                        ANALYTICAL_METHODS.find(
-                          (m) => m.id === assignmentConfig.analyticalMethod,
-                        )?.name
-                      }{" "}
-                      Preparation Steps:
-                    </h6>
-                    <ol style={{ marginLeft: "1rem", color: "#525252" }}>
-                      {ANALYTICAL_METHODS.find(
-                        (m) => m.id === assignmentConfig.analyticalMethod,
-                      )?.preparationSteps.map((step, index) => (
-                        <li key={index} style={{ marginBottom: "0.25rem" }}>
-                          {step}
-                        </li>
-                      ))}
-                    </ol>
-                    <p
-                      style={{
-                        marginTop: "0.5rem",
-                        fontStyle: "italic",
-                        color: "#525252",
-                        fontSize: "0.875rem",
-                      }}
-                    >
-                      <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.methodGuidance"
-                        defaultMessage="Follow these method-specific preparation steps. Document any deviations or additional procedures below."
-                      />
-                    </p>
-                  </div>
-                )}
-
-                <TextArea
-                  id="sample-preparation"
+      {/* Test Assignment Configuration Modal */}
+      <Modal
+        open={showAssignmentForm}
+        onRequestClose={() => {
+          setShowAssignmentForm(false);
+          setSelectedSamples(new Set());
+        }}
+        modalHeading={
+          <FormattedMessage
+            id="notebook.bioanalytical.testassignment.configurationForm"
+            defaultMessage="Test Assignment Configuration"
+          />
+        }
+        primaryButtonText={
+          <FormattedMessage
+            id="notebook.bioanalytical.testassignment.assignTests"
+            defaultMessage="Assign Tests to {count} Sample(s)"
+            values={{ count: selectedSamples.size }}
+          />
+        }
+        secondaryButtonText={
+          <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
+        }
+        onRequestSubmit={handleTestAssignment}
+        primaryButtonDisabled={
+          isAssigning ||
+          !assignmentConfig.analyticalMethod ||
+          !assignmentConfig.assignedStaff ||
+          !assignmentConfig.samplePreparation?.trim()
+        }
+        size="lg"
+      >
+        <Form>
+          {/* Analytical Method Selection */}
+          <FormGroup>
+            <Grid>
+              <Column lg={8} md={4} sm={4}>
+                <Select
+                  id="analytical-method"
                   labelText={
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.preparationDocumentation"
-                      defaultMessage="Preparation Method Documentation *"
+                      id="notebook.bioanalytical.testassignment.analyticalMethod"
+                      defaultMessage="Analytical Method *"
                     />
                   }
-                  placeholder={
-                    assignmentConfig.analyticalMethod
-                      ? `Document how you will follow the ${ANALYTICAL_METHODS.find((m) => m.id === assignmentConfig.analyticalMethod)?.name} preparation steps above. Include any specific parameters, deviations, or additional procedures...`
-                      : "Select an analytical method above to see method-specific preparation requirements..."
-                  }
-                  rows={6}
-                  value={assignmentConfig.samplePreparation}
+                  value={assignmentConfig.analyticalMethod}
                   onChange={(e) =>
-                    handleConfigChange("samplePreparation", e.target.value)
+                    handleConfigChange("analyticalMethod", e.target.value)
                   }
                   helperText={
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.preparationHelp"
-                      defaultMessage="Document your specific implementation of the method requirements. Include reagent concentrations, equipment settings, time/temperature conditions, etc."
+                      id="notebook.bioanalytical.testassignment.methodHelp"
+                      defaultMessage="Select the analytical method based on sample type and test requirements"
                     />
-                  }
-                  disabled={!assignmentConfig.analyticalMethod}
-                />
-
-                {assignmentConfig.analyticalMethod && (
-                  <div style={{ marginTop: "1rem" }}>
-                    <h6 style={{ marginBottom: "0.5rem", color: "#161616" }}>
-                      <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.methodRequirements"
-                        defaultMessage="Method Requirements & Considerations:"
-                      />
-                    </h6>
-                    <div
-                      style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
-                    >
-                      <div style={{ flex: 1, minWidth: "250px" }}>
-                        <p
-                          style={{
-                            fontSize: "0.875rem",
-                            color: "#525252",
-                            marginBottom: "0.5rem",
-                          }}
-                        >
-                          <strong>Applications:</strong>
-                        </p>
-                        <ul
-                          style={{
-                            marginLeft: "1rem",
-                            fontSize: "0.875rem",
-                            color: "#525252",
-                          }}
-                        >
-                          {ANALYTICAL_METHODS.find(
-                            (m) => m.id === assignmentConfig.analyticalMethod,
-                          )?.applications.map((app, index) => (
-                            <li key={index}>{app}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div style={{ flex: 1, minWidth: "250px" }}>
-                        <p
-                          style={{
-                            fontSize: "0.875rem",
-                            color: "#525252",
-                            marginBottom: "0.5rem",
-                          }}
-                        >
-                          <strong>Suitable Sample Types:</strong>
-                        </p>
-                        <ul
-                          style={{
-                            marginLeft: "1rem",
-                            fontSize: "0.875rem",
-                            color: "#525252",
-                          }}
-                        >
-                          {ANALYTICAL_METHODS.find(
-                            (m) => m.id === assignmentConfig.analyticalMethod,
-                          )?.suitableFor.map((type, index) => (
-                            <li key={index}>{type}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </FormGroup>
-
-              {/* Notes */}
-              <FormGroup>
-                <TextArea
-                  id="assignment-notes"
-                  labelText={
-                    <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.notes"
-                      defaultMessage="Additional Notes"
-                    />
-                  }
-                  placeholder="Additional comments or special instructions..."
-                  rows={3}
-                  value={assignmentConfig.notes}
-                  onChange={(e) => handleConfigChange("notes", e.target.value)}
-                />
-              </FormGroup>
-
-              {/* Form Actions */}
-              <div style={{ display: "flex", gap: "1rem", marginTop: "2rem" }}>
-                <Button
-                  kind="primary"
-                  onClick={handleTestAssignment}
-                  disabled={
-                    isAssigning ||
-                    !assignmentConfig.analyticalMethod ||
-                    !assignmentConfig.assignedStaff ||
-                    !assignmentConfig.samplePreparation?.trim()
                   }
                 >
-                  {isAssigning ? (
-                    <Loading description="Assigning tests..." small />
-                  ) : (
-                    <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.assignTests"
-                      defaultMessage="Assign Tests to {count} Sample(s)"
-                      values={{ count: selectedSamples.size }}
+                  <SelectItem value="" text="Select analytical method..." />
+                  {ANALYTICAL_METHODS.map((method) => (
+                    <SelectItem
+                      key={method.id}
+                      value={method.id}
+                      text={`${method.name} - ${method.description}`}
                     />
-                  )}
-                </Button>
+                  ))}
+                </Select>
+              </Column>
 
-                <Button
-                  kind="secondary"
-                  onClick={() => {
-                    setShowAssignmentForm(false);
-                    setSelectedSamples(new Set());
+              <Column lg={8} md={4} sm={4}>
+                <Select
+                  id="assigned-staff"
+                  labelText={
+                    <FormattedMessage
+                      id="notebook.bioanalytical.testassignment.assignedStaff"
+                      defaultMessage="Assigned Staff *"
+                    />
+                  }
+                  value={assignmentConfig.assignedStaff}
+                  onChange={(e) =>
+                    handleConfigChange("assignedStaff", e.target.value)
+                  }
+                  helperText={
+                    assignmentConfig.analyticalMethod
+                      ? `Recommended: ${getRecommendedStaff(
+                          assignmentConfig.analyticalMethod,
+                        )
+                          .map((s) => s.name)
+                          .join(", ")}`
+                      : "Staff assignment based on test category and method"
+                  }
+                >
+                  <SelectItem value="" text="Select staff member..." />
+                  {STAFF_ROLES.map((role) => (
+                    <SelectItem
+                      key={role.id}
+                      value={role.id}
+                      text={`${role.name} - ${role.description}`}
+                    />
+                  ))}
+                </Select>
+              </Column>
+            </Grid>
+          </FormGroup>
+
+          {/* Instrument Selection */}
+          <FormGroup>
+            <Grid>
+              <Column lg={8} md={4} sm={4}>
+                <Select
+                  id="instrument-id"
+                  labelText={
+                    <FormattedMessage
+                      id="notebook.bioanalytical.testassignment.instrument"
+                      defaultMessage="Instrument"
+                    />
+                  }
+                  value={assignmentConfig.instrumentId}
+                  onChange={(e) =>
+                    handleConfigChange("instrumentId", e.target.value)
+                  }
+                  helperText={
+                    <FormattedMessage
+                      id="notebook.bioanalytical.testassignment.instrumentHelp"
+                      defaultMessage="Select the instrument for analysis"
+                    />
+                  }
+                >
+                  <SelectItem value="" text="Select instrument..." />
+                  {(templateInstruments || []).map((instrument) => (
+                    <SelectItem
+                      key={instrument.id}
+                      value={instrument.id}
+                      text={`${instrument.name} - ${instrument.description || instrument.type}`}
+                    />
+                  ))}
+                </Select>
+              </Column>
+
+              <Column lg={8} md={4} sm={4}>
+                <DatePicker dateFormat="Y-m-d" datePickerType="single">
+                  <DatePickerInput
+                    id="expected-analysis-date"
+                    labelText={
+                      <FormattedMessage
+                        id="notebook.bioanalytical.testassignment.expectedDate"
+                        defaultMessage="Expected Analysis Date"
+                      />
+                    }
+                    placeholder="YYYY-MM-DD"
+                    value={assignmentConfig.expectedAnalysisDate}
+                    onChange={(e) =>
+                      handleConfigChange("expectedAnalysisDate", e.target.value)
+                    }
+                  />
+                </DatePicker>
+              </Column>
+            </Grid>
+          </FormGroup>
+
+          {/* QC Levels Configuration */}
+          <FormGroup>
+            <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+              <FormattedMessage
+                id="notebook.bioanalytical.testassignment.qcLevelsTitle"
+                defaultMessage="QC Levels Configuration"
+              />
+            </h5>
+            <p
+              style={{
+                color: "#525252",
+                fontSize: "0.875rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <FormattedMessage
+                id="notebook.bioanalytical.testassignment.qcLevelInfo"
+                defaultMessage="QC Levels: Low (LLOQ - 2x LLOQ), Medium (30% span), High (near upper limit)"
+              />
+            </p>
+
+            <Grid>
+              <Column lg={5} md={3} sm={4}>
+                <h6>Low QC Level</h6>
+                <NumberInput
+                  id="qc-low-concentration"
+                  label="Concentration (ng/mL)"
+                  min={0}
+                  step={0.1}
+                  value={assignmentConfig.qcLevels.low.concentration}
+                  onChange={(e) =>
+                    handleQcLevelChange("low", "concentration", e.target.value)
+                  }
+                  style={{ marginBottom: "0.5rem" }}
+                />
+                <NumberInput
+                  id="qc-low-tolerance"
+                  label="Tolerance (%)"
+                  min={0}
+                  max={50}
+                  step={0.1}
+                  value={assignmentConfig.qcLevels.low.tolerance}
+                  onChange={(e) =>
+                    handleQcLevelChange("low", "tolerance", e.target.value)
+                  }
+                />
+              </Column>
+
+              <Column lg={5} md={3} sm={4}>
+                <h6>Medium QC Level</h6>
+                <NumberInput
+                  id="qc-medium-concentration"
+                  label="Concentration (ng/mL)"
+                  min={0}
+                  step={0.1}
+                  value={assignmentConfig.qcLevels.medium.concentration}
+                  onChange={(e) =>
+                    handleQcLevelChange(
+                      "medium",
+                      "concentration",
+                      e.target.value,
+                    )
+                  }
+                  style={{ marginBottom: "0.5rem" }}
+                />
+                <NumberInput
+                  id="qc-medium-tolerance"
+                  label="Tolerance (%)"
+                  min={0}
+                  max={50}
+                  step={0.1}
+                  value={assignmentConfig.qcLevels.medium.tolerance}
+                  onChange={(e) =>
+                    handleQcLevelChange("medium", "tolerance", e.target.value)
+                  }
+                />
+              </Column>
+
+              <Column lg={5} md={2} sm={4}>
+                <h6>High QC Level</h6>
+                <NumberInput
+                  id="qc-high-concentration"
+                  label="Concentration (ng/mL)"
+                  min={0}
+                  step={0.1}
+                  value={assignmentConfig.qcLevels.high.concentration}
+                  onChange={(e) =>
+                    handleQcLevelChange("high", "concentration", e.target.value)
+                  }
+                  style={{ marginBottom: "0.5rem" }}
+                />
+                <NumberInput
+                  id="qc-high-tolerance"
+                  label="Tolerance (%)"
+                  min={0}
+                  max={50}
+                  step={0.1}
+                  value={assignmentConfig.qcLevels.high.tolerance}
+                  onChange={(e) =>
+                    handleQcLevelChange("high", "tolerance", e.target.value)
+                  }
+                />
+              </Column>
+            </Grid>
+          </FormGroup>
+
+          {/* Acceptance Criteria */}
+          <FormGroup>
+            <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+              <FormattedMessage
+                id="notebook.bioanalytical.testassignment.acceptanceCriteriaTitle"
+                defaultMessage="Acceptance Criteria"
+              />
+            </h5>
+
+            <Grid>
+              <Column lg={5} md={3} sm={4}>
+                <NumberInput
+                  id="r-squared-min"
+                  label="R² Minimum"
+                  min={0.5}
+                  max={1.0}
+                  step={0.001}
+                  value={assignmentConfig.acceptanceCriteria.rSquaredMin}
+                  onChange={(e) =>
+                    handleAcceptanceCriteriaChange(
+                      "rSquaredMin",
+                      e.target.value,
+                    )
+                  }
+                />
+              </Column>
+
+              <Column lg={5} md={3} sm={4}>
+                <TextInput
+                  id="slope-min"
+                  labelText="Slope Range Min"
+                  value={assignmentConfig.acceptanceCriteria.slopeRange.min}
+                  onChange={(e) =>
+                    handleAcceptanceCriteriaChange(
+                      "slopeRange",
+                      e.target.value,
+                      "min",
+                    )
+                  }
+                />
+                <TextInput
+                  id="slope-max"
+                  labelText="Slope Range Max"
+                  value={assignmentConfig.acceptanceCriteria.slopeRange.max}
+                  onChange={(e) =>
+                    handleAcceptanceCriteriaChange(
+                      "slopeRange",
+                      e.target.value,
+                      "max",
+                    )
+                  }
+                  style={{ marginTop: "0.5rem" }}
+                />
+              </Column>
+
+              <Column lg={5} md={2} sm={4}>
+                <NumberInput
+                  id="intercept-max"
+                  label="Intercept Max (%)"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={assignmentConfig.acceptanceCriteria.interceptMax}
+                  onChange={(e) =>
+                    handleAcceptanceCriteriaChange(
+                      "interceptMax",
+                      e.target.value,
+                    )
+                  }
+                />
+              </Column>
+            </Grid>
+          </FormGroup>
+
+          {/* Method-Specific Sample Preparation */}
+          <FormGroup>
+            <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+              <FormattedMessage
+                id="notebook.bioanalytical.testassignment.methodSpecificPreparation"
+                defaultMessage="Sample Preparation According to Method Requirements"
+              />
+            </h5>
+
+            {assignmentConfig.analyticalMethod && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "1rem",
+                  backgroundColor: "#e8f4f8",
+                  borderRadius: "4px",
+                  border: "1px solid #0072c3",
+                }}
+              >
+                <h6 style={{ color: "#161616", marginBottom: "0.5rem" }}>
+                  {
+                    ANALYTICAL_METHODS.find(
+                      (m) => m.id === assignmentConfig.analyticalMethod,
+                    )?.name
+                  }{" "}
+                  Preparation Steps:
+                </h6>
+                <ol style={{ marginLeft: "1rem", color: "#525252" }}>
+                  {ANALYTICAL_METHODS.find(
+                    (m) => m.id === assignmentConfig.analyticalMethod,
+                  )?.preparationSteps.map((step, index) => (
+                    <li key={index} style={{ marginBottom: "0.25rem" }}>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <p
+                  style={{
+                    marginTop: "0.5rem",
+                    fontStyle: "italic",
+                    color: "#525252",
+                    fontSize: "0.875rem",
                   }}
                 >
                   <FormattedMessage
-                    id="label.button.cancel"
-                    defaultMessage="Cancel"
+                    id="notebook.bioanalytical.testassignment.methodGuidance"
+                    defaultMessage="Follow these method-specific preparation steps. Document any deviations or additional procedures below."
                   />
-                </Button>
+                </p>
               </div>
-            </Form>
-          </Column>
-        </Grid>
-      )}
+            )}
+
+            <TextArea
+              id="sample-preparation"
+              labelText={
+                <FormattedMessage
+                  id="notebook.bioanalytical.testassignment.preparationDocumentation"
+                  defaultMessage="Preparation Method Documentation *"
+                />
+              }
+              placeholder={
+                assignmentConfig.analyticalMethod
+                  ? `Document how you will follow the ${ANALYTICAL_METHODS.find((m) => m.id === assignmentConfig.analyticalMethod)?.name} preparation steps above. Include any specific parameters, deviations, or additional procedures...`
+                  : "Select an analytical method above to see method-specific preparation requirements..."
+              }
+              rows={6}
+              value={assignmentConfig.samplePreparation}
+              onChange={(e) =>
+                handleConfigChange("samplePreparation", e.target.value)
+              }
+              helperText={
+                <FormattedMessage
+                  id="notebook.bioanalytical.testassignment.preparationHelp"
+                  defaultMessage="Document your specific implementation of the method requirements. Include reagent concentrations, equipment settings, time/temperature conditions, etc."
+                />
+              }
+              disabled={!assignmentConfig.analyticalMethod}
+            />
+
+            {assignmentConfig.analyticalMethod && (
+              <div style={{ marginTop: "1rem" }}>
+                <h6 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                  <FormattedMessage
+                    id="notebook.bioanalytical.testassignment.methodRequirements"
+                    defaultMessage="Method Requirements & Considerations:"
+                  />
+                </h6>
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: "250px" }}>
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <strong>Applications:</strong>
+                    </p>
+                    <ul
+                      style={{
+                        marginLeft: "1rem",
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                      }}
+                    >
+                      {ANALYTICAL_METHODS.find(
+                        (m) => m.id === assignmentConfig.analyticalMethod,
+                      )?.applications.map((app, index) => (
+                        <li key={index}>{app}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div style={{ flex: 1, minWidth: "250px" }}>
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <strong>Suitable Sample Types:</strong>
+                    </p>
+                    <ul
+                      style={{
+                        marginLeft: "1rem",
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                      }}
+                    >
+                      {ANALYTICAL_METHODS.find(
+                        (m) => m.id === assignmentConfig.analyticalMethod,
+                      )?.suitableFor.map((type, index) => (
+                        <li key={index}>{type}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+          </FormGroup>
+
+          {/* Notes */}
+          <FormGroup>
+            <TextArea
+              id="assignment-notes"
+              labelText={
+                <FormattedMessage
+                  id="notebook.bioanalytical.testassignment.notes"
+                  defaultMessage="Additional Notes"
+                />
+              }
+              placeholder="Additional comments or special instructions..."
+              rows={3}
+              value={assignmentConfig.notes}
+              onChange={(e) => handleConfigChange("notes", e.target.value)}
+            />
+          </FormGroup>
+        </Form>
+      </Modal>
 
       {/* Summary Section for Assigned Tests */}
       {!showAssignmentForm && Object.keys(testAssignments).length > 0 && (
