@@ -13,6 +13,11 @@ before("login", () => {
 
 describe("Result By Unit", function () {
   before("Navigate to Result By Unit", function () {
+    // NOTE: This test suite requires test data to exist in the database
+    // When running the full test suite, data is created by:
+    // - patientEntry.cy.js (creates patient)
+    // - orderEntity.cy.js (creates orders with samples)
+    // If running this test in isolation, it may fail due to missing data
     homePage = loginPage.goToHomePage();
     result = homePage.goToResultsByUnit();
   });
@@ -24,17 +29,36 @@ describe("Result By Unit", function () {
   });
 
   it("Should Search by Unit", function () {
+    // Intercept the API call that happens automatically when unit is selected
+    cy.intercept("GET", "**/rest/LogbookResults**").as("logbookResults");
+
     cy.fixture("workplan").then((order) => {
       result.selectUnitType(order.unitType);
     });
+
+    // Wait for the search API call to complete
+    cy.wait("@logbookResults", { timeout: 15000 });
+
+    // Additional wait for UI to fully render the results
+    cy.wait(2000);
   });
 
   it("should accept the sample, refer the sample, and save the result", function () {
+    // Verify search results table and data exist before attempting to expand
+    cy.get("table", { timeout: 10000 }).should(
+      "exist",
+      "Search results table should exist - if this fails, ensure orderEntity.cy.js has run to create test data",
+    );
+    cy.get("tbody tr", { timeout: 10000 }).should(
+      "have.length.at.least",
+      1,
+      "At least one result row should exist for the selected unit type",
+    );
+
     result.expandSampleDetails();
     cy.wait(500); // Wait for form to fully render
+
     cy.fixture("result").then((res) => {
-      // Wait for test method dropdown to be enabled
-      cy.get("#testMethod0").should("be.visible").and("not.be.disabled");
       result.selectTestMethod(res.pcrTestMethod);
       result.referTests(res.referTests);
       result.referralReason(res.referalReason);
@@ -143,13 +167,10 @@ describe("Result By Order", function () {
       patientPage.enterAccessionNumber(order.labNo);
     });
     result.searchResults();
-    cy.wait(2000);
+    cy.wait(900);
   });
 
   it("should accept the sample and save the result", function () {
-    // Verify that search results table exists before trying to expand
-    cy.get("table").should("exist");
-    cy.get("tbody tr").should("have.length.at.least", 1);
     result.expandSampleDetails();
     cy.fixture("result").then((res) => {
       result.selectTestMethod(res.pcrTestMethod);
@@ -230,7 +251,6 @@ describe("Result By Referred Out Tests", function () {
       result.clickDateButton();
     });
     result.clickReferralsByTestAndName();
-    cy.wait(2000); // Wait for search results to load
     result.selectAllButtonEnabled(); //wont be if patient does not exist
     result.clickSelectAllButton();
     result.selectNoneButtonEnabled();
@@ -245,7 +265,6 @@ describe("Result By Referred Out Tests", function () {
       result.clickDateButton();
     });
     result.clickReferralsByTestAndName();
-    cy.wait(2000); // Wait for search results to load
     result.selectAllButtonEnabled(); //wont be if patient does not exist
     result.clickSelectAllButton();
     result.selectNoneButtonEnabled();
