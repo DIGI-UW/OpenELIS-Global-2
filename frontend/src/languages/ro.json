@@ -426,6 +426,7 @@
   "field.sex": "Sex",
   "field.significantDigits": "Zecimale semnificative",
   "field.testSection": "Secțiune test",
+  "field.select.testSection": "Select Test Section",
   "field.testUnit": "Unitate testare",
   "field.uom": "Unitate de măsură",
   "field.validRange": "Interval valid",
