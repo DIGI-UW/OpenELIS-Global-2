@@ -644,6 +644,47 @@ function BioanalyticalSampleReceptionPage({
                     );
                   },
                 },
+                {
+                  key: "pending-sourceOrigin",
+                  header: intl.formatMessage({
+                    id: "notebook.bioanalytical.stage1.column.sourceOrigin",
+                    defaultMessage: "Source",
+                  }),
+                  render: (value, sample) => {
+                    const source = sample?.sourceOrigin || value;
+                    return source ? (
+                      <div style={{ fontSize: "0.875rem" }}>{source}</div>
+                    ) : (
+                      "-"
+                    );
+                  },
+                },
+                {
+                  key: "pending-dateTimeOfReceipt",
+                  header: intl.formatMessage({
+                    id: "notebook.bioanalytical.stage1.column.receivedDate",
+                    defaultMessage: "Received Date",
+                  }),
+                  render: (value, sample) => {
+                    const receivedDate = sample?.dateTimeOfReceipt || value;
+                    if (!receivedDate) return "-";
+                    // Format date if it's a timestamp
+                    try {
+                      const date = new Date(receivedDate);
+                      return (
+                        <div style={{ fontSize: "0.875rem" }}>
+                          {date.toLocaleDateString("en-US")}
+                        </div>
+                      );
+                    } catch {
+                      return (
+                        <div style={{ fontSize: "0.875rem" }}>
+                          {receivedDate}
+                        </div>
+                      );
+                    }
+                  },
+                },
               ]}
             />
           )}
@@ -823,6 +864,45 @@ function BioanalyticalSampleReceptionPage({
                   ) : (
                     "-"
                   );
+                },
+              },
+              {
+                key: "verified-sourceOrigin",
+                header: intl.formatMessage({
+                  id: "notebook.bioanalytical.stage1.column.sourceOrigin",
+                  defaultMessage: "Source",
+                }),
+                render: (value, sample) => {
+                  const source = sample?.sourceOrigin || value;
+                  return source ? (
+                    <div style={{ fontSize: "0.875rem" }}>{source}</div>
+                  ) : (
+                    "-"
+                  );
+                },
+              },
+              {
+                key: "verified-dateTimeOfReceipt",
+                header: intl.formatMessage({
+                  id: "notebook.bioanalytical.stage1.column.receivedDate",
+                  defaultMessage: "Received Date",
+                }),
+                render: (value, sample) => {
+                  const receivedDate = sample?.dateTimeOfReceipt || value;
+                  if (!receivedDate) return "-";
+                  // Format date if it's a timestamp
+                  try {
+                    const date = new Date(receivedDate);
+                    return (
+                      <div style={{ fontSize: "0.875rem" }}>
+                        {date.toLocaleDateString("en-US")}
+                      </div>
+                    );
+                  } catch {
+                    return (
+                      <div style={{ fontSize: "0.875rem" }}>{receivedDate}</div>
+                    );
+                  }
                 },
               },
             ]}
