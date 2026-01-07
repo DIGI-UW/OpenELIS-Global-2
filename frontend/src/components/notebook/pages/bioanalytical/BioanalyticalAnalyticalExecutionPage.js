@@ -237,22 +237,23 @@ function BioanalyticalAnalyticalExecutionPage({
 
       setIsLoading(true);
       try {
-        // Load samples that have Stage 2 test assignments
+        // Load samples specifically for this page (Stage 3: Analytical Execution)
         const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
+          `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
           {
             method: "GET",
             credentials: "include",
             headers: {
               "X-CSRF-Token": localStorage.getItem("CSRF"),
+              "Content-Type": "application/json",
             },
           },
         );
 
         if (response.ok) {
           const data = await response.json();
-          // Filter samples that have test assignments from Stage 2
-          const samplesWithAssignments = (data.samples || []).filter(
+          // All samples on this page should have test assignments from Stage 2
+          const samplesWithAssignments = (Array.isArray(data) ? data : data.samples || []).filter(
             (sample) => {
               return (
                 sample.data &&

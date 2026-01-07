@@ -112,21 +112,22 @@ function BioanalyticalReportingPage({
   ];
 
   const loadStudyResults = useCallback(async () => {
-    if (!entryId || String(entryId).startsWith("default-")) {
+    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
       setStudyResults([]);
       return;
     }
 
     setIsLoading(true);
     try {
-      // Load samples with approved Stage 3 results
+      // Load samples specifically for this page (Stage 4: Reporting & Release)
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
+        `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
         {
           method: "GET",
           credentials: "include",
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
           },
         },
       );
@@ -134,7 +135,7 @@ function BioanalyticalReportingPage({
       if (response.ok) {
         const data = await response.json();
         // Filter samples that have been approved from Stage 3
-        const approvedSamples = (data.samples || []).filter((sample) => {
+        const approvedSamples = (Array.isArray(data) ? data : data.samples || []).filter((sample) => {
           return (
             sample.data &&
             sample.data.executionStatus === "EXECUTED" &&
@@ -211,26 +212,27 @@ function BioanalyticalReportingPage({
 
   // Function to validate QA checklist items against actual Stage 3 data
   const validateQAChecklist = useCallback(async () => {
-    if (!entryId || String(entryId).startsWith("default-")) {
+    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
       return;
     }
 
     try {
       // Load samples with Stage 3 execution data for validation
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
+        `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
         {
           method: "GET",
           credentials: "include",
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
           },
         },
       );
 
       if (response.ok) {
         const data = await response.json();
-        const executedSamples = (data.samples || []).filter((sample) => {
+        const executedSamples = (Array.isArray(data) ? data : data.samples || []).filter((sample) => {
           return (
             sample.data &&
             sample.data.executionStatus === "EXECUTED" &&

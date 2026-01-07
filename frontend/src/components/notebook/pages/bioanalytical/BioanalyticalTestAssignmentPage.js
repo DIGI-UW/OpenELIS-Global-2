@@ -173,27 +173,35 @@ function BioanalyticalTestAssignmentPage({
   // Load samples from Stage 1 on component mount
   useEffect(() => {
     const loadSamples = async () => {
-      if (!entryId || String(entryId).startsWith("default-")) {
+      // Only load if we have a valid page ID (not a placeholder)
+      if (!pageData?.id || String(pageData.id).startsWith("default-")) {
         setSamples([]);
         return;
       }
 
       setIsLoading(true);
       try {
+        // Load samples specifically for this page (Stage 2)
         const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
+          `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
           {
             method: "GET",
             credentials: "include",
             headers: {
               "X-CSRF-Token": localStorage.getItem("CSRF"),
+              "Content-Type": "application/json",
             },
           },
         );
 
         if (response.ok) {
           const data = await response.json();
-          setSamples(data.samples || []);
+          console.debug(
+            "Loaded samples for Stage 2 (page ID " + pageData.id + "):",
+            Array.isArray(data) ? data.length : data.samples?.length || 0,
+            "samples",
+          );
+          setSamples(Array.isArray(data) ? data : data.samples || []);
         } else {
           console.error("Failed to load samples:", response.status);
           setSamples([]);

@@ -161,14 +161,15 @@ function BioanalyticalStorageArchivingPage({
 
     setIsLoading(true);
     try {
-      // Load samples that have completed Stage 4 (QA approved and submitted/exported)
+      // Load samples specifically for this page (Stage 5: Post-Test Storage & Archiving)
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
+        `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
         {
           method: "GET",
           credentials: "include",
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
           },
         },
       );
@@ -176,7 +177,7 @@ function BioanalyticalStorageArchivingPage({
       if (response.ok) {
         const data = await response.json();
         // Filter samples that have been approved and submitted from Stage 4
-        const stage4CompletedSamples = (data.samples || []).filter((sample) => {
+        const stage4CompletedSamples = (Array.isArray(data) ? data : data.samples || []).filter((sample) => {
           return (
             sample.data &&
             sample.data.executionStatus === "EXECUTED" &&
