@@ -17,10 +17,24 @@ OpenELIS adheres to the strictest of security standards to keep your data safe
 and supports fully featured, standards-based interoperability to make it easy to
 receive lab orders and send results to other systems
 
-Please vist our [website](http://www.openelis-global.org/) for more information.
+Please visit our [website](http://www.openelis-global.org/) for more information.
 
 You can find more information on how to set up OpenELIS at our
 [docs page](http://docs.openelis-global.org/)
+
+## Contributing / Getting Started
+
+We welcome community contributions to help improve OpenELIS Global
+
+If you are a first-time contributor or new to the codebase, we strongly recommend
+starting with our **Developer Environment Setup Guide**, which provides a
+step-by-step walkthrough for setting up a local development environment:
+
+ https://uwdigi.atlassian.net/wiki/spaces/OG/pages/240844805/Dev+Environment+Setup+Instructions
+
+The guide covers prerequisites, Docker-based setup, development workflows,
+and common troubleshooting tips to help you get started smoothly.
+
 
 ### CI Status
 
@@ -76,7 +90,7 @@ speeds up the development process
 
          git clone https://github.com/username/OpenELIS-Global-2.git
 
-1.  innitialize and build sub modules
+1.  initialize and build submodules
 
         cd OpenELIS-Global-2
         git submodule update --init --recursive
@@ -124,7 +138,7 @@ accessing any of these links, simply follow these steps:
 3. Finally, click on "Proceed to https://localhost" to access the development
    environment.
 
-#### Formating the Source code after making changes
+#### Formatting the Source code after making changes
 
 1.  After making UI changes to the [frontend](./frontend/) directory , run the
     formatter to properly format the Frontend code
