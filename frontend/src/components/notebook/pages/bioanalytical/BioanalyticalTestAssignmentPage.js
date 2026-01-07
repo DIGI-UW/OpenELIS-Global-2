@@ -771,10 +771,10 @@ function BioanalyticalTestAssignmentPage({
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
           body: JSON.stringify({
-            sampleItemIds: Array.from(selectedSamples).map((id) =>
+            sampleIds: Array.from(selectedSamples).map((id) =>
               parseInt(id, 10),
             ),
-            dataToApply: testAssignmentData,
+            data: testAssignmentData,
           }),
         },
       );
