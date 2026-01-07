@@ -84,11 +84,31 @@ function BioanalyticalReportingPage({
   ];
 
   const submissionTargets = [
-    { id: "medical_lab", label: "Medical Laboratory", department: "Clinical Laboratory Services" },
-    { id: "research_unit", label: "Research Unit", department: "Clinical Research Department" },
-    { id: "principal_investigator", label: "Principal Investigator", department: "Study Sponsor" },
-    { id: "regulatory_affairs", label: "Regulatory Affairs", department: "Compliance Team" },
-    { id: "external_client", label: "External Client", department: "Contract Research Organization" },
+    {
+      id: "medical_lab",
+      label: "Medical Laboratory",
+      department: "Clinical Laboratory Services",
+    },
+    {
+      id: "research_unit",
+      label: "Research Unit",
+      department: "Clinical Research Department",
+    },
+    {
+      id: "principal_investigator",
+      label: "Principal Investigator",
+      department: "Study Sponsor",
+    },
+    {
+      id: "regulatory_affairs",
+      label: "Regulatory Affairs",
+      department: "Compliance Team",
+    },
+    {
+      id: "external_client",
+      label: "External Client",
+      department: "Contract Research Organization",
+    },
   ];
 
   const loadStudyResults = useCallback(async () => {
@@ -101,24 +121,26 @@ function BioanalyticalReportingPage({
     try {
       // Load samples with approved Stage 3 results
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/samples`,
+        `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
         {
           method: "GET",
           credentials: "include",
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-        }
+        },
       );
 
       if (response.ok) {
         const data = await response.json();
         // Filter samples that have been approved from Stage 3
-        const approvedSamples = (data.samples || []).filter(sample => {
-          return sample.data &&
-                 sample.data.executionStatus === "EXECUTED" &&
-                 sample.data.testExecution &&
-                 sample.data.resultsApproved;
+        const approvedSamples = (data.samples || []).filter((sample) => {
+          return (
+            sample.data &&
+            sample.data.executionStatus === "EXECUTED" &&
+            sample.data.testExecution &&
+            sample.data.resultsApproved
+          );
         });
 
         // Compile analytical results from approved samples
@@ -134,8 +156,9 @@ function BioanalyticalReportingPage({
       setErrorMessage(
         intl.formatMessage({
           id: "notebook.bioanalytical.reporting.loadError",
-          defaultMessage: "Failed to load study results. Please refresh the page.",
-        })
+          defaultMessage:
+            "Failed to load study results. Please refresh the page.",
+        }),
       );
     } finally {
       setIsLoading(false);
@@ -146,7 +169,7 @@ function BioanalyticalReportingPage({
   const compileAnalyticalResults = useCallback((approvedSamples) => {
     const resultGroups = {};
 
-    approvedSamples.forEach(sample => {
+    approvedSamples.forEach((sample) => {
       const testData = sample.data.testExecution;
       const analyticalMethod = sample.data.analyticalMethod || "Unknown Method";
       const sampleType = sample.sampleType || "Unknown Type";
@@ -167,7 +190,7 @@ function BioanalyticalReportingPage({
     });
 
     // Calculate statistics for each group
-    return Object.values(resultGroups).map(group => {
+    return Object.values(resultGroups).map((group) => {
       // Mock statistical calculations - in real implementation, this would
       // calculate from actual analytical results stored in sample data
       const mockStats = {
@@ -176,12 +199,12 @@ function BioanalyticalReportingPage({
         cv: `${(Math.random() * 10 + 5).toFixed(1)}%`,
         min: `${(Math.random() * 300 + 200).toFixed(1)} ng/mL`,
         max: `${(Math.random() * 500 + 800).toFixed(1)} ng/mL`,
-        regulatoryStatus: Math.random() > 0.8 ? "NON_COMPLIANT" : "COMPLIANT"
+        regulatoryStatus: Math.random() > 0.8 ? "NON_COMPLIANT" : "COMPLIANT",
       };
 
       return {
         ...group,
-        ...mockStats
+        ...mockStats,
       };
     });
   }, []);
@@ -195,22 +218,24 @@ function BioanalyticalReportingPage({
     try {
       // Load samples with Stage 3 execution data for validation
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/samples`,
+        `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
         {
           method: "GET",
           credentials: "include",
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-        }
+        },
       );
 
       if (response.ok) {
         const data = await response.json();
-        const executedSamples = (data.samples || []).filter(sample => {
-          return sample.data &&
-                 sample.data.executionStatus === "EXECUTED" &&
-                 sample.data.testExecution;
+        const executedSamples = (data.samples || []).filter((sample) => {
+          return (
+            sample.data &&
+            sample.data.executionStatus === "EXECUTED" &&
+            sample.data.testExecution
+          );
         });
 
         // Validate each checklist item
@@ -231,18 +256,20 @@ function BioanalyticalReportingPage({
 
   // Individual validation functions for each QA check
   const validateRawDataFiles = (samples) => {
-    const hasRawData = samples.some(s => s.data.rawDataFiles && s.data.rawDataFiles.length > 0);
+    const hasRawData = samples.some(
+      (s) => s.data.rawDataFiles && s.data.rawDataFiles.length > 0,
+    );
     return {
       status: hasRawData ? "pass" : "fail",
-      message: hasRawData ?
-        `${samples.length} samples with validated raw data files` :
-        "No raw data files found in executed samples"
+      message: hasRawData
+        ? `${samples.length} samples with validated raw data files`
+        : "No raw data files found in executed samples",
     };
   };
 
   const validateCalibrationCriteria = (samples) => {
     // Check if calibration data exists and meets r² ≥ 0.99 criteria
-    const calibrationData = samples.find(s => s.data.calibrationData);
+    const calibrationData = samples.find((s) => s.data.calibrationData);
     if (!calibrationData) {
       return { status: "fail", message: "No calibration data found" };
     }
@@ -250,48 +277,55 @@ function BioanalyticalReportingPage({
     const rSquared = calibrationData.data.calibrationData?.rSquared || 0;
     return {
       status: rSquared >= 0.99 ? "pass" : "fail",
-      message: rSquared >= 0.99 ?
-        `Calibration curve meets criteria (r² = ${rSquared.toFixed(4)})` :
-        `Calibration curve fails criteria (r² = ${rSquared.toFixed(4)} < 0.99)`
+      message:
+        rSquared >= 0.99
+          ? `Calibration curve meets criteria (r² = ${rSquared.toFixed(4)})`
+          : `Calibration curve fails criteria (r² = ${rSquared.toFixed(4)} < 0.99)`,
     };
   };
 
   const validateQCResults = (samples) => {
-    const qcData = samples.find(s => s.data.qcResults);
+    const qcData = samples.find((s) => s.data.qcResults);
     if (!qcData) {
       return { status: "fail", message: "No QC results found" };
     }
 
     const westgardRules = qcData.data.westgardRules || [];
-    const allPassed = westgardRules.length > 0 && westgardRules.every(rule => rule.status === "PASS");
+    const allPassed =
+      westgardRules.length > 0 &&
+      westgardRules.every((rule) => rule.status === "PASS");
     return {
       status: allPassed ? "pass" : "fail",
-      message: allPassed ?
-        `All ${westgardRules.length} Westgard rules passed` :
-        "Some Westgard rules failed validation"
+      message: allPassed
+        ? `All ${westgardRules.length} Westgard rules passed`
+        : "Some Westgard rules failed validation",
     };
   };
 
   const validateSystemSuitability = (samples) => {
-    const hasSystemSuitability = samples.some(s =>
-      s.data.testExecution && s.data.testExecution.instrumentId
+    const hasSystemSuitability = samples.some(
+      (s) => s.data.testExecution && s.data.testExecution.instrumentId,
     );
     return {
       status: hasSystemSuitability ? "pass" : "fail",
-      message: hasSystemSuitability ?
-        "System suitability parameters verified" :
-        "System suitability verification missing"
+      message: hasSystemSuitability
+        ? "System suitability parameters verified"
+        : "System suitability verification missing",
     };
   };
 
   const validateResultsCriteria = (samples) => {
-    const complianceCount = studyResults.filter(r => r.regulatoryStatus === "COMPLIANT").length;
+    const complianceCount = studyResults.filter(
+      (r) => r.regulatoryStatus === "COMPLIANT",
+    ).length;
     const totalResults = studyResults.length;
     return {
-      status: complianceCount === totalResults && totalResults > 0 ? "pass" : "fail",
-      message: totalResults > 0 ?
-        `${complianceCount}/${totalResults} result groups meet acceptance criteria` :
-        "No results available for validation"
+      status:
+        complianceCount === totalResults && totalResults > 0 ? "pass" : "fail",
+      message:
+        totalResults > 0
+          ? `${complianceCount}/${totalResults} result groups meet acceptance criteria`
+          : "No results available for validation",
     };
   };
 
@@ -307,12 +341,15 @@ function BioanalyticalReportingPage({
 
   const handleQaApproval = useCallback(() => {
     // Check if all QA checklist items are completed
-    const allChecklistItemsCompleted = Object.values(qaChecklist).every(checked => checked === true);
+    const allChecklistItemsCompleted = Object.values(qaChecklist).every(
+      (checked) => checked === true,
+    );
     if (!allChecklistItemsCompleted) {
       setErrorMessage(
         intl.formatMessage({
           id: "notebook.bioanalytical.reporting.checklistIncomplete",
-          defaultMessage: "Please complete all QA checklist items before approval",
+          defaultMessage:
+            "Please complete all QA checklist items before approval",
         }),
       );
       return;
@@ -440,7 +477,9 @@ function BioanalyticalReportingPage({
     setErrorMessage("");
 
     try {
-      const selectedTarget = submissionTargets.find(t => t.id === submissionTarget);
+      const selectedTarget = submissionTargets.find(
+        (t) => t.id === submissionTarget,
+      );
 
       // Prepare submission data
       const submissionData = {
@@ -452,9 +491,18 @@ function BioanalyticalReportingPage({
         submittedAt: new Date().toISOString(),
         submittedBy: "CURRENT_USER", // This would come from user session
         reportMetadata: {
-          totalSamples: studyResults.reduce((sum, result) => sum + result.dataPoints, 0),
-          complianceStatus: studyResults.every(r => r.regulatoryStatus === "COMPLIANT") ? "FULLY_COMPLIANT" : "PARTIAL_COMPLIANCE",
-          analyticalMethods: [...new Set(studyResults.map(r => r.testName.split(" - ")[0]))],
+          totalSamples: studyResults.reduce(
+            (sum, result) => sum + result.dataPoints,
+            0,
+          ),
+          complianceStatus: studyResults.every(
+            (r) => r.regulatoryStatus === "COMPLIANT",
+          )
+            ? "FULLY_COMPLIANT"
+            : "PARTIAL_COMPLIANCE",
+          analyticalMethods: [
+            ...new Set(studyResults.map((r) => r.testName.split(" - ")[0])),
+          ],
         },
       };
 
@@ -469,7 +517,9 @@ function BioanalyticalReportingPage({
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
           body: JSON.stringify({
-            sampleIds: studyResults.flatMap(r => r.samples?.map(s => s.id) || []),
+            sampleIds: studyResults.flatMap(
+              (r) => r.samples?.map((s) => s.id) || [],
+            ),
             data: {
               submissionStatus: "SUBMITTED",
               submissionData: submissionData,
@@ -478,7 +528,7 @@ function BioanalyticalReportingPage({
             },
             userId: "CURRENT_USER",
           }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -495,7 +545,8 @@ function BioanalyticalReportingPage({
           intl.formatMessage(
             {
               id: "notebook.bioanalytical.reporting.submissionSuccess",
-              defaultMessage: "Results submitted successfully to {target}. Confirmation: {confirmationNumber}",
+              defaultMessage:
+                "Results submitted successfully to {target}. Confirmation: {confirmationNumber}",
             },
             {
               target: selectedTarget.label,
@@ -527,7 +578,17 @@ function BioanalyticalReportingPage({
     } finally {
       setIsLoading(false);
     }
-  }, [submissionTarget, qaApproved, studyResults, qaComments, entryId, pageData?.id, intl, onProgressUpdate, submissionTargets]);
+  }, [
+    submissionTarget,
+    qaApproved,
+    studyResults,
+    qaComments,
+    entryId,
+    pageData?.id,
+    intl,
+    onProgressUpdate,
+    submissionTargets,
+  ]);
 
   return (
     <div className="bioanalytical-page">
@@ -820,11 +881,22 @@ function BioanalyticalReportingPage({
                         }}
                       >
                         {/* QA Check 1: Raw Data Validated */}
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: "0.5rem",
+                          }}
+                        >
                           <Checkbox
                             id="qa-check-1"
                             checked={qaChecklist.rawDataValidated}
-                            onChange={(e) => setQaChecklist(prev => ({ ...prev, rawDataValidated: e.target.checked }))}
+                            onChange={(e) =>
+                              setQaChecklist((prev) => ({
+                                ...prev,
+                                rawDataValidated: e.target.checked,
+                              }))
+                            }
                             labelText=" "
                           />
                           <div style={{ flex: 1 }}>
@@ -832,8 +904,12 @@ function BioanalyticalReportingPage({
                               htmlFor="qa-check-1"
                               style={{
                                 fontSize: "0.875rem",
-                                fontWeight: qaChecklist.rawDataValidated ? "bold" : "normal",
-                                color: qaChecklist.rawDataValidated ? "#161616" : "#525252",
+                                fontWeight: qaChecklist.rawDataValidated
+                                  ? "bold"
+                                  : "normal",
+                                color: qaChecklist.rawDataValidated
+                                  ? "#161616"
+                                  : "#525252",
                               }}
                             >
                               <FormattedMessage
@@ -841,30 +917,61 @@ function BioanalyticalReportingPage({
                                 defaultMessage="All raw data files validated and processed"
                               />
                             </label>
-                            <div style={{
-                              fontSize: "0.75rem",
-                              marginTop: "0.25rem",
-                              color: qaChecklistValidation.rawDataValidated.status === "pass" ? "#24a148" : "#da1e28"
-                            }}>
-                              <span style={{
-                                padding: "0.125rem 0.375rem",
-                                borderRadius: "3px",
-                                backgroundColor: qaChecklistValidation.rawDataValidated.status === "pass" ? "#e7f1f5" : "#fdf2f2",
-                                border: qaChecklistValidation.rawDataValidated.status === "pass" ? "1px solid #24a148" : "1px solid #da1e28",
-                                fontWeight: "500",
-                              }}>
-                                {qaChecklistValidation.rawDataValidated.status === "pass" ? "✓" : "✗"} {qaChecklistValidation.rawDataValidated.message}
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                color:
+                                  qaChecklistValidation.rawDataValidated
+                                    .status === "pass"
+                                    ? "#24a148"
+                                    : "#da1e28",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  padding: "0.125rem 0.375rem",
+                                  borderRadius: "3px",
+                                  backgroundColor:
+                                    qaChecklistValidation.rawDataValidated
+                                      .status === "pass"
+                                      ? "#e7f1f5"
+                                      : "#fdf2f2",
+                                  border:
+                                    qaChecklistValidation.rawDataValidated
+                                      .status === "pass"
+                                      ? "1px solid #24a148"
+                                      : "1px solid #da1e28",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {qaChecklistValidation.rawDataValidated
+                                  .status === "pass"
+                                  ? "✓"
+                                  : "✗"}{" "}
+                                {qaChecklistValidation.rawDataValidated.message}
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* QA Check 2: Calibration Acceptable */}
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: "0.5rem",
+                          }}
+                        >
                           <Checkbox
                             id="qa-check-2"
                             checked={qaChecklist.calibrationAcceptable}
-                            onChange={(e) => setQaChecklist(prev => ({ ...prev, calibrationAcceptable: e.target.checked }))}
+                            onChange={(e) =>
+                              setQaChecklist((prev) => ({
+                                ...prev,
+                                calibrationAcceptable: e.target.checked,
+                              }))
+                            }
                             labelText=" "
                           />
                           <div style={{ flex: 1 }}>
@@ -872,8 +979,12 @@ function BioanalyticalReportingPage({
                               htmlFor="qa-check-2"
                               style={{
                                 fontSize: "0.875rem",
-                                fontWeight: qaChecklist.calibrationAcceptable ? "bold" : "normal",
-                                color: qaChecklist.calibrationAcceptable ? "#161616" : "#525252",
+                                fontWeight: qaChecklist.calibrationAcceptable
+                                  ? "bold"
+                                  : "normal",
+                                color: qaChecklist.calibrationAcceptable
+                                  ? "#161616"
+                                  : "#525252",
                               }}
                             >
                               <FormattedMessage
@@ -881,30 +992,64 @@ function BioanalyticalReportingPage({
                                 defaultMessage="Calibration curves meet acceptance criteria (r² ≥ 0.99)"
                               />
                             </label>
-                            <div style={{
-                              fontSize: "0.75rem",
-                              marginTop: "0.25rem",
-                              color: qaChecklistValidation.calibrationAcceptable.status === "pass" ? "#24a148" : "#da1e28"
-                            }}>
-                              <span style={{
-                                padding: "0.125rem 0.375rem",
-                                borderRadius: "3px",
-                                backgroundColor: qaChecklistValidation.calibrationAcceptable.status === "pass" ? "#e7f1f5" : "#fdf2f2",
-                                border: qaChecklistValidation.calibrationAcceptable.status === "pass" ? "1px solid #24a148" : "1px solid #da1e28",
-                                fontWeight: "500",
-                              }}>
-                                {qaChecklistValidation.calibrationAcceptable.status === "pass" ? "✓" : "✗"} {qaChecklistValidation.calibrationAcceptable.message}
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                color:
+                                  qaChecklistValidation.calibrationAcceptable
+                                    .status === "pass"
+                                    ? "#24a148"
+                                    : "#da1e28",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  padding: "0.125rem 0.375rem",
+                                  borderRadius: "3px",
+                                  backgroundColor:
+                                    qaChecklistValidation.calibrationAcceptable
+                                      .status === "pass"
+                                      ? "#e7f1f5"
+                                      : "#fdf2f2",
+                                  border:
+                                    qaChecklistValidation.calibrationAcceptable
+                                      .status === "pass"
+                                      ? "1px solid #24a148"
+                                      : "1px solid #da1e28",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {qaChecklistValidation.calibrationAcceptable
+                                  .status === "pass"
+                                  ? "✓"
+                                  : "✗"}{" "}
+                                {
+                                  qaChecklistValidation.calibrationAcceptable
+                                    .message
+                                }
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* QA Check 3: QC Passed Rules */}
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: "0.5rem",
+                          }}
+                        >
                           <Checkbox
                             id="qa-check-3"
                             checked={qaChecklist.qcPassedRules}
-                            onChange={(e) => setQaChecklist(prev => ({ ...prev, qcPassedRules: e.target.checked }))}
+                            onChange={(e) =>
+                              setQaChecklist((prev) => ({
+                                ...prev,
+                                qcPassedRules: e.target.checked,
+                              }))
+                            }
                             labelText=" "
                           />
                           <div style={{ flex: 1 }}>
@@ -912,8 +1057,12 @@ function BioanalyticalReportingPage({
                               htmlFor="qa-check-3"
                               style={{
                                 fontSize: "0.875rem",
-                                fontWeight: qaChecklist.qcPassedRules ? "bold" : "normal",
-                                color: qaChecklist.qcPassedRules ? "#161616" : "#525252",
+                                fontWeight: qaChecklist.qcPassedRules
+                                  ? "bold"
+                                  : "normal",
+                                color: qaChecklist.qcPassedRules
+                                  ? "#161616"
+                                  : "#525252",
                               }}
                             >
                               <FormattedMessage
@@ -921,30 +1070,61 @@ function BioanalyticalReportingPage({
                                 defaultMessage="QC results pass Westgard rules (all 5 rules passed)"
                               />
                             </label>
-                            <div style={{
-                              fontSize: "0.75rem",
-                              marginTop: "0.25rem",
-                              color: qaChecklistValidation.qcPassedRules.status === "pass" ? "#24a148" : "#da1e28"
-                            }}>
-                              <span style={{
-                                padding: "0.125rem 0.375rem",
-                                borderRadius: "3px",
-                                backgroundColor: qaChecklistValidation.qcPassedRules.status === "pass" ? "#e7f1f5" : "#fdf2f2",
-                                border: qaChecklistValidation.qcPassedRules.status === "pass" ? "1px solid #24a148" : "1px solid #da1e28",
-                                fontWeight: "500",
-                              }}>
-                                {qaChecklistValidation.qcPassedRules.status === "pass" ? "✓" : "✗"} {qaChecklistValidation.qcPassedRules.message}
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                color:
+                                  qaChecklistValidation.qcPassedRules.status ===
+                                  "pass"
+                                    ? "#24a148"
+                                    : "#da1e28",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  padding: "0.125rem 0.375rem",
+                                  borderRadius: "3px",
+                                  backgroundColor:
+                                    qaChecklistValidation.qcPassedRules
+                                      .status === "pass"
+                                      ? "#e7f1f5"
+                                      : "#fdf2f2",
+                                  border:
+                                    qaChecklistValidation.qcPassedRules
+                                      .status === "pass"
+                                      ? "1px solid #24a148"
+                                      : "1px solid #da1e28",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {qaChecklistValidation.qcPassedRules.status ===
+                                "pass"
+                                  ? "✓"
+                                  : "✗"}{" "}
+                                {qaChecklistValidation.qcPassedRules.message}
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* QA Check 4: System Suitability */}
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: "0.5rem",
+                          }}
+                        >
                           <Checkbox
                             id="qa-check-4"
                             checked={qaChecklist.systemSuitability}
-                            onChange={(e) => setQaChecklist(prev => ({ ...prev, systemSuitability: e.target.checked }))}
+                            onChange={(e) =>
+                              setQaChecklist((prev) => ({
+                                ...prev,
+                                systemSuitability: e.target.checked,
+                              }))
+                            }
                             labelText=" "
                           />
                           <div style={{ flex: 1 }}>
@@ -952,8 +1132,12 @@ function BioanalyticalReportingPage({
                               htmlFor="qa-check-4"
                               style={{
                                 fontSize: "0.875rem",
-                                fontWeight: qaChecklist.systemSuitability ? "bold" : "normal",
-                                color: qaChecklist.systemSuitability ? "#161616" : "#525252",
+                                fontWeight: qaChecklist.systemSuitability
+                                  ? "bold"
+                                  : "normal",
+                                color: qaChecklist.systemSuitability
+                                  ? "#161616"
+                                  : "#525252",
                               }}
                             >
                               <FormattedMessage
@@ -961,30 +1145,64 @@ function BioanalyticalReportingPage({
                                 defaultMessage="System suitability parameters verified"
                               />
                             </label>
-                            <div style={{
-                              fontSize: "0.75rem",
-                              marginTop: "0.25rem",
-                              color: qaChecklistValidation.systemSuitability.status === "pass" ? "#24a148" : "#da1e28"
-                            }}>
-                              <span style={{
-                                padding: "0.125rem 0.375rem",
-                                borderRadius: "3px",
-                                backgroundColor: qaChecklistValidation.systemSuitability.status === "pass" ? "#e7f1f5" : "#fdf2f2",
-                                border: qaChecklistValidation.systemSuitability.status === "pass" ? "1px solid #24a148" : "1px solid #da1e28",
-                                fontWeight: "500",
-                              }}>
-                                {qaChecklistValidation.systemSuitability.status === "pass" ? "✓" : "✗"} {qaChecklistValidation.systemSuitability.message}
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                color:
+                                  qaChecklistValidation.systemSuitability
+                                    .status === "pass"
+                                    ? "#24a148"
+                                    : "#da1e28",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  padding: "0.125rem 0.375rem",
+                                  borderRadius: "3px",
+                                  backgroundColor:
+                                    qaChecklistValidation.systemSuitability
+                                      .status === "pass"
+                                      ? "#e7f1f5"
+                                      : "#fdf2f2",
+                                  border:
+                                    qaChecklistValidation.systemSuitability
+                                      .status === "pass"
+                                      ? "1px solid #24a148"
+                                      : "1px solid #da1e28",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {qaChecklistValidation.systemSuitability
+                                  .status === "pass"
+                                  ? "✓"
+                                  : "✗"}{" "}
+                                {
+                                  qaChecklistValidation.systemSuitability
+                                    .message
+                                }
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* QA Check 5: Results Acceptable */}
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: "0.5rem",
+                          }}
+                        >
                           <Checkbox
                             id="qa-check-5"
                             checked={qaChecklist.resultsAcceptable}
-                            onChange={(e) => setQaChecklist(prev => ({ ...prev, resultsAcceptable: e.target.checked }))}
+                            onChange={(e) =>
+                              setQaChecklist((prev) => ({
+                                ...prev,
+                                resultsAcceptable: e.target.checked,
+                              }))
+                            }
                             labelText=" "
                           />
                           <div style={{ flex: 1 }}>
@@ -992,8 +1210,12 @@ function BioanalyticalReportingPage({
                               htmlFor="qa-check-5"
                               style={{
                                 fontSize: "0.875rem",
-                                fontWeight: qaChecklist.resultsAcceptable ? "bold" : "normal",
-                                color: qaChecklist.resultsAcceptable ? "#161616" : "#525252",
+                                fontWeight: qaChecklist.resultsAcceptable
+                                  ? "bold"
+                                  : "normal",
+                                color: qaChecklist.resultsAcceptable
+                                  ? "#161616"
+                                  : "#525252",
                               }}
                             >
                               <FormattedMessage
@@ -1001,19 +1223,42 @@ function BioanalyticalReportingPage({
                                 defaultMessage="Sample results within acceptance criteria"
                               />
                             </label>
-                            <div style={{
-                              fontSize: "0.75rem",
-                              marginTop: "0.25rem",
-                              color: qaChecklistValidation.resultsAcceptable.status === "pass" ? "#24a148" : "#da1e28"
-                            }}>
-                              <span style={{
-                                padding: "0.125rem 0.375rem",
-                                borderRadius: "3px",
-                                backgroundColor: qaChecklistValidation.resultsAcceptable.status === "pass" ? "#e7f1f5" : "#fdf2f2",
-                                border: qaChecklistValidation.resultsAcceptable.status === "pass" ? "1px solid #24a148" : "1px solid #da1e28",
-                                fontWeight: "500",
-                              }}>
-                                {qaChecklistValidation.resultsAcceptable.status === "pass" ? "✓" : "✗"} {qaChecklistValidation.resultsAcceptable.message}
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                color:
+                                  qaChecklistValidation.resultsAcceptable
+                                    .status === "pass"
+                                    ? "#24a148"
+                                    : "#da1e28",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  padding: "0.125rem 0.375rem",
+                                  borderRadius: "3px",
+                                  backgroundColor:
+                                    qaChecklistValidation.resultsAcceptable
+                                      .status === "pass"
+                                      ? "#e7f1f5"
+                                      : "#fdf2f2",
+                                  border:
+                                    qaChecklistValidation.resultsAcceptable
+                                      .status === "pass"
+                                      ? "1px solid #24a148"
+                                      : "1px solid #da1e28",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {qaChecklistValidation.resultsAcceptable
+                                  .status === "pass"
+                                  ? "✓"
+                                  : "✗"}{" "}
+                                {
+                                  qaChecklistValidation.resultsAcceptable
+                                    .message
+                                }
                               </span>
                             </div>
                           </div>
@@ -1021,23 +1266,40 @@ function BioanalyticalReportingPage({
                       </div>
 
                       {/* Checklist Completion Status */}
-                      <div style={{
-                        marginTop: "1.5rem",
-                        padding: "0.75rem",
-                        backgroundColor: Object.values(qaChecklist).every(checked => checked === true) ? "#e7f1f5" : "#fff3cd",
-                        borderRadius: "4px",
-                        border: Object.values(qaChecklist).every(checked => checked === true) ? "1px solid #24a148" : "1px solid #f1c21b"
-                      }}>
-                        <p style={{
-                          margin: 0,
-                          fontSize: "0.875rem",
-                          fontWeight: "500",
-                          color: Object.values(qaChecklist).every(checked => checked === true) ? "#24a148" : "#b28600"
-                        }}>
-                          {Object.values(qaChecklist).every(checked => checked === true) ?
-                            "✓ All QA checklist items completed - Ready for approval" :
-                            `${Object.values(qaChecklist).filter(checked => checked).length}/5 checklist items completed`
-                          }
+                      <div
+                        style={{
+                          marginTop: "1.5rem",
+                          padding: "0.75rem",
+                          backgroundColor: Object.values(qaChecklist).every(
+                            (checked) => checked === true,
+                          )
+                            ? "#e7f1f5"
+                            : "#fff3cd",
+                          borderRadius: "4px",
+                          border: Object.values(qaChecklist).every(
+                            (checked) => checked === true,
+                          )
+                            ? "1px solid #24a148"
+                            : "1px solid #f1c21b",
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.875rem",
+                            fontWeight: "500",
+                            color: Object.values(qaChecklist).every(
+                              (checked) => checked === true,
+                            )
+                              ? "#24a148"
+                              : "#b28600",
+                          }}
+                        >
+                          {Object.values(qaChecklist).every(
+                            (checked) => checked === true,
+                          )
+                            ? "✓ All QA checklist items completed - Ready for approval"
+                            : `${Object.values(qaChecklist).filter((checked) => checked).length}/5 checklist items completed`}
                         </p>
                       </div>
                     </div>
@@ -1411,7 +1673,11 @@ function BioanalyticalReportingPage({
                           </strong>
                           <br />
                           <span>
-                            {submissionTargets.find(t => t.id === submissionTarget)?.label}
+                            {
+                              submissionTargets.find(
+                                (t) => t.id === submissionTarget,
+                              )?.label
+                            }
                           </span>
                         </div>
                         <div>
@@ -1423,7 +1689,11 @@ function BioanalyticalReportingPage({
                           </strong>
                           <br />
                           <span>
-                            {submissionTargets.find(t => t.id === submissionTarget)?.department}
+                            {
+                              submissionTargets.find(
+                                (t) => t.id === submissionTarget,
+                              )?.department
+                            }
                           </span>
                         </div>
                         <div>
@@ -1434,7 +1704,9 @@ function BioanalyticalReportingPage({
                             />
                           </strong>
                           <br />
-                          <span>{studyResults.length} analytical result groups</span>
+                          <span>
+                            {studyResults.length} analytical result groups
+                          </span>
                         </div>
                         <div>
                           <strong>
@@ -1445,7 +1717,11 @@ function BioanalyticalReportingPage({
                           </strong>
                           <br />
                           <span>
-                            {studyResults.reduce((sum, result) => sum + result.dataPoints, 0)} samples
+                            {studyResults.reduce(
+                              (sum, result) => sum + result.dataPoints,
+                              0,
+                            )}{" "}
+                            samples
                           </span>
                         </div>
                       </div>
@@ -1477,7 +1753,8 @@ function BioanalyticalReportingPage({
                               defaultMessage="Submitted To:"
                             />
                           </strong>{" "}
-                          {submissionStatus.target} ({submissionStatus.department})
+                          {submissionStatus.target} (
+                          {submissionStatus.department})
                         </div>
                         <div style={{ marginBottom: "0.5rem" }}>
                           <strong>

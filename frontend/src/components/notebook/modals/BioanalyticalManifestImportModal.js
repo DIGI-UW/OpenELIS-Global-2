@@ -159,10 +159,16 @@ function BioanalyticalManifestImportModal({
       setNotificationVisible(true);
       addNotification({
         kind,
-        title: title || intl.formatMessage({
-          id: kind === NotificationKinds.error ? "notification.error" : "notification.success",
-          defaultMessage: kind === NotificationKinds.error ? "Error" : "Success",
-        }),
+        title:
+          title ||
+          intl.formatMessage({
+            id:
+              kind === NotificationKinds.error
+                ? "notification.error"
+                : "notification.success",
+            defaultMessage:
+              kind === NotificationKinds.error ? "Error" : "Success",
+          }),
         subtitle,
         message,
       });
@@ -992,13 +998,16 @@ function BioanalyticalManifestImportModal({
 
             {previewErrors.length > 0 && (
               <div className="validation-errors">
-                <h4 style={{ color: '#da1e28', marginBottom: '0.5rem' }}>
+                <h4 style={{ color: "#da1e28", marginBottom: "0.5rem" }}>
                   <FormattedMessage
                     id="notebook.manifest.validationErrors"
                     defaultMessage="Validation Errors"
                   />
                 </h4>
-                <ul className="error-list" style={{ color: '#da1e28', margin: 0, paddingLeft: '1rem' }}>
+                <ul
+                  className="error-list"
+                  style={{ color: "#da1e28", margin: 0, paddingLeft: "1rem" }}
+                >
                   {previewErrors.map((error, idx) => (
                     <li key={idx}>
                       {error.rowNumber > 0 ? `Row ${error.rowNumber}: ` : ""}
@@ -1019,16 +1028,25 @@ function BioanalyticalManifestImportModal({
               <>
                 {previewErrors.length > 0 && (
                   <div className="validation-errors">
-                    <h4 style={{ color: '#da1e28', marginBottom: '0.5rem' }}>
+                    <h4 style={{ color: "#da1e28", marginBottom: "0.5rem" }}>
                       <FormattedMessage
                         id="notebook.manifest.validationErrors"
                         defaultMessage="Validation Errors"
                       />
                     </h4>
-                    <ul className="error-list" style={{ color: '#da1e28', margin: 0, paddingLeft: '1rem' }}>
+                    <ul
+                      className="error-list"
+                      style={{
+                        color: "#da1e28",
+                        margin: 0,
+                        paddingLeft: "1rem",
+                      }}
+                    >
                       {previewErrors.map((error, idx) => (
                         <li key={idx}>
-                          {error.rowNumber > 0 ? `Row ${error.rowNumber}: ` : ""}
+                          {error.rowNumber > 0
+                            ? `Row ${error.rowNumber}: `
+                            : ""}
                           {error.message}
                         </li>
                       ))}

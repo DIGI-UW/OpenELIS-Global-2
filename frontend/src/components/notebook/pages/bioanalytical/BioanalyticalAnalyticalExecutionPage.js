@@ -58,7 +58,8 @@ function BioanalyticalAnalyticalExecutionPage({
   templateInstruments,
 }) {
   const intl = useIntl();
-  const { addNotification, setNotificationVisible } = useContext(NotificationContext);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // Notification helper function
   const notify = useCallback(
@@ -66,10 +67,16 @@ function BioanalyticalAnalyticalExecutionPage({
       setNotificationVisible(true);
       addNotification({
         kind,
-        title: title || intl.formatMessage({
-          id: kind === NotificationKinds.error ? "notification.error" : "notification.success",
-          defaultMessage: kind === NotificationKinds.error ? "Error" : "Success",
-        }),
+        title:
+          title ||
+          intl.formatMessage({
+            id:
+              kind === NotificationKinds.error
+                ? "notification.error"
+                : "notification.success",
+            defaultMessage:
+              kind === NotificationKinds.error ? "Error" : "Success",
+          }),
         subtitle,
         message,
       });
@@ -109,13 +116,14 @@ function BioanalyticalAnalyticalExecutionPage({
   // Enhanced QC Parameters for FDA Bioanalytical Compliance
   const [systemSuitabilityResults, setSystemSuitabilityResults] = useState([]);
   const [controlSamples, setControlSamples] = useState([]);
-  const [referenceStandardVerification, setReferenceStandardVerification] = useState(null);
+  const [referenceStandardVerification, setReferenceStandardVerification] =
+    useState(null);
   const [instrumentPerformance, setInstrumentPerformance] = useState(null);
   const [qcAcceptanceCriteria, setQcAcceptanceCriteria] = useState({
     accuracyLimits: { min: 85, max: 115 }, // ±15% standard
     precisionLimit: 15, // ≤15% CV
     lloqAccuracyLimits: { min: 80, max: 120 }, // ±20% at LLOQ
-    lloqPrecisionLimit: 20 // ≤20% CV at LLOQ
+    lloqPrecisionLimit: 20, // ≤20% CV at LLOQ
   });
   const [deviations, setDeviations] = useState([]);
   const [deviationForm, setDeviationForm] = useState({
@@ -137,7 +145,7 @@ function BioanalyticalAnalyticalExecutionPage({
     reviewDate: "",
     comments: "",
     approved: false,
-    electronicSignature: ""
+    electronicSignature: "",
   });
 
   // Multi-level Review Workflow: Secondary QA Review
@@ -150,7 +158,7 @@ function BioanalyticalAnalyticalExecutionPage({
     electronicSignature: "",
     dataIntegrityVerified: false,
     methodComplianceVerified: false,
-    qcAcceptable: false
+    qcAcceptable: false,
   });
 
   // Multi-level Review Workflow: Final Manager Approval
@@ -163,7 +171,7 @@ function BioanalyticalAnalyticalExecutionPage({
     electronicSignature: "",
     regulatoryCompliance: false,
     studyImpact: "",
-    finalDisposition: ""
+    finalDisposition: "",
   });
   const [dataIntegrity, setDataIntegrity] = useState({
     checksumVerified: false,
@@ -171,7 +179,7 @@ function BioanalyticalAnalyticalExecutionPage({
     originalityVerified: false,
     userAttribution: {},
     auditTrail: [],
-    contemporaneousRecord: true
+    contemporaneousRecord: true,
   });
 
   // Audit Trail System
@@ -181,36 +189,43 @@ function BioanalyticalAnalyticalExecutionPage({
     action: "",
     startDate: "",
     endDate: "",
-    showSystemEvents: true
+    showSystemEvents: true,
   });
 
   // Audit Trail Logger
-  const logAuditEvent = useCallback((action, details, userId = null) => {
-    const auditEvent = {
-      id: Date.now() + Math.random(),
-      timestamp: new Date().toISOString(),
-      userId: userId || executionData.analystId || "SYSTEM",
-      action: action,
-      details: details,
-      entryId: entryId,
-      sessionId: localStorage.getItem("sessionId") || "unknown",
-      ipAddress: "CLIENT_IP", // Would be populated by backend
-      userAgent: navigator.userAgent,
-      changeType: action.includes("CREATE") ? "INSERT" :
-                  action.includes("UPDATE") || action.includes("MODIFY") ? "UPDATE" :
-                  action.includes("DELETE") || action.includes("REMOVE") ? "DELETE" : "READ"
-    };
+  const logAuditEvent = useCallback(
+    (action, details, userId = null) => {
+      const auditEvent = {
+        id: Date.now() + Math.random(),
+        timestamp: new Date().toISOString(),
+        userId: userId || executionData.analystId || "SYSTEM",
+        action: action,
+        details: details,
+        entryId: entryId,
+        sessionId: localStorage.getItem("sessionId") || "unknown",
+        ipAddress: "CLIENT_IP", // Would be populated by backend
+        userAgent: navigator.userAgent,
+        changeType: action.includes("CREATE")
+          ? "INSERT"
+          : action.includes("UPDATE") || action.includes("MODIFY")
+            ? "UPDATE"
+            : action.includes("DELETE") || action.includes("REMOVE")
+              ? "DELETE"
+              : "READ",
+      };
 
-    setAuditTrail(prev => [auditEvent, ...prev]);
+      setAuditTrail((prev) => [auditEvent, ...prev]);
 
-    // Also update dataIntegrity auditTrail for ALCOA+ compliance
-    setDataIntegrity(prev => ({
-      ...prev,
-      auditTrail: [auditEvent, ...prev.auditTrail]
-    }));
+      // Also update dataIntegrity auditTrail for ALCOA+ compliance
+      setDataIntegrity((prev) => ({
+        ...prev,
+        auditTrail: [auditEvent, ...prev.auditTrail],
+      }));
 
-    return auditEvent;
-  }, [entryId, executionData.analystId]);
+      return auditEvent;
+    },
+    [entryId, executionData.analystId],
+  );
 
   // Load assigned samples from Stage 2 on component mount
   useEffect(() => {
@@ -224,7 +239,7 @@ function BioanalyticalAnalyticalExecutionPage({
       try {
         // Load samples that have Stage 2 test assignments
         const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/samples`,
+          `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
           {
             method: "GET",
             credentials: "include",
@@ -345,16 +360,13 @@ function BioanalyticalAnalyticalExecutionPage({
       setUploadedFiles([...uploadedFiles, newFile]);
 
       // Log file upload to audit trail
-      logAuditEvent(
-        "FILE_UPLOAD",
-        {
-          fileName: file.name,
-          fileSize: file.size,
-          instrument: instrument.name,
-          fileType: fileExtension,
-          validationStatus: "PENDING_VALIDATION"
-        }
-      );
+      logAuditEvent("FILE_UPLOAD", {
+        fileName: file.name,
+        fileSize: file.size,
+        instrument: instrument.name,
+        fileType: fileExtension,
+        validationStatus: "PENDING_VALIDATION",
+      });
 
       notify({
         kind: NotificationKinds.success,
@@ -455,9 +467,9 @@ function BioanalyticalAnalyticalExecutionPage({
             instrumentId: executionData.instrumentId,
             batchNumber: executionData.batchNumber,
             executionDate: executionData.executionDate,
-            rawDataFiles: uploadedFiles.length
+            rawDataFiles: uploadedFiles.length,
           },
-          executionData.analystId
+          executionData.analystId,
         );
 
         notify({
@@ -550,9 +562,9 @@ function BioanalyticalAnalyticalExecutionPage({
               severity: deviation.severity,
               description: deviation.description.substring(0, 100) + "...", // Truncate for audit log
               batchDisposition: deviation.batchDisposition,
-              affectedSamples: Array.from(selectedSampleIds).length
+              affectedSamples: Array.from(selectedSampleIds).length,
             },
-            executionData.analystId
+            executionData.analystId,
           );
 
           setDeviations((prev) => [...prev, deviation]);
@@ -620,13 +632,13 @@ function BioanalyticalAnalyticalExecutionPage({
     smoothingFactor: 0.1,
     peakDetectionThreshold: 0.01,
     retentionTimeWindow: 0.5,
-    massAccuracyPpm: 5.0
+    massAccuracyPpm: 5.0,
   });
 
   const [processingResults, setProcessingResults] = useState({
     peakIntegration: [],
     quantification: [],
-    automationSummary: null
+    automationSummary: null,
   });
 
   const handleValidateData = useCallback(() => {
@@ -657,7 +669,7 @@ function BioanalyticalAnalyticalExecutionPage({
           resolution: 2.34,
           signalToNoise: 145.2,
           integrationStatus: "AUTO_INTEGRATED",
-          manualReview: false
+          manualReview: false,
         },
         {
           peakId: "PEAK_002",
@@ -669,10 +681,13 @@ function BioanalyticalAnalyticalExecutionPage({
           resolution: 3.21,
           signalToNoise: 187.5,
           integrationStatus: "AUTO_INTEGRATED",
-          manualReview: false
-        }
+          manualReview: false,
+        },
       ];
-      setProcessingResults(prev => ({ ...prev, peakIntegration: mockPeakIntegration }));
+      setProcessingResults((prev) => ({
+        ...prev,
+        peakIntegration: mockPeakIntegration,
+      }));
 
       // Automated Quantification Results
       const mockQuantification = [
@@ -687,7 +702,7 @@ function BioanalyticalAnalyticalExecutionPage({
           accuracyPercent: 98.5,
           cvPercent: 2.1,
           quantificationFlag: "PASSED",
-          automationStatus: "FULLY_AUTOMATED"
+          automationStatus: "FULLY_AUTOMATED",
         },
         {
           sampleId: "S002",
@@ -700,23 +715,34 @@ function BioanalyticalAnalyticalExecutionPage({
           accuracyPercent: 99.8,
           cvPercent: 1.8,
           quantificationFlag: "PASSED",
-          automationStatus: "FULLY_AUTOMATED"
-        }
+          automationStatus: "FULLY_AUTOMATED",
+        },
       ];
-      setProcessingResults(prev => ({ ...prev, quantification: mockQuantification }));
+      setProcessingResults((prev) => ({
+        ...prev,
+        quantification: mockQuantification,
+      }));
 
       // Automation Summary
       const automationSummary = {
         totalPeaks: mockPeakIntegration.length,
-        autoIntegratedPeaks: mockPeakIntegration.filter(p => p.integrationStatus === "AUTO_INTEGRATED").length,
-        manualReviewRequired: mockPeakIntegration.filter(p => p.manualReview).length,
+        autoIntegratedPeaks: mockPeakIntegration.filter(
+          (p) => p.integrationStatus === "AUTO_INTEGRATED",
+        ).length,
+        manualReviewRequired: mockPeakIntegration.filter((p) => p.manualReview)
+          .length,
         totalSamples: mockQuantification.length,
-        fullyAutomatedSamples: mockQuantification.filter(q => q.automationStatus === "FULLY_AUTOMATED").length,
+        fullyAutomatedSamples: mockQuantification.filter(
+          (q) => q.automationStatus === "FULLY_AUTOMATED",
+        ).length,
         processingTimeSeconds: 15.3,
         dataQualityScore: 98.7,
-        automationEfficiency: 96.2
+        automationEfficiency: 96.2,
       };
-      setProcessingResults(prev => ({ ...prev, automationSummary: automationSummary }));
+      setProcessingResults((prev) => ({
+        ...prev,
+        automationSummary: automationSummary,
+      }));
 
       // Mock calibration data
       setCalibrationData({
@@ -748,7 +774,7 @@ function BioanalyticalAnalyticalExecutionPage({
           mean: 19.8,
           sd: 0.42,
           cv: 2.1,
-          runs: ["19.5", "19.9", "20.1", "19.7", "19.8", "20.0"]
+          runs: ["19.5", "19.9", "20.1", "19.7", "19.8", "20.0"],
         },
         {
           id: "2",
@@ -767,7 +793,7 @@ function BioanalyticalAnalyticalExecutionPage({
           mean: 497.5,
           sd: 8.96,
           cv: 1.8,
-          runs: ["495.2", "498.7", "501.3", "496.8", "497.5", "495.5"]
+          runs: ["495.2", "498.7", "501.3", "496.8", "497.5", "495.5"],
         },
         {
           id: "3",
@@ -786,7 +812,7 @@ function BioanalyticalAnalyticalExecutionPage({
           mean: 7950,
           sd: 182.85,
           cv: 2.3,
-          runs: ["7895", "7968", "8012", "7934", "7950", "7941"]
+          runs: ["7895", "7968", "8012", "7934", "7950", "7941"],
         },
         {
           id: "4",
@@ -805,8 +831,8 @@ function BioanalyticalAnalyticalExecutionPage({
           mean: 9.7,
           sd: 1.79,
           cv: 18.5,
-          runs: ["8.9", "10.2", "11.1", "9.4", "9.7", "8.9"]
-        }
+          runs: ["8.9", "10.2", "11.1", "9.4", "9.7", "8.9"],
+        },
       ];
       setQcResults(mockQcResults);
 
@@ -851,7 +877,7 @@ function BioanalyticalAnalyticalExecutionPage({
           tolerance: "±0.1 min",
           withinTolerance: true,
           status: "PASS",
-          criteria: "RT ± 2.5% or ± 0.1 min, whichever is greater"
+          criteria: "RT ± 2.5% or ± 0.1 min, whichever is greater",
         },
         {
           id: "2",
@@ -862,7 +888,7 @@ function BioanalyticalAnalyticalExecutionPage({
           tolerance: "±5.0%",
           withinTolerance: true,
           status: "PASS",
-          criteria: "RSD ≤ 5.0% for 5 consecutive injections"
+          criteria: "RSD ≤ 5.0% for 5 consecutive injections",
         },
         {
           id: "3",
@@ -873,7 +899,7 @@ function BioanalyticalAnalyticalExecutionPage({
           tolerance: "≥2.0",
           withinTolerance: true,
           status: "PASS",
-          criteria: "Resolution ≥ 2.0 between critical pairs"
+          criteria: "Resolution ≥ 2.0 between critical pairs",
         },
         {
           id: "4",
@@ -884,7 +910,7 @@ function BioanalyticalAnalyticalExecutionPage({
           tolerance: "≤1.5",
           withinTolerance: true,
           status: "PASS",
-          criteria: "Tailing factor ≤ 1.5"
+          criteria: "Tailing factor ≤ 1.5",
         },
         {
           id: "5",
@@ -895,8 +921,8 @@ function BioanalyticalAnalyticalExecutionPage({
           tolerance: "≥100",
           withinTolerance: true,
           status: "PASS",
-          criteria: "S/N ≥ 100 at LLOQ level"
-        }
+          criteria: "S/N ≥ 100 at LLOQ level",
+        },
       ];
       setSystemSuitabilityResults(mockSystemSuitability);
 
@@ -913,7 +939,7 @@ function BioanalyticalAnalyticalExecutionPage({
           expectedConcentration: 100,
           accuracy: 100.5,
           status: "PASS",
-          criteria: "Must detect analyte within ±20%"
+          criteria: "Must detect analyte within ±20%",
         },
         {
           id: "2",
@@ -925,7 +951,7 @@ function BioanalyticalAnalyticalExecutionPage({
           unit: "ng/mL",
           interferingPeaks: false,
           status: "PASS",
-          criteria: "No interfering peaks at analyte RT ± 2.5%"
+          criteria: "No interfering peaks at analyte RT ± 2.5%",
         },
         {
           id: "3",
@@ -937,7 +963,7 @@ function BioanalyticalAnalyticalExecutionPage({
           unit: "ng/mL",
           carryoverDetected: false,
           status: "PASS",
-          criteria: "No carryover from previous samples"
+          criteria: "No carryover from previous samples",
         },
         {
           id: "4",
@@ -949,8 +975,8 @@ function BioanalyticalAnalyticalExecutionPage({
           unit: "ng/mL",
           matrixInterference: false,
           status: "PASS",
-          criteria: "Matrix interference ≤ 20% of LLOQ response"
-        }
+          criteria: "Matrix interference ≤ 20% of LLOQ response",
+        },
       ];
       setControlSamples(mockControlSamples);
 
@@ -963,7 +989,7 @@ function BioanalyticalAnalyticalExecutionPage({
         certificateNumber: "COA-2024-001",
         expiryDate: "2025-12-31",
         storageConditions: "-20°C, desiccated",
-        verificationDate: new Date().toISOString().split('T')[0],
+        verificationDate: new Date().toISOString().split("T")[0],
         potencyVerified: true,
         potencyResult: 99.7,
         potencyCriteria: "98.0 - 102.0%",
@@ -974,14 +1000,14 @@ function BioanalyticalAnalyticalExecutionPage({
         relatedSubstances: 0.12,
         relatedSubstancesCriteria: "≤ 0.2% total",
         status: "QUALIFIED",
-        verifiedBy: "QC Lab Manager"
+        verifiedBy: "QC Lab Manager",
       };
       setReferenceStandardVerification(mockReferenceStandard);
 
       // Instrument Performance Checks
       const mockInstrumentPerformance = {
         instrumentId: executionData.instrumentId || "LC-MS-001",
-        checkDate: new Date().toISOString().split('T')[0],
+        checkDate: new Date().toISOString().split("T")[0],
         checkTime: new Date().toLocaleTimeString(),
         parameters: [
           {
@@ -989,48 +1015,48 @@ function BioanalyticalAnalyticalExecutionPage({
             value: 245,
             unit: "bar",
             specification: "200-300 bar",
-            status: "PASS"
+            status: "PASS",
           },
           {
             parameter: "Column Temperature",
             value: 40.2,
             unit: "°C",
             specification: "40.0 ± 1.0°C",
-            status: "PASS"
+            status: "PASS",
           },
           {
             parameter: "Flow Rate",
             value: 0.498,
             unit: "mL/min",
             specification: "0.500 ± 0.010 mL/min",
-            status: "PASS"
+            status: "PASS",
           },
           {
             parameter: "Autosampler Temperature",
             value: 4.1,
             unit: "°C",
             specification: "4.0 ± 2.0°C",
-            status: "PASS"
+            status: "PASS",
           },
           {
             parameter: "Ion Source Temperature",
             value: 350,
             unit: "°C",
             specification: "350 ± 10°C",
-            status: "PASS"
+            status: "PASS",
           },
           {
             parameter: "Nebulizer Gas Pressure",
             value: 45,
             unit: "psi",
             specification: "45 ± 5 psi",
-            status: "PASS"
-          }
+            status: "PASS",
+          },
         ],
         overallStatus: "QUALIFIED",
         nextCalibrationDue: "2025-02-15",
         lastMaintenanceDate: "2024-12-15",
-        qualificationStatus: "CURRENT"
+        qualificationStatus: "CURRENT",
       };
       setInstrumentPerformance(mockInstrumentPerformance);
 
@@ -1064,16 +1090,13 @@ function BioanalyticalAnalyticalExecutionPage({
       setAnalyzerResults(mockResults);
 
       // Log data validation to audit trail
-      logAuditEvent(
-        "DATA_VALIDATION",
-        {
-          filesValidated: uploadedFiles.length,
-          calibrationRSquared: 0.9987,
-          qcResultsCount: mockQcResults.length,
-          westgardRulesStatus: "ALL_PASS",
-          analyzerResultsCount: mockResults.length
-        }
-      );
+      logAuditEvent("DATA_VALIDATION", {
+        filesValidated: uploadedFiles.length,
+        calibrationRSquared: 0.9987,
+        qcResultsCount: mockQcResults.length,
+        westgardRulesStatus: "ALL_PASS",
+        analyzerResultsCount: mockResults.length,
+      });
 
       notify({
         kind: NotificationKinds.success,
@@ -1130,7 +1153,6 @@ function BioanalyticalAnalyticalExecutionPage({
           />
         </p>
       </div>
-
 
       <Tabs
         selectedIndex={selectedTab}
@@ -1718,13 +1740,28 @@ function BioanalyticalAnalyticalExecutionPage({
                           borderRadius: "4px",
                         }}
                       >
-                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "1rem",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "1rem",
+                            }}
+                          >
                             <Checkbox
                               id="auto-baseline"
                               checked={dataProcessingSettings.autoBaseline}
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, autoBaseline: e.target.checked }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  autoBaseline: e.target.checked,
+                                }))
                               }
                               labelText="Automatic baseline correction"
                             />
@@ -1732,53 +1769,100 @@ function BioanalyticalAnalyticalExecutionPage({
                               id="auto-integration"
                               checked={dataProcessingSettings.autoIntegration}
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, autoIntegration: e.target.checked }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  autoIntegration: e.target.checked,
+                                }))
                               }
                               labelText="Automatic peak integration"
                             />
                             <Checkbox
                               id="auto-quantification"
-                              checked={dataProcessingSettings.autoQuantification}
+                              checked={
+                                dataProcessingSettings.autoQuantification
+                              }
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, autoQuantification: e.target.checked }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  autoQuantification: e.target.checked,
+                                }))
                               }
                               labelText="Automatic quantification"
                             />
                           </div>
 
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr 1fr",
+                              gap: "1rem",
+                            }}
+                          >
                             <Select
                               labelText="Baseline Algorithm"
                               value={dataProcessingSettings.baselineAlgorithm}
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, baselineAlgorithm: e.target.value }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  baselineAlgorithm: e.target.value,
+                                }))
                               }
                             >
-                              <SelectItem value="asymmetric_least_squares" text="Asymmetric Least Squares" />
-                              <SelectItem value="rolling_ball" text="Rolling Ball" />
-                              <SelectItem value="linear_interpolation" text="Linear Interpolation" />
-                              <SelectItem value="polynomial_fit" text="Polynomial Fit" />
+                              <SelectItem
+                                value="asymmetric_least_squares"
+                                text="Asymmetric Least Squares"
+                              />
+                              <SelectItem
+                                value="rolling_ball"
+                                text="Rolling Ball"
+                              />
+                              <SelectItem
+                                value="linear_interpolation"
+                                text="Linear Interpolation"
+                              />
+                              <SelectItem
+                                value="polynomial_fit"
+                                text="Polynomial Fit"
+                              />
                             </Select>
 
                             <Select
                               labelText="Integration Method"
                               value={dataProcessingSettings.integrationMethod}
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, integrationMethod: e.target.value }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  integrationMethod: e.target.value,
+                                }))
                               }
                             >
                               <SelectItem value="drop_line" text="Drop Line" />
-                              <SelectItem value="tangent_skim" text="Tangent Skim" />
-                              <SelectItem value="perpendicular" text="Perpendicular" />
-                              <SelectItem value="valley_to_valley" text="Valley to Valley" />
+                              <SelectItem
+                                value="tangent_skim"
+                                text="Tangent Skim"
+                              />
+                              <SelectItem
+                                value="perpendicular"
+                                text="Perpendicular"
+                              />
+                              <SelectItem
+                                value="valley_to_valley"
+                                text="Valley to Valley"
+                              />
                             </Select>
 
                             <NumberInput
                               id="peak-threshold"
                               label="Peak Detection Threshold"
-                              value={dataProcessingSettings.peakDetectionThreshold}
+                              value={
+                                dataProcessingSettings.peakDetectionThreshold
+                              }
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, peakDetectionThreshold: parseFloat(e.target.value) || 0.01 }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  peakDetectionThreshold:
+                                    parseFloat(e.target.value) || 0.01,
+                                }))
                               }
                               min={0.001}
                               max={0.1}
@@ -1786,13 +1870,23 @@ function BioanalyticalAnalyticalExecutionPage({
                             />
                           </div>
 
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr 1fr",
+                              gap: "1rem",
+                            }}
+                          >
                             <NumberInput
                               id="smoothing-factor"
                               label="Smoothing Factor"
                               value={dataProcessingSettings.smoothingFactor}
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, smoothingFactor: parseFloat(e.target.value) || 0.1 }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  smoothingFactor:
+                                    parseFloat(e.target.value) || 0.1,
+                                }))
                               }
                               min={0.01}
                               max={1.0}
@@ -1804,7 +1898,11 @@ function BioanalyticalAnalyticalExecutionPage({
                               label="RT Window (min)"
                               value={dataProcessingSettings.retentionTimeWindow}
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, retentionTimeWindow: parseFloat(e.target.value) || 0.5 }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  retentionTimeWindow:
+                                    parseFloat(e.target.value) || 0.5,
+                                }))
                               }
                               min={0.1}
                               max={2.0}
@@ -1816,7 +1914,11 @@ function BioanalyticalAnalyticalExecutionPage({
                               label="Mass Accuracy (ppm)"
                               value={dataProcessingSettings.massAccuracyPpm}
                               onChange={(e) =>
-                                setDataProcessingSettings(prev => ({ ...prev, massAccuracyPpm: parseFloat(e.target.value) || 5.0 }))
+                                setDataProcessingSettings((prev) => ({
+                                  ...prev,
+                                  massAccuracyPpm:
+                                    parseFloat(e.target.value) || 5.0,
+                                }))
                               }
                               min={1.0}
                               max={20.0}
@@ -2139,11 +2241,24 @@ function BioanalyticalAnalyticalExecutionPage({
                             textAlign: "center",
                           }}
                         >
-                          <h6 style={{ color: "#0043ce", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{ color: "#0043ce", marginBottom: "0.5rem" }}
+                          >
                             Processing Time
                           </h6>
-                          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#0043ce", margin: 0 }}>
-                            {processingResults.automationSummary.processingTimeSeconds}s
+                          <p
+                            style={{
+                              fontSize: "1.5rem",
+                              fontWeight: "bold",
+                              color: "#0043ce",
+                              margin: 0,
+                            }}
+                          >
+                            {
+                              processingResults.automationSummary
+                                .processingTimeSeconds
+                            }
+                            s
                           </p>
                         </div>
                         <div
@@ -2154,11 +2269,24 @@ function BioanalyticalAnalyticalExecutionPage({
                             textAlign: "center",
                           }}
                         >
-                          <h6 style={{ color: "#24a148", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{ color: "#24a148", marginBottom: "0.5rem" }}
+                          >
                             Automation Efficiency
                           </h6>
-                          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#24a148", margin: 0 }}>
-                            {processingResults.automationSummary.automationEfficiency}%
+                          <p
+                            style={{
+                              fontSize: "1.5rem",
+                              fontWeight: "bold",
+                              color: "#24a148",
+                              margin: 0,
+                            }}
+                          >
+                            {
+                              processingResults.automationSummary
+                                .automationEfficiency
+                            }
+                            %
                           </p>
                         </div>
                         <div
@@ -2169,11 +2297,24 @@ function BioanalyticalAnalyticalExecutionPage({
                             textAlign: "center",
                           }}
                         >
-                          <h6 style={{ color: "#f1c21b", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{ color: "#f1c21b", marginBottom: "0.5rem" }}
+                          >
                             Data Quality Score
                           </h6>
-                          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#f1c21b", margin: 0 }}>
-                            {processingResults.automationSummary.dataQualityScore}%
+                          <p
+                            style={{
+                              fontSize: "1.5rem",
+                              fontWeight: "bold",
+                              color: "#f1c21b",
+                              margin: 0,
+                            }}
+                          >
+                            {
+                              processingResults.automationSummary
+                                .dataQualityScore
+                            }
+                            %
                           </p>
                         </div>
                         <div
@@ -2184,11 +2325,24 @@ function BioanalyticalAnalyticalExecutionPage({
                             textAlign: "center",
                           }}
                         >
-                          <h6 style={{ color: "#525252", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{ color: "#525252", marginBottom: "0.5rem" }}
+                          >
                             Manual Review Required
                           </h6>
-                          <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#525252", margin: 0 }}>
-                            {processingResults.automationSummary.manualReviewRequired} peaks
+                          <p
+                            style={{
+                              fontSize: "1.5rem",
+                              fontWeight: "bold",
+                              color: "#525252",
+                              margin: 0,
+                            }}
+                          >
+                            {
+                              processingResults.automationSummary
+                                .manualReviewRequired
+                            }{" "}
+                            peaks
                           </p>
                         </div>
                       </div>
@@ -2202,7 +2356,9 @@ function BioanalyticalAnalyticalExecutionPage({
                         <FormattedMessage
                           id="notebook.bioanalytical.execution.peakIntegration"
                           defaultMessage="Automated Peak Integration Results ({count})"
-                          values={{ count: processingResults.peakIntegration.length }}
+                          values={{
+                            count: processingResults.peakIntegration.length,
+                          }}
                         />
                       </h5>
                       <Table>
@@ -2222,13 +2378,27 @@ function BioanalyticalAnalyticalExecutionPage({
                         <TableBody>
                           {processingResults.peakIntegration.map((peak) => (
                             <TableRow key={peak.peakId}>
-                              <TableCell style={{ fontFamily: "monospace" }}>{peak.peakId}</TableCell>
-                              <TableCell>{peak.retentionTime.toFixed(2)}</TableCell>
-                              <TableCell>{peak.peakArea.toLocaleString()}</TableCell>
-                              <TableCell>{peak.peakHeight.toLocaleString()}</TableCell>
-                              <TableCell>{peak.symmetryFactor.toFixed(2)}</TableCell>
-                              <TableCell>{peak.resolution.toFixed(2)}</TableCell>
-                              <TableCell>{peak.signalToNoise.toFixed(1)}</TableCell>
+                              <TableCell style={{ fontFamily: "monospace" }}>
+                                {peak.peakId}
+                              </TableCell>
+                              <TableCell>
+                                {peak.retentionTime.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                {peak.peakArea.toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                {peak.peakHeight.toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                {peak.symmetryFactor.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                {peak.resolution.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                {peak.signalToNoise.toFixed(1)}
+                              </TableCell>
                               <TableCell>
                                 <span
                                   style={{
@@ -2248,11 +2418,17 @@ function BioanalyticalAnalyticalExecutionPage({
                                     padding: "0.25rem 0.5rem",
                                     borderRadius: "4px",
                                     fontSize: "0.75rem",
-                                    backgroundColor: peak.manualReview ? "#f1c21b" : "#24a148",
-                                    color: peak.manualReview ? "#161616" : "white",
+                                    backgroundColor: peak.manualReview
+                                      ? "#f1c21b"
+                                      : "#24a148",
+                                    color: peak.manualReview
+                                      ? "#161616"
+                                      : "white",
                                   }}
                                 >
-                                  {peak.manualReview ? "REQUIRED" : "NOT NEEDED"}
+                                  {peak.manualReview
+                                    ? "REQUIRED"
+                                    : "NOT NEEDED"}
                                 </span>
                               </TableCell>
                             </TableRow>
@@ -2269,7 +2445,9 @@ function BioanalyticalAnalyticalExecutionPage({
                         <FormattedMessage
                           id="notebook.bioanalytical.execution.quantificationResults"
                           defaultMessage="Automated Quantification Results ({count})"
-                          values={{ count: processingResults.quantification.length }}
+                          values={{
+                            count: processingResults.quantification.length,
+                          }}
                         />
                       </h5>
                       <Table>
@@ -2287,45 +2465,58 @@ function BioanalyticalAnalyticalExecutionPage({
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {processingResults.quantification.map((quant, index) => (
-                            <TableRow key={index}>
-                              <TableCell style={{ fontFamily: "monospace" }}>{quant.sampleId}</TableCell>
-                              <TableCell>{quant.analyte}</TableCell>
-                              <TableCell>{quant.peakArea.toLocaleString()}</TableCell>
-                              <TableCell>
-                                {quant.concentration.toFixed(1)} {quant.units}
-                              </TableCell>
-                              <TableCell>{quant.accuracyPercent.toFixed(1)}%</TableCell>
-                              <TableCell>{quant.cvPercent.toFixed(1)}%</TableCell>
-                              <TableCell>{quant.responseFunction}</TableCell>
-                              <TableCell>
-                                <span
-                                  style={{
-                                    padding: "0.25rem 0.5rem",
-                                    borderRadius: "4px",
-                                    fontSize: "0.75rem",
-                                    backgroundColor: quant.quantificationFlag === "PASSED" ? "#24a148" : "#da1e28",
-                                    color: "white",
-                                  }}
-                                >
-                                  {quant.quantificationFlag}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span
-                                  style={{
-                                    padding: "0.25rem 0.5rem",
-                                    borderRadius: "4px",
-                                    fontSize: "0.75rem",
-                                    backgroundColor: "#0043ce",
-                                    color: "white",
-                                  }}
-                                >
-                                  {quant.automationStatus.replace(/_/g, " ")}
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          {processingResults.quantification.map(
+                            (quant, index) => (
+                              <TableRow key={index}>
+                                <TableCell style={{ fontFamily: "monospace" }}>
+                                  {quant.sampleId}
+                                </TableCell>
+                                <TableCell>{quant.analyte}</TableCell>
+                                <TableCell>
+                                  {quant.peakArea.toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  {quant.concentration.toFixed(1)} {quant.units}
+                                </TableCell>
+                                <TableCell>
+                                  {quant.accuracyPercent.toFixed(1)}%
+                                </TableCell>
+                                <TableCell>
+                                  {quant.cvPercent.toFixed(1)}%
+                                </TableCell>
+                                <TableCell>{quant.responseFunction}</TableCell>
+                                <TableCell>
+                                  <span
+                                    style={{
+                                      padding: "0.25rem 0.5rem",
+                                      borderRadius: "4px",
+                                      fontSize: "0.75rem",
+                                      backgroundColor:
+                                        quant.quantificationFlag === "PASSED"
+                                          ? "#24a148"
+                                          : "#da1e28",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {quant.quantificationFlag}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <span
+                                    style={{
+                                      padding: "0.25rem 0.5rem",
+                                      borderRadius: "4px",
+                                      fontSize: "0.75rem",
+                                      backgroundColor: "#0043ce",
+                                      color: "white",
+                                    }}
+                                  >
+                                    {quant.automationStatus.replace(/_/g, " ")}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ),
+                          )}
                         </TableBody>
                       </Table>
                     </div>
@@ -2399,96 +2590,254 @@ function BioanalyticalAnalyticalExecutionPage({
                         <div
                           style={{
                             padding: "1rem",
-                            backgroundColor: calibrationData && calibrationData.rSquared >= 0.99 ? "#e7f6ea" : "#fff1f1",
+                            backgroundColor:
+                              calibrationData &&
+                              calibrationData.rSquared >= 0.99
+                                ? "#e7f6ea"
+                                : "#fff1f1",
                             borderRadius: "4px",
                             textAlign: "center",
                             borderLeft: `4px solid ${calibrationData && calibrationData.rSquared >= 0.99 ? "#24a148" : "#da1e28"}`,
                           }}
                         >
-                          <h6 style={{ color: calibrationData && calibrationData.rSquared >= 0.99 ? "#24a148" : "#da1e28", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{
+                              color:
+                                calibrationData &&
+                                calibrationData.rSquared >= 0.99
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              marginBottom: "0.5rem",
+                            }}
+                          >
                             Calibration Curve
                           </h6>
-                          <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: calibrationData && calibrationData.rSquared >= 0.99 ? "#24a148" : "#da1e28", margin: 0 }}>
+                          <p
+                            style={{
+                              fontSize: "1.25rem",
+                              fontWeight: "bold",
+                              color:
+                                calibrationData &&
+                                calibrationData.rSquared >= 0.99
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              margin: 0,
+                            }}
+                          >
                             r² = {calibrationData?.rSquared || "N/A"}
                           </p>
                           <p style={{ fontSize: "0.75rem", margin: 0 }}>
-                            {calibrationData && calibrationData.rSquared >= 0.99 ? "✓ PASS (≥0.99)" : "❌ FAIL (<0.99)"}
+                            {calibrationData && calibrationData.rSquared >= 0.99
+                              ? "✓ PASS (≥0.99)"
+                              : "❌ FAIL (<0.99)"}
                           </p>
                         </div>
                         <div
                           style={{
                             padding: "1rem",
-                            backgroundColor: qcResults.length > 0 && qcResults.every(qc => qc.status === "PASS") ? "#e7f6ea" : "#fff1f1",
+                            backgroundColor:
+                              qcResults.length > 0 &&
+                              qcResults.every((qc) => qc.status === "PASS")
+                                ? "#e7f6ea"
+                                : "#fff1f1",
                             borderRadius: "4px",
                             textAlign: "center",
-                            borderLeft: `4px solid ${qcResults.length > 0 && qcResults.every(qc => qc.status === "PASS") ? "#24a148" : "#da1e28"}`,
+                            borderLeft: `4px solid ${qcResults.length > 0 && qcResults.every((qc) => qc.status === "PASS") ? "#24a148" : "#da1e28"}`,
                           }}
                         >
-                          <h6 style={{ color: qcResults.length > 0 && qcResults.every(qc => qc.status === "PASS") ? "#24a148" : "#da1e28", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{
+                              color:
+                                qcResults.length > 0 &&
+                                qcResults.every((qc) => qc.status === "PASS")
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              marginBottom: "0.5rem",
+                            }}
+                          >
                             QC Samples
                           </h6>
-                          <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: qcResults.length > 0 && qcResults.every(qc => qc.status === "PASS") ? "#24a148" : "#da1e28", margin: 0 }}>
-                            {qcResults.filter(qc => qc.status === "PASS").length}/{qcResults.length}
+                          <p
+                            style={{
+                              fontSize: "1.25rem",
+                              fontWeight: "bold",
+                              color:
+                                qcResults.length > 0 &&
+                                qcResults.every((qc) => qc.status === "PASS")
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              margin: 0,
+                            }}
+                          >
+                            {
+                              qcResults.filter((qc) => qc.status === "PASS")
+                                .length
+                            }
+                            /{qcResults.length}
                           </p>
                           <p style={{ fontSize: "0.75rem", margin: 0 }}>
-                            {qcResults.length > 0 && qcResults.every(qc => qc.status === "PASS") ? "✓ ALL PASS" : "❌ SOME FAIL"}
+                            {qcResults.length > 0 &&
+                            qcResults.every((qc) => qc.status === "PASS")
+                              ? "✓ ALL PASS"
+                              : "❌ SOME FAIL"}
                           </p>
                         </div>
                         <div
                           style={{
                             padding: "1rem",
-                            backgroundColor: systemSuitabilityResults.length > 0 && systemSuitabilityResults.every(s => s.status === "PASS") ? "#e7f6ea" : "#fff1f1",
+                            backgroundColor:
+                              systemSuitabilityResults.length > 0 &&
+                              systemSuitabilityResults.every(
+                                (s) => s.status === "PASS",
+                              )
+                                ? "#e7f6ea"
+                                : "#fff1f1",
                             borderRadius: "4px",
                             textAlign: "center",
-                            borderLeft: `4px solid ${systemSuitabilityResults.length > 0 && systemSuitabilityResults.every(s => s.status === "PASS") ? "#24a148" : "#da1e28"}`,
+                            borderLeft: `4px solid ${systemSuitabilityResults.length > 0 && systemSuitabilityResults.every((s) => s.status === "PASS") ? "#24a148" : "#da1e28"}`,
                           }}
                         >
-                          <h6 style={{ color: systemSuitabilityResults.length > 0 && systemSuitabilityResults.every(s => s.status === "PASS") ? "#24a148" : "#da1e28", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{
+                              color:
+                                systemSuitabilityResults.length > 0 &&
+                                systemSuitabilityResults.every(
+                                  (s) => s.status === "PASS",
+                                )
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              marginBottom: "0.5rem",
+                            }}
+                          >
                             System Suitability
                           </h6>
-                          <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: systemSuitabilityResults.length > 0 && systemSuitabilityResults.every(s => s.status === "PASS") ? "#24a148" : "#da1e28", margin: 0 }}>
-                            {systemSuitabilityResults.filter(s => s.status === "PASS").length}/{systemSuitabilityResults.length}
+                          <p
+                            style={{
+                              fontSize: "1.25rem",
+                              fontWeight: "bold",
+                              color:
+                                systemSuitabilityResults.length > 0 &&
+                                systemSuitabilityResults.every(
+                                  (s) => s.status === "PASS",
+                                )
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              margin: 0,
+                            }}
+                          >
+                            {
+                              systemSuitabilityResults.filter(
+                                (s) => s.status === "PASS",
+                              ).length
+                            }
+                            /{systemSuitabilityResults.length}
                           </p>
                           <p style={{ fontSize: "0.75rem", margin: 0 }}>
-                            {systemSuitabilityResults.length > 0 && systemSuitabilityResults.every(s => s.status === "PASS") ? "✓ ALL PASS" : "❌ SOME FAIL"}
+                            {systemSuitabilityResults.length > 0 &&
+                            systemSuitabilityResults.every(
+                              (s) => s.status === "PASS",
+                            )
+                              ? "✓ ALL PASS"
+                              : "❌ SOME FAIL"}
                           </p>
                         </div>
                         <div
                           style={{
                             padding: "1rem",
-                            backgroundColor: controlSamples.length > 0 && controlSamples.every(c => c.status === "PASS") ? "#e7f6ea" : "#fff1f1",
+                            backgroundColor:
+                              controlSamples.length > 0 &&
+                              controlSamples.every((c) => c.status === "PASS")
+                                ? "#e7f6ea"
+                                : "#fff1f1",
                             borderRadius: "4px",
                             textAlign: "center",
-                            borderLeft: `4px solid ${controlSamples.length > 0 && controlSamples.every(c => c.status === "PASS") ? "#24a148" : "#da1e28"}`,
+                            borderLeft: `4px solid ${controlSamples.length > 0 && controlSamples.every((c) => c.status === "PASS") ? "#24a148" : "#da1e28"}`,
                           }}
                         >
-                          <h6 style={{ color: controlSamples.length > 0 && controlSamples.every(c => c.status === "PASS") ? "#24a148" : "#da1e28", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{
+                              color:
+                                controlSamples.length > 0 &&
+                                controlSamples.every((c) => c.status === "PASS")
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              marginBottom: "0.5rem",
+                            }}
+                          >
                             Control Samples
                           </h6>
-                          <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: controlSamples.length > 0 && controlSamples.every(c => c.status === "PASS") ? "#24a148" : "#da1e28", margin: 0 }}>
-                            {controlSamples.filter(c => c.status === "PASS").length}/{controlSamples.length}
+                          <p
+                            style={{
+                              fontSize: "1.25rem",
+                              fontWeight: "bold",
+                              color:
+                                controlSamples.length > 0 &&
+                                controlSamples.every((c) => c.status === "PASS")
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              margin: 0,
+                            }}
+                          >
+                            {
+                              controlSamples.filter((c) => c.status === "PASS")
+                                .length
+                            }
+                            /{controlSamples.length}
                           </p>
                           <p style={{ fontSize: "0.75rem", margin: 0 }}>
-                            {controlSamples.length > 0 && controlSamples.every(c => c.status === "PASS") ? "✓ ALL PASS" : "❌ SOME FAIL"}
+                            {controlSamples.length > 0 &&
+                            controlSamples.every((c) => c.status === "PASS")
+                              ? "✓ ALL PASS"
+                              : "❌ SOME FAIL"}
                           </p>
                         </div>
                         <div
                           style={{
                             padding: "1rem",
-                            backgroundColor: referenceStandardVerification && referenceStandardVerification.status === "QUALIFIED" ? "#e7f6ea" : "#fff1f1",
+                            backgroundColor:
+                              referenceStandardVerification &&
+                              referenceStandardVerification.status ===
+                                "QUALIFIED"
+                                ? "#e7f6ea"
+                                : "#fff1f1",
                             borderRadius: "4px",
                             textAlign: "center",
                             borderLeft: `4px solid ${referenceStandardVerification && referenceStandardVerification.status === "QUALIFIED" ? "#24a148" : "#da1e28"}`,
                           }}
                         >
-                          <h6 style={{ color: referenceStandardVerification && referenceStandardVerification.status === "QUALIFIED" ? "#24a148" : "#da1e28", marginBottom: "0.5rem" }}>
+                          <h6
+                            style={{
+                              color:
+                                referenceStandardVerification &&
+                                referenceStandardVerification.status ===
+                                  "QUALIFIED"
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              marginBottom: "0.5rem",
+                            }}
+                          >
                             Reference Std
                           </h6>
-                          <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: referenceStandardVerification && referenceStandardVerification.status === "QUALIFIED" ? "#24a148" : "#da1e28", margin: 0 }}>
+                          <p
+                            style={{
+                              fontSize: "1.25rem",
+                              fontWeight: "bold",
+                              color:
+                                referenceStandardVerification &&
+                                referenceStandardVerification.status ===
+                                  "QUALIFIED"
+                                  ? "#24a148"
+                                  : "#da1e28",
+                              margin: 0,
+                            }}
+                          >
                             {referenceStandardVerification?.purity || "N/A"}%
                           </p>
                           <p style={{ fontSize: "0.75rem", margin: 0 }}>
-                            {referenceStandardVerification && referenceStandardVerification.status === "QUALIFIED" ? "✓ QUALIFIED" : "❌ UNQUALIFIED"}
+                            {referenceStandardVerification &&
+                            referenceStandardVerification.status === "QUALIFIED"
+                              ? "✓ QUALIFIED"
+                              : "❌ UNQUALIFIED"}
                           </p>
                         </div>
                       </div>
@@ -2561,31 +2910,56 @@ function BioanalyticalAnalyticalExecutionPage({
                                 <TableCell>
                                   <strong>{qc.level}</strong>
                                   {qc.isLLOQ && (
-                                    <span style={{ display: "block", fontSize: "0.75rem", color: "#8a3ffc" }}>
+                                    <span
+                                      style={{
+                                        display: "block",
+                                        fontSize: "0.75rem",
+                                        color: "#8a3ffc",
+                                      }}
+                                    >
                                       (Lower Limit of Quantification)
                                     </span>
                                   )}
                                 </TableCell>
-                                <TableCell>{qc.spikedConcentration} {qc.spikedUnit}</TableCell>
-                                <TableCell>{qc.measuredValue} {qc.measuredUnit}</TableCell>
                                 <TableCell>
-                                  <span style={{
-                                    color: qc.accuracy >= qc.acceptanceCriteria.min && qc.accuracy <= qc.acceptanceCriteria.max ? "#24a148" : "#da1e28",
-                                    fontWeight: "bold"
-                                  }}>
+                                  {qc.spikedConcentration} {qc.spikedUnit}
+                                </TableCell>
+                                <TableCell>
+                                  {qc.measuredValue} {qc.measuredUnit}
+                                </TableCell>
+                                <TableCell>
+                                  <span
+                                    style={{
+                                      color:
+                                        qc.accuracy >=
+                                          qc.acceptanceCriteria.min &&
+                                        qc.accuracy <= qc.acceptanceCriteria.max
+                                          ? "#24a148"
+                                          : "#da1e28",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
                                     {qc.accuracy.toFixed(1)}%
                                   </span>
                                 </TableCell>
                                 <TableCell>
-                                  <span style={{
-                                    color: qc.precision <= qc.precisionLimit ? "#24a148" : "#da1e28",
-                                    fontWeight: "bold"
-                                  }}>
+                                  <span
+                                    style={{
+                                      color:
+                                        qc.precision <= qc.precisionLimit
+                                          ? "#24a148"
+                                          : "#da1e28",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
                                     {qc.precision.toFixed(1)}%
                                   </span>
                                 </TableCell>
                                 <TableCell style={{ fontSize: "0.75rem" }}>
-                                  <div>Accuracy: {qc.acceptanceCriteria.min}-{qc.acceptanceCriteria.max}%</div>
+                                  <div>
+                                    Accuracy: {qc.acceptanceCriteria.min}-
+                                    {qc.acceptanceCriteria.max}%
+                                  </div>
                                   <div>Precision: ≤{qc.precisionLimit}%</div>
                                 </TableCell>
                                 <TableCell style={{ textAlign: "center" }}>
@@ -2595,7 +2969,10 @@ function BioanalyticalAnalyticalExecutionPage({
                                   <span
                                     className="status-badge"
                                     style={{
-                                      backgroundColor: qc.status === "PASS" ? "#24a148" : "#da1e28",
+                                      backgroundColor:
+                                        qc.status === "PASS"
+                                          ? "#24a148"
+                                          : "#da1e28",
                                       color: "white",
                                       padding: "0.25rem 0.5rem",
                                       borderRadius: "4px",
@@ -3254,9 +3631,12 @@ function BioanalyticalAnalyticalExecutionPage({
                             id="alcoa-attributable"
                             checked={dataIntegrity.userAttribution.verified}
                             onChange={(e) =>
-                              setDataIntegrity(prev => ({
+                              setDataIntegrity((prev) => ({
                                 ...prev,
-                                userAttribution: { verified: e.target.checked, user: "CURRENT_USER" }
+                                userAttribution: {
+                                  verified: e.target.checked,
+                                  user: "CURRENT_USER",
+                                },
                               }))
                             }
                             labelText=""
@@ -3268,7 +3648,8 @@ function BioanalyticalAnalyticalExecutionPage({
                               fontSize: "0.875rem",
                             }}
                           >
-                            <strong>Attributable:</strong> All data actions traced to responsible individuals
+                            <strong>Attributable:</strong> All data actions
+                            traced to responsible individuals
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
@@ -3283,10 +3664,11 @@ function BioanalyticalAnalyticalExecutionPage({
                             style={{
                               marginLeft: "0.5rem",
                               fontSize: "0.875rem",
-                              color: "#525252"
+                              color: "#525252",
                             }}
                           >
-                            <strong>Legible:</strong> Digital format ensures permanent readability ✓
+                            <strong>Legible:</strong> Digital format ensures
+                            permanent readability ✓
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
@@ -3294,9 +3676,9 @@ function BioanalyticalAnalyticalExecutionPage({
                             id="alcoa-contemporaneous"
                             checked={dataIntegrity.contemporaneousRecord}
                             onChange={(e) =>
-                              setDataIntegrity(prev => ({
+                              setDataIntegrity((prev) => ({
                                 ...prev,
-                                contemporaneousRecord: e.target.checked
+                                contemporaneousRecord: e.target.checked,
                               }))
                             }
                             labelText=""
@@ -3308,7 +3690,8 @@ function BioanalyticalAnalyticalExecutionPage({
                               fontSize: "0.875rem",
                             }}
                           >
-                            <strong>Contemporaneous:</strong> Data recorded at time of observation
+                            <strong>Contemporaneous:</strong> Data recorded at
+                            time of observation
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
@@ -3316,9 +3699,9 @@ function BioanalyticalAnalyticalExecutionPage({
                             id="alcoa-original"
                             checked={dataIntegrity.originalityVerified}
                             onChange={(e) =>
-                              setDataIntegrity(prev => ({
+                              setDataIntegrity((prev) => ({
                                 ...prev,
-                                originalityVerified: e.target.checked
+                                originalityVerified: e.target.checked,
                               }))
                             }
                             labelText=""
@@ -3330,7 +3713,8 @@ function BioanalyticalAnalyticalExecutionPage({
                               fontSize: "0.875rem",
                             }}
                           >
-                            <strong>Original:</strong> First recording of data, checksums verified
+                            <strong>Original:</strong> First recording of data,
+                            checksums verified
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
@@ -3345,16 +3729,26 @@ function BioanalyticalAnalyticalExecutionPage({
                             style={{
                               marginLeft: "0.5rem",
                               fontSize: "0.875rem",
-                              color: calibrationData && qcResults.length > 0 ? "#161616" : "#da1e28"
+                              color:
+                                calibrationData && qcResults.length > 0
+                                  ? "#161616"
+                                  : "#da1e28",
                             }}
                           >
-                            <strong>Accurate:</strong> QC validation and calibration curve verification {calibrationData && qcResults.length > 0 ? "✓" : "❌"}
+                            <strong>Accurate:</strong> QC validation and
+                            calibration curve verification{" "}
+                            {calibrationData && qcResults.length > 0
+                              ? "✓"
+                              : "❌"}
                           </label>
                         </div>
                         <div style={{ display: "flex", alignItems: "center" }}>
                           <Checkbox
                             id="alcoa-complete"
-                            checked={uploadedFiles.length > 0 && analyzerResults.length > 0}
+                            checked={
+                              uploadedFiles.length > 0 &&
+                              analyzerResults.length > 0
+                            }
                             disabled
                             labelText=""
                           />
@@ -3363,10 +3757,19 @@ function BioanalyticalAnalyticalExecutionPage({
                             style={{
                               marginLeft: "0.5rem",
                               fontSize: "0.875rem",
-                              color: uploadedFiles.length > 0 && analyzerResults.length > 0 ? "#161616" : "#da1e28"
+                              color:
+                                uploadedFiles.length > 0 &&
+                                analyzerResults.length > 0
+                                  ? "#161616"
+                                  : "#da1e28",
                             }}
                           >
-                            <strong>Complete:</strong> All required data uploaded and processed {uploadedFiles.length > 0 && analyzerResults.length > 0 ? "✓" : "❌"}
+                            <strong>Complete:</strong> All required data
+                            uploaded and processed{" "}
+                            {uploadedFiles.length > 0 &&
+                            analyzerResults.length > 0
+                              ? "✓"
+                              : "❌"}
                           </label>
                         </div>
                       </div>
@@ -3393,9 +3796,9 @@ function BioanalyticalAnalyticalExecutionPage({
                           labelText="Reviewing Analyst ID *"
                           value={analystReview.reviewerId}
                           onChange={(e) =>
-                            setAnalystReview(prev => ({
+                            setAnalystReview((prev) => ({
                               ...prev,
-                              reviewerId: e.target.value
+                              reviewerId: e.target.value,
                             }))
                           }
                           placeholder="Enter analyst ID"
@@ -3405,9 +3808,9 @@ function BioanalyticalAnalyticalExecutionPage({
                           labelText="Reviewing Analyst Name *"
                           value={analystReview.reviewerName}
                           onChange={(e) =>
-                            setAnalystReview(prev => ({
+                            setAnalystReview((prev) => ({
                               ...prev,
-                              reviewerName: e.target.value
+                              reviewerName: e.target.value,
                             }))
                           }
                           placeholder="Enter full name"
@@ -3420,9 +3823,9 @@ function BioanalyticalAnalyticalExecutionPage({
                           placeholder="Document review findings, data integrity assessment, any anomalies or deviations observed, compliance with analytical methods..."
                           value={analystReview.comments}
                           onChange={(e) =>
-                            setAnalystReview(prev => ({
+                            setAnalystReview((prev) => ({
                               ...prev,
-                              comments: e.target.value
+                              comments: e.target.value,
                             }))
                           }
                           rows={4}
@@ -3435,9 +3838,9 @@ function BioanalyticalAnalyticalExecutionPage({
                           type="password"
                           value={analystReview.electronicSignature}
                           onChange={(e) =>
-                            setAnalystReview(prev => ({
+                            setAnalystReview((prev) => ({
                               ...prev,
-                              electronicSignature: e.target.value
+                              electronicSignature: e.target.value,
                             }))
                           }
                           placeholder="Enter password for electronic signature"
@@ -3445,15 +3848,24 @@ function BioanalyticalAnalyticalExecutionPage({
                         />
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          marginBottom: "1.5rem",
+                        }}
+                      >
                         <Checkbox
                           id="analyst-approval"
                           checked={analystReview.approved}
                           onChange={(e) =>
-                            setAnalystReview(prev => ({
+                            setAnalystReview((prev) => ({
                               ...prev,
                               approved: e.target.checked,
-                              reviewDate: e.target.checked ? new Date().toISOString() : ""
+                              reviewDate: e.target.checked
+                                ? new Date().toISOString()
+                                : "",
                             }))
                           }
                           labelText=""
@@ -3462,7 +3874,8 @@ function BioanalyticalAnalyticalExecutionPage({
                           htmlFor="analyst-approval"
                           style={{ fontSize: "0.875rem", fontWeight: "bold" }}
                         >
-                          I certify that I have reviewed all analytical data and confirm ALCOA+ compliance
+                          I certify that I have reviewed all analytical data and
+                          confirm ALCOA+ compliance
                         </label>
                       </div>
 
@@ -3486,22 +3899,27 @@ function BioanalyticalAnalyticalExecutionPage({
                               {
                                 reviewerId: analystReview.reviewerId,
                                 reviewerName: analystReview.reviewerName,
-                                reviewComments: analystReview.comments.substring(0, 200) + "...",
+                                reviewComments:
+                                  analystReview.comments.substring(0, 200) +
+                                  "...",
                                 alcoaCompliance: {
-                                  attributable: dataIntegrity.userAttribution.verified,
-                                  contemporaneous: dataIntegrity.contemporaneousRecord,
-                                  original: dataIntegrity.originalityVerified
+                                  attributable:
+                                    dataIntegrity.userAttribution.verified,
+                                  contemporaneous:
+                                    dataIntegrity.contemporaneousRecord,
+                                  original: dataIntegrity.originalityVerified,
                                 },
                                 electronicSignature: "PROVIDED",
-                                nextStage: "QA_REVIEW"
+                                nextStage: "QA_REVIEW",
                               },
-                              analystReview.reviewerId
+                              analystReview.reviewerId,
                             );
 
                             setReviewStatus("ANALYST_APPROVED");
                             notify({
                               kind: NotificationKinds.success,
-                              message: "Primary analyst review completed. Data approved for secondary QA review.",
+                              message:
+                                "Primary analyst review completed. Data approved for secondary QA review.",
                             });
                             // Auto-navigate to QA Review tab
                             setSelectedTab(7); // QA Review is now tab 7
@@ -3520,7 +3938,8 @@ function BioanalyticalAnalyticalExecutionPage({
                             setReviewStatus("ANALYST_REJECTED");
                             notify({
                               kind: NotificationKinds.error,
-                              message: "Analyst review rejected. Data requires correction before QA review.",
+                              message:
+                                "Analyst review rejected. Data requires correction before QA review.",
                             });
                           }}
                         >
@@ -3538,12 +3957,18 @@ function BioanalyticalAnalyticalExecutionPage({
                         style={{
                           padding: "1rem",
                           backgroundColor:
-                            reviewStatus === "ANALYST_APPROVED" ? "#e7f1f5" :
-                            reviewStatus === "ANALYST_REJECTED" ? "#fff1f1" : "#f4f4f4",
+                            reviewStatus === "ANALYST_APPROVED"
+                              ? "#e7f1f5"
+                              : reviewStatus === "ANALYST_REJECTED"
+                                ? "#fff1f1"
+                                : "#f4f4f4",
                           borderRadius: "4px",
                           borderLeft: `4px solid ${
-                            reviewStatus === "ANALYST_APPROVED" ? "#24a148" :
-                            reviewStatus === "ANALYST_REJECTED" ? "#da1e28" : "#8d8d8d"
+                            reviewStatus === "ANALYST_APPROVED"
+                              ? "#24a148"
+                              : reviewStatus === "ANALYST_REJECTED"
+                                ? "#da1e28"
+                                : "#8d8d8d"
                           }`,
                         }}
                       >
@@ -3551,7 +3976,7 @@ function BioanalyticalAnalyticalExecutionPage({
                           <FormattedMessage
                             id="notebook.bioanalytical.execution.reviewStatus"
                             defaultMessage="Review Status: {status}"
-                            values={{ status: reviewStatus.replace(/_/g, ' ') }}
+                            values={{ status: reviewStatus.replace(/_/g, " ") }}
                           />
                         </h6>
                         {analystReview.reviewDate && (
@@ -3561,7 +3986,9 @@ function BioanalyticalAnalyticalExecutionPage({
                               defaultMessage="Reviewed by: {analyst} on {date}"
                               values={{
                                 analyst: analystReview.reviewerName,
-                                date: new Date(analystReview.reviewDate).toLocaleString()
+                                date: new Date(
+                                  analystReview.reviewDate,
+                                ).toLocaleString(),
                               }}
                             />
                           </p>
@@ -3599,41 +4026,100 @@ function BioanalyticalAnalyticalExecutionPage({
                     style={{
                       marginTop: "1.5rem",
                       padding: "1rem",
-                      backgroundColor: reviewStatus === "ANALYST_APPROVED" ? "#e7f1f5" : "#fff1f1",
+                      backgroundColor:
+                        reviewStatus === "ANALYST_APPROVED"
+                          ? "#e7f1f5"
+                          : "#fff1f1",
                       borderRadius: "4px",
                       borderLeft: `4px solid ${reviewStatus === "ANALYST_APPROVED" ? "#24a148" : "#da1e28"}`,
                     }}
                   >
-                    <h6 style={{ margin: "0 0 0.5rem 0", color: reviewStatus === "ANALYST_APPROVED" ? "#24a148" : "#da1e28" }}>
+                    <h6
+                      style={{
+                        margin: "0 0 0.5rem 0",
+                        color:
+                          reviewStatus === "ANALYST_APPROVED"
+                            ? "#24a148"
+                            : "#da1e28",
+                      }}
+                    >
                       <FormattedMessage
                         id="notebook.bioanalytical.execution.qaPrerequisites"
                         defaultMessage="QA Review Prerequisites"
                       />
                     </h6>
                     <div style={{ fontSize: "0.875rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
                         <span style={{ marginRight: "0.5rem" }}>
                           {reviewStatus === "ANALYST_APPROVED" ? "✓" : "❌"}
                         </span>
-                        <span>Primary Analyst Review: {reviewStatus === "ANALYST_APPROVED" ? "COMPLETED" : "PENDING"}</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
-                        <span style={{ marginRight: "0.5rem" }}>
-                          {calibrationData && calibrationData.rSquared >= 0.99 ? "✓" : "❌"}
+                        <span>
+                          Primary Analyst Review:{" "}
+                          {reviewStatus === "ANALYST_APPROVED"
+                            ? "COMPLETED"
+                            : "PENDING"}
                         </span>
-                        <span>Calibration Curve Validation: {calibrationData && calibrationData.rSquared >= 0.99 ? "PASSED" : "PENDING"}</span>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
                         <span style={{ marginRight: "0.5rem" }}>
-                          {qcResults.length > 0 && qcResults.every(qc => qc.status === "PASS") ? "✓" : "❌"}
+                          {calibrationData && calibrationData.rSquared >= 0.99
+                            ? "✓"
+                            : "❌"}
                         </span>
-                        <span>QC Results Validation: {qcResults.length > 0 && qcResults.every(qc => qc.status === "PASS") ? "ALL PASSED" : "PENDING"}</span>
+                        <span>
+                          Calibration Curve Validation:{" "}
+                          {calibrationData && calibrationData.rSquared >= 0.99
+                            ? "PASSED"
+                            : "PENDING"}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        <span style={{ marginRight: "0.5rem" }}>
+                          {qcResults.length > 0 &&
+                          qcResults.every((qc) => qc.status === "PASS")
+                            ? "✓"
+                            : "❌"}
+                        </span>
+                        <span>
+                          QC Results Validation:{" "}
+                          {qcResults.length > 0 &&
+                          qcResults.every((qc) => qc.status === "PASS")
+                            ? "ALL PASSED"
+                            : "PENDING"}
+                        </span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <span style={{ marginRight: "0.5rem" }}>
-                          {westgardRules.length > 0 && westgardRules.every(rule => rule.status === "PASS") ? "✓" : "❌"}
+                          {westgardRules.length > 0 &&
+                          westgardRules.every((rule) => rule.status === "PASS")
+                            ? "✓"
+                            : "❌"}
                         </span>
-                        <span>Westgard Rules Check: {westgardRules.length > 0 && westgardRules.every(rule => rule.status === "PASS") ? "ALL PASSED" : "PENDING"}</span>
+                        <span>
+                          Westgard Rules Check:{" "}
+                          {westgardRules.length > 0 &&
+                          westgardRules.every((rule) => rule.status === "PASS")
+                            ? "ALL PASSED"
+                            : "PENDING"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -3654,53 +4140,86 @@ function BioanalyticalAnalyticalExecutionPage({
                           borderRadius: "4px",
                         }}
                       >
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                          <div style={{ display: "flex", alignItems: "center" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.75rem",
+                          }}
+                        >
+                          <div
+                            style={{ display: "flex", alignItems: "center" }}
+                          >
                             <Checkbox
                               id="qa-data-integrity"
                               checked={qaReview.dataIntegrityVerified}
                               onChange={(e) =>
-                                setQaReview(prev => ({
+                                setQaReview((prev) => ({
                                   ...prev,
-                                  dataIntegrityVerified: e.target.checked
+                                  dataIntegrityVerified: e.target.checked,
                                 }))
                               }
                               labelText=""
                             />
-                            <label htmlFor="qa-data-integrity" style={{ marginLeft: "0.5rem", fontSize: "0.875rem" }}>
-                              <strong>Data Integrity:</strong> ALCOA+ compliance verified, audit trail complete
+                            <label
+                              htmlFor="qa-data-integrity"
+                              style={{
+                                marginLeft: "0.5rem",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              <strong>Data Integrity:</strong> ALCOA+ compliance
+                              verified, audit trail complete
                             </label>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center" }}>
+                          <div
+                            style={{ display: "flex", alignItems: "center" }}
+                          >
                             <Checkbox
                               id="qa-method-compliance"
                               checked={qaReview.methodComplianceVerified}
                               onChange={(e) =>
-                                setQaReview(prev => ({
+                                setQaReview((prev) => ({
                                   ...prev,
-                                  methodComplianceVerified: e.target.checked
+                                  methodComplianceVerified: e.target.checked,
                                 }))
                               }
                               labelText=""
                             />
-                            <label htmlFor="qa-method-compliance" style={{ marginLeft: "0.5rem", fontSize: "0.875rem" }}>
-                              <strong>Method Compliance:</strong> Validated analytical method followed exactly
+                            <label
+                              htmlFor="qa-method-compliance"
+                              style={{
+                                marginLeft: "0.5rem",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              <strong>Method Compliance:</strong> Validated
+                              analytical method followed exactly
                             </label>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center" }}>
+                          <div
+                            style={{ display: "flex", alignItems: "center" }}
+                          >
                             <Checkbox
                               id="qa-qc-acceptable"
                               checked={qaReview.qcAcceptable}
                               onChange={(e) =>
-                                setQaReview(prev => ({
+                                setQaReview((prev) => ({
                                   ...prev,
-                                  qcAcceptable: e.target.checked
+                                  qcAcceptable: e.target.checked,
                                 }))
                               }
                               labelText=""
                             />
-                            <label htmlFor="qa-qc-acceptable" style={{ marginLeft: "0.5rem", fontSize: "0.875rem" }}>
-                              <strong>QC Acceptance:</strong> All QC levels meet acceptance criteria (90-110% accuracy, ≤15% RSD)
+                            <label
+                              htmlFor="qa-qc-acceptable"
+                              style={{
+                                marginLeft: "0.5rem",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              <strong>QC Acceptance:</strong> All QC levels meet
+                              acceptance criteria (90-110% accuracy, ≤15% RSD)
                             </label>
                           </div>
                         </div>
@@ -3714,12 +4233,22 @@ function BioanalyticalAnalyticalExecutionPage({
                             defaultMessage="QA Review & Electronic Signature"
                           />
                         </h5>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "1rem",
+                            marginBottom: "1.5rem",
+                          }}
+                        >
                           <TextInput
                             labelText="QA Reviewer ID *"
                             value={qaReview.reviewerId}
                             onChange={(e) =>
-                              setQaReview(prev => ({ ...prev, reviewerId: e.target.value }))
+                              setQaReview((prev) => ({
+                                ...prev,
+                                reviewerId: e.target.value,
+                              }))
                             }
                             placeholder="Enter QA reviewer ID"
                           />
@@ -3727,7 +4256,10 @@ function BioanalyticalAnalyticalExecutionPage({
                             labelText="QA Reviewer Name *"
                             value={qaReview.reviewerName}
                             onChange={(e) =>
-                              setQaReview(prev => ({ ...prev, reviewerName: e.target.value }))
+                              setQaReview((prev) => ({
+                                ...prev,
+                                reviewerName: e.target.value,
+                              }))
                             }
                             placeholder="Enter full name"
                           />
@@ -3739,7 +4271,10 @@ function BioanalyticalAnalyticalExecutionPage({
                             placeholder="Document QA assessment, data quality evaluation, method compliance verification, statistical validity, any concerns or recommendations..."
                             value={qaReview.comments}
                             onChange={(e) =>
-                              setQaReview(prev => ({ ...prev, comments: e.target.value }))
+                              setQaReview((prev) => ({
+                                ...prev,
+                                comments: e.target.value,
+                              }))
                             }
                             rows={4}
                           />
@@ -3751,28 +4286,44 @@ function BioanalyticalAnalyticalExecutionPage({
                             type="password"
                             value={qaReview.electronicSignature}
                             onChange={(e) =>
-                              setQaReview(prev => ({ ...prev, electronicSignature: e.target.value }))
+                              setQaReview((prev) => ({
+                                ...prev,
+                                electronicSignature: e.target.value,
+                              }))
                             }
                             placeholder="Enter password for electronic signature"
                             helperText="Electronic signature validates QA review and data quality assessment"
                           />
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            marginBottom: "1.5rem",
+                          }}
+                        >
                           <Checkbox
                             id="qa-approval"
                             checked={qaReview.approved}
                             onChange={(e) =>
-                              setQaReview(prev => ({
+                              setQaReview((prev) => ({
                                 ...prev,
                                 approved: e.target.checked,
-                                reviewDate: e.target.checked ? new Date().toISOString() : ""
+                                reviewDate: e.target.checked
+                                  ? new Date().toISOString()
+                                  : "",
                               }))
                             }
                             labelText=""
                           />
-                          <label htmlFor="qa-approval" style={{ fontSize: "0.875rem", fontWeight: "bold" }}>
-                            I certify that all analytical data meets quality standards and regulatory requirements
+                          <label
+                            htmlFor="qa-approval"
+                            style={{ fontSize: "0.875rem", fontWeight: "bold" }}
+                          >
+                            I certify that all analytical data meets quality
+                            standards and regulatory requirements
                           </label>
                         </div>
 
@@ -3796,20 +4347,24 @@ function BioanalyticalAnalyticalExecutionPage({
                                 {
                                   reviewerId: qaReview.reviewerId,
                                   reviewerName: qaReview.reviewerName,
-                                  reviewComments: qaReview.comments.substring(0, 200) + "...",
-                                  dataIntegrityVerified: qaReview.dataIntegrityVerified,
-                                  methodComplianceVerified: qaReview.methodComplianceVerified,
+                                  reviewComments:
+                                    qaReview.comments.substring(0, 200) + "...",
+                                  dataIntegrityVerified:
+                                    qaReview.dataIntegrityVerified,
+                                  methodComplianceVerified:
+                                    qaReview.methodComplianceVerified,
                                   qcAcceptable: qaReview.qcAcceptable,
                                   electronicSignature: "PROVIDED",
-                                  nextStage: "MANAGER_APPROVAL"
+                                  nextStage: "MANAGER_APPROVAL",
                                 },
-                                qaReview.reviewerId
+                                qaReview.reviewerId,
                               );
 
                               setReviewStatus("QA_APPROVED");
                               notify({
                                 kind: NotificationKinds.success,
-                                message: "QA review completed. Data approved for final manager approval.",
+                                message:
+                                  "QA review completed. Data approved for final manager approval.",
                               });
                               // Auto-navigate to Manager Review tab
                               setSelectedTab(8); // Manager Review is now tab 8
@@ -3830,16 +4385,19 @@ function BioanalyticalAnalyticalExecutionPage({
                                 {
                                   reviewerId: qaReview.reviewerId,
                                   reviewerName: qaReview.reviewerName,
-                                  reviewComments: qaReview.comments.substring(0, 200) + "...",
-                                  rejectionReason: "Data quality concerns require correction"
+                                  reviewComments:
+                                    qaReview.comments.substring(0, 200) + "...",
+                                  rejectionReason:
+                                    "Data quality concerns require correction",
                                 },
-                                qaReview.reviewerId
+                                qaReview.reviewerId,
                               );
 
                               setReviewStatus("QA_REJECTED");
                               notify({
                                 kind: NotificationKinds.error,
-                                message: "QA review rejected. Data requires correction before manager approval.",
+                                message:
+                                  "QA review rejected. Data requires correction before manager approval.",
                               });
                             }}
                           >
@@ -3882,35 +4440,82 @@ function BioanalyticalAnalyticalExecutionPage({
                     style={{
                       marginTop: "1.5rem",
                       padding: "1rem",
-                      backgroundColor: reviewStatus === "QA_APPROVED" ? "#e7f1f5" : "#fff1f1",
+                      backgroundColor:
+                        reviewStatus === "QA_APPROVED" ? "#e7f1f5" : "#fff1f1",
                       borderRadius: "4px",
                       borderLeft: `4px solid ${reviewStatus === "QA_APPROVED" ? "#24a148" : "#da1e28"}`,
                     }}
                   >
-                    <h6 style={{ margin: "0 0 0.5rem 0", color: reviewStatus === "QA_APPROVED" ? "#24a148" : "#da1e28" }}>
+                    <h6
+                      style={{
+                        margin: "0 0 0.5rem 0",
+                        color:
+                          reviewStatus === "QA_APPROVED"
+                            ? "#24a148"
+                            : "#da1e28",
+                      }}
+                    >
                       <FormattedMessage
                         id="notebook.bioanalytical.execution.managerPrerequisites"
                         defaultMessage="Manager Approval Prerequisites"
                       />
                     </h6>
                     <div style={{ fontSize: "0.875rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
                         <span style={{ marginRight: "0.5rem" }}>
                           {reviewStatus === "QA_APPROVED" ? "✓" : "❌"}
                         </span>
-                        <span>QA Review: {reviewStatus === "QA_APPROVED" ? "COMPLETED" : "PENDING"}</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
-                        <span style={{ marginRight: "0.5rem" }}>
-                          {analystReview.approved && qaReview.approved ? "✓" : "❌"}
+                        <span>
+                          QA Review:{" "}
+                          {reviewStatus === "QA_APPROVED"
+                            ? "COMPLETED"
+                            : "PENDING"}
                         </span>
-                        <span>All Review Levels: {analystReview.approved && qaReview.approved ? "APPROVED" : "PENDING"}</span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        <span style={{ marginRight: "0.5rem" }}>
+                          {analystReview.approved && qaReview.approved
+                            ? "✓"
+                            : "❌"}
+                        </span>
+                        <span>
+                          All Review Levels:{" "}
+                          {analystReview.approved && qaReview.approved
+                            ? "APPROVED"
+                            : "PENDING"}
+                        </span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <span style={{ marginRight: "0.5rem" }}>
-                          {deviations.length === 0 || deviations.every(d => d.batchDisposition !== "REJECT") ? "✓" : "❌"}
+                          {deviations.length === 0 ||
+                          deviations.every(
+                            (d) => d.batchDisposition !== "REJECT",
+                          )
+                            ? "✓"
+                            : "❌"}
                         </span>
-                        <span>Deviations Status: {deviations.length === 0 ? "NONE RECORDED" : deviations.every(d => d.batchDisposition !== "REJECT") ? "ALL RESOLVED" : "PENDING RESOLUTION"}</span>
+                        <span>
+                          Deviations Status:{" "}
+                          {deviations.length === 0
+                            ? "NONE RECORDED"
+                            : deviations.every(
+                                  (d) => d.batchDisposition !== "REJECT",
+                                )
+                              ? "ALL RESOLVED"
+                              : "PENDING RESOLUTION"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -3925,12 +4530,22 @@ function BioanalyticalAnalyticalExecutionPage({
                         />
                       </h5>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "1rem",
+                          marginBottom: "1.5rem",
+                        }}
+                      >
                         <TextInput
                           labelText="Manager/Director ID *"
                           value={managerReview.reviewerId}
                           onChange={(e) =>
-                            setManagerReview(prev => ({ ...prev, reviewerId: e.target.value }))
+                            setManagerReview((prev) => ({
+                              ...prev,
+                              reviewerId: e.target.value,
+                            }))
                           }
                           placeholder="Enter manager ID"
                         />
@@ -3938,7 +4553,10 @@ function BioanalyticalAnalyticalExecutionPage({
                           labelText="Manager/Director Name *"
                           value={managerReview.reviewerName}
                           onChange={(e) =>
-                            setManagerReview(prev => ({ ...prev, reviewerName: e.target.value }))
+                            setManagerReview((prev) => ({
+                              ...prev,
+                              reviewerName: e.target.value,
+                            }))
                           }
                           placeholder="Enter full name"
                         />
@@ -3949,14 +4567,29 @@ function BioanalyticalAnalyticalExecutionPage({
                           labelText="Study Impact Assessment *"
                           value={managerReview.studyImpact}
                           onChange={(e) =>
-                            setManagerReview(prev => ({ ...prev, studyImpact: e.target.value }))
+                            setManagerReview((prev) => ({
+                              ...prev,
+                              studyImpact: e.target.value,
+                            }))
                           }
                         >
                           <SelectItem value="" text="Select study impact..." />
-                          <SelectItem value="NO_IMPACT" text="No Impact - Standard results" />
-                          <SelectItem value="MINOR_IMPACT" text="Minor Impact - Within expected variance" />
-                          <SelectItem value="MODERATE_IMPACT" text="Moderate Impact - Requires documentation" />
-                          <SelectItem value="SIGNIFICANT_IMPACT" text="Significant Impact - May affect study conclusions" />
+                          <SelectItem
+                            value="NO_IMPACT"
+                            text="No Impact - Standard results"
+                          />
+                          <SelectItem
+                            value="MINOR_IMPACT"
+                            text="Minor Impact - Within expected variance"
+                          />
+                          <SelectItem
+                            value="MODERATE_IMPACT"
+                            text="Moderate Impact - Requires documentation"
+                          />
+                          <SelectItem
+                            value="SIGNIFICANT_IMPACT"
+                            text="Significant Impact - May affect study conclusions"
+                          />
                         </Select>
                       </div>
 
@@ -3965,28 +4598,60 @@ function BioanalyticalAnalyticalExecutionPage({
                           labelText="Final Data Disposition *"
                           value={managerReview.finalDisposition}
                           onChange={(e) =>
-                            setManagerReview(prev => ({ ...prev, finalDisposition: e.target.value }))
+                            setManagerReview((prev) => ({
+                              ...prev,
+                              finalDisposition: e.target.value,
+                            }))
                           }
                         >
-                          <SelectItem value="" text="Select final disposition..." />
-                          <SelectItem value="APPROVE_RELEASE" text="Approve & Release to External Systems" />
-                          <SelectItem value="APPROVE_HOLD" text="Approve but Hold for Further Review" />
-                          <SelectItem value="CONDITIONAL_APPROVAL" text="Conditional Approval with Restrictions" />
-                          <SelectItem value="REJECT_REPROCESS" text="Reject - Require Reprocessing" />
+                          <SelectItem
+                            value=""
+                            text="Select final disposition..."
+                          />
+                          <SelectItem
+                            value="APPROVE_RELEASE"
+                            text="Approve & Release to External Systems"
+                          />
+                          <SelectItem
+                            value="APPROVE_HOLD"
+                            text="Approve but Hold for Further Review"
+                          />
+                          <SelectItem
+                            value="CONDITIONAL_APPROVAL"
+                            text="Conditional Approval with Restrictions"
+                          />
+                          <SelectItem
+                            value="REJECT_REPROCESS"
+                            text="Reject - Require Reprocessing"
+                          />
                         </Select>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          marginBottom: "1.5rem",
+                        }}
+                      >
                         <Checkbox
                           id="regulatory-compliance"
                           checked={managerReview.regulatoryCompliance}
                           onChange={(e) =>
-                            setManagerReview(prev => ({ ...prev, regulatoryCompliance: e.target.checked }))
+                            setManagerReview((prev) => ({
+                              ...prev,
+                              regulatoryCompliance: e.target.checked,
+                            }))
                           }
                           labelText=""
                         />
-                        <label htmlFor="regulatory-compliance" style={{ fontSize: "0.875rem", fontWeight: "bold" }}>
-                          I certify regulatory compliance and authorize data for external use
+                        <label
+                          htmlFor="regulatory-compliance"
+                          style={{ fontSize: "0.875rem", fontWeight: "bold" }}
+                        >
+                          I certify regulatory compliance and authorize data for
+                          external use
                         </label>
                       </div>
 
@@ -3996,7 +4661,10 @@ function BioanalyticalAnalyticalExecutionPage({
                           placeholder="Document overall assessment, study impact evaluation, regulatory considerations, business implications, and authorization for data release..."
                           value={managerReview.comments}
                           onChange={(e) =>
-                            setManagerReview(prev => ({ ...prev, comments: e.target.value }))
+                            setManagerReview((prev) => ({
+                              ...prev,
+                              comments: e.target.value,
+                            }))
                           }
                           rows={4}
                         />
@@ -4008,28 +4676,44 @@ function BioanalyticalAnalyticalExecutionPage({
                           type="password"
                           value={managerReview.electronicSignature}
                           onChange={(e) =>
-                            setManagerReview(prev => ({ ...prev, electronicSignature: e.target.value }))
+                            setManagerReview((prev) => ({
+                              ...prev,
+                              electronicSignature: e.target.value,
+                            }))
                           }
                           placeholder="Enter password for electronic signature"
                           helperText="Electronic signature provides final authorization for data release"
                         />
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          marginBottom: "1.5rem",
+                        }}
+                      >
                         <Checkbox
                           id="manager-approval"
                           checked={managerReview.approved}
                           onChange={(e) =>
-                            setManagerReview(prev => ({
+                            setManagerReview((prev) => ({
                               ...prev,
                               approved: e.target.checked,
-                              reviewDate: e.target.checked ? new Date().toISOString() : ""
+                              reviewDate: e.target.checked
+                                ? new Date().toISOString()
+                                : "",
                             }))
                           }
                           labelText=""
                         />
-                        <label htmlFor="manager-approval" style={{ fontSize: "0.875rem", fontWeight: "bold" }}>
-                          I provide final approval and authorization for this analytical data
+                        <label
+                          htmlFor="manager-approval"
+                          style={{ fontSize: "0.875rem", fontWeight: "bold" }}
+                        >
+                          I provide final approval and authorization for this
+                          analytical data
                         </label>
                       </div>
 
@@ -4054,19 +4738,24 @@ function BioanalyticalAnalyticalExecutionPage({
                                 reviewerId: managerReview.reviewerId,
                                 reviewerName: managerReview.reviewerName,
                                 studyImpact: managerReview.studyImpact,
-                                finalDisposition: managerReview.finalDisposition,
-                                regulatoryCompliance: managerReview.regulatoryCompliance,
-                                reviewComments: managerReview.comments.substring(0, 200) + "...",
+                                finalDisposition:
+                                  managerReview.finalDisposition,
+                                regulatoryCompliance:
+                                  managerReview.regulatoryCompliance,
+                                reviewComments:
+                                  managerReview.comments.substring(0, 200) +
+                                  "...",
                                 electronicSignature: "PROVIDED",
-                                dataReleaseAuthorized: true
+                                dataReleaseAuthorized: true,
                               },
-                              managerReview.reviewerId
+                              managerReview.reviewerId,
                             );
 
                             setReviewStatus("FINAL_APPROVED");
                             notify({
                               kind: NotificationKinds.success,
-                              message: "Final manager approval completed. Data authorized for external release.",
+                              message:
+                                "Final manager approval completed. Data authorized for external release.",
                             });
                             // Auto-navigate to Audit Trail to show complete workflow
                             setSelectedTab(9); // Audit Trail is now tab 9
@@ -4087,16 +4776,20 @@ function BioanalyticalAnalyticalExecutionPage({
                               {
                                 reviewerId: managerReview.reviewerId,
                                 reviewerName: managerReview.reviewerName,
-                                rejectionReason: "Business/regulatory concerns require resolution",
-                                reviewComments: managerReview.comments.substring(0, 200) + "..."
+                                rejectionReason:
+                                  "Business/regulatory concerns require resolution",
+                                reviewComments:
+                                  managerReview.comments.substring(0, 200) +
+                                  "...",
                               },
-                              managerReview.reviewerId
+                              managerReview.reviewerId,
                             );
 
                             setReviewStatus("MANAGER_REJECTED");
                             notify({
                               kind: NotificationKinds.error,
-                              message: "Manager approval rejected. Data requires resolution before release.",
+                              message:
+                                "Manager approval rejected. Data requires resolution before release.",
                             });
                           }}
                         >
@@ -4148,28 +4841,52 @@ function BioanalyticalAnalyticalExecutionPage({
                         defaultMessage="Audit Trail Filters"
                       />
                     </h5>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem" }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                        gap: "1rem",
+                      }}
+                    >
                       <TextInput
                         labelText="User ID"
                         placeholder="Filter by user..."
                         value={auditFilters.userId}
                         onChange={(e) =>
-                          setAuditFilters(prev => ({ ...prev, userId: e.target.value }))
+                          setAuditFilters((prev) => ({
+                            ...prev,
+                            userId: e.target.value,
+                          }))
                         }
                       />
                       <Select
                         labelText="Action Type"
                         value={auditFilters.action}
                         onChange={(e) =>
-                          setAuditFilters(prev => ({ ...prev, action: e.target.value }))
+                          setAuditFilters((prev) => ({
+                            ...prev,
+                            action: e.target.value,
+                          }))
                         }
                       >
                         <SelectItem value="" text="All actions" />
                         <SelectItem value="FILE_UPLOAD" text="File Upload" />
-                        <SelectItem value="TEST_EXECUTION" text="Test Execution" />
-                        <SelectItem value="DATA_VALIDATION" text="Data Validation" />
-                        <SelectItem value="DEVIATION_RECORDED" text="Deviation Recorded" />
-                        <SelectItem value="ANALYST_REVIEW" text="Analyst Review" />
+                        <SelectItem
+                          value="TEST_EXECUTION"
+                          text="Test Execution"
+                        />
+                        <SelectItem
+                          value="DATA_VALIDATION"
+                          text="Data Validation"
+                        />
+                        <SelectItem
+                          value="DEVIATION_RECORDED"
+                          text="Deviation Recorded"
+                        />
+                        <SelectItem
+                          value="ANALYST_REVIEW"
+                          text="Analyst Review"
+                        />
                       </Select>
                       <DatePicker dateFormat="Y-m-d" datePickerType="single">
                         <DatePickerInput
@@ -4177,7 +4894,10 @@ function BioanalyticalAnalyticalExecutionPage({
                           placeholder="YYYY-MM-DD"
                           value={auditFilters.startDate}
                           onChange={(e) =>
-                            setAuditFilters(prev => ({ ...prev, startDate: e.target.value }))
+                            setAuditFilters((prev) => ({
+                              ...prev,
+                              startDate: e.target.value,
+                            }))
                           }
                         />
                       </DatePicker>
@@ -4187,7 +4907,10 @@ function BioanalyticalAnalyticalExecutionPage({
                           placeholder="YYYY-MM-DD"
                           value={auditFilters.endDate}
                           onChange={(e) =>
-                            setAuditFilters(prev => ({ ...prev, endDate: e.target.value }))
+                            setAuditFilters((prev) => ({
+                              ...prev,
+                              endDate: e.target.value,
+                            }))
                           }
                         />
                       </DatePicker>
@@ -4197,7 +4920,10 @@ function BioanalyticalAnalyticalExecutionPage({
                         id="show-system-events"
                         checked={auditFilters.showSystemEvents}
                         onChange={(e) =>
-                          setAuditFilters(prev => ({ ...prev, showSystemEvents: e.target.checked }))
+                          setAuditFilters((prev) => ({
+                            ...prev,
+                            showSystemEvents: e.target.checked,
+                          }))
                         }
                         labelText="Include system-generated events"
                       />
@@ -4258,20 +4984,39 @@ function BioanalyticalAnalyticalExecutionPage({
                         </TableHead>
                         <TableBody>
                           {auditTrail
-                            .filter(record => {
-                              if (auditFilters.userId && !record.userId.toLowerCase().includes(auditFilters.userId.toLowerCase())) {
+                            .filter((record) => {
+                              if (
+                                auditFilters.userId &&
+                                !record.userId
+                                  .toLowerCase()
+                                  .includes(auditFilters.userId.toLowerCase())
+                              ) {
                                 return false;
                               }
-                              if (auditFilters.action && record.action !== auditFilters.action) {
+                              if (
+                                auditFilters.action &&
+                                record.action !== auditFilters.action
+                              ) {
                                 return false;
                               }
-                              if (auditFilters.startDate && new Date(record.timestamp) < new Date(auditFilters.startDate)) {
+                              if (
+                                auditFilters.startDate &&
+                                new Date(record.timestamp) <
+                                  new Date(auditFilters.startDate)
+                              ) {
                                 return false;
                               }
-                              if (auditFilters.endDate && new Date(record.timestamp) > new Date(auditFilters.endDate)) {
+                              if (
+                                auditFilters.endDate &&
+                                new Date(record.timestamp) >
+                                  new Date(auditFilters.endDate)
+                              ) {
                                 return false;
                               }
-                              if (!auditFilters.showSystemEvents && record.userId === "SYSTEM") {
+                              if (
+                                !auditFilters.showSystemEvents &&
+                                record.userId === "SYSTEM"
+                              ) {
                                 return false;
                               }
                               return true;
@@ -4279,7 +5024,12 @@ function BioanalyticalAnalyticalExecutionPage({
                             .slice(0, 50) // Limit to 50 records for performance
                             .map((record) => (
                               <TableRow key={record.id}>
-                                <TableCell style={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
+                                <TableCell
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    fontFamily: "monospace",
+                                  }}
+                                >
                                   {new Date(record.timestamp).toLocaleString()}
                                 </TableCell>
                                 <TableCell>
@@ -4288,7 +5038,10 @@ function BioanalyticalAnalyticalExecutionPage({
                                       padding: "0.25rem 0.5rem",
                                       borderRadius: "4px",
                                       fontSize: "0.75rem",
-                                      backgroundColor: record.userId === "SYSTEM" ? "#8a3ffc" : "#0043ce",
+                                      backgroundColor:
+                                        record.userId === "SYSTEM"
+                                          ? "#8a3ffc"
+                                          : "#0043ce",
                                       color: "white",
                                     }}
                                   >
@@ -4315,21 +5068,43 @@ function BioanalyticalAnalyticalExecutionPage({
                                       borderRadius: "4px",
                                       fontSize: "0.75rem",
                                       backgroundColor:
-                                        record.changeType === "INSERT" ? "#24a148" :
-                                        record.changeType === "UPDATE" ? "#f1c21b" :
-                                        record.changeType === "DELETE" ? "#da1e28" : "#8a3ffc",
-                                      color: record.changeType === "UPDATE" ? "#161616" : "white",
+                                        record.changeType === "INSERT"
+                                          ? "#24a148"
+                                          : record.changeType === "UPDATE"
+                                            ? "#f1c21b"
+                                            : record.changeType === "DELETE"
+                                              ? "#da1e28"
+                                              : "#8a3ffc",
+                                      color:
+                                        record.changeType === "UPDATE"
+                                          ? "#161616"
+                                          : "white",
                                     }}
                                   >
                                     {record.changeType}
                                   </span>
                                 </TableCell>
                                 <TableCell style={{ maxWidth: "300px" }}>
-                                  <div style={{ fontSize: "0.875rem", fontFamily: "monospace" }}>
-                                    {JSON.stringify(record.details, null, 1).substring(0, 100)}...
+                                  <div
+                                    style={{
+                                      fontSize: "0.875rem",
+                                      fontFamily: "monospace",
+                                    }}
+                                  >
+                                    {JSON.stringify(
+                                      record.details,
+                                      null,
+                                      1,
+                                    ).substring(0, 100)}
+                                    ...
                                   </div>
                                 </TableCell>
-                                <TableCell style={{ fontSize: "0.75rem", fontFamily: "monospace" }}>
+                                <TableCell
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    fontFamily: "monospace",
+                                  }}
+                                >
                                   {record.sessionId.substring(0, 8)}...
                                 </TableCell>
                               </TableRow>
@@ -4345,7 +5120,9 @@ function BioanalyticalAnalyticalExecutionPage({
                           textAlign: "center",
                         }}
                       >
-                        <h6 style={{ color: "#525252", marginBottom: "0.5rem" }}>
+                        <h6
+                          style={{ color: "#525252", marginBottom: "0.5rem" }}
+                        >
                           <FormattedMessage
                             id="notebook.bioanalytical.execution.noAuditRecords"
                             defaultMessage="No Audit Records Found"
@@ -4395,10 +5172,19 @@ function BioanalyticalAnalyticalExecutionPage({
                           textAlign: "center",
                         }}
                       >
-                        <h6 style={{ color: "#0043ce", marginBottom: "0.5rem" }}>
+                        <h6
+                          style={{ color: "#0043ce", marginBottom: "0.5rem" }}
+                        >
                           Total Events Logged
                         </h6>
-                        <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#0043ce", margin: 0 }}>
+                        <p
+                          style={{
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            color: "#0043ce",
+                            margin: 0,
+                          }}
+                        >
                           {auditTrail.length}
                         </p>
                       </div>
@@ -4410,11 +5196,20 @@ function BioanalyticalAnalyticalExecutionPage({
                           textAlign: "center",
                         }}
                       >
-                        <h6 style={{ color: "#24a148", marginBottom: "0.5rem" }}>
+                        <h6
+                          style={{ color: "#24a148", marginBottom: "0.5rem" }}
+                        >
                           Users Involved
                         </h6>
-                        <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#24a148", margin: 0 }}>
-                          {new Set(auditTrail.map(r => r.userId)).size}
+                        <p
+                          style={{
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            color: "#24a148",
+                            margin: 0,
+                          }}
+                        >
+                          {new Set(auditTrail.map((r) => r.userId)).size}
                         </p>
                       </div>
                       <div
@@ -4425,13 +5220,24 @@ function BioanalyticalAnalyticalExecutionPage({
                           textAlign: "center",
                         }}
                       >
-                        <h6 style={{ color: "#f1c21b", marginBottom: "0.5rem" }}>
+                        <h6
+                          style={{ color: "#f1c21b", marginBottom: "0.5rem" }}
+                        >
                           ALCOA+ Compliance
                         </h6>
-                        <p style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#f1c21b", margin: 0 }}>
+                        <p
+                          style={{
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            color: "#f1c21b",
+                            margin: 0,
+                          }}
+                        >
                           {dataIntegrity.userAttribution.verified &&
-                           dataIntegrity.contemporaneousRecord &&
-                           dataIntegrity.originalityVerified ? "VERIFIED" : "PENDING"}
+                          dataIntegrity.contemporaneousRecord &&
+                          dataIntegrity.originalityVerified
+                            ? "VERIFIED"
+                            : "PENDING"}
                         </p>
                       </div>
                     </div>

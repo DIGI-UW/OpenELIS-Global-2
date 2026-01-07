@@ -181,7 +181,7 @@ function BioanalyticalTestAssignmentPage({
       setIsLoading(true);
       try {
         const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/samples`,
+          `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
           {
             method: "GET",
             credentials: "include",

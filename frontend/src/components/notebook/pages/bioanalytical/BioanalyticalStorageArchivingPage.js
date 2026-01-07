@@ -73,7 +73,11 @@ function BioanalyticalStorageArchivingPage({
     { id: "2_8", label: "2-8°C (Refrigerated)" },
     { id: "-20", label: "-20°C (Frozen)" },
     { id: "-70", label: "-70°C (Deep Freeze)" },
-    { id: "-80", label: "-80°C (Ultra-low Freeze - Bioequivalence)", regulatory: true },
+    {
+      id: "-80",
+      label: "-80°C (Ultra-low Freeze - Bioequivalence)",
+      regulatory: true,
+    },
     { id: "rt", label: "Room Temperature (15-25°C)" },
     { id: "dry", label: "Dry Storage (Desiccated)" },
   ];
@@ -92,31 +96,61 @@ function BioanalyticalStorageArchivingPage({
       id: "autoclave_incineration",
       label: "Autoclaving + Incineration (Biological Samples)",
       type: "biological",
-      description: "Standard for biological samples - autoclave sterilization followed by incineration"
+      description:
+        "Standard for biological samples - autoclave sterilization followed by incineration",
     },
     {
       id: "chemical_incineration",
       label: "Chemical Treatment + Incineration (Pharmaceutical)",
       type: "pharmaceutical",
-      description: "For pharmaceutical samples per institutional guidelines"
+      description: "For pharmaceutical samples per institutional guidelines",
     },
     {
       id: "licensed_facility",
       label: "Licensed/Accredited Disposal Facility",
       type: "both",
-      description: "Must use licensed facility for all regulated waste disposal"
+      description:
+        "Must use licensed facility for all regulated waste disposal",
     },
     { id: "return_sponsor", label: "Return to Sponsor", type: "both" },
-    { id: "research_transfer", label: "Transfer to Research (with approval)", type: "both" },
+    {
+      id: "research_transfer",
+      label: "Transfer to Research (with approval)",
+      type: "both",
+    },
   ];
 
   const disposalReasons = [
-    { id: "exhausted", label: "Sample Exhausted", description: "All analytical tests completed, no remaining sample" },
-    { id: "retention_expired", label: "Retention Period Expired", description: "Legal/regulatory retention period has ended" },
-    { id: "failed_qc", label: "Failed QC (Unusable)", description: "Sample failed quality control, unsuitable for analysis" },
-    { id: "safety_concerns", label: "Safety Concerns", description: "Contamination, degradation, or other safety issues" },
-    { id: "legal_hold_completed", label: "Legal Hold Period Completed", description: "Legal hold requirements satisfied" },
-    { id: "study_terminated", label: "Study Terminated", description: "Study discontinued or cancelled" },
+    {
+      id: "exhausted",
+      label: "Sample Exhausted",
+      description: "All analytical tests completed, no remaining sample",
+    },
+    {
+      id: "retention_expired",
+      label: "Retention Period Expired",
+      description: "Legal/regulatory retention period has ended",
+    },
+    {
+      id: "failed_qc",
+      label: "Failed QC (Unusable)",
+      description: "Sample failed quality control, unsuitable for analysis",
+    },
+    {
+      id: "safety_concerns",
+      label: "Safety Concerns",
+      description: "Contamination, degradation, or other safety issues",
+    },
+    {
+      id: "legal_hold_completed",
+      label: "Legal Hold Period Completed",
+      description: "Legal hold requirements satisfied",
+    },
+    {
+      id: "study_terminated",
+      label: "Study Terminated",
+      description: "Study discontinued or cancelled",
+    },
   ];
 
   const loadStorageSamples = useCallback(async () => {
@@ -129,30 +163,34 @@ function BioanalyticalStorageArchivingPage({
     try {
       // Load samples that have completed Stage 4 (QA approved and submitted/exported)
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/samples`,
+        `${config.serverBaseUrl}/rest/notebook-entry/${entryId}/samples`,
         {
           method: "GET",
           credentials: "include",
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-        }
+        },
       );
 
       if (response.ok) {
         const data = await response.json();
         // Filter samples that have been approved and submitted from Stage 4
-        const stage4CompletedSamples = (data.samples || []).filter(sample => {
-          return sample.data &&
-                 sample.data.executionStatus === "EXECUTED" &&
-                 sample.data.resultsApproved &&
-                 (sample.data.submissionStatus === "SUBMITTED" || sample.data.exportStatus === "EXPORTED");
+        const stage4CompletedSamples = (data.samples || []).filter((sample) => {
+          return (
+            sample.data &&
+            sample.data.executionStatus === "EXECUTED" &&
+            sample.data.resultsApproved &&
+            (sample.data.submissionStatus === "SUBMITTED" ||
+              sample.data.exportStatus === "EXPORTED")
+          );
         });
 
         // Transform samples for Stage 5 storage management
-        const storageSamples = stage4CompletedSamples.map(sample => ({
+        const storageSamples = stage4CompletedSamples.map((sample) => ({
           id: sample.id,
-          sampleId: sample.accessionNumber || sample.externalId || `S${sample.id}`,
+          sampleId:
+            sample.accessionNumber || sample.externalId || `S${sample.id}`,
           type: sample.sampleType || "Unknown",
           volume: sample.data?.sampleVolume || "5.0 mL",
           analyticalMethod: sample.data?.analyticalMethod || "Unknown Method",
@@ -177,7 +215,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.loadError",
           defaultMessage: "Failed to load samples. Please refresh the page.",
-        })
+        }),
       );
     } finally {
       setIsLoading(false);
@@ -195,7 +233,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectSamplesFirst",
           defaultMessage: "Please select samples to transfer to biorepository",
-        })
+        }),
       );
       return;
     }
@@ -211,7 +249,7 @@ function BioanalyticalStorageArchivingPage({
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-        }
+        },
       );
 
       if (!devicesResponse.ok) {
@@ -220,12 +258,16 @@ function BioanalyticalStorageArchivingPage({
 
       const devices = await devicesResponse.json();
       // Filter for -80°C devices (bioequivalence requirement)
-      const ultra80Devices = devices.filter(device =>
-        device.temperatureSetting && parseFloat(device.temperatureSetting) === -80.0
+      const ultra80Devices = devices.filter(
+        (device) =>
+          device.temperatureSetting &&
+          parseFloat(device.temperatureSetting) === -80.0,
       );
 
       if (ultra80Devices.length === 0) {
-        throw new Error("No -80°C storage devices available for bioequivalence samples");
+        throw new Error(
+          "No -80°C storage devices available for bioequivalence samples",
+        );
       }
 
       // Use the first available -80°C device
@@ -251,7 +293,7 @@ function BioanalyticalStorageArchivingPage({
                 positionCoordinate: null,
                 notes: `Biorepository transfer - Stage 5 bioanalytical workflow. 2-year retention requirement for bioequivalence study.`,
               }),
-            }
+            },
           );
 
           if (assignResponse.ok) {
@@ -266,7 +308,10 @@ function BioanalyticalStorageArchivingPage({
             });
           }
         } catch (error) {
-          console.error(`Failed to assign sample ${sampleId} to storage:`, error);
+          console.error(
+            `Failed to assign sample ${sampleId} to storage:`,
+            error,
+          );
         }
       }
 
@@ -279,7 +324,8 @@ function BioanalyticalStorageArchivingPage({
         storageCondition: "-80°C",
         retentionPeriod: "2y",
         storageDevice: targetDevice.name,
-        storageLocation: targetDevice.parentRoomName + " > " + targetDevice.name,
+        storageLocation:
+          targetDevice.parentRoomName + " > " + targetDevice.name,
         transferredBy: "CURRENT_USER",
       };
 
@@ -301,20 +347,21 @@ function BioanalyticalStorageArchivingPage({
             },
             userId: "CURRENT_USER",
           }),
-        }
+        },
       );
 
       if (response.ok && successfulTransfers.length > 0) {
-        setBiorepositoryTransfer(prev => [...prev, ...successfulTransfers]);
+        setBiorepositoryTransfer((prev) => [...prev, ...successfulTransfers]);
 
         setSuccessMessage(
           intl.formatMessage(
             {
               id: "notebook.bioanalytical.storage.biorepositoryTransferSuccess",
-              defaultMessage: "{count} samples transferred to biorepository for long-term storage at {device}",
+              defaultMessage:
+                "{count} samples transferred to biorepository for long-term storage at {device}",
             },
-            { count: successfulTransfers.length, device: targetDevice.name }
-          )
+            { count: successfulTransfers.length, device: targetDevice.name },
+          ),
         );
 
         setSelectedSamples(new Set());
@@ -326,7 +373,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.transferError",
           defaultMessage: `Failed to transfer samples to biorepository: ${error.message}`,
-        })
+        }),
       );
     } finally {
       setIsLoading(false);
@@ -340,7 +387,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for retention storage",
-        })
+        }),
       );
       return;
     }
@@ -356,7 +403,7 @@ function BioanalyticalStorageArchivingPage({
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-        }
+        },
       );
 
       if (!devicesResponse.ok) {
@@ -365,12 +412,16 @@ function BioanalyticalStorageArchivingPage({
 
       const devices = await devicesResponse.json();
       // Filter for -80°C devices (FDA bioequivalence requirement)
-      const ultra80Devices = devices.filter(device =>
-        device.temperatureSetting && parseFloat(device.temperatureSetting) === -80.0
+      const ultra80Devices = devices.filter(
+        (device) =>
+          device.temperatureSetting &&
+          parseFloat(device.temperatureSetting) === -80.0,
       );
 
       if (ultra80Devices.length === 0) {
-        throw new Error("No -80°C storage devices available for retention storage");
+        throw new Error(
+          "No -80°C storage devices available for retention storage",
+        );
       }
 
       // Use the first available -80°C device for retention
@@ -385,12 +436,12 @@ function BioanalyticalStorageArchivingPage({
           headers: {
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-        }
+        },
       );
 
       let assignmentLocation = {
         id: retentionDevice.id.toString(),
-        type: "device"
+        type: "device",
       };
 
       // Use shelf if available for better organization
@@ -399,7 +450,7 @@ function BioanalyticalStorageArchivingPage({
         if (shelves.length > 0) {
           assignmentLocation = {
             id: shelves[0].id.toString(),
-            type: "shelf"
+            type: "shelf",
           };
         }
       }
@@ -424,7 +475,7 @@ function BioanalyticalStorageArchivingPage({
                 positionCoordinate: null,
                 notes: `FDA Bioequivalence retention storage - 2 years at -80°C. Legal hold: Yes. Retention end: ${new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toLocaleDateString()}`,
               }),
-            }
+            },
           );
 
           if (assignResponse.ok) {
@@ -434,13 +485,18 @@ function BioanalyticalStorageArchivingPage({
               storageDate: new Date().toLocaleString(),
               storageCondition: "-80°C",
               retentionPeriod: "2 Years",
-              retentionEnd: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+              retentionEnd: new Date(
+                Date.now() + 2 * 365 * 24 * 60 * 60 * 1000,
+              ).toLocaleDateString(),
               legalHold: true,
               location: assignResult.hierarchicalPath,
             });
           }
         } catch (error) {
-          console.error(`Failed to assign sample ${sampleId} to retention storage:`, error);
+          console.error(
+            `Failed to assign sample ${sampleId} to retention storage:`,
+            error,
+          );
         }
       }
 
@@ -452,11 +508,14 @@ function BioanalyticalStorageArchivingPage({
         storageCondition: "-80°C",
         retentionPeriod: "2 years",
         retentionStart: new Date().toISOString(),
-        retentionEnd: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        retentionEnd: new Date(
+          Date.now() + 2 * 365 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         legalHold: true,
         retentionReason: "FDA Bioequivalence Study - 2 Year Retention Required",
         storageDevice: retentionDevice.name,
-        storageLocation: retentionDevice.parentRoomName + " > " + retentionDevice.name,
+        storageLocation:
+          retentionDevice.parentRoomName + " > " + retentionDevice.name,
       };
 
       const response = await fetch(
@@ -477,20 +536,24 @@ function BioanalyticalStorageArchivingPage({
             },
             userId: "CURRENT_USER",
           }),
-        }
+        },
       );
 
       if (response.ok && successfulRetentions.length > 0) {
-        setRetentionStorage(prev => [...prev, ...successfulRetentions]);
+        setRetentionStorage((prev) => [...prev, ...successfulRetentions]);
 
         setSuccessMessage(
           intl.formatMessage(
             {
               id: "notebook.bioanalytical.storage.retentionStorageSuccess",
-              defaultMessage: "{count} samples placed in retention storage (2 years at -80°C) at {device}",
+              defaultMessage:
+                "{count} samples placed in retention storage (2 years at -80°C) at {device}",
             },
-            { count: successfulRetentions.length, device: retentionDevice.name }
-          )
+            {
+              count: successfulRetentions.length,
+              device: retentionDevice.name,
+            },
+          ),
         );
 
         setSelectedSamples(new Set());
@@ -502,7 +565,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.retentionError",
           defaultMessage: `Failed to set up retention storage: ${error.message}`,
-        })
+        }),
       );
     } finally {
       setIsLoading(false);
@@ -527,16 +590,19 @@ function BioanalyticalStorageArchivingPage({
           bioequivalenceData: "PERMANENT", // Bioequivalence studies require extended retention
         },
         retentionSchedule: {
-          rawDataFiles: "Permanent retention per FDA bioequivalence requirements",
+          rawDataFiles:
+            "Permanent retention per FDA bioequivalence requirements",
           analyticalReports: "10 years minimum per regulatory requirements",
-          calibrationRecords: "10 years for instrument qualification documentation",
+          calibrationRecords:
+            "10 years for instrument qualification documentation",
           qaDocuments: "10 years for audit trail and compliance verification",
-          bioequivalenceStudy: "Permanent retention for regulatory inspections"
+          bioequivalenceStudy: "Permanent retention for regulatory inspections",
         },
         archivalLocation: "SECURE_DIGITAL_ARCHIVE",
         accessLevel: "RESTRICTED",
         archivedBy: "CURRENT_USER",
-        complianceNote: "FDA bioequivalence study - extended retention requirements applied",
+        complianceNote:
+          "FDA bioequivalence study - extended retention requirements applied",
       };
 
       const response = await fetch(
@@ -549,7 +615,7 @@ function BioanalyticalStorageArchivingPage({
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
           body: JSON.stringify({
-            sampleIds: storageSamples.map(s => s.id),
+            sampleIds: storageSamples.map((s) => s.id),
             data: {
               archivalStatus: "ARCHIVED",
               dataArchival: archivalData,
@@ -557,23 +623,26 @@ function BioanalyticalStorageArchivingPage({
             },
             userId: "CURRENT_USER",
           }),
-        }
+        },
       );
 
       if (response.ok) {
-        setArchivedData([{
-          archivalDate: new Date().toLocaleString(),
-          archivalType: "Complete Study Archive",
-          itemsArchived: "Analytical data, raw files, reports, QA documents",
-          retentionPeriod: "10 Years",
-          archivalLocation: "Secure Digital Archive",
-        }]);
+        setArchivedData([
+          {
+            archivalDate: new Date().toLocaleString(),
+            archivalType: "Complete Study Archive",
+            itemsArchived: "Analytical data, raw files, reports, QA documents",
+            retentionPeriod: "10 Years",
+            archivalLocation: "Secure Digital Archive",
+          },
+        ]);
 
         setSuccessMessage(
           intl.formatMessage({
             id: "notebook.bioanalytical.storage.archivalSuccess",
-            defaultMessage: "Study data archived successfully. All analytical data, raw files, and reports are preserved.",
-          })
+            defaultMessage:
+              "Study data archived successfully. All analytical data, raw files, and reports are preserved.",
+          }),
         );
       }
     } catch (error) {
@@ -582,7 +651,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.archivalError",
           defaultMessage: "Failed to archive study data",
-        })
+        }),
       );
     } finally {
       setIsLoading(false);
@@ -596,7 +665,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for disposal",
-        })
+        }),
       );
       return;
     }
@@ -606,7 +675,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectDisposalReason",
           defaultMessage: "Please select disposal reason",
-        })
+        }),
       );
       return;
     }
@@ -616,7 +685,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.selectDisposalMethod",
           defaultMessage: "Please select disposal method",
-        })
+        }),
       );
       return;
     }
@@ -626,7 +695,7 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.supervisorApprovalRequired",
           defaultMessage: "Supervisor approval is required for sample disposal",
-        })
+        }),
       );
       return;
     }
@@ -648,19 +717,25 @@ function BioanalyticalStorageArchivingPage({
               },
               body: JSON.stringify({
                 sampleItemId: sampleId.toString(),
-                reason: disposalReasons.find(r => r.id === disposalReason)?.label,
-                method: disposalMethods.find(m => m.id === disposalMethod)?.label,
+                reason: disposalReasons.find((r) => r.id === disposalReason)
+                  ?.label,
+                method: disposalMethods.find((m) => m.id === disposalMethod)
+                  ?.label,
                 notes: `Stage 5 Disposal: ${disposalNotes}. Supervisor: ${supervisorApproval}. Date: ${disposalSchedule || new Date().toISOString()}`,
               }),
-            }
+            },
           );
 
           if (disposeResponse.ok) {
             successfulDisposals.push({
               sampleId: sampleId,
               disposalDate: new Date().toLocaleString(),
-              disposalReason: disposalReasons.find(r => r.id === disposalReason)?.label,
-              disposalMethod: disposalMethods.find(m => m.id === disposalMethod)?.label,
+              disposalReason: disposalReasons.find(
+                (r) => r.id === disposalReason,
+              )?.label,
+              disposalMethod: disposalMethods.find(
+                (m) => m.id === disposalMethod,
+              )?.label,
               supervisor: supervisorApproval,
               notes: disposalNotes,
               scheduledDate: disposalSchedule,
@@ -703,24 +778,26 @@ function BioanalyticalStorageArchivingPage({
             },
             userId: "CURRENT_USER",
           }),
-        }
+        },
       );
 
       if (response.ok && successfulDisposals.length > 0) {
-        setDisposalRecords(prev => [...prev, ...successfulDisposals]);
+        setDisposalRecords((prev) => [...prev, ...successfulDisposals]);
 
         setSuccessMessage(
           intl.formatMessage(
             {
               id: "notebook.bioanalytical.storage.disposalSuccess",
-              defaultMessage: "{count} samples scheduled for disposal. Method: {method}. Supervisor: {supervisor}",
+              defaultMessage:
+                "{count} samples scheduled for disposal. Method: {method}. Supervisor: {supervisor}",
             },
             {
               count: successfulDisposals.length,
-              method: disposalMethods.find(m => m.id === disposalMethod)?.label,
-              supervisor: supervisorApproval
-            }
-          )
+              method: disposalMethods.find((m) => m.id === disposalMethod)
+                ?.label,
+              supervisor: supervisorApproval,
+            },
+          ),
         );
 
         // Reset form
@@ -738,12 +815,23 @@ function BioanalyticalStorageArchivingPage({
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.disposalError",
           defaultMessage: `Failed to process sample disposal: ${error.message}`,
-        })
+        }),
       );
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSamples, disposalReason, disposalMethod, supervisorApproval, disposalNotes, disposalSchedule, entryId, pageData?.id, intl, loadStorageSamples]);
+  }, [
+    selectedSamples,
+    disposalReason,
+    disposalMethod,
+    supervisorApproval,
+    disposalNotes,
+    disposalSchedule,
+    entryId,
+    pageData?.id,
+    intl,
+    loadStorageSamples,
+  ]);
 
   const handleApproveStorage = useCallback(() => {
     if (!storageCondition) {
@@ -857,7 +945,10 @@ function BioanalyticalStorageArchivingPage({
         </div>
       )}
 
-      <Tabs selectedIndex={selectedTab} onChange={(evt) => setSelectedTab(evt.selectedIndex)}>
+      <Tabs
+        selectedIndex={selectedTab}
+        onChange={(evt) => setSelectedTab(evt.selectedIndex)}
+      >
         <TabList aria-label="Storage and archival tabs">
           <Tab>
             <FormattedMessage
@@ -933,10 +1024,18 @@ function BioanalyticalStorageArchivingPage({
                               <TableHeader>
                                 <Checkbox
                                   id="select-all"
-                                  checked={selectedSamples.size === storageSamples.length && storageSamples.length > 0}
+                                  checked={
+                                    selectedSamples.size ===
+                                      storageSamples.length &&
+                                    storageSamples.length > 0
+                                  }
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setSelectedSamples(new Set(storageSamples.map(s => s.id)));
+                                      setSelectedSamples(
+                                        new Set(
+                                          storageSamples.map((s) => s.id),
+                                        ),
+                                      );
                                     } else {
                                       setSelectedSamples(new Set());
                                     }
@@ -996,7 +1095,9 @@ function BioanalyticalStorageArchivingPage({
                                     id={`sample-${sample.id}`}
                                     checked={selectedSamples.has(sample.id)}
                                     onChange={(e) => {
-                                      const newSelected = new Set(selectedSamples);
+                                      const newSelected = new Set(
+                                        selectedSamples,
+                                      );
                                       if (e.target.checked) {
                                         newSelected.add(sample.id);
                                       } else {
@@ -1229,11 +1330,22 @@ function BioanalyticalStorageArchivingPage({
                               <TableRow key={index}>
                                 <TableCell>{transfer.sampleId}</TableCell>
                                 <TableCell>{transfer.transferDate}</TableCell>
-                                <TableCell>{transfer.storageCondition}</TableCell>
-                                <TableCell>{transfer.retentionPeriod}</TableCell>
+                                <TableCell>
+                                  {transfer.storageCondition}
+                                </TableCell>
+                                <TableCell>
+                                  {transfer.retentionPeriod}
+                                </TableCell>
                                 <TableCell>{transfer.transferType}</TableCell>
-                                <TableCell style={{ fontSize: "0.875rem", maxWidth: "200px", wordWrap: "break-word" }}>
-                                  {transfer.location || "Storage location assigned"}
+                                <TableCell
+                                  style={{
+                                    fontSize: "0.875rem",
+                                    maxWidth: "200px",
+                                    wordWrap: "break-word",
+                                  }}
+                                >
+                                  {transfer.location ||
+                                    "Storage location assigned"}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1347,7 +1459,9 @@ function BioanalyticalStorageArchivingPage({
                             id="notebook.bioanalytical.storage.retentionDetails"
                             defaultMessage="Retention end date: {endDate}"
                             values={{
-                              endDate: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toLocaleDateString()
+                              endDate: new Date(
+                                Date.now() + 2 * 365 * 24 * 60 * 60 * 1000,
+                              ).toLocaleDateString(),
                             }}
                           />
                         </p>
@@ -1427,13 +1541,19 @@ function BioanalyticalStorageArchivingPage({
                               <TableRow key={index}>
                                 <TableCell>{retention.sampleId}</TableCell>
                                 <TableCell>{retention.storageDate}</TableCell>
-                                <TableCell>{retention.storageCondition}</TableCell>
-                                <TableCell>{retention.retentionPeriod}</TableCell>
+                                <TableCell>
+                                  {retention.storageCondition}
+                                </TableCell>
+                                <TableCell>
+                                  {retention.retentionPeriod}
+                                </TableCell>
                                 <TableCell>{retention.retentionEnd}</TableCell>
                                 <TableCell>
                                   <span
                                     style={{
-                                      backgroundColor: retention.legalHold ? "#da1e28" : "#24a148",
+                                      backgroundColor: retention.legalHold
+                                        ? "#da1e28"
+                                        : "#24a148",
                                       color: "white",
                                       padding: "0.25rem 0.5rem",
                                       borderRadius: "4px",
@@ -1443,8 +1563,15 @@ function BioanalyticalStorageArchivingPage({
                                     {retention.legalHold ? "Yes" : "No"}
                                   </span>
                                 </TableCell>
-                                <TableCell style={{ fontSize: "0.875rem", maxWidth: "200px", wordWrap: "break-word" }}>
-                                  {retention.location || "Storage location assigned"}
+                                <TableCell
+                                  style={{
+                                    fontSize: "0.875rem",
+                                    maxWidth: "200px",
+                                    wordWrap: "break-word",
+                                  }}
+                                >
+                                  {retention.location ||
+                                    "Storage location assigned"}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1506,37 +1633,46 @@ function BioanalyticalStorageArchivingPage({
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.arch1"
                             defaultMessage="Raw data files (LC-MS/MS, HPLC chromatograms)"
-                          /> - <strong>Permanent retention</strong>
+                          />{" "}
+                          - <strong>Permanent retention</strong>
                         </li>
                         <li>
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.arch2"
                             defaultMessage="Raw instrument files and acquisition methods"
-                          /> - <strong>Permanent retention</strong>
+                          />{" "}
+                          - <strong>Permanent retention</strong>
                         </li>
                         <li>
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.arch3"
                             defaultMessage="Final analytical reports and QA documentation"
-                          /> - <strong>10 years minimum</strong>
+                          />{" "}
+                          - <strong>10 years minimum</strong>
                         </li>
                         <li>
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.arch4"
                             defaultMessage="Calibration and QC records"
-                          /> - <strong>10 years</strong>
+                          />{" "}
+                          - <strong>10 years</strong>
                         </li>
                         <li>
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.arch5"
                             defaultMessage="Deviation and investigation reports"
-                          /> - <strong>10 years</strong>
+                          />{" "}
+                          - <strong>10 years</strong>
                         </li>
                         <li>
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.arch6"
                             defaultMessage="Bioequivalence study data and documentation"
-                          /> - <strong>Permanent retention for regulatory inspections</strong>
+                          />{" "}
+                          -{" "}
+                          <strong>
+                            Permanent retention for regulatory inspections
+                          </strong>
                         </li>
                       </ul>
 
@@ -1557,7 +1693,13 @@ function BioanalyticalStorageArchivingPage({
                             />
                           </strong>
                         </p>
-                        <p style={{ fontSize: "0.875rem", color: "#161616", margin: "0.5rem 0 0 0" }}>
+                        <p
+                          style={{
+                            fontSize: "0.875rem",
+                            color: "#161616",
+                            margin: "0.5rem 0 0 0",
+                          }}
+                        >
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.complianceDetails"
                             defaultMessage="FDA bioequivalence studies require permanent retention of raw data files and extended retention of all study documentation. Archives maintain secure access controls and audit trails for regulatory inspections."
@@ -1628,8 +1770,12 @@ function BioanalyticalStorageArchivingPage({
                                 <TableCell>{archival.archivalDate}</TableCell>
                                 <TableCell>{archival.archivalType}</TableCell>
                                 <TableCell>{archival.itemsArchived}</TableCell>
-                                <TableCell>{archival.retentionPeriod}</TableCell>
-                                <TableCell>{archival.archivalLocation}</TableCell>
+                                <TableCell>
+                                  {archival.retentionPeriod}
+                                </TableCell>
+                                <TableCell>
+                                  {archival.archivalLocation}
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1638,14 +1784,26 @@ function BioanalyticalStorageArchivingPage({
                     )}
 
                     {/* Sample Disposal Management */}
-                    <div style={{ marginTop: "2.5rem", borderTop: "1px solid #e0e0e0", paddingTop: "2rem" }}>
+                    <div
+                      style={{
+                        marginTop: "2.5rem",
+                        borderTop: "1px solid #e0e0e0",
+                        paddingTop: "2rem",
+                      }}
+                    >
                       <h5>
                         <FormattedMessage
                           id="notebook.bioanalytical.storage.disposalSection"
                           defaultMessage="Sample Disposal Management"
                         />
                       </h5>
-                      <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
+                      <p
+                        style={{
+                          fontSize: "0.875rem",
+                          color: "#525252",
+                          marginBottom: "1rem",
+                        }}
+                      >
                         <FormattedMessage
                           id="notebook.bioanalytical.storage.disposalHelp"
                           defaultMessage="Manage sample disposal when retention period expires, samples are exhausted, or other disposal criteria are met. All disposals require supervisor approval and documentation."
@@ -1736,7 +1894,9 @@ function BioanalyticalStorageArchivingPage({
                             id="supervisor-approval"
                             type="text"
                             value={supervisorApproval}
-                            onChange={(e) => setSupervisorApproval(e.target.value)}
+                            onChange={(e) =>
+                              setSupervisorApproval(e.target.value)
+                            }
                             placeholder="Enter supervisor name for approval"
                             style={{
                               width: "100%",
@@ -1766,7 +1926,9 @@ function BioanalyticalStorageArchivingPage({
                             id="disposal-schedule"
                             type="date"
                             value={disposalSchedule}
-                            onChange={(e) => setDisposalSchedule(e.target.value)}
+                            onChange={(e) =>
+                              setDisposalSchedule(e.target.value)
+                            }
                             style={{
                               width: "100%",
                               padding: "0.5rem",
@@ -1786,7 +1948,8 @@ function BioanalyticalStorageArchivingPage({
                           })}
                           placeholder={intl.formatMessage({
                             id: "notebook.bioanalytical.storage.disposalNotesPlaceholder",
-                            defaultMessage: "Document disposal justification, safety considerations, institutional guidelines followed, personnel involved...",
+                            defaultMessage:
+                              "Document disposal justification, safety considerations, institutional guidelines followed, personnel involved...",
                           })}
                           value={disposalNotes}
                           onChange={(e) => setDisposalNotes(e.target.value)}
@@ -1832,7 +1995,13 @@ function BioanalyticalStorageArchivingPage({
                         <Button
                           kind="danger"
                           onClick={handleSampleDisposal}
-                          disabled={selectedSamples.size === 0 || !disposalReason || !disposalMethod || !supervisorApproval || isLoading}
+                          disabled={
+                            selectedSamples.size === 0 ||
+                            !disposalReason ||
+                            !disposalMethod ||
+                            !supervisorApproval ||
+                            isLoading
+                          }
                         >
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.processDisposal"
@@ -1889,10 +2058,20 @@ function BioanalyticalStorageArchivingPage({
                                 <TableRow key={index}>
                                   <TableCell>{disposal.sampleId}</TableCell>
                                   <TableCell>{disposal.disposalDate}</TableCell>
-                                  <TableCell style={{ fontSize: "0.875rem", maxWidth: "150px" }}>
+                                  <TableCell
+                                    style={{
+                                      fontSize: "0.875rem",
+                                      maxWidth: "150px",
+                                    }}
+                                  >
                                     {disposal.disposalReason}
                                   </TableCell>
-                                  <TableCell style={{ fontSize: "0.875rem", maxWidth: "150px" }}>
+                                  <TableCell
+                                    style={{
+                                      fontSize: "0.875rem",
+                                      maxWidth: "150px",
+                                    }}
+                                  >
                                     {disposal.disposalMethod}
                                   </TableCell>
                                   <TableCell>{disposal.supervisor}</TableCell>
@@ -1905,14 +2084,26 @@ function BioanalyticalStorageArchivingPage({
                     </div>
 
                     {/* Sample-Result Traceability System */}
-                    <div style={{ marginTop: "2.5rem", borderTop: "1px solid #e0e0e0", paddingTop: "2rem" }}>
+                    <div
+                      style={{
+                        marginTop: "2.5rem",
+                        borderTop: "1px solid #e0e0e0",
+                        paddingTop: "2rem",
+                      }}
+                    >
                       <h5>
                         <FormattedMessage
                           id="notebook.bioanalytical.storage.traceabilitySection"
                           defaultMessage="Sample-Result Traceability Matrix"
                         />
                       </h5>
-                      <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
+                      <p
+                        style={{
+                          fontSize: "0.875rem",
+                          color: "#525252",
+                          marginBottom: "1rem",
+                        }}
+                      >
                         <FormattedMessage
                           id="notebook.bioanalytical.storage.traceabilityHelp"
                           defaultMessage="Complete traceability from sample collection through final results, including all processing stages and data transformations."
@@ -2013,14 +2204,18 @@ function BioanalyticalStorageArchivingPage({
                                 <TableCell>
                                   <span
                                     style={{
-                                      backgroundColor: sample.qaApproved ? "#24a148" : "#da1e28",
+                                      backgroundColor: sample.qaApproved
+                                        ? "#24a148"
+                                        : "#da1e28",
                                       color: "white",
                                       padding: "0.25rem 0.5rem",
                                       borderRadius: "4px",
                                       fontSize: "0.75rem",
                                     }}
                                   >
-                                    {sample.qaApproved ? "QA Approved" : "Pending QA"}
+                                    {sample.qaApproved
+                                      ? "QA Approved"
+                                      : "Pending QA"}
                                   </span>
                                 </TableCell>
                                 <TableCell>
@@ -2051,7 +2246,8 @@ function BioanalyticalStorageArchivingPage({
                         id="archival-notes"
                         labelText={intl.formatMessage({
                           id: "notebook.bioanalytical.storage.archivalNotes",
-                          defaultMessage: "Archival Notes & Traceability Documentation",
+                          defaultMessage:
+                            "Archival Notes & Traceability Documentation",
                         })}
                         placeholder={intl.formatMessage({
                           id: "notebook.bioanalytical.storage.archivalNotesPlaceholder",
