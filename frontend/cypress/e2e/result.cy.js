@@ -237,6 +237,7 @@ describe("Result By Referred Out Tests", function () {
       result.endDate(res.endDate);
     });
     result.clickReferralsByTestAndName();
+    cy.wait(2000); // Wait for search results to load
     result.selectAllButtonEnabled(); //wont be if patient does not exist
     result.clickSelectAllButton();
     result.selectNoneButtonEnabled();
@@ -251,6 +252,7 @@ describe("Result By Referred Out Tests", function () {
       result.clickDateButton();
     });
     result.clickReferralsByTestAndName();
+    cy.wait(2000); // Wait for search results to load
     result.selectAllButtonEnabled(); //wont be if patient does not exist
     result.clickSelectAllButton();
     result.selectNoneButtonEnabled();
