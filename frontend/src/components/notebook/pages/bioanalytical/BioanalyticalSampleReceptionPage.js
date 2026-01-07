@@ -440,7 +440,7 @@ function BioanalyticalSampleReceptionPage({
             {selectedSampleIds.length > 0 && (
               <>
                 <Button
-                  kind="secondary"
+                  kind="primary"
                   size="sm"
                   renderIcon={Edit}
                   onClick={() => setIsBulkApplyModalOpen(true)}
@@ -453,7 +453,7 @@ function BioanalyticalSampleReceptionPage({
                 </Button>
 
                 <Button
-                  kind="secondary"
+                  kind="primary"
                   size="sm"
                   renderIcon={Checkmark}
                   onClick={markAsVerified}
