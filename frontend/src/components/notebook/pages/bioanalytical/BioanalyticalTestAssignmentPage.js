@@ -45,6 +45,17 @@ const ANALYTICAL_METHODS = [
       "High Performance Liquid Chromatography with UV-Visible detection",
     applications: ["Drug concentration", "Assay", "Content uniformity"],
     suitableFor: ["API", "Tablet", "Capsule", "Suspension"],
+    preparationSteps: [
+      "Obtain pharmaceutical sample (tablet, capsule, or API)",
+      "Record sample weight/volume and appearance",
+      "Prepare standard solution using reference standard",
+      "Prepare sample solution by dissolution/extraction as per USP method",
+      "Filter solution through 0.45 µm PTFE filter",
+      "Prepare mobile phase as specified",
+      "Record solution preparation time and analyst",
+      "Label all solutions with date, time, and analyst initials",
+      "Document instrument configuration and calibration status",
+    ],
   },
   {
     id: "LC_MS_MS",
@@ -56,6 +67,18 @@ const ANALYTICAL_METHODS = [
       "Metabolite identification",
     ],
     suitableFor: ["Plasma", "Serum", "Urine", "Whole Blood", "API"],
+    preparationSteps: [
+      "Obtain biological sample (plasma/serum/urine) from biorepository",
+      "Verify sample integrity and stability upon thawing",
+      "Record sample identification and collection timepoint",
+      "Add appropriate internal standard to sample",
+      "Perform liquid-liquid extraction (LLE) or solid-phase extraction (SPE)",
+      "Evaporate to dryness and reconstitute in LC-MS mobile phase",
+      "Filter through 0.2 µm nylon filter",
+      "Prepare calibration standard curve (typically 6-8 point curve)",
+      "Prepare quality control samples (Low, Medium, High)",
+      "Document all preparation conditions and lot numbers",
+    ],
   },
   {
     id: "DISSOLUTION_USP",
@@ -68,6 +91,18 @@ const ANALYTICAL_METHODS = [
       "Bioequivalence",
     ],
     suitableFor: ["Tablet", "Capsule", "Suspension"],
+    preparationSteps: [
+      "Obtain pharmaceutical dosage forms (tablets/capsules)",
+      "Record sample appearance and weight",
+      "Prepare dissolution medium as per USP specification",
+      "Equilibrate dissolution medium to 37°C ± 0.5°C",
+      "Calibrate UV spectrophotometer if using spectroscopic detection",
+      "Place apparatus vessels in dissolution bath",
+      "Place samples in baskets (Apparatus I) or on paddles (Apparatus II)",
+      "Start rotation at specified RPM (typically 50-100 RPM)",
+      "Record sampling timepoints (typically 15, 30, 45, 60 minutes)",
+      "Prepare sampling solutions and document collection times",
+    ],
   },
   {
     id: "PHYSICAL_TESTING",
@@ -75,6 +110,18 @@ const ANALYTICAL_METHODS = [
     description: "Physical testing for pharmaceutical dosage forms",
     applications: ["Physical testing", "Quality control", "Batch release"],
     suitableFor: ["Tablet", "Capsule"],
+    preparationSteps: [
+      "Obtain tablet or capsule samples (minimum 10 units per test)",
+      "Inspect samples visually for defects and record appearance",
+      "Measure and record tablet dimensions if applicable",
+      "Calibrate hardness tester using reference tablets",
+      "For friability: Weigh sample tablets (6-20 tablets, total weight ~6.5 g)",
+      "Place tablets in friability apparatus and rotate for 4 minutes at 25 RPM",
+      "Reweigh friability sample and calculate % weight loss",
+      "For disintegration: Place tablets in disintegration apparatus",
+      "Conduct test in deionized water at 37°C ± 2°C for 30 minutes",
+      "Record results and document any deviations from specifications",
+    ],
   },
   {
     id: "IDENTITY_TEST",
@@ -92,6 +139,18 @@ const ANALYTICAL_METHODS = [
       "Suspension",
       "Reference Standard",
       "Excipient",
+    ],
+    preparationSteps: [
+      "Obtain sample from batch to be tested",
+      "Verify sample integrity and authenticity markings",
+      "Record sample lot number and receipt date",
+      "Prepare reference standard solution if using chromatographic method",
+      "Prepare sample solution at appropriate concentration",
+      "Select appropriate analytical method (IR, HPLC, TLC, or Mass Spec)",
+      "For chromatographic methods: Prepare mobile phase and validate system",
+      "Inject reference standard and document retention time",
+      "Inject sample solution and compare with reference",
+      "Document all analytical parameters and calibration data",
     ],
   },
 ];
@@ -1223,7 +1282,7 @@ function BioanalyticalTestAssignmentPage({
                 <ol style={{ marginLeft: "1rem", color: "#525252" }}>
                   {ANALYTICAL_METHODS.find(
                     (m) => m.id === assignmentConfig.analyticalMethod,
-                  )?.preparationSteps.map((step, index) => (
+                  )?.preparationSteps?.map((step, index) => (
                     <li key={index} style={{ marginBottom: "0.25rem" }}>
                       {step}
                     </li>
