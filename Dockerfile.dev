@@ -8,12 +8,12 @@ COPY ./dataexport /build/dataexport
 
 WORKDIR /build/dataexport/dataexport-core
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn org.apache.maven.plugins:maven-dependency-plugin:3.6.1:go-offline
+    mvn dependency:go-offline 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 WORKDIR /build/dataexport/
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn org.apache.maven.plugins:maven-dependency-plugin:3.6.1:go-offline
+    mvn dependency:go-offline 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 
@@ -51,7 +51,7 @@ RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 WORKDIR /build
 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn org.apache.maven.plugins:maven-dependency-plugin:3.6.1:go-offline
+    mvn dependency:go-offline 
 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests -Dspotless.check.skip=true -Dmaven.test.skip=true
@@ -121,4 +121,3 @@ RUN mkdir -p /var/lib/lucene_index; \
 USER tomcat_admin
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
-
