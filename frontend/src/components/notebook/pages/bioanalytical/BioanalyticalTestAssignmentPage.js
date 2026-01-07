@@ -31,8 +31,8 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../../config.json";
-import { NotificationContext } from "../../layout/Layout";
-import { NotificationKinds } from "../../common/CustomNotification";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "./BioanalyticalPages.css";
 
 /**
@@ -1068,7 +1068,7 @@ function BioanalyticalTestAssignmentPage({
       >
         <Form>
           {/* Analytical Method Selection */}
-          <FormGroup>
+          <FormGroup legendText="">
             <Grid>
               <Column lg={8} md={4} sm={4}>
                 <Select
@@ -1138,7 +1138,7 @@ function BioanalyticalTestAssignmentPage({
           </FormGroup>
 
           {/* Instrument Selection */}
-          <FormGroup>
+          <FormGroup legendText="">
             <Grid>
               <Column lg={8} md={4} sm={4}>
                 <Select
@@ -1193,7 +1193,7 @@ function BioanalyticalTestAssignmentPage({
           </FormGroup>
 
           {/* QC Levels Configuration */}
-          <FormGroup>
+          <FormGroup legendText="">
             <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
               <FormattedMessage
                 id="notebook.bioanalytical.testassignment.qcLevelsTitle"
@@ -1308,7 +1308,7 @@ function BioanalyticalTestAssignmentPage({
           </FormGroup>
 
           {/* Acceptance Criteria */}
-          <FormGroup>
+          <FormGroup legendText="">
             <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
               <FormattedMessage
                 id="notebook.bioanalytical.testassignment.acceptanceCriteriaTitle"
@@ -1384,7 +1384,7 @@ function BioanalyticalTestAssignmentPage({
           </FormGroup>
 
           {/* Method-Specific Sample Preparation */}
-          <FormGroup>
+          <FormGroup legendText="">
             <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
               <FormattedMessage
                 id="notebook.bioanalytical.testassignment.methodSpecificPreparation"
@@ -1525,7 +1525,7 @@ function BioanalyticalTestAssignmentPage({
           </FormGroup>
 
           {/* Notes */}
-          <FormGroup>
+          <FormGroup legendText="">
             <TextArea
               id="assignment-notes"
               labelText={
