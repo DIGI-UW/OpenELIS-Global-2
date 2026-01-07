@@ -520,6 +520,58 @@ function BioanalyticalSampleReceptionPage({
               onSelectionChange={setSelectedSampleIds}
               showSelection={true}
               loading={isLoading}
+              columns={[
+                {
+                  key: "externalId",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.externalId",
+                    defaultMessage: "External ID",
+                  }),
+                },
+                {
+                  key: "accessionNumber",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.accessionNumber",
+                    defaultMessage: "Accession #",
+                  }),
+                },
+                {
+                  key: "sampleType",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.type",
+                    defaultMessage: "Sample Type",
+                  }),
+                },
+                {
+                  key: "sampleCategory",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.category",
+                    defaultMessage: "Category",
+                  }),
+                },
+                {
+                  key: "sourceFacility",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.sourceFacility",
+                    defaultMessage: "Source",
+                  }),
+                },
+                // Collection Date intentionally removed (not used in bioanalytical workflow)
+                {
+                  key: "receivedDate",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.receivedDate",
+                    defaultMessage: "Received Date",
+                  }),
+                },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.sample.status",
+                    defaultMessage: "Status",
+                  }),
+                },
+              ]}
               additionalColumns={[
                 {
                   key: "pending-accessionNumber",
@@ -689,6 +741,58 @@ function BioanalyticalSampleReceptionPage({
             samples={completedSamples}
             showSelection={false}
             loading={isLoading}
+            columns={[
+              {
+                key: "externalId",
+                header: intl.formatMessage({
+                  id: "notebook.sample.externalId",
+                  defaultMessage: "External ID",
+                }),
+              },
+              {
+                key: "accessionNumber",
+                header: intl.formatMessage({
+                  id: "notebook.sample.accessionNumber",
+                  defaultMessage: "Accession #",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.sample.type",
+                  defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "sampleCategory",
+                header: intl.formatMessage({
+                  id: "notebook.sample.category",
+                  defaultMessage: "Category",
+                }),
+              },
+              {
+                key: "sourceFacility",
+                header: intl.formatMessage({
+                  id: "notebook.sample.sourceFacility",
+                  defaultMessage: "Source",
+                }),
+              },
+              // Collection Date intentionally removed (not used in bioanalytical workflow)
+              {
+                key: "receivedDate",
+                header: intl.formatMessage({
+                  id: "notebook.sample.receivedDate",
+                  defaultMessage: "Received Date",
+                }),
+              },
+              {
+                key: "status",
+                header: intl.formatMessage({
+                  id: "notebook.sample.status",
+                  defaultMessage: "Status",
+                }),
+              },
+            ]}
             additionalColumns={[
               {
                 key: "verified-accessionNumber",
