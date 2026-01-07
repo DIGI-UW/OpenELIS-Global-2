@@ -1,9 +1,8 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useContext } from "react";
 import {
   Grid,
   Column,
   Button,
-  InlineNotification,
   Loading,
   Table,
   TableHead,
@@ -32,6 +31,8 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../../config.json";
+import { NotificationContext } from "../../layout/Layout";
+import { NotificationKinds } from "../../common/CustomNotification";
 import "./BioanalyticalPages.css";
 
 /**
@@ -310,6 +311,8 @@ function BioanalyticalTestAssignmentPage({
   templateInstruments,
 }) {
   const intl = useIntl();
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
   // Loading and data states
   const [isLoading, setIsLoading] = useState(false);
@@ -339,9 +342,16 @@ function BioanalyticalTestAssignmentPage({
   });
 
   // UI states
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [showAssignmentForm, setShowAssignmentForm] = useState(false);
+
+  // Notification helper
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, message }) => {
+      setNotificationVisible(true);
+      addNotification({ kind, title, message });
+    },
+    [addNotification, setNotificationVisible],
+  );
 
   // Fetch Stage 1 sample data for reference (to display sampleType, requestedTests, etc.)
   // Stage 1 is the Sample Reception & Registration page (usually the first page)
@@ -537,19 +547,24 @@ function BioanalyticalTestAssignmentPage({
       } catch (error) {
         console.error("Error loading samples:", error);
         setSamples([]);
-        setErrorMessage(
-          intl.formatMessage({
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.testassignment.error",
+            defaultMessage: "Error",
+          }),
+          message: intl.formatMessage({
             id: "notebook.bioanalytical.testassignment.loadError",
             defaultMessage: "Failed to load samples. Please refresh the page.",
           }),
-        );
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     loadSamples();
-  }, [entryId, intl, pageData?.id, fetchStage1DataForSamples]);
+  }, [entryId, intl, pageData?.id, fetchStage1DataForSamples, notify]);
 
   const toggleSampleSelection = (sampleId) => {
     const newSelection = new Set(selectedSamples);
@@ -577,17 +592,21 @@ function BioanalyticalTestAssignmentPage({
   // Show assignment form when samples are selected
   const handleShowAssignmentForm = useCallback(() => {
     if (selectedSamples.size === 0) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.testassignment.noSamplesSelected",
           defaultMessage: "Please select at least one sample to assign tests",
         }),
-      );
+      });
       return;
     }
     setShowAssignmentForm(true);
-    setErrorMessage("");
-  }, [selectedSamples.size, intl]);
+  }, [selectedSamples.size, intl, notify]);
 
   // Handle form field changes
   const handleConfigChange = useCallback((field, value, subField = null) => {
@@ -644,33 +663,48 @@ function BioanalyticalTestAssignmentPage({
   // Main test assignment function with backend API call
   const handleTestAssignment = useCallback(async () => {
     if (selectedSamples.size === 0) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.testassignment.noSamplesSelected",
           defaultMessage: "Please select at least one sample to assign tests",
         }),
-      );
+      });
       return;
     }
 
     // Validate required fields
     if (!assignmentConfig.analyticalMethod) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.testassignment.methodRequired",
           defaultMessage: "Please select an analytical method",
         }),
-      );
+      });
       return;
     }
 
     if (!assignmentConfig.assignedStaff) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.testassignment.staffRequired",
           defaultMessage: "Please assign a staff member",
         }),
-      );
+      });
       return;
     }
 
@@ -678,18 +712,22 @@ function BioanalyticalTestAssignmentPage({
       !assignmentConfig.samplePreparation ||
       assignmentConfig.samplePreparation.trim().length === 0
     ) {
-      setErrorMessage(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
           id: "notebook.bioanalytical.testassignment.preparationRequired",
           defaultMessage:
             "Please document the sample preparation method according to the selected analytical method requirements",
         }),
-      );
+      });
       return;
     }
 
     setIsAssigning(true);
-    setErrorMessage("");
 
     try {
       // Prepare assignment data
@@ -758,10 +796,15 @@ function BioanalyticalTestAssignmentPage({
           ...newAssignments,
         }));
 
-        setSuccessMessage(
-          intl.formatMessage(
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({
+            id: "notebook.bioanalytical.testassignment.success",
+            defaultMessage: "Success",
+          }),
+          message: intl.formatMessage(
             {
-              id: "notebook.bioanalytical.testassignment.success",
+              id: "notebook.bioanalytical.testassignment.successMessage",
               defaultMessage:
                 "Tests assigned to {count} samples using {method}",
             },
@@ -773,7 +816,7 @@ function BioanalyticalTestAssignmentPage({
                 )?.name || "selected method",
             },
           ),
-        );
+        });
 
         // Reset form and close assignment modal
         setShowAssignmentForm(false);
@@ -809,19 +852,31 @@ function BioanalyticalTestAssignmentPage({
       }
     } catch (error) {
       console.error("Test assignment error:", error);
-      setErrorMessage(
-        intl.formatMessage(
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.bioanalytical.testassignment.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage(
           {
             id: "notebook.bioanalytical.testassignment.assignmentError",
             defaultMessage: "Failed to assign tests: {error}",
           },
           { error: error.message },
         ),
-      );
+      });
     } finally {
       setIsAssigning(false);
     }
-  }, [selectedSamples, assignmentConfig, entryId, intl, onProgressUpdate]);
+  }, [
+    selectedSamples,
+    assignmentConfig,
+    entryId,
+    intl,
+    onProgressUpdate,
+    notify,
+  ]);
 
   return (
     <div className="bioanalytical-page">
@@ -839,36 +894,6 @@ function BioanalyticalTestAssignmentPage({
           />
         </p>
       </div>
-
-      {errorMessage && (
-        <div style={{ marginBottom: "1rem" }}>
-          <InlineNotification
-            kind="error"
-            title={intl.formatMessage({
-              id: "notebook.bioanalytical.testassignment.error",
-              defaultMessage: "Error",
-            })}
-            subtitle={errorMessage}
-            lowContrast
-            onCloseButtonClick={() => setErrorMessage("")}
-          />
-        </div>
-      )}
-
-      {successMessage && (
-        <div style={{ marginBottom: "1rem" }}>
-          <InlineNotification
-            kind="success"
-            title={intl.formatMessage({
-              id: "notebook.bioanalytical.testassignment.success",
-              defaultMessage: "Success",
-            })}
-            subtitle={successMessage}
-            lowContrast
-            onCloseButtonClick={() => setSuccessMessage("")}
-          />
-        </div>
-      )}
 
       <Grid>
         <Column lg={16} md={8} sm={4}>
