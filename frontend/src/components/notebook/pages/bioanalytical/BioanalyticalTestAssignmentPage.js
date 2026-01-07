@@ -589,6 +589,28 @@ function BioanalyticalTestAssignmentPage({
     return STAFF_ROLES.filter((role) => role.specialties.includes(methodId));
   }, []);
 
+  // Get analytical method name by ID
+  const getMethodName = useCallback((methodId) => {
+    return ANALYTICAL_METHODS.find((m) => m.id === methodId)?.name || methodId;
+  }, []);
+
+  // Get analyzer/instrument name by ID
+  const getAnalyzerName = useCallback((analyzerId) => {
+    return ANALYZERS.find((a) => a.id === analyzerId)?.machine || analyzerId;
+  }, []);
+
+  // Get color based on analytical method
+  const getMethodColor = useCallback((methodId) => {
+    const colors = {
+      HPLC_UV_VIS: "#0043CE", // Blue
+      LC_MS_MS: "#7F10F0", // Purple
+      DISSOLUTION_USP: "#F1C21B", // Yellow
+      PHYSICAL_TESTING: "#FF832B", // Orange
+      IDENTITY_TEST: "#24A148", // Green
+    };
+    return colors[methodId] || "#525252"; // Gray default
+  }, []);
+
   // Show assignment form when samples are selected
   const handleShowAssignmentForm = useCallback(() => {
     if (selectedSamples.size === 0) {
@@ -990,13 +1012,61 @@ function BioanalyticalTestAssignmentPage({
                                 : sample.requestedTests || "-"}
                             </TableCell>
                             <TableCell>
-                              <span className="status-badge info">
-                                {testAssignments[sample.id]?.count || 0}{" "}
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.testassignment.assigned"
-                                  defaultMessage="assigned"
-                                />
-                              </span>
+                              {testAssignments[sample.id] ? (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "0.5rem",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      backgroundColor: getMethodColor(
+                                        testAssignments[sample.id]
+                                          .analyticalMethod,
+                                      ),
+                                      color: "white",
+                                      padding: "0.25rem 0.75rem",
+                                      borderRadius: "4px",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {getMethodName(
+                                      testAssignments[sample.id]
+                                        .analyticalMethod,
+                                    )}
+                                  </span>
+                                  <span
+                                    style={{
+                                      backgroundColor: "#f0f0f0",
+                                      color: "#161616",
+                                      padding: "0.25rem 0.75rem",
+                                      borderRadius: "4px",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                      border: "1px solid #d0d0d0",
+                                    }}
+                                  >
+                                    {testAssignments[sample.id].instrumentId
+                                      ? getAnalyzerName(
+                                          testAssignments[sample.id]
+                                            .instrumentId,
+                                        )
+                                      : "No Analyzer"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span style={{ color: "#a8a8a8" }}>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.testassignment.notAssigned"
+                                    defaultMessage="Not assigned"
+                                  />
+                                </span>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
