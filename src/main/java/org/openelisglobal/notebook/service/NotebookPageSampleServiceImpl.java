@@ -142,6 +142,16 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 // page
                 // Samples routed to INTERNAL_ANALYSIS go to the next page (Analysis)
                 if (!nextPageLoaded) {
+                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                            "T150: Loading next page for pageId=" + pageId);
+                    NoteBookPage currentPageDebug = noteBookService.getPage(pageId);
+                    if (currentPageDebug != null) {
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                "T150: Current page details - id=" + currentPageDebug.getId()
+                                        + " title='" + currentPageDebug.getTitle() + "' order="
+                                        + currentPageDebug.getOrder());
+                    }
+
                     nextPage = noteBookService.getNextPage(pageId);
                     nextPageLoaded = true;
                     LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
@@ -203,6 +213,11 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
                 for (Integer sampleId : batch) {
                     NoteBookPage targetPage = nextPage; // default to next page
+
+                    LogEvent.logDebug(this.getClass().getName(), "bulkUpdateStatus",
+                            "T150: Processing sample " + sampleId + ": isRoutingPage=" + isRoutingPage
+                                    + ", isStoragePage=" + isStoragePage + ", targetPage="
+                                    + (targetPage != null ? targetPage.getId() : "null"));
 
                     // For storage pages, always skip to archiving page (Disposal & Archiving)
                     // Storage samples skip the Reporting page
