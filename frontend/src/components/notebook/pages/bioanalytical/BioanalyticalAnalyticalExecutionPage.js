@@ -1043,85 +1043,75 @@ function BioanalyticalAnalyticalExecutionPage({
                     getRowProps,
                     onInputChange,
                     selectedRows,
-                  }) => (
-                    <TableContainer
-                      title="Samples for Execution"
-                      description={`${assignedSamples.length} samples available for execution`}
-                    >
-                      <TableToolbar>
-                        <TableToolbarContent>
-                          <TableToolbarSearch
-                            onChange={onInputChange}
-                            placeholder="Search samples..."
-                          />
-                        </TableToolbarContent>
-                      </TableToolbar>
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            <TableSelectAll
-                              {...getSelectionProps()}
-                              onSelect={(event) => {
-                                // Handle select all
-                                const allIds = rows.map((row) => row.id);
-                                if (event.target.checked) {
-                                  setSelectedSampleIds(allIds);
-                                } else {
-                                  setSelectedSampleIds([]);
-                                }
-                              }}
+                  }) => {
+                    // Sync DataTable selection with our state
+                    React.useEffect(() => {
+                      if (selectedRows && selectedRows.length >= 0) {
+                        const selectedIds = selectedRows.map((row) => row.id);
+                        setSelectedSampleIds(selectedIds);
+                      }
+                    }, [selectedRows]);
+
+                    return (
+                      <TableContainer
+                        title="Samples for Execution"
+                        description={`${assignedSamples.length} samples available for execution`}
+                      >
+                        <TableToolbar>
+                          <TableToolbarContent>
+                            <TableToolbarSearch
+                              onChange={onInputChange}
+                              placeholder="Search samples..."
                             />
-                            {headers.map((header) => (
-                              <TableHeader
-                                key={header.key}
-                                {...getHeaderProps({ header })}
-                              >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.length > 0 ? (
-                            rows.map((row) => (
-                              <TableRow key={row.id} {...getRowProps({ row })}>
-                                <TableSelectRow
-                                  {...getSelectionProps({ row })}
-                                  onSelect={(event) => {
-                                    // Handle individual row selection
-                                    setSelectedSampleIds((prev) => {
-                                      const newSet = new Set(prev);
-                                      if (event.target.checked) {
-                                        newSet.add(row.id);
-                                      } else {
-                                        newSet.delete(row.id);
-                                      }
-                                      return Array.from(newSet);
-                                    });
-                                  }}
-                                />
-                                {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
-                                    {renderTableCell(cell)}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))
-                          ) : (
+                          </TableToolbarContent>
+                        </TableToolbar>
+                        <Table {...getTableProps()}>
+                          <TableHead>
                             <TableRow>
-                              <TableCell
-                                colSpan={headers.length + 1}
-                                style={{ textAlign: "center" }}
-                              >
-                                No samples available for execution. Please
-                                complete Stage 2 first.
-                              </TableCell>
+                              <TableSelectAll {...getSelectionProps()} />
+                              {headers.map((header) => (
+                                <TableHeader
+                                  key={header.key}
+                                  {...getHeaderProps({ header })}
+                                >
+                                  {header.header}
+                                </TableHeader>
+                              ))}
                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  )}
+                          </TableHead>
+                          <TableBody>
+                            {rows.length > 0 ? (
+                              rows.map((row) => (
+                                <TableRow
+                                  key={row.id}
+                                  {...getRowProps({ row })}
+                                >
+                                  <TableSelectRow
+                                    {...getSelectionProps({ row })}
+                                  />
+                                  {row.cells.map((cell) => (
+                                    <TableCell key={cell.id}>
+                                      {renderTableCell(cell)}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={headers.length + 1}
+                                  style={{ textAlign: "center" }}
+                                >
+                                  No samples available for execution. Please
+                                  complete Stage 2 first.
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    );
+                  }}
                 </DataTable>
               </Column>
             </Grid>
