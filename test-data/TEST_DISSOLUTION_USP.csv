@@ -1,6 +1,3 @@
-Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
-Dissolution Apparatus,USP Paddle,2026-01-08,10:00:00,S003,SA-003,Tablet,Dissolution Profile,DISSOLUTION_USP,COMPLETED
-
 QC_RESULTS
 QCLevel,QCName,DissolutionTime,PercentDissolved,LowerAcceptanceCriteria,UpperAcceptanceCriteria,AccuracyPercent,Status
 Reference_Q,USP Reference Standard,15,52.1,45,65,101.2,PASS

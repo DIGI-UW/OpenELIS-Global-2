@@ -1,6 +1,3 @@
-Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
-HPLC-UV,Identity Testing,2026-01-08,13:00:00,S005,SA-005,Active Pharma,Identity Confirmation,IDENTITY_TEST,COMPLETED
-
 QC_RESULTS
 QCLevel,QCName,ReferenceStandard,RetentionTime,AcceptanceCriteria,MeasuredRetentionTime,AccuracyPercent,Status
 Identity_Ref,USP Reference Standard,Compound XYZ,8.45min,8.2-8.7min,8.43min,99.8,PASS

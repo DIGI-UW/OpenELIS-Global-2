@@ -1,6 +1,3 @@
-Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
-LC-MS/MS,LC-MS/MS,2026-01-08,14:00:00,S002,SA-002,Serum,Metabolite Detection,LC_MS_MS,COMPLETED
-
 QC_RESULTS
 QCLevel,QCName,SpikedConcentration,MeasuredValue,LowerAcceptanceCriteria,UpperAcceptanceCriteria,AccuracyPercent,PrecisionPercent,Status
 LQC,Low QC,2.5,2.48,2.0,3.0,99.2,2.4,PASS

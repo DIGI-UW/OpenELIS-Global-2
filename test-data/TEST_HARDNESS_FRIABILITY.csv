@@ -1,6 +1,3 @@
-Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
-Hardness Tester,Monsanto Hardness,2026-01-08,11:30:00,S004,SA-004,Tablet,Hardness & Friability,PHYSICAL_TESTING,COMPLETED
-
 QC_RESULTS
 QCLevel,QCName,TestType,MeasuredValue,Units,LowerAcceptanceCriteria,UpperAcceptanceCriteria,AccuracyPercent,Status
 Hardness_Cal,Hardness Reference,Hardness,98.5,kP,95.0,105.0,99.5,PASS
