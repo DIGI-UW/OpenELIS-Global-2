@@ -1525,7 +1525,7 @@ function BioanalyticalAnalyticalExecutionPage({
                 *REQUIRED
               </span>
             </h5>
-            <p
+            <div
               style={{
                 fontSize: "0.875rem",
                 color: uploadedFiles.length === 0 ? "#e65100" : "#525252",
@@ -1533,16 +1533,19 @@ function BioanalyticalAnalyticalExecutionPage({
                 margin: 0,
               }}
             >
-              Upload raw data files (chromatograms, spectra, or test results)
-              from your instrument. Files will be automatically processed to
-              extract QC results, calibration data, and quantification results.
+              <p style={{ margin: "0 0 0.5rem 0" }}>
+                Upload raw data files (chromatograms, spectra, or test results)
+                from your instrument. Files will be automatically processed to
+                extract QC results, calibration data, and quantification
+                results.
+              </p>
               {uploadedFiles.length === 0 && (
                 <div style={{ marginTop: "0.5rem", fontWeight: "500" }}>
                   ⚠️ At least one file must be uploaded before recording test
                   execution.
                 </div>
               )}
-            </p>
+            </div>
 
             {/* File Selector */}
             <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
