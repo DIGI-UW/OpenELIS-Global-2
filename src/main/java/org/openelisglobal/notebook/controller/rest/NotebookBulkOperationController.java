@@ -2821,7 +2821,10 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
-     * Process CSV files containing analytical data
+     * Process CSV files containing analytical data Supports two CSV formats: 1.
+     * Structured format: QC_RESULTS, CALIBRATION_CURVE, QUANTIFICATION_RESULTS
+     * sections 2. Legacy HPLC format: QUALITY CONTROL RESULTS, SAMPLE RESULTS
+     * sections
      */
     private Map<String, Object> processCsvFile(Path filePath, List<Map<String, Object>> samples) throws IOException {
         Map<String, Object> results = new HashMap<>();
@@ -2836,10 +2839,259 @@ public class NotebookBulkOperationController extends BaseRestController {
         List<Map<String, Object>> analyzerResults = new ArrayList<>();
         Map<String, Object> calibrationData = new HashMap<>();
 
-        // Keep track of processed sample results from instrument file
+        // Detect CSV format and parse accordingly
+        String csvContent = String.join("\n", lines);
+        if (csvContent.contains("QC_RESULTS") || csvContent.contains("CALIBRATION_CURVE")
+                || csvContent.contains("QUANTIFICATION_RESULTS")) {
+            // Process structured format (test data files)
+            results = processStructuredCsvFormat(lines, samples);
+        } else {
+            // Process legacy format (old instrument exports)
+            results = processLegacyCsvFormat(lines, samples);
+        }
+
+        return results;
+    }
+
+    /**
+     * Process structured CSV format with QC_RESULTS, CALIBRATION_CURVE,
+     * QUANTIFICATION_RESULTS sections
+     */
+    private Map<String, Object> processStructuredCsvFormat(List<String> lines, List<Map<String, Object>> samples) {
+        Map<String, Object> results = new HashMap<>();
+        List<Map<String, Object>> quantification = new ArrayList<>();
+        List<Map<String, Object>> qcResults = new ArrayList<>();
+        List<Map<String, Object>> analyzerResults = new ArrayList<>();
+        Map<String, Object> calibrationData = new HashMap<>();
+
+        String currentSection = "";
+        String[] headers = null;
+
+        for (String line : lines) {
+            String trimmedLine = line.trim();
+
+            // Skip empty lines
+            if (trimmedLine.isEmpty()) {
+                continue;
+            }
+
+            // Detect section headers
+            if (trimmedLine.equals("QC_RESULTS")) {
+                currentSection = "QC";
+                continue;
+            } else if (trimmedLine.equals("CALIBRATION_CURVE")) {
+                currentSection = "CALIBRATION";
+                continue;
+            } else if (trimmedLine.equals("QUANTIFICATION_RESULTS")) {
+                currentSection = "QUANTIFICATION";
+                continue;
+            } else if (trimmedLine.equals("INSTRUMENT_DETAILS") || trimmedLine.equals("ANALYSIS_SUMMARY")) {
+                currentSection = "OTHER";
+                continue;
+            }
+
+            // Parse headers (column names)
+            if (trimmedLine.contains("QCLevel") || trimmedLine.contains("CalibrationID")
+                    || trimmedLine.contains("InstrumentSampleID")) {
+                headers = trimmedLine.split(",");
+                continue;
+            }
+
+            // Skip header rows that don't match current section
+            if (headers == null || trimmedLine.contains(",") == false) {
+                continue;
+            }
+
+            String[] values = trimmedLine.split(",");
+
+            // Parse QC results section
+            if (currentSection.equals("QC")) {
+                parseQcResultsRow(values, headers, qcResults);
+            }
+            // Parse calibration data section
+            else if (currentSection.equals("CALIBRATION")) {
+                parseCalibrationRow(values, headers, calibrationData);
+            }
+            // Parse quantification results section
+            else if (currentSection.equals("QUANTIFICATION")) {
+                parseQuantificationRow(values, headers, quantification);
+            }
+        }
+
+        // Map quantification results to lab samples from Stage 2
+        if (!quantification.isEmpty() && !samples.isEmpty()) {
+            for (int i = 0; i < Math.min(quantification.size(), samples.size()); i++) {
+                Map<String, Object> quantResult = quantification.get(i);
+                Map<String, Object> labSample = samples.get(i);
+
+                // Get lab sample ID
+                String labSampleId = (String) labSample.get("accessionNumber");
+                if (labSampleId == null) {
+                    labSampleId = (String) labSample.get("id");
+                }
+
+                quantResult.put("sampleId", labSampleId);
+
+                // Add to analyzer results
+                Map<String, Object> analyzerResult = new HashMap<>();
+                analyzerResult.put("id", labSampleId);
+                analyzerResult.put("sampleId", labSampleId);
+                analyzerResult.put("result", quantResult.get("concentration") + " " + quantResult.get("units"));
+                analyzerResult.put("quality", "VALID".equals(quantResult.get("validityStatus")) ? "PASSED" : "FAILED");
+                analyzerResult.put("recoveryRate", "N/A");
+                analyzerResults.add(analyzerResult);
+            }
+        }
+
+        // Set calibration quality assessment
+        if (calibrationData.containsKey("rSquared")) {
+            double rSquared = (Double) calibrationData.get("rSquared");
+            calibrationData.put("qualityAssessment", rSquared >= 0.99 ? "PASS" : "FAIL");
+        } else {
+            calibrationData.put("qualityAssessment", "FAIL");
+        }
+
+        results.put("quantification", quantification);
+        results.put("qcResults", qcResults);
+        results.put("analyzerResults", analyzerResults);
+        results.put("calibrationData", calibrationData);
+
+        LogEvent.logInfo("NotebookBulkOperationController", "processStructuredCsvFormat",
+                "Parsed " + qcResults.size() + " QC results, " + quantification.size() + " quantification results");
+
+        return results;
+    }
+
+    /**
+     * Parse QC results row from structured CSV format
+     */
+    private void parseQcResultsRow(String[] values, String[] headers, List<Map<String, Object>> qcResults) {
+        try {
+            Map<String, Object> qcResult = new HashMap<>();
+
+            // Map CSV columns to QC result fields
+            for (int i = 0; i < headers.length && i < values.length; i++) {
+                String header = headers[i].trim();
+                String value = values[i].trim();
+
+                if (header.equals("QCLevel")) {
+                    qcResult.put("level", extractQcLevel(value));
+                } else if (header.equals("QCName")) {
+                    qcResult.put("id", value);
+                } else if (header.equals("SpikedConcentration")) {
+                    qcResult.put("spikedConcentration", parseDouble(value));
+                } else if (header.equals("MeasuredValue")) {
+                    qcResult.put("measuredValue", parseDouble(value));
+                } else if (header.equals("AccuracyPercent")) {
+                    qcResult.put("accuracy", parseDouble(value));
+                } else if (header.equals("PrecisionPercent")) {
+                    qcResult.put("precision", parseDouble(value));
+                } else if (header.equals("Status")) {
+                    qcResult.put("status", value);
+                }
+            }
+
+            if (!qcResult.isEmpty()) {
+                qcResults.add(qcResult);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookBulkOperationController", "parseQcResultsRow",
+                    "Error parsing QC row: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Parse calibration data row from structured CSV format
+     */
+    private void parseCalibrationRow(String[] values, String[] headers, Map<String, Object> calibrationData) {
+        try {
+            for (int i = 0; i < headers.length && i < values.length; i++) {
+                String header = headers[i].trim();
+                String value = values[i].trim();
+
+                if (header.equals("RSquared")) {
+                    calibrationData.put("rSquared", parseDouble(value));
+                } else if (header.equals("Slope")) {
+                    calibrationData.put("slope", parseDouble(value));
+                } else if (header.equals("Intercept")) {
+                    calibrationData.put("intercept", parseDouble(value));
+                } else if (header.equals("Equation")) {
+                    calibrationData.put("equation", value);
+                } else if (header.equals("InstrumentName")) {
+                    calibrationData.put("instrumentName", value);
+                } else if (header.equals("FileName")) {
+                    calibrationData.put("fileName", value);
+                } else if (header.equals("QualityAssessment")) {
+                    calibrationData.put("qualityAssessment", value);
+                }
+            }
+
+            // Build equation if missing but we have slope and intercept
+            if (!calibrationData.containsKey("equation") && calibrationData.containsKey("slope")
+                    && calibrationData.containsKey("intercept")) {
+                double slope = (Double) calibrationData.get("slope");
+                double intercept = (Double) calibrationData.get("intercept");
+                String equation = String.format("y = %.4fx + %.4f", slope, intercept);
+                calibrationData.put("equation", equation);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookBulkOperationController", "parseCalibrationRow",
+                    "Error parsing calibration row: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Parse quantification results row from structured CSV format
+     */
+    private void parseQuantificationRow(String[] values, String[] headers, List<Map<String, Object>> quantification) {
+        try {
+            Map<String, Object> quantResult = new HashMap<>();
+
+            for (int i = 0; i < headers.length && i < values.length; i++) {
+                String header = headers[i].trim();
+                String value = values[i].trim();
+
+                if (header.equals("InstrumentSampleID")) {
+                    quantResult.put("instrumentSampleId", value);
+                } else if (header.equals("SampleName")) {
+                    quantResult.put("sampleName", value);
+                } else if (header.equals("AccessionNumber")) {
+                    quantResult.put("accessionNumber", value);
+                } else if (header.equals("ConcentrationValue")) {
+                    quantResult.put("concentration", parseDouble(value));
+                } else if (header.equals("Units")) {
+                    quantResult.put("units", value);
+                } else if (header.equals("PeakArea")) {
+                    quantResult.put("peakArea", parseDouble(value));
+                } else if (header.equals("CVPercent")) {
+                    quantResult.put("cvPercent", parseDouble(value));
+                } else if (header.equals("AccuracyPercent")) {
+                    quantResult.put("accuracyPercent", parseDouble(value));
+                } else if (header.equals("ValidityStatus")) {
+                    quantResult.put("validityStatus", value);
+                }
+            }
+
+            if (!quantResult.isEmpty() && quantResult.containsKey("sampleName")) {
+                quantification.add(quantResult);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn("NotebookBulkOperationController", "parseQuantificationRow",
+                    "Error parsing quantification row: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Process legacy HPLC CSV format (old instrument exports)
+     */
+    private Map<String, Object> processLegacyCsvFormat(List<String> lines, List<Map<String, Object>> samples) {
+        Map<String, Object> results = new HashMap<>();
+        List<Map<String, Object>> quantification = new ArrayList<>();
+        List<Map<String, Object>> qcResults = new ArrayList<>();
+        List<Map<String, Object>> analyzerResults = new ArrayList<>();
+        Map<String, Object> calibrationData = new HashMap<>();
         List<Map<String, Object>> instrumentSampleResults = new ArrayList<>();
 
-        // Process HPLC-style analytical data export format
         boolean inQcSection = false;
         boolean inSampleSection = false;
         boolean inCalibrationSection = false;
@@ -2848,7 +3100,6 @@ public class NotebookBulkOperationController extends BaseRestController {
             String[] values = line.split(",");
             String trimmedLine = line.trim();
 
-            // Skip empty lines
             if (trimmedLine.isEmpty()) {
                 continue;
             }
@@ -2879,7 +3130,6 @@ public class NotebookBulkOperationController extends BaseRestController {
                         double intercept = Double.parseDouble(values[1].trim());
                         calibrationData.put("intercept", intercept);
 
-                        // Build equation if we have slope and intercept
                         if (calibrationData.containsKey("slope")) {
                             double slope = (Double) calibrationData.get("slope");
                             String equation = String.format("y = %.4fx + %.4f", slope, intercept);
@@ -2890,17 +3140,13 @@ public class NotebookBulkOperationController extends BaseRestController {
                     }
                 }
                 inCalibrationSection = false;
-            }
-
-            // Parse QC results section
-            else if (trimmedLine.contains("QUALITY CONTROL RESULTS")) {
+            } else if (trimmedLine.contains("QUALITY CONTROL RESULTS")) {
                 inQcSection = true;
                 continue;
             } else if (trimmedLine.contains("QC SUMMARY")) {
                 inQcSection = false;
                 continue;
             } else if (inQcSection && (trimmedLine.contains("QC,") || trimmedLine.contains("QC "))) {
-                // Parse QC lines like: "Low QC,25,24.8,361.1,99.2,PASS"
                 if (values.length >= 6) {
                     try {
                         Map<String, Object> qcResult = new HashMap<>();
@@ -2915,17 +3161,14 @@ public class NotebookBulkOperationController extends BaseRestController {
                         qcResult.put("spikedConcentration", expectedConc);
                         qcResult.put("measuredValue", measuredConc);
                         qcResult.put("accuracy", accuracy);
-                        qcResult.put("precision", 2.0); // Default CV value
+                        qcResult.put("precision", 2.0);
                         qcResult.put("status", status.equals("PASS") ? "PASS" : "FAIL");
                         qcResults.add(qcResult);
                     } catch (NumberFormatException e) {
                         // Skip malformed QC lines
                     }
                 }
-            }
-
-            // Parse sample results section
-            else if (trimmedLine.contains("SAMPLE RESULTS")) {
+            } else if (trimmedLine.contains("SAMPLE RESULTS")) {
                 inSampleSection = true;
                 continue;
             } else if (trimmedLine.contains("CHROMATOGRAPHY CONDITIONS")
@@ -2933,8 +3176,6 @@ public class NotebookBulkOperationController extends BaseRestController {
                 inSampleSection = false;
                 continue;
             } else if (inSampleSection && values.length >= 6 && !trimmedLine.contains("Sample ID")) {
-                // Parse sample lines like: "BIO-002,Tablet Assay - Lot
-                // A,425.3,6185.9,424.8,0.8,VALID"
                 try {
                     String instrumentSampleId = values[0].trim();
                     String sampleName = values[1].trim();
@@ -2944,12 +3185,10 @@ public class NotebookBulkOperationController extends BaseRestController {
                     double rsd = Double.parseDouble(values[5].trim());
                     String status = values[6].trim();
 
-                    // Skip blank samples
                     if (sampleName.contains("Blank") || sampleName.contains("Control")) {
                         continue;
                     }
 
-                    // Store instrument result temporarily - will be mapped to lab samples later
                     Map<String, Object> instrumentResult = new HashMap<>();
                     instrumentResult.put("instrumentSampleId", instrumentSampleId);
                     instrumentResult.put("sampleName", sampleName);
@@ -2967,24 +3206,19 @@ public class NotebookBulkOperationController extends BaseRestController {
             }
         }
 
-        // Map instrument results to lab samples from Stage 2
-        // Order: First instrument result -> First lab sample, Second instrument result
-        // -> Second lab sample, etc.
+        // Map instrument results to lab samples
         for (int i = 0; i < instrumentSampleResults.size() && i < samples.size(); i++) {
             Map<String, Object> instrumentResult = instrumentSampleResults.get(i);
             Map<String, Object> labSample = samples.get(i);
 
-            // Use the actual lab sample ID from Stage 2, not the instrument sample ID
             String labSampleId = (String) labSample.get("accessionNumber");
             if (labSampleId == null) {
                 labSampleId = (String) labSample.get("id");
             }
 
-            // Create quantification result with lab sample ID
             Map<String, Object> sampleResult = new HashMap<>();
-            sampleResult.put("sampleId", labSampleId); // Use lab sample ID, not instrument ID
-            sampleResult.put("instrumentSampleId", instrumentResult.get("instrumentSampleId")); // Keep instrument ID
-                                                                                                // for reference
+            sampleResult.put("sampleId", labSampleId);
+            sampleResult.put("instrumentSampleId", instrumentResult.get("instrumentSampleId"));
             sampleResult.put("sampleName", instrumentResult.get("sampleName"));
             sampleResult.put("analyte", "Target Compound");
             sampleResult.put("peakHeight", instrumentResult.get("peakHeight"));
@@ -2992,12 +3226,11 @@ public class NotebookBulkOperationController extends BaseRestController {
             sampleResult.put("concentration", instrumentResult.get("concentration"));
             sampleResult.put("units", instrumentResult.get("units"));
             sampleResult.put("cvPercent", instrumentResult.get("cvPercent"));
-            sampleResult.put("accuracyPercent", 100.0); // Default accuracy for regular samples
+            sampleResult.put("accuracyPercent", 100.0);
             sampleResult.put("responseFunction", "Linear");
             sampleResult.put("status", instrumentResult.get("status"));
             quantification.add(sampleResult);
 
-            // Also add to analyzer results with lab sample ID
             Map<String, Object> analyzerResult = new HashMap<>();
             analyzerResult.put("id", labSampleId);
             analyzerResult.put("sampleId", labSampleId);
@@ -3007,11 +3240,9 @@ public class NotebookBulkOperationController extends BaseRestController {
             analyzerResults.add(analyzerResult);
         }
 
-        // Log the mapping for debugging
-        org.openelisglobal.common.log.LogEvent.logInfo("NotebookBulkOperationController", "processCsvFile", "Mapped "
+        LogEvent.logInfo("NotebookBulkOperationController", "processLegacyCsvFormat", "Mapped "
                 + instrumentSampleResults.size() + " instrument results to " + samples.size() + " lab samples");
 
-        // Set calibration quality assessment
         if (calibrationData.containsKey("rSquared")) {
             double rSquared = (Double) calibrationData.get("rSquared");
             calibrationData.put("qualityAssessment", rSquared >= 0.99 ? "PASS" : "FAIL");
@@ -3102,20 +3333,13 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Request class for file processing
      */
+    @Getter
     public static class FileProcessingRequest {
         private List<String> fileIds;
         private List<Map<String, Object>> samples;
 
-        public List<String> getFileIds() {
-            return fileIds;
-        }
-
         public void setFileIds(List<String> fileIds) {
             this.fileIds = fileIds;
-        }
-
-        public List<Map<String, Object>> getSamples() {
-            return samples;
         }
 
         public void setSamples(List<Map<String, Object>> samples) {
