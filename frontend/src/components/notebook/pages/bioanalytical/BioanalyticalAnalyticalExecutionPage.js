@@ -1277,18 +1277,43 @@ function BioanalyticalAnalyticalExecutionPage({
 
                       <div
                         style={{
-                          marginTop: "1.5rem",
+                          marginTop: "2rem",
                           padding: "1rem",
-                          backgroundColor: "#f4f4f4",
+                          backgroundColor: qcApproved ? "#e8f5e9" : "#fff3e0",
+                          border: qcApproved
+                            ? "2px solid #24a148"
+                            : "2px solid #ff9800",
                           borderRadius: "4px",
                         }}
                       >
+                        <p
+                          style={{
+                            margin: "0 0 1rem 0",
+                            fontWeight: "500",
+                            color: qcApproved ? "#1b5e20" : "#e65100",
+                          }}
+                        >
+                          {qcApproved
+                            ? "✅ QC Results Approved"
+                            : "⚠️ QC Approval Required"}
+                        </p>
                         <Checkbox
                           id="qc-approved"
                           labelText="All QC criteria met and accepted *"
                           checked={qcApproved}
                           onChange={(checked) => setQcApproved(checked)}
                         />
+                        <p
+                          style={{
+                            margin: "1rem 0 0 0",
+                            fontSize: "0.875rem",
+                            color: "#666",
+                          }}
+                        >
+                          Check this box to confirm QC review is complete and
+                          results are acceptable. This is required before
+                          proceeding to Tab 3 completion.
+                        </p>
                       </div>
                     </>
                   ) : (
@@ -1396,7 +1421,35 @@ function BioanalyticalAnalyticalExecutionPage({
                   </div>
 
                   {/* Complete Button */}
-                  <div style={{ marginTop: "2rem" }}>
+                  <div
+                    style={{
+                      marginTop: "2rem",
+                      padding: "1rem",
+                      backgroundColor:
+                        isExecuting ||
+                        selectedSampleIds.size === 0 ||
+                        !qcApproved
+                          ? "#f4f4f4"
+                          : "#e8f5e9",
+                      borderRadius: "4px",
+                      border: !qcApproved
+                        ? "1px solid #ff9800"
+                        : "1px solid #24a148",
+                    }}
+                  >
+                    {!qcApproved && selectedSampleIds.size > 0 && (
+                      <p
+                        style={{
+                          margin: "0 0 1rem 0",
+                          color: "#e65100",
+                          fontSize: "0.875rem",
+                        }}
+                      >
+                        ⚠️ QC approval is required. Please go to Tab 2 and check
+                        the "All QC criteria met and accepted" checkbox before
+                        completing.
+                      </p>
+                    )}
                     <Button
                       kind="primary"
                       onClick={handleCompleteExecution}
