@@ -1,6 +1,11 @@
 package org.openelisglobal.labunit.serviceimpl;
 
 import jakarta.annotation.PostConstruct;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -12,6 +17,9 @@ import org.openelisglobal.labunit.form.LabUnitOrderForm;
 import org.openelisglobal.labunit.service.LabUnitService;
 import org.openelisglobal.labunit.valueholder.LabUnit;
 import org.openelisglobal.labunit.valueholder.LabUnitAssignment;
+import org.openelisglobal.labunit.valueholder.LabUnitWorkflow;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
@@ -25,8 +33,13 @@ import org.springframework.transaction.annotation.Transactional;
 @DependsOn({ "springContext" })
 public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, String> implements LabUnitService {
 
+    private static final Logger logger = LoggerFactory.getLogger(LabUnitServiceImpl.class);
+
     @Autowired
     private org.openelisglobal.labunit.dao.LabUnitDAO labUnitDAO;
+
+    @Autowired
+    private org.openelisglobal.labunit.dao.LabUnitWorkflowDAO labUnitWorkflowDAO;
 
     public LabUnitServiceImpl() {
         super(LabUnit.class);
@@ -392,7 +405,32 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Lab unit not found: " + labUnitId);
             }
 
-            // Implementation placeholder for workflow assignments
+            // Check if any of the workflows to be removed are default workflows
+            for (String workflowId : workflowIds) {
+                LabUnitWorkflow labUnitWorkflow = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(labUnitId, workflowId);
+                if (labUnitWorkflow != null && Boolean.TRUE.equals(labUnitWorkflow.getIsDefault())) {
+                    throw new LIMSRuntimeException("Cannot remove default workflow: " + workflowId + 
+                        ". Please set another workflow as default first.");
+                }
+            }
+
+            // Get current workflows for this lab unit
+            List<LabUnitWorkflow> currentWorkflows = labUnitWorkflowDAO.getWorkflowsByLabUnitId(labUnitId);
+            
+            // Remove specified workflows
+            for (String workflowId : workflowIds) {
+                LabUnitWorkflow toRemove = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(labUnitId, workflowId);
+                if (toRemove != null) {
+                    labUnitWorkflowDAO.delete(toRemove);
+                }
+            }
+
+            // Check if lab unit will have any workflows remaining
+            List<LabUnitWorkflow> remainingWorkflows = labUnitWorkflowDAO.getWorkflowsByLabUnitId(labUnitId);
+            if (remainingWorkflows.isEmpty()) {
+                logger.warn("All workflows removed from lab unit {}. Consider assigning at least one workflow.", labUnitId);
+            }
+
             refreshDisplayLists();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error removing workflows from lab unit", e);
@@ -408,7 +446,20 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Lab unit not found: " + labUnitId);
             }
 
-            // Implementation placeholder for setting default workflow
+            // Verify the workflow is assigned to this lab unit
+            LabUnitWorkflow labUnitWorkflow = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(labUnitId, workflowId);
+            if (labUnitWorkflow == null) {
+                throw new LIMSRuntimeException("Workflow is not assigned to this lab unit");
+            }
+
+            // Clear existing default workflows first
+            labUnitWorkflowDAO.clearDefaultWorkflows(labUnitId);
+
+            // Set new default workflow
+            labUnitWorkflowDAO.updateDefaultWorkflow(labUnitId, workflowId);
+
+            logger.info("Default workflow set to {} for lab unit {}", workflowId, labUnitId);
+            
             refreshDisplayLists();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error setting default workflow for lab unit", e);
@@ -424,7 +475,11 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Lab unit not found: " + labUnitId);
             }
 
-            // Implementation placeholder for clearing default workflows
+            // Clear all default workflows for this lab unit
+            labUnitWorkflowDAO.clearDefaultWorkflows(labUnitId);
+
+            logger.info("Default workflows cleared for lab unit {}", labUnitId);
+            
             refreshDisplayLists();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error clearing default workflows for lab unit", e);
@@ -444,6 +499,9 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             labUnit.setActive("Y");
             labUnit.setSysUserId(sysUserId);
             labUnitDAO.update(labUnit);
+
+            // Log activation with reason for audit compliance
+            logger.info("Lab unit {} activated by user {}. Reason: {}", id, sysUserId, reason);
 
             refreshDisplayLists();
         } catch (Exception e) {
@@ -467,6 +525,9 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             labUnit.setActive("N");
             labUnit.setSysUserId(sysUserId);
             labUnitDAO.update(labUnit);
+
+            // Log deactivation with reason for audit compliance
+            logger.info("Lab unit {} deactivated by user {}. Reason: {}", id, sysUserId, reason);
 
             // Refresh display lists
             refreshDisplayLists();
@@ -523,8 +584,26 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
     @Override
     @Transactional(readOnly = true)
     public byte[] exportLabUnits(List<String> labUnitIds, String format) {
-        // Implementation placeholder for export
-        return new byte[0];
+        try {
+            List<LabUnitResponse> labUnits;
+            if (labUnitIds != null && !labUnitIds.isEmpty()) {
+                labUnits = labUnitIds.stream()
+                    .map(this::getLabUnitById)
+                    .filter(unit -> unit != null)
+                    .collect(Collectors.toList());
+            } else {
+                labUnits = getAllLabUnits();
+            }
+
+            if ("csv".equalsIgnoreCase(format)) {
+                return exportLabUnitsToCSV(labUnits);
+            } else {
+                // Default to JSON format
+                return exportLabUnitsJSON(labUnitIds);
+            }
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error exporting lab units", e);
+        }
     }
 
     @Override
@@ -567,7 +646,33 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
     @Override
     @Transactional(readOnly = true)
     public List<LabUnitResponse> getLabUnitsWithAssignments(String labUnitId) {
-        return getLabUnitAssignments(labUnitId);
+        try {
+            LabUnitResponse response = getLabUnitById(labUnitId);
+            if (response == null) {
+                return new ArrayList<>();
+            }
+
+            // Get assignments and populate counts
+            List<LabUnitAssignment> assignments = labUnitDAO.getAssignmentsForLabUnit(labUnitId);
+            
+            // Populate assignments lists
+            response.setTests(getAssignmentsByType(assignments, "TEST"));
+            response.setPanels(getAssignmentsByType(assignments, "PANEL"));
+            response.setPrograms(getAssignmentsByType(assignments, "PROGRAM"));
+            response.setProjects(getAssignmentsByType(assignments, "PROJECT"));
+            response.setWorkflows(getAssignmentsByType(assignments, "WORKFLOW"));
+
+            // Set counts
+            response.setTestCount((long) response.getTests().size());
+            response.setPanelCount((long) response.getPanels().size());
+            response.setProgramCount((long) response.getPrograms().size());
+            response.setProjectCount((long) response.getProjects().size());
+            response.setWorkflowCount((long) response.getWorkflows().size());
+
+            return List.of(response);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting lab units with assignments", e);
+        }
     }
 
     // Data transformation helpers
@@ -628,5 +733,73 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
         labUnit.setParentLabUnitId(form.getParentLabUnitId());
         labUnit.setSortOrder(form.getSortOrder());
         labUnit.setActive(form.getActive() ? "Y" : "N");
+    }
+
+    // CSV Export helper method
+    public byte[] exportLabUnitsToCSV(List<LabUnitResponse> labUnits) {
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+                
+                // Write CSV header
+                writer.write("ID,Name,Code,Description,Organization,Parent Lab Unit,Status,Sort Order,Test Count,Panel Count,Program Count,Project Count,Workflow Count\n");
+                
+                // Write data rows
+                for (LabUnitResponse unit : labUnits) {
+                    StringBuilder row = new StringBuilder();
+                    row.append(escapeCsvValue(unit.getId())).append(",");
+                    row.append(escapeCsvValue(unit.getName())).append(",");
+                    row.append(escapeCsvValue(unit.getCode())).append(",");
+                    row.append(escapeCsvValue(unit.getDescription())).append(",");
+                    row.append(escapeCsvValue(unit.getOrganizationName())).append(",");
+                    row.append(escapeCsvValue(unit.getParentLabUnitName())).append(",");
+                    row.append(unit.getActive() != null && unit.getActive() ? "Active" : "Inactive").append(",");
+                    row.append(unit.getSortOrder() != null ? unit.getSortOrder().toString() : "").append(",");
+                    row.append(unit.getTestCount() != null ? unit.getTestCount().toString() : "0").append(",");
+                    row.append(unit.getPanelCount() != null ? unit.getPanelCount().toString() : "0").append(",");
+                    row.append(unit.getProgramCount() != null ? unit.getProgramCount().toString() : "0").append(",");
+                    row.append(unit.getProjectCount() != null ? unit.getProjectCount().toString() : "0").append(",");
+                    row.append(unit.getWorkflowCount() != null ? unit.getWorkflowCount().toString() : "0").append("\n");
+                    
+                    writer.write(row.toString());
+                }
+            }
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new LIMSRuntimeException("Error generating CSV export", e);
+        }
+    }
+
+    // Helper method to escape CSV values
+    private String escapeCsvValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
+    }
+
+    // Helper method to filter assignments by type
+    private List<org.openelisglobal.labunit.dto.LabUnitAssignmentResponse> getAssignmentsByType(
+            List<LabUnitAssignment> assignments, String type) {
+        return assignments.stream()
+            .filter(assignment -> type.equals(assignment.getAssignmentType()))
+            .map(this::toAssignmentResponse)
+            .collect(Collectors.toList());
+    }
+
+    // Helper method to convert assignment to response
+    private org.openelisglobal.labunit.dto.LabUnitAssignmentResponse toAssignmentResponse(LabUnitAssignment assignment) {
+        org.openelisglobal.labunit.dto.LabUnitAssignmentResponse response = new org.openelisglobal.labunit.dto.LabUnitAssignmentResponse();
+        response.setId(assignment.getAssignedItemId());
+        response.setAssignmentType(assignment.getAssignmentType());
+        response.setAssignedDate(assignment.getAssignedDate());
+        // Note: Name would need to be fetched from respective entity based on assignment type
+        // For now, using the ID as name placeholder
+        response.setName(assignment.getAssignedItemId());
+        return response;
     }
 }
