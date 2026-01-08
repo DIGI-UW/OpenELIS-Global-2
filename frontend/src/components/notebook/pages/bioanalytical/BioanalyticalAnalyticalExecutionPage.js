@@ -395,8 +395,22 @@ function BioanalyticalAnalyticalExecutionPage({
             ),
           );
 
+          // Extract and populate QC data from processing results
+          if (result.qcResults && result.qcResults.length > 0) {
+            setQcResults(result.qcResults);
+          }
+          if (result.calibrationData) {
+            setCalibrationData(result.calibrationData);
+          }
+          if (
+            result.quantificationResults &&
+            result.quantificationResults.length > 0
+          ) {
+            setQuantificationResults(result.quantificationResults);
+          }
+
           notify(
-            `Files processed successfully. Found ${result.analyzerResults?.length || 0} analyzer results.`,
+            `Files processed successfully. QC data automatically loaded for Tab 2 verification.`,
           );
         } else {
           throw new Error(result.error || "File processing failed");
@@ -428,6 +442,13 @@ function BioanalyticalAnalyticalExecutionPage({
     if (uploadedFiles.length === 0) {
       notify(
         "Please upload at least one raw data file",
+        NotificationKinds.warning,
+      );
+      return;
+    }
+    if (!uploadedFiles.some((file) => file.processed)) {
+      notify(
+        "Please process all uploaded files before recording execution",
         NotificationKinds.warning,
       );
       return;
@@ -497,40 +518,6 @@ function BioanalyticalAnalyticalExecutionPage({
     calibrationData,
     notify,
   ]);
-
-  const handleLoadQCResults = useCallback(async () => {
-    // QC results should already be populated from Tab 1 file processing
-    if (
-      qcResults.length === 0 &&
-      quantificationResults.length === 0 &&
-      !calibrationData
-    ) {
-      notify(
-        "No QC data collected. Please ensure files were uploaded and processed in Test Execution tab.",
-        NotificationKinds.warning,
-      );
-      return;
-    }
-
-    // Just display already-collected results
-    try {
-      const messageItems = [];
-      if (qcResults.length > 0)
-        messageItems.push(`${qcResults.length} QC results`);
-      if (quantificationResults.length > 0)
-        messageItems.push(
-          `${quantificationResults.length} quantification results`,
-        );
-      if (calibrationData)
-        messageItems.push(
-          `calibration curve (R² = ${calibrationData.rSquared})`,
-        );
-      notify(`QC Data Summary: ${messageItems.join(", ")}`);
-    } catch (error) {
-      console.error("Error displaying QC results:", error);
-      notify("Error displaying QC results", NotificationKinds.error);
-    }
-  }, [qcResults, quantificationResults, calibrationData, notify]);
 
   const handleAddDeviation = useCallback(() => {
     if (!deviationForm.type || !deviationForm.description) {
@@ -911,16 +898,6 @@ function BioanalyticalAnalyticalExecutionPage({
               <Grid>
                 <Column lg={16} md={8} sm={4}>
                   <h4>QC Verification: Controls & Acceptance Criteria</h4>
-
-                  <div style={{ marginTop: "1.5rem" }}>
-                    <Button
-                      kind="secondary"
-                      onClick={handleLoadQCResults}
-                      disabled={isLoading || selectedSampleIds.size === 0}
-                    >
-                      Load QC Results
-                    </Button>
-                  </div>
 
                   {isLoading ? (
                     <Loading description="Loading QC results..." />
