@@ -192,22 +192,38 @@ function BioanalyticalReportingPage({
       resultGroups[groupKey].dataPoints++;
     });
 
-    // Calculate statistics for each group
+    // Use calculated statistics from Stage 3 or fallback to defaults
     return Object.values(resultGroups).map((group) => {
-      // Mock statistical calculations - in real implementation, this would
-      // calculate from actual analytical results stored in sample data
-      const mockStats = {
-        mean: `${(Math.random() * 1000 + 500).toFixed(1)} ng/mL`,
-        sd: (Math.random() * 50 + 10).toFixed(1),
-        cv: `${(Math.random() * 10 + 5).toFixed(1)}%`,
-        min: `${(Math.random() * 300 + 200).toFixed(1)} ng/mL`,
-        max: `${(Math.random() * 500 + 800).toFixed(1)} ng/mL`,
-        regulatoryStatus: Math.random() > 0.8 ? "NON_COMPLIANT" : "COMPLIANT",
-      };
+      // Try to get calculated statistics from Stage 3 (bioequivalenceStats)
+      const firstSample = group.samples[0];
+      const bioStats =
+        firstSample?.data?.bioequivalenceStats ||
+        firstSample?.data?.testExecution?.bioequivalenceStats;
 
+      if (bioStats) {
+        // Use real statistics from Stage 3
+        return {
+          ...group,
+          mean: bioStats.mean,
+          sd: bioStats.sd,
+          cv: bioStats.cv,
+          min: bioStats.min,
+          max: bioStats.max,
+          meanAccuracy: bioStats.meanAccuracy,
+          regulatoryStatus: bioStats.regulatoryStatus,
+        };
+      }
+
+      // Fallback to default values if no statistics available
       return {
         ...group,
-        ...mockStats,
+        mean: "N/A",
+        sd: "N/A",
+        cv: "N/A",
+        min: "N/A",
+        max: "N/A",
+        meanAccuracy: "N/A",
+        regulatoryStatus: "UNKNOWN",
       };
     });
   }, []);
