@@ -233,9 +233,20 @@ function BioanalyticalReportingPage({
       approvedSamples.forEach((sample) => {
         const analyticalMethod =
           sample.data.analyticalMethod || "Unknown Method";
-        const sampleType = sample.sampleType || "Unknown Type";
+        const sampleType =
+          sample.data.sampleType ||
+          sample.sampleType ||
+          sample.data.testExecution?.sampleType ||
+          "Unknown Type";
 
         const groupKey = `${analyticalMethod} - ${sampleType}`;
+
+        console.log("Stage 4 - Result grouping:", {
+          analyticalMethod,
+          sampleType,
+          groupKey,
+          sampleId: sample.id,
+        });
 
         if (!resultGroups[groupKey]) {
           resultGroups[groupKey] = {
