@@ -158,10 +158,10 @@ function BioanalyticalAnalyticalExecutionPage({
 
       try {
         setIsLoading(true);
-        // Fetch samples for this Stage 3 page
-        // The page will have NotebookPageSample records that reference samples from Stage 2
+        // Fetch samples for this Stage 3 page using the same endpoint as Stage 2
+        // This endpoint returns enriched sample data including accession numbers
         const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples`,
+          `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
           { credentials: "include" }
         );
 
@@ -170,9 +170,10 @@ function BioanalyticalAnalyticalExecutionPage({
         }
 
         const data = await response.json();
-        const samples = Array.isArray(data) ? data : data.samples || [];
+        const samples = Array.isArray(data) ? data : [];
 
         const processedSamples = samples.map((sample) => {
+          // The endpoint returns enriched sample data with accession number, sampleType, etc.
           const assignmentData = sample.data || {};
 
           // Find the analytical method from our methods list
@@ -188,9 +189,9 @@ function BioanalyticalAnalyticalExecutionPage({
 
           return {
             id: sample.id,
-            sampleItemId: sample.sampleItemId,
-            accessionNumber: `Sample-${sample.sampleItemId}`,
-            sampleType: "-",
+            sampleItemId: sample.id,
+            accessionNumber: sample.accessionNumber || "-",
+            sampleType: sample.sampleType || "-",
             requestedTests: "-",
             assignedMethod: methodName,
             assignedMethodId: assignmentData.analyticalMethod,
@@ -574,7 +575,7 @@ function BioanalyticalAnalyticalExecutionPage({
                                 </TableCell>
                                 <TableCell>
                                   <strong>
-                                    {sample.accessionNumber || sample.id}
+                                    {sample.accessionNumber}
                                   </strong>
                                 </TableCell>
                                 <TableCell>
