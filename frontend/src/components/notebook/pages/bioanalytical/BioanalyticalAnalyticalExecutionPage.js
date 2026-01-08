@@ -748,6 +748,16 @@ function BioanalyticalAnalyticalExecutionPage({
         qcApproved: qcApproved,
         resultsApproved: qcApproved, // Stage 4 requires this flag
         deviations: deviations,
+        // Preserve sample type and analytical method for Stage 4 reporting
+        sampleType:
+          firstSelectedSample?.sampleType ||
+          existingData.sampleType ||
+          "Unknown Type",
+        analyticalMethod:
+          executionData.method ||
+          existingData.analyticalMethod ||
+          firstSelectedSample?.assignedMethod ||
+          "Unknown Method",
         // Include QC and execution data from this stage
         qcResults: qcResults,
         calibrationData: calibrationData,
