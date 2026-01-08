@@ -229,6 +229,58 @@ function BioanalyticalAnalyticalExecutionPage({
     loadAssignedSamples();
   }, [pageData?.id]);
 
+  // Extract QC data from samples when they're loaded (for page refresh scenarios)
+  useEffect(() => {
+    if (assignedSamples.length > 0 && qcResults.length === 0) {
+      // Check if any sample has processing results with QC data
+      const extractedQcResults = [];
+      let extractedCalibrationData = null;
+      let extractedQuantificationResults = [];
+
+      assignedSamples.forEach((sample) => {
+        const uploadedFiles = sample.data?.uploadedFiles || [];
+        uploadedFiles.forEach((file) => {
+          if (file.processingResults && file.processingResults.success) {
+            // Extract QC results
+            if (
+              file.processingResults.qcResults &&
+              file.processingResults.qcResults.length > 0
+            ) {
+              extractedQcResults.push(...file.processingResults.qcResults);
+            }
+            // Extract calibration data (only once, from first file)
+            if (
+              file.processingResults.calibrationData &&
+              !extractedCalibrationData
+            ) {
+              extractedCalibrationData = file.processingResults.calibrationData;
+            }
+            // Extract quantification results
+            if (
+              file.processingResults.quantification &&
+              file.processingResults.quantification.length > 0
+            ) {
+              extractedQuantificationResults.push(
+                ...file.processingResults.quantification,
+              );
+            }
+          }
+        });
+      });
+
+      // Set state only if we found data
+      if (extractedQcResults.length > 0) {
+        setQcResults(extractedQcResults);
+      }
+      if (extractedCalibrationData) {
+        setCalibrationData(extractedCalibrationData);
+      }
+      if (extractedQuantificationResults.length > 0) {
+        setQuantificationResults(extractedQuantificationResults);
+      }
+    }
+  }, [assignedSamples]);
+
   // ============================================================================
   // HANDLERS
   // ============================================================================
@@ -693,6 +745,45 @@ function BioanalyticalAnalyticalExecutionPage({
     notify,
   ]);
 
+  // Render execution status column with QC processing indicator
+  const renderExecutionStatus = (sample) => {
+    if (!sample) {
+      return null;
+    }
+
+    const uploadedFiles = sample.data?.uploadedFiles || [];
+    const hasProcessedFiles = uploadedFiles.some((f) => f.processed);
+    const executionStatus = sample.data?.executionStatus;
+
+    // Check if files have been processed and uploaded
+    if (uploadedFiles.length > 0 && hasProcessedFiles) {
+      return (
+        <div style={{ fontSize: "12px" }}>
+          <Tag type="green" size="sm">
+            ✅ QC Data Loaded
+          </Tag>
+          {executionStatus === "EXECUTED" && (
+            <div style={{ marginTop: "4px" }}>
+              <Tag type="blue" size="sm">
+                Execution Recorded
+              </Tag>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (uploadedFiles.length > 0) {
+      return (
+        <span style={{ color: "#f1c21b", fontSize: "12px" }}>
+          ⏳ Processing Files...
+        </span>
+      );
+    }
+
+    return <span style={{ color: "#8d8d8d", fontSize: "12px" }}>Pending</span>;
+  };
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -819,6 +910,12 @@ function BioanalyticalAnalyticalExecutionPage({
                                 defaultMessage="Status"
                               />
                             </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage
+                                id="notebook.bioanalytical.execution.executionProgress"
+                                defaultMessage="Execution Progress"
+                              />
+                            </TableHeader>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -861,12 +958,15 @@ function BioanalyticalAnalyticalExecutionPage({
                                     Ready
                                   </Tag>
                                 </TableCell>
+                                <TableCell>
+                                  {renderExecutionStatus(sample)}
+                                </TableCell>
                               </TableRow>
                             ))
                           ) : (
                             <TableRow>
                               <TableCell
-                                colSpan="6"
+                                colSpan="7"
                                 style={{
                                   textAlign: "center",
                                   padding: "2rem",
