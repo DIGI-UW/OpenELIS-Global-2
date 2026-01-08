@@ -329,9 +329,9 @@ function BioanalyticalTestAssignmentPage({
     assignedStaff: "",
     instrumentId: "",
     qcLevels: {
-      low: { concentration: "", tolerance: "" },
-      medium: { concentration: "", tolerance: "" },
-      high: { concentration: "", tolerance: "" },
+      low: { concentration: "5", tolerance: "20" },
+      medium: { concentration: "50", tolerance: "20" },
+      high: { concentration: "500", tolerance: "20" },
     },
     acceptanceCriteria: {
       rSquaredMin: "0.995",
@@ -890,9 +890,9 @@ function BioanalyticalTestAssignmentPage({
           assignedStaff: "",
           instrumentId: "",
           qcLevels: {
-            low: { concentration: "", tolerance: "" },
-            medium: { concentration: "", tolerance: "" },
-            high: { concentration: "", tolerance: "" },
+            low: { concentration: "5", tolerance: "20" },
+            medium: { concentration: "50", tolerance: "20" },
+            high: { concentration: "500", tolerance: "20" },
           },
           acceptanceCriteria: {
             rSquaredMin: "0.995",

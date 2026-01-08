@@ -1,0 +1,105 @@
+Analytical Instrument Data Export - LC-MS/MS System
+Export Date,2026-01-07
+Export Time,10:30:45
+Instrument ID,1
+Instrument Type,LC-MS/MS
+Method Name,BioAnalytical_LC-MS-MS_v3.1
+Operator,john.doe
+
+CALIBRATION CURVE DATA
+Calibration Point,Concentration (ng/mL),Peak Area,Response
+1,0,0,0
+2,1,8945,8945
+3,5,44725,8945
+4,10,89450,8945
+5,50,447250,8945
+6,100,894500,8945
+7,500,4472500,8945
+
+CALIBRATION STATISTICS
+Calibration Start Time,2026-01-07 08:15:30
+Calibration End Time,2026-01-07 08:45:15
+Number of Points,7
+Correlation Coefficient (R),0.99987
+R-Squared (R²),0.9997
+Slope,8945.23
+Intercept,145.32
+Standard Error,234.56
+
+QUALITY CONTROL RESULTS
+QC Level,Expected Concentration (ng/mL),Measured Concentration (ng/mL),Peak Area,Accuracy (%),Status
+Low QC,5,4.95,44287.5,99.0,PASS
+Low QC Replicate 1,5,5.05,45165.75,101.0,PASS
+Low QC Replicate 2,5,4.98,44512.1,99.6,PASS
+Medium QC,50,50.2,449169,100.4,PASS
+Medium QC Replicate 1,50,49.8,445461,99.6,PASS
+Medium QC Replicate 2,50,50.5,451651.75,101.0,PASS
+High QC,500,505,4515250,101.0,PASS
+High QC Replicate 1,500,498,4452910,99.6,PASS
+High QC Replicate 2,500,502,4491590,100.4,PASS
+
+QC SUMMARY
+Total QC Results,9
+Passed,9
+Failed,0
+Pass Rate (%),100.0
+Acceptance Criteria,≥80% pass rate
+Status,ACCEPTED
+
+SAMPLE RESULTS
+Sample ID,Sample Name,Peak Area,Calculated Concentration (ng/mL),QC Recovery (%),Matrix,Status
+BIO-002,Patient Plasma - Subject 001,875000,247.5,98.5,Plasma (EDTA),VALID
+BIO-003,Patient Plasma - Subject 002,920000,260.8,102.1,Plasma (EDTA),VALID
+API-001,API Reference Standard,650000,184.2,98.0,API Powder,VALID
+PHM-001,Pharmaceutical Suspension,745000,210.5,100.8,Suspension,VALID
+BIO-004,Patient Plasma - Subject 003 (Blank),5000,0.0,0.0,Plasma (EDTA),BLANK
+
+CHROMATOGRAPHY CONDITIONS
+Mobile Phase A,0.1% Formic Acid in Water
+Mobile Phase B,0.1% Formic Acid in Acetonitrile
+Flow Rate (mL/min),0.4
+Column Temperature (°C),40
+Injection Volume (µL),10
+Run Time (min),4.5
+Column Name,Phenomenex Kinetex XB-C18 (2.1 x 100 mm, 2.6 µm)
+
+MASS SPECTROMETRY CONDITIONS
+Ionization Mode,Positive ESI
+Ion Transition (m/z),Analyte: 305.15 → 147.08
+Internal Standard,306.16 → 148.08
+Dwell Time (ms),200
+Collision Energy,30
+Curtain Gas (psi),35
+Ion Source Temperature (°C),550
+
+DATA INTEGRITY
+Number of Injections,15
+Failed Injections,0
+Injection Success Rate (%),100.0
+System Suitability,PASSED
+Retention Time Variability (%),0.8
+Peak Symmetry,ACCEPTABLE
+Baseline Noise (mV),2.1
+
+SYSTEM PERFORMANCE
+Instrument Status,OPERATIONAL
+Detector Response,NORMAL
+Pump Status,NORMAL
+Autosampler Status,NORMAL
+Temperature Control,STABLE
+
+VALIDATION NOTES
+Method Validation Status,VALIDATED
+Validation Reference,VAL-2025-LC-MS-MS-001
+Validation Date,2025-06-15
+Last Maintenance,2026-01-05
+Next Scheduled Maintenance,2026-02-05
+
+ANALYSIS SUMMARY
+Analysis Started,2026-01-07 08:15:30
+Analysis Completed,2026-01-07 10:30:45
+Total Analysis Time (min),135.25
+Samples Analyzed,5
+Standards Analyzed,7
+QC Samples Analyzed,9
+Total Injections,21

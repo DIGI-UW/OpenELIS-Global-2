@@ -1,0 +1,145 @@
+Analytical Instrument Data Export - HPLC System
+Export Date,2026-01-07
+Export Time,14:15:20
+Instrument ID,2
+Instrument Type,HPLC with UV Detection
+Method Name,HPLC_USP_Assay_Method_v2.0
+Operator,jane.smith
+
+DETECTOR SPECIFICATIONS
+Detector Type,Photodiode Array (PDA)
+Wavelength (nm),254
+Reference Wavelength (nm),400
+Bandwidth (nm),10
+Detection Sensitivity,Auto
+
+CALIBRATION CURVE DATA
+Calibration Point,Concentration (µg/mL),Peak Height (mV),Peak Area (mV·min),Response
+1,10,45.2,145.8,14.58
+2,25,112.8,364.5,14.58
+3,50,225.6,729.0,14.58
+4,100,451.2,1458.0,14.58
+5,200,902.4,2916.0,14.58
+6,250,1128.0,3645.0,14.58
+
+CALIBRATION STATISTICS
+Calibration Start Time,2026-01-07 12:00:00
+Calibration End Time,2026-01-07 12:45:30
+Number of Points,6
+Correlation Coefficient (R),0.99995
+R-Squared (R²),0.9999
+Slope,14.58
+Intercept,-2.35
+Standard Error,45.23
+Relative Standard Deviation (%),0.45
+
+QUALITY CONTROL RESULTS
+QC Level,Expected Concentration (µg/mL),Measured Concentration (µg/mL),Peak Area (mV·min),Accuracy (%),Status
+Low QC,25,24.8,361.1,99.2,PASS
+Low QC Replicate 1,25,25.2,367.1,100.8,PASS
+Low QC Replicate 2,25,24.9,362.8,99.6,PASS
+Medium QC,100,100.5,1465.3,100.5,PASS
+Medium QC Replicate 1,100,99.8,1454.0,99.8,PASS
+Medium QC Replicate 2,100,100.3,1462.4,100.3,PASS
+High QC,200,202.1,2944.5,101.05,PASS
+High QC Replicate 1,200,199.8,2912.6,99.9,PASS
+High QC Replicate 2,200,201.2,2930.8,100.6,PASS
+
+QC SUMMARY
+Total QC Results,9
+Passed,9
+Failed,0
+Pass Rate (%),100.0
+Acceptance Criteria,80-120% Recovery
+Status,ACCEPTED
+
+SAMPLE RESULTS
+Sample ID,Sample Name,Peak Height (mV),Peak Area (mV·min),Calculated Concentration (µg/mL),RSD (%) Replicates,Status
+BIO-002,Tablet Assay - Lot A,425.3,6185.9,424.8,0.8,VALID
+BIO-003,Tablet Assay - Lot B,438.2,6378.1,438.5,0.6,VALID
+API-001,API Purity - Raw Material,401.2,5842.8,401.8,1.2,VALID
+PHM-001,Pharmaceutical Cream - Potency,387.5,5643.2,388.4,0.9,VALID
+BIO-004,Placebo Control (Blank),1.2,17.5,0.0,N/A,BLANK
+
+CHROMATOGRAPHY CONDITIONS
+Column Type,Reversed Phase C18
+Column Dimensions,4.6 × 250 mm
+Particle Size (µm),5
+Packing Material,Hypersil ODS
+Mobile Phase,60% 0.05M Phosphate Buffer pH 7.4 : 40% Acetonitrile
+Flow Rate (mL/min),1.0
+Injection Volume (µL),20
+Column Temperature (°C),25
+Run Time (min),15.0
+Equilibration Time (min),5.0
+Total Cycle Time (min),20.0
+Retention Time - Analyte (min),8.45
+Retention Time - Internal Standard (min),6.20
+
+INSTRUMENT PARAMETERS
+Autosampler Temperature (°C),10
+Sample Needle Size (µm),50
+Injection Repeatability (%),0.9
+Peak Symmetry Factor,0.95
+Theoretical Plates,8500
+
+SYSTEM SUITABILITY TEST (SST)
+Parameter,Specification,Result,Status
+Retention Time RSD (%),NMT 2.0,0.45,PASS
+Peak Area RSD (%),NMT 2.0,0.63,PASS
+Tailing Factor,0.80-1.20,0.98,PASS
+Theoretical Plates,NLT 2000,8500,PASS
+Selectivity (Resolution),NLT 1.5,2.15,PASS
+
+SAMPLE ANALYSIS DETAILS
+Analysis Date,2026-01-07
+Analysis Start Time,12:45:30
+Analysis End Time,14:15:20
+Total Run Time (min),89.83
+Number of Samples,5
+Number of Blanks,1
+Number of Standards,6
+Number of QC Samples,9
+Total Injections,21
+
+PEAK INTEGRATION DETAILS
+Integration Method,Automatic
+Baseline Type,Linear
+Smoothing,5-point
+Minimum Peak Width (s),5
+Peak Detection Threshold (mV),50
+
+VALIDATION PARAMETERS
+Linearity,R² ≥ 0.99 (PASS)
+Accuracy,80-120% Recovery (PASS)
+Precision,RSD NMT 15% (PASS)
+Specificity,No Interference (PASS)
+Robustness,NMT 2% Variation (PASS)
+Range,10-250 µg/mL
+
+INSTRUMENT MAINTENANCE STATUS
+Column Use (hours),342.5
+Column Condition,GOOD
+Pump Seal Status,NORMAL
+Detector Status,NORMAL
+Autosampler Needle,CLEAN
+Solvent Bottles,FILLED
+Waste Reservoir,80% FULL
+Last Service Date,2025-12-20
+Next Service Date,2026-03-20
+
+REGULATORY COMPLIANCE
+Method Validation,VALIDATED (VAL-2025-HPLC-001)
+Method Validation Date,2025-05-10
+GMP Compliance,YES
+Temperature/Humidity Logged,YES
+Data Integrity Verified,YES
+Electronic Signature,jane.smith@lab.com
+
+ANALYSIS NOTES
+All samples analyzed in duplicate
+No peak anomalies detected
+System performance within specifications
+No equipment malfunctions
+All acceptance criteria met
+Ready for reporting

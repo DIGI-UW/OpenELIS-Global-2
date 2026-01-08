@@ -1,0 +1,207 @@
+LC-MS/MS Raw Data Export - mzML Format Simulation
+Export Date,2026-01-07
+Export Time,10:30:45
+Instrument,Sciex Triple Quad 5500+
+Data Format,CSV (Exported from mzML)
+Ionization Mode,Positive ESI
+
+ACQUISITION SETTINGS
+MS1 Scan Range (m/z),50-1000
+MS2 Scan Range (m/z),50-1000
+Polarity,Positive
+Collision Gas,Nitrogen
+Ion Source Temperature (C),550
+Curtain Gas (psi),35
+Ion Spray Voltage (V),5500
+
+CALIBRATION INJECTION - Analyte Calibration Point 7 (500 ng/mL)
+Retention Time (min),8.450
+Scan Number,425
+MS1 m/z,305.15
+MS1 Intensity,4472500
+MS2 Transition m/z,305.15 -> 147.08
+MS2 Intensity,1895500
+Peak Area (counts),4472500
+Peak Height (counts),1895500
+Signal to Noise,2245
+Peak Quality,EXCELLENT
+
+QC INJECTION - High QC (500 ng/mL)
+Retention Time (min),8.445
+Scan Number,422
+MS1 m/z,305.15
+MS1 Intensity,4515250
+MS2 Transition m/z,305.15 -> 147.08
+MS2 Intensity,1912250
+Peak Area (counts),4515250
+Peak Height (counts),1912250
+Signal to Noise,2257
+Peak Quality,EXCELLENT
+
+SAMPLE INJECTION 1 - BIO-002 (Patient Plasma)
+Retention Time (min),8.448
+Scan Number,424
+MS1 m/z,305.15
+MS1 Intensity,875000
+MS2 Transition m/z,305.15 -> 147.08
+MS2 Intensity,370250
+Peak Area (counts),875000
+Peak Height (counts),370250
+Signal to Noise,437
+Peak Quality,GOOD
+Calculated Concentration (ng/mL),247.5
+Accuracy vs Expected (%),98.5
+
+SAMPLE INJECTION 2 - BIO-003 (Patient Plasma)
+Retention Time (min),8.451
+Scan Number,427
+MS1 m/z,305.15
+MS1 Intensity,920000
+MS2 Transition m/z,305.15 -> 147.08
+MS2 Intensity,389200
+Peak Area (counts),920000
+Peak Height (counts),389200
+Signal to Noise,460
+Peak Quality,GOOD
+Calculated Concentration (ng/mL),260.8
+Accuracy vs Expected (%),102.1
+
+SAMPLE INJECTION 3 - API-001 (API Reference)
+Retention Time (min),8.449
+Scan Number,425
+MS1 m/z,305.15
+MS1 Intensity,650000
+MS2 Transition m/z,305.15 -> 147.08
+MS2 Intensity,275300
+Peak Area (counts),650000
+Peak Height (counts),275300
+Signal to Noise,325
+Peak Quality,GOOD
+Calculated Concentration (ng/mL),184.2
+Accuracy vs Expected (%),98.0
+
+SAMPLE INJECTION 4 - PHM-001 (Pharmaceutical)
+Retention Time (min),8.446
+Scan Number,423
+MS1 m/z,305.15
+MS1 Intensity,745000
+MS2 Transition m/z,305.15 -> 147.08
+MS2 Intensity,315625
+Peak Area (counts),745000
+Peak Height (counts),315625
+Signal to Noise,372
+Peak Quality,GOOD
+Calculated Concentration (ng/mL),210.5
+Accuracy vs Expected (%),100.8
+
+BLANK INJECTION - Matrix Blank
+Retention Time (min),8.450
+Scan Number,425
+MS1 m/z,305.15
+MS1 Intensity,5000
+MS2 Transition m/z,305.15 -> 147.08
+MS2 Intensity,2125
+Peak Area (counts),5000
+Peak Height (counts),2125
+Signal to Noise,2.5
+Peak Quality,ACCEPTABLE
+Calculated Concentration (ng/mL),0.0
+
+MASS ACCURACY VERIFICATION (using lock mass)
+Lock Mass (m/z),922.00979
+Lock Mass Correction (ppm),-0.8
+Mass Accuracy Range,< ±5 ppm
+Status,PASS
+
+TIME SEGMENT DATA SUMMARY
+Time Segment,Start (min),End (min),Num Scans,Scan Rate (Hz),Average Intensity
+Segment 1,0.00,2.50,125,50,150000
+Segment 2,2.51,5.00,125,50,200000
+Segment 3,5.01,7.50,125,50,850000
+Segment 4,7.51,10.00,125,50,1200000
+Segment 5,10.01,12.50,125,50,450000
+
+TOTAL RUN STATISTICS
+Total Run Time (min),12.50
+Total Scans (MS1),625
+Total Scans (MS2),625
+Total Spectrum Points,312500
+Data File Size (MB),245.8
+Number of Injections,6
+Injection Sequence,CAL-QC-S1-S2-S3-S4-BLANK
+
+INTERNAL STANDARD (d3-Analyte) MONITORING
+Retention Time (min),8.447
+MS1 m/z,308.15
+MS2 Transition m/z,308.15 -> 150.08
+Peak Area Ratio (Analyte/IS),0.98
+Peak Area Consistency (%),97.5
+Status,ACCEPTABLE
+
+SYSTEM PERFORMANCE METRICS
+Detector Voltage (V),2400
+Detector Mode,ER (Extended Range)
+Dwell Time (ms),200
+Pause Between Transitions (ms),5
+Dead Time Compensation,ON
+Number of Transitions,18
+Total Acquisition Time (min),12.50
+Duty Cycle (%),92.5
+
+DATA QUALITY FLAGS
+Retention Time Drift (min),±0.003
+Peak Symmetry Factor,0.95-1.05 (ACCEPTABLE)
+Tailing Factor,< 1.2 (PASS)
+Signal Stability (%),> 95% (PASS)
+Baseline Noise Level,50-100 counts
+Baseline Drift,MINIMAL
+
+ENVIRONMENTAL CONDITIONS
+Lab Temperature (C),23.0
+Lab Humidity (%),45-55
+Room Pressure (mbar),1013.25
+Autosampler Temperature (C),10.0
+
+INSTRUMENT DIAGNOSTICS
+Mass Resolution,< 0.5 amu
+Quadrupole Temperature (C),30.0
+Source Temperature (C),550.0
+Ion Source Condition,CLEAN
+Spray Needle Condition,NORMAL
+
+METHOD COMPLIANCE
+Method Name,BioAnalytical_LC-MS-MS_v3.1
+Method Code,LCMSMS-BA-001
+Validation Status,VALIDATED
+Validation Reference,VAL-2025-LCMSMS-001
+Last Updated,2025-10-15
+Next Review,2026-04-15
+
+ANALYST INFORMATION
+Analyst Name,john.doe
+Analyst ID,AN-2025-001
+Certification,LC-MS/MS Method Development
+Electronic Signature,john.doe@lab.com
+Signature Timestamp,2026-01-07 10:30:45
+
+FILE INFORMATION
+Source Filename,Sample_Set_2026_01_07.raw
+Converted Format,CSV (from raw)
+Original Size (MB),245.8
+Compression,NONE
+Checksums,MD5: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+Archive Status,BACKED UP
+
+DATA RETENTION
+Data Location,Primary Storage - Instrument Drive
+Backup Location,Network Storage RAID-5
+Retention Period,3 Years (Regulatory)
+Access Control,Restricted (Analyst + QA)
+Encryption Status,AES-256
+
+VALIDATION STATUS
+Data Integrity Check,PASS
+System Suitability,PASS
+Acceptance Criteria Met,YES
+Ready for Reporting,YES
+Authorized For Use,YES
