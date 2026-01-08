@@ -119,4 +119,3 @@ COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml
 USER tomcat_admin
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
-
