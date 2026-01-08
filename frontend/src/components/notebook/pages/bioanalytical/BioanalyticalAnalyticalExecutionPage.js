@@ -1,4 +1,10 @@
-import { useState, useCallback, useEffect, useContext, useRef } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useContext,
+  useRef,
+} from "react";
 import {
   Grid,
   Column,
@@ -9,12 +15,19 @@ import {
   Tab,
   TabPanel,
   TabPanels,
+  DataTable,
+  TableContainer,
   Table,
   TableHead,
   TableRow,
   TableHeader,
   TableBody,
   TableCell,
+  TableSelectAll,
+  TableSelectRow,
+  TableToolbar,
+  TableToolbarContent,
+  TableToolbarSearch,
   Select,
   SelectItem,
   FileUploader,
@@ -29,11 +42,11 @@ import { DocumentAdd, Upload } from "@carbon/react/icons";
 import { FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
+import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import config from "../../../../config.json";
-import "./BioanalyticalPages.css";
 
 /**
- * Analytical methods available for bioanalytical testing (from Stage 2)
+ * Analytical methods available for bioanalytical testing
  */
 const ANALYTICAL_METHODS = [
   {
@@ -66,7 +79,7 @@ const ANALYTICAL_METHODS = [
 ];
 
 /**
- * Bioanalytical Analyzers - Match Stage 2 assignments
+ * Bioanalytical Analyzers
  */
 const BIOANALYTICAL_ANALYZERS = [
   { id: "1", machine: "LC-MS/MS", formats: ["MZML", "CDF"] },
@@ -83,10 +96,13 @@ const BIOANALYTICAL_ANALYZERS = [
 ];
 
 /**
- * Stage 3: Analytical Test Execution (Simplified)
- * - Tab 1: Test Execution & Data Capture
- * - Tab 2: QC Verification
- * - Tab 3: Deviations & Completion
+ * Stage 3: Analytical Test Execution - Clean Implementation
+ * Features:
+ * - Proper Carbon DataTable with selection
+ * - Clean tab-based data fetching
+ * - Proper QC results handling without mock data
+ * - Persistent execution data
+ * - Default Carbon Design System styling
  */
 function BioanalyticalAnalyticalExecutionPage({
   pageData,
@@ -94,326 +110,300 @@ function BioanalyticalAnalyticalExecutionPage({
   templateInstruments,
   entryId,
 }) {
-  const { addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const isMountedRef = useRef(true);
 
   // ============================================================================
-  // STATE MANAGEMENT
+  // CORE STATE
   // ============================================================================
 
   // UI State
-  const [selectedTab, setSelectedTab] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isExecuting, setIsExecuting] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(0);
 
-  // Tab 1: Test Execution & Data Capture
+  // Sample Data
   const [assignedSamples, setAssignedSamples] = useState([]);
-  const [selectedSampleIds, setSelectedSampleIds] = useState(new Set());
-  const [selectedInstrument, setSelectedInstrument] = useState("");
+  const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+
+  // Execution Data
   const [executionData, setExecutionData] = useState({
     analystId: "",
     executionDate: new Date().toISOString().split("T")[0],
-    testParameters: {},
+    selectedInstrument: "",
     notes: "",
+    isExecuting: false,
   });
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
 
-  // Tab 2: QC Results
+  // QC Data (fetched fresh per tab)
   const [qcResults, setQcResults] = useState([]);
-  const [qcApproved, setQcApproved] = useState(false);
   const [calibrationData, setCalibrationData] = useState(null);
   const [quantificationResults, setQuantificationResults] = useState([]);
+  const [qcApproved, setQcApproved] = useState(false);
 
-  // Tab 3: Deviations
+  // Deviations
   const [deviations, setDeviations] = useState([]);
+
+  // File Upload
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+
+  // Modals
+  const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
+  const [isDeviationModalOpen, setIsDeviationModalOpen] = useState(false);
   const [deviationForm, setDeviationForm] = useState({
     type: "",
     description: "",
     correctiveAction: "",
   });
-  const [isDeviationModalOpen, setIsDeviationModalOpen] = useState(false);
 
-  // Execution Details Modal
-  const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
-
-  // Instruments
-  const [instruments, setInstruments] = useState([]);
+  // Notebook ID for stage advancement
+  const [notebookId, setNotebookId] = useState(null);
 
   // ============================================================================
-  // EFFECTS
+  // UTILITY FUNCTIONS
   // ============================================================================
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const availableInstruments = (
-      templateInstruments && templateInstruments.length > 0
-        ? templateInstruments
-        : BIOANALYTICAL_ANALYZERS
-    ).sort((a, b) => a.machine.localeCompare(b.machine));
-    setInstruments(availableInstruments);
-  }, [templateInstruments]);
-
-  // Load assigned samples from Stage 2 page
-  useEffect(() => {
-    const loadAssignedSamples = async () => {
-      if (!pageData?.id) return;
-
-      try {
-        setIsLoading(true);
-        // Fetch samples for this Stage 3 page using the same endpoint as Stage 2
-        // This endpoint returns enriched sample data including accession numbers
-        const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
-          { credentials: "include" },
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to load samples for Stage 3");
-        }
-
-        const data = await response.json();
-        const samples = Array.isArray(data) ? data : [];
-
-        const processedSamples = samples.map((sample) => {
-          // The endpoint returns enriched sample data with accession number, sampleType, etc.
-          const assignmentData = sample.data || {};
-
-          // Find the analytical method from our methods list
-          const analyticalMethod = ANALYTICAL_METHODS.find(
-            (m) => m.id === assignmentData.analyticalMethod,
-          );
-          const methodName =
-            analyticalMethod?.name || assignmentData.analyticalMethod;
-
-          // Find instrument name from available instruments
-          const instrument = instruments.find(
-            (i) => i.id === assignmentData.instrumentId,
-          );
-
-          return {
-            id: sample.id,
-            sampleItemId: sample.id,
-            accessionNumber: sample.accessionNumber || "-",
-            sampleType: sample.sampleType || "-",
-            requestedTests: "-",
-            assignedMethod: methodName,
-            assignedMethodId: assignmentData.analyticalMethod,
-            methodDescription: analyticalMethod?.description,
-            instrumentId: assignmentData.instrumentId,
-            instrumentName:
-              instrument?.machine ||
-              `Instrument ${assignmentData.instrumentId}`,
-            assignedStaff: assignmentData.assignedStaff,
-            status: sample.status || "PENDING",
-            data: assignmentData,
-          };
-        });
-
-        setAssignedSamples(processedSamples);
-      } catch (error) {
-        console.error("Error loading assigned samples:", error);
-        // Don't show error notification on initial load - use empty state instead
-        setAssignedSamples([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadAssignedSamples();
-  }, [pageData?.id]);
-
-  // Extract QC data from samples when they're loaded (for page refresh scenarios)
-  useEffect(() => {
-    if (assignedSamples.length > 0 && qcResults.length === 0) {
-      // Check if any sample has processing results with QC data
-      const extractedQcResults = [];
-      let extractedCalibrationData = null;
-      let extractedQuantificationResults = [];
-
-      assignedSamples.forEach((sample) => {
-        const uploadedFiles = sample.data?.uploadedFiles || [];
-        uploadedFiles.forEach((file) => {
-          if (file.processingResults && file.processingResults.success) {
-            // Extract QC results
-            if (
-              file.processingResults.qcResults &&
-              file.processingResults.qcResults.length > 0
-            ) {
-              extractedQcResults.push(...file.processingResults.qcResults);
-            }
-            // Extract calibration data (only once, from first file)
-            if (
-              file.processingResults.calibrationData &&
-              !extractedCalibrationData
-            ) {
-              extractedCalibrationData = file.processingResults.calibrationData;
-            }
-            // Extract quantification results
-            if (
-              file.processingResults.quantification &&
-              file.processingResults.quantification.length > 0
-            ) {
-              extractedQuantificationResults.push(
-                ...file.processingResults.quantification,
-              );
-            }
-          }
-        });
-      });
-
-      // Set state only if we found data
-      if (extractedQcResults.length > 0) {
-        setQcResults(extractedQcResults);
-      }
-      if (extractedCalibrationData) {
-        setCalibrationData(extractedCalibrationData);
-      }
-      if (extractedQuantificationResults.length > 0) {
-        setQuantificationResults(extractedQuantificationResults);
-      }
-    }
-  }, [assignedSamples]);
-
-  // ============================================================================
-  // HANDLERS
-  // ============================================================================
-
+  // Notification helper following established patterns (same as other bioanalytical pages)
   const notify = useCallback(
-    (message, kind = NotificationKinds.success) => {
-      addNotification({ message, kind });
+    ({ kind = NotificationKinds.info, title, message }) => {
+      setNotificationVisible(true);
+      addNotification({ kind, title, message });
     },
-    [addNotification],
+    [addNotification, setNotificationVisible],
   );
 
-  const handleSampleSelection = useCallback((sampleId, isSelected) => {
-    setSelectedSampleIds((prev) => {
-      const newSet = new Set(prev);
-      if (isSelected) {
-        newSet.add(sampleId);
-      } else {
-        newSet.delete(sampleId);
-      }
-      return newSet;
-    });
-  }, []);
+  // ============================================================================
+  // DATA FETCHING
+  // ============================================================================
 
-  const handleSelectAll = useCallback(
-    (isSelected) => {
-      if (isSelected) {
-        setSelectedSampleIds(new Set(assignedSamples.map((s) => s.id)));
-      } else {
-        setSelectedSampleIds(new Set());
-      }
-    },
-    [assignedSamples],
-  );
-
-  const handleFileSelect = useCallback((file) => {
-    setSelectedFile(file);
-  }, []);
-
-  const handleRemoveSelectedFile = useCallback(() => {
-    setSelectedFile(null);
-  }, []);
-
-  const handleFileUpload = useCallback(async () => {
-    if (!selectedFile) {
-      notify("Please select a file first", NotificationKinds.warning);
-      return;
-    }
-    if (!selectedInstrument) {
-      notify("Please select an instrument first", NotificationKinds.warning);
-      return;
-    }
-
-    const fileExtension = selectedFile.name.split(".").pop().toUpperCase();
-    const instrument = instruments.find((i) => i.id === selectedInstrument);
-
-    if (!instrument.formats.includes(fileExtension)) {
-      notify(
-        `Invalid format. Expected: ${instrument.formats.join(", ")}`,
-        NotificationKinds.error,
-      );
-      return;
-    }
+  const fetchSamples = useCallback(async () => {
+    if (!pageData?.id) return;
 
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("instrumentId", selectedInstrument);
-      formData.append("pageId", pageData?.id);
-      formData.append("entryId", entryId || "");
-
-      // Upload file to correct endpoint
+      setIsLoading(true);
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/files/upload`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: formData,
-        },
+        `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
+        { credentials: "include" },
       );
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.status}`);
+        throw new Error("Failed to load samples for Stage 3");
       }
 
-      const result = await response.json();
+      const data = await response.json();
+      const samples = Array.isArray(data) ? data : [];
 
-      if (result.success) {
-        // Store file metadata from upload response
-        const fileMetadata = {
-          id: result.fileId,
-          name: result.fileName,
-          size: result.fileSize,
-          fileUrl: result.fileUrl,
-          uploadedAt: result.uploadedAt,
-          instrumentId: selectedInstrument,
-          instrumentName: instrument.machine,
-          uploaded: true,
-          processed: false, // Will be true after processing
-        };
+      console.log("Stage 3 - Loaded samples:", samples);
 
-        setUploadedFiles((prev) => [...prev, fileMetadata]);
-        setSelectedFile(null); // Clear selection after upload
-        notify(`File uploaded successfully: ${result.fileName}`);
-      } else {
-        throw new Error(result.error || "File upload failed");
+      // Clean and structure sample data - preserving all previous stage data
+      const cleanSamples = samples.map((sample) => ({
+        id: sample.id,
+        accessionNumber: sample.accessionNumber,
+        // Use sample.data?.sampleType first (from previous stages), fallback to direct properties
+        sampleType:
+          sample.data?.sampleType ||
+          sample.sampleType ||
+          sample.typeOfSample?.type ||
+          "-",
+        sampleItemId: sample.sampleItemId || sample.id,
+        assignedStaff:
+          sample.assignedStaff || sample.data?.assignedStaff || "-",
+        // Fix: Use sample.data?.analyticalMethod (not assignedMethod)
+        assignedMethod:
+          sample.assignedMethod ||
+          sample.data?.analyticalMethod ||
+          sample.data?.assignedMethod ||
+          "Not assigned",
+        instrumentName:
+          sample.instrumentName || sample.data?.instrumentName || "-",
+        instrumentId: sample.instrumentId || sample.data?.instrumentId || null,
+        // Preserve all data from previous stages
+        data: sample.data || {},
+      }));
+
+      setAssignedSamples(cleanSamples);
+
+      // Load existing execution data if present
+      if (cleanSamples.length > 0) {
+        const firstSample = cleanSamples[0];
+        if (firstSample.data?.executionData) {
+          setExecutionData((prev) => ({
+            ...prev,
+            ...firstSample.data.executionData,
+          }));
+        }
+
+        // Load QC data if present in any sample
+        const qcData = cleanSamples.find((s) => s.data?.qcResults)?.data;
+        if (qcData) {
+          setQcResults(qcData.qcResults || []);
+          setCalibrationData(qcData.calibrationData || null);
+          setQuantificationResults(qcData.quantificationResults || []);
+          setQcApproved(qcData.qcApproved || false);
+        }
       }
     } catch (error) {
-      console.error("File upload error:", error);
-      notify(`File upload failed: ${error.message}`, NotificationKinds.error);
+      console.error("Error loading samples:", error);
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        message: "Failed to load samples for Stage 3",
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [
-    selectedFile,
-    selectedInstrument,
-    instruments,
-    pageData?.id,
-    entryId,
-    notify,
-  ]);
+  }, [pageData?.id, notify]);
 
-  const handleProcessFiles = useCallback(
-    async (fileIds) => {
-      if (!fileIds || fileIds.length === 0) {
-        notify("No files to process", NotificationKinds.warning);
+  const refreshTabData = useCallback(
+    async (tabIndex) => {
+      console.log(`Refreshing data for tab ${tabIndex}`);
+
+      // Always fetch fresh sample data when switching tabs
+      await fetchSamples();
+
+      // Tab-specific data refresh logic can be added here
+      switch (tabIndex) {
+        case 0: // Test Execution
+          // Data already refreshed by fetchSamples
+          break;
+        case 1: // QC Verification
+          // QC data already loaded by fetchSamples
+          break;
+        case 2: // Deviations & Completion
+          // Deviations loaded with sample data
+          break;
+        default:
+          break;
+      }
+    },
+    [fetchSamples],
+  );
+
+  // ============================================================================
+  // EVENT HANDLERS
+  // ============================================================================
+
+  const handleTabChange = useCallback(
+    (evt) => {
+      const newTabIndex = evt.selectedIndex;
+      setSelectedTab(newTabIndex);
+      refreshTabData(newTabIndex);
+    },
+    [refreshTabData],
+  );
+
+  const handleFileUpload = useCallback(
+    async (event) => {
+      const files = Array.from(event.target.files);
+      if (files.length === 0) return;
+
+      if (!pageData?.id) {
+        notify({
+          kind: NotificationKinds.error,
+          title: "Error",
+          message: "Page ID not found",
+        });
+        return;
+      }
+
+      if (!executionData.selectedInstrument) {
+        notify({
+          kind: NotificationKinds.warning,
+          title: "Warning",
+          message: "Please select an instrument first",
+        });
         return;
       }
 
       try {
+        const uploadPromises = files.map(async (file) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("instrumentId", executionData.selectedInstrument);
+          formData.append("pageId", pageData.id.toString());
+          formData.append("entryId", entryId || pageData.id.toString());
+
+          const response = await fetch(
+            `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/files/upload`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "X-CSRF-Token": localStorage.getItem("CSRF"),
+              },
+              body: formData,
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(`Upload failed for ${file.name}`);
+          }
+
+          const result = await response.json();
+
+          return {
+            id: result.fileId,
+            name: file.name,
+            size: file.size,
+            fileName: result.fileName,
+            filePath: result.filePath,
+            uploaded: true,
+            processed: false,
+            analyzerResultsCount: 0,
+          };
+        });
+
+        const uploadedFileResults = await Promise.all(uploadPromises);
+        setUploadedFiles((prev) => [...prev, ...uploadedFileResults]);
+        notify({
+          kind: NotificationKinds.success,
+          title: "Success",
+          message: `${files.length} file(s) uploaded successfully`,
+        });
+      } catch (error) {
+        console.error("File upload error:", error);
+        notify({
+          kind: NotificationKinds.error,
+          title: "Error",
+          message: `File upload failed: ${error.message}`,
+        });
+      }
+    },
+    [notify, pageData?.id, executionData.selectedInstrument, entryId],
+  );
+
+  const handleProcessFiles = useCallback(
+    async (fileIds) => {
+      if (!pageData?.id) {
+        notify({
+          kind: NotificationKinds.error,
+          title: "Error",
+          message: "Page ID not found",
+        });
+        return;
+      }
+
+      try {
+        // Prepare samples data for processing request
+        const samplesData = selectedSampleIds.map((sampleId) => {
+          const sample = assignedSamples.find((s) => s.id === sampleId);
+          return {
+            id: sample?.id || sampleId,
+            accessionNumber: sample?.accessionNumber,
+            sampleId: sample?.sampleItemId,
+            assignedMethod: sample?.assignedMethod,
+            instrumentId: sample?.instrumentId,
+          };
+        });
+
+        // Create FileProcessingRequest structure as expected by backend
+        const processingRequest = {
+          fileIds: fileIds,
+          samples: samplesData,
+        };
+
         const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/files/process`,
+          `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/files/process`,
           {
             method: "POST",
             credentials: "include",
@@ -421,52 +411,47 @@ function BioanalyticalAnalyticalExecutionPage({
               "Content-Type": "application/json",
               "X-CSRF-Token": localStorage.getItem("CSRF"),
             },
-            body: JSON.stringify({
-              fileIds: fileIds,
-              samples: Array.from(selectedSampleIds).map((id) => ({
-                sampleId: id,
-                // Add any additional sample info needed
-              })),
-            }),
+            body: JSON.stringify(processingRequest),
           },
         );
 
         if (!response.ok) {
-          throw new Error(`Processing failed: ${response.status}`);
+          throw new Error("File processing failed");
         }
 
         const result = await response.json();
 
-        if (result.success) {
-          // Update files to show they've been processed
-          setUploadedFiles((prev) =>
-            prev.map((file) =>
-              fileIds.includes(file.id)
-                ? { ...file, processed: true, processingResults: result }
-                : file,
-            ),
-          );
+        // Update files to show they've been processed with actual results from backend
+        setUploadedFiles((prev) =>
+          prev.map((file) =>
+            fileIds.includes(file.id)
+              ? {
+                  ...file,
+                  processed: true,
+                  analyzerResultsCount: result.analyzerResults?.length || 0,
+                }
+              : file,
+          ),
+        );
 
-          // Extract and populate QC data from processing results
-          if (result.qcResults && result.qcResults.length > 0) {
-            setQcResults(result.qcResults);
-          }
-          if (result.calibrationData) {
-            setCalibrationData(result.calibrationData);
-          }
-          if (
-            result.quantificationResults &&
-            result.quantificationResults.length > 0
-          ) {
-            setQuantificationResults(result.quantificationResults);
-          }
-
-          notify(
-            `Files processed successfully. QC data automatically loaded for Tab 2 verification.`,
-          );
-        } else {
-          throw new Error(result.error || "File processing failed");
+        // Store processed results in state for QC verification
+        if (result.qcResults && result.qcResults.length > 0) {
+          setQcResults(result.qcResults);
         }
+        if (
+          result.quantificationResults &&
+          result.quantificationResults.length > 0
+        ) {
+          setQuantificationResults(result.quantificationResults);
+        }
+        if (result.calibrationData) {
+          setCalibrationData(result.calibrationData);
+        }
+
+        const resultsCount = result.analyzerResults?.length || 0;
+        notify(
+          `Files processed successfully. ${resultsCount} results extracted.`,
+        );
       } catch (error) {
         console.error("File processing error:", error);
         notify(
@@ -475,62 +460,55 @@ function BioanalyticalAnalyticalExecutionPage({
         );
       }
     },
-    [pageData?.id, selectedSampleIds, notify],
+    [notify, pageData?.id, selectedSampleIds, assignedSamples],
   );
 
   const handleExecuteTest = useCallback(async () => {
-    if (selectedSampleIds.size === 0) {
-      notify("Please select at least one sample", NotificationKinds.warning);
+    if (selectedSampleIds.length === 0) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Warning",
+        message: "Please select at least one sample",
+      });
       return;
     }
-    if (!selectedInstrument) {
-      notify("Please select an instrument", NotificationKinds.warning);
+    if (!executionData.selectedInstrument) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Warning",
+        message: "Please select an instrument",
+      });
       return;
     }
     if (!executionData.analystId) {
-      notify("Please enter Analyst ID", NotificationKinds.warning);
-      return;
-    }
-    if (uploadedFiles.length === 0) {
-      notify(
-        "Please upload at least one raw data file",
-        NotificationKinds.warning,
-      );
-      return;
-    }
-    if (!uploadedFiles.some((file) => file.processed)) {
-      notify(
-        "Please process all uploaded files before recording execution",
-        NotificationKinds.warning,
-      );
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Warning",
+        message: "Please enter Analyst ID",
+      });
       return;
     }
 
     try {
-      setIsExecuting(true);
+      setExecutionData((prev) => ({ ...prev, isExecuting: true }));
 
-      // Build complete execution data with all QC results collected from files
       const executionPayload = {
-        sampleIds: Array.from(selectedSampleIds),
+        sampleIds: selectedSampleIds,
         data: {
-          // Core execution information
           executionStatus: "EXECUTED",
           executedAt: new Date().toISOString(),
           executedBy: executionData.analystId,
-          instrumentId: selectedInstrument,
+          instrumentId: executionData.selectedInstrument,
           executionDate: executionData.executionDate,
           notes: executionData.notes,
-
-          // Raw data capture
-          uploadedFiles: uploadedFiles,
-
-          // QC results from file processing
-          qcResults: qcResults,
-          quantificationResults: quantificationResults,
-          calibrationData: calibrationData,
-
-          // QC verification status
-          qcVerified: false, // Will be set to true in Tab 3
+          uploadedFiles: uploadedFiles.map((file) => ({
+            id: file.id,
+            name: file.name,
+            size: file.size,
+            uploaded: file.uploaded,
+            processed: file.processed,
+            analyzerResultsCount: file.analyzerResultsCount,
+          })),
         },
       };
 
@@ -549,36 +527,264 @@ function BioanalyticalAnalyticalExecutionPage({
 
       if (!response.ok) throw new Error("Test execution failed");
 
-      notify(
-        "Test execution recorded with raw data and QC results. Proceeding to QC Verification.",
-      );
-      setSelectedTab(1); // Move to QC verification tab
+      notify({
+        kind: NotificationKinds.success,
+        title: "Success",
+        message:
+          "Test execution recorded successfully. Proceeding to QC Verification.",
+      });
+      setSelectedTab(1);
+      await refreshTabData(1);
     } catch (error) {
       console.error("Execution error:", error);
-      notify("Test execution failed", NotificationKinds.error);
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        message: "Test execution failed",
+      });
     } finally {
-      setIsExecuting(false);
+      setExecutionData((prev) => ({ ...prev, isExecuting: false }));
     }
   }, [
     selectedSampleIds,
-    selectedInstrument,
-    pageData?.id,
     executionData,
     uploadedFiles,
-    qcResults,
-    quantificationResults,
-    calibrationData,
+    pageData?.id,
     notify,
+    refreshTabData,
+  ]);
+
+  const handleCompleteExecution = useCallback(() => {
+    // Validation: Check if samples are selected (same as Stage 1)
+    if (selectedSampleIds.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        message: "Please select at least one sample.",
+      });
+      return;
+    }
+
+    // Validation: Check if page is properly initialized (same as Stage 1)
+    if (!pageData?.id) {
+      notify({
+        kind: NotificationKinds.error,
+        title: "Error",
+        message: "Cannot update samples: Page not properly initialized.",
+      });
+      return;
+    }
+
+    // Stage 3 specific validation: Check QC approval
+    if (!qcApproved) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Warning",
+        message: "Please approve QC results before completing execution.",
+      });
+      return;
+    }
+
+    // Set executing state
+    setExecutionData((prev) => ({ ...prev, isExecuting: true }));
+
+    // Get existing data from first selected sample to preserve all previous stage data
+    const firstSelectedSample = assignedSamples.find((s) =>
+      selectedSampleIds.includes(s.id),
+    );
+    const existingData = firstSelectedSample?.data || {};
+
+    const completionPayload = {
+      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)), // Same format as Stage 1
+      data: {
+        // Preserve ALL existing data from previous stages (Stage 1 & 2)
+        ...existingData,
+        // Add Stage 3 execution data - Stage 4 compatible format
+        executionStatus: "EXECUTED", // Stage 4 expects "EXECUTED" not "COMPLETED"
+        completedAt: new Date().toISOString(),
+        completedBy: executionData.analystId,
+        stage3Completed: true,
+        stage3CompletedBy: executionData.analystId,
+        stage3CompletedAt: new Date().toISOString(),
+        readyForReporting: true,
+        qcApproved: qcApproved,
+        resultsApproved: qcApproved, // Stage 4 requires this flag
+        deviations: deviations,
+        // Include QC and execution data from this stage
+        qcResults: qcResults,
+        calibrationData: calibrationData,
+        quantificationResults: quantificationResults,
+        testExecution: {
+          // Stage 4 expects "testExecution" not "executionData"
+          ...executionData,
+          completedAt: new Date().toISOString(),
+          status: "EXECUTED",
+          analystId: executionData.analystId,
+          selectedInstrument: executionData.selectedInstrument,
+          method: executionData.method,
+          qcApproved: qcApproved,
+          deviations: deviations.length,
+          executionDate: new Date().toISOString(),
+        },
+        executionData: {
+          // Keep for backward compatibility
+          ...executionData,
+          completedAt: new Date().toISOString(),
+          status: "EXECUTED",
+        },
+      },
+    };
+
+    // Step 1: Apply completion data to Stage 3 page
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+      JSON.stringify(completionPayload),
+      async (response) => {
+        // Check if response indicates success (same pattern as Stage 1)
+        if (response && !response.error && !response.status) {
+          // Step 2: Mark samples as COMPLETED on Stage 3
+          try {
+            const statusResponse = await fetch(
+              `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples/status-string`,
+              {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": localStorage.getItem("CSRF"),
+                },
+                body: JSON.stringify({
+                  sampleIds: selectedSampleIds.map((id) => String(id)),
+                  status: "COMPLETED",
+                }),
+              },
+            );
+
+            if (!statusResponse.ok) {
+              throw new Error("Failed to mark samples as completed");
+            }
+
+            // Step 3: Advance samples to Stage 4 (Reporting & Release) if notebookId is available
+            if (notebookId) {
+              try {
+                const advanceResponse = await fetch(
+                  `${config.serverBaseUrl}/rest/notebook/${notebookId}/samples/advance-string`,
+                  {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "X-CSRF-Token": localStorage.getItem("CSRF"),
+                    },
+                    body: JSON.stringify({
+                      sampleIds: selectedSampleIds.map((id) => String(id)),
+                      fromPageId: pageData.id,
+                      toPageIndex: 4, // Stage 4: Reporting & Release
+                    }),
+                  },
+                );
+
+                if (advanceResponse.ok) {
+                  // Success: All steps completed
+                  setExecutionData((prev) => ({ ...prev, isExecuting: false }));
+                  notify({
+                    kind: NotificationKinds.success,
+                    title: "Success",
+                    message: `Test execution completed successfully for ${selectedSampleIds.length} sample(s). Samples advanced to Stage 4 (Reporting & Release).`,
+                  });
+                } else {
+                  // Partial success: Data saved but advance failed
+                  setExecutionData((prev) => ({ ...prev, isExecuting: false }));
+                  notify({
+                    kind: NotificationKinds.warning,
+                    title: "Partial Success",
+                    message: `Test execution completed for ${selectedSampleIds.length} sample(s), but advance to reporting stage failed. Please refresh to see updated status.`,
+                  });
+                }
+              } catch (advanceError) {
+                // Advance failed but data was saved
+                setExecutionData((prev) => ({ ...prev, isExecuting: false }));
+                console.error("Stage advancement error:", advanceError);
+                notify({
+                  kind: NotificationKinds.warning,
+                  title: "Partial Success",
+                  message: `Test execution completed for ${selectedSampleIds.length} sample(s), but advance to reporting stage failed. Please refresh to see updated status.`,
+                });
+              }
+            } else {
+              // No notebookId available, but data was saved
+              setExecutionData((prev) => ({ ...prev, isExecuting: false }));
+              notify({
+                kind: NotificationKinds.warning,
+                title: "Partial Success",
+                message: `Test execution completed for ${selectedSampleIds.length} sample(s). Samples are ready for reporting but could not auto-advance. Please refresh to proceed.`,
+              });
+            }
+
+            // Clear selection and refresh regardless of advance success
+            setSelectedSampleIds([]);
+            fetchSamples();
+
+            // Notify parent
+            if (onProgressUpdate) {
+              onProgressUpdate({
+                stage: 3,
+                completed: true,
+                timestamp: new Date(),
+              });
+            }
+          } catch (statusError) {
+            // Data applied but status update failed
+            setExecutionData((prev) => ({ ...prev, isExecuting: false }));
+            console.error("Status update error:", statusError);
+            notify({
+              kind: NotificationKinds.error,
+              title: "Error",
+              message:
+                "Test execution completed but failed to update sample status. Please refresh.",
+            });
+          }
+        } else {
+          // Apply failed
+          setExecutionData((prev) => ({ ...prev, isExecuting: false }));
+          notify({
+            kind: NotificationKinds.error,
+            title: "Error",
+            message:
+              response?.error ||
+              "Failed to complete test execution. Please try again.",
+          });
+        }
+      },
+    );
+  }, [
+    selectedSampleIds,
+    pageData?.id,
+    qcApproved,
+    executionData.analystId,
+    deviations,
+    qcResults,
+    calibrationData,
+    quantificationResults,
+    executionData,
+    assignedSamples,
+    notify,
+    onProgressUpdate,
+    fetchSamples,
+    notebookId,
   ]);
 
   const handleAddDeviation = useCallback(() => {
     if (!deviationForm.type || !deviationForm.description) {
-      notify("Please fill in all required fields", NotificationKinds.warning);
+      notify({
+        kind: NotificationKinds.warning,
+        title: "Warning",
+        message: "Please fill in all required fields",
+      });
       return;
     }
 
     const deviation = {
-      id: `DEV-${Date.now()}`,
       ...deviationForm,
       recordedAt: new Date().toISOString(),
       recordedBy: executionData.analystId,
@@ -587,903 +793,467 @@ function BioanalyticalAnalyticalExecutionPage({
     setDeviations((prev) => [...prev, deviation]);
     setDeviationForm({ type: "", description: "", correctiveAction: "" });
     setIsDeviationModalOpen(false);
-    notify("Deviation recorded");
+    notify({
+      kind: NotificationKinds.success,
+      title: "Success",
+      message: "Deviation recorded successfully",
+    });
   }, [deviationForm, executionData.analystId, notify]);
 
-  const handleCompleteExecution = useCallback(async () => {
-    // Validate that we have all required data BEFORE setting isExecuting
-    if (!qcApproved) {
-      notify(
-        "Please approve QC results before completing execution",
-        NotificationKinds.warning,
-      );
-      return;
-    }
+  // ============================================================================
+  // EFFECTS
+  // ============================================================================
 
-    if (qcResults.length === 0 && quantificationResults.length === 0) {
-      notify(
-        "No QC or quantification data found. Please load QC results first.",
-        NotificationKinds.warning,
-      );
-      return;
-    }
+  // Fetch notebookId from entry details for stage advancement
+  const fetchNotebookId = useCallback(async () => {
+    if (!entryId) return;
 
     try {
-      setIsExecuting(true);
-
-      // Clean uploadedFiles to remove non-serializable data (processingResults contains the full API response)
-      const cleanUploadedFiles = uploadedFiles.map((file) => ({
-        id: file.id,
-        name: file.name,
-        size: file.size,
-        fileUrl: file.fileUrl,
-        uploadedAt: file.uploadedAt,
-        instrumentId: file.instrumentId,
-        instrumentName: file.instrumentName,
-        uploaded: file.uploaded,
-        processed: file.processed,
-        // Don't include processingResults - it's already extracted into qcResults, calibrationData, quantificationResults
-      }));
-
-      // Build common execution data that applies to all samples
-      const commonExecutionData = {
-        // Execution status and metadata (common to all samples)
-        executionStatus: "COMPLETED",
-        completedAt: new Date().toISOString(),
-        completedBy: executionData.analystId,
-        executionDate: executionData.executionDate,
-        notes: executionData.notes,
-
-        // QC verification data (summary for all samples)
-        qcApproved: qcApproved,
-        qcSummary: {
-          totalQcSamples: qcResults.length,
-          passedQcSamples: qcResults.filter((qc) => qc.status === "PASS")
-            .length,
-          failedQcSamples: qcResults.filter((qc) => qc.status !== "PASS")
-            .length,
-        },
-
-        // Calibration data (shared across all samples)
-        calibrationData: calibrationData,
-        calibrationAccepted: calibrationData
-          ? calibrationData.qualityAssessment === "PASS"
-          : false,
-
-        // Instrument and file information (common to all samples)
-        instrumentId: selectedInstrument,
-        instrumentName: instruments.find((i) => i.id === selectedInstrument)
-          ?.machine,
-        uploadedFiles: cleanUploadedFiles,
-
-        // Deviations (common issues)
-        deviations: deviations,
-        deviationCount: deviations.length,
-
-        // Stage 3 completion certification (common to all samples)
-        stage3Completed: true,
-        stage3CompletedBy: executionData.analystId,
-        stage3CompletedAt: new Date().toISOString(),
-        readyForReporting: true,
-
-        // Sample-specific results (organized by sample ID for easy lookup in Stage 4)
-        sampleSpecificResults: {},
-      };
-
-      // Add sample-specific results organized by sample ID
-      Array.from(selectedSampleIds).forEach((sampleId) => {
-        // Get QC results for this sample
-        const sampleQcResults = qcResults.filter(
-          (qc) => qc.sampleId === sampleId,
-        );
-
-        // Get quantification results for this sample
-        const sampleQuantResults = quantificationResults.filter(
-          (quant) => quant.sampleId === sampleId,
-        );
-
-        commonExecutionData.sampleSpecificResults[sampleId] = {
-          qcResults: sampleQcResults,
-          quantificationResults: sampleQuantResults,
-          analyzerResults: sampleQuantResults.map((quant) => ({
-            result: `${quant.concentration} ${quant.units}`,
-            quality: quant.status,
-            instrumentSampleId: quant.instrumentSampleId,
-            peakArea: quant.peakArea,
-            accuracy: quant.accuracyPercent,
-            cvPercent: quant.cvPercent,
-          })),
-          sampleId: sampleId,
-          processedAt: new Date().toISOString(),
-        };
-      });
-
-      // Send the execution data to the backend using the correct format
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/samples/apply`,
+        `${config.serverBaseUrl}/rest/notebook-entry/${entryId}`,
         {
-          method: "POST",
+          method: "GET",
           credentials: "include",
           headers: {
-            "Content-Type": "application/json",
             "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            sampleIds: Array.from(selectedSampleIds),
-            data: commonExecutionData,
-          }),
         },
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Completion failed");
+      if (response.ok) {
+        const entryData = await response.json();
+        const nbId = entryData.notebook?.id || entryData.notebookInstanceId;
+        if (nbId) {
+          setNotebookId(nbId);
+        }
       }
-
-      const responseData = await response.json();
-
-      notify(
-        `Test execution completed successfully for ${selectedSampleIds.size} samples. All data has been preserved for reporting.`,
-      );
-
-      if (onProgressUpdate) {
-        onProgressUpdate();
-      }
-
-      // Clear local state as data is now persisted
-      setSelectedSampleIds(new Set());
-      setQcResults([]);
-      setQuantificationResults([]);
-      setCalibrationData(null);
-      setDeviations([]);
-      setQcApproved(false);
     } catch (error) {
-      console.error("Completion error:", error);
-      notify(`Completion failed: ${error.message}`, NotificationKinds.error);
-    } finally {
-      setIsExecuting(false);
+      console.error("Error fetching notebook ID:", error);
     }
-  }, [
-    pageData?.id,
-    selectedSampleIds,
-    executionData,
-    qcApproved,
-    qcResults,
-    quantificationResults,
-    calibrationData,
-    deviations,
-    selectedInstrument,
-    instruments,
-    uploadedFiles,
-    onProgressUpdate,
-    notify,
-  ]);
+  }, [entryId]);
 
-  // Render execution status column with QC processing indicator
-  const renderExecutionStatus = (sample) => {
-    if (!sample) {
-      return null;
-    }
+  useEffect(() => {
+    fetchSamples();
+    fetchNotebookId();
+  }, [fetchSamples, fetchNotebookId]);
 
-    const uploadedFiles = sample.data?.uploadedFiles || [];
-    const hasProcessedFiles = uploadedFiles.some((f) => f.processed);
-    const executionStatus = sample.data?.executionStatus;
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-    // Check if files have been processed and uploaded
-    if (uploadedFiles.length > 0 && hasProcessedFiles) {
-      return (
-        <div style={{ fontSize: "12px" }}>
-          <Tag type="green" size="sm">
-            ✅ QC Data Loaded
+  // ============================================================================
+  // TABLE CONFIGURATION
+  // ============================================================================
+
+  const sampleTableHeaders = [
+    { key: "accessionNumber", header: "Accession Number" },
+    { key: "sampleType", header: "Sample Type" },
+    { key: "sampleId", header: "Sample ID" },
+    { key: "assignedStaff", header: "Assigned Staff" },
+    { key: "assignedMethod", header: "Assigned Method" },
+    { key: "instrument", header: "Instrument" },
+    { key: "status", header: "Status" },
+    { key: "progress", header: "Progress" },
+  ];
+
+  const sampleTableRows = assignedSamples.map((sample) => ({
+    id: sample.id,
+    accessionNumber: sample.accessionNumber,
+    sampleType: sample.sampleType,
+    sampleId: sample.sampleItemId,
+    assignedStaff: sample.assignedStaff,
+    assignedMethod: sample.assignedMethod,
+    instrument: sample.instrumentName || sample.instrumentId || "-",
+    status: "Ready",
+    progress: sample.data?.executionStatus || "Pending",
+  }));
+
+  // ============================================================================
+  // RENDER HELPERS
+  // ============================================================================
+
+  const renderTableCell = (cell) => {
+    switch (cell.info.header) {
+      case "assignedMethod":
+        return (
+          <Tag type="blue" size="sm">
+            {cell.value}
           </Tag>
-          {executionStatus === "EXECUTED" && (
-            <div style={{ marginTop: "4px" }}>
-              <Tag type="blue" size="sm">
-                Execution Recorded
-              </Tag>
-            </div>
-          )}
-        </div>
-      );
+        );
+      case "assignedStaff":
+        return (
+          <Tag type="cyan" size="sm">
+            {cell.value}
+          </Tag>
+        );
+      case "instrument":
+        return (
+          <Tag type="gray" size="sm">
+            {cell.value}
+          </Tag>
+        );
+      case "status":
+        return (
+          <Tag type="green" size="sm">
+            {cell.value}
+          </Tag>
+        );
+      case "accessionNumber":
+        return <strong>{cell.value}</strong>;
+      default:
+        return cell.value;
     }
-
-    if (uploadedFiles.length > 0) {
-      return (
-        <span style={{ color: "#f1c21b", fontSize: "12px" }}>
-          ⏳ Processing Files...
-        </span>
-      );
-    }
-
-    return <span style={{ color: "#8d8d8d", fontSize: "12px" }}>Pending</span>;
   };
 
-  // ============================================================================
-  // RENDER
-  // ============================================================================
-
-  if (isLoading && assignedSamples.length === 0) {
-    return <Loading description="Loading assigned samples..." withOverlay />;
+  if (isLoading) {
+    return <Loading description="Loading Stage 3 data..." />;
   }
 
-  return (
-    <div style={{ padding: "1.5rem" }}>
-      <h2>
-        <FormattedMessage
-          id="notebook.bioanalytical.execution.title"
-          defaultMessage="Stage 3: Analytical Test Execution"
-        />
-      </h2>
+  // ============================================================================
+  // MAIN RENDER
+  // ============================================================================
 
-      <Tabs
-        selectedIndex={selectedTab}
-        onChange={(evt) => setSelectedTab(evt.selectedIndex)}
-      >
+  return (
+    <div>
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <h2>
+            <FormattedMessage
+              id="notebook.bioanalytical.execution.title"
+              defaultMessage="Stage 3: Analytical Test Execution"
+            />
+          </h2>
+        </Column>
+      </Grid>
+
+      <Tabs selectedIndex={selectedTab} onChange={handleTabChange}>
         <TabList aria-label="Analytical execution tabs">
-          <Tab>
-            <FormattedMessage
-              id="notebook.bioanalytical.execution.tab1"
-              defaultMessage="Test Execution & Data"
-            />
-          </Tab>
-          <Tab>
-            <FormattedMessage
-              id="notebook.bioanalytical.execution.tab2"
-              defaultMessage="QC Verification"
-            />
-          </Tab>
-          <Tab>
-            <FormattedMessage
-              id="notebook.bioanalytical.execution.tab3"
-              defaultMessage="Deviations & Completion"
-            />
-          </Tab>
+          <Tab>Test Execution & Data</Tab>
+          <Tab>QC Verification</Tab>
+          <Tab>Deviations & Completion</Tab>
         </TabList>
 
         <TabPanels>
-          {/* TAB 1: Test Execution & Data Capture */}
+          {/* Tab 1: Test Execution & Data */}
           <TabPanel>
-            <div style={{ paddingTop: "1.5rem" }}>
-              <Grid>
-                <Column lg={16} md={8} sm={4}>
-                  <h4>Execute Assigned Tests & Capture Raw Data</h4>
-
-                  {/* Selected Samples */}
-                  <div style={{ marginBottom: "2rem", marginTop: "1.5rem" }}>
-                    <Grid style={{ marginBottom: "1rem" }}>
-                      <Column
-                        lg={16}
-                        md={8}
-                        sm={4}
-                        style={{ textAlign: "right" }}
-                      >
-                        <Button
-                          kind="primary"
-                          onClick={() => setIsExecutionModalOpen(true)}
-                          disabled={selectedSampleIds.size === 0}
-                        >
-                          <FormattedMessage
-                            id="notebook.bioanalytical.execution.continueExecution"
-                            defaultMessage="Continue with Execution (Steps 2-4)"
-                          />
-                        </Button>
-                      </Column>
-                    </Grid>
-                    <div
+            <Grid>
+              <Column lg={16} md={8} sm={4}>
+                <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
+                  <Button
+                    kind="primary"
+                    onClick={() => setIsExecutionModalOpen(true)}
+                    disabled={selectedSampleIds.length === 0}
+                  >
+                    Configure Test Execution ({selectedSampleIds.length}{" "}
+                    selected)
+                  </Button>
+                  {selectedSampleIds.length > 0 && (
+                    <p
                       style={{
-                        overflowX: "auto",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "4px",
+                        marginTop: "0.5rem",
+                        fontSize: "0.875rem",
+                        color: "#6f6f6f",
                       }}
                     >
-                      <Table>
+                      {selectedSampleIds.length} of {assignedSamples.length}{" "}
+                      samples selected
+                    </p>
+                  )}
+                </div>
+
+                {/* Main Samples DataTable */}
+                <DataTable rows={sampleTableRows} headers={sampleTableHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getHeaderProps,
+                    getSelectionProps,
+                    getTableProps,
+                    getRowProps,
+                    onInputChange,
+                    selectedRows,
+                  }) => (
+                    <TableContainer
+                      title="Samples for Execution"
+                      description={`${assignedSamples.length} samples available for execution`}
+                    >
+                      <TableToolbar>
+                        <TableToolbarContent>
+                          <TableToolbarSearch
+                            onChange={onInputChange}
+                            placeholder="Search samples..."
+                          />
+                        </TableToolbarContent>
+                      </TableToolbar>
+                      <Table {...getTableProps()}>
                         <TableHead>
                           <TableRow>
-                            <TableHeader>
-                              <Checkbox
-                                id="select-all-samples"
-                                labelText="Select all samples"
-                                checked={
-                                  selectedSampleIds.size > 0 &&
-                                  selectedSampleIds.size ===
-                                    assignedSamples.length
+                            <TableSelectAll
+                              {...getSelectionProps()}
+                              onSelect={(event) => {
+                                // Handle select all
+                                const allIds = rows.map((row) => row.id);
+                                if (event.target.checked) {
+                                  setSelectedSampleIds(allIds);
+                                } else {
+                                  setSelectedSampleIds([]);
                                 }
-                                onChange={(event, { checked, id }) => {
-                                  handleSelectAll(checked);
-                                }}
-                                hideLabel
-                              />
-                            </TableHeader>
-                            <TableHeader>
-                              <FormattedMessage
-                                id="notebook.bioanalytical.execution.sampleId"
-                                defaultMessage="Sample ID"
-                              />
-                            </TableHeader>
-                            <TableHeader>
-                              <FormattedMessage
-                                id="notebook.bioanalytical.execution.assignedMethod"
-                                defaultMessage="Assigned Method"
-                              />
-                            </TableHeader>
-                            <TableHeader>
-                              <FormattedMessage
-                                id="notebook.bioanalytical.execution.assignedStaff"
-                                defaultMessage="Assigned Staff"
-                              />
-                            </TableHeader>
-                            <TableHeader>
-                              <FormattedMessage
-                                id="notebook.bioanalytical.execution.instrument"
-                                defaultMessage="Instrument"
-                              />
-                            </TableHeader>
-                            <TableHeader>
-                              <FormattedMessage
-                                id="notebook.bioanalytical.execution.status"
-                                defaultMessage="Status"
-                              />
-                            </TableHeader>
-                            <TableHeader>
-                              <FormattedMessage
-                                id="notebook.bioanalytical.execution.executionProgress"
-                                defaultMessage="Execution Progress"
-                              />
-                            </TableHeader>
+                              }}
+                            />
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {assignedSamples.length > 0 ? (
-                            assignedSamples.map((sample) => (
-                              <TableRow key={sample.id}>
-                                <TableCell>
-                                  <Checkbox
-                                    id={`sample-${sample.id}`}
-                                    labelText={`Select Sample ${sample.sampleItemId}`}
-                                    checked={selectedSampleIds.has(sample.id)}
-                                    onChange={(event, { checked, id }) => {
-                                      handleSampleSelection(sample.id, checked);
-                                    }}
-                                    hideLabel
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <strong>{sample.accessionNumber}</strong>
-                                </TableCell>
-                                <TableCell>
-                                  <Tag type="blue" size="sm">
-                                    {sample.assignedMethod || "Not assigned"}
-                                  </Tag>
-                                </TableCell>
-                                <TableCell>
-                                  <Tag type="cyan" size="sm">
-                                    {sample.assignedStaff || "-"}
-                                  </Tag>
-                                </TableCell>
-                                <TableCell>
-                                  <Tag type="gray" size="sm">
-                                    {sample.instrumentName ||
-                                      sample.instrumentId ||
-                                      "-"}
-                                  </Tag>
-                                </TableCell>
-                                <TableCell>
-                                  <Tag type="green" size="sm">
-                                    Ready
-                                  </Tag>
-                                </TableCell>
-                                <TableCell>
-                                  {renderExecutionStatus(sample)}
-                                </TableCell>
+                          {rows.length > 0 ? (
+                            rows.map((row) => (
+                              <TableRow key={row.id} {...getRowProps({ row })}>
+                                <TableSelectRow
+                                  {...getSelectionProps({ row })}
+                                  onSelect={(event) => {
+                                    // Handle individual row selection
+                                    setSelectedSampleIds((prev) => {
+                                      const newSet = new Set(prev);
+                                      if (event.target.checked) {
+                                        newSet.add(row.id);
+                                      } else {
+                                        newSet.delete(row.id);
+                                      }
+                                      return Array.from(newSet);
+                                    });
+                                  }}
+                                />
+                                {row.cells.map((cell) => (
+                                  <TableCell key={cell.id}>
+                                    {renderTableCell(cell)}
+                                  </TableCell>
+                                ))}
                               </TableRow>
                             ))
                           ) : (
                             <TableRow>
                               <TableCell
-                                colSpan="7"
-                                style={{
-                                  textAlign: "center",
-                                  padding: "2rem",
-                                }}
+                                colSpan={headers.length + 1}
+                                style={{ textAlign: "center" }}
                               >
-                                <FormattedMessage
-                                  id="notebook.bioanalytical.execution.noSamples"
-                                  defaultMessage="No samples available for execution. Please complete Stage 2 (Test Assignment) first."
-                                />
+                                No samples available for execution. Please
+                                complete Stage 2 first.
                               </TableCell>
                             </TableRow>
                           )}
                         </TableBody>
                       </Table>
-                    </div>
-                    <p style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-                      {selectedSampleIds.size} of {assignedSamples.length}{" "}
-                      selected
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </Column>
+            </Grid>
+          </TabPanel>
+
+          {/* Tab 2: QC Verification */}
+          <TabPanel>
+            <Grid>
+              <Column lg={16} md={8} sm={4}>
+                <h4>QC Results Verification</h4>
+                {qcResults.length > 0 ? (
+                  <div>
+                    <p>
+                      QC results loaded from processed files. Please review and
+                      approve.
                     </p>
+                    <Checkbox
+                      id="qc-approval"
+                      labelText="All QC criteria met and accepted"
+                      checked={qcApproved}
+                      onChange={(event, { checked }) => setQcApproved(checked)}
+                    />
                   </div>
-                </Column>
-              </Grid>
-            </div>
+                ) : (
+                  <p>
+                    No QC data available. Please process data files in Tab 1.
+                  </p>
+                )}
+              </Column>
+            </Grid>
           </TabPanel>
 
-          {/* TAB 2: QC Verification */}
+          {/* Tab 3: Deviations & Completion */}
           <TabPanel>
-            <div style={{ paddingTop: "1.5rem" }}>
-              <Grid>
-                <Column lg={16} md={8} sm={4}>
-                  <h4>QC Verification: Controls & Acceptance Criteria</h4>
+            <Grid>
+              <Column lg={16} md={8} sm={4}>
+                <h4>Deviations & Final Completion</h4>
 
-                  {isLoading ? (
-                    <Loading description="Loading QC results..." />
-                  ) : qcResults.length > 0 ? (
-                    <>
+                <div style={{ marginBottom: "2rem" }}>
+                  <Button
+                    kind="secondary"
+                    onClick={() => setIsDeviationModalOpen(true)}
+                  >
+                    Add Deviation
+                  </Button>
+                </div>
+
+                {deviations.length > 0 && (
+                  <div style={{ marginBottom: "2rem" }}>
+                    <h5>Recorded Deviations</h5>
+                    {deviations.map((deviation, index) => (
                       <div
+                        key={index}
                         style={{
-                          marginTop: "1.5rem",
-                          overflowX: "auto",
-                          border: "1px solid #e0e0e0",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableHeader>QC Level</TableHeader>
-                              <TableHeader>Spiked Value</TableHeader>
-                              <TableHeader>Measured Value</TableHeader>
-                              <TableHeader>Accuracy %</TableHeader>
-                              <TableHeader>Precision %</TableHeader>
-                              <TableHeader>Acceptance Range</TableHeader>
-                              <TableHeader>Status</TableHeader>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {qcResults.map((qc) => (
-                              <TableRow key={qc.id}>
-                                <TableCell>
-                                  <strong>{qc.level || "QC"}</strong>
-                                </TableCell>
-                                <TableCell>
-                                  {qc.spikedConcentration || "-"}
-                                </TableCell>
-                                <TableCell>{qc.measuredValue || "-"}</TableCell>
-                                <TableCell>
-                                  <span
-                                    style={{
-                                      color:
-                                        qc.accuracy !== null &&
-                                        qc.acceptanceCriteria &&
-                                        qc.accuracy >=
-                                          qc.acceptanceCriteria.min &&
-                                        qc.accuracy <= qc.acceptanceCriteria.max
-                                          ? "#24a148"
-                                          : "#da1e28",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    {qc.accuracy !== null
-                                      ? `${qc.accuracy.toFixed(1)}%`
-                                      : "-"}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <span
-                                    style={{
-                                      color:
-                                        qc.precision !== null &&
-                                        qc.precision <=
-                                          (qc.precisionLimit || 20)
-                                          ? "#24a148"
-                                          : "#da1e28",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    {qc.precision !== null
-                                      ? `${qc.precision.toFixed(1)}%`
-                                      : "-"}
-                                  </span>
-                                </TableCell>
-                                <TableCell style={{ fontSize: "0.875rem" }}>
-                                  {qc.acceptanceCriteria
-                                    ? `${qc.acceptanceCriteria.min}-${qc.acceptanceCriteria.max}%`
-                                    : "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                  <span
-                                    style={{
-                                      backgroundColor:
-                                        (qc.accuracy !== null &&
-                                          qc.acceptanceCriteria &&
-                                          qc.accuracy >=
-                                            qc.acceptanceCriteria.min &&
-                                          qc.accuracy <=
-                                            qc.acceptanceCriteria.max) ||
-                                        (qc.precision !== null &&
-                                          qc.precision <=
-                                            (qc.precisionLimit || 20))
-                                          ? "#24a148"
-                                          : "#da1e28",
-                                      color: "white",
-                                      padding: "0.25rem 0.5rem",
-                                      borderRadius: "4px",
-                                      fontSize: "0.75rem",
-                                    }}
-                                  >
-                                    {(qc.accuracy !== null &&
-                                      qc.acceptanceCriteria &&
-                                      qc.accuracy >=
-                                        qc.acceptanceCriteria.min &&
-                                      qc.accuracy <=
-                                        qc.acceptanceCriteria.max) ||
-                                    (qc.precision !== null &&
-                                      qc.precision <= (qc.precisionLimit || 20))
-                                      ? "PASS"
-                                      : "FAIL"}
-                                  </span>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-
-                      {/* Calibration Curve Section */}
-                      {calibrationData && (
-                        <div
-                          style={{
-                            marginTop: "2rem",
-                            padding: "1rem",
-                            backgroundColor: "#e8f5e9",
-                            borderRadius: "4px",
-                            border: "1px solid #24a148",
-                          }}
-                        >
-                          <h5>📈 Calibration Curve Assessment</h5>
-                          <Grid style={{ marginTop: "1rem" }}>
-                            <Column lg={8} md={4} sm={2}>
-                              <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>R²:</strong> {calibrationData.rSquared}
-                                <Tag
-                                  type={
-                                    calibrationData.rSquared >= 0.995
-                                      ? "green"
-                                      : "red"
-                                  }
-                                  size="sm"
-                                  style={{ marginLeft: "0.5rem" }}
-                                >
-                                  {calibrationData.rSquared >= 0.995
-                                    ? "PASS"
-                                    : "FAIL"}
-                                </Tag>
-                              </div>
-                              <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Equation:</strong>{" "}
-                                {calibrationData.equation}
-                              </div>
-                              <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Slope:</strong> {calibrationData.slope}
-                              </div>
-                            </Column>
-                            <Column lg={8} md={4} sm={2}>
-                              <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Intercept:</strong>{" "}
-                                {calibrationData.intercept}
-                              </div>
-                              <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Source:</strong>{" "}
-                                {calibrationData.instrumentName} -{" "}
-                                {calibrationData.fileName}
-                              </div>
-                              <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Overall Assessment:</strong>
-                                <Tag
-                                  type={
-                                    calibrationData.qualityAssessment === "PASS"
-                                      ? "green"
-                                      : "red"
-                                  }
-                                  size="sm"
-                                  style={{ marginLeft: "0.5rem" }}
-                                >
-                                  {calibrationData.qualityAssessment}
-                                </Tag>
-                              </div>
-                            </Column>
-                          </Grid>
-                        </div>
-                      )}
-
-                      {/* Quantification Results Section */}
-                      {quantificationResults.length > 0 && (
-                        <div style={{ marginTop: "2rem" }}>
-                          <h5>🧪 Sample Quantification Results</h5>
-                          <div
-                            style={{
-                              marginTop: "1rem",
-                              overflowX: "auto",
-                              border: "1px solid #e0e0e0",
-                              borderRadius: "4px",
-                            }}
-                          >
-                            <Table>
-                              <TableHead>
-                                <TableRow>
-                                  <TableHeader>Sample</TableHeader>
-                                  <TableHeader>Instrument ID</TableHeader>
-                                  <TableHeader>Concentration</TableHeader>
-                                  <TableHeader>Units</TableHeader>
-                                  <TableHeader>Peak Area</TableHeader>
-                                  <TableHeader>CV %</TableHeader>
-                                  <TableHeader>Accuracy %</TableHeader>
-                                  <TableHeader>Status</TableHeader>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {quantificationResults.map((result, index) => (
-                                  <TableRow
-                                    key={`${result.instrumentSampleId}-${index}`}
-                                  >
-                                    <TableCell>
-                                      <div>
-                                        <strong>{result.sampleName}</strong>
-                                        <div
-                                          style={{
-                                            fontSize: "0.75rem",
-                                            color: "#525252",
-                                          }}
-                                        >
-                                          {result.accessionNumber}
-                                        </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      {result.instrumentSampleId}
-                                    </TableCell>
-                                    <TableCell>
-                                      <strong>{result.concentration}</strong>
-                                    </TableCell>
-                                    <TableCell>{result.units}</TableCell>
-                                    <TableCell>{result.peakArea}</TableCell>
-                                    <TableCell>
-                                      <span
-                                        style={{
-                                          color:
-                                            result.cvPercent <= 2
-                                              ? "#24a148"
-                                              : "#f1c21b",
-                                        }}
-                                      >
-                                        {result.cvPercent}%
-                                      </span>
-                                    </TableCell>
-                                    <TableCell>
-                                      <span
-                                        style={{
-                                          color:
-                                            result.accuracyPercent >= 95
-                                              ? "#24a148"
-                                              : "#f1c21b",
-                                        }}
-                                      >
-                                        {result.accuracyPercent}%
-                                      </span>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Tag
-                                        type={
-                                          result.status === "VALID"
-                                            ? "green"
-                                            : "red"
-                                        }
-                                        size="sm"
-                                      >
-                                        {result.status}
-                                      </Tag>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-                      )}
-
-                      <div
-                        style={{
-                          marginTop: "2rem",
+                          marginBottom: "1rem",
                           padding: "1rem",
-                          backgroundColor: qcApproved ? "#e8f5e9" : "#fff3e0",
-                          border: qcApproved
-                            ? "2px solid #24a148"
-                            : "2px solid #ff9800",
-                          borderRadius: "4px",
+                          border: "1px solid #e0e0e0",
                         }}
                       >
-                        <p
-                          style={{
-                            margin: "0 0 1rem 0",
-                            fontWeight: "500",
-                            color: qcApproved ? "#1b5e20" : "#e65100",
-                          }}
-                        >
-                          {qcApproved
-                            ? "✅ QC Results Approved"
-                            : "⚠️ QC Approval Required"}
-                        </p>
-                        <Checkbox
-                          id="qc-approved"
-                          labelText="All QC criteria met and accepted *"
-                          checked={qcApproved}
-                          onChange={(checked) => setQcApproved(checked)}
-                        />
-                        <p
-                          style={{
-                            margin: "1rem 0 0 0",
-                            fontSize: "0.875rem",
-                            color: "#666",
-                          }}
-                        >
-                          Check this box to confirm QC review is complete and
-                          results are acceptable. This is required before
-                          proceeding to Tab 3 completion.
-                        </p>
+                        <strong>{deviation.type}</strong>
+                        <p>{deviation.description}</p>
+                        {deviation.correctiveAction && (
+                          <p>
+                            <em>Action: {deviation.correctiveAction}</em>
+                          </p>
+                        )}
                       </div>
-                    </>
-                  ) : (
-                    <div
-                      style={{
-                        marginTop: "2rem",
-                        padding: "2rem",
-                        backgroundColor: "#f4f4f4",
-                        borderRadius: "4px",
-                        textAlign: "center",
-                      }}
-                    >
-                      <p>No QC results available. Load results from above.</p>
-                    </div>
-                  )}
-                </Column>
-              </Grid>
-            </div>
-          </TabPanel>
-
-          {/* TAB 3: Deviations & Completion */}
-          <TabPanel>
-            <div style={{ paddingTop: "1.5rem" }}>
-              <Grid>
-                <Column lg={16} md={8} sm={4}>
-                  <h4>Document Deviations & Complete Execution</h4>
-
-                  {/* Deviations List */}
-                  {deviations.length > 0 && (
-                    <div
-                      style={{
-                        marginTop: "1.5rem",
-                        overflowX: "auto",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Type</TableHeader>
-                            <TableHeader>Description</TableHeader>
-                            <TableHeader>Corrective Action</TableHeader>
-                            <TableHeader>Recorded By</TableHeader>
-                            <TableHeader>Date/Time</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {deviations.map((dev) => (
-                            <TableRow key={dev.id}>
-                              <TableCell>
-                                <strong>{dev.type}</strong>
-                              </TableCell>
-                              <TableCell>{dev.description}</TableCell>
-                              <TableCell>{dev.correctiveAction}</TableCell>
-                              <TableCell>{dev.recordedBy}</TableCell>
-                              <TableCell>
-                                {new Date(dev.recordedAt).toLocaleString()}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-
-                  <div style={{ marginTop: "1.5rem" }}>
-                    <Button
-                      kind="secondary"
-                      onClick={() => setIsDeviationModalOpen(true)}
-                    >
-                      Add Deviation
-                    </Button>
+                    ))}
                   </div>
+                )}
 
-                  {/* Completion Summary */}
-                  <div
-                    style={{
-                      marginTop: "2rem",
-                      padding: "1.5rem",
-                      backgroundColor: "#f4f4f4",
-                      borderRadius: "4px",
-                    }}
+                <div style={{ marginTop: "2rem" }}>
+                  <Button
+                    kind="primary"
+                    onClick={handleCompleteExecution}
+                    disabled={
+                      executionData.isExecuting ||
+                      selectedSampleIds.length === 0 ||
+                      !qcApproved
+                    }
                   >
-                    <h5>Execution Summary</h5>
-                    <ul
-                      style={{
-                        listStyle: "none",
-                        paddingLeft: "0",
-                        marginTop: "1rem",
-                      }}
-                    >
-                      <li>✓ Samples Executed: {selectedSampleIds.size}</li>
-                      <li>
-                        ✓ Instrument: {selectedInstrument ? "Selected" : "N/A"}
-                      </li>
-                      <li>
-                        ✓ QC Verification: {qcApproved ? "Approved" : "Pending"}
-                      </li>
-                      <li>✓ Deviations Recorded: {deviations.length}</li>
-                      <li>
-                        ✓ Analyst: {executionData.analystId || "Not recorded"}
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Complete Button */}
-                  <div
-                    style={{
-                      marginTop: "2rem",
-                      padding: "1rem",
-                      backgroundColor:
-                        isExecuting ||
-                        selectedSampleIds.size === 0 ||
-                        !qcApproved
-                          ? "#f4f4f4"
-                          : "#e8f5e9",
-                      borderRadius: "4px",
-                      border: !qcApproved
-                        ? "1px solid #ff9800"
-                        : "1px solid #24a148",
-                    }}
-                  >
-                    {!qcApproved && selectedSampleIds.size > 0 && (
-                      <p
-                        style={{
-                          margin: "0 0 1rem 0",
-                          color: "#e65100",
-                          fontSize: "0.875rem",
-                        }}
-                      >
-                        ⚠️ QC approval is required. Please go to Tab 2 and check
-                        the "All QC criteria met and accepted" checkbox before
-                        completing.
-                      </p>
-                    )}
-                    <Button
-                      kind="primary"
-                      onClick={handleCompleteExecution}
-                      disabled={
-                        isExecuting ||
-                        selectedSampleIds.size === 0 ||
-                        !qcApproved
-                      }
-                    >
-                      {isExecuting
-                        ? "Completing..."
-                        : "Complete Test Execution"}
-                    </Button>
-                  </div>
-                </Column>
-              </Grid>
-            </div>
+                    {executionData.isExecuting
+                      ? "Completing..."
+                      : "Complete Test Execution"}
+                  </Button>
+                </div>
+              </Column>
+            </Grid>
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      {/* Execution Configuration Modal */}
+      <Modal
+        modalHeading="Configure Test Execution"
+        primaryButtonText="Start Execution"
+        secondaryButtonText="Cancel"
+        open={isExecutionModalOpen}
+        onRequestClose={() => setIsExecutionModalOpen(false)}
+        onRequestSubmit={() => {
+          handleExecuteTest();
+          setIsExecutionModalOpen(false);
+        }}
+        size="lg"
+      >
+        <Grid>
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="instrument-select"
+              labelText="Instrument *"
+              value={executionData.selectedInstrument}
+              onChange={(e) =>
+                setExecutionData((prev) => ({
+                  ...prev,
+                  selectedInstrument: e.target.value,
+                }))
+              }
+            >
+              <SelectItem value="" text="-- Select instrument --" />
+              {BIOANALYTICAL_ANALYZERS.map((instrument) => (
+                <SelectItem
+                  key={instrument.id}
+                  value={instrument.id}
+                  text={instrument.machine}
+                />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="analyst-id"
+              labelText="Analyst ID *"
+              value={executionData.analystId}
+              onChange={(e) =>
+                setExecutionData((prev) => ({
+                  ...prev,
+                  analystId: e.target.value,
+                }))
+              }
+            />
+          </Column>
+          <Column lg={16} md={8} sm={4}>
+            <TextArea
+              id="execution-notes"
+              labelText="Execution Notes"
+              value={executionData.notes}
+              onChange={(e) =>
+                setExecutionData((prev) => ({
+                  ...prev,
+                  notes: e.target.value,
+                }))
+              }
+            />
+          </Column>
+
+          {/* File Upload Section */}
+          <Column lg={16} md={8} sm={4}>
+            <h4 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
+              Data File Upload
+            </h4>
+            <FileUploader
+              accept={[".csv", ".pdf", ".mzml", ".cdf"]}
+              buttonLabel="Choose Files"
+              filenameStatus="edit"
+              iconDescription="Clear file"
+              labelDescription="Drag and drop files here or click to browse"
+              labelTitle="Upload Data Files"
+              multiple
+              onChange={handleFileUpload}
+              size="md"
+            />
+
+            {uploadedFiles.length > 0 && (
+              <div style={{ marginTop: "1rem" }}>
+                <h5>Uploaded Files</h5>
+                {uploadedFiles.map((file) => (
+                  <div key={file.id} style={{ margin: "0.5rem 0" }}>
+                    <Tag type={file.processed ? "green" : "gray"} size="sm">
+                      {file.name} -{" "}
+                      {file.processed
+                        ? `${file.analyzerResultsCount} results`
+                        : "Uploaded"}
+                    </Tag>
+                    {!file.processed && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        onClick={() => handleProcessFiles([file.id])}
+                        style={{ marginLeft: "0.5rem" }}
+                      >
+                        Process
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Column>
+        </Grid>
+      </Modal>
 
       {/* Deviation Modal */}
       <Modal
@@ -1494,362 +1264,50 @@ function BioanalyticalAnalyticalExecutionPage({
         onRequestClose={() => setIsDeviationModalOpen(false)}
         onRequestSubmit={handleAddDeviation}
       >
-        <div style={{ paddingBottom: "1.5rem" }}>
-          <Select
-            id="deviation-type"
-            labelText="Deviation Type *"
-            value={deviationForm.type}
-            onChange={(e) =>
-              setDeviationForm({ ...deviationForm, type: e.target.value })
-            }
-          >
-            <SelectItem value="" text="-- Select type --" />
-            <SelectItem
-              value="Out of Specification"
-              text="Out of Specification"
-            />
-            <SelectItem value="Equipment Issue" text="Equipment Issue" />
-            <SelectItem value="Analyst Error" text="Analyst Error" />
-            <SelectItem value="Environmental" text="Environmental" />
-            <SelectItem value="Other" text="Other" />
-          </Select>
-
-          <TextArea
-            id="deviation-description"
-            labelText="Description *"
-            value={deviationForm.description}
-            onChange={(e) =>
-              setDeviationForm({
-                ...deviationForm,
-                description: e.target.value,
-              })
-            }
-            style={{ marginTop: "1rem" }}
+        <Select
+          id="deviation-type"
+          labelText="Deviation Type *"
+          value={deviationForm.type}
+          onChange={(e) =>
+            setDeviationForm((prev) => ({ ...prev, type: e.target.value }))
+          }
+        >
+          <SelectItem value="" text="-- Select type --" />
+          <SelectItem
+            value="Out of Specification"
+            text="Out of Specification"
           />
+          <SelectItem value="Equipment Issue" text="Equipment Issue" />
+          <SelectItem value="Analyst Error" text="Analyst Error" />
+          <SelectItem value="Environmental" text="Environmental" />
+          <SelectItem value="Other" text="Other" />
+        </Select>
 
-          <TextArea
-            id="corrective-action"
-            labelText="Corrective Action"
-            value={deviationForm.correctiveAction}
-            onChange={(e) =>
-              setDeviationForm({
-                ...deviationForm,
-                correctiveAction: e.target.value,
-              })
-            }
-            style={{ marginTop: "1rem" }}
-          />
-        </div>
-      </Modal>
+        <TextArea
+          id="deviation-description"
+          labelText="Description *"
+          value={deviationForm.description}
+          onChange={(e) =>
+            setDeviationForm((prev) => ({
+              ...prev,
+              description: e.target.value,
+            }))
+          }
+          style={{ marginTop: "1rem" }}
+        />
 
-      {/* Execution Details Modal */}
-      <Modal
-        modalHeading="Test Execution Workflow: Capture Raw Data & QC Results"
-        primaryButtonText="Record Test Execution & Save Data"
-        secondaryButtonText="Cancel"
-        open={isExecutionModalOpen}
-        onRequestClose={() => setIsExecutionModalOpen(false)}
-        onRequestSubmit={async () => {
-          await handleExecuteTest();
-          setIsExecutionModalOpen(false);
-        }}
-        size="lg"
-      >
-        <div style={{ paddingBottom: "1.5rem" }}>
-          <div
-            style={{
-              marginBottom: "1.5rem",
-              padding: "1rem",
-              backgroundColor: "#e3f2fd",
-              borderRadius: "4px",
-              border: "1px solid #1976d2",
-            }}
-          >
-            <strong>📋 Workflow:</strong> The following steps will capture all
-            test execution data and QC results for the selected samples. All
-            data will be saved together.
-          </div>
-          {/* Step 2: Instrument Selection */}
-          <div style={{ marginBottom: "2rem" }}>
-            <h5>Step 2: Select Instrument Used for Testing</h5>
-            <Grid>
-              <Column lg={8} md={4} sm={4}>
-                <Select
-                  id="modal-instrument-select"
-                  labelText="Instrument *"
-                  value={selectedInstrument}
-                  onChange={(e) => setSelectedInstrument(e.target.value)}
-                >
-                  <SelectItem value="" text="-- Select instrument --" />
-                  {instruments.map((inst) => (
-                    <SelectItem
-                      key={inst.id}
-                      value={inst.id}
-                      text={inst.machine}
-                    />
-                  ))}
-                </Select>
-              </Column>
-            </Grid>
-          </div>
-
-          {/* Step 3: Execution Parameters */}
-          <div style={{ marginBottom: "2rem" }}>
-            <h5>
-              Step 3: Record Analyst & Execution Details (21 CFR Part 11
-              Compliance)
-            </h5>
-            <Grid>
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="modal-analyst-id"
-                  labelText="Analyst ID *"
-                  value={executionData.analystId}
-                  onChange={(e) =>
-                    setExecutionData({
-                      ...executionData,
-                      analystId: e.target.value,
-                    })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <DatePickerInput
-                  id="modal-execution-date"
-                  labelText="Execution Date *"
-                  pattern="dd/mm/yyyy"
-                  placeholder="dd/mm/yyyy"
-                  value={executionData.executionDate}
-                  onChange={(e) =>
-                    setExecutionData({
-                      ...executionData,
-                      executionDate: e[0]
-                        ? e[0].toISOString().split("T")[0]
-                        : executionData.executionDate,
-                    })
-                  }
-                />
-              </Column>
-            </Grid>
-            <Grid style={{ marginTop: "1rem" }}>
-              <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="modal-test-notes"
-                  labelText="Test Parameters / Notes"
-                  value={executionData.notes}
-                  onChange={(e) =>
-                    setExecutionData({
-                      ...executionData,
-                      notes: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., Temperature: 25°C, Flow rate: 1.0 mL/min..."
-                />
-              </Column>
-            </Grid>
-          </div>
-
-          {/* Step 4: File Upload & QC Processing - REQUIRED */}
-          <div
-            style={{
-              marginBottom: "2rem",
-              padding: "1rem",
-              backgroundColor:
-                uploadedFiles.length === 0 ? "#fff3e0" : "#f5f5f5",
-              border:
-                uploadedFiles.length === 0
-                  ? "2px solid #ff9800"
-                  : "1px solid #e0e0e0",
-              borderRadius: "4px",
-            }}
-          >
-            <h5 style={{ margin: "0 0 0.5rem 0" }}>
-              Step 4: Upload & Process Raw Instrument Data{" "}
-              <span style={{ color: "#d32f2f", fontWeight: "bold" }}>
-                *REQUIRED
-              </span>
-            </h5>
-            <div
-              style={{
-                fontSize: "0.875rem",
-                color: uploadedFiles.length === 0 ? "#e65100" : "#525252",
-                marginBottom: "1rem",
-                margin: 0,
-              }}
-            >
-              <p style={{ margin: "0 0 0.5rem 0" }}>
-                Upload raw data files (chromatograms, spectra, or test results)
-                from your instrument. Files will be automatically processed to
-                extract QC results, calibration data, and quantification
-                results.
-              </p>
-              {uploadedFiles.length === 0 && (
-                <div style={{ marginTop: "0.5rem", fontWeight: "500" }}>
-                  ⚠️ At least one file must be uploaded before recording test
-                  execution.
-                </div>
-              )}
-            </div>
-
-            {/* File Selector */}
-            <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-              <div>
-                <input
-                  type="file"
-                  id="file-input"
-                  style={{ display: "none" }}
-                  accept={
-                    selectedInstrument
-                      ? instruments
-                          .find((i) => i.id === selectedInstrument)
-                          ?.formats.map((f) => `.${f.toLowerCase()}`)
-                          .join(",") || ""
-                      : ".csv,.pdf,.mzml,.cdf"
-                  }
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    handleFileSelect(file);
-                  }}
-                  disabled={!selectedInstrument}
-                />
-                <Button
-                  kind="secondary"
-                  onClick={() => document.getElementById("file-input").click()}
-                  disabled={!selectedInstrument}
-                  renderIcon={DocumentAdd}
-                >
-                  Select File
-                </Button>
-              </div>
-              <div>
-                <Button
-                  kind="primary"
-                  onClick={handleFileUpload}
-                  disabled={!selectedFile || !selectedInstrument}
-                  renderIcon={Upload}
-                >
-                  Upload File
-                </Button>
-              </div>
-            </div>
-
-            {/* Selected File Display */}
-            {selectedFile && (
-              <div
-                style={{
-                  marginBottom: "1rem",
-                  padding: "0.75rem",
-                  backgroundColor: "#f4f4f4",
-                  borderRadius: "4px",
-                  border: "1px solid #e0e0e0",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div>
-                    <strong>Selected File:</strong> {selectedFile.name} (
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-                  </div>
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    onClick={handleRemoveSelectedFile}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Uploaded Files Display */}
-            {uploadedFiles.length > 0 && (
-              <div
-                style={{
-                  marginTop: "1rem",
-                  padding: "0.75rem",
-                  backgroundColor: "#e8f5e9",
-                  borderRadius: "4px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  <strong>Uploaded Files ({uploadedFiles.length}):</strong>
-                  <Button
-                    kind="tertiary"
-                    size="sm"
-                    onClick={() =>
-                      handleProcessFiles(
-                        uploadedFiles
-                          .filter((f) => !f.processed)
-                          .map((f) => f.id),
-                      )
-                    }
-                    disabled={uploadedFiles.every((f) => f.processed)}
-                  >
-                    Process All Files
-                  </Button>
-                </div>
-                <ul style={{ marginTop: "0.5rem", marginBottom: 0 }}>
-                  {uploadedFiles.map((file) => (
-                    <li key={file.id} style={{ marginBottom: "0.5rem" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <div>
-                          <strong>{file.name}</strong> - {file.instrumentName}
-                          <div
-                            style={{
-                              fontSize: "0.875rem",
-                              color: "#525252",
-                              marginTop: "0.25rem",
-                            }}
-                          >
-                            {file.processed ? (
-                              <span style={{ color: "#24a148" }}>
-                                ✅ Processed -{" "}
-                                {file.processingResults?.analyzerResults
-                                  ?.length || 0}{" "}
-                                results extracted
-                              </span>
-                            ) : (
-                              <span style={{ color: "#f1c21b" }}>
-                                ⏳ Uploaded - Ready for processing
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {!file.processed && (
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            onClick={() => handleProcessFiles([file.id])}
-                          >
-                            Process
-                          </Button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
+        <TextArea
+          id="corrective-action"
+          labelText="Corrective Action"
+          value={deviationForm.correctiveAction}
+          onChange={(e) =>
+            setDeviationForm((prev) => ({
+              ...prev,
+              correctiveAction: e.target.value,
+            }))
+          }
+          style={{ marginTop: "1rem" }}
+        />
       </Modal>
     </div>
   );
