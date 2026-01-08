@@ -34,7 +34,7 @@ jobs:
       - name: Initialize and build submodules
         run: |
           cd dataexport
-          mvn clean install  
+          mvn clean install 
           cd ..
 
       - name: Build OpenELIS-Global2

@@ -121,4 +121,3 @@ RUN mkdir -p /var/lib/lucene_index; \
 USER tomcat_admin
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
-
