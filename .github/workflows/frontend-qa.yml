@@ -92,7 +92,7 @@ jobs:
           path: frontend/cypress/screenshots/**/*.png
           if-no-files-found: ignore
 
-      # # In case of failure, uncomment this action and turn video: false to true in cypress.config.js
+      # In case of failure, uncomment this action and turn video: false to true in cypress.config.js
       # - name: Upload Cypress videos on failure
       #   if: failure()
       #   uses: actions/upload-artifact@v4
