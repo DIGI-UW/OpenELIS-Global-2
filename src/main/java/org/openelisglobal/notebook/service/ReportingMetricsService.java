@@ -162,4 +162,18 @@ public interface ReportingMetricsService {
      * @return List of alert messages
      */
     List<String> getDashboardAlerts();
+
+    /**
+     * Calculate bioequivalence statistics from QC results and analytical data for a
+     * specific notebook page.
+     *
+     * @param pageId The notebook page ID
+     * @return Map containing bioequivalence statistics with keys: - testName: Name
+     *         of the analytical test - dataPoints: Number of QC measurements -
+     *         mean: Mean accuracy or concentration value - sd: Standard deviation -
+     *         cv: Coefficient of variation percentage - min: Minimum value - max:
+     *         Maximum value - meanAccuracy: Mean accuracy percentage -
+     *         regulatoryStatus: COMPLIANT or NON_COMPLIANT based on FDA criteria
+     */
+    Map<String, Object> calculateBioequivalenceStatistics(Integer pageId);
 }

@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.openelisglobal.notebook.service.ReportingMetricsService;
+import org.openelisglobal.notebook.service.WestgardRulesService;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -50,6 +51,9 @@ public class BioanalyticalReportingController extends BaseRestController {
 
     @Autowired
     private NotebookEntryService notebookEntryService;
+
+    @Autowired(required = false)
+    private WestgardRulesService westgardRulesService;
 
     /**
      * Get complete dashboard metrics (all categories combined).
@@ -357,6 +361,44 @@ public class BioanalyticalReportingController extends BaseRestController {
     }
 
     /**
+     * Get bioequivalence statistics for a specific notebook page. Calculates
+     * statistics from QC results and analytical data from Stage 3.
+     *
+     * @param pageId The notebook page ID
+     * @return Bioequivalence statistics
+     */
+    @GetMapping(value = "/page/{pageId}/bioequivalence-statistics", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getBioequivalenceStatistics(@PathVariable("pageId") Integer pageId) {
+
+        if (reportingMetricsService == null) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Reporting Metrics service not available");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+
+        try {
+            // Calculate bioequivalence statistics from Stage 3 data
+            Map<String, Object> statistics = reportingMetricsService.calculateBioequivalenceStatistics(pageId);
+
+            if (statistics == null || statistics.isEmpty()) {
+                Map<String, Object> noDataResponse = new HashMap<>();
+                noDataResponse.put("error", "No bioequivalence data available for page " + pageId);
+                noDataResponse.put("pageId", pageId);
+                return ResponseEntity.ok(noDataResponse);
+            }
+
+            return ResponseEntity.ok(statistics);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to calculate bioequivalence statistics: " + e.getMessage());
+            errorResponse.put("pageId", pageId);
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
+    /**
      * Get dashboard alerts (failed QC, overdue samples, instrument issues).
      *
      * @return List of alert messages
@@ -379,5 +421,108 @@ public class BioanalyticalReportingController extends BaseRestController {
         response.put("message", "Dashboard alerts not yet implemented");
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Evaluate QC results against Westgard rules.
+     *
+     * @param pageId The notebook page ID containing QC results
+     * @return Westgard rules evaluation with detailed results
+     */
+    @GetMapping(value = "/page/{pageId}/westgard-evaluation", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> evaluateWestgardRules(@PathVariable("pageId") Integer pageId) {
+
+        if (westgardRulesService == null) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Westgard Rules service not available");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+
+        try {
+            // Get bioequivalence statistics which includes Westgard evaluation
+            Map<String, Object> bioequivalenceStats = reportingMetricsService.calculateBioequivalenceStatistics(pageId);
+
+            if (bioequivalenceStats == null || !bioequivalenceStats.containsKey("qcValidation")) {
+                Map<String, Object> noDataResponse = new HashMap<>();
+                noDataResponse.put("error", "No QC data available for Westgard evaluation");
+                noDataResponse.put("pageId", pageId);
+                return ResponseEntity.ok(noDataResponse);
+            }
+
+            // Extract QC validation results
+            Map<String, Object> qcValidation = (Map<String, Object>) bioequivalenceStats.get("qcValidation");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("pageId", pageId);
+            response.put("westgardEvaluation", qcValidation);
+            response.put("evaluatedAt", java.time.LocalDateTime.now().toString());
+            response.put("bioequivalenceCompliant", bioequivalenceStats.get("regulatoryStatus"));
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to evaluate Westgard rules: " + e.getMessage());
+            errorResponse.put("pageId", pageId);
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
+    /**
+     * Quick QC validation check for immediate use.
+     *
+     * @param pageId The notebook page ID
+     * @return Simple pass/fail status for QC run
+     */
+    @GetMapping(value = "/page/{pageId}/qc-validation", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> validateQCRun(@PathVariable("pageId") Integer pageId) {
+
+        if (westgardRulesService == null) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Westgard Rules service not available");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+
+        try {
+            // Get bioequivalence statistics which includes QC validation
+            Map<String, Object> bioequivalenceStats = reportingMetricsService.calculateBioequivalenceStatistics(pageId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("pageId", pageId);
+            response.put("validatedAt", java.time.LocalDateTime.now().toString());
+
+            if (bioequivalenceStats == null) {
+                response.put("qcStatus", "NO_DATA");
+                response.put("message", "No QC data available");
+                response.put("canProceed", false);
+                return ResponseEntity.ok(response);
+            }
+
+            Map<String, Object> qcValidation = (Map<String, Object>) bioequivalenceStats.get("qcValidation");
+            String regulatoryStatus = (String) bioequivalenceStats.get("regulatoryStatus");
+
+            if (qcValidation != null) {
+                String westgardStatus = (String) qcValidation.get("westgardStatus");
+                response.put("qcStatus", westgardStatus);
+                response.put("westgardRecommendation", qcValidation.get("westgardRecommendation"));
+                response.put("rulesPassed", qcValidation.get("rulesPassed"));
+                response.put("rulesFailed", qcValidation.get("rulesFailed"));
+            }
+
+            response.put("regulatoryStatus", regulatoryStatus);
+            response.put("canProceed", "COMPLIANT".equals(regulatoryStatus));
+            response.put("message", "COMPLIANT".equals(regulatoryStatus) ? "QC validation passed. Analysis can proceed."
+                    : "QC validation failed. Review required before proceeding.");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to validate QC run: " + e.getMessage());
+            errorResponse.put("pageId", pageId);
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
     }
 }

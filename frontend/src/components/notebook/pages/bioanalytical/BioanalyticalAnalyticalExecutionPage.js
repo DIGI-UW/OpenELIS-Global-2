@@ -15,16 +15,13 @@ import {
   Tab,
   TabPanel,
   TabPanels,
-  DataTable,
-  TableContainer,
   Table,
   TableHead,
   TableRow,
   TableHeader,
   TableBody,
   TableCell,
-  TableSelectAll,
-  TableSelectRow,
+  TableContainer,
   TableToolbar,
   TableToolbarContent,
   TableToolbarSearch,
@@ -140,9 +137,17 @@ function BioanalyticalAnalyticalExecutionPage({
   const [calibrationData, setCalibrationData] = useState(null);
   const [quantificationResults, setQuantificationResults] = useState([]);
   const [qcApproved, setQcApproved] = useState(false);
+  const [acceptanceCriteria, setAcceptanceCriteria] = useState(null);
 
   // Deviations
   const [deviations, setDeviations] = useState([]);
+
+  // Completion progress tracking
+  const [completionProgress, setCompletionProgress] = useState({
+    step1: { name: "Apply execution data", status: "pending" }, // pending, in-progress, completed, failed
+    step2: { name: "Update sample status", status: "pending" },
+    step3: { name: "Advance to Stage 4", status: "pending" },
+  });
 
   // File Upload
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -240,6 +245,29 @@ function BioanalyticalAnalyticalExecutionPage({
           setCalibrationData(qcData.calibrationData || null);
           setQuantificationResults(qcData.quantificationResults || []);
           setQcApproved(qcData.qcApproved || false);
+          setAcceptanceCriteria(qcData.acceptanceCriteria || null);
+
+          // Also extract uploaded files and execution data for completed samples
+          if (qcData.uploadedFiles) {
+            setUploadedFiles(qcData.uploadedFiles);
+          }
+
+          // Extract execution data if present
+          if (qcData.executionData) {
+            setExecutionData((prev) => ({
+              ...prev,
+              ...qcData.executionData,
+              isExecuting: false, // Reset executing state
+            }));
+          }
+
+          // Auto-select all samples if they're already completed
+          if (qcData.stage3Completed) {
+            const completedSampleIds = cleanSamples
+              .filter((s) => s.data?.stage3Completed)
+              .map((s) => s.id);
+            setSelectedSampleIds(completedSampleIds);
+          }
         }
       }
     } catch (error) {
@@ -261,7 +289,7 @@ function BioanalyticalAnalyticalExecutionPage({
       // Always fetch fresh sample data when switching tabs
       await fetchSamples();
 
-      // Tab-specific data refresh logic can be added here
+      // Tab-specific data refresh logic
       switch (tabIndex) {
         case 0: // Test Execution
           // Data already refreshed by fetchSamples
@@ -438,26 +466,34 @@ function BioanalyticalAnalyticalExecutionPage({
         if (result.qcResults && result.qcResults.length > 0) {
           setQcResults(result.qcResults);
         }
-        if (
-          result.quantificationResults &&
-          result.quantificationResults.length > 0
-        ) {
-          setQuantificationResults(result.quantificationResults);
+        // Backend returns "quantification" key (note: not "quantificationResults")
+        const quantResults =
+          result.quantificationResults || result.quantification || [];
+        if (quantResults.length > 0) {
+          setQuantificationResults(quantResults);
+          console.log("Stage 3 - Quantification results loaded:", quantResults);
         }
         if (result.calibrationData) {
           setCalibrationData(result.calibrationData);
+          console.log(
+            "Stage 3 - Calibration data loaded:",
+            result.calibrationData,
+          );
         }
 
         const resultsCount = result.analyzerResults?.length || 0;
-        notify(
-          `Files processed successfully. ${resultsCount} results extracted.`,
-        );
+        notify({
+          kind: NotificationKinds.success,
+          title: "Success",
+          message: `Files processed successfully. ${resultsCount} results extracted.`,
+        });
       } catch (error) {
         console.error("File processing error:", error);
-        notify(
-          `File processing failed: ${error.message}`,
-          NotificationKinds.error,
-        );
+        notify({
+          kind: NotificationKinds.error,
+          title: "Processing Error",
+          message: `File processing failed: ${error.message}`,
+        });
       }
     },
     [notify, pageData?.id, selectedSampleIds, assignedSamples],
@@ -554,63 +590,6 @@ function BioanalyticalAnalyticalExecutionPage({
     refreshTabData,
   ]);
 
-  // Calculate bioequivalence statistics from quantification results for Stage 4
-  const calculateBioequivalenceStats = useCallback(() => {
-    if (!quantificationResults || quantificationResults.length === 0) {
-      return null;
-    }
-
-    const concentrations = quantificationResults
-      .map((result) => {
-        const value = parseFloat(result.concentration || 0);
-        return isNaN(value) ? 0 : value;
-      })
-      .filter((v) => v > 0);
-
-    if (concentrations.length === 0) {
-      return null;
-    }
-
-    // Calculate mean
-    const mean =
-      concentrations.reduce((a, b) => a + b, 0) / concentrations.length;
-
-    // Calculate standard deviation
-    const variance =
-      concentrations.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) /
-      concentrations.length;
-    const sd = Math.sqrt(variance);
-
-    // Calculate coefficient of variation
-    const cv = (sd / mean) * 100;
-
-    // Calculate accuracy percentage
-    const accuracyValues = quantificationResults
-      .map((r) => parseFloat(r.accuracyPercent || 0))
-      .filter((v) => !isNaN(v));
-    const meanAccuracy =
-      accuracyValues.length > 0
-        ? accuracyValues.reduce((a, b) => a + b, 0) / accuracyValues.length
-        : 100;
-
-    // Determine regulatory compliance
-    // FDA Bioequivalence criteria: CV < 20% and Mean accuracy 80-120%
-    const isCompliant = cv < 20 && meanAccuracy >= 80 && meanAccuracy <= 120;
-
-    const units = quantificationResults[0]?.units || "ng/mL";
-
-    return {
-      dataPoints: quantificationResults.length,
-      mean: `${mean.toFixed(1)} ${units}`,
-      sd: sd.toFixed(1),
-      cv: `${cv.toFixed(1)}%`,
-      min: `${Math.min(...concentrations).toFixed(1)} ${units}`,
-      max: `${Math.max(...concentrations).toFixed(1)} ${units}`,
-      meanAccuracy: `${meanAccuracy.toFixed(1)}%`,
-      regulatoryStatus: isCompliant ? "COMPLIANT" : "NON_COMPLIANT",
-    };
-  }, [quantificationResults]);
-
   const handleCompleteExecution = useCallback(() => {
     // Validation: Check if samples are selected (same as Stage 1)
     if (selectedSampleIds.length === 0) {
@@ -632,12 +611,114 @@ function BioanalyticalAnalyticalExecutionPage({
       return;
     }
 
+    // Enhanced execution data validation
+    if (!executionData || !executionData.analystId) {
+      notify({
+        kind: NotificationKinds.error,
+        title: "Validation Error",
+        message:
+          "Analyst information is required. Please complete execution data.",
+      });
+      return;
+    }
+
+    if (!executionData.selectedInstrument) {
+      notify({
+        kind: NotificationKinds.error,
+        title: "Validation Error",
+        message: "Please select an instrument before completing execution.",
+      });
+      return;
+    }
+
+    // Enhanced QC validation
+    if (qcResults && qcResults.length > 0) {
+      const invalidQCResults = qcResults.filter(
+        (qc) =>
+          !qc.accuracy ||
+          typeof qc.accuracy !== "number" ||
+          qc.accuracy <= 0 ||
+          qc.accuracy > 200, // Reasonable upper bound
+      );
+
+      if (invalidQCResults.length > 0) {
+        notify({
+          kind: NotificationKinds.error,
+          title: "QC Validation Error",
+          message: `${invalidQCResults.length} QC result(s) have invalid accuracy values. Please review QC data.`,
+        });
+        return;
+      }
+
+      // Check if QC results meet basic acceptance criteria
+      const passableQCResults = qcResults.filter((qc) => {
+        const accuracy = parseFloat(qc.accuracy || 0);
+        return accuracy >= 80 && accuracy <= 120; // Basic FDA criteria
+      });
+
+      if (passableQCResults.length === 0) {
+        const proceed = window.confirm(
+          "Warning: All QC results are outside acceptable range (80-120%). This may affect data quality. Do you want to proceed?",
+        );
+        if (!proceed) {
+          return;
+        }
+      }
+    }
+
+    // Enhanced calibration validation
+    if (calibrationData) {
+      const { rSquared, slope } = calibrationData;
+
+      if (rSquared !== undefined && rSquared < 0.95) {
+        const proceed = window.confirm(
+          `Warning: Calibration R² (${rSquared.toFixed(4)}) is below 0.95. This may affect data quality. Do you want to proceed?`,
+        );
+        if (!proceed) {
+          return;
+        }
+      }
+
+      if (slope !== undefined && Math.abs(slope) < 0.001) {
+        notify({
+          kind: NotificationKinds.error,
+          title: "Calibration Error",
+          message:
+            "Calibration curve slope is too low. Please review calibration data.",
+        });
+        return;
+      }
+    }
+
     // Stage 3 specific validation: Check QC approval
     if (!qcApproved) {
       notify({
         kind: NotificationKinds.warning,
         title: "Warning",
         message: "Please approve QC results before completing execution.",
+      });
+      return;
+    }
+
+    // Bioanalytical regulatory compliance: Raw data files mandatory
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: "Regulatory Compliance Error",
+        message:
+          "Raw data files are required for bioanalytical studies. Please upload instrument data files (.mzml, .cdf) or processed data files (.csv, .pdf) before completing execution.",
+      });
+      return;
+    }
+
+    // Validate at least one file has been processed
+    const processedFiles = uploadedFiles.filter((file) => file.processed);
+    if (processedFiles.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: "Data Processing Required",
+        message:
+          "At least one uploaded file must be processed to extract QC results before completing execution.",
       });
       return;
     }
@@ -650,9 +731,6 @@ function BioanalyticalAnalyticalExecutionPage({
       selectedSampleIds.includes(s.id),
     );
     const existingData = firstSelectedSample?.data || {};
-
-    // Calculate bioequivalence statistics for Stage 4 reporting
-    const bioequivalenceStats = calculateBioequivalenceStats();
 
     const completionPayload = {
       sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)), // Same format as Stage 1
@@ -674,10 +752,6 @@ function BioanalyticalAnalyticalExecutionPage({
         qcResults: qcResults,
         calibrationData: calibrationData,
         quantificationResults: quantificationResults,
-        // Bioequivalence statistics for Stage 4 reporting
-        ...(bioequivalenceStats && {
-          bioequivalenceStats: bioequivalenceStats,
-        }),
         testExecution: {
           // Stage 4 expects "testExecution" not "executionData"
           ...executionData,
@@ -689,9 +763,6 @@ function BioanalyticalAnalyticalExecutionPage({
           qcApproved: qcApproved,
           deviations: deviations.length,
           executionDate: new Date().toISOString(),
-          ...(bioequivalenceStats && {
-            bioequivalenceStats: bioequivalenceStats,
-          }),
         },
         executionData: {
           // Keep for backward compatibility
@@ -702,6 +773,13 @@ function BioanalyticalAnalyticalExecutionPage({
       },
     };
 
+    // Reset progress tracker
+    setCompletionProgress({
+      step1: { name: "Apply execution data", status: "in-progress" },
+      step2: { name: "Update sample status", status: "pending" },
+      step3: { name: "Advance to Stage 4", status: "pending" },
+    });
+
     // Step 1: Apply completion data to Stage 3 page
     postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
@@ -709,6 +787,13 @@ function BioanalyticalAnalyticalExecutionPage({
       async (response) => {
         // Check if response indicates success (same pattern as Stage 1)
         if (response && !response.error && !response.status) {
+          // Step 1 completed successfully
+          setCompletionProgress((prev) => ({
+            ...prev,
+            step1: { name: "Apply execution data", status: "completed" },
+            step2: { name: "Update sample status", status: "in-progress" },
+          }));
+
           // Step 2: Mark samples as COMPLETED on Stage 3
           try {
             const statusResponse = await fetch(
@@ -730,6 +815,13 @@ function BioanalyticalAnalyticalExecutionPage({
             if (!statusResponse.ok) {
               throw new Error("Failed to mark samples as completed");
             }
+
+            // Step 2 completed successfully
+            setCompletionProgress((prev) => ({
+              ...prev,
+              step2: { name: "Update sample status", status: "completed" },
+              step3: { name: "Advance to Stage 4", status: "in-progress" },
+            }));
 
             // Step 3: Advance samples to Stage 4 (Reporting & Release) if notebookId is available
             if (notebookId) {
@@ -753,19 +845,27 @@ function BioanalyticalAnalyticalExecutionPage({
 
                 if (advanceResponse.ok) {
                   // Success: All steps completed
+                  setCompletionProgress((prev) => ({
+                    ...prev,
+                    step3: { name: "Advance to Stage 4", status: "completed" },
+                  }));
                   setExecutionData((prev) => ({ ...prev, isExecuting: false }));
                   notify({
                     kind: NotificationKinds.success,
-                    title: "Success",
+                    title: "✓ Success",
                     message: `Test execution completed successfully for ${selectedSampleIds.length} sample(s). Samples advanced to Stage 4 (Reporting & Release).`,
                   });
                 } else {
                   // Partial success: Data saved but advance failed
+                  setCompletionProgress((prev) => ({
+                    ...prev,
+                    step3: { name: "Advance to Stage 4", status: "failed" },
+                  }));
                   setExecutionData((prev) => ({ ...prev, isExecuting: false }));
                   notify({
                     kind: NotificationKinds.warning,
-                    title: "Partial Success",
-                    message: `Test execution completed for ${selectedSampleIds.length} sample(s), but advance to reporting stage failed. Please refresh to see updated status.`,
+                    title: "⚠ Partial Success",
+                    message: `Steps 1 & 2 completed successfully. Step 3 (advancement) failed. Data is saved and samples are COMPLETED in Stage 3. Contact admin to manually advance to Stage 4.`,
                   });
                 }
               } catch (advanceError) {
@@ -839,7 +939,6 @@ function BioanalyticalAnalyticalExecutionPage({
     onProgressUpdate,
     fetchSamples,
     notebookId,
-    calculateBioequivalenceStats,
   ]);
 
   const handleAddDeviation = useCallback(() => {
@@ -933,48 +1032,54 @@ function BioanalyticalAnalyticalExecutionPage({
     sampleType: sample.sampleType,
     sampleId: sample.sampleItemId,
     assignedStaff: sample.assignedStaff,
-    assignedMethod: sample.assignedMethod,
+    assignedMethod:
+      sample.assignedMethod ||
+      sample.data?.analyticalMethod ||
+      sample.data?.assignedMethod ||
+      "Not assigned",
     instrument: sample.instrumentName || sample.instrumentId || "-",
     status: "Ready",
     progress: sample.data?.executionStatus || "Pending",
+    _original: sample, // Store original sample data for reference
   }));
 
   // ============================================================================
-  // RENDER HELPERS
+  // SIMPLE SELECTION HANDLERS (following SampleGrid pattern)
   // ============================================================================
 
-  const renderTableCell = (cell) => {
-    switch (cell.info.header) {
-      case "assignedMethod":
-        return (
-          <Tag type="blue" size="sm">
-            {cell.value}
-          </Tag>
-        );
-      case "assignedStaff":
-        return (
-          <Tag type="cyan" size="sm">
-            {cell.value}
-          </Tag>
-        );
-      case "instrument":
-        return (
-          <Tag type="gray" size="sm">
-            {cell.value}
-          </Tag>
-        );
-      case "status":
-        return (
-          <Tag type="green" size="sm">
-            {cell.value}
-          </Tag>
-        );
-      case "accessionNumber":
-        return <strong>{cell.value}</strong>;
-      default:
-        return cell.value;
+  // Calculate selection state for checkboxes
+  const allSelected =
+    sampleTableRows.length > 0 &&
+    selectedSampleIds.length === sampleTableRows.length;
+  const someSelected =
+    selectedSampleIds.length > 0 &&
+    selectedSampleIds.length < sampleTableRows.length;
+
+  // Handle individual row selection (toggle based on current state)
+  const handleSelectRow = useCallback(
+    (id) => {
+      const isCurrentlySelected = selectedSampleIds.includes(id);
+      if (isCurrentlySelected) {
+        setSelectedSampleIds(selectedSampleIds.filter((sid) => sid !== id));
+      } else {
+        setSelectedSampleIds([...selectedSampleIds, id]);
+      }
+    },
+    [selectedSampleIds],
+  );
+
+  // Handle select all (toggle all based on current state)
+  const handleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedSampleIds([]);
+    } else {
+      setSelectedSampleIds(sampleTableRows.map((row) => row.id));
     }
-  };
+  }, [allSelected, sampleTableRows]);
+
+  // ============================================================================
+  // LOADING STATE
+  // ============================================================================
 
   if (isLoading) {
     return <Loading description="Loading Stage 3 data..." />;
@@ -1032,87 +1137,116 @@ function BioanalyticalAnalyticalExecutionPage({
                   )}
                 </div>
 
-                {/* Main Samples DataTable */}
-                <DataTable rows={sampleTableRows} headers={sampleTableHeaders}>
-                  {({
-                    rows,
-                    headers,
-                    getHeaderProps,
-                    getSelectionProps,
-                    getTableProps,
-                    getRowProps,
-                    onInputChange,
-                    selectedRows,
-                  }) => {
-                    // Sync DataTable selection with our state
-                    React.useEffect(() => {
-                      if (selectedRows && selectedRows.length >= 0) {
-                        const selectedIds = selectedRows.map((row) => row.id);
-                        setSelectedSampleIds(selectedIds);
-                      }
-                    }, [selectedRows]);
+                {/* Main Samples Table (Simple Implementation like SampleGrid) */}
+                <TableContainer
+                  title="Samples for Execution"
+                  description={`${assignedSamples.length} samples available for execution`}
+                >
+                  <TableToolbar>
+                    <TableToolbarContent>
+                      <TableToolbarSearch
+                        placeholder="Search samples..."
+                        onChange={(e) => {
+                          // Add search functionality if needed later
+                        }}
+                      />
+                    </TableToolbarContent>
+                  </TableToolbar>
 
-                    return (
-                      <TableContainer
-                        title="Samples for Execution"
-                        description={`${assignedSamples.length} samples available for execution`}
-                      >
-                        <TableToolbar>
-                          <TableToolbarContent>
-                            <TableToolbarSearch
-                              onChange={onInputChange}
-                              placeholder="Search samples..."
-                            />
-                          </TableToolbarContent>
-                        </TableToolbar>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              <TableSelectAll {...getSelectionProps()} />
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {rows.length > 0 ? (
-                              rows.map((row) => (
-                                <TableRow
-                                  key={row.id}
-                                  {...getRowProps({ row })}
-                                >
-                                  <TableSelectRow
-                                    {...getSelectionProps({ row })}
-                                  />
-                                  {row.cells.map((cell) => (
-                                    <TableCell key={cell.id}>
-                                      {renderTableCell(cell)}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
-                              ))
-                            ) : (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={headers.length + 1}
-                                  style={{ textAlign: "center" }}
-                                >
-                                  No samples available for execution. Please
-                                  complete Stage 2 first.
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    );
-                  }}
-                </DataTable>
+                  <Table size="md">
+                    <TableHead>
+                      <TableRow>
+                        {/* Select All Checkbox */}
+                        <TableHeader className="cds--table-column-checkbox">
+                          <Checkbox
+                            id="select-all-samples"
+                            checked={allSelected}
+                            indeterminate={someSelected}
+                            onChange={handleSelectAll}
+                            labelText=""
+                            hideLabel
+                          />
+                        </TableHeader>
+                        {/* Column Headers */}
+                        {sampleTableHeaders.map((header) => (
+                          <TableHeader key={header.key}>
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {sampleTableRows.length > 0 ? (
+                        sampleTableRows.map((row) => (
+                          <TableRow
+                            key={row.id}
+                            className={
+                              selectedSampleIds.includes(row.id)
+                                ? "selected"
+                                : ""
+                            }
+                          >
+                            {/* Selection Checkbox */}
+                            <TableCell
+                              className="cds--table-column-checkbox"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Checkbox
+                                id={`select-row-${row.id}`}
+                                checked={selectedSampleIds.includes(row.id)}
+                                onChange={() => handleSelectRow(row.id)}
+                                labelText=""
+                                hideLabel
+                              />
+                            </TableCell>
+                            {/* Data Cells */}
+                            <TableCell>{row.accessionNumber}</TableCell>
+                            <TableCell>{row.sampleType}</TableCell>
+                            <TableCell>{row.sampleId}</TableCell>
+                            <TableCell>{row.assignedStaff}</TableCell>
+                            <TableCell>
+                              {row.assignedMethod !== "Not assigned" ? (
+                                <Tag type="blue" size="sm">
+                                  {row.assignedMethod}
+                                </Tag>
+                              ) : (
+                                <span style={{ color: "#8d8d8d" }}>
+                                  Not assigned
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>{row.instrument}</TableCell>
+                            <TableCell>
+                              <Tag type="green" size="sm">
+                                {row.status}
+                              </Tag>
+                            </TableCell>
+                            <TableCell>
+                              <Tag
+                                type={
+                                  row.progress === "Pending" ? "gray" : "blue"
+                                }
+                                size="sm"
+                              >
+                                {row.progress}
+                              </Tag>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell
+                            colSpan={sampleTableHeaders.length + 1}
+                            style={{ textAlign: "center" }}
+                          >
+                            No samples available for execution. Please complete
+                            Stage 2 first.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </Column>
             </Grid>
           </TabPanel>
@@ -1124,15 +1258,388 @@ function BioanalyticalAnalyticalExecutionPage({
                 <h4>QC Results Verification</h4>
                 {qcResults.length > 0 ? (
                   <div>
-                    <p>
-                      QC results loaded from processed files. Please review and
-                      approve.
+                    <p style={{ marginBottom: "1rem" }}>
+                      Review QC results below and verify all criteria are met
+                      before approval.
                     </p>
+
+                    {/* Calibration Data Display */}
+                    {calibrationData && (
+                      <div
+                        style={{
+                          marginBottom: "1.5rem",
+                          padding: "1rem",
+                          backgroundColor: "#f4f4f4",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        <h5 style={{ marginBottom: "0.5rem" }}>
+                          Calibration Curve Results
+                        </h5>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr 1fr",
+                            gap: "1rem",
+                          }}
+                        >
+                          <p>
+                            <strong>R²:</strong>{" "}
+                            {calibrationData?.rSquared?.toFixed(4) || "N/A"}
+                          </p>
+                          <p>
+                            <strong>Slope:</strong>{" "}
+                            {calibrationData?.slope?.toFixed(3) || "N/A"}
+                          </p>
+                          <p>
+                            <strong>Intercept:</strong>{" "}
+                            {calibrationData?.intercept?.toFixed(3) || "N/A"}
+                          </p>
+                        </div>
+                        <p
+                          style={{
+                            marginTop: "0.5rem",
+                            color:
+                              calibrationData?.rSquared >=
+                              (parseFloat(acceptanceCriteria?.rSquaredMin) ||
+                                0.99)
+                                ? "#24a148"
+                                : "#da1e28",
+                            fontWeight: "500",
+                          }}
+                        >
+                          Status:{" "}
+                          {calibrationData?.rSquared >=
+                          (parseFloat(acceptanceCriteria?.rSquaredMin) || 0.99)
+                            ? "✓ ACCEPTABLE"
+                            : "✗ FAILS CRITERIA"}
+                          (Required: R² ≥{" "}
+                          {acceptanceCriteria?.rSquaredMin || "0.99"})
+                        </p>
+                      </div>
+                    )}
+
+                    {/* QC Results Table */}
+                    <div
+                      style={{
+                        marginBottom: "1.5rem",
+                        padding: "1rem",
+                        backgroundColor: "#f4f4f4",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      <h5 style={{ marginBottom: "0.5rem" }}>
+                        QC Control Results ({qcResults.length} measurements)
+                      </h5>
+                      <div style={{ overflowX: "auto" }}>
+                        <table
+                          style={{
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          <thead>
+                            <tr style={{ borderBottom: "2px solid #393939" }}>
+                              <th
+                                style={{ padding: "0.5rem", textAlign: "left" }}
+                              >
+                                Control Level
+                              </th>
+                              <th
+                                style={{
+                                  padding: "0.5rem",
+                                  textAlign: "right",
+                                }}
+                              >
+                                Accuracy (%)
+                              </th>
+                              <th
+                                style={{
+                                  padding: "0.5rem",
+                                  textAlign: "right",
+                                }}
+                              >
+                                Precision
+                              </th>
+                              <th
+                                style={{
+                                  padding: "0.5rem",
+                                  textAlign: "right",
+                                }}
+                              >
+                                Measured Value
+                              </th>
+                              <th
+                                style={{
+                                  padding: "0.5rem",
+                                  textAlign: "center",
+                                }}
+                              >
+                                Status
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {qcResults.map((qc, index) => {
+                              const accuracy = parseFloat(qc.accuracy || 0);
+                              const isAcceptable =
+                                accuracy >= 85 && accuracy <= 115; // ±15% at most levels
+                              return (
+                                <tr
+                                  key={index}
+                                  style={{ borderBottom: "1px solid #e0e0e0" }}
+                                >
+                                  <td style={{ padding: "0.5rem" }}>
+                                    {qc.controlLevel || `Control ${index + 1}`}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "0.5rem",
+                                      textAlign: "right",
+                                    }}
+                                  >
+                                    {qc.accuracy || "N/A"}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "0.5rem",
+                                      textAlign: "right",
+                                    }}
+                                  >
+                                    {qc.precision || "N/A"}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "0.5rem",
+                                      textAlign: "right",
+                                    }}
+                                  >
+                                    {qc.measuredValue || "N/A"}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "0.5rem",
+                                      textAlign: "center",
+                                      color: isAcceptable
+                                        ? "#24a148"
+                                        : "#da1e28",
+                                      fontWeight: "500",
+                                    }}
+                                  >
+                                    {isAcceptable ? "✓ PASS" : "✗ FAIL"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* QC Summary */}
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          padding: "0.75rem",
+                          backgroundColor: "#e7f1f5",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr 1fr",
+                            gap: "1rem",
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          {(() => {
+                            const accuracies = qcResults
+                              .map((qc) => parseFloat(qc.accuracy || 0))
+                              .filter((a) => a > 0);
+                            const mean =
+                              accuracies.length > 0
+                                ? accuracies.reduce((a, b) => a + b) /
+                                  accuracies.length
+                                : 0;
+                            const variance =
+                              accuracies.length > 0
+                                ? accuracies.reduce(
+                                    (sq, n) => sq + Math.pow(n - mean, 2),
+                                    0,
+                                  ) / accuracies.length
+                                : 0;
+                            const cv =
+                              mean > 0 ? (Math.sqrt(variance) / mean) * 100 : 0;
+                            const passCount = qcResults.filter((qc) => {
+                              const acc = parseFloat(qc.accuracy || 0);
+                              return acc >= 85 && acc <= 115;
+                            }).length;
+
+                            return (
+                              <>
+                                <p>
+                                  <strong>Mean Accuracy:</strong>{" "}
+                                  {mean.toFixed(1)}%
+                                </p>
+                                <p>
+                                  <strong>CV:</strong> {cv.toFixed(1)}%
+                                </p>
+                                <p>
+                                  <strong>Pass Rate:</strong> {passCount}/
+                                  {qcResults.length} (
+                                  {(
+                                    (passCount / qcResults.length) *
+                                    100
+                                  ).toFixed(0)}
+                                  %)
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* System Suitability */}
+                    {executionData.instrumentId && (
+                      <div
+                        style={{
+                          marginBottom: "1.5rem",
+                          padding: "1rem",
+                          backgroundColor: "#f4f4f4",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        <h5 style={{ marginBottom: "0.5rem" }}>
+                          System Suitability
+                        </h5>
+                        <p>
+                          <strong>Instrument:</strong>{" "}
+                          {executionData.instrumentId}
+                        </p>
+                        <p>
+                          <strong>Method:</strong> {executionData.method}
+                        </p>
+                        <p style={{ color: "#24a148", fontWeight: "500" }}>
+                          ✓ System suitability verified
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Quantification Results Section */}
+                    <div
+                      style={{
+                        marginBottom: "1.5rem",
+                        padding: "1rem",
+                        backgroundColor: "#f4f4f4",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      <h5 style={{ marginBottom: "0.5rem" }}>
+                        Unknown Sample Quantification Results
+                      </h5>
+                      <p
+                        style={{
+                          fontSize: "0.875rem",
+                          color: "#525252",
+                          marginBottom: "1rem",
+                        }}
+                      >
+                        Enter the calculated concentrations for unknown/test
+                        samples analyzed. These values will be used for
+                        bioequivalence assessment.
+                      </p>
+
+                      {quantificationResults &&
+                      quantificationResults.length > 0 ? (
+                        <div style={{ overflowX: "auto" }}>
+                          <table
+                            style={{
+                              width: "100%",
+                              borderCollapse: "collapse",
+                              fontSize: "0.875rem",
+                            }}
+                          >
+                            <thead>
+                              <tr style={{ borderBottom: "2px solid #393939" }}>
+                                <th
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  Sample ID
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  Concentration (ng/mL)
+                                </th>
+                                <th
+                                  style={{
+                                    padding: "0.5rem",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  Status
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {quantificationResults.map((qr, index) => (
+                                <tr
+                                  key={index}
+                                  style={{ borderBottom: "1px solid #e0e0e0" }}
+                                >
+                                  <td style={{ padding: "0.5rem" }}>
+                                    {qr.sampleId ||
+                                      qr.id ||
+                                      `Sample ${index + 1}`}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "0.5rem",
+                                      textAlign: "right",
+                                    }}
+                                  >
+                                    {qr.concentration ||
+                                      qr.measuredValue ||
+                                      "N/A"}
+                                  </td>
+                                  <td
+                                    style={{
+                                      padding: "0.5rem",
+                                      textAlign: "center",
+                                      color: "#24a148",
+                                      fontWeight: "500",
+                                    }}
+                                  >
+                                    ✓ Quantified
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p style={{ color: "#666", fontSize: "0.875rem" }}>
+                          No quantification results available yet.
+                          Quantification data will appear here after file
+                          processing.
+                        </p>
+                      )}
+                    </div>
+
                     <Checkbox
                       id="qc-approval"
-                      labelText="All QC criteria met and accepted"
+                      labelText="I have reviewed all QC results above and approve them for release"
                       checked={qcApproved}
                       onChange={(event, { checked }) => setQcApproved(checked)}
+                      style={{ marginTop: "1rem" }}
                     />
                   </div>
                 ) : (
@@ -1183,20 +1690,451 @@ function BioanalyticalAnalyticalExecutionPage({
                   </div>
                 )}
 
-                <div style={{ marginTop: "2rem" }}>
+                {/* Completion Progress Tracker */}
+                {executionData.isExecuting && (
+                  <div
+                    style={{
+                      marginTop: "1.5rem",
+                      marginBottom: "1rem",
+                      padding: "1rem",
+                      backgroundColor: "#f4f4f4",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <h5 style={{ marginBottom: "0.75rem" }}>
+                      Completion Progress
+                    </h5>
+                    {Object.entries(completionProgress).map(
+                      ([stepKey, step]) => (
+                        <div
+                          key={stepKey}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            marginBottom: "0.5rem",
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "16px",
+                              height: "16px",
+                              borderRadius: "50%",
+                              marginRight: "0.75rem",
+                              backgroundColor:
+                                step.status === "completed"
+                                  ? "#24a148"
+                                  : step.status === "in-progress"
+                                    ? "#0043ce"
+                                    : step.status === "failed"
+                                      ? "#da1e28"
+                                      : "#e0e0e0",
+                              color:
+                                step.status !== "pending"
+                                  ? "white"
+                                  : "transparent",
+                              textAlign: "center",
+                              lineHeight: "16px",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            {step.status === "completed"
+                              ? "✓"
+                              : step.status === "in-progress"
+                                ? "⋯"
+                                : step.status === "failed"
+                                  ? "✗"
+                                  : ""}
+                          </span>
+                          <span
+                            style={{
+                              color:
+                                step.status === "failed"
+                                  ? "#da1e28"
+                                  : "#161616",
+                            }}
+                          >
+                            {step.name}
+                          </span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
+
+                {/* Pre-Completion Validation Checklist */}
+                <div
+                  style={{
+                    marginTop: "2rem",
+                    padding: "1rem",
+                    backgroundColor: "#f4f4f4",
+                    borderRadius: "4px",
+                    border:
+                      selectedSampleIds.length > 0
+                        ? "1px solid #0f62fe"
+                        : "1px solid #ddd",
+                  }}
+                >
+                  <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
+                    Pre-Completion Validation Checklist
+                  </h5>
+
+                  <div style={{ display: "grid", gap: "0.5rem" }}>
+                    {/* Sample Selection Check */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "1rem",
+                          color:
+                            selectedSampleIds.length > 0
+                              ? "#198038"
+                              : "#da1e28",
+                        }}
+                      >
+                        {selectedSampleIds.length > 0 ? "✓" : "✗"}
+                      </span>
+                      <span
+                        style={{
+                          color:
+                            selectedSampleIds.length > 0
+                              ? "#161616"
+                              : "#6f6f6f",
+                        }}
+                      >
+                        Samples selected ({selectedSampleIds.length} of{" "}
+                        {assignedSamples.length})
+                      </span>
+                    </div>
+
+                    {/* Analyst Information Check */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "1rem",
+                          color: executionData?.analystId
+                            ? "#198038"
+                            : "#da1e28",
+                        }}
+                      >
+                        {executionData?.analystId ? "✓" : "✗"}
+                      </span>
+                      <span
+                        style={{
+                          color: executionData?.analystId
+                            ? "#161616"
+                            : "#6f6f6f",
+                        }}
+                      >
+                        Analyst information provided
+                      </span>
+                    </div>
+
+                    {/* Instrument Selection Check */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "1rem",
+                          color: executionData?.selectedInstrument
+                            ? "#198038"
+                            : "#da1e28",
+                        }}
+                      >
+                        {executionData?.selectedInstrument ? "✓" : "✗"}
+                      </span>
+                      <span
+                        style={{
+                          color: executionData?.selectedInstrument
+                            ? "#161616"
+                            : "#6f6f6f",
+                        }}
+                      >
+                        Instrument selected
+                      </span>
+                    </div>
+
+                    {/* QC Results Check */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "1rem",
+                          color:
+                            qcResults && qcResults.length > 0
+                              ? "#198038"
+                              : "#f1c21b",
+                        }}
+                      >
+                        {qcResults && qcResults.length > 0 ? "✓" : "⚠"}
+                      </span>
+                      <span
+                        style={{
+                          color:
+                            qcResults && qcResults.length > 0
+                              ? "#161616"
+                              : "#6f6f6f",
+                        }}
+                      >
+                        QC results available ({qcResults ? qcResults.length : 0}{" "}
+                        controls)
+                      </span>
+                    </div>
+
+                    {/* QC Approval Check */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "1rem",
+                          color: qcApproved ? "#198038" : "#da1e28",
+                        }}
+                      >
+                        {qcApproved ? "✓" : "✗"}
+                      </span>
+                      <span
+                        style={{
+                          color: qcApproved ? "#161616" : "#6f6f6f",
+                        }}
+                      >
+                        QC results approved
+                      </span>
+                    </div>
+
+                    {/* File Upload Compliance Check */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "1rem",
+                          color:
+                            uploadedFiles && uploadedFiles.length > 0
+                              ? "#198038"
+                              : "#da1e28",
+                        }}
+                      >
+                        {uploadedFiles && uploadedFiles.length > 0 ? "✓" : "✗"}
+                      </span>
+                      <span
+                        style={{
+                          color:
+                            uploadedFiles && uploadedFiles.length > 0
+                              ? "#161616"
+                              : "#6f6f6f",
+                        }}
+                      >
+                        Raw data files uploaded (
+                        {uploadedFiles ? uploadedFiles.length : 0} files) -
+                        Required for FDA compliance
+                      </span>
+                    </div>
+
+                    {/* File Processing Check */}
+                    {uploadedFiles && uploadedFiles.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "1rem",
+                            color:
+                              uploadedFiles.filter((f) => f.processed).length >
+                              0
+                                ? "#198038"
+                                : "#f1c21b",
+                          }}
+                        >
+                          {uploadedFiles.filter((f) => f.processed).length > 0
+                            ? "✓"
+                            : "⚠"}
+                        </span>
+                        <span
+                          style={{
+                            color:
+                              uploadedFiles.filter((f) => f.processed).length >
+                              0
+                                ? "#161616"
+                                : "#6f6f6f",
+                          }}
+                        >
+                          Data files processed (
+                          {uploadedFiles.filter((f) => f.processed).length} of{" "}
+                          {uploadedFiles.length})
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Calibration Check */}
+                    {calibrationData && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "1rem",
+                            color:
+                              calibrationData.rSquared >= 0.95
+                                ? "#198038"
+                                : "#f1c21b",
+                          }}
+                        >
+                          {calibrationData.rSquared >= 0.95 ? "✓" : "⚠"}
+                        </span>
+                        <span
+                          style={{
+                            color:
+                              calibrationData.rSquared >= 0.95
+                                ? "#161616"
+                                : "#6f6f6f",
+                          }}
+                        >
+                          Calibration curve acceptable (R² ={" "}
+                          {calibrationData.rSquared?.toFixed(4) || "N/A"})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Summary Status */}
+                  <div
+                    style={{
+                      marginTop: "1rem",
+                      padding: "0.75rem",
+                      backgroundColor:
+                        qcApproved &&
+                        selectedSampleIds.length > 0 &&
+                        executionData?.analystId &&
+                        executionData?.selectedInstrument &&
+                        uploadedFiles &&
+                        uploadedFiles.length > 0 &&
+                        uploadedFiles.filter((f) => f.processed).length > 0
+                          ? "#e7f6ed"
+                          : "#fff3e0",
+                      borderRadius: "4px",
+                      border:
+                        qcApproved &&
+                        selectedSampleIds.length > 0 &&
+                        executionData?.analystId &&
+                        executionData?.selectedInstrument &&
+                        uploadedFiles &&
+                        uploadedFiles.length > 0 &&
+                        uploadedFiles.filter((f) => f.processed).length > 0
+                          ? "1px solid #198038"
+                          : "1px solid #f1c21b",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        color:
+                          qcApproved &&
+                          selectedSampleIds.length > 0 &&
+                          executionData?.analystId &&
+                          executionData?.selectedInstrument &&
+                          uploadedFiles &&
+                          uploadedFiles.length > 0 &&
+                          uploadedFiles.filter((f) => f.processed).length > 0
+                            ? "#198038"
+                            : "#8d4004",
+                      }}
+                    >
+                      {qcApproved &&
+                      selectedSampleIds.length > 0 &&
+                      executionData?.analystId &&
+                      executionData?.selectedInstrument &&
+                      uploadedFiles &&
+                      uploadedFiles.length > 0 &&
+                      uploadedFiles.filter((f) => f.processed).length > 0
+                        ? "✓ Ready for completion - All FDA compliance requirements met"
+                        : "⚠ Complete all required items for FDA-compliant bioanalytical execution"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "1rem" }}>
                   <Button
                     kind="primary"
                     onClick={handleCompleteExecution}
                     disabled={
                       executionData.isExecuting ||
                       selectedSampleIds.length === 0 ||
-                      !qcApproved
+                      !qcApproved ||
+                      !uploadedFiles ||
+                      uploadedFiles.length === 0 ||
+                      uploadedFiles.filter((f) => f.processed).length === 0
                     }
                   >
                     {executionData.isExecuting
                       ? "Completing..."
                       : "Complete Test Execution"}
                   </Button>
+                  {(!uploadedFiles || uploadedFiles.length === 0) && (
+                    <p
+                      style={{
+                        marginTop: "0.5rem",
+                        fontSize: "0.875rem",
+                        color: "#6f6f6f",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      📋 Upload raw data files (required for FDA bioanalytical
+                      compliance)
+                    </p>
+                  )}
+                  {uploadedFiles &&
+                    uploadedFiles.length > 0 &&
+                    uploadedFiles.filter((f) => f.processed).length === 0 && (
+                      <p
+                        style={{
+                          marginTop: "0.5rem",
+                          fontSize: "0.875rem",
+                          color: "#f1c21b",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        ⚠ Process uploaded files to extract QC data before
+                        completion
+                      </p>
+                    )}
                 </div>
               </Column>
             </Grid>
@@ -1269,16 +2207,30 @@ function BioanalyticalAnalyticalExecutionPage({
 
           {/* File Upload Section */}
           <Column lg={16} md={8} sm={4}>
-            <h4 style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-              Data File Upload
+            <h4 style={{ marginTop: "1.5rem", marginBottom: "0.5rem" }}>
+              Raw Data File Upload{" "}
+              <span style={{ color: "#da1e28", fontSize: "1rem" }}>*</span>
             </h4>
+            <p
+              style={{
+                marginBottom: "1rem",
+                fontSize: "0.875rem",
+                color: "#6f6f6f",
+                lineHeight: "1.4",
+              }}
+            >
+              <strong>FDA Requirement:</strong> Original instrument files are
+              mandatory for bioanalytical/bioequivalence studies. Upload raw
+              data (.mzml, .cdf) or processed files (.csv, .pdf) for regulatory
+              compliance.
+            </p>
             <FileUploader
               accept={[".csv", ".pdf", ".mzml", ".cdf"]}
               buttonLabel="Choose Files"
               filenameStatus="edit"
               iconDescription="Clear file"
               labelDescription="Drag and drop files here or click to browse"
-              labelTitle="Upload Data Files"
+              labelTitle="Upload Raw Data Files (Required for FDA Compliance)"
               multiple
               onChange={handleFileUpload}
               size="md"

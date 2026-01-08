@@ -52,6 +52,8 @@ function BioanalyticalReportingPage({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
   const [studyResults, setStudyResults] = useState([]);
+  const [bioequivalenceStats, setBioequivalenceStats] = useState(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [qaComments, setQaComments] = useState("");
   const [qaApproved, setQaApproved] = useState(false);
   const [exportFormat, setExportFormat] = useState("");
@@ -178,65 +180,225 @@ function BioanalyticalReportingPage({
     }
   }, [entryId, intl]);
 
-  // Helper function to compile analytical results from Stage 3 sample data
-  const compileAnalyticalResults = useCallback((approvedSamples) => {
-    const resultGroups = {};
+  // Function to fetch bioequivalence statistics from the backend
+  const loadBioequivalenceStats = useCallback(async () => {
+    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
+      setBioequivalenceStats(null);
+      return;
+    }
 
-    approvedSamples.forEach((sample) => {
-      const testData = sample.data.testExecution;
-      const analyticalMethod = sample.data.analyticalMethod || "Unknown Method";
-      const sampleType = sample.sampleType || "Unknown Type";
+    setIsLoadingStats(true);
+    try {
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bioanalytical/page/${pageData.id}/bioequivalence-statistics`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
+          },
+        },
+      );
 
-      const groupKey = `${analyticalMethod} - ${sampleType}`;
-
-      if (!resultGroups[groupKey]) {
-        resultGroups[groupKey] = {
-          id: groupKey,
-          testName: groupKey,
-          samples: [],
-          dataPoints: 0,
-        };
+      if (response.ok) {
+        const data = await response.json();
+        if (data.error) {
+          console.log("No bioequivalence statistics available:", data.error);
+          setBioequivalenceStats(null);
+        } else {
+          console.log("Loaded bioequivalence statistics:", data);
+          setBioequivalenceStats(data);
+        }
+      } else {
+        console.error(
+          "Failed to load bioequivalence statistics:",
+          response.status,
+        );
+        setBioequivalenceStats(null);
       }
+    } catch (error) {
+      console.error("Error loading bioequivalence statistics:", error);
+      setBioequivalenceStats(null);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, [pageData?.id]);
 
-      resultGroups[groupKey].samples.push(sample);
-      resultGroups[groupKey].dataPoints++;
-    });
+  // Helper function to compile analytical results from Stage 3 sample data
+  const compileAnalyticalResults = useCallback(
+    (approvedSamples) => {
+      const resultGroups = {};
 
-    // Use calculated statistics from Stage 3 or fallback to defaults
-    return Object.values(resultGroups).map((group) => {
-      // Try to get calculated statistics from Stage 3 (bioequivalenceStats)
-      const firstSample = group.samples[0];
-      const bioStats =
-        firstSample?.data?.bioequivalenceStats ||
-        firstSample?.data?.testExecution?.bioequivalenceStats;
+      approvedSamples.forEach((sample) => {
+        const analyticalMethod =
+          sample.data.analyticalMethod || "Unknown Method";
+        const sampleType = sample.sampleType || "Unknown Type";
 
-      if (bioStats) {
-        // Use real statistics from Stage 3
+        const groupKey = `${analyticalMethod} - ${sampleType}`;
+
+        if (!resultGroups[groupKey]) {
+          resultGroups[groupKey] = {
+            id: groupKey,
+            testName: groupKey,
+            samples: [],
+            dataPoints: 0,
+            allQcResults: [],
+            allCalibrationData: [],
+            allQuantificationResults: [],
+          };
+        }
+
+        resultGroups[groupKey].samples.push(sample);
+        resultGroups[groupKey].dataPoints++;
+
+        // Collect QC results from all samples
+        if (sample.data.qcResults && Array.isArray(sample.data.qcResults)) {
+          resultGroups[groupKey].allQcResults.push(...sample.data.qcResults);
+        }
+
+        // Collect calibration data
+        if (sample.data.calibrationData) {
+          resultGroups[groupKey].allCalibrationData.push(
+            sample.data.calibrationData,
+          );
+        }
+
+        // Collect quantification results
+        if (
+          sample.data.quantificationResults &&
+          Array.isArray(sample.data.quantificationResults)
+        ) {
+          resultGroups[groupKey].allQuantificationResults.push(
+            ...sample.data.quantificationResults,
+          );
+        }
+      });
+
+      // Use calculated statistics from backend API or fallback to Stage 3 data
+      return Object.values(resultGroups).map((group) => {
+        // Priority 1: Use bioequivalence statistics from backend API if available
+        if (bioequivalenceStats && !bioequivalenceStats.error) {
+          console.log(
+            "Stage 4 - Using bioequivalenceStats from backend:",
+            bioequivalenceStats,
+          );
+          return {
+            ...group,
+            mean: bioequivalenceStats.mean || "N/A",
+            sd: bioequivalenceStats.sd || "N/A",
+            cv: bioequivalenceStats.cv || "N/A",
+            min: bioequivalenceStats.min || "N/A",
+            max: bioequivalenceStats.max || "N/A",
+            meanAccuracy: bioequivalenceStats.meanAccuracy || "N/A",
+            regulatoryStatus: bioequivalenceStats.regulatoryStatus || "UNKNOWN",
+            calibrationRSquared:
+              bioequivalenceStats.rSquared ||
+              bioequivalenceStats.r_squared ||
+              "N/A",
+            calibrationSlope: bioequivalenceStats.slope || "N/A",
+            calibrationEquation: bioequivalenceStats.equation || "N/A",
+            qcValidation: bioequivalenceStats.qcValidation || null,
+          };
+        }
+
+        // Priority 2: Calculate statistics from Stage 3 collected data
+        const firstSample = group.samples[0];
+        let calculatedStats = {
+          mean: "N/A",
+          sd: "N/A",
+          cv: "N/A",
+          min: "N/A",
+          max: "N/A",
+          meanAccuracy: "N/A",
+          regulatoryStatus: "UNKNOWN",
+          calibrationRSquared: "N/A",
+          calibrationSlope: "N/A",
+          calibrationEquation: "N/A",
+        };
+
+        // Extract calibration data from first sample
+        if (group.allCalibrationData.length > 0) {
+          const calData = group.allCalibrationData[0];
+          calculatedStats.calibrationRSquared =
+            calData.rSquared?.toFixed(4) ||
+            calData.r_squared?.toFixed(4) ||
+            "N/A";
+          calculatedStats.calibrationSlope = calData.slope?.toFixed(4) || "N/A";
+          calculatedStats.calibrationEquation = calData.equation || "N/A";
+        }
+
+        // Calculate accuracy statistics from QC results if available
+        if (group.allQcResults.length > 0) {
+          const accuracyValues = group.allQcResults
+            .map((qc) => {
+              const acc = parseFloat(qc.accuracy);
+              return !isNaN(acc) && acc > 0 ? acc : null;
+            })
+            .filter((v) => v !== null);
+
+          if (accuracyValues.length > 0) {
+            const mean =
+              accuracyValues.reduce((a, b) => a + b, 0) / accuracyValues.length;
+            const variance =
+              accuracyValues.reduce((a, v) => a + Math.pow(v - mean, 2), 0) /
+              accuracyValues.length;
+            const sd = Math.sqrt(variance);
+            const cv = ((sd / mean) * 100).toFixed(1);
+
+            calculatedStats.mean = mean.toFixed(1) + "%";
+            calculatedStats.sd = sd.toFixed(2);
+            calculatedStats.cv = cv + "%";
+            calculatedStats.min = Math.min(...accuracyValues).toFixed(1) + "%";
+            calculatedStats.max = Math.max(...accuracyValues).toFixed(1) + "%";
+            calculatedStats.meanAccuracy = mean.toFixed(1) + "%";
+
+            // Determine regulatory status (FDA bioequivalence: 80-125% mean accuracy, CV < 20%)
+            const isCompliant =
+              mean >= 80 && mean <= 125 && parseFloat(cv) < 20;
+            calculatedStats.regulatoryStatus = isCompliant
+              ? "COMPLIANT"
+              : "NON_COMPLIANT";
+          }
+        }
+
+        // Calculate concentration statistics from quantification results if available
+        if (group.allQuantificationResults.length > 0) {
+          const concentrationValues = group.allQuantificationResults
+            .map((q) => {
+              const conc = parseFloat(q.concentration || q.measuredValue);
+              return !isNaN(conc) && conc > 0 ? conc : null;
+            })
+            .filter((v) => v !== null);
+
+          if (concentrationValues.length > 0) {
+            const mean =
+              concentrationValues.reduce((a, b) => a + b, 0) /
+              concentrationValues.length;
+            const variance =
+              concentrationValues.reduce(
+                (a, v) => a + Math.pow(v - mean, 2),
+                0,
+              ) / concentrationValues.length;
+            const sd = Math.sqrt(variance);
+            const cv = ((sd / mean) * 100).toFixed(1);
+
+            calculatedStats.mean = mean.toFixed(1);
+            calculatedStats.sd = sd.toFixed(2);
+            calculatedStats.cv = cv + "%";
+            calculatedStats.min = Math.min(...concentrationValues).toFixed(1);
+            calculatedStats.max = Math.max(...concentrationValues).toFixed(1);
+          }
+        }
+
         return {
           ...group,
-          mean: bioStats.mean,
-          sd: bioStats.sd,
-          cv: bioStats.cv,
-          min: bioStats.min,
-          max: bioStats.max,
-          meanAccuracy: bioStats.meanAccuracy,
-          regulatoryStatus: bioStats.regulatoryStatus,
+          ...calculatedStats,
         };
-      }
-
-      // Fallback to default values if no statistics available
-      return {
-        ...group,
-        mean: "N/A",
-        sd: "N/A",
-        cv: "N/A",
-        min: "N/A",
-        max: "N/A",
-        meanAccuracy: "N/A",
-        regulatoryStatus: "UNKNOWN",
-      };
-    });
-  }, []);
+      });
+    },
+    [bioequivalenceStats],
+  );
 
   // Function to validate QA checklist items against actual Stage 3 data
   const validateQAChecklist = useCallback(async () => {
@@ -322,6 +484,30 @@ function BioanalyticalReportingPage({
       return { status: "fail", message: "No QC results found" };
     }
 
+    // Check if we have bioequivalence statistics with QC validation from backend
+    if (bioequivalenceStats && bioequivalenceStats.qcValidation) {
+      const qcValidation = bioequivalenceStats.qcValidation;
+      const westgardStatus = qcValidation.westgardStatus;
+      const rulesPassed = qcValidation.rulesPassed || 0;
+      const rulesFailed = qcValidation.rulesFailed || 0;
+
+      return {
+        status:
+          westgardStatus === "PASS"
+            ? "pass"
+            : westgardStatus === "WARNING"
+              ? "warning"
+              : "fail",
+        message:
+          westgardStatus === "PASS"
+            ? `All ${rulesPassed} Westgard rules passed`
+            : westgardStatus === "WARNING"
+              ? `${rulesPassed}/${rulesPassed + rulesFailed} rules passed (warnings present)`
+              : `${rulesFailed} Westgard rules failed validation`,
+      };
+    }
+
+    // Fallback to legacy validation if backend service not available
     const westgardRules = qcData.data.westgardRules || [];
     const allPassed =
       westgardRules.length > 0 &&
@@ -363,13 +549,25 @@ function BioanalyticalReportingPage({
 
   React.useEffect(() => {
     loadStudyResults();
-  }, []);
+  }, [loadStudyResults]);
+
+  React.useEffect(() => {
+    loadBioequivalenceStats();
+  }, [loadBioequivalenceStats]);
 
   React.useEffect(() => {
     if (studyResults.length > 0) {
       validateQAChecklist();
     }
   }, [studyResults, validateQAChecklist]);
+
+  // Re-compile study results when bioequivalence statistics become available
+  React.useEffect(() => {
+    if (bioequivalenceStats && studyResults.length > 0) {
+      // Reload study results to apply the new bioequivalence statistics
+      loadStudyResults();
+    }
+  }, [bioequivalenceStats, loadStudyResults]);
 
   const handleQaApproval = useCallback(() => {
     // Check if all QA checklist items are completed
@@ -720,8 +918,14 @@ function BioanalyticalReportingPage({
                       />
                     </p>
 
-                    {isLoading ? (
-                      <Loading description="Loading study results..." />
+                    {isLoading || isLoadingStats ? (
+                      <Loading
+                        description={
+                          isLoading
+                            ? "Loading study results..."
+                            : "Loading bioequivalence statistics..."
+                        }
+                      />
                     ) : studyResults.length > 0 ? (
                       <div style={{ marginTop: "1.5rem" }}>
                         <Table>
@@ -801,6 +1005,174 @@ function BioanalyticalReportingPage({
                           </TableBody>
                         </Table>
 
+                        {/* Calibration Data Section */}
+                        <div
+                          style={{
+                            marginTop: "1.5rem",
+                            padding: "1rem",
+                            backgroundColor: "#f4f4f4",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <h5 style={{ marginBottom: "1rem" }}>
+                            <FormattedMessage
+                              id="notebook.bioanalytical.reporting.calibrationData"
+                              defaultMessage="Calibration Data"
+                            />
+                          </h5>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns:
+                                "repeat(auto-fit, minmax(200px, 1fr))",
+                              gap: "1rem",
+                            }}
+                          >
+                            {studyResults.map((result) => (
+                              <div
+                                key={result.id}
+                                style={{
+                                  padding: "0.75rem",
+                                  backgroundColor: "white",
+                                  borderRadius: "3px",
+                                  border: "1px solid #ddd",
+                                }}
+                              >
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    fontWeight: "bold",
+                                    margin: "0 0 0.5rem 0",
+                                  }}
+                                >
+                                  {result.testName}
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    margin: "0.25rem 0",
+                                  }}
+                                >
+                                  <strong>r²:</strong>{" "}
+                                  {result.calibrationRSquared}
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    margin: "0.25rem 0",
+                                  }}
+                                >
+                                  <strong>Slope:</strong>{" "}
+                                  {result.calibrationSlope}
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    margin: "0.25rem 0",
+                                  }}
+                                >
+                                  <strong>Equation:</strong>{" "}
+                                  {result.calibrationEquation}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* QC Results Detail Section */}
+                        <div
+                          style={{
+                            marginTop: "1.5rem",
+                            padding: "1rem",
+                            backgroundColor: "#f4f4f4",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <h5 style={{ marginBottom: "1rem" }}>
+                            <FormattedMessage
+                              id="notebook.bioanalytical.reporting.qcResultsDetail"
+                              defaultMessage="QC Results Summary"
+                            />
+                          </h5>
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns:
+                                "repeat(auto-fit, minmax(250px, 1fr))",
+                              gap: "1rem",
+                            }}
+                          >
+                            {studyResults.map((result) => {
+                              const qcSummary = result.allQcResults
+                                ? result.allQcResults.reduce((acc, qc) => {
+                                    const status = qc.status || "UNKNOWN";
+                                    acc[status] = (acc[status] || 0) + 1;
+                                    return acc;
+                                  }, {})
+                                : {};
+
+                              return (
+                                <div
+                                  key={`qc-${result.id}`}
+                                  style={{
+                                    padding: "0.75rem",
+                                    backgroundColor: "white",
+                                    borderRadius: "3px",
+                                    border: "1px solid #ddd",
+                                  }}
+                                >
+                                  <p
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      fontWeight: "bold",
+                                      margin: "0 0 0.5rem 0",
+                                    }}
+                                  >
+                                    {result.testName} (QC Results)
+                                  </p>
+                                  {result.allQcResults &&
+                                  result.allQcResults.length > 0 ? (
+                                    <>
+                                      <p
+                                        style={{
+                                          fontSize: "0.75rem",
+                                          margin: "0.25rem 0",
+                                        }}
+                                      >
+                                        <strong>Total QC Runs:</strong>{" "}
+                                        {result.allQcResults.length}
+                                      </p>
+                                      {Object.entries(qcSummary).map(
+                                        ([status, count]) => (
+                                          <p
+                                            key={status}
+                                            style={{
+                                              fontSize: "0.75rem",
+                                              margin: "0.25rem 0",
+                                            }}
+                                          >
+                                            <strong>{status}:</strong> {count}
+                                          </p>
+                                        ),
+                                      )}
+                                    </>
+                                  ) : (
+                                    <p
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        color: "#666",
+                                        margin: "0.25rem 0",
+                                      }}
+                                    >
+                                      No QC results available
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
                         <div
                           style={{
                             marginTop: "1.5rem",
@@ -847,6 +1219,157 @@ function BioanalyticalReportingPage({
                             ✓ Data integrity verified (no anomalies detected)
                           </p>
                         </div>
+
+                        {/* Westgard Rules QC Validation Section */}
+                        {bioequivalenceStats &&
+                          bioequivalenceStats.qcValidation && (
+                            <div
+                              style={{
+                                marginTop: "1.5rem",
+                                padding: "1rem",
+                                backgroundColor:
+                                  bioequivalenceStats.qcValidation
+                                    .westgardStatus === "PASS"
+                                    ? "#e7f1f5"
+                                    : bioequivalenceStats.qcValidation
+                                          .westgardStatus === "WARNING"
+                                      ? "#fff3cd"
+                                      : "#fdf2f2",
+                                borderRadius: "4px",
+                                borderLeft:
+                                  bioequivalenceStats.qcValidation
+                                    .westgardStatus === "PASS"
+                                    ? "4px solid #24a148"
+                                    : bioequivalenceStats.qcValidation
+                                          .westgardStatus === "WARNING"
+                                      ? "4px solid #f1c21b"
+                                      : "4px solid #da1e28",
+                              }}
+                            >
+                              <p style={{ fontSize: "0.875rem", margin: 0 }}>
+                                <strong>
+                                  <FormattedMessage
+                                    id="notebook.bioanalytical.reporting.qcValidationTitle"
+                                    defaultMessage="QC Validation - Westgard Rules Analysis:"
+                                  />
+                                </strong>
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: "0.875rem",
+                                  color: "#161616",
+                                  margin: "0.5rem 0 0.25rem 0",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                Status:{" "}
+                                {
+                                  bioequivalenceStats.qcValidation
+                                    .westgardStatus
+                                }{" "}
+                                -{" "}
+                                {
+                                  bioequivalenceStats.qcValidation
+                                    .westgardRecommendation
+                                }
+                              </p>
+                              <p
+                                style={{
+                                  fontSize: "0.875rem",
+                                  color: "#161616",
+                                  margin: "0.25rem 0 0 0",
+                                }}
+                              >
+                                ✓ {bioequivalenceStats.qcValidation.rulesPassed}{" "}
+                                of{" "}
+                                {
+                                  bioequivalenceStats.qcValidation
+                                    .rulesEvaluated
+                                }{" "}
+                                Westgard rules passed
+                              </p>
+                              {bioequivalenceStats.qcValidation.rulesFailed >
+                                0 && (
+                                <p
+                                  style={{
+                                    fontSize: "0.875rem",
+                                    color: "#da1e28",
+                                    margin: "0.25rem 0 0 0",
+                                  }}
+                                >
+                                  ✗{" "}
+                                  {bioequivalenceStats.qcValidation.rulesFailed}{" "}
+                                  rule(s) failed validation
+                                </p>
+                              )}
+
+                              {/* Detailed Rule Results */}
+                              {bioequivalenceStats.qcValidation.ruleResults &&
+                                bioequivalenceStats.qcValidation.ruleResults
+                                  .length > 0 && (
+                                  <div style={{ marginTop: "1rem" }}>
+                                    <p
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        color: "#525252",
+                                        margin: "0 0 0.5rem 0",
+                                      }}
+                                    >
+                                      <strong>Rule-by-Rule Analysis:</strong>
+                                    </p>
+                                    <div
+                                      style={{
+                                        display: "grid",
+                                        gridTemplateColumns:
+                                          "repeat(auto-fit, minmax(250px, 1fr))",
+                                        gap: "0.5rem",
+                                      }}
+                                    >
+                                      {bioequivalenceStats.qcValidation.ruleResults.map(
+                                        (rule, index) => (
+                                          <div
+                                            key={index}
+                                            style={{
+                                              fontSize: "0.75rem",
+                                              padding: "0.25rem 0.5rem",
+                                              backgroundColor:
+                                                rule.status === "PASS"
+                                                  ? "#e7f1f5"
+                                                  : rule.status === "WARNING"
+                                                    ? "#fff3cd"
+                                                    : "#fdf2f2",
+                                              borderRadius: "3px",
+                                              border:
+                                                rule.status === "PASS"
+                                                  ? "1px solid #24a148"
+                                                  : rule.status === "WARNING"
+                                                    ? "1px solid #f1c21b"
+                                                    : "1px solid #da1e28",
+                                            }}
+                                          >
+                                            <strong>{rule.ruleCode}</strong>:{" "}
+                                            {rule.message}
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                              <p
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "#525252",
+                                  margin: "1rem 0 0 0",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Rules evaluated: 1:2s (Warning), 1:3s
+                                (Rejection), 2:2s (Consecutive), R:4s (Range),
+                                4:1s (Trend), 10:x (Systematic)
+                              </p>
+                            </div>
+                          )}
                       </div>
                     ) : (
                       <div
