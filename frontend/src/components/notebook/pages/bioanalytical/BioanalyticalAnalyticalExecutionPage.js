@@ -152,10 +152,10 @@ function BioanalyticalAnalyticalExecutionPage({
   }, []);
 
   useEffect(() => {
-    const availableInstruments = (templateInstruments &&
-      templateInstruments.length > 0
-      ? templateInstruments
-      : BIOANALYTICAL_ANALYZERS
+    const availableInstruments = (
+      templateInstruments && templateInstruments.length > 0
+        ? templateInstruments
+        : BIOANALYTICAL_ANALYZERS
     ).sort((a, b) => a.machine.localeCompare(b.machine));
     setInstruments(availableInstruments);
   }, [templateInstruments]);
@@ -171,7 +171,7 @@ function BioanalyticalAnalyticalExecutionPage({
         // This endpoint returns enriched sample data including accession numbers
         const response = await fetch(
           `${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`,
-          { credentials: "include" }
+          { credentials: "include" },
         );
 
         if (!response.ok) {
@@ -187,13 +187,14 @@ function BioanalyticalAnalyticalExecutionPage({
 
           // Find the analytical method from our methods list
           const analyticalMethod = ANALYTICAL_METHODS.find(
-            (m) => m.id === assignmentData.analyticalMethod
+            (m) => m.id === assignmentData.analyticalMethod,
           );
-          const methodName = analyticalMethod?.name || assignmentData.analyticalMethod;
+          const methodName =
+            analyticalMethod?.name || assignmentData.analyticalMethod;
 
           // Find instrument name from available instruments
           const instrument = instruments.find(
-            (i) => i.id === assignmentData.instrumentId
+            (i) => i.id === assignmentData.instrumentId,
           );
 
           return {
@@ -206,7 +207,9 @@ function BioanalyticalAnalyticalExecutionPage({
             assignedMethodId: assignmentData.analyticalMethod,
             methodDescription: analyticalMethod?.description,
             instrumentId: assignmentData.instrumentId,
-            instrumentName: instrument?.machine || `Instrument ${assignmentData.instrumentId}`,
+            instrumentName:
+              instrument?.machine ||
+              `Instrument ${assignmentData.instrumentId}`,
             assignedStaff: assignmentData.assignedStaff,
             status: sample.status || "PENDING",
             data: assignmentData,
@@ -234,7 +237,7 @@ function BioanalyticalAnalyticalExecutionPage({
     (message, kind = NotificationKinds.success) => {
       addNotification({ message, kind });
     },
-    [addNotification]
+    [addNotification],
   );
 
   const handleSampleSelection = useCallback((sampleId, isSelected) => {
@@ -249,15 +252,16 @@ function BioanalyticalAnalyticalExecutionPage({
     });
   }, []);
 
-  const handleSelectAll = useCallback((isSelected) => {
-    if (isSelected) {
-      setSelectedSampleIds(
-        new Set(assignedSamples.map((s) => s.id))
-      );
-    } else {
-      setSelectedSampleIds(new Set());
-    }
-  }, [assignedSamples]);
+  const handleSelectAll = useCallback(
+    (isSelected) => {
+      if (isSelected) {
+        setSelectedSampleIds(new Set(assignedSamples.map((s) => s.id)));
+      } else {
+        setSelectedSampleIds(new Set());
+      }
+    },
+    [assignedSamples],
+  );
 
   const handleFileSelect = useCallback((file) => {
     setSelectedFile(file);
@@ -267,87 +271,86 @@ function BioanalyticalAnalyticalExecutionPage({
     setSelectedFile(null);
   }, []);
 
-  const handleFileUpload = useCallback(
-    async () => {
-      if (!selectedFile) {
-        notify("Please select a file first", NotificationKinds.warning);
-        return;
+  const handleFileUpload = useCallback(async () => {
+    if (!selectedFile) {
+      notify("Please select a file first", NotificationKinds.warning);
+      return;
+    }
+    if (!selectedInstrument) {
+      notify("Please select an instrument first", NotificationKinds.warning);
+      return;
+    }
+
+    const fileExtension = selectedFile.name.split(".").pop().toUpperCase();
+    const instrument = instruments.find((i) => i.id === selectedInstrument);
+
+    if (!instrument.formats.includes(fileExtension)) {
+      notify(
+        `Invalid format. Expected: ${instrument.formats.join(", ")}`,
+        NotificationKinds.error,
+      );
+      return;
+    }
+
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("instrumentId", selectedInstrument);
+      formData.append("pageId", pageData?.id);
+      formData.append("entryId", entryId || "");
+
+      // Upload file to correct endpoint
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/files/upload`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`);
       }
-      if (!selectedInstrument) {
-        notify("Please select an instrument first", NotificationKinds.warning);
-        return;
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Store file metadata from upload response
+        const fileMetadata = {
+          id: result.fileId,
+          name: result.fileName,
+          size: result.fileSize,
+          fileUrl: result.fileUrl,
+          uploadedAt: result.uploadedAt,
+          instrumentId: selectedInstrument,
+          instrumentName: instrument.machine,
+          uploaded: true,
+          processed: false, // Will be true after processing
+        };
+
+        setUploadedFiles((prev) => [...prev, fileMetadata]);
+        setSelectedFile(null); // Clear selection after upload
+        notify(`File uploaded successfully: ${result.fileName}`);
+      } else {
+        throw new Error(result.error || "File upload failed");
       }
-
-      const fileExtension = selectedFile.name.split(".").pop().toUpperCase();
-      const instrument = instruments.find((i) => i.id === selectedInstrument);
-
-      if (
-        !instrument.formats.includes(fileExtension)
-      ) {
-        notify(
-          `Invalid format. Expected: ${instrument.formats.join(", ")}`,
-          NotificationKinds.error
-        );
-        return;
-      }
-
-      try {
-        // Create FormData for file upload
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("instrumentId", selectedInstrument);
-        formData.append("pageId", pageData?.id);
-        formData.append("entryId", entryId || "");
-
-        // Upload file to correct endpoint
-        const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/files/upload`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "X-CSRF-Token": localStorage.getItem("CSRF"),
-            },
-            body: formData,
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        if (result.success) {
-          // Store file metadata from upload response
-          const fileMetadata = {
-            id: result.fileId,
-            name: result.fileName,
-            size: result.fileSize,
-            fileUrl: result.fileUrl,
-            uploadedAt: result.uploadedAt,
-            instrumentId: selectedInstrument,
-            instrumentName: instrument.machine,
-            uploaded: true,
-            processed: false, // Will be true after processing
-          };
-
-          setUploadedFiles((prev) => [...prev, fileMetadata]);
-          setSelectedFile(null); // Clear selection after upload
-          notify(`File uploaded successfully: ${result.fileName}`);
-        } else {
-          throw new Error(result.error || "File upload failed");
-        }
-      } catch (error) {
-        console.error("File upload error:", error);
-        notify(
-          `File upload failed: ${error.message}`,
-          NotificationKinds.error
-        );
-      }
-    },
-    [selectedFile, selectedInstrument, instruments, pageData?.id, entryId, notify]
-  );
+    } catch (error) {
+      console.error("File upload error:", error);
+      notify(`File upload failed: ${error.message}`, NotificationKinds.error);
+    }
+  }, [
+    selectedFile,
+    selectedInstrument,
+    instruments,
+    pageData?.id,
+    entryId,
+    notify,
+  ]);
 
   const handleProcessFiles = useCallback(
     async (fileIds) => {
@@ -368,12 +371,12 @@ function BioanalyticalAnalyticalExecutionPage({
             },
             body: JSON.stringify({
               fileIds: fileIds,
-              samples: Array.from(selectedSampleIds).map(id => ({
+              samples: Array.from(selectedSampleIds).map((id) => ({
                 sampleId: id,
                 // Add any additional sample info needed
               })),
             }),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -384,13 +387,17 @@ function BioanalyticalAnalyticalExecutionPage({
 
         if (result.success) {
           // Update files to show they've been processed
-          setUploadedFiles((prev) => prev.map(file =>
-            fileIds.includes(file.id)
-              ? { ...file, processed: true, processingResults: result }
-              : file
-          ));
+          setUploadedFiles((prev) =>
+            prev.map((file) =>
+              fileIds.includes(file.id)
+                ? { ...file, processed: true, processingResults: result }
+                : file,
+            ),
+          );
 
-          notify(`Files processed successfully. Found ${result.analyzerResults?.length || 0} analyzer results.`);
+          notify(
+            `Files processed successfully. Found ${result.analyzerResults?.length || 0} analyzer results.`,
+          );
         } else {
           throw new Error(result.error || "File processing failed");
         }
@@ -398,11 +405,11 @@ function BioanalyticalAnalyticalExecutionPage({
         console.error("File processing error:", error);
         notify(
           `File processing failed: ${error.message}`,
-          NotificationKinds.error
+          NotificationKinds.error,
         );
       }
     },
-    [pageData?.id, selectedSampleIds, notify]
+    [pageData?.id, selectedSampleIds, notify],
   );
 
   const handleExecuteTest = useCallback(async () => {
@@ -419,7 +426,10 @@ function BioanalyticalAnalyticalExecutionPage({
       return;
     }
     if (uploadedFiles.length === 0) {
-      notify("Please upload at least one raw data file", NotificationKinds.warning);
+      notify(
+        "Please upload at least one raw data file",
+        NotificationKinds.warning,
+      );
       return;
     }
 
@@ -461,12 +471,14 @@ function BioanalyticalAnalyticalExecutionPage({
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
           body: JSON.stringify(executionPayload),
-        }
+        },
       );
 
       if (!response.ok) throw new Error("Test execution failed");
 
-      notify("Test execution recorded with raw data and QC results. Proceeding to QC Verification.");
+      notify(
+        "Test execution recorded with raw data and QC results. Proceeding to QC Verification.",
+      );
       setSelectedTab(1); // Move to QC verification tab
     } catch (error) {
       console.error("Execution error:", error);
@@ -488,18 +500,32 @@ function BioanalyticalAnalyticalExecutionPage({
 
   const handleLoadQCResults = useCallback(async () => {
     // QC results should already be populated from Tab 1 file processing
-    if (qcResults.length === 0 && quantificationResults.length === 0 && !calibrationData) {
-      notify("No QC data collected. Please ensure files were uploaded and processed in Test Execution tab.", NotificationKinds.warning);
+    if (
+      qcResults.length === 0 &&
+      quantificationResults.length === 0 &&
+      !calibrationData
+    ) {
+      notify(
+        "No QC data collected. Please ensure files were uploaded and processed in Test Execution tab.",
+        NotificationKinds.warning,
+      );
       return;
     }
 
     // Just display already-collected results
     try {
       const messageItems = [];
-      if (qcResults.length > 0) messageItems.push(`${qcResults.length} QC results`);
-      if (quantificationResults.length > 0) messageItems.push(`${quantificationResults.length} quantification results`);
-      if (calibrationData) messageItems.push(`calibration curve (R² = ${calibrationData.rSquared})`);
-      notify(`QC Data Summary: ${messageItems.join(', ')}`);
+      if (qcResults.length > 0)
+        messageItems.push(`${qcResults.length} QC results`);
+      if (quantificationResults.length > 0)
+        messageItems.push(
+          `${quantificationResults.length} quantification results`,
+        );
+      if (calibrationData)
+        messageItems.push(
+          `calibration curve (R² = ${calibrationData.rSquared})`,
+        );
+      notify(`QC Data Summary: ${messageItems.join(", ")}`);
     } catch (error) {
       console.error("Error displaying QC results:", error);
       notify("Error displaying QC results", NotificationKinds.error);
@@ -507,10 +533,7 @@ function BioanalyticalAnalyticalExecutionPage({
   }, [qcResults, quantificationResults, calibrationData, notify]);
 
   const handleAddDeviation = useCallback(() => {
-    if (
-      !deviationForm.type ||
-      !deviationForm.description
-    ) {
+    if (!deviationForm.type || !deviationForm.description) {
       notify("Please fill in all required fields", NotificationKinds.warning);
       return;
     }
@@ -534,12 +557,18 @@ function BioanalyticalAnalyticalExecutionPage({
 
       // Validate that we have all required data
       if (!qcApproved) {
-        notify("Please approve QC results before completing execution", NotificationKinds.warning);
+        notify(
+          "Please approve QC results before completing execution",
+          NotificationKinds.warning,
+        );
         return;
       }
 
       if (qcResults.length === 0 && quantificationResults.length === 0) {
-        notify("No QC or quantification data found. Please load QC results first.", NotificationKinds.warning);
+        notify(
+          "No QC or quantification data found. Please load QC results first.",
+          NotificationKinds.warning,
+        );
         return;
       }
 
@@ -556,17 +585,22 @@ function BioanalyticalAnalyticalExecutionPage({
         qcApproved: qcApproved,
         qcSummary: {
           totalQcSamples: qcResults.length,
-          passedQcSamples: qcResults.filter(qc => qc.status === "PASS").length,
-          failedQcSamples: qcResults.filter(qc => qc.status !== "PASS").length
+          passedQcSamples: qcResults.filter((qc) => qc.status === "PASS")
+            .length,
+          failedQcSamples: qcResults.filter((qc) => qc.status !== "PASS")
+            .length,
         },
 
         // Calibration data (shared across all samples)
         calibrationData: calibrationData,
-        calibrationAccepted: calibrationData ? calibrationData.qualityAssessment === "PASS" : false,
+        calibrationAccepted: calibrationData
+          ? calibrationData.qualityAssessment === "PASS"
+          : false,
 
         // Instrument and file information (common to all samples)
         instrumentId: selectedInstrument,
-        instrumentName: instruments.find(i => i.id === selectedInstrument)?.machine,
+        instrumentName: instruments.find((i) => i.id === selectedInstrument)
+          ?.machine,
         uploadedFiles: uploadedFiles,
 
         // Deviations (common issues)
@@ -580,30 +614,34 @@ function BioanalyticalAnalyticalExecutionPage({
         readyForReporting: true,
 
         // Sample-specific results (organized by sample ID for easy lookup in Stage 4)
-        sampleSpecificResults: {}
+        sampleSpecificResults: {},
       };
 
       // Add sample-specific results organized by sample ID
-      Array.from(selectedSampleIds).forEach(sampleId => {
+      Array.from(selectedSampleIds).forEach((sampleId) => {
         // Get QC results for this sample
-        const sampleQcResults = qcResults.filter(qc => qc.sampleId === sampleId);
+        const sampleQcResults = qcResults.filter(
+          (qc) => qc.sampleId === sampleId,
+        );
 
         // Get quantification results for this sample
-        const sampleQuantResults = quantificationResults.filter(quant => quant.sampleId === sampleId);
+        const sampleQuantResults = quantificationResults.filter(
+          (quant) => quant.sampleId === sampleId,
+        );
 
         commonExecutionData.sampleSpecificResults[sampleId] = {
           qcResults: sampleQcResults,
           quantificationResults: sampleQuantResults,
-          analyzerResults: sampleQuantResults.map(quant => ({
+          analyzerResults: sampleQuantResults.map((quant) => ({
             result: `${quant.concentration} ${quant.units}`,
             quality: quant.status,
             instrumentSampleId: quant.instrumentSampleId,
             peakArea: quant.peakArea,
             accuracy: quant.accuracyPercent,
-            cvPercent: quant.cvPercent
+            cvPercent: quant.cvPercent,
           })),
           sampleId: sampleId,
-          processedAt: new Date().toISOString()
+          processedAt: new Date().toISOString(),
         };
       });
 
@@ -619,9 +657,9 @@ function BioanalyticalAnalyticalExecutionPage({
           },
           body: JSON.stringify({
             sampleIds: Array.from(selectedSampleIds),
-            data: commonExecutionData
+            data: commonExecutionData,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -631,7 +669,9 @@ function BioanalyticalAnalyticalExecutionPage({
 
       const responseData = await response.json();
 
-      notify(`Test execution completed successfully for ${selectedSampleIds.size} samples. All data has been preserved for reporting.`);
+      notify(
+        `Test execution completed successfully for ${selectedSampleIds.size} samples. All data has been preserved for reporting.`,
+      );
 
       if (onProgressUpdate) {
         onProgressUpdate();
@@ -644,7 +684,6 @@ function BioanalyticalAnalyticalExecutionPage({
       setCalibrationData(null);
       setDeviations([]);
       setQcApproved(false);
-
     } catch (error) {
       console.error("Completion error:", error);
       notify(`Completion failed: ${error.message}`, NotificationKinds.error);
@@ -720,7 +759,12 @@ function BioanalyticalAnalyticalExecutionPage({
                   {/* Selected Samples */}
                   <div style={{ marginBottom: "2rem", marginTop: "1.5rem" }}>
                     <Grid style={{ marginBottom: "1rem" }}>
-                      <Column lg={16} md={8} sm={4} style={{ textAlign: "right" }}>
+                      <Column
+                        lg={16}
+                        md={8}
+                        sm={4}
+                        style={{ textAlign: "right" }}
+                      >
                         <Button
                           kind="primary"
                           onClick={() => setIsExecutionModalOpen(true)}
@@ -800,29 +844,22 @@ function BioanalyticalAnalyticalExecutionPage({
                                     labelText={`Select Sample ${sample.sampleItemId}`}
                                     checked={selectedSampleIds.has(sample.id)}
                                     onChange={(event, { checked, id }) => {
-                                      handleSampleSelection(
-                                        sample.id,
-                                        checked
-                                      );
+                                      handleSampleSelection(sample.id, checked);
                                     }}
                                     hideLabel
                                   />
                                 </TableCell>
                                 <TableCell>
-                                  <strong>
-                                    {sample.accessionNumber}
-                                  </strong>
+                                  <strong>{sample.accessionNumber}</strong>
                                 </TableCell>
                                 <TableCell>
                                   <Tag type="blue" size="sm">
-                                    {sample.assignedMethod ||
-                                      "Not assigned"}
+                                    {sample.assignedMethod || "Not assigned"}
                                   </Tag>
                                 </TableCell>
                                 <TableCell>
                                   <Tag type="cyan" size="sm">
-                                    {sample.assignedStaff ||
-                                      "-"}
+                                    {sample.assignedStaff || "-"}
                                   </Tag>
                                 </TableCell>
                                 <TableCell>
@@ -863,9 +900,6 @@ function BioanalyticalAnalyticalExecutionPage({
                       selected
                     </p>
                   </div>
-
-
-
                 </Column>
               </Grid>
             </div>
@@ -921,9 +955,7 @@ function BioanalyticalAnalyticalExecutionPage({
                                 <TableCell>
                                   {qc.spikedConcentration || "-"}
                                 </TableCell>
-                                <TableCell>
-                                  {qc.measuredValue || "-"}
-                                </TableCell>
+                                <TableCell>{qc.measuredValue || "-"}</TableCell>
                                 <TableCell>
                                   <span
                                     style={{
@@ -932,8 +964,7 @@ function BioanalyticalAnalyticalExecutionPage({
                                         qc.acceptanceCriteria &&
                                         qc.accuracy >=
                                           qc.acceptanceCriteria.min &&
-                                        qc.accuracy <=
-                                          qc.acceptanceCriteria.max
+                                        qc.accuracy <= qc.acceptanceCriteria.max
                                           ? "#24a148"
                                           : "#da1e28",
                                       fontWeight: "bold",
@@ -994,8 +1025,7 @@ function BioanalyticalAnalyticalExecutionPage({
                                       qc.accuracy <=
                                         qc.acceptanceCriteria.max) ||
                                     (qc.precision !== null &&
-                                      qc.precision <=
-                                        (qc.precisionLimit || 20))
+                                      qc.precision <= (qc.precisionLimit || 20))
                                       ? "PASS"
                                       : "FAIL"}
                                   </span>
@@ -1023,15 +1053,22 @@ function BioanalyticalAnalyticalExecutionPage({
                               <div style={{ marginBottom: "0.5rem" }}>
                                 <strong>R²:</strong> {calibrationData.rSquared}
                                 <Tag
-                                  type={calibrationData.rSquared >= 0.995 ? "green" : "red"}
+                                  type={
+                                    calibrationData.rSquared >= 0.995
+                                      ? "green"
+                                      : "red"
+                                  }
                                   size="sm"
                                   style={{ marginLeft: "0.5rem" }}
                                 >
-                                  {calibrationData.rSquared >= 0.995 ? "PASS" : "FAIL"}
+                                  {calibrationData.rSquared >= 0.995
+                                    ? "PASS"
+                                    : "FAIL"}
                                 </Tag>
                               </div>
                               <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Equation:</strong> {calibrationData.equation}
+                                <strong>Equation:</strong>{" "}
+                                {calibrationData.equation}
                               </div>
                               <div style={{ marginBottom: "0.5rem" }}>
                                 <strong>Slope:</strong> {calibrationData.slope}
@@ -1039,15 +1076,22 @@ function BioanalyticalAnalyticalExecutionPage({
                             </Column>
                             <Column lg={8} md={4} sm={2}>
                               <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Intercept:</strong> {calibrationData.intercept}
+                                <strong>Intercept:</strong>{" "}
+                                {calibrationData.intercept}
                               </div>
                               <div style={{ marginBottom: "0.5rem" }}>
-                                <strong>Source:</strong> {calibrationData.instrumentName} - {calibrationData.fileName}
+                                <strong>Source:</strong>{" "}
+                                {calibrationData.instrumentName} -{" "}
+                                {calibrationData.fileName}
                               </div>
                               <div style={{ marginBottom: "0.5rem" }}>
                                 <strong>Overall Assessment:</strong>
                                 <Tag
-                                  type={calibrationData.qualityAssessment === "PASS" ? "green" : "red"}
+                                  type={
+                                    calibrationData.qualityAssessment === "PASS"
+                                      ? "green"
+                                      : "red"
+                                  }
                                   size="sm"
                                   style={{ marginLeft: "0.5rem" }}
                                 >
@@ -1086,34 +1130,61 @@ function BioanalyticalAnalyticalExecutionPage({
                               </TableHead>
                               <TableBody>
                                 {quantificationResults.map((result, index) => (
-                                  <TableRow key={`${result.instrumentSampleId}-${index}`}>
+                                  <TableRow
+                                    key={`${result.instrumentSampleId}-${index}`}
+                                  >
                                     <TableCell>
                                       <div>
                                         <strong>{result.sampleName}</strong>
-                                        <div style={{ fontSize: "0.75rem", color: "#525252" }}>
+                                        <div
+                                          style={{
+                                            fontSize: "0.75rem",
+                                            color: "#525252",
+                                          }}
+                                        >
                                           {result.accessionNumber}
                                         </div>
                                       </div>
                                     </TableCell>
-                                    <TableCell>{result.instrumentSampleId}</TableCell>
+                                    <TableCell>
+                                      {result.instrumentSampleId}
+                                    </TableCell>
                                     <TableCell>
                                       <strong>{result.concentration}</strong>
                                     </TableCell>
                                     <TableCell>{result.units}</TableCell>
                                     <TableCell>{result.peakArea}</TableCell>
                                     <TableCell>
-                                      <span style={{ color: result.cvPercent <= 2 ? "#24a148" : "#f1c21b" }}>
+                                      <span
+                                        style={{
+                                          color:
+                                            result.cvPercent <= 2
+                                              ? "#24a148"
+                                              : "#f1c21b",
+                                        }}
+                                      >
                                         {result.cvPercent}%
                                       </span>
                                     </TableCell>
                                     <TableCell>
-                                      <span style={{ color: result.accuracyPercent >= 95 ? "#24a148" : "#f1c21b" }}>
+                                      <span
+                                        style={{
+                                          color:
+                                            result.accuracyPercent >= 95
+                                              ? "#24a148"
+                                              : "#f1c21b",
+                                        }}
+                                      >
                                         {result.accuracyPercent}%
                                       </span>
                                     </TableCell>
                                     <TableCell>
                                       <Tag
-                                        type={result.status === "VALID" ? "green" : "red"}
+                                        type={
+                                          result.status === "VALID"
+                                            ? "green"
+                                            : "red"
+                                        }
                                         size="sm"
                                       >
                                         {result.status}
@@ -1237,7 +1308,9 @@ function BioanalyticalAnalyticalExecutionPage({
                       <li>
                         ✓ Instrument: {selectedInstrument ? "Selected" : "N/A"}
                       </li>
-                      <li>✓ QC Verification: {qcApproved ? "Approved" : "Pending"}</li>
+                      <li>
+                        ✓ QC Verification: {qcApproved ? "Approved" : "Pending"}
+                      </li>
                       <li>✓ Deviations Recorded: {deviations.length}</li>
                       <li>
                         ✓ Analyst: {executionData.analystId || "Not recorded"}
@@ -1256,7 +1329,9 @@ function BioanalyticalAnalyticalExecutionPage({
                         !qcApproved
                       }
                     >
-                      {isExecuting ? "Completing..." : "Complete Test Execution"}
+                      {isExecuting
+                        ? "Completing..."
+                        : "Complete Test Execution"}
                     </Button>
                   </div>
                 </Column>
@@ -1285,7 +1360,10 @@ function BioanalyticalAnalyticalExecutionPage({
             }
           >
             <SelectItem value="" text="-- Select type --" />
-            <SelectItem value="Out of Specification" text="Out of Specification" />
+            <SelectItem
+              value="Out of Specification"
+              text="Out of Specification"
+            />
             <SelectItem value="Equipment Issue" text="Equipment Issue" />
             <SelectItem value="Analyst Error" text="Analyst Error" />
             <SelectItem value="Environmental" text="Environmental" />
@@ -1334,8 +1412,18 @@ function BioanalyticalAnalyticalExecutionPage({
         size="lg"
       >
         <div style={{ paddingBottom: "1.5rem" }}>
-          <div style={{ marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#e3f2fd", borderRadius: "4px", border: "1px solid #1976d2" }}>
-            <strong>📋 Workflow:</strong> The following steps will capture all test execution data and QC results for the selected samples. All data will be saved together.
+          <div
+            style={{
+              marginBottom: "1.5rem",
+              padding: "1rem",
+              backgroundColor: "#e3f2fd",
+              borderRadius: "4px",
+              border: "1px solid #1976d2",
+            }}
+          >
+            <strong>📋 Workflow:</strong> The following steps will capture all
+            test execution data and QC results for the selected samples. All
+            data will be saved together.
           </div>
           {/* Step 2: Instrument Selection */}
           <div style={{ marginBottom: "2rem" }}>
@@ -1346,9 +1434,7 @@ function BioanalyticalAnalyticalExecutionPage({
                   id="modal-instrument-select"
                   labelText="Instrument *"
                   value={selectedInstrument}
-                  onChange={(e) =>
-                    setSelectedInstrument(e.target.value)
-                  }
+                  onChange={(e) => setSelectedInstrument(e.target.value)}
                 >
                   <SelectItem value="" text="-- Select instrument --" />
                   {instruments.map((inst) => (
@@ -1365,7 +1451,10 @@ function BioanalyticalAnalyticalExecutionPage({
 
           {/* Step 3: Execution Parameters */}
           <div style={{ marginBottom: "2rem" }}>
-            <h5>Step 3: Record Analyst & Execution Details (21 CFR Part 11 Compliance)</h5>
+            <h5>
+              Step 3: Record Analyst & Execution Details (21 CFR Part 11
+              Compliance)
+            </h5>
             <Grid>
               <Column lg={8} md={4} sm={4}>
                 <TextInput
@@ -1416,11 +1505,43 @@ function BioanalyticalAnalyticalExecutionPage({
             </Grid>
           </div>
 
-          {/* Step 4: File Upload & QC Processing */}
-          <div style={{ marginBottom: "2rem" }}>
-            <h5>Step 4: Upload & Process Raw Instrument Data</h5>
-            <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
-              Upload raw data files (chromatograms, spectra, or test results) from your instrument. Files will be automatically processed to extract QC results, calibration data, and quantification results.
+          {/* Step 4: File Upload & QC Processing - REQUIRED */}
+          <div
+            style={{
+              marginBottom: "2rem",
+              padding: "1rem",
+              backgroundColor:
+                uploadedFiles.length === 0 ? "#fff3e0" : "#f5f5f5",
+              border:
+                uploadedFiles.length === 0
+                  ? "2px solid #ff9800"
+                  : "1px solid #e0e0e0",
+              borderRadius: "4px",
+            }}
+          >
+            <h5 style={{ margin: "0 0 0.5rem 0" }}>
+              Step 4: Upload & Process Raw Instrument Data{" "}
+              <span style={{ color: "#d32f2f", fontWeight: "bold" }}>
+                *REQUIRED
+              </span>
+            </h5>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: uploadedFiles.length === 0 ? "#e65100" : "#525252",
+                marginBottom: "1rem",
+                margin: 0,
+              }}
+            >
+              Upload raw data files (chromatograms, spectra, or test results)
+              from your instrument. Files will be automatically processed to
+              extract QC results, calibration data, and quantification results.
+              {uploadedFiles.length === 0 && (
+                <div style={{ marginTop: "0.5rem", fontWeight: "500" }}>
+                  ⚠️ At least one file must be uploaded before recording test
+                  execution.
+                </div>
+              )}
             </p>
 
             {/* File Selector */}
@@ -1476,9 +1597,16 @@ function BioanalyticalAnalyticalExecutionPage({
                   border: "1px solid #e0e0e0",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <div>
-                    <strong>Selected File:</strong> {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                    <strong>Selected File:</strong> {selectedFile.name} (
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
                   </div>
                   <Button
                     kind="ghost"
@@ -1501,13 +1629,26 @@ function BioanalyticalAnalyticalExecutionPage({
                   borderRadius: "4px",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "0.5rem",
+                  }}
+                >
                   <strong>Uploaded Files ({uploadedFiles.length}):</strong>
                   <Button
                     kind="tertiary"
                     size="sm"
-                    onClick={() => handleProcessFiles(uploadedFiles.filter(f => !f.processed).map(f => f.id))}
-                    disabled={uploadedFiles.every(f => f.processed)}
+                    onClick={() =>
+                      handleProcessFiles(
+                        uploadedFiles
+                          .filter((f) => !f.processed)
+                          .map((f) => f.id),
+                      )
+                    }
+                    disabled={uploadedFiles.every((f) => f.processed)}
                   >
                     Process All Files
                   </Button>
@@ -1515,13 +1656,28 @@ function BioanalyticalAnalyticalExecutionPage({
                 <ul style={{ marginTop: "0.5rem", marginBottom: 0 }}>
                   {uploadedFiles.map((file) => (
                     <li key={file.id} style={{ marginBottom: "0.5rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
                         <div>
                           <strong>{file.name}</strong> - {file.instrumentName}
-                          <div style={{ fontSize: "0.875rem", color: "#525252", marginTop: "0.25rem" }}>
+                          <div
+                            style={{
+                              fontSize: "0.875rem",
+                              color: "#525252",
+                              marginTop: "0.25rem",
+                            }}
+                          >
                             {file.processed ? (
                               <span style={{ color: "#24a148" }}>
-                                ✅ Processed - {file.processingResults?.analyzerResults?.length || 0} results extracted
+                                ✅ Processed -{" "}
+                                {file.processingResults?.analyzerResults
+                                  ?.length || 0}{" "}
+                                results extracted
                               </span>
                             ) : (
                               <span style={{ color: "#f1c21b" }}>
