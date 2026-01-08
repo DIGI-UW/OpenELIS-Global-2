@@ -611,6 +611,20 @@ function BioanalyticalAnalyticalExecutionPage({
     try {
       setIsExecuting(true);
 
+      // Clean uploadedFiles to remove non-serializable data (processingResults contains the full API response)
+      const cleanUploadedFiles = uploadedFiles.map((file) => ({
+        id: file.id,
+        name: file.name,
+        size: file.size,
+        fileUrl: file.fileUrl,
+        uploadedAt: file.uploadedAt,
+        instrumentId: file.instrumentId,
+        instrumentName: file.instrumentName,
+        uploaded: file.uploaded,
+        processed: file.processed,
+        // Don't include processingResults - it's already extracted into qcResults, calibrationData, quantificationResults
+      }));
+
       // Build common execution data that applies to all samples
       const commonExecutionData = {
         // Execution status and metadata (common to all samples)
@@ -640,7 +654,7 @@ function BioanalyticalAnalyticalExecutionPage({
         instrumentId: selectedInstrument,
         instrumentName: instruments.find((i) => i.id === selectedInstrument)
           ?.machine,
-        uploadedFiles: uploadedFiles,
+        uploadedFiles: cleanUploadedFiles,
 
         // Deviations (common issues)
         deviations: deviations,
