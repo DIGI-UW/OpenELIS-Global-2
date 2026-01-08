@@ -50,6 +50,7 @@ function BioanalyticalReportingPage({
   const intl = useIntl();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isQaLoading, setIsQaLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
   const [studyResults, setStudyResults] = useState([]);
   const [bioequivalenceStats, setBioequivalenceStats] = useState(null);
@@ -629,7 +630,7 @@ function BioanalyticalReportingPage({
     }
   }, [bioequivalenceStats, loadStudyResults]);
 
-  const handleQaApproval = useCallback(() => {
+  const handleQaApproval = useCallback(async () => {
     // Check if all QA checklist items are completed
     const allChecklistItemsCompleted = Object.values(qaChecklist).every(
       (checked) => checked === true,
@@ -666,20 +667,71 @@ function BioanalyticalReportingPage({
       return;
     }
 
-    setSuccessMessage(
-      intl.formatMessage({
-        id: "notebook.bioanalytical.reporting.qaApprovalComplete",
-        defaultMessage:
-          "QA approval completed. Study data is ready for external reporting.",
-      }),
-    );
+    setIsQaLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
-    if (onProgressUpdate) {
-      onProgressUpdate();
+    try {
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bioanalytical/page/${pageData.id}/qa-approval`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            approvalStatus: "APPROVED",
+            comments: qaComments,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to submit QA approval");
+      }
+
+      const result = await response.json();
+
+      setSuccessMessage(
+        intl.formatMessage(
+          {
+            id: "notebook.bioanalytical.reporting.qaApprovalComplete",
+            defaultMessage:
+              "QA approval completed for {count} samples. Study data is ready for external reporting.",
+          },
+          { count: result.samplesAffected || studyResults.length },
+        ),
+      );
+
+      if (onProgressUpdate) {
+        onProgressUpdate();
+      }
+    } catch (error) {
+      setErrorMessage(
+        intl.formatMessage(
+          {
+            id: "notebook.bioanalytical.reporting.qaApprovalError",
+            defaultMessage: "Error submitting QA approval: {error}",
+          },
+          { error: error.message },
+        ),
+      );
+    } finally {
+      setIsQaLoading(false);
     }
-  }, [qaApproved, qaComments, intl, onProgressUpdate]);
+  }, [
+    qaApproved,
+    qaComments,
+    qaChecklist,
+    intl,
+    onProgressUpdate,
+    pageData.id,
+    studyResults.length,
+  ]);
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (!exportFormat) {
       setErrorMessage(
         intl.formatMessage({
@@ -701,18 +753,83 @@ function BioanalyticalReportingPage({
     }
 
     setIsLoading(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
-    // Simulate export process
-    setTimeout(() => {
+    try {
+      const sampleIds = studyResults.map((result) => result.id);
       const selectedExportFormat = exportFormats.find(
         (f) => f.id === exportFormat,
       );
+
+      // Map export format ID to endpoint path and file extension
+      const exportConfig = {
+        redcap: {
+          endpoint: "/export/redcap",
+          extension: "csv",
+          body: { sampleIds, recordIdField: "record_id", eventName: null }
+        },
+        csv: {
+          endpoint: "/export/csv",
+          extension: "csv",
+          body: { sampleIds }
+        },
+        lmis: {
+          endpoint: "/export/lmis",
+          extension: "csv",
+          body: { sampleIds }
+        },
+        cdisc: {
+          endpoint: "/export/sdtm",
+          extension: "csv",
+          body: { sampleIds }
+        },
+        pdf: {
+          endpoint: "/export/pdf",
+          extension: "pdf",
+          body: { sampleIds }
+        },
+      };
+
+      const config_export = exportConfig[exportFormat];
+      if (!config_export) {
+        throw new Error(`Unsupported export format: ${exportFormat}`);
+      }
+
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bioanalytical/page/${pageData.id}${config_export.endpoint}`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(config_export.body),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to export to ${selectedExportFormat.label}`);
+      }
+
+      // Handle file download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `bioanalytical_study_${entryId}_${exportFormat}.${config_export.extension}`;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+
       setExportStatus({
         format: selectedExportFormat.label,
         records: studyResults.length,
         status: "EXPORT_COMPLETE",
         timestamp: new Date().toLocaleString(),
-        filename: `bioanalytical_study_${entryId}_${exportFormat}.${exportFormat === "pdf" ? "pdf" : "csv"}`,
+        filename: `bioanalytical_study_${entryId}_${exportFormat}.${config_export.extension}`,
       });
 
       setSuccessMessage(
@@ -728,9 +845,28 @@ function BioanalyticalReportingPage({
           },
         ),
       );
+    } catch (error) {
+      setErrorMessage(
+        intl.formatMessage(
+          {
+            id: "notebook.bioanalytical.reporting.exportError",
+            defaultMessage: "Error exporting data: {error}",
+          },
+          { error: error.message },
+        ),
+      );
+    } finally {
       setIsLoading(false);
-    }, 2000);
-  }, [exportFormat, qaApproved, studyResults.length, entryId, intl]);
+    }
+  }, [
+    exportFormat,
+    qaApproved,
+    studyResults,
+    entryId,
+    intl,
+    pageData.id,
+    exportFormats,
+  ]);
 
   const handleSubmitResults = useCallback(async () => {
     if (!submissionTarget) {
@@ -1974,11 +2110,21 @@ function BioanalyticalReportingPage({
                     </div>
 
                     <div style={{ marginTop: "1.5rem" }}>
-                      <Button kind="primary" onClick={handleQaApproval}>
-                        <FormattedMessage
-                          id="notebook.bioanalytical.reporting.completeQa"
-                          defaultMessage="Complete QA Approval"
-                        />
+                      <Button
+                        kind="primary"
+                        onClick={handleQaApproval}
+                        disabled={isQaLoading}
+                      >
+                        {isQaLoading ? (
+                          <>
+                            <Loading description="Submitting approval..." />
+                          </>
+                        ) : (
+                          <FormattedMessage
+                            id="notebook.bioanalytical.reporting.completeQa"
+                            defaultMessage="Complete QA Approval"
+                          />
+                        )}
                       </Button>
                     </div>
                   </div>

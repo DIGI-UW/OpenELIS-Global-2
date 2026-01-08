@@ -222,6 +222,21 @@ public interface NotebookBulkOperationService {
             String instrumentName, String userId);
 
     /**
+     * Generate a bioanalytical-specific REDCap export for bioequivalence studies.
+     * Includes analytical method, sample type, bioequivalence statistics,
+     * calibration data, Westgard QC status, and regulatory compliance data.
+     *
+     * @param pageId        the notebook page ID
+     * @param sampleIds     list of NotebookPageSample IDs to export
+     * @param recordIdField the REDCap record ID field name (defaults to
+     *                      "record_id")
+     * @param eventName     optional event name for longitudinal projects
+     * @return byte array containing the CSV content in REDCap format
+     */
+    byte[] generateBioanalyticalREDCapExport(Integer pageId, List<Integer> sampleIds, String recordIdField,
+            String eventName);
+
+    /**
      * Parse CSV raw data file and apply results to samples by matching externalId
      * (primary) or accessionNumber (fallback). The CSV must contain a header row
      * with column names that map to sample data fields.

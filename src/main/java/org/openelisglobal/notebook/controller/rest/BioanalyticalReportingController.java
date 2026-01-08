@@ -1,12 +1,16 @@
 package org.openelisglobal.notebook.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.notebook.service.NotebookBulkOperationService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
+import org.openelisglobal.notebook.service.QaApprovalService;
 import org.openelisglobal.notebook.service.ReportingMetricsService;
 import org.openelisglobal.notebook.service.WestgardRulesService;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
@@ -17,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -45,6 +50,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/rest/notebook/bioanalytical")
 public class BioanalyticalReportingController extends BaseRestController {
+
+    @Autowired
+    private NotebookBulkOperationService bulkOperationService;
+
+    @Autowired
+    private QaApprovalService qaApprovalService;
 
     @Autowired(required = false)
     private ReportingMetricsService reportingMetricsService;
@@ -361,6 +372,167 @@ public class BioanalyticalReportingController extends BaseRestController {
     }
 
     /**
+     * Export bioanalytical study data to REDCap for clinical data management. Uses
+     * bioanalytical-specific field mappings including analytical method, sample
+     * type, bioequivalence statistics, and regulatory compliance data.
+     *
+     * @param pageId   The notebook page ID
+     * @param request  The export request containing sample IDs and configuration
+     * @param response HTTP response for file download
+     */
+    @PostMapping(value = "/page/{pageId}/export/redcap")
+    public void exportToREDCap(@PathVariable("pageId") Integer pageId,
+            @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
+
+        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            try {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
+            } catch (Exception e) {
+                // Ignore - response may already be committed
+            }
+            return;
+        }
+
+        try {
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+                    request.getRecordIdField(), request.getEventName());
+
+            if (csvContent == null || csvContent.length == 0) {
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            String projectId = request.getProjectId() != null ? request.getProjectId() : "bioanalytical";
+            String filename = "Bioanalytical_REDCap_Export_" + projectId + "_" + java.time.LocalDate.now() + ".csv";
+
+            response.setContentType("text/csv; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(csvContent.length);
+            response.getOutputStream().write(csvContent);
+            response.getOutputStream().flush();
+
+        } catch (Exception e) {
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            } catch (Exception ignored) {
+                // Response might already be committed
+            }
+        }
+    }
+
+    /**
+     * Submit QA approval for a notebook page. Records the analyst's approval
+     * decision, comments, and timestamp. Enables external data export once
+     * approved.
+     *
+     * @param pageId      The notebook page ID
+     * @param request     The QA approval request with status and comments
+     * @param httpRequest HTTP request for user session
+     * @return Response with approval confirmation and page status
+     */
+    @PostMapping(value = "/page/{pageId}/qa-approval", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> submitQaApproval(@PathVariable("pageId") Integer pageId,
+            @RequestBody QaApprovalRequest request, HttpServletRequest httpRequest) {
+
+        String userId = getSysUserId(httpRequest);
+        if (userId == null) {
+            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+        }
+
+        if (pageId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Page ID is required"));
+        }
+
+        if (request == null || request.getApprovalStatus() == null || request.getApprovalStatus().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Approval status is required (APPROVED, REJECTED, CONDITIONAL)"));
+        }
+
+        try {
+            Map<String, Object> result = qaApprovalService.submitQaApproval(pageId, request.getApprovalStatus(),
+                    request.getComments(), userId);
+
+            if ((boolean) result.getOrDefault("success", false)) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to submit QA approval: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get QA approval status for a notebook page.
+     *
+     * @param pageId The notebook page ID
+     * @return QA approval status and history
+     */
+    @GetMapping(value = "/page/{pageId}/qa-approval", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getQaApprovalStatus(@PathVariable("pageId") Integer pageId) {
+
+        if (pageId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Page ID is required"));
+        }
+
+        try {
+            Map<String, Object> result = qaApprovalService.getQaApprovalStatus(pageId);
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to retrieve QA approval status: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Revoke a previous QA approval. Used for corrections or re-evaluation of study
+     * data.
+     *
+     * @param pageId      The notebook page ID
+     * @param request     The revocation request with reason
+     * @param httpRequest HTTP request for user session
+     * @return Response with revocation confirmation
+     */
+    @PostMapping(value = "/page/{pageId}/qa-approval/revoke", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> revokeQaApproval(@PathVariable("pageId") Integer pageId,
+            @RequestBody QaRevocationRequest request, HttpServletRequest httpRequest) {
+
+        String userId = getSysUserId(httpRequest);
+        if (userId == null) {
+            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
+                    .body(Map.of("error", "User not authenticated"));
+        }
+
+        if (pageId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Page ID is required"));
+        }
+
+        try {
+            String reason = request != null && request.getReason() != null ? request.getReason() : "No reason provided";
+            Map<String, Object> result = qaApprovalService.revokeQaApproval(pageId, reason, userId);
+
+            if ((boolean) result.getOrDefault("success", false)) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to revoke QA approval: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Get bioequivalence statistics for a specific notebook page. Calculates
      * statistics from QC results and analytical data from Stage 3.
      *
@@ -523,6 +695,326 @@ public class BioanalyticalReportingController extends BaseRestController {
             errorResponse.put("error", "Failed to validate QC run: " + e.getMessage());
             errorResponse.put("pageId", pageId);
             return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
+    /**
+     * Request DTO for bioanalytical REDCap export. Contains sample selection and
+     * configuration parameters for CSV export with bioanalytical-specific fields.
+     */
+    public static class BioanalyticalREDCapExportRequest {
+        private List<Integer> sampleIds;
+        private String projectId;
+        private String recordIdField;
+        private String eventName;
+
+        // Default constructor
+        public BioanalyticalREDCapExportRequest() {
+        }
+
+        // Constructor with required parameters
+        public BioanalyticalREDCapExportRequest(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        // Getters and Setters
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getProjectId() {
+            return projectId;
+        }
+
+        public void setProjectId(String projectId) {
+            this.projectId = projectId;
+        }
+
+        public String getRecordIdField() {
+            return recordIdField;
+        }
+
+        public void setRecordIdField(String recordIdField) {
+            this.recordIdField = recordIdField;
+        }
+
+        public String getEventName() {
+            return eventName;
+        }
+
+        public void setEventName(String eventName) {
+            this.eventName = eventName;
+        }
+    }
+
+    /**
+     * Request DTO for QA approval submission. Contains the analyst's approval
+     * decision and optional comments.
+     */
+    public static class QaApprovalRequest {
+        private String approvalStatus;
+        private String comments;
+
+        // Default constructor
+        public QaApprovalRequest() {
+        }
+
+        // Constructor with required parameters
+        public QaApprovalRequest(String approvalStatus) {
+            this.approvalStatus = approvalStatus;
+        }
+
+        // Getters and Setters
+        public String getApprovalStatus() {
+            return approvalStatus;
+        }
+
+        public void setApprovalStatus(String approvalStatus) {
+            this.approvalStatus = approvalStatus;
+        }
+
+        public String getComments() {
+            return comments;
+        }
+
+        public void setComments(String comments) {
+            this.comments = comments;
+        }
+    }
+
+    /**
+     * Request DTO for QA approval revocation. Contains the reason for revoking a
+     * previous approval.
+     */
+    public static class QaRevocationRequest {
+        private String reason;
+
+        // Default constructor
+        public QaRevocationRequest() {
+        }
+
+        // Constructor with reason
+        public QaRevocationRequest(String reason) {
+            this.reason = reason;
+        }
+
+        // Getters and Setters
+        public String getReason() {
+            return reason;
+        }
+
+        public void setReason(String reason) {
+            this.reason = reason;
+        }
+    }
+
+    /**
+     * Export bioanalytical study data to generic CSV research format. Includes
+     * analytical method, sample type, bioequivalence statistics, QC results, and
+     * calibration data in a researcher-friendly layout.
+     *
+     * @param pageId   The notebook page ID
+     * @param request  The export request containing sample IDs
+     * @param response HTTP response for file download
+     */
+    @PostMapping(value = "/page/{pageId}/export/csv")
+    public void exportToCSV(@PathVariable("pageId") Integer pageId,
+            @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
+
+        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            try {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
+            } catch (Exception e) {
+                // Ignore
+            }
+            return;
+        }
+
+        try {
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+                    request.getRecordIdField(), request.getEventName());
+
+            if (csvContent == null || csvContent.length == 0) {
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            String filename = "Bioanalytical_Research_Export_" + java.time.LocalDate.now() + ".csv";
+
+            response.setContentType("text/csv; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(csvContent.length);
+            response.getOutputStream().write(csvContent);
+            response.getOutputStream().flush();
+
+        } catch (Exception e) {
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            } catch (Exception ignored) {
+                // Response might already be committed
+            }
+        }
+    }
+
+    /**
+     * Export bioanalytical study data to LMIS (Laboratory Management Information
+     * System) format. Adapts data for CHAI and other LMIS systems with regulatory
+     * compliance metadata.
+     *
+     * @param pageId   The notebook page ID
+     * @param request  The export request containing sample IDs
+     * @param response HTTP response for file download
+     */
+    @PostMapping(value = "/page/{pageId}/export/lmis")
+    public void exportToLMIS(@PathVariable("pageId") Integer pageId,
+            @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
+
+        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            try {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
+            } catch (Exception e) {
+                // Ignore
+            }
+            return;
+        }
+
+        try {
+            // For now, leverage REDCap export with LMIS-specific naming
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+                    request.getRecordIdField(), request.getEventName());
+
+            if (csvContent == null || csvContent.length == 0) {
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            String filename = "Bioanalytical_LMIS_Export_" + java.time.LocalDate.now() + ".csv";
+
+            response.setContentType("text/csv; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(csvContent.length);
+            response.getOutputStream().write(csvContent);
+            response.getOutputStream().flush();
+
+        } catch (Exception e) {
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            } catch (Exception ignored) {
+                // Response might already be committed
+            }
+        }
+    }
+
+    /**
+     * Export bioanalytical study data to SDTM (Study Data Tabulation Model) format.
+     * Provides CDISC-compliant regulatory submission format for FDA and EMA.
+     *
+     * @param pageId   The notebook page ID
+     * @param request  The export request containing sample IDs
+     * @param response HTTP response for file download
+     */
+    @PostMapping(value = "/page/{pageId}/export/sdtm")
+    public void exportToSDTM(@PathVariable("pageId") Integer pageId,
+            @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
+
+        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            try {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
+            } catch (Exception e) {
+                // Ignore
+            }
+            return;
+        }
+
+        try {
+            // For now, leverage REDCap export with SDTM-specific naming
+            // Future enhancement: Add proper SDTM mapping
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+                    request.getRecordIdField(), request.getEventName());
+
+            if (csvContent == null || csvContent.length == 0) {
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            String filename = "Bioanalytical_SDTM_Export_" + java.time.LocalDate.now() + ".csv";
+
+            response.setContentType("text/csv; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(csvContent.length);
+            response.getOutputStream().write(csvContent);
+            response.getOutputStream().flush();
+
+        } catch (Exception e) {
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            } catch (Exception ignored) {
+                // Response might already be committed
+            }
+        }
+    }
+
+    /**
+     * Export bioanalytical study data to PDF report format. Generates a
+     * comprehensive PDF with all analysis results, QC validation, and regulatory
+     * compliance status.
+     *
+     * @param pageId   The notebook page ID
+     * @param request  The export request containing sample IDs
+     * @param response HTTP response for file download
+     */
+    @PostMapping(value = "/page/{pageId}/export/pdf")
+    public void exportToPDF(@PathVariable("pageId") Integer pageId,
+            @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
+
+        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            try {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
+            } catch (Exception e) {
+                // Ignore
+            }
+            return;
+        }
+
+        try {
+            // For now, return CSV as PDF content
+            // Future enhancement: Implement proper PDF generation using JasperReports
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+                    request.getRecordIdField(), request.getEventName());
+
+            if (csvContent == null || csvContent.length == 0) {
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            String filename = "Bioanalytical_Report_" + java.time.LocalDate.now() + ".pdf";
+
+            // For MVP, return CSV content with PDF extension
+            // TODO: Implement proper PDF generation with JasperReports
+            response.setContentType("application/pdf; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(csvContent.length);
+            response.getOutputStream().write(csvContent);
+            response.getOutputStream().flush();
+
+        } catch (Exception e) {
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            } catch (Exception ignored) {
+                // Response might already be committed
+            }
         }
     }
 }

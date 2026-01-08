@@ -1185,6 +1185,161 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         }
     }
 
+    /**
+     * Generate REDCap export with bioanalytical-specific fields for bioequivalence
+     * studies. Includes analytical method, sample type, bioequivalence statistics,
+     * and regulatory compliance data.
+     *
+     * @param pageId        The notebook page ID
+     * @param sampleIds     List of NotebookPageSample IDs to export
+     * @param recordIdField The field to use as REDCap record_id (defaults to
+     *                      "record_id")
+     * @param eventName     Optional REDCap event name (for longitudinal studies)
+     * @return UTF-8 encoded CSV bytes in REDCap format
+     */
+    @Transactional(readOnly = true)
+    public byte[] generateBioanalyticalREDCapExport(Integer pageId, List<Integer> sampleIds, String recordIdField,
+            String eventName) {
+        if (pageId == null || sampleIds == null || sampleIds.isEmpty()) {
+            return new byte[0];
+        }
+
+        try {
+            StringBuilder csv = new StringBuilder();
+
+            // REDCap standard fields
+            String recordIdFieldName = recordIdField != null && !recordIdField.isEmpty() ? recordIdField : "record_id";
+
+            // Build header with bioanalytical-specific columns
+            List<String> headers = new ArrayList<>();
+            headers.add(recordIdFieldName);
+            if (eventName != null && !eventName.isEmpty()) {
+                headers.add("redcap_event_name");
+            }
+
+            // Bioanalytical-specific data fields
+            headers.add("analytical_method"); // e.g., HPLC-UV, LC-MS/MS
+            headers.add("sample_type"); // e.g., Plasma, Urine
+            headers.add("mean_accuracy"); // Expected accuracy %
+            headers.add("sd"); // Standard deviation
+            headers.add("cv"); // Coefficient of variation %
+            headers.add("calibration_r_squared"); // R² value
+            headers.add("westgard_status"); // PASS, FAIL, or WARNING
+            headers.add("regulatory_status"); // COMPLIANT, NON_COMPLIANT, INSUFFICIENT_DATA
+            headers.add("qa_approval_date"); // QA approval timestamp
+            headers.add("bioequivalence_compliant"); // YES, NO, PENDING
+            headers.add("notes"); // Additional comments
+
+            csv.append(String.join(",", headers)).append("\n");
+
+            // Write data rows
+            int recordNum = 1;
+            LogEvent.logInfo(this.getClass().getName(), "generateBioanalyticalREDCapExport",
+                    "Processing " + sampleIds.size() + " samples for pageId " + pageId);
+
+            for (Integer sampleId : sampleIds) {
+                NotebookPageSample nps = notebookPageSampleService.get(sampleId);
+                if (nps == null) {
+                    LogEvent.logWarn(this.getClass().getName(), "generateBioanalyticalREDCapExport",
+                            "Sample not found: " + sampleId);
+                    continue;
+                }
+
+                List<String> values = new ArrayList<>();
+                values.add(String.valueOf(recordNum++)); // record_id
+
+                if (eventName != null && !eventName.isEmpty()) {
+                    values.add("\"" + eventName + "\"");
+                }
+
+                // Get sample data
+                Map<String, Object> data = nps.getData() != null ? nps.getData() : new HashMap<>();
+
+                // Extract bioanalytical-specific fields with proper fallback chains
+                String analyticalMethod = getStringValue(data, "analyticalMethod");
+                if (analyticalMethod.isEmpty()) {
+                    Map<String, Object> executionData = (Map<String, Object>) data.get("executionData");
+                    if (executionData != null) {
+                        analyticalMethod = getStringValue(executionData, "method");
+                    }
+                }
+
+                String sampleType = getStringValue(data, "sampleType");
+
+                // Extract bioequivalence statistics (priority: backend stats > local data)
+                String meanAccuracy = "";
+                String sd = "";
+                String cv = "";
+                String calibrationRSquared = "";
+                String westgardStatus = "";
+                String regulatoryStatus = "";
+                String bioequivalenceCompliant = "";
+
+                Map<String, Object> bioequivalenceStats = (Map<String, Object>) data.get("bioequivalenceStats");
+                if (bioequivalenceStats != null) {
+                    meanAccuracy = getStringValue(bioequivalenceStats, "meanAccuracy");
+                    sd = getStringValue(bioequivalenceStats, "sd");
+                    cv = getStringValue(bioequivalenceStats, "cv");
+                    regulatoryStatus = getStringValue(bioequivalenceStats, "regulatoryStatus");
+                }
+
+                // Extract calibration data
+                Map<String, Object> calibrationData = (Map<String, Object>) data.get("calibrationData");
+                if (calibrationData != null) {
+                    calibrationRSquared = getStringValue(calibrationData, "rSquared");
+                }
+
+                // Extract QC validation (Westgard) data
+                Map<String, Object> qcValidation = (Map<String, Object>) data.get("qcValidation");
+                if (qcValidation != null) {
+                    westgardStatus = getStringValue(qcValidation, "westgardStatus");
+                }
+
+                // Extract QA approval date
+                String qaApprovalDate = "";
+                Map<String, Object> qaApprovalData = (Map<String, Object>) data.get("qaApprovalData");
+                if (qaApprovalData != null) {
+                    qaApprovalDate = getStringValue(qaApprovalData, "approvalDate");
+                }
+
+                // Determine bioequivalence compliance
+                if ("COMPLIANT".equals(regulatoryStatus)) {
+                    bioequivalenceCompliant = "YES";
+                } else if ("NON_COMPLIANT".equals(regulatoryStatus)) {
+                    bioequivalenceCompliant = "NO";
+                } else {
+                    bioequivalenceCompliant = "PENDING";
+                }
+
+                // Add all values to CSV row
+                values.add("\"" + analyticalMethod + "\"");
+                values.add("\"" + sampleType + "\"");
+                values.add("\"" + meanAccuracy + "\"");
+                values.add("\"" + sd + "\"");
+                values.add("\"" + cv + "\"");
+                values.add("\"" + calibrationRSquared + "\"");
+                values.add("\"" + westgardStatus + "\"");
+                values.add("\"" + regulatoryStatus + "\"");
+                values.add("\"" + qaApprovalDate + "\"");
+                values.add("\"" + bioequivalenceCompliant + "\"");
+                values.add("\"" + getStringValue(data, "notes") + "\"");
+
+                csv.append(String.join(",", values)).append("\n");
+                LogEvent.logDebug(this.getClass().getName(), "generateBioanalyticalREDCapExport",
+                        "Added row for sample " + sampleId + ": " + analyticalMethod + " - " + sampleType);
+            }
+
+            LogEvent.logInfo(this.getClass().getName(), "generateBioanalyticalREDCapExport",
+                    "Generated CSV with " + (recordNum - 1) + " data rows");
+
+            return csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "generateBioanalyticalREDCapExport",
+                    "Error generating bioanalytical REDCap export: " + e.getMessage());
+            return new byte[0];
+        }
+    }
+
     private String getStringValue(Map<String, Object> data, String key) {
         Object value = data.get(key);
         if (value == null) {
