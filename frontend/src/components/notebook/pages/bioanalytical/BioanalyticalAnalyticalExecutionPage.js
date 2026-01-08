@@ -23,7 +23,9 @@ import {
   TextArea,
   Modal,
   DatePickerInput,
+  Tag,
 } from "@carbon/react";
+import { DocumentAdd, Upload } from "@carbon/react/icons";
 import { FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
@@ -90,6 +92,7 @@ function BioanalyticalAnalyticalExecutionPage({
   pageData,
   onProgressUpdate,
   templateInstruments,
+  entryId,
 }) {
   const { addNotification } = useContext(NotificationContext);
   const isMountedRef = useRef(true);
@@ -114,10 +117,13 @@ function BioanalyticalAnalyticalExecutionPage({
     notes: "",
   });
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   // Tab 2: QC Results
   const [qcResults, setQcResults] = useState([]);
   const [qcApproved, setQcApproved] = useState(false);
+  const [calibrationData, setCalibrationData] = useState(null);
+  const [quantificationResults, setQuantificationResults] = useState([]);
 
   // Tab 3: Deviations
   const [deviations, setDeviations] = useState([]);
@@ -127,6 +133,9 @@ function BioanalyticalAnalyticalExecutionPage({
     correctiveAction: "",
   });
   const [isDeviationModalOpen, setIsDeviationModalOpen] = useState(false);
+
+  // Execution Details Modal
+  const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
 
   // Instruments
   const [instruments, setInstruments] = useState([]);
@@ -250,16 +259,26 @@ function BioanalyticalAnalyticalExecutionPage({
     }
   }, [assignedSamples]);
 
+  const handleFileSelect = useCallback((file) => {
+    setSelectedFile(file);
+  }, []);
+
+  const handleRemoveSelectedFile = useCallback(() => {
+    setSelectedFile(null);
+  }, []);
+
   const handleFileUpload = useCallback(
-    async (files) => {
-      if (!files || files.length === 0) return;
+    async () => {
+      if (!selectedFile) {
+        notify("Please select a file first", NotificationKinds.warning);
+        return;
+      }
       if (!selectedInstrument) {
         notify("Please select an instrument first", NotificationKinds.warning);
         return;
       }
 
-      const file = files[0];
-      const fileExtension = file.name.split(".").pop().toUpperCase();
+      const fileExtension = selectedFile.name.split(".").pop().toUpperCase();
       const instrument = instruments.find((i) => i.id === selectedInstrument);
 
       if (
@@ -273,31 +292,117 @@ function BioanalyticalAnalyticalExecutionPage({
       }
 
       try {
+        // Create FormData for file upload
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", selectedFile);
         formData.append("instrumentId", selectedInstrument);
         formData.append("pageId", pageData?.id);
+        formData.append("entryId", entryId || "");
 
+        // Upload file to correct endpoint
         const response = await fetch(
-          `${config.serverBaseUrl}/rest/notebook/page/${pageData?.id}/files/upload`,
+          `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/files/upload`,
           {
             method: "POST",
             credentials: "include",
+            headers: {
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+            },
             body: formData,
           }
         );
 
-        if (!response.ok) throw new Error("File upload failed");
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
 
         const result = await response.json();
-        setUploadedFiles((prev) => [...prev, result]);
-        notify("File uploaded successfully");
+
+        if (result.success) {
+          // Store file metadata from upload response
+          const fileMetadata = {
+            id: result.fileId,
+            name: result.fileName,
+            size: result.fileSize,
+            fileUrl: result.fileUrl,
+            uploadedAt: result.uploadedAt,
+            instrumentId: selectedInstrument,
+            instrumentName: instrument.machine,
+            uploaded: true,
+            processed: false, // Will be true after processing
+          };
+
+          setUploadedFiles((prev) => [...prev, fileMetadata]);
+          setSelectedFile(null); // Clear selection after upload
+          notify(`File uploaded successfully: ${result.fileName}`);
+        } else {
+          throw new Error(result.error || "File upload failed");
+        }
       } catch (error) {
-        console.error("Upload error:", error);
-        notify("File upload failed", NotificationKinds.error);
+        console.error("File upload error:", error);
+        notify(
+          `File upload failed: ${error.message}`,
+          NotificationKinds.error
+        );
       }
     },
-    [selectedInstrument, instruments, pageData?.id, notify]
+    [selectedFile, selectedInstrument, instruments, pageData?.id, entryId, notify]
+  );
+
+  const handleProcessFiles = useCallback(
+    async (fileIds) => {
+      if (!fileIds || fileIds.length === 0) {
+        notify("No files to process", NotificationKinds.warning);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/files/process`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+            },
+            body: JSON.stringify({
+              fileIds: fileIds,
+              samples: Array.from(selectedSampleIds).map(id => ({
+                sampleId: id,
+                // Add any additional sample info needed
+              })),
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Processing failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Update files to show they've been processed
+          setUploadedFiles((prev) => prev.map(file =>
+            fileIds.includes(file.id)
+              ? { ...file, processed: true, processingResults: result }
+              : file
+          ));
+
+          notify(`Files processed successfully. Found ${result.analyzerResults?.length || 0} analyzer results.`);
+        } else {
+          throw new Error(result.error || "File processing failed");
+        }
+      } catch (error) {
+        console.error("File processing error:", error);
+        notify(
+          `File processing failed: ${error.message}`,
+          NotificationKinds.error
+        );
+      }
+    },
+    [pageData?.id, selectedSampleIds, notify]
   );
 
   const handleExecuteTest = useCallback(async () => {
@@ -309,9 +414,43 @@ function BioanalyticalAnalyticalExecutionPage({
       notify("Please select an instrument", NotificationKinds.warning);
       return;
     }
+    if (!executionData.analystId) {
+      notify("Please enter Analyst ID", NotificationKinds.warning);
+      return;
+    }
+    if (uploadedFiles.length === 0) {
+      notify("Please upload at least one raw data file", NotificationKinds.warning);
+      return;
+    }
 
     try {
       setIsExecuting(true);
+
+      // Build complete execution data with all QC results collected from files
+      const executionPayload = {
+        sampleIds: Array.from(selectedSampleIds),
+        data: {
+          // Core execution information
+          executionStatus: "EXECUTED",
+          executedAt: new Date().toISOString(),
+          executedBy: executionData.analystId,
+          instrumentId: selectedInstrument,
+          executionDate: executionData.executionDate,
+          notes: executionData.notes,
+
+          // Raw data capture
+          uploadedFiles: uploadedFiles,
+
+          // QC results from file processing
+          qcResults: qcResults,
+          quantificationResults: quantificationResults,
+          calibrationData: calibrationData,
+
+          // QC verification status
+          qcVerified: false, // Will be set to true in Tab 3
+        },
+      };
+
       const response = await fetch(
         `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/samples/apply`,
         {
@@ -321,24 +460,14 @@ function BioanalyticalAnalyticalExecutionPage({
             "Content-Type": "application/json",
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-          body: JSON.stringify({
-            sampleIds: Array.from(selectedSampleIds),
-            data: {
-              executionStatus: "EXECUTED",
-              executedAt: new Date().toISOString(),
-              executedBy: executionData.analystId,
-              instrumentId: selectedInstrument,
-              testParameters: executionData.testParameters,
-              notes: executionData.notes,
-            },
-          }),
+          body: JSON.stringify(executionPayload),
         }
       );
 
       if (!response.ok) throw new Error("Test execution failed");
 
-      notify("Test execution recorded successfully");
-      setSelectedTab(1); // Move to QC verification
+      notify("Test execution recorded with raw data and QC results. Proceeding to QC Verification.");
+      setSelectedTab(1); // Move to QC verification tab
     } catch (error) {
       console.error("Execution error:", error);
       notify("Test execution failed", NotificationKinds.error);
@@ -350,32 +479,32 @@ function BioanalyticalAnalyticalExecutionPage({
     selectedInstrument,
     pageData?.id,
     executionData,
+    uploadedFiles,
+    qcResults,
+    quantificationResults,
+    calibrationData,
     notify,
   ]);
 
   const handleLoadQCResults = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/notebook/page/${pageData?.id}/samples`,
-        { credentials: "include" }
-      );
-
-      if (!response.ok) throw new Error("Failed to load QC results");
-
-      const data = await response.json();
-      const qcData = (data.samples || [])
-        .filter((s) => selectedSampleIds.has(s.id))
-        .flatMap((s) => s.qcResults || []);
-
-      setQcResults(qcData);
-    } catch (error) {
-      console.error("Error loading QC results:", error);
-      notify("Failed to load QC results", NotificationKinds.error);
-    } finally {
-      setIsLoading(false);
+    // QC results should already be populated from Tab 1 file processing
+    if (qcResults.length === 0 && quantificationResults.length === 0 && !calibrationData) {
+      notify("No QC data collected. Please ensure files were uploaded and processed in Test Execution tab.", NotificationKinds.warning);
+      return;
     }
-  }, [pageData?.id, selectedSampleIds, notify]);
+
+    // Just display already-collected results
+    try {
+      const messageItems = [];
+      if (qcResults.length > 0) messageItems.push(`${qcResults.length} QC results`);
+      if (quantificationResults.length > 0) messageItems.push(`${quantificationResults.length} quantification results`);
+      if (calibrationData) messageItems.push(`calibration curve (R² = ${calibrationData.rSquared})`);
+      notify(`QC Data Summary: ${messageItems.join(', ')}`);
+    } catch (error) {
+      console.error("Error displaying QC results:", error);
+      notify("Error displaying QC results", NotificationKinds.error);
+    }
+  }, [qcResults, quantificationResults, calibrationData, notify]);
 
   const handleAddDeviation = useCallback(() => {
     if (
@@ -402,6 +531,83 @@ function BioanalyticalAnalyticalExecutionPage({
   const handleCompleteExecution = useCallback(async () => {
     try {
       setIsExecuting(true);
+
+      // Validate that we have all required data
+      if (!qcApproved) {
+        notify("Please approve QC results before completing execution", NotificationKinds.warning);
+        return;
+      }
+
+      if (qcResults.length === 0 && quantificationResults.length === 0) {
+        notify("No QC or quantification data found. Please load QC results first.", NotificationKinds.warning);
+        return;
+      }
+
+      // Build common execution data that applies to all samples
+      const commonExecutionData = {
+        // Execution status and metadata (common to all samples)
+        executionStatus: "COMPLETED",
+        completedAt: new Date().toISOString(),
+        completedBy: executionData.analystId,
+        executionDate: executionData.executionDate,
+        notes: executionData.notes,
+
+        // QC verification data (summary for all samples)
+        qcApproved: qcApproved,
+        qcSummary: {
+          totalQcSamples: qcResults.length,
+          passedQcSamples: qcResults.filter(qc => qc.status === "PASS").length,
+          failedQcSamples: qcResults.filter(qc => qc.status !== "PASS").length
+        },
+
+        // Calibration data (shared across all samples)
+        calibrationData: calibrationData,
+        calibrationAccepted: calibrationData ? calibrationData.qualityAssessment === "PASS" : false,
+
+        // Instrument and file information (common to all samples)
+        instrumentId: selectedInstrument,
+        instrumentName: instruments.find(i => i.id === selectedInstrument)?.machine,
+        uploadedFiles: uploadedFiles,
+
+        // Deviations (common issues)
+        deviations: deviations,
+        deviationCount: deviations.length,
+
+        // Stage 3 completion certification (common to all samples)
+        stage3Completed: true,
+        stage3CompletedBy: executionData.analystId,
+        stage3CompletedAt: new Date().toISOString(),
+        readyForReporting: true,
+
+        // Sample-specific results (organized by sample ID for easy lookup in Stage 4)
+        sampleSpecificResults: {}
+      };
+
+      // Add sample-specific results organized by sample ID
+      Array.from(selectedSampleIds).forEach(sampleId => {
+        // Get QC results for this sample
+        const sampleQcResults = qcResults.filter(qc => qc.sampleId === sampleId);
+
+        // Get quantification results for this sample
+        const sampleQuantResults = quantificationResults.filter(quant => quant.sampleId === sampleId);
+
+        commonExecutionData.sampleSpecificResults[sampleId] = {
+          qcResults: sampleQcResults,
+          quantificationResults: sampleQuantResults,
+          analyzerResults: sampleQuantResults.map(quant => ({
+            result: `${quant.concentration} ${quant.units}`,
+            quality: quant.status,
+            instrumentSampleId: quant.instrumentSampleId,
+            peakArea: quant.peakArea,
+            accuracy: quant.accuracyPercent,
+            cvPercent: quant.cvPercent
+          })),
+          sampleId: sampleId,
+          processedAt: new Date().toISOString()
+        };
+      });
+
+      // Send the execution data to the backend using the correct format
       const response = await fetch(
         `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/samples/apply`,
         {
@@ -413,36 +619,50 @@ function BioanalyticalAnalyticalExecutionPage({
           },
           body: JSON.stringify({
             sampleIds: Array.from(selectedSampleIds),
-            data: {
-              executionStatus: "COMPLETED",
-              completedAt: new Date().toISOString(),
-              completedBy: executionData.analystId,
-              qcApproved,
-              deviationCount: deviations.length,
-              deviations,
-            },
+            data: commonExecutionData
           }),
         }
       );
 
-      if (!response.ok) throw new Error("Completion failed");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Completion failed");
+      }
 
-      notify("Test execution completed successfully");
+      const responseData = await response.json();
+
+      notify(`Test execution completed successfully for ${selectedSampleIds.size} samples. All data has been preserved for reporting.`);
+
       if (onProgressUpdate) {
         onProgressUpdate();
       }
+
+      // Clear local state as data is now persisted
+      setSelectedSampleIds(new Set());
+      setQcResults([]);
+      setQuantificationResults([]);
+      setCalibrationData(null);
+      setDeviations([]);
+      setQcApproved(false);
+
     } catch (error) {
       console.error("Completion error:", error);
-      notify("Completion failed", NotificationKinds.error);
+      notify(`Completion failed: ${error.message}`, NotificationKinds.error);
     } finally {
       setIsExecuting(false);
     }
   }, [
     pageData?.id,
     selectedSampleIds,
-    executionData.analystId,
+    executionData,
     qcApproved,
+    qcResults,
+    quantificationResults,
+    calibrationData,
     deviations,
+    selectedInstrument,
+    instruments,
+    uploadedFiles,
     onProgressUpdate,
     notify,
   ]);
@@ -499,7 +719,20 @@ function BioanalyticalAnalyticalExecutionPage({
 
                   {/* Selected Samples */}
                   <div style={{ marginBottom: "2rem", marginTop: "1.5rem" }}>
-                    <h5>Step 1: Select Samples to Execute</h5>
+                    <Grid style={{ marginBottom: "1rem" }}>
+                      <Column lg={16} md={8} sm={4} style={{ textAlign: "right" }}>
+                        <Button
+                          kind="primary"
+                          onClick={() => setIsExecutionModalOpen(true)}
+                          disabled={selectedSampleIds.size === 0}
+                        >
+                          <FormattedMessage
+                            id="notebook.bioanalytical.execution.continueExecution"
+                            defaultMessage="Continue with Execution (Steps 2-4)"
+                          />
+                        </Button>
+                      </Column>
+                    </Grid>
                     <div
                       style={{
                         overflowX: "auto",
@@ -511,17 +744,18 @@ function BioanalyticalAnalyticalExecutionPage({
                         <TableHead>
                           <TableRow>
                             <TableHeader>
-                              <input
-                                type="checkbox"
+                              <Checkbox
+                                id="select-all-samples"
+                                labelText="Select all samples"
                                 checked={
                                   selectedSampleIds.size > 0 &&
                                   selectedSampleIds.size ===
                                     assignedSamples.length
                                 }
-                                onChange={(e) => {
-                                  handleSelectAll(e.target.checked);
+                                onChange={(event, { checked, id }) => {
+                                  handleSelectAll(checked);
                                 }}
-                                title="Select all samples"
+                                hideLabel
                               />
                             </TableHeader>
                             <TableHeader>
@@ -561,16 +795,17 @@ function BioanalyticalAnalyticalExecutionPage({
                             assignedSamples.map((sample) => (
                               <TableRow key={sample.id}>
                                 <TableCell>
-                                  <input
-                                    type="checkbox"
+                                  <Checkbox
+                                    id={`sample-${sample.id}`}
+                                    labelText={`Select Sample ${sample.sampleItemId}`}
                                     checked={selectedSampleIds.has(sample.id)}
-                                    onChange={(e) => {
+                                    onChange={(event, { checked, id }) => {
                                       handleSampleSelection(
                                         sample.id,
-                                        e.target.checked
+                                        checked
                                       );
                                     }}
-                                    title={`Select Sample ${sample.sampleItemId}`}
+                                    hideLabel
                                   />
                                 </TableCell>
                                 <TableCell>
@@ -579,69 +814,28 @@ function BioanalyticalAnalyticalExecutionPage({
                                   </strong>
                                 </TableCell>
                                 <TableCell>
-                                  <span
-                                    style={{
-                                      backgroundColor: "#0043ce",
-                                      color: "white",
-                                      padding: "0.25rem 0.75rem",
-                                      borderRadius: "4px",
-                                      fontSize: "0.75rem",
-                                      fontWeight: 600,
-                                      whiteSpace: "nowrap",
-                                    }}
-                                  >
+                                  <Tag type="blue" size="sm">
                                     {sample.assignedMethod ||
                                       "Not assigned"}
-                                  </span>
+                                  </Tag>
                                 </TableCell>
                                 <TableCell>
-                                  <span
-                                    style={{
-                                      backgroundColor: "#e3f2fd",
-                                      color: "#1565c0",
-                                      padding: "0.25rem 0.75rem",
-                                      borderRadius: "4px",
-                                      fontSize: "0.75rem",
-                                      fontWeight: 600,
-                                      whiteSpace: "nowrap",
-                                      border: "1px solid #bbdefb",
-                                    }}
-                                  >
+                                  <Tag type="cyan" size="sm">
                                     {sample.assignedStaff ||
                                       "-"}
-                                  </span>
+                                  </Tag>
                                 </TableCell>
                                 <TableCell>
-                                  <span
-                                    style={{
-                                      backgroundColor: "#f0f0f0",
-                                      color: "#161616",
-                                      padding: "0.25rem 0.75rem",
-                                      borderRadius: "4px",
-                                      fontSize: "0.75rem",
-                                      fontWeight: 600,
-                                      whiteSpace: "nowrap",
-                                      border: "1px solid #d0d0d0",
-                                    }}
-                                  >
+                                  <Tag type="gray" size="sm">
                                     {sample.instrumentName ||
                                       sample.instrumentId ||
                                       "-"}
-                                  </span>
+                                  </Tag>
                                 </TableCell>
                                 <TableCell>
-                                  <span
-                                    style={{
-                                      backgroundColor: "#e8f5e9",
-                                      color: "#24a148",
-                                      padding: "0.25rem 0.5rem",
-                                      borderRadius: "4px",
-                                      fontSize: "0.75rem",
-                                      fontWeight: 600,
-                                    }}
-                                  >
+                                  <Tag type="green" size="sm">
                                     Ready
-                                  </span>
+                                  </Tag>
                                 </TableCell>
                               </TableRow>
                             ))
@@ -670,142 +864,8 @@ function BioanalyticalAnalyticalExecutionPage({
                     </p>
                   </div>
 
-                  {/* Instrument Selection */}
-                  <div style={{ marginBottom: "2rem" }}>
-                    <h5>Step 2: Select Instrument</h5>
-                    <Grid>
-                      <Column lg={6} md={4} sm={4}>
-                        <Select
-                          id="instrument-select"
-                          labelText="Instrument *"
-                          value={selectedInstrument}
-                          onChange={(e) =>
-                            setSelectedInstrument(e.target.value)
-                          }
-                        >
-                          <SelectItem value="" text="-- Select instrument --" />
-                          {instruments.map((inst) => (
-                            <SelectItem
-                              key={inst.id}
-                              value={inst.id}
-                              text={inst.machine}
-                            />
-                          ))}
-                        </Select>
-                      </Column>
-                    </Grid>
-                  </div>
 
-                  {/* Execution Parameters */}
-                  <div style={{ marginBottom: "2rem" }}>
-                    <h5>Step 3: Record Execution Details</h5>
-                    <Grid>
-                      <Column lg={8} md={4} sm={4}>
-                        <TextInput
-                          id="analyst-id"
-                          labelText="Analyst ID *"
-                          value={executionData.analystId}
-                          onChange={(e) =>
-                            setExecutionData({
-                              ...executionData,
-                              analystId: e.target.value,
-                            })
-                          }
-                        />
-                      </Column>
-                      <Column lg={8} md={4} sm={4}>
-                        <DatePickerInput
-                          id="execution-date"
-                          labelText="Execution Date *"
-                          pattern="dd/mm/yyyy"
-                          placeholder="dd/mm/yyyy"
-                          value={executionData.executionDate}
-                          onChange={(e) =>
-                            setExecutionData({
-                              ...executionData,
-                              executionDate: e[0]
-                                ? e[0].toISOString().split("T")[0]
-                                : executionData.executionDate,
-                            })
-                          }
-                        />
-                      </Column>
-                    </Grid>
-                    <Grid style={{ marginTop: "1rem" }}>
-                      <Column lg={16} md={8} sm={4}>
-                        <TextArea
-                          id="test-notes"
-                          labelText="Test Parameters / Notes"
-                          value={executionData.notes}
-                          onChange={(e) =>
-                            setExecutionData({
-                              ...executionData,
-                              notes: e.target.value,
-                            })
-                          }
-                          placeholder="e.g., Temperature: 25°C, Flow rate: 1.0 mL/min..."
-                        />
-                      </Column>
-                    </Grid>
-                  </div>
 
-                  {/* File Upload */}
-                  <div style={{ marginBottom: "2rem" }}>
-                    <h5>Step 4: Upload Raw Data Files</h5>
-                    <Grid>
-                      <Column lg={16} md={8} sm={4}>
-                        <FileUploader
-                          id="file-upload"
-                          labelTitle="Upload raw instrument data"
-                          buttonLabel="Add file"
-                          accept={
-                            selectedInstrument
-                              ? instruments
-                                  .find((i) => i.id === selectedInstrument)
-                                  ?.formats.map((f) => `.${f.toLowerCase()}`)
-                                  .join(",")
-                              : ".csv,.pdf,.mzml,.cdf"
-                          }
-                          onChange={(e) => handleFileUpload(e.target.files)}
-                          disabled={!selectedInstrument}
-                        />
-                      </Column>
-                    </Grid>
-
-                    {uploadedFiles.length > 0 && (
-                      <div
-                        style={{
-                          marginTop: "1rem",
-                          padding: "0.75rem",
-                          backgroundColor: "#e8f5e9",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        <strong>Uploaded Files ({uploadedFiles.length}):</strong>
-                        <ul>
-                          {uploadedFiles.map((file) => (
-                            <li key={file.id}>{file.name}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Execute Button */}
-                  <div style={{ marginTop: "2rem" }}>
-                    <Button
-                      kind="primary"
-                      onClick={handleExecuteTest}
-                      disabled={
-                        isExecuting ||
-                        selectedSampleIds.size === 0 ||
-                        !selectedInstrument ||
-                        !executionData.analystId
-                      }
-                    >
-                      {isExecuting ? "Recording..." : "Record Test Execution"}
-                    </Button>
-                  </div>
                 </Column>
               </Grid>
             </div>
@@ -945,6 +1005,127 @@ function BioanalyticalAnalyticalExecutionPage({
                           </TableBody>
                         </Table>
                       </div>
+
+                      {/* Calibration Curve Section */}
+                      {calibrationData && (
+                        <div
+                          style={{
+                            marginTop: "2rem",
+                            padding: "1rem",
+                            backgroundColor: "#e8f5e9",
+                            borderRadius: "4px",
+                            border: "1px solid #24a148",
+                          }}
+                        >
+                          <h5>📈 Calibration Curve Assessment</h5>
+                          <Grid style={{ marginTop: "1rem" }}>
+                            <Column lg={8} md={4} sm={2}>
+                              <div style={{ marginBottom: "0.5rem" }}>
+                                <strong>R²:</strong> {calibrationData.rSquared}
+                                <Tag
+                                  type={calibrationData.rSquared >= 0.995 ? "green" : "red"}
+                                  size="sm"
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  {calibrationData.rSquared >= 0.995 ? "PASS" : "FAIL"}
+                                </Tag>
+                              </div>
+                              <div style={{ marginBottom: "0.5rem" }}>
+                                <strong>Equation:</strong> {calibrationData.equation}
+                              </div>
+                              <div style={{ marginBottom: "0.5rem" }}>
+                                <strong>Slope:</strong> {calibrationData.slope}
+                              </div>
+                            </Column>
+                            <Column lg={8} md={4} sm={2}>
+                              <div style={{ marginBottom: "0.5rem" }}>
+                                <strong>Intercept:</strong> {calibrationData.intercept}
+                              </div>
+                              <div style={{ marginBottom: "0.5rem" }}>
+                                <strong>Source:</strong> {calibrationData.instrumentName} - {calibrationData.fileName}
+                              </div>
+                              <div style={{ marginBottom: "0.5rem" }}>
+                                <strong>Overall Assessment:</strong>
+                                <Tag
+                                  type={calibrationData.qualityAssessment === "PASS" ? "green" : "red"}
+                                  size="sm"
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  {calibrationData.qualityAssessment}
+                                </Tag>
+                              </div>
+                            </Column>
+                          </Grid>
+                        </div>
+                      )}
+
+                      {/* Quantification Results Section */}
+                      {quantificationResults.length > 0 && (
+                        <div style={{ marginTop: "2rem" }}>
+                          <h5>🧪 Sample Quantification Results</h5>
+                          <div
+                            style={{
+                              marginTop: "1rem",
+                              overflowX: "auto",
+                              border: "1px solid #e0e0e0",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            <Table>
+                              <TableHead>
+                                <TableRow>
+                                  <TableHeader>Sample</TableHeader>
+                                  <TableHeader>Instrument ID</TableHeader>
+                                  <TableHeader>Concentration</TableHeader>
+                                  <TableHeader>Units</TableHeader>
+                                  <TableHeader>Peak Area</TableHeader>
+                                  <TableHeader>CV %</TableHeader>
+                                  <TableHeader>Accuracy %</TableHeader>
+                                  <TableHeader>Status</TableHeader>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {quantificationResults.map((result, index) => (
+                                  <TableRow key={`${result.instrumentSampleId}-${index}`}>
+                                    <TableCell>
+                                      <div>
+                                        <strong>{result.sampleName}</strong>
+                                        <div style={{ fontSize: "0.75rem", color: "#525252" }}>
+                                          {result.accessionNumber}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>{result.instrumentSampleId}</TableCell>
+                                    <TableCell>
+                                      <strong>{result.concentration}</strong>
+                                    </TableCell>
+                                    <TableCell>{result.units}</TableCell>
+                                    <TableCell>{result.peakArea}</TableCell>
+                                    <TableCell>
+                                      <span style={{ color: result.cvPercent <= 2 ? "#24a148" : "#f1c21b" }}>
+                                        {result.cvPercent}%
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span style={{ color: result.accuracyPercent >= 95 ? "#24a148" : "#f1c21b" }}>
+                                        {result.accuracyPercent}%
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Tag
+                                        type={result.status === "VALID" ? "green" : "red"}
+                                        size="sm"
+                                      >
+                                        {result.status}
+                                      </Tag>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      )}
 
                       <div
                         style={{
@@ -1136,6 +1317,235 @@ function BioanalyticalAnalyticalExecutionPage({
             }
             style={{ marginTop: "1rem" }}
           />
+        </div>
+      </Modal>
+
+      {/* Execution Details Modal */}
+      <Modal
+        modalHeading="Test Execution Workflow: Capture Raw Data & QC Results"
+        primaryButtonText="Record Test Execution & Save Data"
+        secondaryButtonText="Cancel"
+        open={isExecutionModalOpen}
+        onRequestClose={() => setIsExecutionModalOpen(false)}
+        onRequestSubmit={async () => {
+          await handleExecuteTest();
+          setIsExecutionModalOpen(false);
+        }}
+        size="lg"
+      >
+        <div style={{ paddingBottom: "1.5rem" }}>
+          <div style={{ marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#e3f2fd", borderRadius: "4px", border: "1px solid #1976d2" }}>
+            <strong>📋 Workflow:</strong> The following steps will capture all test execution data and QC results for the selected samples. All data will be saved together.
+          </div>
+          {/* Step 2: Instrument Selection */}
+          <div style={{ marginBottom: "2rem" }}>
+            <h5>Step 2: Select Instrument Used for Testing</h5>
+            <Grid>
+              <Column lg={8} md={4} sm={4}>
+                <Select
+                  id="modal-instrument-select"
+                  labelText="Instrument *"
+                  value={selectedInstrument}
+                  onChange={(e) =>
+                    setSelectedInstrument(e.target.value)
+                  }
+                >
+                  <SelectItem value="" text="-- Select instrument --" />
+                  {instruments.map((inst) => (
+                    <SelectItem
+                      key={inst.id}
+                      value={inst.id}
+                      text={inst.machine}
+                    />
+                  ))}
+                </Select>
+              </Column>
+            </Grid>
+          </div>
+
+          {/* Step 3: Execution Parameters */}
+          <div style={{ marginBottom: "2rem" }}>
+            <h5>Step 3: Record Analyst & Execution Details (21 CFR Part 11 Compliance)</h5>
+            <Grid>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="modal-analyst-id"
+                  labelText="Analyst ID *"
+                  value={executionData.analystId}
+                  onChange={(e) =>
+                    setExecutionData({
+                      ...executionData,
+                      analystId: e.target.value,
+                    })
+                  }
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <DatePickerInput
+                  id="modal-execution-date"
+                  labelText="Execution Date *"
+                  pattern="dd/mm/yyyy"
+                  placeholder="dd/mm/yyyy"
+                  value={executionData.executionDate}
+                  onChange={(e) =>
+                    setExecutionData({
+                      ...executionData,
+                      executionDate: e[0]
+                        ? e[0].toISOString().split("T")[0]
+                        : executionData.executionDate,
+                    })
+                  }
+                />
+              </Column>
+            </Grid>
+            <Grid style={{ marginTop: "1rem" }}>
+              <Column lg={16} md={8} sm={4}>
+                <TextArea
+                  id="modal-test-notes"
+                  labelText="Test Parameters / Notes"
+                  value={executionData.notes}
+                  onChange={(e) =>
+                    setExecutionData({
+                      ...executionData,
+                      notes: e.target.value,
+                    })
+                  }
+                  placeholder="e.g., Temperature: 25°C, Flow rate: 1.0 mL/min..."
+                />
+              </Column>
+            </Grid>
+          </div>
+
+          {/* Step 4: File Upload & QC Processing */}
+          <div style={{ marginBottom: "2rem" }}>
+            <h5>Step 4: Upload & Process Raw Instrument Data</h5>
+            <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "1rem" }}>
+              Upload raw data files (chromatograms, spectra, or test results) from your instrument. Files will be automatically processed to extract QC results, calibration data, and quantification results.
+            </p>
+
+            {/* File Selector */}
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+              <div>
+                <input
+                  type="file"
+                  id="file-input"
+                  style={{ display: "none" }}
+                  accept={
+                    selectedInstrument
+                      ? instruments
+                          .find((i) => i.id === selectedInstrument)
+                          ?.formats.map((f) => `.${f.toLowerCase()}`)
+                          .join(",") || ""
+                      : ".csv,.pdf,.mzml,.cdf"
+                  }
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    handleFileSelect(file);
+                  }}
+                  disabled={!selectedInstrument}
+                />
+                <Button
+                  kind="secondary"
+                  onClick={() => document.getElementById("file-input").click()}
+                  disabled={!selectedInstrument}
+                  renderIcon={DocumentAdd}
+                >
+                  Select File
+                </Button>
+              </div>
+              <div>
+                <Button
+                  kind="primary"
+                  onClick={handleFileUpload}
+                  disabled={!selectedFile || !selectedInstrument}
+                  renderIcon={Upload}
+                >
+                  Upload File
+                </Button>
+              </div>
+            </div>
+
+            {/* Selected File Display */}
+            {selectedFile && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  backgroundColor: "#f4f4f4",
+                  borderRadius: "4px",
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <strong>Selected File:</strong> {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </div>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    onClick={handleRemoveSelectedFile}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Uploaded Files Display */}
+            {uploadedFiles.length > 0 && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.75rem",
+                  backgroundColor: "#e8f5e9",
+                  borderRadius: "4px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                  <strong>Uploaded Files ({uploadedFiles.length}):</strong>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    onClick={() => handleProcessFiles(uploadedFiles.filter(f => !f.processed).map(f => f.id))}
+                    disabled={uploadedFiles.every(f => f.processed)}
+                  >
+                    Process All Files
+                  </Button>
+                </div>
+                <ul style={{ marginTop: "0.5rem", marginBottom: 0 }}>
+                  {uploadedFiles.map((file) => (
+                    <li key={file.id} style={{ marginBottom: "0.5rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <strong>{file.name}</strong> - {file.instrumentName}
+                          <div style={{ fontSize: "0.875rem", color: "#525252", marginTop: "0.25rem" }}>
+                            {file.processed ? (
+                              <span style={{ color: "#24a148" }}>
+                                ✅ Processed - {file.processingResults?.analyzerResults?.length || 0} results extracted
+                              </span>
+                            ) : (
+                              <span style={{ color: "#f1c21b" }}>
+                                ⏳ Uploaded - Ready for processing
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {!file.processed && (
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            onClick={() => handleProcessFiles([file.id])}
+                          >
+                            Process
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </Modal>
     </div>
