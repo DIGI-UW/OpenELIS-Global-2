@@ -554,6 +554,63 @@ function BioanalyticalAnalyticalExecutionPage({
     refreshTabData,
   ]);
 
+  // Calculate bioequivalence statistics from quantification results for Stage 4
+  const calculateBioequivalenceStats = useCallback(() => {
+    if (!quantificationResults || quantificationResults.length === 0) {
+      return null;
+    }
+
+    const concentrations = quantificationResults
+      .map((result) => {
+        const value = parseFloat(result.concentration || 0);
+        return isNaN(value) ? 0 : value;
+      })
+      .filter((v) => v > 0);
+
+    if (concentrations.length === 0) {
+      return null;
+    }
+
+    // Calculate mean
+    const mean =
+      concentrations.reduce((a, b) => a + b, 0) / concentrations.length;
+
+    // Calculate standard deviation
+    const variance =
+      concentrations.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) /
+      concentrations.length;
+    const sd = Math.sqrt(variance);
+
+    // Calculate coefficient of variation
+    const cv = (sd / mean) * 100;
+
+    // Calculate accuracy percentage
+    const accuracyValues = quantificationResults
+      .map((r) => parseFloat(r.accuracyPercent || 0))
+      .filter((v) => !isNaN(v));
+    const meanAccuracy =
+      accuracyValues.length > 0
+        ? accuracyValues.reduce((a, b) => a + b, 0) / accuracyValues.length
+        : 100;
+
+    // Determine regulatory compliance
+    // FDA Bioequivalence criteria: CV < 20% and Mean accuracy 80-120%
+    const isCompliant = cv < 20 && meanAccuracy >= 80 && meanAccuracy <= 120;
+
+    const units = quantificationResults[0]?.units || "ng/mL";
+
+    return {
+      dataPoints: quantificationResults.length,
+      mean: `${mean.toFixed(1)} ${units}`,
+      sd: sd.toFixed(1),
+      cv: `${cv.toFixed(1)}%`,
+      min: `${Math.min(...concentrations).toFixed(1)} ${units}`,
+      max: `${Math.max(...concentrations).toFixed(1)} ${units}`,
+      meanAccuracy: `${meanAccuracy.toFixed(1)}%`,
+      regulatoryStatus: isCompliant ? "COMPLIANT" : "NON_COMPLIANT",
+    };
+  }, [quantificationResults]);
+
   const handleCompleteExecution = useCallback(() => {
     // Validation: Check if samples are selected (same as Stage 1)
     if (selectedSampleIds.length === 0) {
@@ -594,6 +651,9 @@ function BioanalyticalAnalyticalExecutionPage({
     );
     const existingData = firstSelectedSample?.data || {};
 
+    // Calculate bioequivalence statistics for Stage 4 reporting
+    const bioequivalenceStats = calculateBioequivalenceStats();
+
     const completionPayload = {
       sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)), // Same format as Stage 1
       data: {
@@ -614,6 +674,10 @@ function BioanalyticalAnalyticalExecutionPage({
         qcResults: qcResults,
         calibrationData: calibrationData,
         quantificationResults: quantificationResults,
+        // Bioequivalence statistics for Stage 4 reporting
+        ...(bioequivalenceStats && {
+          bioequivalenceStats: bioequivalenceStats,
+        }),
         testExecution: {
           // Stage 4 expects "testExecution" not "executionData"
           ...executionData,
@@ -625,6 +689,9 @@ function BioanalyticalAnalyticalExecutionPage({
           qcApproved: qcApproved,
           deviations: deviations.length,
           executionDate: new Date().toISOString(),
+          ...(bioequivalenceStats && {
+            bioequivalenceStats: bioequivalenceStats,
+          }),
         },
         executionData: {
           // Keep for backward compatibility
@@ -772,6 +839,7 @@ function BioanalyticalAnalyticalExecutionPage({
     onProgressUpdate,
     fetchSamples,
     notebookId,
+    calculateBioequivalenceStats,
   ]);
 
   const handleAddDeviation = useCallback(() => {
