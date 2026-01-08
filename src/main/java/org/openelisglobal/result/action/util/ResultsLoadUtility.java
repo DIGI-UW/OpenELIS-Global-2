@@ -28,6 +28,7 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -47,8 +48,6 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.note.service.NoteService;
@@ -90,6 +89,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -116,7 +116,8 @@ public class ResultsLoadUtility {
     private List<Integer> analysisStatusList = new ArrayList<>();
     private List<Integer> sampleStatusList = new ArrayList<>();
 
-    private List<InventoryKitItem> activeKits;
+    // TODO: Re-enable after new inventory frontend integration
+    // private List<InventoryKitItem> activeKits;
 
     private Patient currentPatient;
 
@@ -150,6 +151,8 @@ public class ResultsLoadUtility {
     private SampleItemService sampleItemService;
     @Autowired
     private SampleQaEventService sampleQaEventService;
+    @Autowired
+    private TestResultService testResultService;
 
     private final StatusRules statusRules = new StatusRules();
 
@@ -208,7 +211,8 @@ public class ResultsLoadUtility {
     public List<TestResultItem> getGroupedTestsForSample(Sample sample, Patient patient) {
 
         reflexGroup = 1;
-        activeKits = null;
+        // TODO: Re-enable after new inventory frontend integration
+        // activeKits = null;
         samples = new ArrayList<>();
 
         if (sample != null) {
@@ -216,15 +220,18 @@ public class ResultsLoadUtility {
         }
 
         currentPatient = patient;
-        PersonService personService = SpringContext.getBean(PersonService.class);
-        personService.getData(patient.getPerson());
+        if (patient != null && patient.getPerson() != null) {
+            PersonService personService = SpringContext.getBean(PersonService.class);
+            personService.getData(patient.getPerson());
+        }
 
         return getGroupedTestsForSamples();
     }
 
     public List<TestResultItem> getGroupedTestsForPatient(Patient patient) {
         reflexGroup = 1;
-        activeKits = null;
+        // TODO: Re-enable after new inventory frontend integration
+        // activeKits = null;
         inventoryNeeded = false;
 
         currentPatient = patient;
@@ -278,7 +285,8 @@ public class ResultsLoadUtility {
     public List<TestResultItem> getGroupedTestsForAnalysisList(List<Analysis> filteredAnalysisList, boolean forwardSort)
             throws LIMSRuntimeException {
 
-        activeKits = null;
+        // TODO: Re-enable after new inventory frontend integration
+        // activeKits = null;
         inventoryNeeded = false;
         reflexGroup = 1;
 
@@ -629,6 +637,21 @@ public class ResultsLoadUtility {
 
         TestService testService = SpringContext.getBean(TestService.class);
         Test test = analysisService.getTest(analysis);
+
+        // Guard against null test - this can happen if analysis has null test_id or
+        // test relationship isn't loaded
+        if (test == null) {
+            LogEvent.logError(this.getClass().getSimpleName(), "createTestResultItem",
+                    "Analysis " + analysis.getId() + " has null test. Cannot create TestResultItem.");
+            // Return a minimal TestResultItem with error indication
+            TestResultItem errorItem = new TestResultItem();
+            errorItem.setAccessionNumber(accessionNumber);
+            errorItem.setAnalysisId(analysis.getId());
+            errorItem.setSequenceNumber(sequenceNumber);
+            errorItem.setTestName("ERROR: Test not found for analysis");
+            return errorItem;
+        }
+
         ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,
                 currentPatient);
 
@@ -646,7 +669,8 @@ public class ResultsLoadUtility {
             testKitInventoryId = testKit.getInventoryLocationId();
             testKitResult.setId(testKit.getResultId());
             resultService.getData(testKitResult);
-            testKitInactive = kitNotInActiveKitList(testKitInventoryId);
+            // TODO: Re-enable after new inventory frontend integration
+            // testKitInactive = kitNotInActiveKitList(testKitInventoryId);
         }
 
         String displayTestName = analysisService.getTestDisplayName(analysis);
@@ -688,10 +712,27 @@ public class ResultsLoadUtility {
         if (resultDisplayType != ResultDisplayType.TEXT) {
             inventoryNeeded = true;
         }
+        ResultFile file = analysis.getResultFile();
+
+        TestResultItem.ResultFileForm form = new TestResultItem.ResultFileForm();
+        if (file != null) {
+            form.setFileName(file.getFileName());
+            form.setFileType(file.getFileType());
+            form.setContent(file.getContent());
+            form.setUploadedAt(file.getUploadedAt());
+            form.setLastupdated(file.getLastupdated());
+        }
+
         TestResultItem testItem = new TestResultItem();
 
         testItem.setAccessionNumber(accessionNumber);
         testItem.setAnalysisId(analysis.getId());
+        // Set SampleItem ID for storage location lookup
+        if (analysis.getSampleItem() != null && analysis.getSampleItem().getId() != null) {
+            testItem.setSampleItemId(analysis.getSampleItem().getId());
+        }
+        testItem.setSampleItemExternalId(
+                analysis.getSampleItem() != null ? analysis.getSampleItem().getExternalId() : null);
         testItem.setSequenceNumber(sequenceNumber);
         testItem.setReceivedDate(receivedDate);
         testItem.setTestName(displayTestName);
@@ -736,6 +777,7 @@ public class ResultsLoadUtility {
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
         testItem.setDisplayResultAsLog(hasLogValue(test));
+        testItem.setResultFile(form);
         testItem.setNonconforming(
                 analysisService.isParentNonConforming(analysis) || SpringContext.getBean(IStatusService.class)
                         .matches(analysisService.getStatusId(analysis), AnalysisStatus.TechnicalRejected));
@@ -952,18 +994,19 @@ public class ResultsLoadUtility {
         return normal;
     }
 
-    private boolean kitNotInActiveKitList(String testKitId) {
-        List<InventoryKitItem> activeKits = getActiveKits();
-
-        for (InventoryKitItem kit : activeKits) {
-            // The locationID is the reference held in the DB
-            if (testKitId.equals(kit.getInventoryLocationId())) {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    // TODO: Re-enable after new inventory frontend integration
+    // private boolean kitNotInActiveKitList(String testKitId) {
+    // List<InventoryKitItem> activeKits = getActiveKits();
+    //
+    // for (InventoryKitItem kit : activeKits) {
+    // // The locationID is the reference held in the DB
+    // if (testKitId.equals(kit.getInventoryLocationId())) {
+    // return false;
+    // }
+    // }
+    //
+    // return true;
+    // }
 
     private String getCurrentDate() {
         if (GenericValidator.isBlankOrNull(currentDate)) {
@@ -989,14 +1032,17 @@ public class ResultsLoadUtility {
         analysisStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
     }
 
-    private List<InventoryKitItem> getActiveKits() {
-        if (activeKits == null) {
-            InventoryUtility inventoryUtil = SpringContext.getBean(InventoryUtility.class);
-            activeKits = inventoryUtil.getExistingActiveInventory();
-        }
-
-        return activeKits;
-    }
+    // TODO: Re-enable after new inventory frontend integration
+    // TODO: Re-enable after new inventory frontend integration
+    // // private List<InventoryKitItem> getActiveKits() {
+    // if (activeKits == null) {
+    // InventoryUtility inventoryUtil =
+    // SpringContext.getBean(InventoryUtility.class);
+    // activeKits = inventoryUtil.getExistingActiveInventory();
+    // }
+    //
+    // return activeKits;
+    // }
 
     public void setLockCurrentResults(boolean lockCurrentResults) {
         this.lockCurrentResults = lockCurrentResults;
@@ -1028,10 +1074,21 @@ public class ResultsLoadUtility {
     }
 
     public List<TestResultItem> getUnfinishedTestResultItemsByAccession(String accessionNumber) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "Searching for unfinished tests with accessionNumber: " + accessionNumber + ", "
+                        + "analysisStatusList size: " + (analysisStatusList != null ? analysisStatusList.size() : 0)
+                        + ", " + "sampleStatusList size: " + (sampleStatusList != null ? sampleStatusList.size() : 0));
         List<Analysis> analysisList = analysisService.getPageAnalysisByStatusFromAccession(analysisStatusList,
                 sampleStatusList, accessionNumber);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "Found " + (analysisList != null ? analysisList.size() : 0) + " analyses for accessionNumber: "
+                        + accessionNumber);
 
-        return getGroupedTestsForAnalysisList(analysisList, SORT_FORWARD);
+        List<TestResultItem> result = getGroupedTestsForAnalysisList(analysisList, SORT_FORWARD);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getUnfinishedTestResultItemsByAccession",
+                "getGroupedTestsForAnalysisList returned " + (result != null ? result.size() : 0)
+                        + " test result items");
+        return result;
     }
 
     public List<TestResultItem> getUnfinishedTestResultItemsByAccession(String accessionNumber,

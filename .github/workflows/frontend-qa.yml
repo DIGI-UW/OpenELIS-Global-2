@@ -2,7 +2,7 @@ name: OpenELIS Frontend QA framework workflow
 
 on:
   pull_request:
-    branches: [develop]
+     branches: [develop]
   workflow_dispatch:
   workflow_call: 
 
@@ -70,6 +70,12 @@ jobs:
         run: npx prettier ./ --check
         working-directory: frontend  
 
+      - name: Run Frontend Unit Tests (Jest)
+        run: npm test -- --watchAll=false --coverage=false
+        working-directory: frontend
+        env:
+          CI: true
+
       - name: Build OpenELIS Images and Run containers
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
@@ -77,13 +83,22 @@ jobs:
         run: npx cypress run --browser chrome --headless
         working-directory: frontend
 
+      # Upload Cypress screenshots on failure for debugging
+      - name: Upload Cypress screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: frontend/cypress/screenshots/**/*.png
+          if-no-files-found: ignore
+
       # In case of failure, uncomment this action and turn video: false to true in cypress.config.js
-      #- name: Upload Cypress videos on failure
-      #  if: failure()
-      #  uses: actions/upload-artifact@v4
-      #  with:
-      #  name: cypress-videos
-      #  path: frontend/cypress/videos/*.mp4
+      # - name: Upload Cypress videos on failure
+      #   if: failure()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: cypress-videos
+      #     path: frontend/cypress/videos/**/*.mp4
 
       - name: Dump docker logs on failure
         if: failure()

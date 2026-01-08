@@ -4,6 +4,8 @@ import { IntlProvider } from "react-intl";
 import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
+import StorageDashboard from "./components/storage/StorageDashboard";
+import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import { Admin } from "./components";
@@ -18,6 +20,8 @@ import "./index.scss";
 import RedirectOldUI from "./RedirectOldUI";
 import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
+import PatientMerge from "./components/patient/PatientMerge";
+import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
@@ -28,6 +32,8 @@ import StudyValidation from "./components/validation/Index";
 import AnalyserResultIndex from "./components/analyserResults/Index";
 import PathologyDashboard from "./components/pathology/PathologyDashboard";
 import CytologyDashboard from "./components/cytology/CytologyDashBoard";
+import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
+import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
 import CytologyCaseView from "./components/cytology/CytologyCaseView";
 import PathologyCaseView from "./components/pathology/PathologyCaseView";
 import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
@@ -44,6 +50,12 @@ import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.j
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
 import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
+import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
+import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
+import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import ProgramDashboard from "./components/program/programDashboard.jsx";
+import ProgramCaseView from "./components/program/programCaseView.jsx";
+import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
   let i18nConfig = {
@@ -58,7 +70,6 @@ export default function App() {
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
     useState(false);
-  const [locale, setLocale] = useState("en");
 
   useEffect(() => {
     getUserSessionDetails();
@@ -180,14 +191,17 @@ export default function App() {
     i18nConfig.messages = languages[lang].messages;
     i18nConfig.locale = lang;
     localStorage.setItem("locale", lang);
-    setLocale(lang);
   };
 
   const changeLanguageBackend = async (lang) => {
     if (userSessionDetails.authenticated) {
-      getFromOpenElisServer("/Home?lang=" + lang, () => {});
+      getFromOpenElisServer("/Home?lang=" + lang, () => {
+        // Language changed on backend
+      });
     } else {
-      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {});
+      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {
+        // Language changed on backend
+      });
     }
   };
 
@@ -245,6 +259,36 @@ export default function App() {
                   role=""
                 />
                 <SecureRoute
+                  path="/GenericSample/Order"
+                  exact
+                  component={() => {
+                    const GenericSampleOrder =
+                      require("./components/genericSample/GenericSampleOrder").default;
+                    return <GenericSampleOrder />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Edit"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderEdit =
+                      require("./components/genericSample/GenericSampleOrderEdit").default;
+                    return <GenericSampleOrderEdit />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Import"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderImport =
+                      require("./components/genericSample/GenericSampleOrderImport").default;
+                    return <GenericSampleOrderImport />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
                   path="/Dashboard"
                   exact
                   component={() => <Home />}
@@ -258,7 +302,6 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/MasterListsPage"
-                  exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
@@ -295,7 +338,66 @@ export default function App() {
                   exact
                   component={() => <CytologyDashboard />}
                   role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/genericProgram"
+                  exact
+                  component={() => <ProgramDashboard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/programView/:programSampleId"
+                  exact
+                  component={() => <ProgramCaseView />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  component={() => <FreezerMonitoringDashboard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/NoteBookDashboard"
+                  exact
+                  component={() => <NoteBookDashBoard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/NoteBookEntryForm/:notebookid"
+                  exact
+                  component={() => <NoteBookEntryForm />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/NoteBookEntryForm"
+                  exact
+                  component={() => <NoteBookEntryForm />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/NoteBookInstanceEntryForm/:notebookid"
+                  exact
+                  component={() => <NoteBookInstanceEntryForm />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NoteBookInstanceEditForm/:notebookentryid"
+                  exact
+                  component={() => <NoteBookInstanceEntryForm />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"
@@ -374,11 +476,57 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
+                  path="/Storage"
+                  exact
+                  component={() => <StorageDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/:tab"
+                  component={() => <StorageDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory"
+                  exact
+                  component={() => <InventoryManagement />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleManagement"
+                  exact
+                  component={() => <SampleManagement />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                <SecureRoute
+                  path="/GenericSample/Results"
+                  exact
+                  component={() => {
+                    const GenericSampleResults =
+                      require("./components/genericSample/GenericSampleResults").default;
+                    return <GenericSampleResults />;
+                  }}
+                  role={[Roles.RESULTS]}
+                />
+                <SecureRoute
                   path="/PatientHistory"
                   exact
                   component={() => <PatientHistory />}
                   role={Roles.RECEPTION}
                 />
+                <SecureRoute
+                  path="/PatientMerge"
+                  exact
+                  component={() => <PatientMerge />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/Aliquot"
+                  exact
+                  component={() => <Aliquot />}
+                  role={Roles.RECEPTION}
+                />
+
                 <SecureRoute
                   path="/PatientResults/:patientId"
                   exact

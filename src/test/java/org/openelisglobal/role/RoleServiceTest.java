@@ -30,7 +30,7 @@ public class RoleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllActiveRoles_shouldReturnAllActiveRoles() {
-        Assert.assertEquals(4, roleService.getAllActiveRoles().size());
+        Assert.assertEquals(6, roleService.getAllActiveRoles().size());
     }
 
     @Test
@@ -55,7 +55,7 @@ public class RoleServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllRoles_shouldReturnAllRoles() {
-        Assert.assertEquals(5, roleService.getAllRoles().size());
+        Assert.assertEquals(6, roleService.getAllRoles().size());
     }
 
     @Test

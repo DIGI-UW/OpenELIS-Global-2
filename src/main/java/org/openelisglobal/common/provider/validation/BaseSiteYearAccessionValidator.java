@@ -98,6 +98,9 @@ public abstract class BaseSiteYearAccessionValidator {
     }
 
     public ValidationResults validFormat(String accessionNumber, boolean checkDate) {
+        if (accessionNumber == null || accessionNumber.isEmpty()) {
+            return ValidationResults.FORMAT_FAIL;
+        }
         if (!Boolean
                 .valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.ACCESSION_NUMBER_VALIDATE))) {
             return AccessionNumberUtil.containsBlackListCharacters(accessionNumber) ? ValidationResults.FORMAT_FAIL

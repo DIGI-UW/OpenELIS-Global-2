@@ -23,6 +23,7 @@ public class HealthCheckController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> odooHealth() {
         Map<String, Object> health = new HashMap<>();
+
         if (odooConnection.isAvailable()) {
             health.put("status", "UP");
             health.put("odoo", "Available");

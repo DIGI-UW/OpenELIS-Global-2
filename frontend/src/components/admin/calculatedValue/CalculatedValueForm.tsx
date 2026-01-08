@@ -43,7 +43,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.testmgt.calculated",
-    link: "/MasterListsPage#calculatedValue",
+    link: "/MasterListsPage/calculatedValue",
   },
 ];
 interface CalculatedValueProps {}
@@ -831,11 +831,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         <Grid>
                           <Column lg={16} md={8} sm={4}>
                             {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                            &nbsp;{" "}
                           </Column>
                           <Column lg={16}>
                             {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                            &nbsp;{" "}
                           </Column>
                         </Grid>
                         {calculation.operations.map(
@@ -902,11 +904,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                               </Column>
                               <Column lg={16} md={8} sm={4}>
                                 {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                &nbsp;{" "}
                               </Column>
                               <Column lg={16} md={8} sm={4}>
                                 {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                &nbsp;{" "}
                               </Column>
                             </Grid>
                           ),

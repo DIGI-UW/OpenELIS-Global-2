@@ -48,25 +48,35 @@ class StudyReportPage {
   }
 
   visitStudyReports() {
-    cy.get("[data-cy='sidenav-button-menu_reports_study']").click();
+    cy.get("[data-cy='sidenav-button-menu_reports_study']")
+      .scrollIntoView({ behavior: "smooth" })
+      .click();
   }
 
   selectPatientStatusReport() {
-    cy.get("#openreports\\.patientreports\\.title_dropdown").click({
-      force: true,
-    });
+    cy.get("#openreports\\.patientreports\\.title_dropdown")
+      .scrollIntoView({ behavior: "smooth" })
+      .click({
+        force: true,
+      });
   }
 
   selectARV() {
-    cy.get("#project\\.ARVStudies\\.name_dropdown").click({ force: true });
+    cy.get("#project\\.ARVStudies\\.name_dropdown")
+      .scrollIntoView({ behavior: "smooth" })
+      .click({ force: true });
   }
 
   selectVersion1() {
-    cy.get("#menu_reports_arv_initial1_nav").click({ force: true });
+    cy.get("#menu_reports_arv_initial1_nav")
+      .scrollIntoView({ behavior: "smooth" })
+      .click({ force: true });
   }
 
   selectVersion2() {
-    cy.get("#menu_reports_arv_initial2_nav").click({ force: true });
+    cy.get("#menu_reports_arv_initial2_nav")
+      .scrollIntoView({ behavior: "smooth" })
+      .click({ force: true });
   }
   visitARVInitialVersion1() {
     //this.visitStudyReports();
@@ -90,7 +100,9 @@ class StudyReportPage {
   }
 
   selectFollowUpVersion1() {
-    cy.get("#menu_reports_arv_followup1_nav").click({ force: true });
+    cy.get("#menu_reports_arv_followup1_nav")
+      .scrollIntoView({ behavior: "smooth" })
+      .click({ force: true });
   }
 
   visitARVFollowUpVersion1() {
@@ -133,7 +145,9 @@ class StudyReportPage {
   }
 
   visitAuditTrailReport() {
-    cy.get("#menu_reports_auditTrail\\.study_nav").click({ force: true });
+    cy.get("#menu_reports_auditTrail\\.study_nav")
+      .scrollIntoView({ behavior: "smooth" })
+      .click({ force: true });
   }
 
   validateAudit() {
@@ -317,7 +331,9 @@ class StudyReportPage {
   }
 
   selectNCReports() {
-    cy.get("[data-cy='menu_reports_nonconformity_study']").click();
+    cy.get("[data-cy='menu_reports_nonconformity_study']")
+      .scrollIntoView({ behavior: "smooth" })
+      .click();
   }
 
   selectNCReportsByDate() {

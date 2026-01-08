@@ -17,6 +17,7 @@ import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
+import org.openelisglobal.common.services.IStatusService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private IStatusService statusService;
 
     protected MockMvc mockMvc;
 
@@ -99,6 +103,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             cleanRowsInCurrentConnection(tableNames);
 
             DatabaseOperation.REFRESH.execute(connection, dataset);
+
+            // Refresh StatusService cache to pick up any status_of_sample changes
+            // from the loaded test data
+            if (statusService != null) {
+                statusService.refreshCache();
+            }
         } finally {
             if (inputStream != null) {
                 inputStream.close();

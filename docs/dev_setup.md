@@ -66,7 +66,7 @@ Detailed instructions found
 ## Test If OpenELIS-Global-2 Deploys
 
 1. Open terminal to the OpenELIS-Global-2 directory
-2. `docker-compose up -d --build`
+2. `docker compose up -d --build`
 3. Access the application at
    [https://localhost:8443/OpenELIS-Global](https://localhost:8443/OpenELIS-Global)
 4. Might need to dismiss a security warning
@@ -165,7 +165,7 @@ Instructions are here https://projectlombok.org/setup/eclipse
 ### Run Everything but OE in docker
 
 1. Comment out the oe.openelisci.org service in docker-compose.yml
-2. `docker-compose up -d`
+2. `docker compose up -d`
 3. if oe is already running in docker, kill the container
 
 ### Start Tomcat in Eclipse

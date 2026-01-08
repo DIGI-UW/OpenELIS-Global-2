@@ -17,8 +17,10 @@ package org.openelisglobal.sampleitem.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -227,5 +229,122 @@ public class SampleItemDAOImpl extends BaseDAOImpl<SampleItem, String> implement
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getSampleItemsByExternalID(String externalId) throws LIMSRuntimeException {
+        List<SampleItem> sampleItems = null;
+        try {
+            String hql = "FROM SampleItem WHERE external_id = :externalId";
+            sampleItems = entityManager.unwrap(Session.class).createQuery(hql, SampleItem.class)
+                    .setParameter("externalId", externalId).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItem readSampleItemsByExternalId()", e);
+        }
+
+        return sampleItems;
+    }
+
+    @Override
+    @Transactional
+    public boolean insertData(SampleItem sampleItem) throws LIMSRuntimeException {
+        try {
+            List<SampleItem> existingItems = getSampleItemsByExternalID(sampleItem.getExternalId());
+
+            if (existingItems.isEmpty()) {
+
+                entityManager.persist(sampleItem);
+            } else {
+                SampleItem existing = existingItems.getLast();
+
+                sampleItem.setId(existing.getId());
+                entityManager.merge(sampleItem);
+            }
+
+            return true;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItem insertData()", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
+            List<List<String>> analysisGroups) throws LIMSRuntimeException {
+
+        try {
+            // 1. Update initial sample item
+            insertData(lastSampleItem);
+
+            // 2. Batch insert all aliquots first
+            for (SampleItem aliquot : sampleItemsToInsert) {
+                insertData(aliquot);
+            }
+
+            // 3. Flush to get IDs for all aliquots
+            entityManager.flush();
+
+            // 4. Batch update all analyses
+            for (int i = 0; i < sampleItemsToInsert.size(); i++) {
+                SampleItem aliquot = sampleItemsToInsert.get(i);
+                List<String> analysisIds = analysisGroups.get(i);
+
+                if (analysisIds != null && !analysisIds.isEmpty()) {
+                    updateAnalysesForAliquot(aliquot, analysisIds);
+                }
+            }
+
+            return true;
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in insertAliquots()", e);
+        }
+    }
+
+    @Transactional
+    protected void updateAnalysesForAliquot(SampleItem aliquot, List<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return;
+        }
+        List<Integer> analysisIdInts = analysisIds.stream().map(Integer::parseInt).collect(Collectors.toList());
+        Integer aliquotIdInt = Integer.parseInt(aliquot.getId().toString());
+        String updateQuery = "UPDATE analysis SET sampitem_id = :aliquotId WHERE id IN (:analysisIds)";
+        entityManager.createNativeQuery(updateQuery).setParameter("aliquotId", aliquotIdInt)
+                .setParameter("analysisIds", analysisIdInts).executeUpdate();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getSampleItemsWithHierarchy(List<String> sampleItemIds) throws LIMSRuntimeException {
+        if (sampleItemIds == null || sampleItemIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            // Use JOIN FETCH to eagerly load parent and child aliquots in a single query
+            // This prevents LazyInitializationException when DTOs are compiled outside
+            // transaction boundaries (per Constitution III.7)
+            String hql = "SELECT DISTINCT si FROM SampleItem si" + " LEFT JOIN FETCH si.parentSampleItem"
+                    + " LEFT JOIN FETCH si.childAliquots" + " WHERE si.id IN (:ids)";
+
+            Query<SampleItem> query = entityManager.unwrap(Session.class).createQuery(hql, SampleItem.class);
+            // Convert String IDs to Integer to match database numeric type (same pattern as
+            // AnalysisDAOImpl line 1511)
+            query.setParameterList("ids",
+                    sampleItemIds.stream().map(e -> Integer.parseInt(e)).collect(Collectors.toList()));
+
+            // Use LinkedHashSet to remove duplicates caused by JOIN FETCH on collections
+            // while preserving insertion order. Hibernate's DISTINCT doesn't always work
+            // with collection fetches.
+            List<SampleItem> results = query.list();
+            return new ArrayList<>(new LinkedHashSet<>(results));
+        } catch (HibernateException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in SampleItemDAO getSampleItemsWithHierarchy()", e);
+        }
     }
 }

@@ -1,0 +1,68 @@
+.patient-header-2 {
+  border: 1px solid #ddd;
+  padding: 3%;
+  justify-content: center;
+  text-align: left;
+  margin-top: 20px;
+  background-color: #ffffff;
+  border-radius: 5px;
+  margin-top: 1%;
+}
+.table-item {
+  border: 1px solid purple;
+  border-radius: 5px;
+  padding: 1%;
+}
+.table-container {
+  background-color: #ffffff;
+  border-radius: 5px;
+  padding: 2%;
+  margin-top: 20px;
+}
+.dashboard-div {
+  box-shadow: 0.1rem 0.1rem 0.1rem 0.1rem #e2dddd;
+  text-align: right;
+}
+.dashboard-containar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 50px;
+  padding: 50px;
+}
+@media screen and (max-width: 1150px) and (min-width: 700px) {
+  .dashboard-containar {
+    gap: 40px;
+    padding: 30px;
+  }
+  .dashboard-div {
+    min-width: 175px;
+  }
+  .tile-title-Programe {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 925px) {
+  .dashboard-containar {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    padding: 22px;
+  }
+}
+
+@media (max-width: 500px) {
+  .dashboard-containar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (max-width: 700px) and (min-width: 450px) {
+  .dashboard-containar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    padding: 30px;
+  }
+  .tile-title-Programe {
+    font-size: 0.9rem;
+  }
+}

@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK TABLE -->
+    <!-- ======================================================== -->
+    <property name="now" value="now()" dbms="postgresql"/>
+    <changeSet id="create-notebook-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating the main NOTEBOOK table to store experiment notebooks.</comment>
+        <createTable tableName="notebook">
+            <column name="id" type="INTEGER" valueSequenceNext="notebook_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook"/>
+            </column>
+            <column name="title" type="VARCHAR(255)"/>
+            <column name="type" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_notebook_type_dictionary"
+                             referencedTableName="dictionary" referencedColumnNames="id"/>
+            </column>
+            <column name="objective" type="VARCHAR(255)"/>
+            <column name="protocol" type="VARCHAR(255)"/>
+            <column name="content" type="TEXT"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="is_template" type="boolean" />
+            <column name="technician_id" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_notebook_technician"
+                             referencedTableName="system_user" referencedColumnNames="id"/>
+            </column>
+            <column name="creator_id" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_notebook_creator"
+                             referencedTableName="system_user" referencedColumnNames="id"/>
+            </column>
+            <column name="questionnaire_fhir_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="datetime" valueComputed="${now}" />
+            <column name="date_created" type="datetime" valueComputed="${now}" />
+        </createTable>
+        <createSequence sequenceName="notebook_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_page" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE table to store individual pages within a notebook.</comment>
+        <createTable tableName="notebook_page">
+            <column name="id" type="INTEGER" valueSequenceNext="notebook_page_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_page"/>
+            </column>
+            <column name="title" type="VARCHAR(255)"/>
+            <column name="last_updated" type="datetime" valueComputed="${now}" />
+            <column name="instructions" type="TEXT"/>
+            <column name="content" type="TEXT"/>
+            <column name="page_order" type="INTEGER"/>
+             <column name="completed" type="boolean" defaultValueBoolean="false"/>
+            <column name="sample_type_id" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_page_sample_type"
+                             referencedTableName="type_of_sample" referencedColumnNames="id"/>
+            </column>
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_page_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="notebook_page_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_FILE TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-file-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_file" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_FILE table to store binary file attachments related to a notebook.</comment>
+        <createTable tableName="notebook_file">
+            <column name="id" type="INTEGER" valueSequenceNext="notebook_file_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_file"/>
+            </column>
+            <column name="file_data" type="bytea"/>
+            <column name="file_type" type="VARCHAR(255)"/>
+            <column name="file_name" type="VARCHAR(255)"/>
+             <column name="last_updated" type="datetime" valueComputed="${now}" />
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_file_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="notebook_file_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_COMMENT TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-comment-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_comment" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_COMMENT table to store comments associated with a notebook.</comment>
+        <createTable tableName="notebook_comment">
+            <column name="id" type="INTEGER" valueSequenceNext="notebook_comment_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_comment"/>
+            </column>
+            <column name="comment_text" type="TEXT"/>
+            <column name="date_created" type="datetime" valueComputed="${now}" />
+            <column name="last_updated" type="datetime" valueComputed="${now}" />
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_comment_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="system_user_id" type="NUMERIC(10)">
+                <constraints nullable="false" foreignKeyName="fk_comment_system_user"
+                             referencedTableName="system_user" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="notebook_comment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_TAGS TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-tags-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_tags" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_TAGS table to store tags (as an element collection) associated with each notebook.</comment>
+        <createTable tableName="notebook_tags">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_tags_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="tag" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_SAMPLES TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-samples-list-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_samples_list" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_SAMPLES join table linking notebooks to SampleItem entities.</comment>
+        <createTable tableName="notebook_samples_list">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_samples_list_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_item_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_samples_list_sampleitem"
+                             referencedTableName="sample_item" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_ANALYSERS TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-analysers-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_analysers" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ANALYSERS join table linking notebooks to Analyzer entities.</comment>
+        <createTable tableName="notebook_analysers">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_analysers_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="analyser_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_analysers_analyser"
+                             referencedTableName="analyzer" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+    </changeSet>
+     <!-- ======================================================== -->
+    <!-- NOTEBOOK_ENTRIES TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-entries-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_entries" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ENTRIES join table linking notebooks to their entries.</comment>
+        <createTable tableName="notebook_entries">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_entries_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="entry_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_entries_entry"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_PANELS TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-panels-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_page_panels" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE_PANELS table to store panels associated with each notebook page.</comment>
+        <createTable tableName="notebook_page_panels">
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_panels_notebook_page"
+                             referencedTableName="notebook_page" referencedColumnNames="id"/>
+            </column>
+            <column name="panel" type="NUMERIC(10)">
+                <constraints nullable="false" foreignKeyName="fk_panel_id"
+                             referencedTableName="panel" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_PAGE_TESTS TABLE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-tests-table" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_page_tests" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE_TESTS table to store tests associated with each notebook page.</comment>
+        <createTable tableName="notebook_page_tests">
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_tests_notebook_page"
+                             referencedTableName="notebook_page" referencedColumnNames="id"/>
+            </column>
+            <column name="test" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="mozzymutesa" id="create-notebook-menu-option">
+        <preConditions>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_notebook'
+            </sqlCheck>
+        </preConditions>
+        <comment>insert NoteBook tab menu option</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="presentation_order" value="125" />
+            <column name="element_id" value="menu_notebook" />
+            <column name="display_key" value="sidenav.label.notebook"  />
+            <column name="tool_tip_key" value="sidenav.label.notebook.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+            <column name="action_url" value="/NotebookDashboard" />
+        </insert>
+    </changeSet>
+     <changeSet author="mozzymutesa" id="add-notebook-expt-type-category">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">select count(*) from clinlims.dictionary_category where name = 'notebook_experiment_type';
+            </sqlCheck>
+    </preConditions>
+    <comment>adds notebook_experiment_typee dictionary Category in dictionary_category table</comment>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="NoteBook Experiment Type" />
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="NoteExpTyp" />
+            <column name="name" value="notebook_experiment_type" />
+        </insert>
+    </changeSet>
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK REFERENCE TABLE ENTRY -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-reference-table-entry" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'NOTEBOOK'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating NOTEBOOK reference table entry to enable audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="NOTEBOOK" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='NOTEBOOK'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_SAMPLES TABLE - Created as full entity table -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-samples-table-full" author="mozzymutesa">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_samples" schemaName="clinlims" />
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_SAMPLES table as entity table (not join table) to store notebook sample relationships with questionnaire responses.</comment>
+        <createTable tableName="notebook_samples">
+            <column name="id" type="INTEGER" valueSequenceNext="notebook_samples_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_samples"/>
+            </column>
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_samples_notebook"
+                             referencedTableName="notebook" referencedColumnNames="id"/>
+            </column>
+            <column name="sample_item_id" type="INTEGER">
+                <constraints nullable="false" foreignKeyName="fk_samples_sampleitem"
+                             referencedTableName="sample_item" referencedColumnNames="id"/>
+            </column>
+            <column name="questionnaire_response_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="datetime" valueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        <createSequence sequenceName="notebook_samples_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+</databaseChangeLog>
