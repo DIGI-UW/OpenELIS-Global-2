@@ -14,9 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.notebook.service.NoteBookPageService;
@@ -2466,25 +2465,12 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Request object for bulk processing operations.
      */
+    @Setter
+    @Getter
     public static class BulkProcessingRequest {
         private List<Integer> sampleIds;
         private Map<String, Object> processingData;
 
-        public List<Integer> getSampleIds() {
-            return sampleIds;
-        }
-
-        public void setSampleIds(List<Integer> sampleIds) {
-            this.sampleIds = sampleIds;
-        }
-
-        public Map<String, Object> getProcessingData() {
-            return processingData;
-        }
-
-        public void setProcessingData(Map<String, Object> processingData) {
-            this.processingData = processingData;
-        }
     }
 
     /**
@@ -2493,6 +2479,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * (slideCabinet, slideDrawer, slidePosition, slideCondition). Also supports
      * hierarchical storage selection (roomId, deviceId, shelfId, rackId, boxId).
      */
+    @Getter
     public static class ArchiveSamplesRequest {
         private List<String> sampleIds;
         private String storageLocation;
@@ -2518,152 +2505,76 @@ public class NotebookBulkOperationController extends BaseRestController {
         // Well assignments from auto-populate (sampleId -> wellCoordinate)
         private Map<String, String> wellAssignments;
 
-        public List<String> getSampleIds() {
-            return sampleIds;
-        }
-
         public void setSampleIds(List<String> sampleIds) {
             this.sampleIds = sampleIds;
-        }
-
-        public String getStorageLocation() {
-            return storageLocation;
         }
 
         public void setStorageLocation(String storageLocation) {
             this.storageLocation = storageLocation;
         }
 
-        public String getStorageBox() {
-            return storageBox;
-        }
-
         public void setStorageBox(String storageBox) {
             this.storageBox = storageBox;
-        }
-
-        public String getStoragePosition() {
-            return storagePosition;
         }
 
         public void setStoragePosition(String storagePosition) {
             this.storagePosition = storagePosition;
         }
 
-        public String getSlideCabinet() {
-            return slideCabinet;
-        }
-
         public void setSlideCabinet(String slideCabinet) {
             this.slideCabinet = slideCabinet;
-        }
-
-        public String getSlideDrawer() {
-            return slideDrawer;
         }
 
         public void setSlideDrawer(String slideDrawer) {
             this.slideDrawer = slideDrawer;
         }
 
-        public String getSlidePosition() {
-            return slidePosition;
-        }
-
         public void setSlidePosition(String slidePosition) {
             this.slidePosition = slidePosition;
-        }
-
-        public String getSlideCondition() {
-            return slideCondition;
         }
 
         public void setSlideCondition(String slideCondition) {
             this.slideCondition = slideCondition;
         }
 
-        public Integer getRoomId() {
-            return roomId;
-        }
-
         public void setRoomId(Integer roomId) {
             this.roomId = roomId;
-        }
-
-        public Integer getDeviceId() {
-            return deviceId;
         }
 
         public void setDeviceId(Integer deviceId) {
             this.deviceId = deviceId;
         }
 
-        public Integer getShelfId() {
-            return shelfId;
-        }
-
         public void setShelfId(Integer shelfId) {
             this.shelfId = shelfId;
-        }
-
-        public Integer getRackId() {
-            return rackId;
         }
 
         public void setRackId(Integer rackId) {
             this.rackId = rackId;
         }
 
-        public Integer getBoxId() {
-            return boxId;
-        }
-
         public void setBoxId(Integer boxId) {
             this.boxId = boxId;
-        }
-
-        public String getArchiveReason() {
-            return archiveReason;
         }
 
         public void setArchiveReason(String archiveReason) {
             this.archiveReason = archiveReason;
         }
 
-        public String getRetentionPeriod() {
-            return retentionPeriod;
-        }
-
         public void setRetentionPeriod(String retentionPeriod) {
             this.retentionPeriod = retentionPeriod;
-        }
-
-        public String getArchiveDate() {
-            return archiveDate;
         }
 
         public void setArchiveDate(String archiveDate) {
             this.archiveDate = archiveDate;
         }
 
-        public String getArchivedBy() {
-            return archivedBy;
-        }
-
         public void setArchivedBy(String archivedBy) {
             this.archivedBy = archivedBy;
         }
 
-        public String getNotes() {
-            return notes;
-        }
-
         public void setNotes(String notes) {
             this.notes = notes;
-        }
-
-        public Map<String, String> getWellAssignments() {
-            return wellAssignments;
         }
 
         public void setWellAssignments(Map<String, String> wellAssignments) {
@@ -2678,21 +2589,18 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Upload analytical data files (CSV, PDF, mzML) for processing
      *
-     * @param pageId Page ID for the notebook page
-     * @param file The uploaded file
+     * @param pageId       Page ID for the notebook page
+     * @param file         The uploaded file
      * @param instrumentId ID of the analytical instrument
-     * @param entryId Notebook entry ID
-     * @param httpRequest HTTP request for user session
+     * @param entryId      Notebook entry ID
+     * @param httpRequest  HTTP request for user session
      * @return Response with file upload results
      */
     @PostMapping(value = "/page/{pageId}/files/upload", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> uploadAnalyticalFile(
-            @PathVariable("pageId") Integer pageId,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("instrumentId") String instrumentId,
-            @RequestParam("pageId") String pageIdParam,
-            @RequestParam("entryId") String entryId,
+    public ResponseEntity<Map<String, Object>> uploadAnalyticalFile(@PathVariable("pageId") Integer pageId,
+            @RequestParam("file") MultipartFile file, @RequestParam("instrumentId") String instrumentId,
+            @RequestParam("pageId") String pageIdParam, @RequestParam("entryId") String entryId,
             HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
@@ -2716,16 +2624,16 @@ public class NotebookBulkOperationController extends BaseRestController {
             // Validate file format for specific instruments
             Map<String, List<String>> allowedFormats = new HashMap<>();
             allowedFormats.put("1", List.of("MZML", "CDF")); // LC-MS/MS
-            allowedFormats.put("2", List.of("CSV", "PDF"));  // HPLC
-            allowedFormats.put("3", List.of("CSV"));         // Dissolution Apparatus
-            allowedFormats.put("4", List.of("CSV"));         // Disintegration Tester
-            allowedFormats.put("5", List.of("CSV"));         // Hardness Tester
-            allowedFormats.put("6", List.of("CSV"));         // Friability Tester
-            allowedFormats.put("7", List.of("CSV"));         // Stability Chamber
-            allowedFormats.put("8", List.of("CSV", "PDF"));  // UV-Vis Spectrophotometer
-            allowedFormats.put("9", List.of("CSV", "PDF"));  // FTIR
-            allowedFormats.put("10", List.of("CSV"));        // Freezers
-            allowedFormats.put("11", List.of("CSV"));        // Millipore Water Purification
+            allowedFormats.put("2", List.of("CSV", "PDF")); // HPLC
+            allowedFormats.put("3", List.of("CSV")); // Dissolution Apparatus
+            allowedFormats.put("4", List.of("CSV")); // Disintegration Tester
+            allowedFormats.put("5", List.of("CSV")); // Hardness Tester
+            allowedFormats.put("6", List.of("CSV")); // Friability Tester
+            allowedFormats.put("7", List.of("CSV")); // Stability Chamber
+            allowedFormats.put("8", List.of("CSV", "PDF")); // UV-Vis Spectrophotometer
+            allowedFormats.put("9", List.of("CSV", "PDF")); // FTIR
+            allowedFormats.put("10", List.of("CSV")); // Freezers
+            allowedFormats.put("11", List.of("CSV")); // Millipore Water Purification
 
             List<String> validFormats = allowedFormats.get(instrumentId);
             if (validFormats == null || !validFormats.contains(fileExtension)) {
@@ -2752,7 +2660,7 @@ public class NotebookBulkOperationController extends BaseRestController {
 
             // Log upload event
             LogEvent.logInfo(this.getClass().getSimpleName(), "uploadAnalyticalFile",
-                "File uploaded: " + fileName + " for instrument " + instrumentId + " on page " + pageId);
+                    "File uploaded: " + fileName + " for instrument " + instrumentId + " on page " + pageId);
 
             // Return success response
             Map<String, Object> response = new HashMap<>();
@@ -2768,7 +2676,7 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "uploadAnalyticalFile",
-                "Error uploading file: " + e.getMessage());
+                    "Error uploading file: " + e.getMessage());
 
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Failed to upload file: " + e.getMessage());
@@ -2779,17 +2687,15 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Process uploaded analytical data files and extract analytical results
      *
-     * @param pageId Page ID for the notebook page
-     * @param request Processing request with file IDs and sample information
+     * @param pageId      Page ID for the notebook page
+     * @param request     Processing request with file IDs and sample information
      * @param httpRequest HTTP request for user session
      * @return Response with processed analytical data
      */
     @PostMapping(value = "/page/{pageId}/files/process", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> processAnalyticalFiles(
-            @PathVariable("pageId") Integer pageId,
-            @RequestBody FileProcessingRequest request,
-            HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> processAnalyticalFiles(@PathVariable("pageId") Integer pageId,
+            @RequestBody FileProcessingRequest request, HttpServletRequest httpRequest) {
 
         String sysUserId = getSysUserId(httpRequest);
         if (sysUserId == null) {
@@ -2825,36 +2731,39 @@ public class NotebookBulkOperationController extends BaseRestController {
 
                 // Find file with this fileId in the name
                 try {
-                    Files.list(uploadPath)
-                        .filter(file -> file.getFileName().toString().contains(fileId))
-                        .forEach(file -> {
-                            try {
-                                Map<String, Object> fileResults = processFileData(file, request.getSamples());
+                    Files.list(uploadPath).filter(file -> file.getFileName().toString().contains(fileId))
+                            .forEach(file -> {
+                                try {
+                                    Map<String, Object> fileResults = processFileData(file, request.getSamples());
 
-                                if (fileResults.containsKey("quantification")) {
-                                    quantificationResults.addAll((List<Map<String, Object>>) fileResults.get("quantification"));
-                                }
-                                if (fileResults.containsKey("qcResults")) {
-                                    qcResults.addAll((List<Map<String, Object>>) fileResults.get("qcResults"));
-                                }
-                                if (fileResults.containsKey("analyzerResults")) {
-                                    analyzerResults.addAll((List<Map<String, Object>>) fileResults.get("analyzerResults"));
-                                }
-                                if (fileResults.containsKey("calibrationData")) {
-                                    calibrationData.putAll((Map<String, Object>) fileResults.get("calibrationData"));
-                                }
-                                if (fileResults.containsKey("westgardRules")) {
-                                    westgardRules.addAll((List<Map<String, Object>>) fileResults.get("westgardRules"));
-                                }
+                                    if (fileResults.containsKey("quantification")) {
+                                        quantificationResults
+                                                .addAll((List<Map<String, Object>>) fileResults.get("quantification"));
+                                    }
+                                    if (fileResults.containsKey("qcResults")) {
+                                        qcResults.addAll((List<Map<String, Object>>) fileResults.get("qcResults"));
+                                    }
+                                    if (fileResults.containsKey("analyzerResults")) {
+                                        analyzerResults
+                                                .addAll((List<Map<String, Object>>) fileResults.get("analyzerResults"));
+                                    }
+                                    if (fileResults.containsKey("calibrationData")) {
+                                        calibrationData
+                                                .putAll((Map<String, Object>) fileResults.get("calibrationData"));
+                                    }
+                                    if (fileResults.containsKey("westgardRules")) {
+                                        westgardRules
+                                                .addAll((List<Map<String, Object>>) fileResults.get("westgardRules"));
+                                    }
 
-                            } catch (Exception e) {
-                                LogEvent.logError(this.getClass().getSimpleName(), "processAnalyticalFiles",
-                                    "Error processing file " + file.getFileName() + ": " + e.getMessage());
-                            }
-                        });
+                                } catch (Exception e) {
+                                    LogEvent.logError(this.getClass().getSimpleName(), "processAnalyticalFiles",
+                                            "Error processing file " + file.getFileName() + ": " + e.getMessage());
+                                }
+                            });
                 } catch (IOException e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "processAnalyticalFiles",
-                        "Error listing files in upload directory: " + e.getMessage());
+                            "Error listing files in upload directory: " + e.getMessage());
                 }
             }
 
@@ -2868,13 +2777,13 @@ public class NotebookBulkOperationController extends BaseRestController {
             response.put("processedAt", LocalDateTime.now().toString());
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "processAnalyticalFiles",
-                "Processed " + request.getFileIds().size() + " files for page " + pageId);
+                    "Processed " + request.getFileIds().size() + " files for page " + pageId);
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "processAnalyticalFiles",
-                "Error processing files: " + e.getMessage());
+                    "Error processing files: " + e.getMessage());
 
             Map<String, Object> error = new HashMap<>();
             error.put("error", "Failed to process files: " + e.getMessage());
@@ -2883,7 +2792,8 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
-     * Process individual file data based on file type and extract analytical information
+     * Process individual file data based on file type and extract analytical
+     * information
      */
     private Map<String, Object> processFileData(Path filePath, List<Map<String, Object>> samples) throws IOException {
         Map<String, Object> results = new HashMap<>();
@@ -2891,20 +2801,20 @@ public class NotebookBulkOperationController extends BaseRestController {
         String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1).toUpperCase();
 
         switch (fileExtension) {
-            case "CSV":
-                results = processCsvFile(filePath, samples);
-                break;
-            case "PDF":
-                results = processPdfFile(filePath, samples);
-                break;
-            case "MZML":
-            case "CDF":
-                results = processMassSpecFile(filePath, samples);
-                break;
-            default:
-                LogEvent.logWarn(this.getClass().getSimpleName(), "processFileData",
+        case "CSV":
+            results = processCsvFile(filePath, samples);
+            break;
+        case "PDF":
+            results = processPdfFile(filePath, samples);
+            break;
+        case "MZML":
+        case "CDF":
+            results = processMassSpecFile(filePath, samples);
+            break;
+        default:
+            LogEvent.logWarn(this.getClass().getSimpleName(), "processFileData",
                     "Unsupported file type: " + fileExtension);
-                break;
+            break;
         }
 
         return results;
@@ -3018,11 +2928,13 @@ public class NotebookBulkOperationController extends BaseRestController {
             else if (trimmedLine.contains("SAMPLE RESULTS")) {
                 inSampleSection = true;
                 continue;
-            } else if (trimmedLine.contains("CHROMATOGRAPHY CONDITIONS") || trimmedLine.contains("INSTRUMENT PARAMETERS")) {
+            } else if (trimmedLine.contains("CHROMATOGRAPHY CONDITIONS")
+                    || trimmedLine.contains("INSTRUMENT PARAMETERS")) {
                 inSampleSection = false;
                 continue;
             } else if (inSampleSection && values.length >= 6 && !trimmedLine.contains("Sample ID")) {
-                // Parse sample lines like: "BIO-002,Tablet Assay - Lot A,425.3,6185.9,424.8,0.8,VALID"
+                // Parse sample lines like: "BIO-002,Tablet Assay - Lot
+                // A,425.3,6185.9,424.8,0.8,VALID"
                 try {
                     String instrumentSampleId = values[0].trim();
                     String sampleName = values[1].trim();
@@ -3056,7 +2968,8 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         // Map instrument results to lab samples from Stage 2
-        // Order: First instrument result -> First lab sample, Second instrument result -> Second lab sample, etc.
+        // Order: First instrument result -> First lab sample, Second instrument result
+        // -> Second lab sample, etc.
         for (int i = 0; i < instrumentSampleResults.size() && i < samples.size(); i++) {
             Map<String, Object> instrumentResult = instrumentSampleResults.get(i);
             Map<String, Object> labSample = samples.get(i);
@@ -3069,8 +2982,9 @@ public class NotebookBulkOperationController extends BaseRestController {
 
             // Create quantification result with lab sample ID
             Map<String, Object> sampleResult = new HashMap<>();
-            sampleResult.put("sampleId", labSampleId);  // Use lab sample ID, not instrument ID
-            sampleResult.put("instrumentSampleId", instrumentResult.get("instrumentSampleId")); // Keep instrument ID for reference
+            sampleResult.put("sampleId", labSampleId); // Use lab sample ID, not instrument ID
+            sampleResult.put("instrumentSampleId", instrumentResult.get("instrumentSampleId")); // Keep instrument ID
+                                                                                                // for reference
             sampleResult.put("sampleName", instrumentResult.get("sampleName"));
             sampleResult.put("analyte", "Target Compound");
             sampleResult.put("peakHeight", instrumentResult.get("peakHeight"));
@@ -3094,8 +3008,8 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         // Log the mapping for debugging
-        org.openelisglobal.common.log.LogEvent.logInfo("NotebookBulkOperationController", "processCsvFile",
-            "Mapped " + instrumentSampleResults.size() + " instrument results to " + samples.size() + " lab samples");
+        org.openelisglobal.common.log.LogEvent.logInfo("NotebookBulkOperationController", "processCsvFile", "Mapped "
+                + instrumentSampleResults.size() + " instrument results to " + samples.size() + " lab samples");
 
         // Set calibration quality assessment
         if (calibrationData.containsKey("rSquared")) {
@@ -3120,9 +3034,10 @@ public class NotebookBulkOperationController extends BaseRestController {
         Map<String, Object> results = new HashMap<>();
 
         // For now, return empty results - PDF parsing requires additional libraries
-        // In production, you would use libraries like Apache PDFBox or iText to extract text
+        // In production, you would use libraries like Apache PDFBox or iText to extract
+        // text
         LogEvent.logWarn(this.getClass().getSimpleName(), "processPdfFile",
-            "PDF processing not yet implemented for file: " + filePath.getFileName());
+                "PDF processing not yet implemented for file: " + filePath.getFileName());
 
         results.put("quantification", new ArrayList<>());
         results.put("qcResults", new ArrayList<>());
@@ -3135,12 +3050,14 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Process mass spectrometry files (mzML, CDF)
      */
-    private Map<String, Object> processMassSpecFile(Path filePath, List<Map<String, Object>> samples) throws IOException {
+    private Map<String, Object> processMassSpecFile(Path filePath, List<Map<String, Object>> samples)
+            throws IOException {
         Map<String, Object> results = new HashMap<>();
 
-        // For now, return empty results - Mass spec file parsing requires specialized libraries
+        // For now, return empty results - Mass spec file parsing requires specialized
+        // libraries
         LogEvent.logWarn(this.getClass().getSimpleName(), "processMassSpecFile",
-            "Mass spec file processing not yet implemented for file: " + filePath.getFileName());
+                "Mass spec file processing not yet implemented for file: " + filePath.getFileName());
 
         results.put("quantification", new ArrayList<>());
         results.put("qcResults", new ArrayList<>());
@@ -3152,15 +3069,20 @@ public class NotebookBulkOperationController extends BaseRestController {
 
     // Helper methods
     private String extractQcLevel(String sampleId) {
-        if (sampleId.contains("LOW")) return "LOW";
-        if (sampleId.contains("MED") || sampleId.contains("MEDIUM")) return "MEDIUM";
-        if (sampleId.contains("HIGH")) return "HIGH";
-        if (sampleId.contains("LLOQ")) return "LLOQ";
+        if (sampleId.contains("LOW"))
+            return "LOW";
+        if (sampleId.contains("MED") || sampleId.contains("MEDIUM"))
+            return "MEDIUM";
+        if (sampleId.contains("HIGH"))
+            return "HIGH";
+        if (sampleId.contains("LLOQ"))
+            return "LLOQ";
         return "UNKNOWN";
     }
 
     private Double parseDouble(Object value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         try {
             return Double.parseDouble(value.toString());
         } catch (NumberFormatException e) {

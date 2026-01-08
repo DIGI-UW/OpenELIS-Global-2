@@ -1143,7 +1143,41 @@ function BioanalyticalTestAssignmentPage({
               <Loading description="Loading samples..." />
             ) : (
               <>
-                <div style={{ marginTop: "1.5rem", marginBottom: "1.5rem" }}>
+                {/* Action buttons positioned at top left of datatable */}
+                <div
+                  style={{
+                    marginTop: "1.5rem",
+                    marginBottom: "1rem",
+                    display: "flex",
+                    gap: "0.75rem",
+                  }}
+                >
+                  {selectedSamples.size > 0 && (
+                    <Button kind="primary" onClick={handleShowAssignmentForm}>
+                      <FormattedMessage
+                        id="notebook.bioanalytical.testassignment.configureTests"
+                        defaultMessage="Configure Tests for {count} Sample(s)"
+                        values={{ count: selectedSamples.size }}
+                      />
+                    </Button>
+                  )}
+
+                  {/* Show completion button if samples have test assignments */}
+                  {samples.filter((s) => testAssignments[s.id]).length > 0 && (
+                    <Button
+                      kind="secondary"
+                      onClick={handleMarkCompleteAndAdvance}
+                      disabled={isAdvancing}
+                    >
+                      <FormattedMessage
+                        id="notebook.bioanalytical.testassignment.completeAndAdvance"
+                        defaultMessage="Mark Complete & Move to Next Stage"
+                      />
+                    </Button>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: "1.5rem" }}>
                   <Table>
                     <TableHead>
                       <TableRow>
@@ -1293,44 +1327,20 @@ function BioanalyticalTestAssignmentPage({
                   </Table>
                 </div>
 
-                {selectedSamples.size > 0 && (
-                  <div style={{ marginTop: "1.5rem" }}>
-                    <Button kind="primary" onClick={handleShowAssignmentForm}>
-                      <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.configureTests"
-                        defaultMessage="Configure Tests for {count} Sample(s)"
-                        values={{ count: selectedSamples.size }}
-                      />
-                    </Button>
-                  </div>
-                )}
-
-                {/* Show completion button if samples have test assignments */}
+                {/* Helper text for completion action */}
                 {samples.filter((s) => testAssignments[s.id]).length > 0 && (
-                  <div style={{ marginTop: "1.5rem" }}>
-                    <Button
-                      kind="secondary"
-                      onClick={handleMarkCompleteAndAdvance}
-                      disabled={isAdvancing}
-                    >
-                      <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.completeAndAdvance"
-                        defaultMessage="Mark Complete & Move to Next Stage"
-                      />
-                    </Button>
-                    <p
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "#525252",
-                        marginTop: "0.5rem",
-                      }}
-                    >
-                      <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.completeNote"
-                        defaultMessage="Moves all samples with assigned tests to Analytical Execution (Stage 3)"
-                      />
-                    </p>
-                  </div>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "#525252",
+                      marginTop: "0.5rem",
+                    }}
+                  >
+                    <FormattedMessage
+                      id="notebook.bioanalytical.testassignment.completeNote"
+                      defaultMessage="Moves all samples with assigned tests to Analytical Execution (Stage 3)"
+                    />
+                  </p>
                 )}
               </>
             )}
