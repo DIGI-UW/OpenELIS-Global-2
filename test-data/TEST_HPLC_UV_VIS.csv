@@ -1,0 +1,26 @@
+Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
+HPLC,HPLC/UV-Vis,2026-01-08,09:30:00,S001,SA-001,Plasma,Concentration Determination,HPLC_UV_VIS,COMPLETED
+
+QC_RESULTS
+QCLevel,QCName,SpikedConcentration,MeasuredValue,LowerAcceptanceCriteria,UpperAcceptanceCriteria,AccuracyPercent,PrecisionPercent,Status
+LQC,Low QC,1.0,0.99,0.8,1.2,99.0,2.1,PASS
+MQC,Mid QC,5.0,5.02,4.5,5.5,100.4,1.8,PASS
+HQC,High QC,10.0,9.95,9.0,11.0,99.5,2.3,PASS
+
+CALIBRATION_CURVE
+CalibrationID,EquationFormat,Equation,Slope,Intercept,RSquared,QualityAssessment,InstrumentName,FileName
+CAL_001,Linear,y = 1.0234x + 0.0156,1.0234,0.0156,0.9971,PASS,HPLC,TEST_HPLC_UV_VIS.csv
+
+QUANTIFICATION_RESULTS
+InstrumentSampleID,SampleName,AccessionNumber,ConcentrationValue,Units,PeakArea,CVPercent,AccuracyPercent,ValidityStatus
+INS_001,Test Sample 1,SA-001,4.85,µg/mL,2845623,1.9,97.8,VALID
+INS_002,Test Sample 2,SA-001,5.12,µg/mL,2965432,2.1,102.4,VALID
+INS_003,Test Sample 1 Duplicate,SA-001,4.92,µg/mL,2891654,1.8,98.4,VALID
+
+INSTRUMENT_DETAILS
+InstrumentID,InstrumentName,SerialNumber,ColumnName,FlowRate,DetectionWavelength,ColumnTemperature,InjectionVolume,EquilibrationTime
+HPLC_01,HPLC System A,SN-2024-001,C18 Phenomenex,1.0,254,25.0,10,5.0
+
+ANALYSIS_SUMMARY
+TotalAnalysesPerformed,QCAnalysesCount,SampleAnalysesCount,SuccessfulAnalyses,FailedAnalyses,AnalysisStartTime,AnalysisEndTime,TotalRunTime
+3,3,0,3,0,09:30:00,10:15:00,45.0

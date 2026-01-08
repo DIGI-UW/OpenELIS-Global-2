@@ -1,0 +1,26 @@
+Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
+LC-MS/MS,LC-MS/MS,2026-01-08,14:00:00,S002,SA-002,Serum,Metabolite Detection,LC_MS_MS,COMPLETED
+
+QC_RESULTS
+QCLevel,QCName,SpikedConcentration,MeasuredValue,LowerAcceptanceCriteria,UpperAcceptanceCriteria,AccuracyPercent,PrecisionPercent,Status
+LQC,Low QC,2.5,2.48,2.0,3.0,99.2,2.4,PASS
+MQC,Mid QC,12.5,12.56,11.0,14.0,100.5,1.9,PASS
+HQC,High QC,25.0,24.88,22.0,28.0,99.5,2.1,PASS
+
+CALIBRATION_CURVE
+CalibrationID,EquationFormat,Equation,Slope,Intercept,RSquared,QualityAssessment,InstrumentName,FileName
+CAL_002,Linear,y = 0.9876x + 0.0234,0.9876,0.0234,0.9985,PASS,LC-MS/MS,TEST_LC_MSMS.csv
+
+QUANTIFICATION_RESULTS
+InstrumentSampleID,SampleName,AccessionNumber,ConcentrationValue,Units,PeakArea,CVPercent,AccuracyPercent,ValidityStatus
+INS_004,Test Sample 1,SA-002,11.2,ng/mL,1845623,1.7,98.5,VALID
+INS_005,Test Sample 2,SA-002,11.8,ng/mL,1965432,1.9,101.2,VALID
+INS_006,Test Sample 1 Duplicate,SA-002,11.5,ng/mL,1891654,1.8,99.8,VALID
+
+INSTRUMENT_DETAILS
+InstrumentID,InstrumentName,SerialNumber,ColumnName,FlowRate,MassAnalyzer,IonizationMode,ColumnTemperature,InjectionVolume
+LCMS_01,LC-MS/MS System B,SN-2024-002,C18 Agilent Zorbax,0.4,Triple Quad,ESI-Positive,30.0,5
+
+ANALYSIS_SUMMARY
+TotalAnalysesPerformed,QCAnalysesCount,SampleAnalysesCount,SuccessfulAnalyses,FailedAnalyses,AnalysisStartTime,AnalysisEndTime,TotalRunTime
+3,3,0,3,0,14:00:00,15:30:00,90.0

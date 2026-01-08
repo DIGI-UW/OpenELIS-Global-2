@@ -1,0 +1,25 @@
+Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
+Hardness Tester,Monsanto Hardness,2026-01-08,11:30:00,S004,SA-004,Tablet,Hardness & Friability,PHYSICAL_TESTING,COMPLETED
+
+QC_RESULTS
+QCLevel,QCName,TestType,MeasuredValue,Units,LowerAcceptanceCriteria,UpperAcceptanceCriteria,AccuracyPercent,Status
+Hardness_Cal,Hardness Reference,Hardness,98.5,kP,95.0,105.0,99.5,PASS
+Friability_Cal,Friability Reference,Friability,0.48,%,0.3,0.8,100.0,PASS
+
+CALIBRATION_CURVE
+CalibrationID,EquationFormat,EquipmentType,LastCalibrationDate,NextCalibrationDue,CalibrationStatus,CertificateNo,InstrumentName
+CAL_004,Not Applicable,Hardness Tester,2025-12-01,2026-12-01,VALID,CERT-2024-0456,Hardness Tester System D
+
+QUANTIFICATION_RESULTS
+InstrumentSampleID,SampleName,AccessionNumber,Hardness,HardnessUnits,Friability,FriabilityPercent,Disintegration,DisintegrationTime,ValidityStatus
+INS_010,Tablet Batch A,SA-004,89.5,kP,0.42,%,PASS,15min,VALID
+INS_011,Tablet Batch A Rep,SA-004,90.2,kP,0.45,%,PASS,14min,VALID
+INS_012,Tablet Batch B,SA-004,87.8,kP,0.39,%,PASS,16min,VALID
+
+INSTRUMENT_DETAILS
+InstrumentID,InstrumentName,SerialNumber,HardnessTesterModel,FriabilityApparatus,Specifications,MaxLoadCapacity,PressureUnit,CalibrationFrequency
+HARD_01,Hardness Tester System D,SN-2024-004,Monsanto,Friability Rotor,±3%,200,kP,Annual
+
+ANALYSIS_SUMMARY
+TotalAnalysesPerformed,QCAnalysesCount,SampleAnalysesCount,SuccessfulAnalyses,FailedAnalyses,AnalysisStartTime,AnalysisEndTime,TotalRunTime
+3,2,3,5,0,11:30:00,13:45:00,135.0

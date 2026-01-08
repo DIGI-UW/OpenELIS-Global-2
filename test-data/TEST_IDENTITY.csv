@@ -1,0 +1,25 @@
+Instrument,Method,AnalysisDate,AnalysisTime,SampleID,AccessionNumber,SampleType,TestName,AnalyticalMethod,RunStatus
+HPLC-UV,Identity Testing,2026-01-08,13:00:00,S005,SA-005,Active Pharma,Identity Confirmation,IDENTITY_TEST,COMPLETED
+
+QC_RESULTS
+QCLevel,QCName,ReferenceStandard,RetentionTime,AcceptanceCriteria,MeasuredRetentionTime,AccuracyPercent,Status
+Identity_Ref,USP Reference Standard,Compound XYZ,8.45min,8.2-8.7min,8.43min,99.8,PASS
+Blank,Blank Solution,None,N/A,N/A,N/A,N/A,PASS
+
+CALIBRATION_CURVE
+CalibrationID,EquationFormat,Equation,Slope,Intercept,RSquared,QualityAssessment,InstrumentName,FileName
+CAL_005,Linear,y = 1.1245x + 0.0845,1.1245,0.0845,0.9979,PASS,HPLC-UV,TEST_IDENTITY.csv
+
+QUANTIFICATION_RESULTS
+InstrumentSampleID,SampleName,AccessionNumber,PeakRetentionTime,ReferenceRetentionTime,RetentionTimeDifference,PeakArea,IdentityStatus,ConfidenceLevel,ValidityStatus
+INS_013,Sample Batch 1,SA-005,8.44min,8.45min,0.01min,3245621,IDENTIFIED,99.5%,VALID
+INS_014,Sample Batch 2,SA-005,8.43min,8.45min,-0.02min,3198754,IDENTIFIED,99.2%,VALID
+INS_015,Sample Batch 3,SA-005,8.46min,8.45min,0.01min,3265432,IDENTIFIED,99.7%,VALID
+
+INSTRUMENT_DETAILS
+InstrumentID,InstrumentName,SerialNumber,ColumnName,FlowRate,DetectionWavelength,ColumnTemperature,InjectionVolume,EquilibrationTime
+HPLC_UV_02,HPLC-UV Identity System,SN-2024-005,C18 Phenomenex Gemini,1.0,210,25.0,20,5.0
+
+ANALYSIS_SUMMARY
+TotalAnalysesPerformed,QCAnalysesCount,SampleAnalysesCount,SuccessfulAnalyses,FailedAnalyses,AnalysisStartTime,AnalysisEndTime,TotalRunTime
+3,2,3,5,0,13:00:00,14:30:00,90.0
