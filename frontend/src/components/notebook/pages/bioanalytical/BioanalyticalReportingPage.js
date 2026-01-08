@@ -146,6 +146,16 @@ function BioanalyticalReportingPage({
           );
         });
 
+        // Debug: Log first approved sample to see data structure
+        if (approvedSamples.length > 0) {
+          console.log("Stage 4 - First approved sample:", approvedSamples[0]);
+          console.log(
+            "Stage 4 - bioequivalenceStats check:",
+            approvedSamples[0].data?.bioequivalenceStats ||
+              approvedSamples[0].data?.testExecution?.bioequivalenceStats,
+          );
+        }
+
         // Compile analytical results from approved samples
         const compiledResults = compileAnalyticalResults(approvedSamples);
         setStudyResults(compiledResults);
