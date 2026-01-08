@@ -54,6 +54,7 @@ import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEnt
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
 import LabUnitEditorPage from "./components/labunit/LabUnitEditorPage.js";
+import LabUnitManagementPage from "./components/labunit/LabUnitManagementPage.js";
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
@@ -509,6 +510,12 @@ export default function App() {
                   path="/admin/lab-units/add"
                   exact
                   component={() => <LabUnitEditorPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/MasterListsPage/labUnitManagement"
+                  exact
+                  component={() => <LabUnitManagementPage />}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute

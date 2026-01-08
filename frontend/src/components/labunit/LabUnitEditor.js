@@ -6,6 +6,7 @@ import {
   TabList,
   Tab,
   TabPanels,
+  TabPanel,
   Button,
   Breadcrumb,
   BreadcrumbItem,
@@ -307,27 +308,19 @@ export default function LabUnitEditor({
                 </div>
               </TabList>
               <TabPanels style={{ flex: 1 }}>
-                <TabPanel>
-                  <BasicInfoTab unit={unit} />
-                </TabPanel>
-                <TabPanel>
-                  <WorkflowsTab />
-                </TabPanel>
-                <TabPanel>
-                  <TestsTab unit={unit} />
-                </TabPanel>
-                <TabPanel>
-                  <PanelsTab />
-                </TabPanel>
-                <TabPanel>
-                  <ProgramsTab />
-                </TabPanel>
-                <TabPanel>
-                  <ProjectsTab />
-                </TabPanel>
-                <TabPanel>
-                  <ImportExportTab />
-                </TabPanel>
+                {tabs.map((tab) => (
+                  <TabPanel key={tab.id}>
+                    {tab.id === "basic" && <BasicInfoTab unit={unit} />}
+                    {tab.id === "workflows" && <WorkflowsTab unit={unit} />}
+                    {tab.id === "tests" && <TestsTab unit={unit} />}
+                    {tab.id === "panels" && <PanelsTab unit={unit} />}
+                    {tab.id === "programs" && <ProgramsTab unit={unit} />}
+                    {tab.id === "projects" && <ProjectsTab unit={unit} />}
+                    {tab.id === "import-export" && (
+                      <ImportExportTab unit={unit} />
+                    )}
+                  </TabPanel>
+                ))}
               </TabPanels>
             </Tabs>
           </div>

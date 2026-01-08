@@ -19,7 +19,7 @@ import {
 import { Upload, Download, Search } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
-export default function ImportExportTab() {
+export default function ImportExportTab({ unit }) {
   const intl = useIntl();
   const [exportFormat, setExportFormat] = useState("json");
   const [selectedUnits, setSelectedUnits] = useState([]);
