@@ -253,6 +253,7 @@ function BioanalyticalReportingPage({
           resultGroups[groupKey] = {
             id: groupKey,
             testName: groupKey,
+            sampleIds: [],
             samples: [],
             dataPoints: 0,
             allQcResults: [],
@@ -262,6 +263,7 @@ function BioanalyticalReportingPage({
         }
 
         resultGroups[groupKey].samples.push(sample);
+        resultGroups[groupKey].sampleIds.push(sample.id);
         resultGroups[groupKey].dataPoints++;
 
         // Collect QC results from all samples
@@ -757,7 +759,15 @@ function BioanalyticalReportingPage({
     setSuccessMessage("");
 
     try {
-      const sampleIds = studyResults.map((result) => result.id);
+      // Collect all numeric sample IDs from all result groups
+      const sampleIds = studyResults.flatMap(
+        (result) => result.sampleIds || [],
+      );
+
+      if (sampleIds.length === 0) {
+        throw new Error("No samples available for export");
+      }
+
       const selectedExportFormat = exportFormats.find(
         (f) => f.id === exportFormat,
       );
@@ -767,27 +777,27 @@ function BioanalyticalReportingPage({
         redcap: {
           endpoint: "/export/redcap",
           extension: "csv",
-          body: { sampleIds, recordIdField: "record_id", eventName: null }
+          body: { sampleIds, recordIdField: "record_id", eventName: null },
         },
         csv: {
           endpoint: "/export/csv",
           extension: "csv",
-          body: { sampleIds }
+          body: { sampleIds },
         },
         lmis: {
           endpoint: "/export/lmis",
           extension: "csv",
-          body: { sampleIds }
+          body: { sampleIds },
         },
         cdisc: {
           endpoint: "/export/sdtm",
           extension: "csv",
-          body: { sampleIds }
+          body: { sampleIds },
         },
         pdf: {
           endpoint: "/export/pdf",
           extension: "pdf",
-          body: { sampleIds }
+          body: { sampleIds },
         },
       };
 
@@ -810,7 +820,10 @@ function BioanalyticalReportingPage({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to export to ${selectedExportFormat.label}`);
+        throw new Error(
+          errorData.error ||
+            `Failed to export to ${selectedExportFormat.label}`,
+        );
       }
 
       // Handle file download
