@@ -31,6 +31,39 @@ import config from "../../../../config.json";
 import "./BioanalyticalPages.css";
 
 /**
+ * Analytical methods available for bioanalytical testing (from Stage 2)
+ */
+const ANALYTICAL_METHODS = [
+  {
+    id: "HPLC_UV_VIS",
+    name: "HPLC / UV-Vis",
+    description:
+      "High Performance Liquid Chromatography with UV-Visible detection",
+  },
+  {
+    id: "LC_MS_MS",
+    name: "LC-MS/MS",
+    description: "Liquid Chromatography with Tandem Mass Spectrometry",
+  },
+  {
+    id: "DISSOLUTION_USP",
+    name: "Dissolution (USP I/II)",
+    description:
+      "Dissolution testing using USP Apparatus I (Basket) or II (Paddle)",
+  },
+  {
+    id: "PHYSICAL_TESTING",
+    name: "Hardness / Friability / Disintegration Test",
+    description: "Physical testing for pharmaceutical dosage forms",
+  },
+  {
+    id: "IDENTITY_TEST",
+    name: "Identity Test",
+    description: "Verification of pharmaceutical substances and products",
+  },
+];
+
+/**
  * Bioanalytical Analyzers - Match Stage 2 assignments
  */
 const BIOANALYTICAL_ANALYZERS = [
@@ -139,24 +172,14 @@ function BioanalyticalAnalyticalExecutionPage({
         const data = await response.json();
         const samples = Array.isArray(data) ? data : data.samples || [];
 
-        // Map analytical method ID to readable name
-        const methodMap = {
-          "HPLC_UV_VIS": "HPLC / UV-Vis",
-          "HPLC_RI": "HPLC / RI",
-          "GC_FID": "GC / FID",
-          "GC_MS": "GC / MS",
-          "LC_MS": "LC / MS",
-          "DISSOLUTION": "Dissolution",
-          "DISINTEGRATION": "Disintegration",
-          "HARDNESS": "Hardness",
-          "FRIABILITY": "Friability",
-        };
-
         const processedSamples = samples.map((sample) => {
           const assignmentData = sample.data || {};
-          const methodName =
-            methodMap[assignmentData.analyticalMethod] ||
-            assignmentData.analyticalMethod;
+
+          // Find the analytical method from our methods list
+          const analyticalMethod = ANALYTICAL_METHODS.find(
+            (m) => m.id === assignmentData.analyticalMethod
+          );
+          const methodName = analyticalMethod?.name || assignmentData.analyticalMethod;
 
           // Find instrument name from available instruments
           const instrument = instruments.find(
@@ -170,8 +193,11 @@ function BioanalyticalAnalyticalExecutionPage({
             sampleType: "-",
             requestedTests: "-",
             assignedMethod: methodName,
+            assignedMethodId: assignmentData.analyticalMethod,
+            methodDescription: analyticalMethod?.description,
             instrumentId: assignmentData.instrumentId,
             instrumentName: instrument?.machine || `Instrument ${assignmentData.instrumentId}`,
+            assignedStaff: assignmentData.assignedStaff,
             status: sample.status || "PENDING",
             data: assignmentData,
           };
@@ -511,6 +537,12 @@ function BioanalyticalAnalyticalExecutionPage({
                             </TableHeader>
                             <TableHeader>
                               <FormattedMessage
+                                id="notebook.bioanalytical.execution.assignedStaff"
+                                defaultMessage="Assigned Staff"
+                              />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage
                                 id="notebook.bioanalytical.execution.instrument"
                                 defaultMessage="Instrument"
                               />
@@ -564,6 +596,23 @@ function BioanalyticalAnalyticalExecutionPage({
                                 <TableCell>
                                   <span
                                     style={{
+                                      backgroundColor: "#e3f2fd",
+                                      color: "#1565c0",
+                                      padding: "0.25rem 0.75rem",
+                                      borderRadius: "4px",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                      border: "1px solid #bbdefb",
+                                    }}
+                                  >
+                                    {sample.assignedStaff ||
+                                      "-"}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <span
+                                    style={{
                                       backgroundColor: "#f0f0f0",
                                       color: "#161616",
                                       padding: "0.25rem 0.75rem",
@@ -598,7 +647,7 @@ function BioanalyticalAnalyticalExecutionPage({
                           ) : (
                             <TableRow>
                               <TableCell
-                                colSpan="5"
+                                colSpan="6"
                                 style={{
                                   textAlign: "center",
                                   padding: "2rem",
