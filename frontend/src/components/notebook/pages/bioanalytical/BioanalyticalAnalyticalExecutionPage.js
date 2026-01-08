@@ -552,25 +552,25 @@ function BioanalyticalAnalyticalExecutionPage({
   }, [deviationForm, executionData.analystId, notify]);
 
   const handleCompleteExecution = useCallback(async () => {
+    // Validate that we have all required data BEFORE setting isExecuting
+    if (!qcApproved) {
+      notify(
+        "Please approve QC results before completing execution",
+        NotificationKinds.warning,
+      );
+      return;
+    }
+
+    if (qcResults.length === 0 && quantificationResults.length === 0) {
+      notify(
+        "No QC or quantification data found. Please load QC results first.",
+        NotificationKinds.warning,
+      );
+      return;
+    }
+
     try {
       setIsExecuting(true);
-
-      // Validate that we have all required data
-      if (!qcApproved) {
-        notify(
-          "Please approve QC results before completing execution",
-          NotificationKinds.warning,
-        );
-        return;
-      }
-
-      if (qcResults.length === 0 && quantificationResults.length === 0) {
-        notify(
-          "No QC or quantification data found. Please load QC results first.",
-          NotificationKinds.warning,
-        );
-        return;
-      }
 
       // Build common execution data that applies to all samples
       const commonExecutionData = {
