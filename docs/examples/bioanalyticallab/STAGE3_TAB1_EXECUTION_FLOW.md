@@ -165,16 +165,19 @@ Step 6: Tab 2 - Raw Data Upload
 ### Frontend Side (What You See)
 
 1. **Tab 1 Displays**
+
    - Sample selection table with checkboxes
    - Stage 2 configuration data shown (Method, Staff, QC levels)
    - Sample status badges (PENDING → EXECUTED after button click)
 
 2. **Modal Opens on First Selection**
+
    - Automatically shows when you check the first sample
    - Form inputs for Analyst ID, Instrument ID, Batch Number, Date, Notes
    - "Execute Tests (N)" button (where N = count of selected samples)
 
 3. **On Button Click**
+
    - Loading spinner appears briefly
    - Button becomes disabled during submission
    - Modal stays open briefly, then closes
@@ -188,11 +191,13 @@ Step 6: Tab 2 - Raw Data Upload
 ### Backend Side (What Happens Behind the Scenes)
 
 1. **Data Persistence**
+
    - Updates `sample.data` JSONB with execution config
    - Creates audit trail entry with timestamp and user ID
    - Logs file metadata if any files were mentioned
 
 2. **Validation**
+
    - Checks analyst ID is not empty
    - Checks instrument ID is selected
    - Validates sample IDs match samples in database
@@ -210,6 +215,7 @@ Step 6: Tab 2 - Raw Data Upload
 ### Sample Data in Database
 
 **Before Step 4 (Before Execution):**
+
 ```json
 {
   "id": 62,
@@ -225,6 +231,7 @@ Step 6: Tab 2 - Raw Data Upload
 ```
 
 **After Step 4 (After Execution):**
+
 ```json
 {
   "id": 62,
@@ -322,10 +329,9 @@ Step 6: Tab 2 - Raw Data Upload
 
 ## Key Points
 
-✅ **Automatic Modal** - Opens on first sample selection
-✅ **Auto-Navigation** - Moves to Tab 2 after successful execution
-✅ **Data Preserved** - Stage 2 config data (method, QC levels) stays intact
-✅ **Audit Trail** - All execution details recorded with timestamp
-✅ **Status Updates** - Sample status changes to "EXECUTED"
-✅ **Sequential Workflow** - Tab 1 → Tab 2 → Tab 3... enforced by UI logic
-
+✅ **Automatic Modal** - Opens on first sample selection ✅
+**Auto-Navigation** - Moves to Tab 2 after successful execution ✅ **Data
+Preserved** - Stage 2 config data (method, QC levels) stays intact ✅ **Audit
+Trail** - All execution details recorded with timestamp ✅ **Status Updates** -
+Sample status changes to "EXECUTED" ✅ **Sequential Workflow** - Tab 1 → Tab 2 →
+Tab 3... enforced by UI logic

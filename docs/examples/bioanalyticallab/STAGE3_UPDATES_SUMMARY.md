@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document summarizes all improvements made to Stage 3 (Analytical Execution) of the bioanalytical notebook workflow, including frontend enhancements and backend audit findings.
+This document summarizes all improvements made to Stage 3 (Analytical Execution)
+of the bioanalytical notebook workflow, including frontend enhancements and
+backend audit findings.
 
 ---
 
@@ -11,39 +13,101 @@ This document summarizes all improvements made to Stage 3 (Analytical Execution)
 ### What Changed
 
 **Before:**
+
 ```javascript
 const instruments = templateInstruments || [
   { id: "1", name: "LC-MS/MS System", type: "LCMS", formats: ["MZML", "CDF"] },
   { id: "2", name: "HPLC System", type: "HPLC", formats: ["CSV", "PDF"] },
-  { id: "3", name: "Dissolution Tester", type: "DISSOLUTION", formats: ["CSV"] },
-  { id: "4", name: "USP Apparatus II", type: "APPARATUS", formats: ["CSV", "PDF"] },
+  {
+    id: "3",
+    name: "Dissolution Tester",
+    type: "DISSOLUTION",
+    formats: ["CSV"],
+  },
+  {
+    id: "4",
+    name: "USP Apparatus II",
+    type: "APPARATUS",
+    formats: ["CSV", "PDF"],
+  },
 ];
 ```
 
 **After:**
+
 ```javascript
 const ANALYZERS = [
-  { id: "1", machine: "LC-MS/MS", integration: "Automatic", formats: ["MZML", "CDF"] },
-  { id: "2", machine: "HPLC", integration: "Automatic", formats: ["CSV", "PDF"] },
-  { id: "3", machine: "Dissolution Apparatus", integration: "Both", formats: ["CSV"] },
-  { id: "4", machine: "Disintegration Tester", integration: "Manual", formats: ["CSV"] },
-  { id: "5", machine: "Hardness Tester", integration: "Manual", formats: ["CSV"] },
-  { id: "6", machine: "Friability Tester", integration: "Manual", formats: ["CSV"] },
-  { id: "7", machine: "Stability Chamber", integration: "Automatic", formats: ["CSV"] },
-  { id: "8", machine: "UV-Vis Spectrophotometer", integration: "Both", formats: ["CSV", "PDF"] },
+  {
+    id: "1",
+    machine: "LC-MS/MS",
+    integration: "Automatic",
+    formats: ["MZML", "CDF"],
+  },
+  {
+    id: "2",
+    machine: "HPLC",
+    integration: "Automatic",
+    formats: ["CSV", "PDF"],
+  },
+  {
+    id: "3",
+    machine: "Dissolution Apparatus",
+    integration: "Both",
+    formats: ["CSV"],
+  },
+  {
+    id: "4",
+    machine: "Disintegration Tester",
+    integration: "Manual",
+    formats: ["CSV"],
+  },
+  {
+    id: "5",
+    machine: "Hardness Tester",
+    integration: "Manual",
+    formats: ["CSV"],
+  },
+  {
+    id: "6",
+    machine: "Friability Tester",
+    integration: "Manual",
+    formats: ["CSV"],
+  },
+  {
+    id: "7",
+    machine: "Stability Chamber",
+    integration: "Automatic",
+    formats: ["CSV"],
+  },
+  {
+    id: "8",
+    machine: "UV-Vis Spectrophotometer",
+    integration: "Both",
+    formats: ["CSV", "PDF"],
+  },
   { id: "9", machine: "FTIR", integration: "Both", formats: ["CSV", "PDF"] },
-  { id: "10", machine: "Freezers (-20°C, -80°C)", integration: "Manual", formats: ["CSV"] },
-  { id: "11", machine: "Millipore Water Purification", integration: "Automatic", formats: ["CSV"] },
+  {
+    id: "10",
+    machine: "Freezers (-20°C, -80°C)",
+    integration: "Manual",
+    formats: ["CSV"],
+  },
+  {
+    id: "11",
+    machine: "Millipore Water Purification",
+    integration: "Automatic",
+    formats: ["CSV"],
+  },
 ];
 ```
 
 ### Why This Matters
 
-✅ **Consistency**: Now uses the exact same ANALYZERS list as Stage 2
-✅ **Comprehensive**: All 11 analyzers available for selection
-✅ **Format Validation**: Each analyzer has correct file format specifications
-✅ **Integration Types**: Shows whether analyzer is Automatic, Manual, or Both
-✅ **User Clarity**: Dropdown shows "LC-MS/MS (Automatic)" instead of generic names
+✅ **Consistency**: Now uses the exact same ANALYZERS list as Stage 2 ✅
+**Comprehensive**: All 11 analyzers available for selection ✅ **Format
+Validation**: Each analyzer has correct file format specifications ✅
+**Integration Types**: Shows whether analyzer is Automatic, Manual, or Both ✅
+**User Clarity**: Dropdown shows "LC-MS/MS (Automatic)" instead of generic names
 
 ### Frontend Changes
 
@@ -52,6 +116,7 @@ const ANALYZERS = [
 **Lines 293-368:** Added full ANALYZERS array with all 11 analyzers
 
 **Lines 1554 & 1673:** Updated dropdown display:
+
 ```jsx
 // Before:
 text={`${instrument.name} (${instrument.type})`}
@@ -87,6 +152,7 @@ text={`${instrument.machine} (${instrument.integration})`}
 ### How It Works
 
 1. **Frontend sends:**
+
    ```json
    {
      "sampleIds": [62, 63],
@@ -106,6 +172,7 @@ text={`${instrument.machine} (${instrument.integration})`}
 2. **Backend API:** `POST /rest/notebook/bulk/page/{pageId}/samples/apply`
 
 3. **What backend does:**
+
    - ✅ Validates required fields (analystId, instrumentId)
    - ✅ Persists data to `NotebookPageSample.data` JSONB
    - ✅ Merges with existing Stage 2 data
@@ -138,21 +205,22 @@ text={`${instrument.machine} (${instrument.integration})`}
 
 **Status Table:**
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Test Execution Persistence | ✅ Working | `/rest/notebook/bulk/page/{pageId}/samples/apply` |
-| Instrument Dropdown Data | ✅ Complete | All 11 analyzers with format specs |
-| File Upload Endpoint | ⚠️ Needs Check | Tab 2: Raw Data Upload |
-| Calibration/QC Endpoint | ⚠️ Needs Check | Tab 3: Calibration & QC |
-| Results Calculation | ⚠️ Needs Check | Tab 4: Automated Processing |
-| Review/Approval Flow | ⚠️ Needs Check | Tabs 7-9: Multi-level reviews |
-| Audit Trail Logging | ✅ Framework | Logs test execution events |
-| Error Handling | ⚠️ Needs Review | Validation & error messages |
-| Role-Based Access | ⚠️ Needs Check | Analyst/QA/Manager permissions |
+| Component                  | Status          | Notes                                             |
+| -------------------------- | --------------- | ------------------------------------------------- |
+| Test Execution Persistence | ✅ Working      | `/rest/notebook/bulk/page/{pageId}/samples/apply` |
+| Instrument Dropdown Data   | ✅ Complete     | All 11 analyzers with format specs                |
+| File Upload Endpoint       | ⚠️ Needs Check  | Tab 2: Raw Data Upload                            |
+| Calibration/QC Endpoint    | ⚠️ Needs Check  | Tab 3: Calibration & QC                           |
+| Results Calculation        | ⚠️ Needs Check  | Tab 4: Automated Processing                       |
+| Review/Approval Flow       | ⚠️ Needs Check  | Tabs 7-9: Multi-level reviews                     |
+| Audit Trail Logging        | ✅ Framework    | Logs test execution events                        |
+| Error Handling             | ⚠️ Needs Review | Validation & error messages                       |
+| Role-Based Access          | ⚠️ Needs Check  | Analyst/QA/Manager permissions                    |
 
 ### Key Findings
 
 **✅ What's Working:**
+
 - Test Execution modal form submission
 - Data persistence to JSONB fields
 - Instrument dropdown with all analyzers
@@ -160,6 +228,7 @@ text={`${instrument.machine} (${instrument.integration})`}
 - Auto-navigation to Tab 2 after execution
 
 **⚠️ Needs Verification/Implementation:**
+
 - File upload handling (multipart/form-data)
 - Calibration curve validation logic
 - QC sample result validation
@@ -172,6 +241,7 @@ text={`${instrument.machine} (${instrument.integration})`}
 - Validation error handling
 
 **🔴 Critical Issues:**
+
 - None identified at this time
 - All Tab 1 functionality appears functional
 
@@ -184,6 +254,7 @@ text={`${instrument.machine} (${instrument.integration})`}
 This comprehensive 400+ line document includes:
 
 **✅ API Endpoint Specifications:**
+
 - Test Execution (Tab 1): POST /rest/notebook/bulk/page/{pageId}/samples/apply
 - File Upload (Tab 2): [MISSING] Needs implementation
 - Calibration/QC (Tab 3): [MISSING] Needs implementation
@@ -191,6 +262,7 @@ This comprehensive 400+ line document includes:
 - Review Approval (Tabs 7-9): [MISSING] Needs implementation
 
 **✅ Data Structure Specifications:**
+
 - Execution configuration JSON schema
 - File metadata structure
 - Calibration & QC data format
@@ -200,6 +272,7 @@ This comprehensive 400+ line document includes:
 - Audit trail event types
 
 **✅ Validation Rules:**
+
 - Input validation for each field
 - Acceptance criteria checking
 - Westgard rule detection requirements
@@ -207,12 +280,14 @@ This comprehensive 400+ line document includes:
 - Review state transitions
 
 **✅ Error Handling Requirements:**
+
 - Standard response format
 - Error response format
 - HTTP status codes
 - User-friendly error messages
 
 **✅ Security & Compliance:**
+
 - 21 CFR Part 11 requirements
 - Role-based access control
 - Electronic signature handling
@@ -245,6 +320,7 @@ This comprehensive 400+ line document includes:
 ### Instrument ID Dropdown
 
 **BEFORE:**
+
 ```
 [Select instrument...▼]
   - LC-MS/MS System (LCMS)
@@ -254,6 +330,7 @@ This comprehensive 400+ line document includes:
 ```
 
 **AFTER:**
+
 ```
 [Select instrument...▼]
   - LC-MS/MS (Automatic)
@@ -272,12 +349,14 @@ This comprehensive 400+ line document includes:
 ### Test Execution Configuration
 
 **BEFORE:**
+
 - Modal auto-opens on checkbox selection
 - Hard to select multiple samples
 - Only 4 analyzers available
 - Weird UX behavior
 
 **AFTER:**
+
 - Explicit "Configure Execution (N)" button
 - Free sample selection with checkboxes
 - All 11 analyzers available
@@ -286,9 +365,11 @@ This comprehensive 400+ line document includes:
 ### Data Persistence
 
 **BEFORE:**
+
 - ✅ Test Execution modal form → saved
 
 **AFTER:**
+
 - ✅ Test Execution modal form → saved
 - ✅ Data includes execution, raw files, QC, results, reviews
 - ✅ Audit trail created
@@ -405,6 +486,7 @@ Samples with Stage 2 Test Assignments (4)
 ### Follow-up Tasks
 
 **For Backend Team:**
+
 - [ ] Verify all endpoints handle errors correctly
 - [ ] Add role-based access control
 - [ ] Implement missing endpoints (if identified)
@@ -413,12 +495,14 @@ Samples with Stage 2 Test Assignments (4)
 - [ ] Test all state transitions
 
 **For Frontend Team:**
+
 - [ ] Test Tab 2-10 functionality
 - [ ] Add form validation messages
 - [ ] Improve user feedback
 - [ ] Test complete workflow end-to-end
 
 **For QA Team:**
+
 - [ ] Test complete Stage 3 workflow
 - [ ] Test with real analyzer data
 - [ ] Test error scenarios
@@ -433,6 +517,7 @@ Samples with Stage 2 Test Assignments (4)
 ### Created This Session
 
 1. **STAGE3_BACKEND_REQUIREMENTS.md** (400+ lines)
+
    - Complete API specifications
    - Data structure requirements
    - Validation rules
@@ -448,21 +533,25 @@ Samples with Stage 2 Test Assignments (4)
 ### Existing Documentation
 
 3. **STAGE3_WORKFLOW_PROCESS.md**
+
    - Complete 10-tab workflow explanation
    - What happens in each tab
    - Data structures at each stage
 
 4. **STAGE3_TAB1_EXECUTION_FLOW.md**
+
    - Detailed Tab 1 execution flow
    - Before/after data states
    - Complete flow diagram
 
 5. **STAGE3_QUICK_ANSWER.md**
+
    - Quick reference for Tab 1
    - User workflow explanation
    - Data flow visualization
 
 6. **STAGE3_UX_IMPROVEMENTS.md**
+
    - UX improvements explained
    - Modal implementation details
    - Checkbox flexibility
@@ -477,6 +566,7 @@ Samples with Stage 2 Test Assignments (4)
 ## Summary
 
 ✅ **All requested tasks completed:**
+
 1. ✅ Instrument ID dropdown populated with all analyzers from Stage 2
 2. ✅ Comprehensive backend audit completed
 3. ✅ Backend requirements document created
@@ -485,5 +575,5 @@ Samples with Stage 2 Test Assignments (4)
 
 **Status:** Ready for testing and implementation of missing endpoints
 
-**Next Steps:** Test Tabs 2-10 functionality and implement any missing backend endpoints identified in the requirements document.
-
+**Next Steps:** Test Tabs 2-10 functionality and implement any missing backend
+endpoints identified in the requirements document.

@@ -2,7 +2,9 @@
 
 ## Overview
 
-The bioanalytical notebook workflow is a multi-stage process that guides samples through reception, analytical testing configuration, and execution. Each stage builds upon the previous stage's data.
+The bioanalytical notebook workflow is a multi-stage process that guides samples
+through reception, analytical testing configuration, and execution. Each stage
+builds upon the previous stage's data.
 
 ---
 
@@ -15,6 +17,7 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
 **Who Uses It:** Lab Technicians, Sample Handlers
 
 **Key Activities:**
+
 1. Import samples via CSV manifest (batch upload)
 2. Register sample metadata:
    - Sample Type (API, Tablet, Capsule, Plasma, Serum, etc.)
@@ -25,6 +28,7 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
 4. Mark samples COMPLETED to advance to Stage 2
 
 **Data Stored (in sample.data JSONB):**
+
 ```json
 {
   "sampleType": "Plasma",
@@ -35,7 +39,8 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
 }
 ```
 
-**Advancement:** Mark as COMPLETED → Samples advance to Stage 2 (Test Assignment)
+**Advancement:** Mark as COMPLETED → Samples advance to Stage 2 (Test
+Assignment)
 
 ---
 
@@ -46,8 +51,10 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
 **Who Uses It:** Chemical Analysts, Pharmacists, Method Scientists
 
 **Key Activities:**
+
 1. **Receive samples from Stage 1** with metadata (sample type, requested tests)
 2. **Select Analytical Method** based on sample type:
+
    - HPLC / UV-Vis (chemical analysis, assay, content uniformity)
    - LC-MS/MS (bioanalytical, pharmacokinetics, metabolite ID)
    - Dissolution Testing (pharmaceutical quality, release profiles)
@@ -55,21 +62,25 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
    - Identity Testing (API verification)
 
 3. **Assign Staff Responsible:**
+
    - Chemical Analyst (method execution)
    - Pharmacist (review/approval)
    - Researcher (method development)
 
 4. **Configure QC Levels:**
+
    - Low Concentration QC (e.g., 5 ng/mL ± 20%)
    - Medium Concentration QC (e.g., 50 ng/mL ± 20%)
    - High Concentration QC (e.g., 500 ng/mL ± 20%)
 
 5. **Configure Acceptance Criteria:**
+
    - R² Minimum (≥0.995 for linear regression)
    - Slope Range (typically 0.8-1.2)
    - Intercept Maximum (typically ±20%)
 
 6. **Document Sample Preparation:**
+
    - How to prepare the sample (extraction, dilution, etc.)
    - Temperature conditions
    - Timing requirements
@@ -80,6 +91,7 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
 8. **Mark Samples COMPLETED** → Advance to Stage 3
 
 **Data Stored (in sample.data JSONB):**
+
 ```json
 {
   "sampleType": "Plasma",
@@ -104,7 +116,8 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
 }
 ```
 
-**Advancement:** Mark as COMPLETED → Samples advance to Stage 3 with ALL above data
+**Advancement:** Mark as COMPLETED → Samples advance to Stage 3 with ALL above
+data
 
 ---
 
@@ -116,7 +129,8 @@ The bioanalytical notebook workflow is a multi-stage process that guides samples
 
 **What Stage 3 Should Display (Currently Fixed):**
 
-When samples enter Stage 3, they should arrive WITH the complete configuration from Stage 2:
+When samples enter Stage 3, they should arrive WITH the complete configuration
+from Stage 2:
 
 ```
 Sample Table in Stage 3:
@@ -129,6 +143,7 @@ Sample Table in Stage 3:
 ```
 
 **Stage 3 Activities:**
+
 1. **Receive samples with complete test configuration** from Stage 2
 2. **Setup Instrumentation:**
    - Select instrument/analyzer (LC-MS/MS, HPLC, etc.)
@@ -164,6 +179,7 @@ Sample Table in Stage 3:
    - Plus: Audit trail, signatures, timestamps
 
 **Data Received from Stage 2 (Used in Stage 3):**
+
 - analyticalMethod
 - assignedStaff
 - qcLevels (Low/Medium/High configurations)
@@ -209,6 +225,7 @@ Stage 3 Sample Record (Database) - BEFORE FIX:
 ### **Root Cause**
 
 The `advanceSamplesToNextPageString()` endpoint was:
+
 1. Creating a NEW `NotebookPageSample` record on Stage 3
 2. Never copying the `data` field from the Stage 2 record
 3. Method `createPageSampleForPageString()` had no parameter to accept data
@@ -218,6 +235,7 @@ The `advanceSamplesToNextPageString()` endpoint was:
 **Three Changes Made:**
 
 1. **Service Interface** (`NotebookPageSampleService.java`):
+
 ```java
 // Added overloaded method
 void createPageSampleForPageString(
@@ -229,6 +247,7 @@ void createPageSampleForPageString(
 ```
 
 2. **Service Implementation** (`NotebookPageSampleServiceImpl.java`):
+
 ```java
 public void createPageSampleForPageString(Integer pageId, String sampleItemId,
                                          Status status, Map<String, Object> data) {
@@ -246,6 +265,7 @@ public void createPageSampleForPageString(Integer pageId, String sampleItemId,
 ```
 
 3. **Controller Endpoint** (`NoteBookRestController.java`):
+
 ```java
 for (String sampleId : request.getSampleIds()) {
   // ← NEW: Fetch data from source page
@@ -297,12 +317,15 @@ Stage 3 Sample Record (Database) - AFTER FIX:
 The bioanalytical test assignment page (Stage 2) now includes:
 
 ### **Features:**
+
 1. **Sample Selection Table**
+
    - Shows samples from Stage 1
    - Displays Stage 1 metadata (sampleType, requestedTests)
    - Shows assigned tests in colored badges
 
 2. **Test Assignment Configuration Modal**
+
    - Analytical Method selection
    - Staff assignment
    - QC level configuration
@@ -382,16 +405,18 @@ GET /rest/notebook/page/117/samples
    - All other Stage 2 data
 
 ### **Before Fix (What You Saw):**
+
 ```json
 [
   {
     "id": "62",
-    "data": {}  // ← Empty!
+    "data": {} // ← Empty!
   }
 ]
 ```
 
 ### **After Fix (What You Should See):**
+
 ```json
 [
   {
@@ -412,18 +437,22 @@ GET /rest/notebook/page/117/samples
 ## Key Architectural Insights
 
 ### **JSONB Data Strategy**
-- Instead of separate database tables for each stage's configuration, we use JSONB
+
+- Instead of separate database tables for each stage's configuration, we use
+  JSONB
 - Each sample carries forward its historical data as it progresses
 - This allows flexibility without schema changes
 - Audit trail is maintained naturally as data accumulates
 
 ### **Page Advancement Pattern**
+
 - Samples have multiple records (one per page they visit)
 - `NotebookPageSample` entity links a sample to a specific page
 - Advancement creates a NEW record on the target page
 - The fix ensures data is copied to the new record
 
 ### **Transactional Consistency**
+
 - All operations marked with `@Transactional`
 - Data copying happens within a transaction
 - Failures are logged but don't block other samples
@@ -432,8 +461,10 @@ GET /rest/notebook/page/117/samples
 
 ## Related Commits
 
-- **dbe3070f9**: Fixed form controls (NumberInput, DatePicker) and implemented data persistence on page refresh
-- **417412475**: Added stage progression button to move samples from Stage 2 to Stage 3
+- **dbe3070f9**: Fixed form controls (NumberInput, DatePicker) and implemented
+  data persistence on page refresh
+- **417412475**: Added stage progression button to move samples from Stage 2 to
+  Stage 3
 - **5917de33d**: Fixed data preservation during page advancement (CRITICAL FIX)
 
 ---
@@ -444,8 +475,9 @@ GET /rest/notebook/page/117/samples
 - [ ] Click "Mark Complete & Move to Next Stage"
 - [ ] Advance to Stage 3
 - [ ] Check browser network tab for GET /samples
-- [ ] Verify response has `sample.data` with analyticalMethod, assignedStaff, etc.
-- [ ] Frontend filtering on lines 259-262 of `BioanalyticalAnalyticalExecutionPage.js` should pass
+- [ ] Verify response has `sample.data` with analyticalMethod, assignedStaff,
+      etc.
+- [ ] Frontend filtering on lines 259-262 of
+      `BioanalyticalAnalyticalExecutionPage.js` should pass
 - [ ] Samples should appear in Stage 3 datatable
 - [ ] Sample details should show Stage 2 configuration
-

@@ -16,6 +16,7 @@ Confusing and non-standard UX
 ```
 
 **Problem:**
+
 - User has to deal with modal right away
 - No clear button showing what to do
 - Feels reactive rather than proactive
@@ -38,6 +39,7 @@ Clear, intuitive, standard UX
 ```
 
 **Benefit:**
+
 - User has explicit action button
 - Clear call-to-action
 - Standard pattern (select → then act)
@@ -123,6 +125,7 @@ onChange={(checked) => {
 ```
 
 **Issues:**
+
 - ❌ Modal opens on first checkbox selection
 - ❌ User can't select multiple samples first
 - ❌ Modal state tied to checkbox state
@@ -149,6 +152,7 @@ onClick={() => setIsExecutionModalOpen(true)}  // ✅ User decides
 ```
 
 **Benefits:**
+
 - ✅ Modal only opens when user clicks button
 - ✅ User can select multiple samples
 - ✅ Selection state independent from modal
@@ -254,12 +258,14 @@ Button updates dynamically: `Configure Execution (3)`
 ### **File:** `BioanalyticalAnalyticalExecutionPage.js`
 
 #### **Change 1: Added Configure Button**
+
 - **Location:** Lines 1280-1308
 - **What:** Added conditional button that shows when samples selected
 - **Logic:** `{selectedSampleIds.size > 0 && <Button>...}`
 - **Position:** Header, right-aligned, next to sample count
 
 #### **Change 2: Removed Auto-Open from Checkbox**
+
 - **Location:** Lines 1373-1387
 - **What:** Removed `if (newSelection.size === 1) setIsExecutionModalOpen(true)`
 - **Result:** Checkboxes now work freely without side effects
@@ -269,6 +275,7 @@ Button updates dynamically: `Configure Execution (3)`
 ## Testing: Before vs After
 
 ### **BEFORE Test Case**
+
 ```
 Test: User tries to select 2 samples
 ─────────────────────────────────
@@ -282,6 +289,7 @@ Result: Bad UX, inflexible
 ```
 
 ### **AFTER Test Case**
+
 ```
 Test: User tries to select 2 samples
 ─────────────────────────────────
@@ -305,15 +313,14 @@ Result: Great UX, flexible, standard pattern
 
 ## Summary
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| **Button to open modal** | ❌ Missing | ✅ Explicit |
-| **Checkbox flexibility** | ❌ Auto-opens modal | ✅ Works freely |
-| **User control** | ❌ Forced interaction | ✅ User decides |
-| **UX Pattern** | ❌ Non-standard | ✅ Standard (Select → Act) |
-| **Multi-select** | ❌ Awkward | ✅ Natural |
-| **Intuitiveness** | ❌ Confusing | ✅ Clear |
-| **Professional** | ❌ Weird | ✅ Polished |
+| Aspect                   | Before                | After                      |
+| ------------------------ | --------------------- | -------------------------- |
+| **Button to open modal** | ❌ Missing            | ✅ Explicit                |
+| **Checkbox flexibility** | ❌ Auto-opens modal   | ✅ Works freely            |
+| **User control**         | ❌ Forced interaction | ✅ User decides            |
+| **UX Pattern**           | ❌ Non-standard       | ✅ Standard (Select → Act) |
+| **Multi-select**         | ❌ Awkward            | ✅ Natural                 |
+| **Intuitiveness**        | ❌ Confusing          | ✅ Clear                   |
+| **Professional**         | ❌ Weird              | ✅ Polished                |
 
 This is now a **professional, intuitive, and standard** implementation! 🎉
-

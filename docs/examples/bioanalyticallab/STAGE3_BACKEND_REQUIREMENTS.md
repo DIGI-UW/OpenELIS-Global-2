@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document outlines all backend requirements for Stage 3 of the bioanalytical notebook workflow, including API endpoints, data persistence requirements, error handling, and validation rules.
+This document outlines all backend requirements for Stage 3 of the bioanalytical
+notebook workflow, including API endpoints, data persistence requirements, error
+handling, and validation rules.
 
 ---
 
@@ -13,6 +15,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 #### **API Endpoint: POST /rest/notebook/bulk/page/{pageId}/samples/apply**
 
 **Frontend sends:**
+
 ```json
 {
   "sampleIds": [62, 63, 64],
@@ -35,13 +38,15 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Backend should:**
+
 1. ✅ Validate all required fields are present
 2. ✅ Persist data to `NotebookPageSample.data` JSONB field
 3. ✅ Update sample status to "EXECUTED"
 4. ✅ Create audit trail entry
 5. ✅ Return success response with updated sample data
 
-**Current Implementation Status:** ✅ **Exists** (bulk/page/{pageId}/samples/apply endpoint)
+**Current Implementation Status:** ✅ **Exists**
+(bulk/page/{pageId}/samples/apply endpoint)
 
 ---
 
@@ -49,11 +54,13 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 
 ### **Requirement 1: Test Execution Persistence**
 
-**What:** Store execution configuration when user fills and submits Test Execution modal
+**What:** Store execution configuration when user fills and submits Test
+Execution modal
 
 **Endpoint:** POST `/rest/notebook/bulk/page/{pageId}/samples/apply`
 
 **Request Body:**
+
 ```json
 {
   "sampleIds": [62, 63],
@@ -73,6 +80,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Requirements:**
+
 - ✅ Persist to sample.data JSONB
 - ✅ Maintain existing data from Stage 2
 - ✅ Merge new execution data with existing data
@@ -80,6 +88,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 - ✅ Return merged data in response
 
 **Validation Rules:**
+
 - ✅ `analystId` must be non-empty
 - ✅ `instrumentId` must match valid analyzer (1-11)
 - ✅ `executionDate` must be valid ISO date or today's date
@@ -99,6 +108,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 **Frontend sends:** FileUploader with file selection
 
 **Backend should:**
+
 1. Accept file uploads (multipart/form-data)
 2. Validate file format matches analyzer:
    - LC-MS/MS: mzML, CDF
@@ -120,6 +130,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 5. Return file metadata with upload confirmation
 
 **Missing Endpoints to Check:**
+
 - [ ] POST `/rest/notebook/page/{pageId}/samples/{sampleId}/upload-file`
 - [ ] POST `/rest/notebook/bulk/page/{pageId}/upload-file`
 
@@ -134,6 +145,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 **Current Implementation Status:** ⚠️ **Needs Verification**
 
 **Data Structure:**
+
 ```json
 {
   "calibrationData": {
@@ -174,12 +186,14 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Validation Rules:**
+
 - R² minimum (from Stage 2 acceptance criteria, typically ≥0.99)
 - QC accuracy: 80-120% (or from Stage 2)
 - QC precision: ≤15% CV (or from Stage 2)
 - Westgard rule detection (1-2s, 1-3s, R-4s, 4-1s, 10x)
 
 **Required Endpoint:**
+
 - [ ] POST `/rest/notebook/page/{pageId}/samples/{sampleId}/calibration-qc`
 
 ---
@@ -193,6 +207,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 **Current Implementation Status:** ⚠️ **Needs Verification**
 
 **Data Structure:**
+
 ```json
 {
   "sampleResults": [
@@ -212,11 +227,13 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Calculation Logic:**
+
 - `calculatedConcentration = (peakArea - calibrationIntercept) / calibrationSlope`
 - `recoveryPercent = (calculatedConcentration / expectedConcentration) × 100`
 - `status = "PASSED"` if within acceptance criteria, else "FAILED"
 
 **Required Endpoint:**
+
 - [ ] GET `/rest/notebook/page/{pageId}/samples/{sampleId}/calculate-results`
 
 ---
@@ -227,9 +244,11 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 
 **Tab:** Tab 6: Deviations
 
-**Current Implementation Status:** ⚠️ **Partially Implemented** (see handleRecordDeviation function)
+**Current Implementation Status:** ⚠️ **Partially Implemented** (see
+handleRecordDeviation function)
 
 **Data Structure:**
+
 ```json
 {
   "deviations": [
@@ -251,6 +270,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Valid Deviation Types:**
+
 - QC_FAILURE
 - OUT_OF_SPEC_RESULT
 - INSTRUMENT_MALFUNCTION
@@ -258,12 +278,15 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 - DATA_INTEGRITY_ISSUE
 
 **Valid Severities:**
+
 - CRITICAL (blocks all results)
 - MAJOR (affects specific samples)
 - MINOR (documentation only)
 
 **Required Endpoint:**
-- ✅ POST `/rest/notebook/bulk/page/{pageId}/samples/apply` (append to deviations array)
+
+- ✅ POST `/rest/notebook/bulk/page/{pageId}/samples/apply` (append to
+  deviations array)
 
 ---
 
@@ -273,9 +296,11 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 
 **Tabs:** Tab 7-9: Review & Approval
 
-**Current Implementation Status:** ⚠️ **Structure Exists, Logic Needs Verification**
+**Current Implementation Status:** ⚠️ **Structure Exists, Logic Needs
+Verification**
 
 **Tab 7: Analyst Review (Level 1)**
+
 ```json
 {
   "analystReview": {
@@ -300,6 +325,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Tab 8: QA Review (Level 2)** - Only enabled if ANALYST_APPROVED
+
 ```json
 {
   "qaReview": {
@@ -318,6 +344,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Tab 9: Manager Approval (Final)** - Only enabled if QA_APPROVED
+
 ```json
 {
   "managerReview": {
@@ -337,9 +364,12 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Review State Transitions:**
-- PENDING_ANALYST_REVIEW → ANALYST_APPROVED → QA_APPROVED → MANAGER_APPROVED → COMPLETED
+
+- PENDING_ANALYST_REVIEW → ANALYST_APPROVED → QA_APPROVED → MANAGER_APPROVED →
+  COMPLETED
 
 **Required Endpoint:**
+
 - [ ] POST `/rest/notebook/page/{pageId}/samples/{sampleId}/review`
 
 ---
@@ -351,6 +381,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 **Tab:** Tab 10: Audit Trail & Data Integrity
 
 **Data Structure:**
+
 ```json
 {
   "auditTrail": [
@@ -393,6 +424,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 ```
 
 **Audit Trail Events to Log:**
+
 - TEST_EXECUTION (when Tab 1 form submitted)
 - FILE_UPLOAD (when file uploaded in Tab 2)
 - CALIBRATION_RECORDED (when Tab 3 calibration/QC saved)
@@ -404,6 +436,7 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 - MANAGER_APPROVED (when Tab 9 approved)
 
 **Compliance Requirements:**
+
 - ✅ Timestamp all actions
 - ✅ Record user ID for attribution
 - ✅ Preserve original data (no overwrites, append only)
@@ -419,12 +452,14 @@ This document outlines all backend requirements for Stage 3 of the bioanalytical
 **Status:** ⚠️ **MISSING**
 
 **What's needed:**
+
 - Endpoint to handle multipart/form-data file uploads
 - File format validation based on analyzer type
 - File storage (database or S3)
 - File metadata persistence to sample.data.rawDataFiles
 
 **Recommended Implementation:**
+
 ```java
 @PostMapping("/rest/notebook/page/{pageId}/samples/{sampleId}/upload-file")
 public ResponseEntity<?> uploadFile(
@@ -447,12 +482,14 @@ public ResponseEntity<?> uploadFile(
 **Status:** ⚠️ **MISSING**
 
 **What's needed:**
+
 - Endpoint to record calibration curve and QC results
 - Validation against acceptance criteria from Stage 2
 - Westgard rule detection
 - Data persistence to sample.data.calibrationData and sample.data.qcResults
 
 **Recommended Implementation:**
+
 ```java
 @PostMapping("/rest/notebook/page/{pageId}/samples/{sampleId}/calibration-qc")
 public ResponseEntity<?> recordCalibrationQC(
@@ -474,12 +511,14 @@ public ResponseEntity<?> recordCalibrationQC(
 **Status:** ⚠️ **MISSING**
 
 **What's needed:**
+
 - Endpoint to calculate sample concentrations from calibration and peak data
 - QC recovery calculation
 - Pass/fail determination
 - Persistence to sample.data.sampleResults
 
 **Recommended Implementation:**
+
 ```java
 @PostMapping("/rest/notebook/page/{pageId}/samples/{sampleId}/calculate-results")
 public ResponseEntity<?> calculateResults(
@@ -502,13 +541,16 @@ public ResponseEntity<?> calculateResults(
 **Status:** ⚠️ **MISSING**
 
 **What's needed:**
+
 - Endpoint to record analyst, QA, and manager reviews
 - Role-based permission checking (analyst, QA scientist, manager)
-- State transition validation (ANALYST_APPROVED → QA_APPROVED → MANAGER_APPROVED)
+- State transition validation (ANALYST_APPROVED → QA_APPROVED →
+  MANAGER_APPROVED)
 - Electronic signature capture
 - Audit trail entry creation
 
 **Recommended Implementation:**
+
 ```java
 @PostMapping("/rest/notebook/page/{pageId}/samples/{sampleId}/review")
 public ResponseEntity<?> submitReview(
@@ -531,6 +573,7 @@ public ResponseEntity<?> submitReview(
 **Status:** ⚠️ **Needs Improvement**
 
 **Required:**
+
 - ✅ All API responses should follow standard format
 - ✅ Error messages should be user-friendly
 - ✅ Validation errors should list all violations
@@ -544,6 +587,7 @@ public ResponseEntity<?> submitReview(
 - ✅ All exceptions should be caught and logged
 
 **Standard Response Format:**
+
 ```json
 {
   "success": true,
@@ -554,6 +598,7 @@ public ResponseEntity<?> submitReview(
 ```
 
 **Error Response Format:**
+
 ```json
 {
   "success": false,
@@ -579,6 +624,7 @@ public ResponseEntity<?> submitReview(
 **Validation Rules to Implement:**
 
 **Test Execution (Tab 1):**
+
 - analystId: Required, non-empty string
 - instrumentId: Required, must exist in ANALYZERS (1-11)
 - executionDate: Optional, must be valid ISO date
@@ -586,6 +632,7 @@ public ResponseEntity<?> submitReview(
 - notes: Optional, string
 
 **Calibration (Tab 3):**
+
 - R² minimum: Check against Stage 2 acceptance criteria
 - Slope: Check against Stage 2 range (typically 0.8-1.2)
 - Intercept: Check against Stage 2 max (typically ±20%)
@@ -593,6 +640,7 @@ public ResponseEntity<?> submitReview(
 - QC precision: CV ≤15% (or Stage 2 value)
 
 **Sample Results (Tab 5):**
+
 - Calculated concentration must be within calibration range
 - Recovery % must be within acceptance limits
 - Must pass all QC checks before approval
@@ -619,7 +667,8 @@ public ResponseEntity<?> submitReview(
 
 - [ ] All endpoints require authentication (logged-in user)
 - [ ] Role-based access control implemented:
-  - Analyst can: Record execution, upload files, record QC, submit analyst review
+  - Analyst can: Record execution, upload files, record QC, submit analyst
+    review
   - QA can: Submit QA review (only after analyst approval)
   - Manager can: Submit final approval (only after QA approval)
 - [ ] Electronic signatures include user ID and timestamp
@@ -633,6 +682,7 @@ public ResponseEntity<?> submitReview(
 ## Testing Checklist
 
 **For Each Endpoint:**
+
 - [ ] Valid request succeeds
 - [ ] Missing required fields returns 400 with clear error message
 - [ ] Invalid instrument ID returns 400
@@ -649,12 +699,14 @@ public ResponseEntity<?> submitReview(
 ## Summary
 
 **Currently Implemented:**
+
 - ✅ Test Execution modal in frontend
 - ✅ Instrument dropdown with 11 analyzers
 - ✅ Data persistence endpoint (/rest/notebook/bulk/page/{pageId}/samples/apply)
 - ✅ Audit trail logging framework
 
 **Missing/Needs Verification:**
+
 - ⚠️ File upload endpoint
 - ⚠️ Calibration/QC recording endpoint
 - ⚠️ Results calculation endpoint
@@ -664,6 +716,7 @@ public ResponseEntity<?> submitReview(
 - ⚠️ Role-based access control
 
 **Priority Fixes:**
+
 1. Verify existing endpoints handle all data correctly
 2. Implement file upload endpoint
 3. Implement calibration/QC endpoint
@@ -671,4 +724,3 @@ public ResponseEntity<?> submitReview(
 5. Implement review approval endpoint
 6. Add comprehensive error handling and validation
 7. Add role-based access control
-

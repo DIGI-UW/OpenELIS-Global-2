@@ -2,7 +2,10 @@
 
 ## Overview
 
-Stage 3 is divided into **10 sequential tabs**, each representing a step in the analytical execution workflow. The user must complete these steps in order to fully execute and document analytical tests according to FDA bioanalytical compliance standards (21 CFR Part 11, ALCOA+).
+Stage 3 is divided into **10 sequential tabs**, each representing a step in the
+analytical execution workflow. The user must complete these steps in order to
+fully execute and document analytical tests according to FDA bioanalytical
+compliance standards (21 CFR Part 11, ALCOA+).
 
 ---
 
@@ -22,10 +25,12 @@ When you click "Execute Tests (N)" in the modal:
    - Execution Notes
    - Audit trail entry created
 3. **Auto-Navigate to Tab 2** - The UI automatically moves to the next tab
-4. **Success Notification** - Confirmation message: "Tests executed successfully for N samples"
+4. **Success Notification** - Confirmation message: "Tests executed successfully
+   for N samples"
 5. **Sample Status Updates** - Selected samples now show `EXECUTED` status
 
 **After Execution in Tab 1:**
+
 - You CAN NOT modify execution configuration
 - You MUST proceed to Tab 2 to upload raw instrument data
 
@@ -33,17 +38,22 @@ When you click "Execute Tests (N)" in the modal:
 
 ### **Tab 2: Raw Data Upload** 📤 (Next Step)
 
-**Purpose:** Capture actual chromatograms, spectra, and raw analytical data from instruments
+**Purpose:** Capture actual chromatograms, spectra, and raw analytical data from
+instruments
 
 **Activities:**
-1. **Select Instrument Type** - Choose which analyzer/instrument produced the data
+
+1. **Select Instrument Type** - Choose which analyzer/instrument produced the
+   data
 2. **Upload Raw Data Files** - Add files in supported formats:
+
    - **LC-MS/MS**: mzML, CDF
    - **HPLC**: CSV, PDF
    - **Dissolution**: CSV
    - **Other**: PDF
 
-3. **File Validation** - System validates file format matches selected instrument
+3. **File Validation** - System validates file format matches selected
+   instrument
 4. **Upload Records** - Each file is logged with:
    - File name
    - Instrument ID
@@ -52,6 +62,7 @@ When you click "Execute Tests (N)" in the modal:
    - Validation status
 
 **What Gets Stored:**
+
 ```json
 {
   "rawDataFiles": [
@@ -77,6 +88,7 @@ When you click "Execute Tests (N)" in the modal:
 **Activities:**
 
 1. **Calibration Curve Validation**
+
    - Record R² (coefficient of determination)
    - Minimum acceptable: 0.99 (or from Stage 2 config)
    - Record Slope (linear regression)
@@ -84,6 +96,7 @@ When you click "Execute Tests (N)" in the modal:
    - Validate all parameters meet acceptance criteria
 
 2. **QC Sample Results** - For each QC level (Low, Medium, High):
+
    - Measured Concentration
    - % Accuracy: `(Measured / Expected) × 100`
    - % Coefficient of Variation (CV): `(Std Dev / Mean) × 100`
@@ -97,17 +110,19 @@ When you click "Execute Tests (N)" in the modal:
    - 10x rule violations (10 consecutive same side of mean)
 
 **Example Acceptance Criteria** (from Stage 2):
+
 ```json
 {
   "rSquaredMin": 0.995,
   "slopeRange": { "min": 0.8, "max": 1.2 },
   "interceptMax": 20,
   "qcAccuracy": { "min": 85, "max": 115 },
-  "qcPrecision": 15  // ≤15% CV
+  "qcPrecision": 15 // ≤15% CV
 }
 ```
 
 **What Gets Stored:**
+
 ```json
 {
   "calibrationData": {
@@ -150,20 +165,25 @@ When you click "Execute Tests (N)" in the modal:
 
 ### **Tab 4: Automated Processing** 🤖 (Data Integration)
 
-**Purpose:** Automatic calculation of sample concentrations using validated calibration
+**Purpose:** Automatic calculation of sample concentrations using validated
+calibration
 
 **Activities:**
 
 1. **Peak Integration** - System processes chromatogram data:
+
    - Identifies peaks in raw data
    - Calculates peak areas/heights
    - Matches retention times
 
 2. **Calibration Point Mapping** - Applies validated calibration curve:
+
    - Maps measured peak area to concentration
-   - Uses linear regression equation: `Concentration = (PeakArea - Intercept) / Slope`
+   - Uses linear regression equation:
+     `Concentration = (PeakArea - Intercept) / Slope`
 
 3. **Sample Concentration Calculation**
+
    - Calculates concentration for each sample
    - Applies dilution factors (if applicable)
    - Validates against calibration range
@@ -173,6 +193,7 @@ When you click "Execute Tests (N)" in the modal:
    - Flags out-of-range results for manual review
 
 **What Gets Stored:**
+
 ```json
 {
   "automatedResults": [
@@ -199,6 +220,7 @@ When you click "Execute Tests (N)" in the modal:
 **Activities:**
 
 1. **View Sample Results**
+
    - Sample ID
    - Calculated Concentration
    - Units (ng/mL, %, etc.)
@@ -206,6 +228,7 @@ When you click "Execute Tests (N)" in the modal:
    - % Recovery vs. QC
 
 2. **Results Validation**
+
    - Check all samples are within expected ranges
    - Identify any outliers or suspicious results
    - Flag samples requiring additional testing
@@ -216,6 +239,7 @@ When you click "Execute Tests (N)" in the modal:
    - Mark samples as "RESULTS_APPROVED"
 
 **What Gets Stored:**
+
 ```json
 {
   "sampleResults": [
@@ -241,13 +265,16 @@ When you click "Execute Tests (N)" in the modal:
 **Activities:**
 
 1. **Record Deviations** - If QC failed or results were unexpected:
-   - **Type**: QC Failure, Out-of-Spec Result, Instrument Malfunction, Method Deviation
+
+   - **Type**: QC Failure, Out-of-Spec Result, Instrument Malfunction, Method
+     Deviation
    - **Severity**: Critical, Major, Minor
    - **Description**: What went wrong and why
    - **Corrective Action**: How to fix it
    - **Preventive Action**: How to prevent future occurrence
 
 2. **Deviation Example**:
+
    ```
    Type: QC Failure
    Severity: Major
@@ -265,6 +292,7 @@ When you click "Execute Tests (N)" in the modal:
    - Can affected samples be re-analyzed?
 
 **What Gets Stored:**
+
 ```json
 {
   "deviations": [
@@ -287,26 +315,31 @@ When you click "Execute Tests (N)" in the modal:
 
 ### **Tab 7: Analyst Review (ALCOA+)** 👤 (First Level Review)
 
-**Purpose:** Analyst validates data integrity and method compliance (Level 1 Review)
+**Purpose:** Analyst validates data integrity and method compliance (Level 1
+Review)
 
 **Activities:**
 
 1. **Contemporaneous Record Check**
+
    - Were all results recorded in real-time?
    - Are there any gaps or missing data points?
    - Verify timestamps are in chronological order
 
 2. **Data Integrity Verification**
+
    - Check for alterations or corrections
    - Verify all original data is preserved
    - Confirm audit trail is complete
 
 3. **Method Compliance**
+
    - Did analysis follow validated method from Stage 2?
    - Were all instrument parameters within specs?
    - Were QC samples analyzed correctly?
 
 4. **ALCOA+ Elements**
+
    - **Attributable**: Who performed the analysis? (Analyst ID recorded)
    - **Legible**: All records clear and readable? ✓
    - **Contemporaneous**: Real-time recording? ✓
@@ -322,6 +355,7 @@ When you click "Execute Tests (N)" in the modal:
    - Approval Checkbox
 
 **What Gets Stored:**
+
 ```json
 {
   "analystReview": {
@@ -346,6 +380,7 @@ When you click "Execute Tests (N)" in the modal:
 ```
 
 **IMPORTANT**: After Analyst Review is APPROVED:
+
 - Tab 8 (QA Review) becomes ENABLED ✓
 - User can proceed to multi-level review
 
@@ -353,23 +388,27 @@ When you click "Execute Tests (N)" in the modal:
 
 ### **Tab 8: QA Review (Level 2)** 🔍 (Second Level Review)
 
-**Purpose:** Quality Assurance specialist validates methodology and regulatory compliance
+**Purpose:** Quality Assurance specialist validates methodology and regulatory
+compliance
 
 **Enabled Only After:** Analyst Review is APPROVED
 
 **Activities:**
 
 1. **Method Validation Check**
+
    - Is the analytical method validated per USP/USP guidelines?
    - Were all acceptance criteria met?
    - Are QC results within established ranges?
 
 2. **Data Integrity Audit**
+
    - Verify no unauthorized modifications
    - Check audit trail for completeness
    - Confirm original data preservation
 
 3. **Regulatory Compliance**
+
    - 21 CFR Part 11 compliance? ✓
    - System suitability test results acceptable?
    - Reference standard properly verified?
@@ -382,6 +421,7 @@ When you click "Execute Tests (N)" in the modal:
    - Electronic Signature
 
 **What Gets Stored:**
+
 ```json
 {
   "qaReview": {
@@ -400,6 +440,7 @@ When you click "Execute Tests (N)" in the modal:
 ```
 
 **IMPORTANT**: After QA Review is APPROVED:
+
 - Tab 9 (Manager Approval) becomes ENABLED ✓
 - Final approval step unlocked
 
@@ -414,16 +455,19 @@ When you click "Execute Tests (N)" in the modal:
 **Activities:**
 
 1. **Overall Compliance Assessment**
+
    - Are all requirements met?
    - Is the study data suitable for regulatory submission?
    - Does data support the study conclusions?
 
 2. **Regulatory Submission Check**
+
    - Can this report be submitted to FDA?
    - Does it meet GLP/cGLP standards?
    - Is documentation complete?
 
 3. **Final Disposition Decision**
+
    - **APPROVED**: Release for regulatory submission
    - **APPROVED_WITH_CONDITIONS**: Minor issues noted but acceptable
    - **REJECTED**: Requires re-analysis or investigation
@@ -435,6 +479,7 @@ When you click "Execute Tests (N)" in the modal:
    - Study Impact Assessment
 
 **What Gets Stored:**
+
 ```json
 {
   "managerReview": {
@@ -457,16 +502,19 @@ When you click "Execute Tests (N)" in the modal:
 
 ### **Tab 10: Audit Trail & Data Integrity** 📋 (Compliance Record)
 
-**Purpose:** Show complete audit trail and data integrity verification for regulatory compliance
+**Purpose:** Show complete audit trail and data integrity verification for
+regulatory compliance
 
 **Activities:**
 
 1. **View Audit Trail Log**
+
    - All actions recorded chronologically
    - Who made changes and when
    - What data was modified
 
 2. **Data Integrity Summary**
+
    - Checksum verification: ✓
    - Timestamp verification: ✓
    - Originality verification: ✓
@@ -479,6 +527,7 @@ When you click "Execute Tests (N)" in the modal:
    - Approvals recorded: 3
 
 **Audit Trail Entries**:
+
 ```
 10:30:00 - TEST_EXECUTION - analyst_001 - Executed tests for 3 samples
 10:35:00 - FILE_UPLOAD - analyst_001 - Uploaded LC-MS-MS_Sample_BIO-2024-001.csv (245 KB)
@@ -523,30 +572,34 @@ COMPLETE! Ready for regulatory submission.
 ## What Your Frontend Currently Has
 
 ✅ **Tab 1: Test Execution** - Modal implementation COMPLETE
-   - Selects samples (checkboxes)
-   - Opens configuration modal
-   - Saves execution data
-   - Auto-navigates to Tab 2
+
+- Selects samples (checkboxes)
+- Opens configuration modal
+- Saves execution data
+- Auto-navigates to Tab 2
 
 ⏳ **Tabs 2-10** - Structure exists but content needs implementation:
-   - Tab 2: Raw Data Upload - FileUploader component
-   - Tab 3: Calibration & QC - Form fields need data binding
-   - Tab 4: Automated Processing - Logic needs implementation
-   - Tab 5: Results & Approval - Display & signing
-   - Tab 6: Deviations - Form for recording issues
-   - Tab 7-9: Review tabs - Review forms with approval flows
-   - Tab 10: Audit Trail - Log display
+
+- Tab 2: Raw Data Upload - FileUploader component
+- Tab 3: Calibration & QC - Form fields need data binding
+- Tab 4: Automated Processing - Logic needs implementation
+- Tab 5: Results & Approval - Display & signing
+- Tab 6: Deviations - Form for recording issues
+- Tab 7-9: Review tabs - Review forms with approval flows
+- Tab 10: Audit Trail - Log display
 
 ---
 
 ## Next Steps for Your Implementation
 
 1. **Tab 2: Raw Data Upload**
+
    - Bind FileUploader to state
    - Implement file validation
    - Save uploaded files to backend
 
 2. **Tab 3: Calibration & QC**
+
    - Add form inputs for R², slope, intercept
    - Add QC result form (Low, Medium, High)
    - Implement Westgard rule detection
@@ -562,9 +615,11 @@ COMPLETE! Ready for regulatory submission.
 
 ## Key Points to Remember
 
-- **Tab 1 → Tab 2 Automatic**: When you click "Execute Tests", execution status is saved and UI moves to Tab 2 automatically
-- **Progressive Disclosure**: Tabs 8-9 are disabled until previous reviews are approved
+- **Tab 1 → Tab 2 Automatic**: When you click "Execute Tests", execution status
+  is saved and UI moves to Tab 2 automatically
+- **Progressive Disclosure**: Tabs 8-9 are disabled until previous reviews are
+  approved
 - **ALCOA+ Compliance**: All steps record who, when, and what
 - **Audit Trail**: Every action is logged with timestamp and user attribution
-- **Regulatory Ready**: After Manager Approval (Tab 9), data is ready for FDA submission
-
+- **Regulatory Ready**: After Manager Approval (Tab 9), data is ready for FDA
+  submission

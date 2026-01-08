@@ -1,6 +1,8 @@
 # Stage 3 (Analytical Execution) - Test Data Examples
 
-This document provides realistic example data that you can use to test the Analytical Execution workflow, including raw instrument data files and form values.
+This document provides realistic example data that you can use to test the
+Analytical Execution workflow, including raw instrument data files and form
+values.
 
 ---
 
@@ -39,6 +41,7 @@ Time (min),m/z,Intensity,Scan ID,Retention Time,Peak Area,Peak Height
 ```
 
 **What this represents:**
+
 - Time: 0.5-0.61 min = parent drug peak (m/z 235.15)
 - Time: 1.2-1.31 min = internal standard peak (m/z 219.08)
 - Peak Area: Calculated from the trapezoid rule integration
@@ -73,7 +76,9 @@ Time (min),Wavelength (nm),Absorbance,Peak Name,Baseline,Area
 ```
 
 **What this represents:**
-- Time: 3.0-6.5 min = main API peak at 254 nm (typical UV wavelength for pharmaceuticals)
+
+- Time: 3.0-6.5 min = main API peak at 254 nm (typical UV wavelength for
+  pharmaceuticals)
 - Absorbance: Peak height measured in AU (Absorbance Units)
 - Peak Area: Integration of absorbance over time
 - Baseline: Instrumental baseline noise
@@ -120,12 +125,14 @@ Time (min),Vessel,Temperature (C),% Release,Mean,Std Dev,RSD (%)
 ```
 
 **What this represents:**
+
 - Time points: 5, 10, 15, 30, 45 minutes (typical USP dissolution timepoints)
 - 6 vessels per timepoint (USP requirement)
 - % Release: Percentage of drug released at each timepoint
 - Mean/Std Dev/RSD: Statistical calculations for tablet consistency
 - Temperature: Maintained at 37°C ± 0.5°C (USP requirement)
-- Shows typical S-shaped dissolution profile (slow start, rapid middle, plateau at end)
+- Shows typical S-shaped dissolution profile (slow start, rapid middle, plateau
+  at end)
 
 ---
 
@@ -148,6 +155,7 @@ Concentration (ng/mL),Replicate 1,Replicate 2,Replicate 3,Mean,Std Dev,CV (%)
 ```
 
 **What this represents:**
+
 - Concentration range: 1-1000 ng/mL (typical for bioanalytical assays)
 - 3 replicates per concentration
 - Peak area responses (in AU or counts)
@@ -309,7 +317,7 @@ Concentration (ng/mL),Replicate 1,Replicate 2,Replicate 3,Mean,Std Dev,CV (%)
     "peakArea": 45450,
     "retentionTime": 5.23
   },
-  "mean": 5.00,
+  "mean": 5.0,
   "accuracy": 100.1,
   "stdDev": 0.081,
   "cv": 1.62,
@@ -664,17 +672,20 @@ Concentration (ng/mL),Replicate 1,Replicate 2,Replicate 3,Mean,Std Dev,CV (%)
 ### Step-by-Step Instructions:
 
 1. **Setup Instrumentation Tab:**
+
    - Copy values from sections 2.1-2.3 (Setup values)
    - Fill in form fields for your selected analytical method
    - Save instrument configuration
 
 2. **Upload Raw Data:**
+
    - Create a text file with data from sections 1.1-1.4
    - Save as `.csv` file with appropriate naming
    - Use the FileUploader in Stage 3 form
    - Select appropriate instrument type (LC-MS/MS, HPLC, etc.)
 
 3. **Enter Calibration Data:**
+
    - Use values from section 3 (Calibration Data)
    - Enter R² value: 0.9987
    - Enter slope: 8945.23
@@ -682,18 +693,21 @@ Concentration (ng/mL),Replicate 1,Replicate 2,Replicate 3,Mean,Std Dev,CV (%)
    - Verify all acceptance criteria are met
 
 4. **Enter QC Results:**
+
    - Use data from section 4 (QC Sample Results)
    - Enter results for Low, Medium, and High QC samples
    - All should show PASS status
    - Verify accuracy and CV within limits
 
 5. **Enter Sample Analysis Results:**
+
    - Use data from section 5 (Sample Analysis Results)
    - Enter concentration: 247.5 ng/mL for BIO-2024-001
    - Enter assay: 99.8% for API-2024-001
    - All should show PASS for QC status
 
 6. **Document Deviations (if any):**
+
    - Use template from section 6
    - Document any out-of-spec conditions
    - Provide corrective and preventive actions
@@ -735,4 +749,3 @@ Concentration (ng/mL),Replicate 1,Replicate 2,Replicate 3,Mean,Std Dev,CV (%)
 15:00 - Lab Manager: Final approval and release
 15:15 - System: Results released to study sponsor
 ```
-
