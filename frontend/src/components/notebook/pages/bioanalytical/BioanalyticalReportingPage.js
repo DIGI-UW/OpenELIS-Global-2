@@ -443,6 +443,13 @@ function BioanalyticalReportingPage({
           );
         });
 
+        console.log("QA Validation - Executed samples:", executedSamples);
+        console.log(
+          "QA Validation - bioequivalenceStats:",
+          bioequivalenceStats,
+        );
+        console.log("QA Validation - studyResults:", studyResults);
+
         // Validate each checklist item
         const validationResults = {
           rawDataValidated: validateRawDataFiles(executedSamples),
@@ -452,22 +459,32 @@ function BioanalyticalReportingPage({
           resultsAcceptable: validateResultsCriteria(executedSamples),
         };
 
+        console.log("QA Validation Results:", validationResults);
+
         setQaChecklistValidation(validationResults);
       }
     } catch (error) {
       console.error("Error validating QA checklist:", error);
     }
-  }, [entryId]);
+  }, [pageData?.id, bioequivalenceStats, studyResults]);
 
   // Individual validation functions for each QA check
   const validateRawDataFiles = (samples) => {
+    // Check both uploadedFiles (from Stage 3) and rawDataFiles
     const hasRawData = samples.some(
-      (s) => s.data.rawDataFiles && s.data.rawDataFiles.length > 0,
+      (s) =>
+        (s.data.uploadedFiles && s.data.uploadedFiles.length > 0) ||
+        (s.data.rawDataFiles && s.data.rawDataFiles.length > 0),
     );
+    const filesCount = samples.reduce((count, s) => {
+      const uploadedCount = s.data.uploadedFiles?.length || 0;
+      const rawCount = s.data.rawDataFiles?.length || 0;
+      return count + uploadedCount + rawCount;
+    }, 0);
     return {
       status: hasRawData ? "pass" : "fail",
       message: hasRawData
-        ? `${samples.length} samples with validated raw data files`
+        ? `${filesCount} raw data file(s) validated and processed`
         : "No raw data files found in executed samples",
     };
   };
@@ -479,7 +496,11 @@ function BioanalyticalReportingPage({
       return { status: "fail", message: "No calibration data found" };
     }
 
-    const rSquared = calibrationData.data.calibrationData?.rSquared || 0;
+    // Access rSquared directly from calibrationData object (not nested)
+    const rSquared =
+      calibrationData.data.calibrationData?.rSquared ||
+      calibrationData.data.calibrationData?.r_squared ||
+      0;
     return {
       status: rSquared >= 0.99 ? "pass" : "fail",
       message:
@@ -495,12 +516,16 @@ function BioanalyticalReportingPage({
       return { status: "fail", message: "No QC results found" };
     }
 
-    // Check if we have bioequivalence statistics with QC validation from backend
+    // Priority 1: Check if we have bioequivalence statistics with QC validation from backend
     if (bioequivalenceStats && bioequivalenceStats.qcValidation) {
       const qcValidation = bioequivalenceStats.qcValidation;
-      const westgardStatus = qcValidation.westgardStatus;
+      const westgardStatus = qcValidation.westgardStatus || "UNKNOWN";
       const rulesPassed = qcValidation.rulesPassed || 0;
       const rulesFailed = qcValidation.rulesFailed || 0;
+      const rulesEvaluated =
+        qcValidation.rulesEvaluated || rulesPassed + rulesFailed;
+
+      console.log("QC Validation from bioequivalenceStats:", qcValidation);
 
       return {
         status:
@@ -511,34 +536,58 @@ function BioanalyticalReportingPage({
               : "fail",
         message:
           westgardStatus === "PASS"
-            ? `All ${rulesPassed} Westgard rules passed`
+            ? `All ${rulesPassed}/${rulesEvaluated} Westgard rules passed`
             : westgardStatus === "WARNING"
-              ? `${rulesPassed}/${rulesPassed + rulesFailed} rules passed (warnings present)`
-              : `${rulesFailed} Westgard rules failed validation`,
+              ? `${rulesPassed}/${rulesEvaluated} rules passed (warnings present)`
+              : `${rulesFailed}/${rulesEvaluated} Westgard rules failed`,
       };
     }
 
-    // Fallback to legacy validation if backend service not available
-    const westgardRules = qcData.data.westgardRules || [];
-    const allPassed =
-      westgardRules.length > 0 &&
-      westgardRules.every((rule) => rule.status === "PASS");
+    // Fallback: Check if QC results have status information
+    if (qcData.data.qcResults && qcData.data.qcResults.length > 0) {
+      const qcResults = qcData.data.qcResults;
+      const passedCount = qcResults.filter((qc) => qc.status === "PASS").length;
+      const failedCount = qcResults.filter((qc) => qc.status === "FAIL").length;
+      const totalCount = qcResults.length;
+
+      const allPassed = failedCount === 0 && passedCount > 0;
+
+      return {
+        status: allPassed ? "pass" : "fail",
+        message: allPassed
+          ? `All ${totalCount} QC results passed`
+          : `${failedCount}/${totalCount} QC results failed validation`,
+      };
+    }
+
     return {
-      status: allPassed ? "pass" : "fail",
-      message: allPassed
-        ? `All ${westgardRules.length} Westgard rules passed`
-        : "Some Westgard rules failed validation",
+      status: "fail",
+      message: "Unable to validate QC results - no validation data available",
     };
   };
 
   const validateSystemSuitability = (samples) => {
+    // Check for instrument information in various locations
     const hasSystemSuitability = samples.some(
-      (s) => s.data.testExecution && s.data.testExecution.instrumentId,
+      (s) =>
+        (s.data.testExecution && s.data.testExecution.instrumentId) ||
+        (s.data.testExecution && s.data.testExecution.selectedInstrument) ||
+        (s.data.executionData && s.data.executionData.selectedInstrument) ||
+        s.data.instrumentId ||
+        s.instrumentName,
     );
+    const instrumentCount = samples.filter(
+      (s) =>
+        (s.data.testExecution && s.data.testExecution.instrumentId) ||
+        (s.data.testExecution && s.data.testExecution.selectedInstrument) ||
+        (s.data.executionData && s.data.executionData.selectedInstrument) ||
+        s.data.instrumentId ||
+        s.instrumentName,
+    ).length;
     return {
       status: hasSystemSuitability ? "pass" : "fail",
       message: hasSystemSuitability
-        ? "System suitability parameters verified"
+        ? `System suitability verified for ${instrumentCount} sample(s)`
         : "System suitability verification missing",
     };
   };
