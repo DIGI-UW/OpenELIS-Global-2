@@ -322,6 +322,16 @@ function BioanalyticalWorkflowTab({ notebookId, entryId: propEntryId }) {
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+            notebookData={notebook}
+            onPageNavigation={(pageOrder) => {
+              // Find page by order and navigate to it
+              const targetPageIndex = effectivePages.findIndex(
+                (p) => p.order === pageOrder,
+              );
+              if (targetPageIndex >= 0) {
+                handlePageChange(targetPageIndex);
+              }
+            }}
           />
         );
       case 5:

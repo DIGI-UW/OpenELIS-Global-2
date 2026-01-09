@@ -27,6 +27,9 @@ public class QaApprovalServiceImpl implements QaApprovalService {
     @Autowired
     private NotebookPageSampleService notebookPageSampleService;
 
+    @Autowired
+    private NoteBookService noteBookService;
+
     @Override
     @Transactional
     public Map<String, Object> submitQaApproval(Integer pageId, String approvalStatus, String analystComments,
@@ -97,6 +100,20 @@ public class QaApprovalServiceImpl implements QaApprovalService {
             auditDetails.put("comments", analystComments);
             logQaAuditEvent(pageId, "SUBMITTED", auditDetails, userId);
 
+            // If approval is APPROVED, automatically create Stage 5 records
+            int stage5RecordsCreated = 0;
+            if ("APPROVED".equals(approvalStatus)) {
+                try {
+                    stage5RecordsCreated = createStage5Records(pageId, samples, userId);
+                    LogEvent.logInfo(this.getClass().getName(), "submitQaApproval",
+                            "Automatically created " + stage5RecordsCreated + " Stage 5 records after QA approval");
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getName(), "submitQaApproval",
+                            "Failed to automatically create Stage 5 records: " + e.getMessage());
+                    // Don't fail the QA approval if Stage 5 creation fails - log warning only
+                }
+            }
+
             // Build response
             result.put("success", true);
             result.put("pageId", pageId);
@@ -106,6 +123,10 @@ public class QaApprovalServiceImpl implements QaApprovalService {
             result.put("samplesAffected", samples.size());
             result.put("pageStatus", newPageStatus);
             result.put("message", approvalStatus + " approval submitted for " + samples.size() + " samples");
+            if ("APPROVED".equals(approvalStatus)) {
+                result.put("stage5RecordsCreated", stage5RecordsCreated);
+                result.put("autoAdvancedToStage5", stage5RecordsCreated > 0);
+            }
 
             LogEvent.logInfo(this.getClass().getName(), "submitQaApproval",
                     "QA approval submitted: status=" + approvalStatus + ", pageId=" + pageId + ", analyst=" + userId
@@ -300,6 +321,80 @@ public class QaApprovalServiceImpl implements QaApprovalService {
             LogEvent.logWarn(this.getClass().getName(), "logQaAuditEvent",
                     "Error logging QA audit event: " + e.getMessage());
             // Don't throw exception - audit logging should not block main operations
+        }
+    }
+
+    /**
+     * Automatically creates Stage 5 (Post-Test Storage & Archiving) records for
+     * approved samples. Called after QA approval is granted for Stage 4 (Reporting
+     * & Release).
+     *
+     * @param stage4PageId    The Stage 4 page ID containing approved samples
+     * @param approvedSamples List of approved samples to advance to Stage 5
+     * @param userId          User ID for audit trail
+     * @return Number of Stage 5 records successfully created
+     */
+    private int createStage5Records(Integer stage4PageId, List<NotebookPageSample> approvedSamples, String userId) {
+        try {
+            // Get the Stage 4 page to find the parent notebook
+            NoteBookPage stage4Page = noteBookPageService.get(stage4PageId);
+            if (stage4Page == null) {
+                LogEvent.logWarn(this.getClass().getName(), "createStage5Records",
+                        "Stage 4 page not found: " + stage4PageId);
+                return 0;
+            }
+
+            Integer notebookId = stage4Page.getNotebook().getId();
+
+            // Find Stage 5 page (pageOrder = 5 for bioanalytical workflow)
+            NoteBookPage stage5Page = noteBookService.getPageByNotebookIdAndOrder(notebookId, 5);
+            if (stage5Page == null) {
+                LogEvent.logWarn(this.getClass().getName(), "createStage5Records",
+                        "Stage 5 page not found for notebook: " + notebookId);
+                return 0;
+            }
+
+            Integer stage5PageId = stage5Page.getId();
+            int recordsCreated = 0;
+
+            // Create Stage 5 records for each approved sample
+            for (NotebookPageSample approvedSample : approvedSamples) {
+                try {
+                    String sampleItemIdStr = approvedSample.getSampleItemId();
+                    Integer sampleItemId = Integer.parseInt(sampleItemIdStr);
+
+                    // Check if sample already exists in Stage 5
+                    var existingStage5Record = notebookPageSampleService.getByPageIdAndSampleItemId(stage5PageId,
+                            sampleItemId);
+                    if (existingStage5Record == null) {
+                        // Create new Stage 5 record with PENDING status
+                        notebookPageSampleService.createPageSampleForPage(stage5PageId, sampleItemId,
+                                NotebookPageSample.Status.PENDING);
+                        recordsCreated++;
+
+                        LogEvent.logDebug(this.getClass().getName(), "createStage5Records",
+                                "Created Stage 5 record for sample: " + sampleItemId);
+                    } else {
+                        LogEvent.logDebug(this.getClass().getName(), "createStage5Records",
+                                "Stage 5 record already exists for sample: " + sampleItemId);
+                    }
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getName(), "createStage5Records",
+                            "Failed to create Stage 5 record for sample " + approvedSample.getSampleItemId() + ": "
+                                    + e.getMessage());
+                    // Continue with other samples
+                }
+            }
+
+            LogEvent.logInfo(this.getClass().getName(), "createStage5Records", "Successfully created " + recordsCreated
+                    + " Stage 5 records out of " + approvedSamples.size() + " approved samples");
+
+            return recordsCreated;
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "createStage5Records",
+                    "Error creating Stage 5 records: " + e.getMessage());
+            return 0;
         }
     }
 }

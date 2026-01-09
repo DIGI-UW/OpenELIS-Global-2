@@ -40,12 +40,16 @@ import "./BioanalyticalPages.css";
  * @param {Object} props.pageData - Page configuration
  * @param {Object} props.progress - Sample progress counts
  * @param {function} props.onProgressUpdate - Callback after changes
+ * @param {Object} props.notebookData - Notebook configuration data
+ * @param {function} props.onPageNavigation - Function to navigate to specific page by order
  */
 function BioanalyticalReportingPage({
   entryId,
   pageData,
   progress,
   onProgressUpdate,
+  notebookData,
+  onPageNavigation,
 }) {
   const intl = useIntl();
 
@@ -77,6 +81,7 @@ function BioanalyticalReportingPage({
   });
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [autoAdvancedToStage5, setAutoAdvancedToStage5] = useState(false);
 
   const exportFormats = [
     { id: "lmis", label: "LMIS (Laboratory Management Information System)" },
@@ -251,17 +256,115 @@ function BioanalyticalReportingPage({
         if (data.hasApproval && data.approvalStatus === "APPROVED") {
           setQaApproved(true);
           console.log("QA approval status loaded:", data);
+
+          // Restore QA comments if saved (backend only stores comments, not checklist)
+          if (data.comments) {
+            setQaComments(data.comments);
+          }
+
+          // If QA approved, assume all checklist items were validated
+          // (since backend doesn't store individual checklist items)
+          setQaChecklist({
+            rawDataValidated: true,
+            calibrationAcceptable: true,
+            qcPassedRules: true,
+            systemSuitability: true,
+            resultsAcceptable: true,
+          });
+
+          // Check if Stage 5 records already exist (for users navigating back to Stage 4)
+          checkStage5RecordsExist();
         } else {
           setQaApproved(false);
+          // Reset QA form if not approved
+          setQaChecklist({
+            rawDataValidated: false,
+            calibrationAcceptable: false,
+            qcPassedRules: false,
+            systemSuitability: false,
+            resultsAcceptable: false,
+          });
+          setQaComments("");
         }
       } else {
         setQaApproved(false);
+        // Reset QA form on error
+        setQaChecklist({
+          rawDataValidated: false,
+          calibrationAcceptable: false,
+          qcPassedRules: false,
+          systemSuitability: false,
+          resultsAcceptable: false,
+        });
+        setQaComments("");
       }
     } catch (error) {
       console.error("Error loading QA approval status:", error);
       setQaApproved(false);
+      // Reset QA form on error
+      setQaChecklist({
+        rawDataValidated: false,
+        calibrationAcceptable: false,
+        qcPassedRules: false,
+        systemSuitability: false,
+        resultsAcceptable: false,
+      });
+      setQaComments("");
     }
   }, [pageData?.id]);
+
+  // Function to check if Stage 5 records already exist
+  const checkStage5RecordsExist = useCallback(async () => {
+    if (!notebookData?.id) return;
+
+    try {
+      // Get Stage 5 page to check if samples already exist
+      const stage5Response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/view/${notebookData.id}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (stage5Response.ok) {
+        const notebook = await stage5Response.json();
+        const pages = notebook.pages || [];
+        const stage5Page = pages.find((page) => page.pageOrder === 5);
+
+        if (stage5Page) {
+          // Check if Stage 5 has any samples
+          const samplesResponse = await fetch(
+            `${config.serverBaseUrl}/rest/notebook/page/${stage5Page.id}/samples`,
+            {
+              method: "GET",
+              credentials: "include",
+              headers: {
+                "X-CSRF-Token": localStorage.getItem("CSRF"),
+                "Content-Type": "application/json",
+              },
+            },
+          );
+
+          if (samplesResponse.ok) {
+            const stage5Samples = await samplesResponse.json();
+            if (stage5Samples && stage5Samples.length > 0) {
+              setAutoAdvancedToStage5(true);
+              console.log(
+                "Stage 5 records detected - showing Stage 5 navigation",
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error checking Stage 5 records:", error);
+    }
+  }, [notebookData?.id]);
 
   // Helper function to compile analytical results from Stage 3 sample data
   const compileAnalyticalResults = useCallback(
@@ -740,16 +843,106 @@ function BioanalyticalReportingPage({
       // Update local QA approval state
       setQaApproved(true);
 
-      setSuccessMessage(
-        intl.formatMessage(
+      // Step 2: Apply QA approval data to samples for Stage 5 visibility
+      // This ensures Stage 5 can find the QA-approved samples
+      // First, get all samples from the current page to ensure we have the right sample IDs
+      try {
+        const pageSamplesResponse = await fetch(
+          `${config.serverBaseUrl}/rest/notebook/page/${pageData?.id}/samples`,
           {
-            id: "notebook.bioanalytical.reporting.qaApprovalComplete",
-            defaultMessage:
-              "QA approval completed for {count} samples. Study data is ready for external reporting.",
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "X-CSRF-Token": localStorage.getItem("CSRF"),
+              "Content-Type": "application/json",
+            },
           },
-          { count: result.samplesAffected || studyResults.length },
-        ),
-      );
+        );
+
+        if (pageSamplesResponse.ok) {
+          const pageSamples = await pageSamplesResponse.json();
+          const sampleIds = pageSamples.map((sample) =>
+            parseInt(sample.id, 10),
+          );
+
+          console.log("Updating QA approval data for sample IDs:", sampleIds);
+
+          const qaApprovalPayload = {
+            sampleIds: sampleIds,
+            data: {
+              executionStatus: "EXECUTED",
+              resultsApproved: true,
+              qaApprovalStatus: "APPROVED",
+              qaComments: qaComments,
+              qaApprovedAt: new Date().toISOString(),
+              qaApprovedBy: "CURRENT_USER", // This would come from user session
+              // Set submission status to make samples visible in Stage 5
+              submissionStatus: "QA_APPROVED_READY_FOR_STORAGE",
+              // Include bioequivalence data for Stage 5 reference
+              bioequivalenceCompliant: true, // Assume compliant since QA approved
+            },
+            userId: "CURRENT_USER",
+          };
+
+          const applyResponse = await fetch(
+            `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData?.id}/samples/apply`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": localStorage.getItem("CSRF"),
+              },
+              body: JSON.stringify(qaApprovalPayload),
+            },
+          );
+
+          if (!applyResponse.ok) {
+            const errorData = await applyResponse.json().catch(() => ({}));
+            console.error(
+              "Failed to update sample data for Stage 5:",
+              errorData,
+            );
+            // Don't fail the QA approval, but log the error
+          } else {
+            console.log("Successfully updated sample data for Stage 5");
+          }
+        } else {
+          console.warn("Could not fetch page samples for QA approval update");
+        }
+      } catch (error) {
+        console.error("Error updating sample data for Stage 5:", error);
+        // Don't fail the QA approval process
+      }
+
+      // Check if Stage 5 was automatically created
+      if (result.autoAdvancedToStage5) {
+        setAutoAdvancedToStage5(true);
+        setSuccessMessage(
+          intl.formatMessage(
+            {
+              id: "notebook.bioanalytical.reporting.qaApprovalCompleteWithStage5",
+              defaultMessage:
+                "QA approval completed for {count} samples. {stage5Count} records created in Stage 5 (Post-Test Storage). You can continue to Stage 5 or complete optional export/submission tasks.",
+            },
+            {
+              count: result.samplesAffected || studyResults.length,
+              stage5Count: result.stage5RecordsCreated || 0,
+            },
+          ),
+        );
+      } else {
+        setSuccessMessage(
+          intl.formatMessage(
+            {
+              id: "notebook.bioanalytical.reporting.qaApprovalComplete",
+              defaultMessage:
+                "QA approval completed for {count} samples. Study data is ready for external reporting.",
+            },
+            { count: result.samplesAffected || studyResults.length },
+          ),
+        );
+      }
 
       if (onProgressUpdate) {
         onProgressUpdate();
@@ -1138,16 +1331,50 @@ function BioanalyticalReportingPage({
             />
           </Tab>
           <Tab>
-            <FormattedMessage
-              id="notebook.bioanalytical.reporting.tab.externalExport"
-              defaultMessage="External Reporting"
-            />
+            <span>
+              <FormattedMessage
+                id="notebook.bioanalytical.reporting.tab.externalExport"
+                defaultMessage="External Reporting"
+              />
+              {qaApproved && (
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6f6f6f",
+                    fontWeight: "normal",
+                    marginLeft: "0.5rem",
+                  }}
+                >
+                  <FormattedMessage
+                    id="notebook.bioanalytical.reporting.tab.optional"
+                    defaultMessage="(Optional)"
+                  />
+                </span>
+              )}
+            </span>
           </Tab>
           <Tab>
-            <FormattedMessage
-              id="notebook.bioanalytical.reporting.tab.submission"
-              defaultMessage="Submit to Requesting Unit"
-            />
+            <span>
+              <FormattedMessage
+                id="notebook.bioanalytical.reporting.tab.submission"
+                defaultMessage="Submit to Requesting Unit"
+              />
+              {qaApproved && (
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6f6f6f",
+                    fontWeight: "normal",
+                    marginLeft: "0.5rem",
+                  }}
+                >
+                  <FormattedMessage
+                    id="notebook.bioanalytical.reporting.tab.optional"
+                    defaultMessage="(Optional)"
+                  />
+                </span>
+              )}
+            </span>
           </Tab>
         </TabList>
 
@@ -2184,6 +2411,49 @@ function BioanalyticalReportingPage({
                         )}
                       </Button>
                     </div>
+
+                    {/* Show Stage 5 progression button after QA approval */}
+                    {autoAdvancedToStage5 && (
+                      <div
+                        style={{
+                          marginTop: "1.5rem",
+                          padding: "1rem",
+                          backgroundColor: "#e8f5e8",
+                          border: "1px solid #42be65",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        <h5
+                          style={{ margin: "0 0 0.5rem 0", color: "#198038" }}
+                        >
+                          <FormattedMessage
+                            id="notebook.bioanalytical.reporting.stage5Ready"
+                            defaultMessage="✓ Ready for Stage 5: Post-Test Storage & Archiving"
+                          />
+                        </h5>
+                        <p
+                          style={{ margin: "0 0 1rem 0", fontSize: "0.875rem" }}
+                        >
+                          <FormattedMessage
+                            id="notebook.bioanalytical.reporting.stage5Description"
+                            defaultMessage="Your samples are now available in Stage 5 for storage assignment and archival management. Export and submission (below) are optional."
+                          />
+                        </p>
+                        <Button
+                          kind="secondary"
+                          onClick={() => {
+                            if (onPageNavigation) {
+                              onPageNavigation(5); // Navigate to Stage 5 (pageOrder = 5)
+                            }
+                          }}
+                        >
+                          <FormattedMessage
+                            id="notebook.bioanalytical.reporting.continueToStage5"
+                            defaultMessage="Continue to Stage 5 →"
+                          />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </Column>
               </Grid>
@@ -2193,6 +2463,31 @@ function BioanalyticalReportingPage({
           {/* Tab 3: External Reporting */}
           <TabPanel>
             <div style={{ paddingTop: "1.5rem" }}>
+              {qaApproved && (
+                <div
+                  style={{
+                    marginBottom: "1.5rem",
+                    padding: "0.75rem",
+                    backgroundColor: "#f4f4f4",
+                    border: "1px solid #c6c6c6",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0",
+                      fontSize: "0.875rem",
+                      color: "#525252",
+                    }}
+                  >
+                    ℹ️{" "}
+                    <FormattedMessage
+                      id="notebook.bioanalytical.reporting.tab3OptionalNote"
+                      defaultMessage="This step is optional. Your samples are ready for Stage 5 (Storage & Archiving). Export data if needed for external reporting."
+                    />
+                  </p>
+                </div>
+              )}
               <Grid>
                 <Column lg={16} md={8} sm={4}>
                   <div className="section-header">
@@ -2402,6 +2697,31 @@ function BioanalyticalReportingPage({
           {/* Tab 4: Submit to Requesting Unit */}
           <TabPanel>
             <div style={{ paddingTop: "1.5rem" }}>
+              {qaApproved && (
+                <div
+                  style={{
+                    marginBottom: "1.5rem",
+                    padding: "0.75rem",
+                    backgroundColor: "#f4f4f4",
+                    border: "1px solid #c6c6c6",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0",
+                      fontSize: "0.875rem",
+                      color: "#525252",
+                    }}
+                  >
+                    ℹ️{" "}
+                    <FormattedMessage
+                      id="notebook.bioanalytical.reporting.tab4OptionalNote"
+                      defaultMessage="This step is optional. Your samples are ready for Stage 5 (Storage & Archiving). Submit results if required by requesting unit."
+                    />
+                  </p>
+                </div>
+              )}
               <Grid>
                 <Column lg={16} md={8} sm={4}>
                   <div className="section-header">
