@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import config from "../../../../config.json";
 import {
   Grid,
@@ -6,22 +6,13 @@ import {
   Button,
   InlineNotification,
   Loading,
-  DataTable,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
   Tag,
   Modal,
   ComboBox,
   TextArea,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
-import {
-  postToOpenElisServerJsonResponse,
-} from "../../../utils/Utils";
+import SampleGrid from "../../workflow/SampleGrid";
 import "./BioanalyticalPages.css";
 
 /**
@@ -37,21 +28,13 @@ import "./BioanalyticalPages.css";
  * @param {Object} props
  * @param {number} props.entryId - Notebook entry ID
  * @param {Object} props.pageData - Page configuration
- * @param {Object} props.progress - Sample progress counts
- * @param {function} props.onProgressUpdate - Callback after changes
  */
-function BioanalyticalStorageArchivingPage({
-  entryId,
-  pageData,
-  progress,
-  onProgressUpdate,
-}) {
+function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
 
   const [isLoading, setIsLoading] = useState(false);
   const [storageSamples, setStorageSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState(new Set());
-  const [disposalRecords, setDisposalRecords] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -61,6 +44,11 @@ function BioanalyticalStorageArchivingPage({
   const [disposalMethod, setDisposalMethod] = useState("");
   const [disposalNotes, setDisposalNotes] = useState("");
   const [supervisorApproval, setSupervisorApproval] = useState("");
+
+  // View details modal states
+  const [viewDetailsModalOpen, setViewDetailsModalOpen] = useState(false);
+  const [selectedSampleDetail, setSelectedSampleDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const disposalMethods = [
     {
@@ -118,7 +106,8 @@ function BioanalyticalStorageArchivingPage({
             sample.data.executionStatus === "EXECUTED" &&
             sample.data.resultsApproved &&
             (sample.data.submissionStatus === "SUBMITTED" ||
-              sample.data.submissionStatus === "QA_APPROVED_READY_FOR_STORAGE" ||
+              sample.data.submissionStatus ===
+                "QA_APPROVED_READY_FOR_STORAGE" ||
               sample.data.exportStatus === "EXPORTED")
           );
         });
@@ -164,7 +153,7 @@ function BioanalyticalStorageArchivingPage({
     loadStorageSamples();
   }, [loadStorageSamples]);
 
-  // Stage 5 Handler: Sample Disposal Management
+  // Stage 5 Handler: Sample Disposal Management (via bulk apply endpoint)
   const handleSampleDisposal = useCallback(async () => {
     if (selectedSamples.size === 0) {
       setErrorMessage(
@@ -208,17 +197,22 @@ function BioanalyticalStorageArchivingPage({
 
     setIsLoading(true);
     try {
-      // Call backend API to process disposal
-      const disposalData = {
-        sampleIds: Array.from(selectedSamples).map(id => parseInt(id, 10)),
-        disposalReason: disposalReason,
-        disposalMethod: disposalMethod,
-        notes: disposalNotes,
-        supervisorApproval: supervisorApproval,
+      // Use bulk apply endpoint with disposal fields in JSONB data
+      const bulkRequest = {
+        sampleIds: Array.from(selectedSamples).map((id) => parseInt(id, 10)),
+        data: {
+          disposalStatus: "SCHEDULED",
+          disposalReason: disposalReason,
+          disposalMethod: disposalMethod,
+          disposalDate: new Date().toISOString().split("T")[0],
+          disposalApprovedBy: supervisorApproval,
+          disposalNotes: disposalNotes,
+          storageStatus: "DISPOSED",
+        },
       };
 
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/sample/dispose`,
+        `${config.serverBaseUrl}/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
         {
           method: "POST",
           credentials: "include",
@@ -226,20 +220,26 @@ function BioanalyticalStorageArchivingPage({
             "Content-Type": "application/json",
             "X-CSRF-Token": localStorage.getItem("CSRF"),
           },
-          body: JSON.stringify(disposalData),
+          body: JSON.stringify(bulkRequest),
         },
       );
 
       if (response.ok) {
+        const result = await response.json();
         setSuccessMessage(
-          intl.formatMessage({
-            id: "notebook.bioanalytical.storage.disposalSuccess",
-            defaultMessage:
-              "{count} samples scheduled for disposal. Method: {method}",
-          }, {
-            count: selectedSamples.size,
-            method: disposalMethods.find(m => m.id === disposalMethod)?.label,
-          }),
+          intl.formatMessage(
+            {
+              id: "notebook.bioanalytical.storage.disposalSuccess",
+              defaultMessage:
+                "{count} samples scheduled for disposal. Method: {method}. Supervisor: {supervisor}",
+            },
+            {
+              count: result.updatedCount || selectedSamples.size,
+              method: disposalMethods.find((m) => m.id === disposalMethod)
+                ?.label,
+              supervisor: supervisorApproval,
+            },
+          ),
         );
 
         setDisposalModalOpen(false);
@@ -250,20 +250,64 @@ function BioanalyticalStorageArchivingPage({
         setSupervisorApproval("");
         loadStorageSamples();
       } else {
-        throw new Error("Failed to process disposal");
+        throw new Error("Failed to schedule disposal");
       }
     } catch (error) {
       console.error("Sample disposal error:", error);
       setErrorMessage(
         intl.formatMessage({
           id: "notebook.bioanalytical.storage.disposalError",
-          defaultMessage: "Failed to process sample disposal",
+          defaultMessage: "Failed to schedule sample disposal",
         }),
       );
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSamples, disposalReason, disposalMethod, supervisorApproval, disposalNotes, intl, loadStorageSamples, disposalMethods, pageData?.id]);
+  }, [
+    selectedSamples,
+    disposalReason,
+    disposalMethod,
+    supervisorApproval,
+    disposalNotes,
+    intl,
+    loadStorageSamples,
+    disposalMethods,
+    pageData?.id,
+  ]);
+
+  const handleSampleDetailsClick = useCallback(async (sample) => {
+    setViewDetailsModalOpen(true);
+    setSelectedSampleDetail(sample);
+    setDetailLoading(true);
+
+    try {
+      // Fetch the full sample record from the backend
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/sample/${sample.id}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.ok) {
+        const fullSample = await response.json();
+        setSelectedSampleDetail(fullSample);
+      } else {
+        console.error("Failed to fetch sample details:", response.status);
+        // Keep the basic sample data if full fetch fails
+      }
+    } catch (error) {
+      console.error("Error fetching sample details:", error);
+      // Keep the basic sample data if fetch fails
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
 
   const getStatusTag = (status) => {
     let type = "blue";
@@ -311,6 +355,25 @@ function BioanalyticalStorageArchivingPage({
 
     return <Tag type={type}>{label}</Tag>;
   };
+
+  const headers = [
+    { key: "sampleId", header: "Sample ID" },
+    { key: "type", header: "Type" },
+    { key: "volume", header: "Volume" },
+    { key: "location", header: "Storage Location" },
+    { key: "storageTemp", header: "Temperature" },
+  ];
+
+  const additionalColumns = useMemo(
+    () => [
+      {
+        key: "status",
+        header: "Status",
+        render: (value) => getStatusTag(value),
+      },
+    ],
+    [],
+  );
 
   return (
     <div className="bioanalytical-page">
@@ -397,9 +460,7 @@ function BioanalyticalStorageArchivingPage({
                       </strong>{" "}
                       {storageSamples.length}
                       {selectedSamples.size > 0 && (
-                        <span
-                          style={{ marginLeft: "1rem", color: "#0043ce" }}
-                        >
+                        <span style={{ marginLeft: "1rem", color: "#0043ce" }}>
                           (
                           <FormattedMessage
                             id="notebook.bioanalytical.storage.samplesSelected"
@@ -433,80 +494,24 @@ function BioanalyticalStorageArchivingPage({
                     </div>
                   )}
 
-                  <DataTable rows={storageSamples} headers={[
-                    { key: "sampleId", header: "Sample ID" },
-                    { key: "type", header: "Type" },
-                    { key: "volume", header: "Volume" },
-                    { key: "location", header: "Storage Location" },
-                    { key: "storageTemp", header: "Temperature" },
-                    { key: "status", header: "Status" },
-                  ]}>
-                    {({ rows, headers, getHeaderProps, getRowProps, getTableProps }) => (
-                      <div>
-                        <table {...getTableProps()}>
-                          <thead>
-                            <tr>
-                              <th style={{ width: "40px" }}>
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    selectedSamples.size === storageSamples.length &&
-                                    storageSamples.length > 0
-                                  }
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedSamples(
-                                        new Set(storageSamples.map((s) => s.id)),
-                                      );
-                                    } else {
-                                      setSelectedSamples(new Set());
-                                    }
-                                  }}
-                                  aria-label="Select all samples"
-                                />
-                              </th>
-                              {headers.map((header) => (
-                                <th key={header.key} {...getHeaderProps({ header })}>
-                                  {header.header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rows.map((row) => (
-                              <tr key={row.id} {...getRowProps({ row })}>
-                                <td style={{ width: "40px" }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedSamples.has(row.id)}
-                                    onChange={(e) => {
-                                      const newSelected = new Set(selectedSamples);
-                                      if (e.target.checked) {
-                                        newSelected.add(row.id);
-                                      } else {
-                                        newSelected.delete(row.id);
-                                      }
-                                      setSelectedSamples(newSelected);
-                                    }}
-                                    aria-label={`Select sample ${row.id}`}
-                                  />
-                                </td>
-                                {row.cells.map((cell) => (
-                                  <td key={cell.id}>
-                                    {cell.info.header === "status" ? (
-                                      getStatusTag(cell.value)
-                                    ) : (
-                                      cell.value
-                                    )}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </DataTable>
+                  <SampleGrid
+                    gridId="storage-samples"
+                    samples={storageSamples}
+                    selectedIds={Array.from(selectedSamples)}
+                    onSelectionChange={(ids) => {
+                      // Only allow selection of non-disposed samples
+                      const selectableSamples = ids.filter((id) => {
+                        const sample = storageSamples.find((s) => s.id === id);
+                        return sample && sample.status !== "DISPOSED";
+                      });
+                      setSelectedSamples(new Set(selectableSamples));
+                    }}
+                    onSampleClick={handleSampleDetailsClick}
+                    showSelection={true}
+                    loading={isLoading}
+                    columns={headers}
+                    additionalColumns={additionalColumns}
+                  />
                 </div>
               ) : (
                 <div
@@ -544,39 +549,53 @@ function BioanalyticalStorageArchivingPage({
       >
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ marginBottom: "1rem", color: "#525252" }}>
-            Schedule disposal for selected bioequivalence study samples after retention period completion.
+            Schedule disposal for selected bioequivalence study samples after
+            retention period completion.
           </p>
 
           <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
             <div style={{ flex: 1 }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.875rem" }}>
-                Disposal Reason
-              </label>
               <ComboBox
+                id="disposal-reason"
                 items={disposalReasons}
                 itemToString={(item) => (item ? item.label : "")}
-                value={disposalReasons.find(r => r.id === disposalReason) || null}
-                onChange={({ selectedItem }) => setDisposalReason(selectedItem?.id || "")}
+                selectedItem={
+                  disposalReasons.find((r) => r.id === disposalReason) || null
+                }
+                onChange={({ selectedItem }) =>
+                  setDisposalReason(selectedItem?.id || "")
+                }
                 placeholder="Select a reason"
+                titleText="Disposal Reason"
               />
             </div>
 
             <div style={{ flex: 1 }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.875rem" }}>
-                Disposal Method
-              </label>
               <ComboBox
+                id="disposal-method"
                 items={disposalMethods}
                 itemToString={(item) => (item ? item.label : "")}
-                value={disposalMethods.find(m => m.id === disposalMethod) || null}
-                onChange={({ selectedItem }) => setDisposalMethod(selectedItem?.id || "")}
+                selectedItem={
+                  disposalMethods.find((m) => m.id === disposalMethod) || null
+                }
+                onChange={({ selectedItem }) =>
+                  setDisposalMethod(selectedItem?.id || "")
+                }
                 placeholder="Select a method"
+                titleText="Disposal Method"
               />
             </div>
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.875rem" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "600",
+                fontSize: "0.875rem",
+              }}
+            >
               Supervisor Approval (Name)
             </label>
             <input
@@ -589,16 +608,15 @@ function BioanalyticalStorageArchivingPage({
                 padding: "0.75rem",
                 border: "1px solid #ccc",
                 borderRadius: "4px",
-                fontSize: "0.875rem"
+                fontSize: "0.875rem",
               }}
             />
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.875rem" }}>
-              Notes
-            </label>
             <TextArea
+              id="disposal-notes"
+              labelText="Notes"
               value={disposalNotes}
               onChange={(e) => setDisposalNotes(e.target.value)}
               placeholder="Add any additional notes about this disposal"
@@ -611,21 +629,298 @@ function BioanalyticalStorageArchivingPage({
                 backgroundColor: "#fef3c7",
                 padding: "1rem",
                 borderRadius: "4px",
-                border: "1px solid #f59e0b"
+                border: "1px solid #f59e0b",
               }}
             >
-              <p style={{ fontSize: "0.875rem", margin: 0, color: "#92400e", fontWeight: "600" }}>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  margin: 0,
+                  color: "#92400e",
+                  fontWeight: "600",
+                }}
+              >
                 ⚠️ Disposal Warning
               </p>
-              <p style={{ fontSize: "0.875rem", margin: "0.5rem 0 0 0", color: "#92400e" }}>
-                <strong>Samples to dispose:</strong> {selectedSamples.size} samples
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  margin: "0.5rem 0 0 0",
+                  color: "#92400e",
+                }}
+              >
+                <strong>Samples to dispose:</strong> {selectedSamples.size}{" "}
+                samples
               </p>
-              <p style={{ fontSize: "0.75rem", margin: "0.5rem 0 0 0", color: "#92400e" }}>
-                This action will permanently schedule samples for disposal and cannot be undone.
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  margin: "0.5rem 0 0 0",
+                  color: "#92400e",
+                }}
+              >
+                This action will permanently schedule samples for disposal and
+                cannot be undone.
               </p>
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Sample Details View Modal */}
+      <Modal
+        open={viewDetailsModalOpen}
+        onRequestClose={() => setViewDetailsModalOpen(false)}
+        modalHeading={
+          selectedSampleDetail
+            ? `Sample Details - ${selectedSampleDetail.sampleId || selectedSampleDetail.accessionNumber || `S${selectedSampleDetail.id}`}`
+            : "Sample Details"
+        }
+        secondaryButtonText="Close"
+        primaryButtonText=""
+        size="lg"
+      >
+        {detailLoading ? (
+          <div style={{ textAlign: "center", padding: "2rem" }}>
+            <Loading description="Loading sample details..." />
+          </div>
+        ) : selectedSampleDetail ? (
+          <div style={{ marginBottom: "1.5rem" }}>
+            <Grid>
+              <Column lg={8} md={4} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <div>
+                  <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                    <FormattedMessage
+                      id="notebook.bioanalytical.storage.sampleId"
+                      defaultMessage="Sample ID"
+                    />
+                  </h5>
+                  <p style={{ margin: 0, color: "#525252" }}>
+                    {selectedSampleDetail.sampleId ||
+                      selectedSampleDetail.accessionNumber ||
+                      `S${selectedSampleDetail.id}`}
+                  </p>
+                </div>
+              </Column>
+
+              <Column lg={8} md={4} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <div>
+                  <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                    <FormattedMessage
+                      id="notebook.bioanalytical.storage.sampleType"
+                      defaultMessage="Sample Type"
+                    />
+                  </h5>
+                  <p style={{ margin: 0, color: "#525252" }}>
+                    {selectedSampleDetail.type ||
+                      selectedSampleDetail.sampleType ||
+                      "-"}
+                  </p>
+                </div>
+              </Column>
+
+              <Column lg={8} md={4} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <div>
+                  <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                    <FormattedMessage
+                      id="notebook.bioanalytical.storage.volume"
+                      defaultMessage="Volume"
+                    />
+                  </h5>
+                  <p style={{ margin: 0, color: "#525252" }}>
+                    {selectedSampleDetail.volume ||
+                      selectedSampleDetail.data?.sampleVolume ||
+                      "-"}
+                  </p>
+                </div>
+              </Column>
+
+              <Column lg={8} md={4} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <div>
+                  <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                    <FormattedMessage
+                      id="notebook.bioanalytical.storage.storageLocation"
+                      defaultMessage="Storage Location"
+                    />
+                  </h5>
+                  <p style={{ margin: 0, color: "#525252" }}>
+                    {selectedSampleDetail.location ||
+                      selectedSampleDetail.data?.storageLocation ||
+                      "-"}
+                  </p>
+                </div>
+              </Column>
+
+              <Column lg={8} md={4} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <div>
+                  <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                    <FormattedMessage
+                      id="notebook.bioanalytical.storage.temperature"
+                      defaultMessage="Storage Temperature"
+                    />
+                  </h5>
+                  <p style={{ margin: 0, color: "#525252" }}>
+                    {selectedSampleDetail.storageTemp ||
+                      selectedSampleDetail.data?.storageTemperature ||
+                      "-"}
+                  </p>
+                </div>
+              </Column>
+
+              <Column lg={8} md={4} sm={4} style={{ marginBottom: "1.5rem" }}>
+                <div>
+                  <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                    <FormattedMessage
+                      id="notebook.bioanalytical.storage.status"
+                      defaultMessage="Status"
+                    />
+                  </h5>
+                  <div style={{ margin: 0 }}>
+                    {getStatusTag(
+                      selectedSampleDetail.status ||
+                        selectedSampleDetail.data?.storageStatus,
+                    )}
+                  </div>
+                </div>
+              </Column>
+
+              {selectedSampleDetail.data?.disposalStatus && (
+                <>
+                  <Column
+                    lg={16}
+                    md={8}
+                    sm={4}
+                    style={{
+                      marginBottom: "1rem",
+                      marginTop: "1rem",
+                      paddingTop: "1rem",
+                      borderTop: "1px solid #e0e0e0",
+                    }}
+                  >
+                    <h5 style={{ color: "#161616", marginBottom: "1rem" }}>
+                      <FormattedMessage
+                        id="notebook.bioanalytical.storage.disposalInfo"
+                        defaultMessage="Disposal Information"
+                      />
+                    </h5>
+                  </Column>
+
+                  <Column
+                    lg={8}
+                    md={4}
+                    sm={4}
+                    style={{ marginBottom: "1.5rem" }}
+                  >
+                    <div>
+                      <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                        <FormattedMessage
+                          id="notebook.bioanalytical.storage.disposalReason"
+                          defaultMessage="Disposal Reason"
+                        />
+                      </h5>
+                      <p style={{ margin: 0, color: "#525252" }}>
+                        {selectedSampleDetail.data?.disposalReason || "-"}
+                      </p>
+                    </div>
+                  </Column>
+
+                  <Column
+                    lg={8}
+                    md={4}
+                    sm={4}
+                    style={{ marginBottom: "1.5rem" }}
+                  >
+                    <div>
+                      <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                        <FormattedMessage
+                          id="notebook.bioanalytical.storage.disposalMethod"
+                          defaultMessage="Disposal Method"
+                        />
+                      </h5>
+                      <p style={{ margin: 0, color: "#525252" }}>
+                        {selectedSampleDetail.data?.disposalMethod || "-"}
+                      </p>
+                    </div>
+                  </Column>
+
+                  <Column
+                    lg={8}
+                    md={4}
+                    sm={4}
+                    style={{ marginBottom: "1.5rem" }}
+                  >
+                    <div>
+                      <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                        <FormattedMessage
+                          id="notebook.bioanalytical.storage.disposalDate"
+                          defaultMessage="Disposal Date"
+                        />
+                      </h5>
+                      <p style={{ margin: 0, color: "#525252" }}>
+                        {selectedSampleDetail.data?.disposalDate || "-"}
+                      </p>
+                    </div>
+                  </Column>
+
+                  <Column
+                    lg={8}
+                    md={4}
+                    sm={4}
+                    style={{ marginBottom: "1.5rem" }}
+                  >
+                    <div>
+                      <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
+                        <FormattedMessage
+                          id="notebook.bioanalytical.storage.approvedBy"
+                          defaultMessage="Approved By"
+                        />
+                      </h5>
+                      <p style={{ margin: 0, color: "#525252" }}>
+                        {selectedSampleDetail.data?.disposalApprovedBy || "-"}
+                      </p>
+                    </div>
+                  </Column>
+
+                  {selectedSampleDetail.data?.disposalNotes && (
+                    <Column
+                      lg={16}
+                      md={8}
+                      sm={4}
+                      style={{ marginBottom: "1.5rem" }}
+                    >
+                      <div>
+                        <h5
+                          style={{ marginBottom: "0.5rem", color: "#161616" }}
+                        >
+                          <FormattedMessage
+                            id="notebook.bioanalytical.storage.disposalNotes"
+                            defaultMessage="Disposal Notes"
+                          />
+                        </h5>
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#525252",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {selectedSampleDetail.data.disposalNotes}
+                        </p>
+                      </div>
+                    </Column>
+                  )}
+                </>
+              )}
+            </Grid>
+          </div>
+        ) : (
+          <p>
+            <FormattedMessage
+              id="notebook.bioanalytical.storage.noDetailsAvailable"
+              defaultMessage="No sample details available"
+            />
+          </p>
+        )}
       </Modal>
     </div>
   );
