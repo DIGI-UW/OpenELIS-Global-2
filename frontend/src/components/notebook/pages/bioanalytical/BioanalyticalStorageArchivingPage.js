@@ -1232,7 +1232,7 @@ function BioanalyticalStorageArchivingPage({
             </div>
           </TabPanel>
 
-          {/* Tab 2: Data Archival & Traceability */
+          {/* Tab 2: Data Archival & Traceability */}
           <TabPanel>
             <div style={{ paddingTop: "1.5rem" }}>
               <Grid>
