@@ -735,6 +735,41 @@ public class LabUnitRestController extends BaseRestController {
     }
 
     /**
+     * POST /api/lab-units/{id}/workflows/reassign - Bulk reassign workflows
+     */
+    @PostMapping(value = "/{id}/workflows/reassign", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> reassignWorkflows(@PathVariable String id, @Valid @RequestBody LabUnitAssignmentForm form,
+            HttpServletRequest request) {
+
+        try {
+
+            if (!checkAdminStatus(request)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Admin privileges required");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+            }
+
+            if (form.getTargetLabUnitId() == null || form.getTargetLabUnitId().trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Target lab unit ID is required");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
+            labUnitService.reassignWorkflowsToLabUnit(id, form.getItemIds(), form.getTargetLabUnitId());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Workflows reassigned successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error reassigning workflows from lab unit: {}", id, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
+
+    /**
      * GET /api/lab-units/export - Export selected lab units
      */
     @GetMapping(value = "/export", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)

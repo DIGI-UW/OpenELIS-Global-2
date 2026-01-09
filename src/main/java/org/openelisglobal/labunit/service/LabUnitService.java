@@ -66,6 +66,8 @@ public interface LabUnitService extends BaseObjectService<LabUnit, String> {
 
     void removeWorkflowsFromLabUnit(String labUnitId, String[] workflowIds);
 
+    void reassignWorkflowsToLabUnit(String labUnitId, String[] workflowIds, String targetLabUnitId);
+
     // Enhanced status operations with cascade options
     void activateLabUnit(String id, Boolean cascade, String reason, String sysUserId);
 
