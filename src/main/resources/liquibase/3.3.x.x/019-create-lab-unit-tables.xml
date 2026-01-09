@@ -6,6 +6,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <changeSet id="lab-unit-001-create-lab-unit-table" author="ogc-189-feature">
+        <comment>Create lab_unit table for managing laboratory sections/departments</comment>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="lab_unit"/>
@@ -15,21 +16,24 @@
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints unique="true" nullable="false"/>
+            </column>
             <column name="name" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="code" type="VARCHAR(50)"/>
-            <column name="description" type="VARCHAR(500)"/>
-            <column name="organization_id" type="numeric(10,0)"/>
+            <column name="code" type="VARCHAR(20)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="organization_id" type="VARCHAR(36)"/>
             <column name="parent_lab_unit_id" type="VARCHAR(36)"/>
-            <column name="sort_order" type="numeric(10,0)"/>
-            <column name="display_order" type="numeric(10,0)"/>
-            <column name="external_id" type="VARCHAR(50)"/>
-            <column name="is_active" type="VARCHAR(1)" defaultValue="Y">
+            <column name="display_order" type="INTEGER" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
-            <column name="fhir_uuid" type="UUID">
-                <constraints unique="true"/>
+            <column name="external_id" type="VARCHAR(50)"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
             </column>
             <column name="sys_user_id" type="VARCHAR(36)"/>
             <column name="lastupdated" type="TIMESTAMP"/>
@@ -40,7 +44,7 @@
             baseColumnNames="organization_id"
             referencedTableName="organization"
             referencedColumnNames="id"
-            constraintName="fk_lab_unit_organization"
+            constraintName="fk_lab_unit_organization_id"
             onDelete="SET NULL"/>
 
         <addForeignKeyConstraint
@@ -48,91 +52,68 @@
             baseColumnNames="parent_lab_unit_id"
             referencedTableName="lab_unit"
             referencedColumnNames="id"
-            constraintName="fk_lab_unit_parent"
+            constraintName="fk_lab_unit_parent_id"
             onDelete="SET NULL"/>
+
+        <addCheckConstraint 
+            tableName="lab_unit" 
+            constraintName="chk_lab_unit_display_order_positive" 
+            condition="display_order >= 0"/>
 
         <rollback>
             <dropTable tableName="lab_unit"/>
         </rollback>
     </changeSet>
 
-    <changeSet id="lab-unit-002-create-lab-unit-assignment-table" author="ogc-189-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <tableExists tableName="lab_unit_assignment"/>
-            </not>
-        </preConditions>
-        <createTable tableName="lab_unit_assignment">
-            <column name="id" type="numeric(10,0)">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="lab_unit_id" type="VARCHAR(36)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="assignment_type" type="VARCHAR(20)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="assigned_item_id" type="VARCHAR(36)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="assigned_date" type="TIMESTAMP"/>
-            <column name="sys_user_id" type="VARCHAR(36)"/>
-        </createTable>
-
-        <createSequence sequenceName="lab_unit_assignment_seq" startValue="1" incrementBy="1"/>
-
-        <addForeignKeyConstraint
-            baseTableName="lab_unit_assignment"
-            baseColumnNames="lab_unit_id"
-            referencedTableName="lab_unit"
-            referencedColumnNames="id"
-            constraintName="fk_assignment_lab_unit"
-            onDelete="CASCADE"/>
-
-        <rollback>
-            <dropSequence sequenceName="lab_unit_assignment_seq"/>
-            <dropTable tableName="lab_unit_assignment"/>
-        </rollback>
-    </changeSet>
-
-    <changeSet id="lab-unit-003-create-indexes" author="ogc-189-feature">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <indexExists tableName="lab_unit" indexName="idx_lab_unit_organization"/>
-            </not>
-        </preConditions>
-        <createIndex tableName="lab_unit" indexName="idx_lab_unit_organization">
+    <changeSet id="lab-unit-002-add-lab-unit-indexes" author="ogc-189-feature">
+        <comment>Add indexes for lab_unit table performance</comment>
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_code" unique="true">
+            <column name="code"/>
+        </createIndex>
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_name">
+            <column name="name"/>
+        </createIndex>
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_display_order">
+            <column name="display_order"/>
+        </createIndex>
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_is_active">
+            <column name="is_active"/>
+        </createIndex>
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_organization_id">
             <column name="organization_id"/>
         </createIndex>
-
-        <createIndex tableName="lab_unit" indexName="idx_lab_unit_parent">
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_parent_id">
             <column name="parent_lab_unit_id"/>
         </createIndex>
-
-        <createIndex tableName="lab_unit_assignment" indexName="idx_assignment_type">
-            <column name="assignment_type"/>
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_fhir_uuid">
+            <column name="fhir_uuid"/>
         </createIndex>
-
-        <createIndex tableName="lab_unit_assignment" indexName="idx_assignment_item">
-            <column name="assigned_item_id"/>
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_active_name">
+            <column name="is_active"/>
+            <column name="name"/>
         </createIndex>
-
         <rollback>
-            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_organization"/>
-            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_parent"/>
-            <dropIndex tableName="lab_unit_assignment" indexName="idx_assignment_type"/>
-            <dropIndex tableName="lab_unit_assignment" indexName="idx_assignment_item"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_code"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_name"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_display_order"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_is_active"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_organization_id"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_parent_id"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_fhir_uuid"/>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_active_name"/>
         </rollback>
     </changeSet>
 
-    <changeSet id="lab-unit-004-insert-initial-data" author="ogc-189-feature">
+    <changeSet id="lab-unit-003-insert-initial-data" author="ogc-189-feature">
+        <comment>Insert initial root lab unit</comment>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(*) FROM lab_unit</sqlCheck>
         </preConditions>
         <insert tableName="lab_unit">
             <column name="id" value="ROOT-LAB-UNIT"/>
             <column name="name" value="Main Laboratory"/>
-            <column name="is_active" value="Y"/>
+            <column name="code" value="MAIN"/>
+            <column name="is_active" valueBoolean="true"/>
             <column name="sys_user_id" value="1"/>
         </insert>
 
@@ -143,34 +124,208 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="lab-unit-005-create-workflow-assignment-table" author="ogc-189-feature">
+    <changeSet id="lab-unit-004-add-lab-unit-to-test" author="ogc-189-feature">
+        <comment>Add lab_unit_id foreign key to existing test table for test assignments</comment>
+        <addColumn tableName="test">
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint 
+            baseTableName="test" 
+            baseColumnNames="lab_unit_id"
+            constraintName="fk_test_lab_unit_id" 
+            referencedTableName="lab_unit" 
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+        <createIndex tableName="test" indexName="idx_test_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="test" indexName="idx_test_lab_unit_id"/>
+            <dropForeignKeyConstraint baseTableName="test" constraintName="fk_test_lab_unit_id"/>
+            <dropColumn tableName="test" columnName="lab_unit_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-005-add-lab-unit-to-panel" author="ogc-189-feature">
+        <comment>Add lab_unit_id foreign key to existing panel table for panel assignments</comment>
+        <addColumn tableName="panel">
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint 
+            baseTableName="panel" 
+            baseColumnNames="lab_unit_id"
+            constraintName="fk_panel_lab_unit_id" 
+            referencedTableName="lab_unit" 
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+        <createIndex tableName="panel" indexName="idx_panel_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="panel" indexName="idx_panel_lab_unit_id"/>
+            <dropForeignKeyConstraint baseTableName="panel" constraintName="fk_panel_lab_unit_id"/>
+            <dropColumn tableName="panel" columnName="lab_unit_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-006-create-lab-unit-test-junction" author="ogc-189-feature">
+        <comment>Create junction table for many-to-many lab unit test relationships</comment>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_test"/>
+            </not>
+        </preConditions>
+        <createTable tableName="lab_unit_test">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_primary" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <addForeignKeyConstraint 
+            baseTableName="lab_unit_test" 
+            baseColumnNames="lab_unit_id"
+            constraintName="fk_lut_lab_unit_id" 
+            referencedTableName="lab_unit" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        
+        <addForeignKeyConstraint 
+            baseTableName="lab_unit_test" 
+            baseColumnNames="test_id"
+            constraintName="fk_lut_test_id" 
+            referencedTableName="test" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        
+        <addUniqueConstraint 
+            tableName="lab_unit_test" 
+            columnNames="lab_unit_id, test_id"
+            constraintName="uk_lab_unit_test"/>
+        
+        <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_test_id">
+            <column name="test_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_primary">
+            <column name="is_primary"/>
+        </createIndex>
+        
+        <rollback>
+            <dropTable tableName="lab_unit_test"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-007-create-lab-unit-panel-junction" author="ogc-189-feature">
+        <comment>Create junction table for many-to-many lab unit panel relationships</comment>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_panel"/>
+            </not>
+        </preConditions>
+        <createTable tableName="lab_unit_panel">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="panel_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <addForeignKeyConstraint 
+            baseTableName="lab_unit_panel" 
+            baseColumnNames="lab_unit_id"
+            constraintName="fk_lupanel_lab_unit_id" 
+            referencedTableName="lab_unit" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        
+        <addForeignKeyConstraint 
+            baseTableName="lab_unit_panel" 
+            baseColumnNames="panel_id"
+            constraintName="fk_lupanel_panel_id" 
+            referencedTableName="panel" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        
+        <addUniqueConstraint 
+            tableName="lab_unit_panel" 
+            columnNames="lab_unit_id, panel_id"
+            constraintName="uk_lab_unit_panel"/>
+        
+        <createIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_panel_id">
+            <column name="panel_id"/>
+        </createIndex>
+        
+        <rollback>
+            <dropTable tableName="lab_unit_panel"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ============================================== -->
+    <!-- WORKFLOW, PROGRAM, AND PROJECT ASSIGNMENTS -->
+    <!-- ============================================== -->
+
+    <changeSet id="lab-unit-008-create-workflow-assignment-table" author="ogc-189-feature">
+        <comment>Create junction table for lab unit workflow assignments</comment>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="lab_unit_workflow"/>
             </not>
         </preConditions>
         <createTable tableName="lab_unit_workflow">
-            <column name="id" type="numeric(10,0)">
+            <column name="id" type="SERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="lab_unit_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="workflow_id" type="VARCHAR(36)">
+            <column name="workflow_id" type="INTEGER">
                 <constraints nullable="false"/>
             </column>
-            <column name="is_default" type="BOOLEAN" defaultValue="FALSE"/>
-            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="is_default" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
-
-        <createSequence sequenceName="lab_unit_workflow_seq" startValue="1" incrementBy="1"/>
 
         <addForeignKeyConstraint
             baseTableName="lab_unit_workflow"
             baseColumnNames="lab_unit_id"
             referencedTableName="lab_unit"
             referencedColumnNames="id"
-            constraintName="fk_lab_unit_workflow_lab_unit"
+            constraintName="fk_luw_lab_unit_id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_workflow"
+            baseColumnNames="workflow_id"
+            referencedTableName="workflow"
+            referencedColumnNames="id"
+            constraintName="fk_luw_workflow_id"
             onDelete="CASCADE"/>
 
         <addUniqueConstraint 
@@ -178,40 +333,52 @@
             columnNames="lab_unit_id, workflow_id"
             constraintName="uk_lab_unit_workflow"/>
 
+        <createIndex tableName="lab_unit_workflow" indexName="idx_lab_unit_workflow_default">
+            <column name="is_default"/>
+        </createIndex>
+
         <rollback>
-            <dropSequence sequenceName="lab_unit_workflow_seq"/>
             <dropTable tableName="lab_unit_workflow"/>
         </rollback>
     </changeSet>
 
-    <changeSet id="lab-unit-006-create-program-assignment-table" author="ogc-189-feature">
+    <changeSet id="lab-unit-009-create-program-assignment-table" author="ogc-189-feature">
+        <comment>Create junction table for lab unit program assignments</comment>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="lab_unit_program"/>
             </not>
         </preConditions>
         <createTable tableName="lab_unit_program">
-            <column name="id" type="numeric(10,0)">
+            <column name="id" type="SERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="lab_unit_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="program_id" type="VARCHAR(36)">
+            <column name="program_id" type="INTEGER">
                 <constraints nullable="false"/>
             </column>
-            <column name="default_order_form_id" type="VARCHAR(36)"/>
-            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="default_order_form_id" type="INTEGER"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
-
-        <createSequence sequenceName="lab_unit_program_seq" startValue="1" incrementBy="1"/>
 
         <addForeignKeyConstraint
             baseTableName="lab_unit_program"
             baseColumnNames="lab_unit_id"
             referencedTableName="lab_unit"
             referencedColumnNames="id"
-            constraintName="fk_lab_unit_program_lab_unit"
+            constraintName="fk_lup_lab_unit_id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_program"
+            baseColumnNames="program_id"
+            referencedTableName="program"
+            referencedColumnNames="id"
+            constraintName="fk_lup_program_id"
             onDelete="CASCADE"/>
 
         <addForeignKeyConstraint
@@ -219,7 +386,7 @@
             baseColumnNames="default_order_form_id"
             referencedTableName="questionnaire"
             referencedColumnNames="id"
-            constraintName="fk_lab_unit_program_form"
+            constraintName="fk_lup_order_form_id"
             onDelete="SET NULL"/>
 
         <addUniqueConstraint 
@@ -228,38 +395,46 @@
             constraintName="uk_lab_unit_program"/>
 
         <rollback>
-            <dropSequence sequenceName="lab_unit_program_seq"/>
             <dropTable tableName="lab_unit_program"/>
         </rollback>
     </changeSet>
 
-    <changeSet id="lab-unit-007-create-project-assignment-table" author="ogc-189-feature">
+    <changeSet id="lab-unit-010-create-project-assignment-table" author="ogc-189-feature">
+        <comment>Create junction table for lab unit project assignments</comment>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="lab_unit_project"/>
             </not>
         </preConditions>
         <createTable tableName="lab_unit_project">
-            <column name="id" type="numeric(10,0)">
+            <column name="id" type="SERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="lab_unit_id" type="VARCHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="project_id" type="VARCHAR(36)">
+            <column name="project_id" type="INTEGER">
                 <constraints nullable="false"/>
             </column>
-            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
-
-        <createSequence sequenceName="lab_unit_project_seq" startValue="1" incrementBy="1"/>
 
         <addForeignKeyConstraint
             baseTableName="lab_unit_project"
             baseColumnNames="lab_unit_id"
             referencedTableName="lab_unit"
             referencedColumnNames="id"
-            constraintName="fk_lab_unit_project_lab_unit"
+            constraintName="fk_lupr_lab_unit_id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_project"
+            baseColumnNames="project_id"
+            referencedTableName="project"
+            referencedColumnNames="id"
+            constraintName="fk_lupr_project_id"
             onDelete="CASCADE"/>
 
         <addUniqueConstraint 
@@ -268,45 +443,135 @@
             constraintName="uk_lab_unit_project"/>
 
         <rollback>
-            <dropSequence sequenceName="lab_unit_project_seq"/>
             <dropTable tableName="lab_unit_project"/>
         </rollback>
     </changeSet>
 
-    <changeSet id="lab-unit-008-create-import-log-table" author="ogc-189-feature">
+    <changeSet id="lab-unit-011-create-import-log-table" author="ogc-189-feature">
+        <comment>Create audit table for lab unit import operations</comment>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="lab_unit_import_log"/>
             </not>
         </preConditions>
         <createTable tableName="lab_unit_import_log">
-            <column name="id" type="numeric(10,0)">
+            <column name="id" type="SERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="import_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="import_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
             <column name="imported_by" type="VARCHAR(36)"/>
             <column name="file_name" type="VARCHAR(255)"/>
-            <column name="lab_units_created" type="numeric(10,0)" defaultValue="0"/>
-            <column name="lab_units_updated" type="numeric(10,0)" defaultValue="0"/>
-            <column name="tests_assigned" type="numeric(10,0)" defaultValue="0"/>
-            <column name="panels_assigned" type="numeric(10,0)" defaultValue="0"/>
+            <column name="lab_units_created" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lab_units_updated" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tests_assigned" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="panels_assigned" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
             <column name="warnings" type="TEXT"/>
             <column name="import_data" type="JSONB"/>
         </createTable>
-
-        <createSequence sequenceName="lab_unit_import_log_seq" startValue="1" incrementBy="1"/>
 
         <addForeignKeyConstraint
             baseTableName="lab_unit_import_log"
             baseColumnNames="imported_by"
             referencedTableName="system_user"
             referencedColumnNames="id"
-            constraintName="fk_lab_unit_import_log_user"
+            constraintName="fk_luil_imported_by"
             onDelete="SET NULL"/>
 
+        <createIndex tableName="lab_unit_import_log" indexName="idx_lab_unit_import_date">
+            <column name="import_date"/>
+        </createIndex>
+
         <rollback>
-            <dropSequence sequenceName="lab_unit_import_log_seq"/>
             <dropTable tableName="lab_unit_import_log"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-012-create-audit-table" author="ogc-189-feature">
+        <comment>Create audit table for tracking lab unit changes</comment>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_unit_audit"/>
+            </not>
+        </preConditions>
+        <createTable tableName="lab_unit_audit">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lab_unit_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operation" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="old_values" type="JSONB"/>
+            <column name="new_values" type="JSONB"/>
+            <column name="changed_by" type="VARCHAR(36)"/>
+            <column name="changed_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint 
+            baseTableName="lab_unit_audit" 
+            baseColumnNames="lab_unit_id"
+            constraintName="fk_lab_unit_audit_lab_unit_id" 
+            referencedTableName="lab_unit" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint 
+            baseTableName="lab_unit_audit" 
+            baseColumnNames="changed_by"
+            constraintName="fk_lab_unit_audit_changed_by" 
+            referencedTableName="system_user" 
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <createIndex tableName="lab_unit_audit" indexName="idx_lab_unit_audit_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+
+        <createIndex tableName="lab_unit_audit" indexName="idx_lab_unit_audit_changed_at">
+            <column name="changed_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="lab_unit_audit"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-013-add-search-optimization" author="ogc-189-feature">
+        <comment>Add search optimization for lab unit name and code searches</comment>
+        
+        <!-- Create a composite index for common search patterns -->
+        <createIndex tableName="lab_unit" indexName="idx_lab_unit_search">
+            <column name="is_active"/>
+            <column name="name"/>
+            <column name="code"/>
+        </createIndex>
+
+        <!-- Create full-text search indexes for PostgreSQL -->
+        <sql dbms="postgresql">
+            CREATE INDEX IF NOT EXISTS idx_lab_unit_name_fts ON lab_unit USING gin(to_tsvector('english', name));
+            CREATE INDEX IF NOT EXISTS idx_lab_unit_code_fts ON lab_unit USING gin(to_tsvector('english', code));
+        </sql>
+
+        <rollback>
+            <dropIndex tableName="lab_unit" indexName="idx_lab_unit_search"/>
+            <sql dbms="postgresql">
+                DROP INDEX IF EXISTS idx_lab_unit_name_fts;
+                DROP INDEX IF EXISTS idx_lab_unit_code_fts;
+            </sql>
         </rollback>
     </changeSet>
 
