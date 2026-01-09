@@ -55,9 +55,9 @@
             constraintName="fk_lab_unit_parent_id"
             onDelete="SET NULL"/>
 
-        <addCheckConstraint 
-            tableName="lab_unit" 
-            constraintName="chk_lab_unit_display_order_positive" 
+        <addCheckConstraint
+            tableName="lab_unit"
+            constraintName="chk_lab_unit_display_order_positive"
             condition="display_order >= 0"/>
 
         <rollback>
@@ -131,11 +131,11 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
-        <addForeignKeyConstraint 
-            baseTableName="test" 
+        <addForeignKeyConstraint
+            baseTableName="test"
             baseColumnNames="lab_unit_id"
-            constraintName="fk_test_lab_unit_id" 
-            referencedTableName="lab_unit" 
+            constraintName="fk_test_lab_unit_id"
+            referencedTableName="lab_unit"
             referencedColumnNames="id"
             onDelete="SET NULL"/>
         <createIndex tableName="test" indexName="idx_test_lab_unit_id">
@@ -155,11 +155,11 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
-        <addForeignKeyConstraint 
-            baseTableName="panel" 
+        <addForeignKeyConstraint
+            baseTableName="panel"
             baseColumnNames="lab_unit_id"
-            constraintName="fk_panel_lab_unit_id" 
-            referencedTableName="lab_unit" 
+            constraintName="fk_panel_lab_unit_id"
+            referencedTableName="lab_unit"
             referencedColumnNames="id"
             onDelete="SET NULL"/>
         <createIndex tableName="panel" indexName="idx_panel_lab_unit_id">
@@ -196,36 +196,36 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        
-        <addForeignKeyConstraint 
-            baseTableName="lab_unit_test" 
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_test"
             baseColumnNames="lab_unit_id"
-            constraintName="fk_lut_lab_unit_id" 
-            referencedTableName="lab_unit" 
+            constraintName="fk_lut_lab_unit_id"
+            referencedTableName="lab_unit"
             referencedColumnNames="id"
             onDelete="CASCADE"/>
-        
-        <addForeignKeyConstraint 
-            baseTableName="lab_unit_test" 
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_test"
             baseColumnNames="test_id"
-            constraintName="fk_lut_test_id" 
-            referencedTableName="test" 
+            constraintName="fk_lut_test_id"
+            referencedTableName="test"
             referencedColumnNames="id"
             onDelete="CASCADE"/>
-        
-        <addUniqueConstraint 
-            tableName="lab_unit_test" 
+
+        <addUniqueConstraint
+            tableName="lab_unit_test"
             columnNames="lab_unit_id, test_id"
             constraintName="uk_lab_unit_test"/>
-        
+
         <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_test_id">
             <column name="test_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_primary">
             <column name="is_primary"/>
         </createIndex>
-        
+
         <rollback>
             <dropTable tableName="lab_unit_test"/>
         </rollback>
@@ -252,32 +252,32 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        
-        <addForeignKeyConstraint 
-            baseTableName="lab_unit_panel" 
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_panel"
             baseColumnNames="lab_unit_id"
-            constraintName="fk_lupanel_lab_unit_id" 
-            referencedTableName="lab_unit" 
+            constraintName="fk_lupanel_lab_unit_id"
+            referencedTableName="lab_unit"
             referencedColumnNames="id"
             onDelete="CASCADE"/>
-        
-        <addForeignKeyConstraint 
-            baseTableName="lab_unit_panel" 
+
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_panel"
             baseColumnNames="panel_id"
-            constraintName="fk_lupanel_panel_id" 
-            referencedTableName="panel" 
+            constraintName="fk_lupanel_panel_id"
+            referencedTableName="panel"
             referencedColumnNames="id"
             onDelete="CASCADE"/>
-        
-        <addUniqueConstraint 
-            tableName="lab_unit_panel" 
+
+        <addUniqueConstraint
+            tableName="lab_unit_panel"
             columnNames="lab_unit_id, panel_id"
             constraintName="uk_lab_unit_panel"/>
-        
+
         <createIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_panel_id">
             <column name="panel_id"/>
         </createIndex>
-        
+
         <rollback>
             <dropTable tableName="lab_unit_panel"/>
         </rollback>
@@ -324,8 +324,8 @@
             constraintName="fk_luw_workflow_id"
             onDelete="CASCADE"/>
 
-        <addUniqueConstraint 
-            tableName="lab_unit_workflow" 
+        <addUniqueConstraint
+            tableName="lab_unit_workflow"
             columnNames="lab_unit_id, workflow_id"
             constraintName="uk_lab_unit_workflow"/>
 
@@ -385,8 +385,8 @@
             constraintName="fk_lup_order_form_id"
             onDelete="SET NULL"/>
 
-        <addUniqueConstraint 
-            tableName="lab_unit_program" 
+        <addUniqueConstraint
+            tableName="lab_unit_program"
             columnNames="lab_unit_id, program_id"
             constraintName="uk_lab_unit_program"/>
 
@@ -433,8 +433,8 @@
             constraintName="fk_lupr_project_id"
             onDelete="CASCADE"/>
 
-        <addUniqueConstraint 
-            tableName="lab_unit_project" 
+        <addUniqueConstraint
+            tableName="lab_unit_project"
             columnNames="lab_unit_id, project_id"
             constraintName="uk_lab_unit_project"/>
 
@@ -517,19 +517,19 @@
             </column>
         </createTable>
 
-        <addForeignKeyConstraint 
-            baseTableName="lab_unit_audit" 
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_audit"
             baseColumnNames="lab_unit_id"
-            constraintName="fk_lab_unit_audit_lab_unit_id" 
-            referencedTableName="lab_unit" 
+            constraintName="fk_lab_unit_audit_lab_unit_id"
+            referencedTableName="lab_unit"
             referencedColumnNames="id"
             onDelete="CASCADE"/>
 
-        <addForeignKeyConstraint 
-            baseTableName="lab_unit_audit" 
+        <addForeignKeyConstraint
+            baseTableName="lab_unit_audit"
             baseColumnNames="changed_by"
-            constraintName="fk_lab_unit_audit_changed_by" 
-            referencedTableName="system_user" 
+            constraintName="fk_lab_unit_audit_changed_by"
+            referencedTableName="system_user"
             referencedColumnNames="id"
             onDelete="SET NULL"/>
 
@@ -548,7 +548,7 @@
 
     <changeSet id="lab-unit-013-add-search-optimization" author="ogc-189-feature">
         <comment>Add search optimization for lab unit name and code searches</comment>
-        
+
         <createIndex tableName="lab_unit" indexName="idx_lab_unit_search">
             <column name="is_active"/>
             <column name="name"/>
@@ -566,54 +566,54 @@
 
     <changeSet id="lab-unit-014-add-assignment-performance-indexes" author="ogc-189-feature">
         <comment>Add performance indexes for assignment junction tables</comment>
-        
+
         <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_lab_unit_id">
             <column name="lab_unit_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_composite">
             <column name="lab_unit_id"/>
             <column name="test_id"/>
             <column name="is_primary"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_lab_unit_id">
             <column name="lab_unit_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_composite">
             <column name="lab_unit_id"/>
             <column name="panel_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_workflow" indexName="idx_lab_unit_workflow_lab_unit_id">
             <column name="lab_unit_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_workflow" indexName="idx_lab_unit_workflow_composite">
             <column name="lab_unit_id"/>
             <column name="workflow_id"/>
             <column name="is_default"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_program" indexName="idx_lab_unit_program_lab_unit_id">
             <column name="lab_unit_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_program" indexName="idx_lab_unit_program_composite">
             <column name="lab_unit_id"/>
             <column name="program_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_project" indexName="idx_lab_unit_project_lab_unit_id">
             <column name="lab_unit_id"/>
         </createIndex>
-        
+
         <createIndex tableName="lab_unit_project" indexName="idx_lab_unit_project_composite">
             <column name="lab_unit_id"/>
             <column name="project_id"/>
         </createIndex>
-        
+
         <rollback>
             <dropIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_lab_unit_id"/>
             <dropIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_composite"/>
@@ -630,7 +630,7 @@
 
     <changeSet id="lab-unit-015-create-audit-functions" author="ogc-189-feature">
         <comment>Create audit functions for automatic change logging</comment>
-        
+
         <sql dbms="postgresql">
             CREATE OR REPLACE FUNCTION log_lab_unit_changes()
             RETURNS TRIGGER AS $$
@@ -668,7 +668,7 @@
                     INSERT INTO lab_unit_audit (
                         lab_unit_id, operation, old_values, new_values, changed_by, changed_at
                     ) VALUES (
-                        OLD.lab_unit_id, 'DELETE', 
+                        OLD.lab_unit_id, 'DELETE',
                         json_build_object(
                             'id', OLD.id,
                             'lab_unit_id', OLD.lab_unit_id,
@@ -733,7 +733,7 @@
 
     <changeSet id="lab-unit-016-create-audit-triggers" author="ogc-189-feature">
         <comment>Create audit triggers for lab unit tables</comment>
-        
+
         <sql dbms="postgresql">
             DROP TRIGGER IF EXISTS trigger_lab_unit_audit ON lab_unit;
             CREATE TRIGGER trigger_lab_unit_audit

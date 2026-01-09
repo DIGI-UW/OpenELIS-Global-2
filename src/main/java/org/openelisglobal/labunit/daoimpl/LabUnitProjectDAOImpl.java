@@ -1,7 +1,7 @@
 package org.openelisglobal.labunit.daoimpl;
 
-import java.util.List;
 import jakarta.persistence.Query;
+import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.labunit.dao.LabUnitProjectDAO;
 import org.openelisglobal.labunit.valueholder.LabUnitProject;
@@ -19,8 +19,7 @@ public class LabUnitProjectDAOImpl extends BaseDAOImpl<LabUnitProject, String> i
     public List<LabUnitProject> getProjectsByLabUnitId(String labUnitId) {
         try {
             Query query = entityManager.createQuery(
-                "FROM LabUnitProject WHERE labUnitId = :labUnitId ORDER BY createdAt", 
-                LabUnitProject.class);
+                    "FROM LabUnitProject WHERE labUnitId = :labUnitId ORDER BY createdAt", LabUnitProject.class);
             query.setParameter("labUnitId", labUnitId);
             return query.getResultList();
         } catch (Exception e) {
@@ -32,9 +31,8 @@ public class LabUnitProjectDAOImpl extends BaseDAOImpl<LabUnitProject, String> i
     @SuppressWarnings("unchecked")
     public List<LabUnitProject> getLabUnitsByProjectId(String projectId) {
         try {
-            Query query = entityManager.createQuery(
-                "FROM LabUnitProject WHERE projectId = :projectId", 
-                LabUnitProject.class);
+            Query query = entityManager.createQuery("FROM LabUnitProject WHERE projectId = :projectId",
+                    LabUnitProject.class);
             query.setParameter("projectId", projectId);
             return query.getResultList();
         } catch (Exception e) {
@@ -46,8 +44,8 @@ public class LabUnitProjectDAOImpl extends BaseDAOImpl<LabUnitProject, String> i
     public LabUnitProject getByLabUnitAndProjectId(String labUnitId, String projectId) {
         try {
             Query query = entityManager.createQuery(
-                "FROM LabUnitProject WHERE labUnitId = :labUnitId AND projectId = :projectId", 
-                LabUnitProject.class);
+                    "FROM LabUnitProject WHERE labUnitId = :labUnitId AND projectId = :projectId",
+                    LabUnitProject.class);
             query.setParameter("labUnitId", labUnitId);
             query.setParameter("projectId", projectId);
             query.setMaxResults(1);
@@ -61,8 +59,7 @@ public class LabUnitProjectDAOImpl extends BaseDAOImpl<LabUnitProject, String> i
     @Override
     public void deleteByLabUnitId(String labUnitId) {
         try {
-            Query query = entityManager.createQuery(
-                "DELETE FROM LabUnitProject WHERE labUnitId = :labUnitId");
+            Query query = entityManager.createQuery("DELETE FROM LabUnitProject WHERE labUnitId = :labUnitId");
             query.setParameter("labUnitId", labUnitId);
             query.executeUpdate();
         } catch (Exception e) {
@@ -73,8 +70,7 @@ public class LabUnitProjectDAOImpl extends BaseDAOImpl<LabUnitProject, String> i
     @Override
     public void deleteByProjectId(String projectId) {
         try {
-            Query query = entityManager.createQuery(
-                "DELETE FROM LabUnitProject WHERE projectId = :projectId");
+            Query query = entityManager.createQuery("DELETE FROM LabUnitProject WHERE projectId = :projectId");
             query.setParameter("projectId", projectId);
             query.executeUpdate();
         } catch (Exception e) {

@@ -184,19 +184,29 @@ export default function PanelsTab({ unit }) {
                       <TableHead>
                         <TableRow>
                           <TableExpandHeader />
-                          <TableHeader {...getHeaderProps({ header: headers[0] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[0] })}
+                          >
                             {intl.formatMessage({ id: "panel.name" })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[1] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[1] })}
+                          >
                             {intl.formatMessage({ id: "panel.code" })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[2] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[2] })}
+                          >
                             {intl.formatMessage({ id: "panel.tests" })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[3] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[3] })}
+                          >
                             {intl.formatMessage({ id: "panel.status" })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[4] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[4] })}
+                          >
                             {intl.formatMessage({ id: "panel.actions" })}
                           </TableHeader>
                         </TableRow>
@@ -244,7 +254,9 @@ export default function PanelsTab({ unit }) {
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <Tag type={row.cells[3].value ? "green" : "gray"}>
+                                <Tag
+                                  type={row.cells[3].value ? "green" : "gray"}
+                                >
                                   {row.cells[3].value
                                     ? intl.formatMessage({
                                         id: "panel.status.active",
@@ -276,7 +288,9 @@ export default function PanelsTab({ unit }) {
                                       })}
                                     </OverflowMenuItem>
                                     <OverflowMenuItem>
-                                      {intl.formatMessage({ id: "button.remove" })}
+                                      {intl.formatMessage({
+                                        id: "button.remove",
+                                      })}
                                     </OverflowMenuItem>
                                   </OverflowMenu>
                                 </div>
@@ -302,7 +316,7 @@ export default function PanelsTab({ unit }) {
                                   >
                                     {intl.formatMessage(
                                       { id: "panel.tests.title" },
-                                      { panelName: row.cells[0].value }
+                                      { panelName: row.cells[0].value },
                                     )}
                                   </h4>
                                   {panelTests[row.id] ? (
@@ -310,7 +324,8 @@ export default function PanelsTab({ unit }) {
                                       <div
                                         style={{
                                           display: "grid",
-                                          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                                          gridTemplateColumns:
+                                            "repeat(auto-fill, minmax(300px, 1fr))",
                                           gap: "0.75rem",
                                         }}
                                       >
@@ -354,7 +369,9 @@ export default function PanelsTab({ unit }) {
                                               </span>
                                               <Tag
                                                 type={
-                                                  test.isActive ? "green" : "gray"
+                                                  test.isActive
+                                                    ? "green"
+                                                    : "gray"
                                                 }
                                                 size="sm"
                                               >

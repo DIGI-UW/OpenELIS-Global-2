@@ -184,26 +184,38 @@ export default function ProgramsTab({ unit }) {
                       <TableHead>
                         <TableRow>
                           <TableExpandHeader />
-                          <TableHeader {...getHeaderProps({ header: headers[0] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[0] })}
+                          >
                             {intl.formatMessage({ id: "program.name" })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[1] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[1] })}
+                          >
                             {intl.formatMessage({ id: "program.code" })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[2] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[2] })}
+                          >
                             {intl.formatMessage({
                               id: "program.order.entry.form",
                             })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[3] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[3] })}
+                          >
                             {intl.formatMessage({
                               id: "program.active.patients",
                             })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[4] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[4] })}
+                          >
                             {intl.formatMessage({ id: "program.status" })}
                           </TableHeader>
-                          <TableHeader {...getHeaderProps({ header: headers[5] })}>
+                          <TableHeader
+                            {...getHeaderProps({ header: headers[5] })}
+                          >
                             {intl.formatMessage({ id: "program.actions" })}
                           </TableHeader>
                         </TableRow>
@@ -268,7 +280,9 @@ export default function ProgramsTab({ unit }) {
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <Tag type={row.cells[4].value ? "green" : "gray"}>
+                                <Tag
+                                  type={row.cells[4].value ? "green" : "gray"}
+                                >
                                   {row.cells[4].value
                                     ? intl.formatMessage({
                                         id: "program.status.active",
@@ -300,7 +314,9 @@ export default function ProgramsTab({ unit }) {
                                       })}
                                     </OverflowMenuItem>
                                     <OverflowMenuItem>
-                                      {intl.formatMessage({ id: "button.remove" })}
+                                      {intl.formatMessage({
+                                        id: "button.remove",
+                                      })}
                                     </OverflowMenuItem>
                                   </OverflowMenu>
                                 </div>
@@ -326,14 +342,15 @@ export default function ProgramsTab({ unit }) {
                                   >
                                     {intl.formatMessage(
                                       { id: "program.details.title" },
-                                      { programName: row.cells[0].value }
+                                      { programName: row.cells[0].value },
                                     )}
                                   </h4>
                                   {programDetails[row.id] ? (
                                     <div
                                       style={{
                                         display: "grid",
-                                        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                                        gridTemplateColumns:
+                                          "repeat(auto-fit, minmax(300px, 1fr))",
                                         gap: "1rem",
                                       }}
                                     >
@@ -354,7 +371,9 @@ export default function ProgramsTab({ unit }) {
                                             color: "#161616",
                                           }}
                                         >
-                                          {intl.formatMessage({ id: "program.description" })}
+                                          {intl.formatMessage({
+                                            id: "program.description",
+                                          })}
                                         </h5>
                                         <p
                                           style={{
@@ -420,7 +439,9 @@ export default function ProgramsTab({ unit }) {
                                             color: "#161616",
                                           }}
                                         >
-                                          {intl.formatMessage({ id: "program.statistics" })}
+                                          {intl.formatMessage({
+                                            id: "program.statistics",
+                                          })}
                                         </h5>
                                         <div
                                           style={{
@@ -436,10 +457,14 @@ export default function ProgramsTab({ unit }) {
                                             }}
                                           >
                                             {intl.formatMessage(
-                                              { id: "program.active.patients.count" },
                                               {
-                                                count: programDetails[row.id].activePatients || 0,
-                                              }
+                                                id: "program.active.patients.count",
+                                              },
+                                              {
+                                                count:
+                                                  programDetails[row.id]
+                                                    .activePatients || 0,
+                                              },
                                             )}
                                           </div>
                                           <div
@@ -449,10 +474,14 @@ export default function ProgramsTab({ unit }) {
                                             }}
                                           >
                                             {intl.formatMessage(
-                                              { id: "program.total.patients.count" },
                                               {
-                                                count: programDetails[row.id].totalPatients || 0,
-                                              }
+                                                id: "program.total.patients.count",
+                                              },
+                                              {
+                                                count:
+                                                  programDetails[row.id]
+                                                    .totalPatients || 0,
+                                              },
                                             )}
                                           </div>
                                           <div
@@ -462,10 +491,14 @@ export default function ProgramsTab({ unit }) {
                                             }}
                                           >
                                             {intl.formatMessage(
-                                              { id: "program.total.samples.count" },
                                               {
-                                                count: programDetails[row.id].totalSamples || 0,
-                                              }
+                                                id: "program.total.samples.count",
+                                              },
+                                              {
+                                                count:
+                                                  programDetails[row.id]
+                                                    .totalSamples || 0,
+                                              },
                                             )}
                                           </div>
                                         </div>
@@ -488,7 +521,9 @@ export default function ProgramsTab({ unit }) {
                                             color: "#161616",
                                           }}
                                         >
-                                          {intl.formatMessage({ id: "program.date.range" })}
+                                          {intl.formatMessage({
+                                            id: "program.date.range",
+                                          })}
                                         </h5>
                                         <div
                                           style={{
@@ -503,7 +538,10 @@ export default function ProgramsTab({ unit }) {
                                               color: "#525252",
                                             }}
                                           >
-                                            {intl.formatMessage({ id: "program.start.date" })}:{" "}
+                                            {intl.formatMessage({
+                                              id: "program.start.date",
+                                            })}
+                                            :{" "}
                                             {programDetails[row.id].startDate ||
                                               intl.formatMessage({
                                                 id: "program.date.not.available",
@@ -515,7 +553,10 @@ export default function ProgramsTab({ unit }) {
                                               color: "#525252",
                                             }}
                                           >
-                                            {intl.formatMessage({ id: "program.end.date" })}:{" "}
+                                            {intl.formatMessage({
+                                              id: "program.end.date",
+                                            })}
+                                            :{" "}
                                             {programDetails[row.id].endDate ||
                                               intl.formatMessage({
                                                 id: "program.date.ongoing",

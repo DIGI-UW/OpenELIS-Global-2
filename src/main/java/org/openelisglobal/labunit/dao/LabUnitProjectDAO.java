@@ -1,8 +1,8 @@
 package org.openelisglobal.labunit.dao;
 
 import java.util.List;
-import org.openelisglobal.labunit.valueholder.LabUnitProject;
 import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.labunit.valueholder.LabUnitProject;
 
 /**
  * DAO interface for Lab Unit Project operations.

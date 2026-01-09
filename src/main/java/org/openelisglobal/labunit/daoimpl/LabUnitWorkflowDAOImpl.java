@@ -1,11 +1,10 @@
 package org.openelisglobal.labunit.daoimpl;
 
-import java.util.List;
 import jakarta.persistence.Query;
+import java.util.List;
+import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.labunit.dao.LabUnitWorkflowDAO;
 import org.openelisglobal.labunit.valueholder.LabUnitWorkflow;
-import org.openelisglobal.common.daoimpl.BaseDAOImpl;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +21,7 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     public List<LabUnitWorkflow> getWorkflowsByLabUnitId(String labUnitId) {
         try {
             Query query = entityManager.createQuery(
-                "FROM LabUnitWorkflow WHERE labUnitId = :labUnitId ORDER BY createdAt", 
-                LabUnitWorkflow.class);
+                    "FROM LabUnitWorkflow WHERE labUnitId = :labUnitId ORDER BY createdAt", LabUnitWorkflow.class);
             query.setParameter("labUnitId", labUnitId);
             return query.getResultList();
         } catch (Exception e) {
@@ -36,9 +34,8 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     @SuppressWarnings("unchecked")
     public List<LabUnitWorkflow> getLabUnitsByWorkflowId(String workflowId) {
         try {
-            Query query = entityManager.createQuery(
-                "FROM LabUnitWorkflow WHERE workflowId = :workflowId", 
-                LabUnitWorkflow.class);
+            Query query = entityManager.createQuery("FROM LabUnitWorkflow WHERE workflowId = :workflowId",
+                    LabUnitWorkflow.class);
             query.setParameter("workflowId", workflowId);
             return query.getResultList();
         } catch (Exception e) {
@@ -51,8 +48,8 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     public LabUnitWorkflow getByLabUnitAndWorkflowId(String labUnitId, String workflowId) {
         try {
             Query query = entityManager.createQuery(
-                "FROM LabUnitWorkflow WHERE labUnitId = :labUnitId AND workflowId = :workflowId", 
-                LabUnitWorkflow.class);
+                    "FROM LabUnitWorkflow WHERE labUnitId = :labUnitId AND workflowId = :workflowId",
+                    LabUnitWorkflow.class);
             query.setParameter("labUnitId", labUnitId);
             query.setParameter("workflowId", workflowId);
             query.setMaxResults(1);
@@ -65,8 +62,7 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     @Override
     public void deleteByLabUnitId(String labUnitId) {
         try {
-            Query query = entityManager.createQuery(
-                "DELETE FROM LabUnitWorkflow WHERE labUnitId = :labUnitId");
+            Query query = entityManager.createQuery("DELETE FROM LabUnitWorkflow WHERE labUnitId = :labUnitId");
             query.setParameter("labUnitId", labUnitId);
             query.executeUpdate();
         } catch (Exception e) {
@@ -77,8 +73,7 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     @Override
     public void deleteByWorkflowId(String workflowId) {
         try {
-            Query query = entityManager.createQuery(
-                "DELETE FROM LabUnitWorkflow WHERE workflowId = :workflowId");
+            Query query = entityManager.createQuery("DELETE FROM LabUnitWorkflow WHERE workflowId = :workflowId");
             query.setParameter("workflowId", workflowId);
             query.executeUpdate();
         } catch (Exception e) {
@@ -92,8 +87,7 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     public List<LabUnitWorkflow> getDefaultWorkflows(String labUnitId) {
         try {
             Query query = entityManager.createQuery(
-                "FROM LabUnitWorkflow WHERE labUnitId = :labUnitId AND isDefault = true", 
-                LabUnitWorkflow.class);
+                    "FROM LabUnitWorkflow WHERE labUnitId = :labUnitId AND isDefault = true", LabUnitWorkflow.class);
             query.setParameter("labUnitId", labUnitId);
             return query.getResultList();
         } catch (Exception e) {
@@ -105,14 +99,14 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     public void updateDefaultWorkflow(String labUnitId, String workflowId) {
         try {
             // Clear existing default
-            Query clearQuery = entityManager.createQuery(
-                "UPDATE LabUnitWorkflow SET isDefault = false WHERE labUnitId = :labUnitId");
+            Query clearQuery = entityManager
+                    .createQuery("UPDATE LabUnitWorkflow SET isDefault = false WHERE labUnitId = :labUnitId");
             clearQuery.setParameter("labUnitId", labUnitId);
             clearQuery.executeUpdate();
-            
+
             // Set new default
             Query setQuery = entityManager.createQuery(
-                "UPDATE LabUnitWorkflow SET isDefault = true WHERE labUnitId = :labUnitId AND workflowId = :workflowId");
+                    "UPDATE LabUnitWorkflow SET isDefault = true WHERE labUnitId = :labUnitId AND workflowId = :workflowId");
             setQuery.setParameter("labUnitId", labUnitId);
             setQuery.setParameter("workflowId", workflowId);
             setQuery.executeUpdate();
@@ -124,8 +118,8 @@ public class LabUnitWorkflowDAOImpl extends BaseDAOImpl<LabUnitWorkflow, String>
     @Override
     public void clearDefaultWorkflows(String labUnitId) {
         try {
-            Query query = entityManager.createQuery(
-                "UPDATE LabUnitWorkflow SET isDefault = false WHERE labUnitId = :labUnitId");
+            Query query = entityManager
+                    .createQuery("UPDATE LabUnitWorkflow SET isDefault = false WHERE labUnitId = :labUnitId");
             query.setParameter("labUnitId", labUnitId);
             query.executeUpdate();
         } catch (Exception e) {

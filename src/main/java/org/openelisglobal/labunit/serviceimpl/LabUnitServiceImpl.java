@@ -9,22 +9,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.Map;
-import java.util.HashMap;
-import org.openelisglobal.labunit.dto.LabUnitImportData;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.labunit.dto.LabUnitImportData;
 import org.openelisglobal.labunit.dto.LabUnitResponse;
 import org.openelisglobal.labunit.form.LabUnitForm;
 import org.openelisglobal.labunit.form.LabUnitOrderForm;
 import org.openelisglobal.labunit.service.LabUnitService;
 import org.openelisglobal.labunit.valueholder.LabUnit;
 import org.openelisglobal.labunit.valueholder.LabUnitAssignment;
-import org.openelisglobal.labunit.valueholder.LabUnitWorkflow;
-import org.openelisglobal.labunit.valueholder.LabUnitProject;
-import org.openelisglobal.labunit.valueholder.LabUnitProgram;
 import org.openelisglobal.labunit.valueholder.LabUnitImportLog;
 import org.openelisglobal.labunit.valueholder.LabUnitProgram;
+import org.openelisglobal.labunit.valueholder.LabUnitWorkflow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -278,8 +274,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             // Assign tests using LabUnitAssignment system
             for (String testId : testIds) {
                 // Check if test is already assigned to this lab unit
-                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                        labUnitId, "TEST", testId);
+                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnitId, "TEST",
+                        testId);
 
                 if (existingAssignment == null) {
                     // Create new assignment
@@ -324,8 +320,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
 
             // Remove test assignments
             for (String testId : testIds) {
-                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                        labUnitId, "TEST", testId);
+                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnitId, "TEST",
+                        testId);
 
                 if (existingAssignment != null) {
                     labUnitDAO.deleteAssignment(existingAssignment);
@@ -368,14 +364,14 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Source and target lab units cannot be the same");
             }
 
-            logger.info("Reassigning {} tests from lab unit {} to lab unit {}",
-                    testIds.length, labUnitId, targetLabUnitId);
+            logger.info("Reassigning {} tests from lab unit {} to lab unit {}", testIds.length, labUnitId,
+                    targetLabUnitId);
 
             // Remove from source lab unit and add to target lab unit
             for (String testId : testIds) {
                 // Remove from source lab unit
-                LabUnitAssignment sourceAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                        labUnitId, "TEST", testId);
+                LabUnitAssignment sourceAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnitId, "TEST",
+                        testId);
 
                 if (sourceAssignment != null) {
                     labUnitDAO.deleteAssignment(sourceAssignment);
@@ -383,8 +379,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 }
 
                 // Check if test is already assigned to target lab unit
-                LabUnitAssignment targetAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                        targetLabUnitId, "TEST", testId);
+                LabUnitAssignment targetAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(targetLabUnitId, "TEST",
+                        testId);
 
                 if (targetAssignment == null) {
                     // Add to target lab unit
@@ -403,8 +399,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             }
 
             refreshDisplayLists();
-            logger.info("Successfully reassigned {} tests from {} to {}",
-                    testIds.length, labUnitId, targetLabUnitId);
+            logger.info("Successfully reassigned {} tests from {} to {}", testIds.length, labUnitId, targetLabUnitId);
 
         } catch (Exception e) {
             logger.error("Error reassigning tests from lab unit {} to {}", labUnitId, targetLabUnitId, e);
@@ -431,8 +426,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             // Assign panels using LabUnitAssignment system
             for (String panelId : panelIds) {
                 // Check if panel is already assigned to this lab unit
-                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                        labUnitId, "PANEL", panelId);
+                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnitId, "PANEL",
+                        panelId);
 
                 if (existingAssignment == null) {
                     // Create new assignment
@@ -477,8 +472,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
 
             // Remove panel assignments
             for (String panelId : panelIds) {
-                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                        labUnitId, "PANEL", panelId);
+                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnitId, "PANEL",
+                        panelId);
 
                 if (existingAssignment != null) {
                     labUnitDAO.deleteAssignment(existingAssignment);
@@ -682,7 +677,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             // Assign workflows using LabUnitWorkflow entities
             for (String workflowId : workflowIds) {
                 // Check if workflow is already assigned to this lab unit
-                LabUnitWorkflow existingAssignment = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(labUnitId, workflowId);
+                LabUnitWorkflow existingAssignment = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(labUnitId,
+                        workflowId);
 
                 if (existingAssignment == null) {
                     // Create new assignment
@@ -723,8 +719,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             for (String workflowId : workflowIds) {
                 LabUnitWorkflow labUnitWorkflow = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(labUnitId, workflowId);
                 if (labUnitWorkflow != null && Boolean.TRUE.equals(labUnitWorkflow.getIsDefault())) {
-                    throw new LIMSRuntimeException("Cannot remove default workflow: " + workflowId +
-                            ". Please set another workflow as default first.");
+                    throw new LIMSRuntimeException("Cannot remove default workflow: " + workflowId
+                            + ". Please set another workflow as default first.");
                 }
             }
 
@@ -776,8 +772,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Source and target lab units cannot be the same");
             }
 
-            logger.info("Reassigning {} programs from lab unit {} to lab unit {}",
-                    programIds.length, labUnitId, targetLabUnitId);
+            logger.info("Reassigning {} programs from lab unit {} to lab unit {}", programIds.length, labUnitId,
+                    targetLabUnitId);
 
             // Remove from source lab unit and add to target lab unit
             for (String programId : programIds) {
@@ -809,8 +805,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             }
 
             refreshDisplayLists();
-            logger.info("Successfully reassigned {} programs from {} to {}",
-                    programIds.length, labUnitId, targetLabUnitId);
+            logger.info("Successfully reassigned {} programs from {} to {}", programIds.length, labUnitId,
+                    targetLabUnitId);
 
         } catch (Exception e) {
             logger.error("Error reassigning programs from lab unit {} to {}", labUnitId, targetLabUnitId, e);
@@ -891,8 +887,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Source and target lab units cannot be same");
             }
 
-            logger.info("Reassigning {} workflows from lab unit {} to lab unit {}",
-                    workflowIds.length, labUnitId, targetLabUnitId);
+            logger.info("Reassigning {} workflows from lab unit {} to lab unit {}", workflowIds.length, labUnitId,
+                    targetLabUnitId);
 
             // Remove from source lab unit and add to target lab unit using LabUnitWorkflow
             for (String workflowId : workflowIds) {
@@ -905,7 +901,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 }
 
                 // Check if workflow is already assigned to target lab unit
-                LabUnitWorkflow targetAssignment = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(targetLabUnitId, workflowId);
+                LabUnitWorkflow targetAssignment = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(targetLabUnitId,
+                        workflowId);
 
                 if (targetAssignment == null) {
                     // Add to target lab unit
@@ -925,16 +922,14 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             }
 
             refreshDisplayLists();
-            logger.info("Successfully reassigned {} workflows from {} to {}",
-                    workflowIds.length, labUnitId, targetLabUnitId);
+            logger.info("Successfully reassigned {} workflows from {} to {}", workflowIds.length, labUnitId,
+                    targetLabUnitId);
 
         } catch (Exception e) {
             logger.error("Error reassigning workflows from lab unit {} to {}", labUnitId, targetLabUnitId, e);
             throw new LIMSRuntimeException("Error reassigning workflows between lab units", e);
         }
     }
-
-
 
     // Status operations
     @Override
@@ -1043,8 +1038,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             if (searchTerm != null && !searchTerm.trim().isEmpty()) {
                 String filter = "%" + searchTerm.trim().toLowerCase() + "%";
                 labUnits = labUnits.stream()
-                        .filter(unit -> unit.getName().toLowerCase().contains(searchTerm.trim().toLowerCase()) ||
-                                unit.getNameKey().toLowerCase().contains(searchTerm.trim().toLowerCase()))
+                        .filter(unit -> unit.getName().toLowerCase().contains(searchTerm.trim().toLowerCase())
+                                || unit.getNameKey().toLowerCase().contains(searchTerm.trim().toLowerCase()))
                         .collect(Collectors.toList());
             }
 
@@ -1054,9 +1049,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
 
             List<LabUnit> paginatedUnits = labUnits.subList(startIndex, endIndex);
 
-            return paginatedUnits.stream()
-                    .map(this::toLabUnitResponse)
-                    .collect(Collectors.toList());
+            return paginatedUnits.stream().map(this::toLabUnitResponse).collect(Collectors.toList());
 
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error searching lab units", e);
@@ -1069,9 +1062,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
         try {
             List<LabUnitResponse> labUnits;
             if (labUnitIds != null && !labUnitIds.isEmpty()) {
-                labUnits = labUnitIds.stream()
-                        .map(this::getLabUnitById)
-                        .filter(unit -> unit != null)
+                labUnits = labUnitIds.stream().map(this::getLabUnitById).filter(unit -> unit != null)
                         .collect(Collectors.toList());
             } else {
                 labUnits = getAllLabUnits();
@@ -1101,9 +1092,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
         try {
             List<LabUnitResponse> labUnits;
             if (labUnitIds != null && !labUnitIds.isEmpty()) {
-                labUnits = labUnitIds.stream()
-                        .map(this::getLabUnitById)
-                        .filter(unit -> unit != null)
+                labUnits = labUnitIds.stream().map(this::getLabUnitById).filter(unit -> unit != null)
                         .collect(Collectors.toList());
             } else {
                 labUnits = getAllLabUnits();
@@ -1212,11 +1201,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
     private String escapeJson(String value) {
         if (value == null)
             return "";
-        return value.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t",
+                "\\t");
     }
 
     @Override
@@ -1283,7 +1269,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             if (!jsonString.contains("\"labUnits\"")) {
                 errors.add("Missing required field: labUnits");
             }
-            
+
             if (!jsonString.contains("\"exportVersion\"")) {
                 errors.add("Missing required field: exportVersion");
             }
@@ -1341,7 +1327,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
 
             // Parse JSON manually (simplified approach without external JSON library)
             LabUnitImportData parsedImportData = parseJSONImport(jsonString);
-            
+
             if (parsedImportData == null || parsedImportData.getLabUnits().isEmpty()) {
                 logger.warn("No lab units found in import data");
                 return new ArrayList<>();
@@ -1379,7 +1365,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             importLog.setTotalRecords(totalRecords);
             importLog.setSuccessCount(successCount);
             importLog.setErrorCount(errorCount);
-            
+
             // Store import errors as JSON string
             if (!importErrors.isEmpty()) {
                 importLog.setErrorDetails(String.join("; ", importErrors));
@@ -1540,10 +1526,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
     // Helper method to filter assignments by type
     private List<org.openelisglobal.labunit.dto.LabUnitAssignmentResponse> getAssignmentsByType(
             List<LabUnitAssignment> assignments, String type) {
-        return assignments.stream()
-                .filter(assignment -> type.equals(assignment.getAssignmentType()))
-                .map(this::toAssignmentResponse)
-                .collect(Collectors.toList());
+        return assignments.stream().filter(assignment -> type.equals(assignment.getAssignmentType()))
+                .map(this::toAssignmentResponse).collect(Collectors.toList());
     }
 
     // Helper method to convert assignment to response
@@ -1564,27 +1548,28 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
     private LabUnitImportData parseJSONImport(String jsonString) {
         try {
             LabUnitImportData importData = new LabUnitImportData();
-            
-            // Simple JSON parsing - in production, use proper JSON library like Jackson/Gson
+
+            // Simple JSON parsing - in production, use proper JSON library like
+            // Jackson/Gson
             // This is a basic implementation to get the structure working
-            
+
             // Look for labUnits array
             if (jsonString.contains("\"labUnits\"")) {
                 // Extract basic structure - simplified parsing
                 List<LabUnitImportData.LabUnitImportItem> labUnits = new ArrayList<>();
-                
+
                 // For now, create a placeholder structure
                 // In production, use proper JSON parsing library
                 logger.info("JSON structure detected - parsing {} lab units", 1); // Placeholder
-                
+
                 // Create placeholder item to show structure
                 LabUnitImportData.LabUnitImportItem item = new LabUnitImportData.LabUnitImportItem();
                 labUnits.add(item);
-                
+
                 importData.setLabUnits(labUnits);
                 importData.setExportVersion("1.0");
                 importData.setExportDate(java.time.LocalDateTime.now().toString());
-                
+
                 return importData;
             } else {
                 logger.error("Invalid JSON structure - missing 'labUnits' field");
@@ -1602,10 +1587,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             // Check if lab unit exists by code
             List<LabUnit> existingUnits = labUnitDAO.getAllLabUnits();
             LabUnit existingUnit = existingUnits.stream()
-                    .filter(unit -> labUnitItem.getCode() != null && 
-                                   labUnitItem.getCode().equals(unit.getNameKey()))
-                    .findFirst()
-                    .orElse(null);
+                    .filter(unit -> labUnitItem.getCode() != null && labUnitItem.getCode().equals(unit.getNameKey()))
+                    .findFirst().orElse(null);
 
             LabUnit labUnit;
             boolean isNew = false;
@@ -1628,8 +1611,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             labUnit.setNameKey(labUnitItem.getCode());
             labUnit.setDescription(labUnitItem.getDescription());
             labUnit.setSortOrder(labUnitItem.getDisplayOrder() != null ? labUnitItem.getDisplayOrder() : 0);
-            labUnit.setActive(labUnitItem.getIsActive() != null ? 
-                    (labUnitItem.getIsActive() ? "Y" : "N") : "Y");
+            labUnit.setActive(labUnitItem.getIsActive() != null ? (labUnitItem.getIsActive() ? "Y" : "N") : "Y");
             labUnit.setSysUserId("1"); // System user - should be parameterized
 
             if (isNew) {
@@ -1657,9 +1639,9 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 for (LabUnitImportData.AssignmentItem testItem : labUnitItem.getTests()) {
                     // Here you would typically validate that the test exists in the system
                     // For now, create assignment if not already present
-                    LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                            labUnit.getId(), "TEST", testItem.getCode());
-                    
+                    LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnit.getId(),
+                            "TEST", testItem.getCode());
+
                     if (existingAssignment == null) {
                         LabUnitAssignment assignment = new LabUnitAssignment();
                         assignment.setLabUnitId(labUnit.getId());
@@ -1675,9 +1657,9 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             // Process panel assignments
             if (labUnitItem.getPanels() != null) {
                 for (LabUnitImportData.AssignmentItem panelItem : labUnitItem.getPanels()) {
-                    LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                            labUnit.getId(), "PANEL", panelItem.getCode());
-                    
+                    LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnit.getId(),
+                            "PANEL", panelItem.getCode());
+
                     if (existingAssignment == null) {
                         LabUnitAssignment assignment = new LabUnitAssignment();
                         assignment.setLabUnitId(labUnit.getId());
@@ -1693,9 +1675,9 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             // Process program assignments
             if (labUnitItem.getPrograms() != null) {
                 for (LabUnitImportData.AssignmentItem programItem : labUnitItem.getPrograms()) {
-                    LabUnitProgram existingAssignment = labUnitProgramDAO.getByLabUnitAndProgramId(
-                            labUnit.getId(), programItem.getCode());
-                    
+                    LabUnitProgram existingAssignment = labUnitProgramDAO.getByLabUnitAndProgramId(labUnit.getId(),
+                            programItem.getCode());
+
                     if (existingAssignment == null) {
                         LabUnitProgram assignment = new LabUnitProgram();
                         assignment.setId(java.util.UUID.randomUUID().toString());
@@ -1712,10 +1694,9 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 for (LabUnitImportData.AssignmentItem projectItem : labUnitItem.getProjects()) {
                     org.openelisglobal.labunit.valueholder.LabUnitProject existingAssignment = labUnitProjectDAO
                             .getByLabUnitAndProjectId(labUnit.getId(), projectItem.getCode());
-                    
+
                     if (existingAssignment == null) {
-                        org.openelisglobal.labunit.valueholder.LabUnitProject assignment = 
-                                new org.openelisglobal.labunit.valueholder.LabUnitProject();
+                        org.openelisglobal.labunit.valueholder.LabUnitProject assignment = new org.openelisglobal.labunit.valueholder.LabUnitProject();
                         assignment.setId(java.util.UUID.randomUUID().toString());
                         assignment.setLabUnitId(labUnit.getId());
                         assignment.setProjectId(projectItem.getCode());
@@ -1728,15 +1709,16 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             // Process workflow assignments
             if (labUnitItem.getWorkflows() != null) {
                 for (LabUnitImportData.WorkflowAssignmentItem workflowItem : labUnitItem.getWorkflows()) {
-                    LabUnitWorkflow existingAssignment = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(
-                            labUnit.getId(), workflowItem.getCode());
-                    
+                    LabUnitWorkflow existingAssignment = labUnitWorkflowDAO.getByLabUnitAndWorkflowId(labUnit.getId(),
+                            workflowItem.getCode());
+
                     if (existingAssignment == null) {
                         LabUnitWorkflow assignment = new LabUnitWorkflow();
                         assignment.setId(java.util.UUID.randomUUID().toString());
                         assignment.setLabUnitId(labUnit.getId());
                         assignment.setWorkflowId(workflowItem.getCode());
-                        assignment.setIsDefault(workflowItem.getIsDefault() != null ? workflowItem.getIsDefault() : false);
+                        assignment.setIsDefault(
+                                workflowItem.getIsDefault() != null ? workflowItem.getIsDefault() : false);
                         labUnitWorkflowDAO.insert(assignment);
                     }
                 }
@@ -1772,14 +1754,14 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Source and target lab units cannot be the same");
             }
 
-            logger.info("Reassigning {} panels from lab unit {} to lab unit {}",
-                    panelIds.length, labUnitId, targetLabUnitId);
+            logger.info("Reassigning {} panels from lab unit {} to lab unit {}", panelIds.length, labUnitId,
+                    targetLabUnitId);
 
             // For each panel, remove from source and add to target using LabUnitAssignment
             for (String panelId : panelIds) {
                 // Remove from source lab unit
-                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(
-                        labUnitId, "PANEL", panelId);
+                LabUnitAssignment existingAssignment = labUnitDAO.getAssignmentByLabUnitAndItem(labUnitId, "PANEL",
+                        panelId);
 
                 if (existingAssignment != null) {
                     labUnitDAO.deleteAssignment(existingAssignment);
@@ -1799,8 +1781,7 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             }
 
             refreshDisplayLists();
-            logger.info("Successfully reassigned {} panels from {} to {}",
-                    panelIds.length, labUnitId, targetLabUnitId);
+            logger.info("Successfully reassigned {} panels from {} to {}", panelIds.length, labUnitId, targetLabUnitId);
 
         } catch (Exception e) {
             logger.error("Error reassigning panels from lab unit {} to {}", labUnitId, targetLabUnitId, e);
@@ -1832,8 +1813,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
                 throw new LIMSRuntimeException("Source and target lab units cannot be the same");
             }
 
-            logger.info("Reassigning {} projects from lab unit {} to lab unit {}",
-                    projectIds.length, labUnitId, targetLabUnitId);
+            logger.info("Reassigning {} projects from lab unit {} to lab unit {}", projectIds.length, labUnitId,
+                    targetLabUnitId);
 
             // For each project, remove from source and add to target using LabUnitProject
             for (String projectId : projectIds) {
@@ -1864,8 +1845,8 @@ public class LabUnitServiceImpl extends AuditableBaseObjectServiceImpl<LabUnit, 
             }
 
             refreshDisplayLists();
-            logger.info("Successfully reassigned {} projects from {} to {}",
-                    projectIds.length, labUnitId, targetLabUnitId);
+            logger.info("Successfully reassigned {} projects from {} to {}", projectIds.length, labUnitId,
+                    targetLabUnitId);
 
         } catch (Exception e) {
             logger.error("Error reassigning projects from lab unit {} to {}", labUnitId, targetLabUnitId, e);

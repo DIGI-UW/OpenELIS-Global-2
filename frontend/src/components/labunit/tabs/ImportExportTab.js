@@ -576,26 +576,34 @@ export default function ImportExportTab({ unit }) {
                   <Button kind="secondary" onClick={() => setImportData(null)}>
                     {intl.formatMessage({ id: "button.cancel" })}
                   </Button>
-                   <Button
+                  <Button
                     onClick={async () => {
                       try {
                         setImporting(true);
                         const formData = new FormData();
-                        const blob = new Blob([JSON.stringify(importData, null, 2)], {
-                          type: 'application/json',
-                        });
-                        formData.append('file', blob, 'import.json');
-                        formData.append('format', 'json');
+                        const blob = new Blob(
+                          [JSON.stringify(importData, null, 2)],
+                          {
+                            type: "application/json",
+                          },
+                        );
+                        formData.append("file", blob, "import.json");
+                        formData.append("format", "json");
 
-                        const response = await fetch('/rest/api/lab-units/import', {
-                          method: 'POST',
-                          body: formData,
-                        });
+                        const response = await fetch(
+                          "/rest/api/lab-units/import",
+                          {
+                            method: "POST",
+                            body: formData,
+                          },
+                        );
 
                         if (response.ok) {
                           const result = await response.json();
                           // Show success message
-                          alert(`Successfully imported ${result.count} lab units!`);
+                          alert(
+                            `Successfully imported ${result.count} lab units!`,
+                          );
                           // Reset state
                           setImportData(null);
                           setValidationErrors([]);
@@ -603,10 +611,12 @@ export default function ImportExportTab({ unit }) {
                           fetchAvailableUnits();
                         } else {
                           const error = await response.json();
-                          alert(`Import failed: ${error.error || 'Unknown error'}`);
+                          alert(
+                            `Import failed: ${error.error || "Unknown error"}`,
+                          );
                         }
                       } catch (error) {
-                        console.error('Import error:', error);
+                        console.error("Import error:", error);
                         alert(`Import failed: ${error.message}`);
                       } finally {
                         setImporting(false);

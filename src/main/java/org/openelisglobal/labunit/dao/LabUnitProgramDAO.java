@@ -1,8 +1,8 @@
 package org.openelisglobal.labunit.dao;
 
 import java.util.List;
-import org.openelisglobal.labunit.valueholder.LabUnitProgram;
 import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.labunit.valueholder.LabUnitProgram;
 
 public interface LabUnitProgramDAO extends BaseDAO<LabUnitProgram, String> {
 

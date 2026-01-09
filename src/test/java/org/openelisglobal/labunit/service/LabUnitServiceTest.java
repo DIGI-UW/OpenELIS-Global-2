@@ -1,12 +1,12 @@
 package org.openelisglobal.labunit.service;
 
+import static org.junit.Assert.*;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.labunit.form.LabUnitForm;
-import static org.junit.Assert.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class LabUnitServiceTest {

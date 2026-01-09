@@ -109,7 +109,7 @@ export default function ProjectsTab({ unit }) {
   const handleViewDetails = async (project) => {
     setSelectedProject(project);
     setShowDetailsModal(true);
-    
+
     // Fetch detailed project information
     try {
       const response = await fetch(`/rest/api/projects/${project.id}/details`);
@@ -620,7 +620,13 @@ function AssignProjectsModal({
 }
 
 // Project Details Modal
-function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl }) {
+function ProjectDetailsModal({
+  isOpen,
+  project,
+  projectDetails,
+  onClose,
+  intl,
+}) {
   if (!isOpen || !project) return null;
 
   const getStatusBadge = (status) => {
@@ -631,11 +637,7 @@ function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl })
       cancelled: { type: "red", text: "Cancelled" },
     };
     const statusConfig = statusMap[status] || { type: "gray", text: status };
-    return (
-      <Tag type={statusConfig.type}>
-        {statusConfig.text}
-      </Tag>
-    );
+    return <Tag type={statusConfig.type}>{statusConfig.text}</Tag>;
   };
 
   return (
@@ -761,7 +763,8 @@ function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl })
                 color: "#525252",
               }}
             >
-              {projectDetails?.principalInvestigator || project.principalInvestigator}
+              {projectDetails?.principalInvestigator ||
+                project.principalInvestigator}
             </p>
           </div>
 
@@ -831,7 +834,8 @@ function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl })
                 }}
               >
                 {intl.formatMessage({ id: "project.start.date" })}:{" "}
-                {projectDetails?.startDate || project.startDate || 
+                {projectDetails?.startDate ||
+                  project.startDate ||
                   intl.formatMessage({
                     id: "project.date.not.available",
                   })}
@@ -843,7 +847,8 @@ function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl })
                 }}
               >
                 {intl.formatMessage({ id: "project.end.date" })}:{" "}
-                {projectDetails?.endDate || project.endDate ||
+                {projectDetails?.endDate ||
+                  project.endDate ||
                   intl.formatMessage({
                     id: "project.date.ongoing",
                   })}
@@ -886,8 +891,11 @@ function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl })
                 {intl.formatMessage(
                   { id: "project.enrolled.patients.count" },
                   {
-                    count: projectDetails?.enrolledPatients || project.enrolledPatients || 0,
-                  }
+                    count:
+                      projectDetails?.enrolledPatients ||
+                      project.enrolledPatients ||
+                      0,
+                  },
                 )}
               </div>
               <div
@@ -899,8 +907,9 @@ function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl })
                 {intl.formatMessage(
                   { id: "project.total.samples.count" },
                   {
-                    count: projectDetails?.totalSamples || project.sampleCount || 0,
-                  }
+                    count:
+                      projectDetails?.totalSamples || project.sampleCount || 0,
+                  },
                 )}
               </div>
             </div>
@@ -954,9 +963,7 @@ function ProjectDetailsModal({ isOpen, project, projectDetails, onClose, intl })
           <Button kind="secondary" onClick={onClose}>
             {intl.formatMessage({ id: "button.close" })}
           </Button>
-          <Button>
-            {intl.formatMessage({ id: "button.edit.project" })}
-          </Button>
+          <Button>{intl.formatMessage({ id: "button.edit.project" })}</Button>
         </div>
       </div>
     </Modal>

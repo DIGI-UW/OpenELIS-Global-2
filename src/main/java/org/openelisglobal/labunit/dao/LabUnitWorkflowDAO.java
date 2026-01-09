@@ -1,8 +1,8 @@
 package org.openelisglobal.labunit.dao;
 
 import java.util.List;
-import org.openelisglobal.labunit.valueholder.LabUnitWorkflow;
 import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.labunit.valueholder.LabUnitWorkflow;
 
 public interface LabUnitWorkflowDAO extends BaseDAO<LabUnitWorkflow, String> {
 

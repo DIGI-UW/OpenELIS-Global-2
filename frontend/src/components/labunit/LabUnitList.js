@@ -1077,7 +1077,9 @@ export default function LabUnitList({ onSelectUnit, onEditUnit }) {
                       >
                         <Workflow size={16} />
                         <span style={{ fontWeight: "500" }}>
-                          {intl.formatMessage({ id: "labunit.items.workflows" })}
+                          {intl.formatMessage({
+                            id: "labunit.items.workflows",
+                          })}
                         </span>
                         <span
                           style={{ color: "#525252", fontSize: "0.875rem" }}

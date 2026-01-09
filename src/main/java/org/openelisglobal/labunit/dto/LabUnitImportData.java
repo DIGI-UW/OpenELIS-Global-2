@@ -3,11 +3,11 @@ package org.openelisglobal.labunit.dto;
 import java.util.List;
 
 /**
- * Data Transfer Object for Lab Unit Import data structure.
- * Represents the JSON structure expected for lab unit imports.
+ * Data Transfer Object for Lab Unit Import data structure. Represents the JSON
+ * structure expected for lab unit imports.
  */
 public class LabUnitImportData {
-    
+
     private String exportVersion;
     private String exportDate;
     private List<LabUnitImportItem> labUnits;
@@ -161,9 +161,10 @@ public class LabUnitImportData {
         private String code;
         private String name;
         private String loincCode; // For tests
-        private Boolean isPrimary;  // For tests
+        private Boolean isPrimary; // For tests
 
-        public AssignmentItem() {}
+        public AssignmentItem() {
+        }
 
         public String getCode() {
             return code;
@@ -206,7 +207,8 @@ public class LabUnitImportData {
         private String name;
         private Boolean isDefault;
 
-        public WorkflowAssignmentItem() {}
+        public WorkflowAssignmentItem() {
+        }
 
         public String getCode() {
             return code;

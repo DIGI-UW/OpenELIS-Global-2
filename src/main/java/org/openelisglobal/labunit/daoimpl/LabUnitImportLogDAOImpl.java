@@ -22,8 +22,8 @@ public class LabUnitImportLogDAOImpl extends BaseDAOImpl<LabUnitImportLog, Strin
     public List<LabUnitImportLog> getImportLogsByLabUnit(String labUnitId) {
         try {
             Query query = entityManager.createQuery(
-                "FROM LabUnitImportLog WHERE labUnitId = :labUnitId ORDER BY importDate DESC", 
-                LabUnitImportLog.class);
+                    "FROM LabUnitImportLog WHERE labUnitId = :labUnitId ORDER BY importDate DESC",
+                    LabUnitImportLog.class);
             query.setParameter("labUnitId", labUnitId);
             return query.getResultList();
         } catch (Exception e) {
@@ -35,9 +35,8 @@ public class LabUnitImportLogDAOImpl extends BaseDAOImpl<LabUnitImportLog, Strin
     @SuppressWarnings("unchecked")
     public List<LabUnitImportLog> getRecentImportLogs() {
         try {
-            Query query = entityManager.createQuery(
-                "FROM LabUnitImportLog ORDER BY importDate DESC", 
-                LabUnitImportLog.class);
+            Query query = entityManager.createQuery("FROM LabUnitImportLog ORDER BY importDate DESC",
+                    LabUnitImportLog.class);
             query.setMaxResults(10); // Get 10 most recent imports
             return query.getResultList();
         } catch (Exception e) {

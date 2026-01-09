@@ -31,7 +31,7 @@ public class LabUnit extends BaseObject<String> {
     @jakarta.persistence.Column(name = "parent_lab_unit_id", length = 36)
     private String parentLabUnitId;
 
-@jakarta.persistence.Column(name = "sort_order")
+    @jakarta.persistence.Column(name = "sort_order")
     private Integer sortOrder;
 
     @jakarta.persistence.Column(name = "display_order")

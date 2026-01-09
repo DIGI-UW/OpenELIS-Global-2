@@ -2467,7 +2467,7 @@
   "labunit.current.assignments": "Current assignments",
   "labunit.deactivate.modal.title": "Deactivate Lab Unit",
   "labunit.deactivate.subtitle": "This lab unit has assigned items that will be affected",
-  "labunit.activate.title": "Activate Lab Unit", 
+  "labunit.activate.title": "Activate Lab Unit",
   "labunit.activate.subtitle": "This lab unit will be activated and available for order entry",
   "labunit.deactivate.warning": "You are about to deactivate:",
   "labunit.deactivate.warning.message": "Deactivating this lab unit will leave following items without an active lab unit:",
