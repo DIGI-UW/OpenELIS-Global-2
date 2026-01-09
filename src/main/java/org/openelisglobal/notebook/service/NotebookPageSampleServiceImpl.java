@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.service;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -254,11 +255,26 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                         NotebookPageSample existingOnTargetPage = getByPageIdAndSampleItemId(targetPage.getId(),
                                 sampleId);
                         if (existingOnTargetPage == null) {
+                            // Get source page sample data to copy to target page
+                            NotebookPageSample sourcePageSample = getByPageIdAndSampleItemId(pageId, sampleId);
+                            Map<String, Object> sourceData = null;
+                            if (sourcePageSample != null && sourcePageSample.getData() != null) {
+                                // Create a deep copy of the data to avoid reference issues
+                                sourceData = new HashMap<>(sourcePageSample.getData());
+                            }
+
                             // Create a PENDING record on the target page
                             NotebookPageSample targetPageNps = new NotebookPageSample();
                             targetPageNps.setNotebookPage(targetPage);
                             targetPageNps.setSampleItemId(sampleId.toString());
                             targetPageNps.setStatus(Status.PENDING);
+                            // Copy data from source page to target page
+                            if (sourceData != null) {
+                                targetPageNps.setData(sourceData);
+                                LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                        "T150: Copying " + sourceData.size() + " data fields for sample " + sampleId
+                                                + " from pageId=" + pageId + " to targetPage id=" + targetPage.getId());
+                            }
                             insert(targetPageNps);
                             LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
                                     "T150: Created PENDING record for sample " + sampleId + " on targetPage id="
