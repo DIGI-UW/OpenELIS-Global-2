@@ -288,7 +288,7 @@ const LabUnitsManagement = () => {
           <Button
             kind="ghost"
             size="sm"
-            renderIcon={MoreVertical}
+            renderIcon={OverflowMenuVertical}
             iconDescription={intl.formatMessage({ id: "button.more" })}
           />
         </div>

@@ -4,6 +4,31 @@ import LabUnitsManagement from "./LabUnitsManagement";
 import LabUnitEditor from "../../labunit/LabUnitEditor";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
+const LabUnitEditRoute = ({ match }) => {
+  const [unit, setUnit] = useState(null);
+  const history = useHistory();
+
+  useEffect(() => {
+    if (match.params.id) {
+      getFromOpenElisServer(
+        `/rest/api/lab-units/${match.params.id}`,
+        (response) => {
+          if (response) {
+            setUnit(response);
+          }
+        },
+      );
+    }
+  }, [match.params.id]);
+
+  return (
+    <LabUnitEditor
+      unit={unit}
+      onBack={() => history.push("/MasterListsPage/labUnitManagement")}
+    />
+  );
+};
+
 const LabUnitRoutes = () => {
   const history = useHistory();
 
@@ -23,29 +48,7 @@ const LabUnitRoutes = () => {
       <Route
         path="/labUnitManagement/edit/:id"
         exact
-        render={(props) => {
-          const [unit, setUnit] = useState(null);
-
-          useEffect(() => {
-            if (props.match.params.id) {
-              getFromOpenElisServer(
-                `/rest/api/lab-units/${props.match.params.id}`,
-                (response) => {
-                  if (response) {
-                    setUnit(response);
-                  }
-                },
-              );
-            }
-          }, [props.match.params.id]);
-
-          return (
-            <LabUnitEditor
-              unit={unit}
-              onBack={() => history.push("/MasterListsPage/labUnitManagement")}
-            />
-          );
-        }}
+        component={LabUnitEditRoute}
       />
     </Switch>
   );

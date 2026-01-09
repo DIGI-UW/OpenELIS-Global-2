@@ -20,7 +20,12 @@ import {
   Modal,
   TextInput,
 } from "@carbon/react";
-import { Add as Plus, CheckCircle, OverflowMenuVertical, Search } from "@carbon/icons-react";
+import {
+  Add as Plus,
+  CheckmarkFilled,
+  OverflowMenuVertical,
+  Search,
+} from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 export default function WorkflowsTab({ unit }) {

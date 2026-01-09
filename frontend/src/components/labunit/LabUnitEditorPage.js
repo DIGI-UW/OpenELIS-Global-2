@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useHistory } from "react-router-dom";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-} from "../utils/Utils.js";
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils.js";
 import { NotificationContext } from "../layout/Layout.js";
 import { FormattedMessage, useIntl } from "react-intl";
 import LabUnitEditor from "./LabUnitEditor.js";

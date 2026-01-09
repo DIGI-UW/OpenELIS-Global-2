@@ -22,9 +22,9 @@ import {
 } from "@carbon/react";
 import {
   Edit,
-  Trash2,
+  TrashCan,
   Renew,
-  CheckCircle,
+  CheckmarkFilled,
   View,
   ViewOff,
   Add,
@@ -297,7 +297,7 @@ export default function TestsTab({ unit }) {
                   kind="ghost"
                   size="sm"
                   hasIconOnly
-                  renderIcon={Trash2}
+                  renderIcon={TrashCan}
                   onClick={handleRemoveTests}
                   iconDescription={intl.formatMessage({ id: "button.remove" })}
                 />
@@ -406,7 +406,7 @@ export default function TestsTab({ unit }) {
                           <TableCell>{getStatusBadge(test.isActive)}</TableCell>
                           <TableCell>
                             {test.isPrimary ? (
-                              <CheckCircle
+                              <CheckmarkFilled
                                 size={16}
                                 style={{ color: "#24a148" }}
                               />
@@ -437,7 +437,7 @@ export default function TestsTab({ unit }) {
                                   /* Handle remove single */
                                 }}
                               >
-                                <Trash2 size={16} />
+                                <TrashCan size={16} />
                                 {intl.formatMessage({ id: "button.remove" })}
                               </OverflowMenuItem>
                             </OverflowMenu>
