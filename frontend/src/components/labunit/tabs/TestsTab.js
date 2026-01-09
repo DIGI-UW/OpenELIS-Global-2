@@ -21,13 +21,13 @@ import {
   TextInput,
 } from "@carbon/react";
 import {
-  Plus,
   Edit,
   Trash2,
-  RefreshCw,
-  Eye,
-  EyeOff,
+  Renew,
   CheckCircle,
+  View,
+  ViewOff,
+  Add,
 } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -228,7 +228,7 @@ export default function TestsTab({ unit }) {
               </p>
             </div>
             <Button
-              renderIcon={Plus}
+              renderIcon={Add}
               onClick={handleAssignTests}
               disabled={!unit}
             >
@@ -272,7 +272,7 @@ export default function TestsTab({ unit }) {
                 <Button
                   kind="ghost"
                   size="sm"
-                  renderIcon={RefreshCw}
+                  renderIcon={Renew}
                   onClick={handleReassignTests}
                 >
                   {intl.formatMessage({ id: "button.reassign" })}
@@ -280,7 +280,7 @@ export default function TestsTab({ unit }) {
                 <Button
                   kind="ghost"
                   size="sm"
-                  renderIcon={Eye}
+                  renderIcon={View}
                   onClick={handleActivateTests}
                 >
                   {intl.formatMessage({ id: "button.activate" })}
@@ -288,7 +288,7 @@ export default function TestsTab({ unit }) {
                 <Button
                   kind="ghost"
                   size="sm"
-                  renderIcon={EyeOff}
+                  renderIcon={ViewOff}
                   onClick={handleDeactivateTests}
                 >
                   {intl.formatMessage({ id: "button.deactivate" })}

@@ -20,7 +20,7 @@ import {
   Modal,
   TextInput,
 } from "@carbon/react";
-import { Plus, CheckCircle, MoreVertical, Search } from "@carbon/icons-react";
+import { Add as Plus, CheckCircle, OverflowMenuVertical, Search } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 export default function WorkflowsTab({ unit }) {
@@ -221,7 +221,7 @@ export default function WorkflowsTab({ unit }) {
 
                               <OverflowMenu size="sm">
                                 <OverflowMenuItem>
-                                  <MoreVertical size={16} />
+                                  <OverflowMenuVertical size={16} />
                                   {intl.formatMessage({
                                     id: "button.more.actions",
                                   })}

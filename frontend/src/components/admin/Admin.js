@@ -90,7 +90,6 @@ import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
 import LabUnitRoutes from "./labUnitManagement/LabUnitRoutes";
-import LabUnitsManagement from "./labUnitManagement/LabUnitsManagement";
 
 function Admin() {
   const intl = useIntl();

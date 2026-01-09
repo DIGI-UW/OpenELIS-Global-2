@@ -15,6 +15,7 @@ import {
   Select,
   SelectItem,
   Checkbox,
+  Tag,
 } from "@carbon/react";
 import { Upload, Download, Search } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";

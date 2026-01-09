@@ -19,7 +19,7 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Loading,
-  DragVertical,
+  AspectRatio,
   Modal,
   Checkbox,
   ComposedModal,
@@ -30,7 +30,7 @@ import {
 
 import {
   Search,
-  Plus,
+  Add as Plus,
   Download,
   Upload,
   Edit,
@@ -38,33 +38,28 @@ import {
   ChevronDown,
   ChevronRight,
   Info,
-  X,
-  Check,
-  AlertTriangle,
+  Crossroads as X,
   ChevronLeft,
   Settings,
-  FileText,
+  Document,
   Users,
-  Beaker,
-  GripVertical,
-  Eye,
-  EyeOff,
+  Chemistry,
+  DragVertical,
   AlertCircle,
   CheckCircle,
   ArrowRight,
   Layers,
-  FolderKanban,
-  Workflow,
+  FolderDetails,
+  LicenseThirdParty as Workflow,
   Package,
-  MoreVertical,
-  RefreshCw,
+  OverflowMenuVertical,
   Copy,
   Building2,
   FlaskConical,
-  ClipboardList,
-  Database,
-  GitBranch,
-} from "@carbon/react";
+  Report,
+  ContainerSoftware32,
+  Branch,
+} from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 export default function LabUnitList({ onSelectUnit, onEditUnit }) {
@@ -133,7 +128,7 @@ export default function LabUnitList({ onSelectUnit, onEditUnit }) {
 
   const SortIcon = ({ field }) => {
     if (sortField !== field)
-      return <GripVertical size={14} className="text-gray-400" />;
+      return <AspectRatio size={14} className="text-gray-400" />;
     return sortOrder === "asc" ? (
       <ChevronDown size={14} className="text-teal-600" />
     ) : (
@@ -801,7 +796,7 @@ export default function LabUnitList({ onSelectUnit, onEditUnit }) {
                             fontSize: "0.875rem",
                           }}
                         >
-                          <ClipboardList size={14} />
+                          <Report size={14} />
                           <span>
                             {intl.formatMessage(
                               { id: "labunit.items.programs.count" },
@@ -839,7 +834,7 @@ export default function LabUnitList({ onSelectUnit, onEditUnit }) {
                             fontSize: "0.875rem",
                           }}
                         >
-                          <Beaker size={14} />
+                          <Chemistry size={14} />
                           <span>
                             {intl.formatMessage(
                               { id: "labunit.items.tests.count" },
@@ -1179,7 +1174,7 @@ export default function LabUnitList({ onSelectUnit, onEditUnit }) {
                           gap: "0.5rem",
                         }}
                       >
-                        <ClipboardList size={16} />
+                        <Report size={16} />
                         <span style={{ fontWeight: "500" }}>
                           {intl.formatMessage({ id: "labunit.items.programs" })}
                         </span>
@@ -1383,7 +1378,7 @@ export default function LabUnitList({ onSelectUnit, onEditUnit }) {
                           gap: "0.5rem",
                         }}
                       >
-                        <Beaker size={16} />
+                        <Chemistry size={16} />
                         <span style={{ fontWeight: "500" }}>
                           {intl.formatMessage({ id: "labunit.items.tests" })}
                         </span>

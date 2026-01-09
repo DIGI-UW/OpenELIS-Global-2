@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useHistory } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
-import { NotificationContext } from "../../layout/Layout.js";
+import { NotificationContext } from "../layout/Layout.js";
 import LabUnitList from "./LabUnitList.js";
 import LabUnitEditor from "./LabUnitEditor.js";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../common/PageBreadCrumb.js";
 
 function LabUnitManagementPage() {
   const { notificationVisible, setNotificationVisible, addNotification } =

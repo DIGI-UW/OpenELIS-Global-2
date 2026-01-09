@@ -27,7 +27,7 @@ import {
   Upload,
   Edit,
   TrashCan,
-  MoreVertical,
+  OverflowMenuVertical,
 } from "@carbon/icons-react";
 import {
   getFromOpenElisServer,

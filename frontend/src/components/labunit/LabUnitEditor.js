@@ -13,13 +13,13 @@ import {
 } from "@carbon/react";
 import {
   ArrowLeft,
-  FileText,
-  GitBranch,
-  Beaker,
+  Document,
+  Branch,
+  Chemistry,
   Layers,
-  ClipboardList,
-  FolderKanban,
-  Database,
+  Report,
+  FolderDetails,
+  ContainerSoftware,
 } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import BasicInfoTab from "./tabs/BasicInfoTab.js";
@@ -42,19 +42,19 @@ export default function LabUnitEditor({
     {
       id: "basic",
       label: intl.formatMessage({ id: "labunit.tabs.basic.info" }),
-      icon: FileText,
+      icon: Document,
       group: "configuration",
     },
     {
       id: "workflows",
       label: intl.formatMessage({ id: "labunit.tabs.workflows" }),
-      icon: GitBranch,
+      icon: Branch,
       group: "configuration",
     },
     {
       id: "tests",
       label: intl.formatMessage({ id: "labunit.tabs.tests" }),
-      icon: Beaker,
+      icon: Chemistry,
       group: "assignments",
     },
     {
@@ -66,19 +66,19 @@ export default function LabUnitEditor({
     {
       id: "programs",
       label: intl.formatMessage({ id: "labunit.tabs.programs" }),
-      icon: ClipboardList,
+      icon: Report,
       group: "assignments",
     },
     {
       id: "projects",
       label: intl.formatMessage({ id: "labunit.tabs.projects" }),
-      icon: FolderKanban,
+      icon: FolderDetails,
       group: "assignments",
     },
     {
       id: "import-export",
       label: intl.formatMessage({ id: "labunit.tabs.import.export" }),
-      icon: Database,
+      icon: ContainerSoftware,
       group: "data",
     },
   ];

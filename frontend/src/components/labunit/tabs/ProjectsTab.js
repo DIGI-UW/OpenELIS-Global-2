@@ -20,7 +20,7 @@ import {
   Modal,
   TextInput,
 } from "@carbon/react";
-import { Plus, MoreVertical, Search } from "@carbon/icons-react";
+import {   Add as Plus, OverflowMenuVertical, Search } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 export default function ProjectsTab({ unit }) {
@@ -286,7 +286,7 @@ export default function ProjectsTab({ unit }) {
                           <TableCell>
                             <OverflowMenu size="sm">
                               <OverflowMenuItem>
-                                <MoreVertical size={16} />
+                                <OverflowMenuVertical size={16} />
                                 {intl.formatMessage({
                                   id: "button.more.actions",
                                 })}

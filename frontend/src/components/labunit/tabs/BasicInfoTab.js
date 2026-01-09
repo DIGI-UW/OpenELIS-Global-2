@@ -12,7 +12,10 @@ import {
   Select,
   SelectItem,
 } from "@carbon/react";
-import { AlertTriangle, X } from "@carbon/icons-react";
+import {
+  WarningAlt as AlertTriangle,
+  Crossroads as X,
+} from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 export default function BasicInfoTab({ unit }) {
