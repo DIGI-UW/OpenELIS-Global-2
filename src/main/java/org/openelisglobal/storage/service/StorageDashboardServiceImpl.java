@@ -178,6 +178,60 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
     }
 
     @Override
+    public List<Map<String, Object>> filterDevicesForAPI(StorageDevice.DeviceType deviceType, Integer roomId,
+            Boolean activeStatus, java.math.BigDecimal temperatureSetting) {
+        List<Map<String, Object>> allDevices = storageLocationService.getDevicesForAPI(null);
+        List<Map<String, Object>> filtered = new ArrayList<>();
+
+        for (Map<String, Object> device : allDevices) {
+            boolean matchesType = true;
+            if (deviceType != null) {
+                String typeStr = (String) device.get("type");
+                if (typeStr == null) {
+                    matchesType = false;
+                } else {
+                    try {
+                        StorageDevice.DeviceType deviceTypeFromMap = StorageDevice.DeviceType
+                                .valueOf(typeStr.toUpperCase());
+                        matchesType = deviceTypeFromMap.equals(deviceType);
+                    } catch (IllegalArgumentException e) {
+                        matchesType = false;
+                    }
+                }
+            }
+
+            boolean matchesRoom = true;
+            if (roomId != null) {
+                Integer deviceRoomId = (Integer) device.get("parentRoomId");
+                matchesRoom = deviceRoomId != null && deviceRoomId.equals(roomId);
+            }
+
+            boolean matchesStatus = true;
+            if (activeStatus != null) {
+                Boolean deviceActive = (Boolean) device.get("active");
+                matchesStatus = deviceActive != null && deviceActive.equals(activeStatus);
+            }
+
+            boolean matchesTemperature = true;
+            if (temperatureSetting != null) {
+                java.math.BigDecimal deviceTemperature = (java.math.BigDecimal) device.get("temperatureSetting");
+                if (deviceTemperature == null) {
+                    matchesTemperature = false;
+                } else {
+                    // Use compareTo for BigDecimal comparison to handle precision correctly
+                    matchesTemperature = deviceTemperature.compareTo(temperatureSetting) == 0;
+                }
+            }
+
+            if (matchesType && matchesRoom && matchesStatus && matchesTemperature) {
+                filtered.add(device);
+            }
+        }
+
+        return filtered;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<StorageShelf> filterShelves(Integer deviceId, Integer roomId, Boolean activeStatus) {
         List<StorageShelf> allShelves = storageLocationService.getAllShelves();

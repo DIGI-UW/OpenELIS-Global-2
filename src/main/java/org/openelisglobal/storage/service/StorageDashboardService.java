@@ -60,6 +60,13 @@ public interface StorageDashboardService {
             Boolean activeStatus);
 
     /**
+     * Filter devices by type, room, status, and temperature setting (AND logic).
+     * Supports filtering freezers by exact temperature (-80°C for ultra-low freezers).
+     */
+    List<Map<String, Object>> filterDevicesForAPI(StorageDevice.DeviceType deviceType, Integer roomId,
+            Boolean activeStatus, java.math.BigDecimal temperatureSetting);
+
+    /**
      * Filter shelves by deviceId, roomId, and status (AND logic).
      * 
      * @param deviceId     Device ID filter
