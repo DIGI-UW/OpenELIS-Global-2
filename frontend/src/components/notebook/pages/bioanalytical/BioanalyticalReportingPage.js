@@ -226,6 +226,43 @@ function BioanalyticalReportingPage({
     }
   }, [pageData?.id]);
 
+  // Function to load QA approval status on page mount
+  const loadQAApprovalStatus = useCallback(async () => {
+    if (!pageData?.id || String(pageData.id).startsWith("default-")) {
+      setQaApproved(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/bioanalytical/page/${pageData.id}/qa-approval`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.hasApproval && data.approvalStatus === "APPROVED") {
+          setQaApproved(true);
+          console.log("QA approval status loaded:", data);
+        } else {
+          setQaApproved(false);
+        }
+      } else {
+        setQaApproved(false);
+      }
+    } catch (error) {
+      console.error("Error loading QA approval status:", error);
+      setQaApproved(false);
+    }
+  }, [pageData?.id]);
+
   // Helper function to compile analytical results from Stage 3 sample data
   const compileAnalyticalResults = useCallback(
     (approvedSamples) => {
@@ -619,6 +656,10 @@ function BioanalyticalReportingPage({
   }, [loadBioequivalenceStats]);
 
   React.useEffect(() => {
+    loadQAApprovalStatus();
+  }, [loadQAApprovalStatus]);
+
+  React.useEffect(() => {
     if (studyResults.length > 0) {
       validateQAChecklist();
     }
@@ -695,6 +736,9 @@ function BioanalyticalReportingPage({
       }
 
       const result = await response.json();
+
+      // Update local QA approval state
+      setQaApproved(true);
 
       setSuccessMessage(
         intl.formatMessage(
