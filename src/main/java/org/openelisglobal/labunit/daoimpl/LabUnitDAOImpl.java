@@ -26,7 +26,13 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
     @Transactional(readOnly = true)
     public List<LabUnit> getAllLabUnits() {
         try {
-            Query query = entityManager.createQuery("SELECT lu FROM LabUnit lu ORDER BY lu.sortOrder", LabUnit.class);
+            Query query = entityManager.createQuery(
+                    "SELECT lu FROM LabUnit lu " +
+                            "LEFT JOIN FETCH lu.organization " +
+                            "LEFT JOIN FETCH lu.parentLabUnit " +
+                            "LEFT JOIN FETCH lu.localization " +
+                            "ORDER BY lu.sortOrder",
+                    LabUnit.class);
             return query.getResultList();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error retrieving all lab units", e);
@@ -38,7 +44,12 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
     public List<LabUnit> getActiveLabUnits() {
         try {
             Query query = entityManager.createQuery(
-                    "SELECT lu FROM LabUnit lu WHERE lu.isActive = 'Y' ORDER BY lu.sortOrder", LabUnit.class);
+                    "SELECT lu FROM LabUnit lu " +
+                            "LEFT JOIN FETCH lu.organization " +
+                            "LEFT JOIN FETCH lu.parentLabUnit " +
+                            "LEFT JOIN FETCH lu.localization " +
+                            "WHERE lu.isActive = 'Y' ORDER BY lu.sortOrder",
+                    LabUnit.class);
             return query.getResultList();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error retrieving active lab units", e);
@@ -50,7 +61,12 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
     public List<LabUnit> getInactiveLabUnits() {
         try {
             Query query = entityManager.createQuery(
-                    "SELECT lu FROM LabUnit lu WHERE lu.isActive = 'N' ORDER BY lu.sortOrder", LabUnit.class);
+                    "SELECT lu FROM LabUnit lu " +
+                            "LEFT JOIN FETCH lu.organization " +
+                            "LEFT JOIN FETCH lu.parentLabUnit " +
+                            "LEFT JOIN FETCH lu.localization " +
+                            "WHERE lu.isActive = 'N' ORDER BY lu.sortOrder",
+                    LabUnit.class);
             return query.getResultList();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error retrieving inactive lab units", e);
@@ -61,8 +77,19 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
     @Transactional(readOnly = true)
     public LabUnit getLabUnitById(String id) {
         try {
-            LabUnit labUnit = entityManager.unwrap(org.hibernate.Session.class).get(LabUnit.class, id);
-            return labUnit;
+            Query query = entityManager.createQuery(
+                    "SELECT lu FROM LabUnit lu " +
+                            "LEFT JOIN FETCH lu.organization " +
+                            "LEFT JOIN FETCH lu.parentLabUnit " +
+                            "LEFT JOIN FETCH lu.localization " +
+                            "WHERE lu.id = :id",
+                    LabUnit.class);
+            query.setParameter("id", id);
+            try {
+                return (LabUnit) query.getSingleResult();
+            } catch (Exception e) {
+                return null; // Return null if no result found
+            }
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error retrieving lab unit by id: " + id, e);
         }
@@ -72,7 +99,13 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
     @Transactional(readOnly = true)
     public LabUnit getLabUnitByName(String name) {
         try {
-            Query query = entityManager.createQuery("SELECT lu FROM LabUnit lu WHERE lu.name = :name", LabUnit.class);
+            Query query = entityManager.createQuery(
+                    "SELECT lu FROM LabUnit lu " +
+                            "LEFT JOIN FETCH lu.organization " +
+                            "LEFT JOIN FETCH lu.parentLabUnit " +
+                            "LEFT JOIN FETCH lu.localization " +
+                            "WHERE lu.name = :name",
+                    LabUnit.class);
             query.setParameter("name", name);
             try {
                 return (LabUnit) query.getSingleResult();
@@ -154,10 +187,22 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
             Query query;
             if (filter != null && !filter.trim().isEmpty()) {
                 query = entityManager.createQuery(
-                        "SELECT lu FROM LabUnit lu WHERE lu.name LIKE :filter ORDER BY lu.sortOrder", LabUnit.class);
+                        "SELECT lu FROM LabUnit lu " +
+                                "LEFT JOIN FETCH lu.organization " +
+                                "LEFT JOIN FETCH lu.parentLabUnit " +
+                                "LEFT JOIN FETCH lu.localization " +
+                                "WHERE lu.name LIKE :filter OR lu.description LIKE :filter " +
+                                "ORDER BY lu.sortOrder",
+                        LabUnit.class);
                 query.setParameter("filter", "%" + filter + "%");
             } else {
-                query = entityManager.createQuery("SELECT lu FROM LabUnit lu ORDER BY lu.sortOrder", LabUnit.class);
+                query = entityManager.createQuery(
+                        "SELECT lu FROM LabUnit lu " +
+                                "LEFT JOIN FETCH lu.organization " +
+                                "LEFT JOIN FETCH lu.parentLabUnit " +
+                                "LEFT JOIN FETCH lu.localization " +
+                                "ORDER BY lu.sortOrder",
+                        LabUnit.class);
             }
             return query.getResultList();
         } catch (Exception e) {
@@ -230,16 +275,17 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
             throw new LIMSRuntimeException("Error checking duplicate lab unit code: " + code, e);
         }
     }
-    
+
     // Additional assignment manipulation methods
     @Override
     @Transactional(readOnly = true)
-    public LabUnitAssignment getAssignmentByLabUnitAndItem(String labUnitId, String assignmentType, String assignedItemId) {
+    public LabUnitAssignment getAssignmentByLabUnitAndItem(String labUnitId, String assignmentType,
+            String assignedItemId) {
         try {
             Query query = entityManager.createQuery(
-                "SELECT lua FROM LabUnitAssignment lua WHERE lua.labUnitId = :labUnitId " +
-                "AND lua.assignmentType = :assignmentType AND lua.assignedItemId = :assignedItemId", 
-                LabUnitAssignment.class);
+                    "SELECT lua FROM LabUnitAssignment lua WHERE lua.labUnitId = :labUnitId " +
+                            "AND lua.assignmentType = :assignmentType AND lua.assignedItemId = :assignedItemId",
+                    LabUnitAssignment.class);
             query.setParameter("labUnitId", labUnitId);
             query.setParameter("assignmentType", assignmentType);
             query.setParameter("assignedItemId", assignedItemId);
@@ -249,11 +295,11 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
                 return null; // Return null if no assignment found
             }
         } catch (Exception e) {
-            throw new LIMSRuntimeException("Error retrieving assignment for lab unit: " + labUnitId + 
-                ", type: " + assignmentType + ", item: " + assignedItemId, e);
+            throw new LIMSRuntimeException("Error retrieving assignment for lab unit: " + labUnitId +
+                    ", type: " + assignmentType + ", item: " + assignedItemId, e);
         }
     }
-    
+
     @Override
     @Transactional
     public void createAssignment(LabUnitAssignment assignment) {
@@ -263,13 +309,13 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
             throw new LIMSRuntimeException("Error creating lab unit assignment", e);
         }
     }
-    
+
     @Override
     @Transactional
     public void deleteAssignment(LabUnitAssignment assignment) {
         try {
-            LabUnitAssignment toDelete = entityManager.find(LabUnitAssignment.class, 
-                new LabUnitAssignmentId(assignment.getId(), assignment.getLabUnitId()));
+            LabUnitAssignment toDelete = entityManager.find(LabUnitAssignment.class,
+                    new LabUnitAssignmentId(assignment.getId(), assignment.getLabUnitId()));
             if (toDelete != null) {
                 entityManager.remove(toDelete);
             }
@@ -277,21 +323,21 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
             throw new LIMSRuntimeException("Error deleting lab unit assignment", e);
         }
     }
-    
+
     @Override
     @Transactional
     public void deleteAssignmentByLabUnitAndItem(String labUnitId, String assignmentType, String assignedItemId) {
         try {
             Query query = entityManager.createQuery(
-                "DELETE FROM LabUnitAssignment lua WHERE lua.labUnitId = :labUnitId " +
-                "AND lua.assignmentType = :assignmentType AND lua.assignedItemId = :assignedItemId");
+                    "DELETE FROM LabUnitAssignment lua WHERE lua.labUnitId = :labUnitId " +
+                            "AND lua.assignmentType = :assignmentType AND lua.assignedItemId = :assignedItemId");
             query.setParameter("labUnitId", labUnitId);
             query.setParameter("assignmentType", assignmentType);
             query.setParameter("assignedItemId", assignedItemId);
             query.executeUpdate();
         } catch (Exception e) {
-            throw new LIMSRuntimeException("Error deleting assignment for lab unit: " + labUnitId + 
-                ", type: " + assignmentType + ", item: " + assignedItemId, e);
+            throw new LIMSRuntimeException("Error deleting assignment for lab unit: " + labUnitId +
+                    ", type: " + assignmentType + ", item: " + assignedItemId, e);
         }
     }
 }

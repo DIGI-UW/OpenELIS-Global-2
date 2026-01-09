@@ -283,10 +283,6 @@
         </rollback>
     </changeSet>
 
-    <!-- ============================================== -->
-    <!-- WORKFLOW, PROGRAM, AND PROJECT ASSIGNMENTS -->
-    <!-- ============================================== -->
-
     <changeSet id="lab-unit-008-create-workflow-assignment-table" author="ogc-189-feature">
         <comment>Create junction table for lab unit workflow assignments</comment>
         <preConditions onFail="MARK_RAN">
@@ -553,18 +549,11 @@
     <changeSet id="lab-unit-013-add-search-optimization" author="ogc-189-feature">
         <comment>Add search optimization for lab unit name and code searches</comment>
         
-        <!-- Create a composite index for common search patterns -->
         <createIndex tableName="lab_unit" indexName="idx_lab_unit_search">
             <column name="is_active"/>
             <column name="name"/>
             <column name="code"/>
         </createIndex>
-
-        <!-- Create full-text search indexes for PostgreSQL -->
-        <sql dbms="postgresql">
-            CREATE INDEX IF NOT EXISTS idx_lab_unit_name_fts ON lab_unit USING gin(to_tsvector('english', name));
-            CREATE INDEX IF NOT EXISTS idx_lab_unit_code_fts ON lab_unit USING gin(to_tsvector('english', code));
-        </sql>
 
         <rollback>
             <dropIndex tableName="lab_unit" indexName="idx_lab_unit_search"/>
@@ -575,4 +564,230 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="lab-unit-014-add-assignment-performance-indexes" author="ogc-189-feature">
+        <comment>Add performance indexes for assignment junction tables</comment>
+        
+        <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_composite">
+            <column name="lab_unit_id"/>
+            <column name="test_id"/>
+            <column name="is_primary"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_composite">
+            <column name="lab_unit_id"/>
+            <column name="panel_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_workflow" indexName="idx_lab_unit_workflow_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_workflow" indexName="idx_lab_unit_workflow_composite">
+            <column name="lab_unit_id"/>
+            <column name="workflow_id"/>
+            <column name="is_default"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_program" indexName="idx_lab_unit_program_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_program" indexName="idx_lab_unit_program_composite">
+            <column name="lab_unit_id"/>
+            <column name="program_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_project" indexName="idx_lab_unit_project_lab_unit_id">
+            <column name="lab_unit_id"/>
+        </createIndex>
+        
+        <createIndex tableName="lab_unit_project" indexName="idx_lab_unit_project_composite">
+            <column name="lab_unit_id"/>
+            <column name="project_id"/>
+        </createIndex>
+        
+        <rollback>
+            <dropIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_lab_unit_id"/>
+            <dropIndex tableName="lab_unit_test" indexName="idx_lab_unit_test_composite"/>
+            <dropIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_lab_unit_id"/>
+            <dropIndex tableName="lab_unit_panel" indexName="idx_lab_unit_panel_composite"/>
+            <dropIndex tableName="lab_unit_workflow" indexName="idx_lab_unit_workflow_lab_unit_id"/>
+            <dropIndex tableName="lab_unit_workflow" indexName="idx_lab_unit_workflow_composite"/>
+            <dropIndex tableName="lab_unit_program" indexName="idx_lab_unit_program_lab_unit_id"/>
+            <dropIndex tableName="lab_unit_program" indexName="idx_lab_unit_program_composite"/>
+            <dropIndex tableName="lab_unit_project" indexName="idx_lab_unit_project_lab_unit_id"/>
+            <dropIndex tableName="lab_unit_project" indexName="idx_lab_unit_project_composite"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-015-create-audit-functions" author="ogc-189-feature">
+        <comment>Create audit functions for automatic change logging</comment>
+        
+        <sql dbms="postgresql">
+            CREATE OR REPLACE FUNCTION log_lab_unit_changes()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                IF TG_OP = 'DELETE' THEN
+                    INSERT INTO lab_unit_audit (
+                        lab_unit_id, operation, old_values, new_values, changed_by, changed_at
+                    ) VALUES (
+                        OLD.id, 'DELETE', row_to_json(OLD), NULL, OLD.sys_user_id, CURRENT_TIMESTAMP
+                    );
+                    RETURN OLD;
+                ELSIF TG_OP = 'UPDATE' THEN
+                    INSERT INTO lab_unit_audit (
+                        lab_unit_id, operation, old_values, new_values, changed_by, changed_at
+                    ) VALUES (
+                        NEW.id, 'UPDATE', row_to_json(OLD), row_to_json(NEW), NEW.sys_user_id, CURRENT_TIMESTAMP
+                    );
+                    RETURN NEW;
+                ELSIF TG_OP = 'INSERT' THEN
+                    INSERT INTO lab_unit_audit (
+                        lab_unit_id, operation, old_values, new_values, changed_by, changed_at
+                    ) VALUES (
+                        NEW.id, 'INSERT', NULL, row_to_json(NEW), NEW.sys_user_id, CURRENT_TIMESTAMP
+                    );
+                    RETURN NEW;
+                END IF;
+                RETURN NULL;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            CREATE OR REPLACE FUNCTION log_assignment_changes()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                IF TG_OP = 'DELETE' THEN
+                    INSERT INTO lab_unit_audit (
+                        lab_unit_id, operation, old_values, new_values, changed_by, changed_at
+                    ) VALUES (
+                        OLD.lab_unit_id, 'DELETE', 
+                        json_build_object(
+                            'id', OLD.id,
+                            'lab_unit_id', OLD.lab_unit_id,
+                            'assignment_type', OLD.assignment_type,
+                            'assigned_item_id', OLD.assigned_item_id,
+                            'assigned_date', OLD.assigned_date,
+                            'sys_user_id', OLD.sys_user_id
+                        ), NULL, OLD.sys_user_id, CURRENT_TIMESTAMP
+                    );
+                    RETURN OLD;
+                ELSIF TG_OP = 'UPDATE' THEN
+                    INSERT INTO lab_unit_audit (
+                        lab_unit_id, operation, old_values, new_values, changed_by, changed_at
+                    ) VALUES (
+                        NEW.lab_unit_id, 'UPDATE',
+                        json_build_object(
+                            'id', OLD.id,
+                            'lab_unit_id', OLD.lab_unit_id,
+                            'assignment_type', OLD.assignment_type,
+                            'assigned_item_id', OLD.assigned_item_id,
+                            'assigned_date', OLD.assigned_date,
+                            'sys_user_id', OLD.sys_user_id
+                        ),
+                        json_build_object(
+                            'id', NEW.id,
+                            'lab_unit_id', NEW.lab_unit_id,
+                            'assignment_type', NEW.assignment_type,
+                            'assigned_item_id', NEW.assigned_item_id,
+                            'assigned_date', NEW.assigned_date,
+                            'sys_user_id', NEW.sys_user_id
+                        ), NEW.sys_user_id, CURRENT_TIMESTAMP
+                    );
+                    RETURN NEW;
+                ELSIF TG_OP = 'INSERT' THEN
+                    INSERT INTO lab_unit_audit (
+                        lab_unit_id, operation, old_values, new_values, changed_by, changed_at
+                    ) VALUES (
+                        NEW.lab_unit_id, 'INSERT', NULL,
+                        json_build_object(
+                            'id', NEW.id,
+                            'lab_unit_id', NEW.lab_unit_id,
+                            'assignment_type', NEW.assignment_type,
+                            'assigned_item_id', NEW.assigned_item_id,
+                            'assigned_date', NEW.assigned_date,
+                            'sys_user_id', NEW.sys_user_id
+                        ), NEW.sys_user_id, CURRENT_TIMESTAMP
+                    );
+                    RETURN NEW;
+                END IF;
+                RETURN NULL;
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                DROP FUNCTION IF EXISTS log_lab_unit_changes();
+                DROP FUNCTION IF EXISTS log_assignment_changes();
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="lab-unit-016-create-audit-triggers" author="ogc-189-feature">
+        <comment>Create audit triggers for lab unit tables</comment>
+        
+        <sql dbms="postgresql">
+            DROP TRIGGER IF EXISTS trigger_lab_unit_audit ON lab_unit;
+            CREATE TRIGGER trigger_lab_unit_audit
+                AFTER INSERT OR UPDATE OR DELETE ON lab_unit
+                FOR EACH ROW
+                EXECUTE FUNCTION log_lab_unit_changes();
+
+            DROP TRIGGER IF EXISTS trigger_lab_unit_assignment_audit ON lab_unit_assignment;
+            CREATE TRIGGER trigger_lab_unit_assignment_audit
+                AFTER INSERT OR UPDATE OR DELETE ON lab_unit_assignment
+                FOR EACH ROW
+                EXECUTE FUNCTION log_assignment_changes();
+
+            DROP TRIGGER IF EXISTS trigger_lab_unit_test_audit ON lab_unit_test;
+            CREATE TRIGGER trigger_lab_unit_test_audit
+                AFTER INSERT OR UPDATE OR DELETE ON lab_unit_test
+                FOR EACH ROW
+                EXECUTE FUNCTION log_assignment_changes();
+
+            DROP TRIGGER IF EXISTS trigger_lab_unit_panel_audit ON lab_unit_panel;
+            CREATE TRIGGER trigger_lab_unit_panel_audit
+                AFTER INSERT OR UPDATE OR DELETE ON lab_unit_panel
+                FOR EACH ROW
+                EXECUTE FUNCTION log_assignment_changes();
+
+            DROP TRIGGER IF EXISTS trigger_lab_unit_workflow_audit ON lab_unit_workflow;
+            CREATE TRIGGER trigger_lab_unit_workflow_audit
+                AFTER INSERT OR UPDATE OR DELETE ON lab_unit_workflow
+                FOR EACH ROW
+                EXECUTE FUNCTION log_assignment_changes();
+
+            DROP TRIGGER IF EXISTS trigger_lab_unit_program_audit ON lab_unit_program;
+            CREATE TRIGGER trigger_lab_unit_program_audit
+                AFTER INSERT OR UPDATE OR DELETE ON lab_unit_program
+                FOR EACH ROW
+                EXECUTE FUNCTION log_assignment_changes();
+
+            DROP TRIGGER IF EXISTS trigger_lab_unit_project_audit ON lab_unit_project;
+            CREATE TRIGGER trigger_lab_unit_project_audit
+                AFTER INSERT OR UPDATE OR DELETE ON lab_unit_project
+                FOR EACH ROW
+                EXECUTE FUNCTION log_assignment_changes();
+        </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                DROP TRIGGER IF EXISTS trigger_lab_unit_audit ON lab_unit;
+                DROP TRIGGER IF EXISTS trigger_lab_unit_assignment_audit ON lab_unit_assignment;
+                DROP TRIGGER IF EXISTS trigger_lab_unit_test_audit ON lab_unit_test;
+                DROP TRIGGER IF EXISTS trigger_lab_unit_panel_audit ON lab_unit_panel;
+                DROP TRIGGER IF EXISTS trigger_lab_unit_workflow_audit ON lab_unit_workflow;
+                DROP TRIGGER IF EXISTS trigger_lab_unit_program_audit ON lab_unit_program;
+                DROP TRIGGER IF EXISTS trigger_lab_unit_project_audit ON lab_unit_project;
+            </sql>
+        </rollback>
+    </changeSet>
 </databaseChangeLog>

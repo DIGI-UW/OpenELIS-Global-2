@@ -1,6 +1,7 @@
 package org.openelisglobal.labunit.valueholder;
 
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -62,6 +63,9 @@ public class LabUnit extends BaseObject<String> {
     @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
     @jakarta.persistence.JoinColumn(name = "localization_id", referencedColumnName = "id", insertable = false, updatable = false)
     private Localization localization;
+
+    @jakarta.persistence.OneToMany(mappedBy = "labUnit", fetch = jakarta.persistence.FetchType.LAZY, cascade = jakarta.persistence.CascadeType.ALL)
+    private List<LabUnitAssignment> labUnitAssignments;
 
     public LabUnit() {
         super();
@@ -193,6 +197,14 @@ public class LabUnit extends BaseObject<String> {
 
     public void setLocalization(Localization localization) {
         this.localization = localization;
+    }
+
+    public List<LabUnitAssignment> getLabUnitAssignments() {
+        return labUnitAssignments;
+    }
+
+    public void setLabUnitAssignments(List<LabUnitAssignment> labUnitAssignments) {
+        this.labUnitAssignments = labUnitAssignments;
     }
 
     @Override

@@ -24,14 +24,14 @@ public interface LabUnitDAO extends BaseDAO<LabUnit, String> {
     List<LabUnitAssignment> getAssignmentsForLabUnit(String labUnitId);
 
     boolean hasAssignments(String labUnitId);
-    
+
     // Assignment manipulation methods
     LabUnitAssignment getAssignmentByLabUnitAndItem(String labUnitId, String assignmentType, String assignedItemId);
-    
+
     void createAssignment(LabUnitAssignment assignment);
-    
+
     void deleteAssignment(LabUnitAssignment assignment);
-    
+
     void deleteAssignmentByLabUnitAndItem(String labUnitId, String assignmentType, String assignedItemId);
 
     // Count operations
