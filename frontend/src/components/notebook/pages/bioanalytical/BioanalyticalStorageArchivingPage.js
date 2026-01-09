@@ -1056,8 +1056,53 @@ function BioanalyticalStorageArchivingPage({
                               />
                             </strong>{" "}
                             {storageSamples.length}
+                            {selectedSamples.size > 0 && (
+                              <span
+                                style={{ marginLeft: "1rem", color: "#0043ce" }}
+                              >
+                                (
+                                <FormattedMessage
+                                  id="notebook.bioanalytical.storage.samplesSelected"
+                                  defaultMessage="{count} selected"
+                                  values={{ count: selectedSamples.size }}
+                                />
+                                )
+                              </span>
+                            )}
                           </p>
                         </div>
+
+                        {selectedSamples.size > 0 && (
+                          <div
+                            style={{
+                              marginBottom: "1rem",
+                              display: "flex",
+                              gap: "1rem",
+                            }}
+                          >
+                            <Button
+                              kind="primary"
+                              onClick={handleBiorepositoryTransfer}
+                              disabled={isLoading}
+                            >
+                              <FormattedMessage
+                                id="notebook.bioanalytical.storage.transferToBiorepository"
+                                defaultMessage="Transfer to Biorepository"
+                              />
+                            </Button>
+                            <Button
+                              kind="primary"
+                              onClick={handleRetentionStorage}
+                              disabled={isLoading}
+                            >
+                              <FormattedMessage
+                                id="notebook.bioanalytical.storage.setRetentionStorage"
+                                defaultMessage="Set Retention Storage"
+                              />
+                            </Button>
+                          </div>
+                        )}
+
                         <Table>
                           <TableHead>
                             <TableRow>
