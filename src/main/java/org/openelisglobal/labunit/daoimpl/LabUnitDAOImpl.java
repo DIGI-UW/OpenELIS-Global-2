@@ -7,6 +7,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.labunit.dao.LabUnitDAO;
 import org.openelisglobal.labunit.valueholder.LabUnit;
 import org.openelisglobal.labunit.valueholder.LabUnitAssignment;
+import org.openelisglobal.labunit.valueholder.LabUnitAssignmentId;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -227,6 +228,70 @@ public class LabUnitDAOImpl extends BaseDAOImpl<LabUnit, String> implements LabU
             return count != null && count > 0;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error checking duplicate lab unit code: " + code, e);
+        }
+    }
+    
+    // Additional assignment manipulation methods
+    @Override
+    @Transactional(readOnly = true)
+    public LabUnitAssignment getAssignmentByLabUnitAndItem(String labUnitId, String assignmentType, String assignedItemId) {
+        try {
+            Query query = entityManager.createQuery(
+                "SELECT lua FROM LabUnitAssignment lua WHERE lua.labUnitId = :labUnitId " +
+                "AND lua.assignmentType = :assignmentType AND lua.assignedItemId = :assignedItemId", 
+                LabUnitAssignment.class);
+            query.setParameter("labUnitId", labUnitId);
+            query.setParameter("assignmentType", assignmentType);
+            query.setParameter("assignedItemId", assignedItemId);
+            try {
+                return (LabUnitAssignment) query.getSingleResult();
+            } catch (Exception e) {
+                return null; // Return null if no assignment found
+            }
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error retrieving assignment for lab unit: " + labUnitId + 
+                ", type: " + assignmentType + ", item: " + assignedItemId, e);
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void createAssignment(LabUnitAssignment assignment) {
+        try {
+            entityManager.persist(assignment);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error creating lab unit assignment", e);
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void deleteAssignment(LabUnitAssignment assignment) {
+        try {
+            LabUnitAssignment toDelete = entityManager.find(LabUnitAssignment.class, 
+                new LabUnitAssignmentId(assignment.getId(), assignment.getLabUnitId()));
+            if (toDelete != null) {
+                entityManager.remove(toDelete);
+            }
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error deleting lab unit assignment", e);
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void deleteAssignmentByLabUnitAndItem(String labUnitId, String assignmentType, String assignedItemId) {
+        try {
+            Query query = entityManager.createQuery(
+                "DELETE FROM LabUnitAssignment lua WHERE lua.labUnitId = :labUnitId " +
+                "AND lua.assignmentType = :assignmentType AND lua.assignedItemId = :assignedItemId");
+            query.setParameter("labUnitId", labUnitId);
+            query.setParameter("assignmentType", assignmentType);
+            query.setParameter("assignedItemId", assignedItemId);
+            query.executeUpdate();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error deleting assignment for lab unit: " + labUnitId + 
+                ", type: " + assignmentType + ", item: " + assignedItemId, e);
         }
     }
 }

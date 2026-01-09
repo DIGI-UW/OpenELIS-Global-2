@@ -52,9 +52,15 @@ public interface LabUnitService extends BaseObjectService<LabUnit, String> {
 
     void removeProgramsFromLabUnit(String labUnitId, String[] programIds);
 
+    void reassignPanelsToLabUnit(String labUnitId, String[] panelIds, String targetLabUnitId);
+
     void assignProjectsToLabUnit(String labUnitId, String[] projectIds);
 
     void removeProjectsFromLabUnit(String labUnitId, String[] projectIds);
+
+    void reassignProjectsToLabUnit(String labUnitId, String[] projectIds, String targetLabUnitId);
+
+    void reassignProgramsToLabUnit(String labUnitId, String[] programIds, String targetLabUnitId);
 
     void assignWorkflowsToLabUnit(String labUnitId, String[] workflowIds);
 
@@ -98,8 +104,7 @@ public interface LabUnitService extends BaseObjectService<LabUnit, String> {
 
     // Data transformation helpers
     LabUnitResponse toLabUnitResponse(LabUnit labUnit);
- 
-    LabUnit fromLabUnitForm(LabUnitForm form);
 
+    LabUnit fromLabUnitForm(LabUnitForm form);
 
 }
