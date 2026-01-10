@@ -7,16 +7,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import org.openelisglobal.common.exception.LIMSException;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.junit.Test;
+import org.openelisglobal.common.exception.LIMSException;
 
 public class StringUtilTest {
 
     private static final String VALID_INTEGER = "123";
+
     private enum TestEnum {
         RED, GREEN, BLUE
     }
@@ -144,11 +146,13 @@ public class StringUtilTest {
     public void countInstances_shouldCountOccurrences() {
         assertEquals(3, StringUtil.countInstances("hello world", 'l'));
     }
+
     @Test
     public void testEscapeCSVValue_NullOrEmpty() {
         assertEquals(null, StringUtil.escapeCSVValue(null));
         assertEquals("", StringUtil.escapeCSVValue(""));
     }
+
     @Test
     public void testEscapeCSVValue_NoEscapingNeeded() {
         String input = "SimpleValue";
@@ -219,15 +223,14 @@ public class StringUtilTest {
         assertEquals("more of that thing", result[4]);
     }
 
-
     @Test
     public void testSeparateCSVWithMixedEmbededQuotesAllRows_MultiLine() {
         String input = "Header1,Header2\nValue1,Value2";
         List<String[]> result = StringUtil.separateCSVWithMixedEmbededQuotesAllRows(input);
 
         assertEquals(2, result.size());
-        assertArrayEquals(new String[]{"Header1", "Header2"}, result.get(0));
-        assertArrayEquals(new String[]{"Value1", "Value2"}, result.get(1));
+        assertArrayEquals(new String[] { "Header1", "Header2" }, result.get(0));
+        assertArrayEquals(new String[] { "Value1", "Value2" }, result.get(1));
     }
 
     @Test
@@ -263,7 +266,6 @@ public class StringUtilTest {
         String text = "ABCDEFGHIJ"; // 10 chars
         List result = StringUtil.createChunksOfText(text, 3, false);
 
-
         assertEquals(4, result.size());
         assertEquals("ABC", result.get(0));
         assertEquals("DEF", result.get(1));
@@ -291,7 +293,6 @@ public class StringUtilTest {
         assertEquals(text, result.get(0));
     }
 
-
     @Test
     public void testReplace_HappyPath() {
         String input = "Hello World";
@@ -318,7 +319,6 @@ public class StringUtilTest {
         assertEquals("Hello World", result);
     }
 
-
     @Test
     public void testStrip_HappyPath() {
         String input = "AxBxC";
@@ -332,7 +332,6 @@ public class StringUtilTest {
         String result = StringUtil.strip(input, "x");
         assertEquals("ABC", result);
     }
-
 
     @Test
     public void testJoin_HappyPath() {
@@ -375,6 +374,7 @@ public class StringUtilTest {
         assertEquals(" ", StringUtil.replaceNullWithEmptyString(null));
         assertEquals("test", StringUtil.replaceNullWithEmptyString("test"));
     }
+
     @Test
     public void testFormatPhone_HappyPath() {
         String input = "(123)456-7890";
@@ -441,7 +441,7 @@ public class StringUtilTest {
         double val = 123.45678;
         // Logic: if "-1", returns String.valueOf
         assertEquals("123.45678", StringUtil.doubleWithSignificantDigits(val, "-1"));
-        assertEquals("123.45678", StringUtil.doubleWithSignificantDigits(val, (String)null));
+        assertEquals("123.45678", StringUtil.doubleWithSignificantDigits(val, (String) null));
     }
 
     @Test
@@ -470,7 +470,7 @@ public class StringUtilTest {
 
     @Test
     public void testCountChars() {
-        String[] arr = {"a", "bb", "ccc"};
+        String[] arr = { "a", "bb", "ccc" };
         int result = StringUtil.countChars(arr);
         assertEquals(6, result);
     }
@@ -584,16 +584,17 @@ public class StringUtilTest {
 
     @Test
     public void testSnipToMaxIdLength() {
-         String longStr = "1234567890123";
+        String longStr = "1234567890123";
         String shortStr = "123";
 
         assertEquals("1234567890", StringUtil.snipToMaxIdLength(longStr));
         assertEquals("123", StringUtil.snipToMaxIdLength(shortStr));
     }
+
     @Test
     public void testReplaceTail_HappyPath() {
         String value = "abcdefg"; // len 7
-        String tail = "XYZ";      // len 3
+        String tail = "XYZ"; // len 3
         String result = StringUtil.replaceTail(value, tail);
         assertEquals("abcdXYZ", result);
     }
@@ -629,13 +630,13 @@ public class StringUtilTest {
 
     @Test
     public void testDoubleWithInfinity_Constants() {
-        assertEquals(Double.POSITIVE_INFINITY, StringUtil.doubleWithInfinity("Infinity"),0.0);
-        assertEquals(Double.NEGATIVE_INFINITY, StringUtil.doubleWithInfinity("-Infinity"),0.0);
+        assertEquals(Double.POSITIVE_INFINITY, StringUtil.doubleWithInfinity("Infinity"), 0.0);
+        assertEquals(Double.NEGATIVE_INFINITY, StringUtil.doubleWithInfinity("-Infinity"), 0.0);
     }
 
     @Test
     public void testDoubleWithInfinity_ValidDouble() {
-        assertEquals(123.45, StringUtil.doubleWithInfinity("123.45"),0.0001);
+        assertEquals(123.45, StringUtil.doubleWithInfinity("123.45"), 0.0001);
     }
 
     @Test
@@ -653,7 +654,7 @@ public class StringUtilTest {
     public void testCompareWithNulls() {
 
         assertEquals(0, StringUtil.compareWithNulls(null, null)); // "" vs ""
-        assertEquals(0, StringUtil.compareWithNulls(null, ""));   // "" vs ""
+        assertEquals(0, StringUtil.compareWithNulls(null, "")); // "" vs ""
         assertTrue(StringUtil.compareWithNulls("a", null) > 0);
         assertTrue(StringUtil.compareWithNulls(null, "a") < 0);
         assertTrue(StringUtil.compareWithNulls("a", "b") < 0);
@@ -699,6 +700,7 @@ public class StringUtilTest {
         assertFalse(StringUtil.isAllNumeric("123a45"));
         assertFalse(StringUtil.isAllNumeric(""));
     }
+
     @Test
     public void testFormatExtensionForDisplay_HappyPath() {
         String input = "123/456-7890.EXT";
@@ -755,7 +757,7 @@ public class StringUtilTest {
         String[] result = StringUtil.toArray(input, ",");
 
         assertEquals(3, result.length);
-        assertArrayEquals(new String[]{"one", "two", "three"}, result);
+        assertArrayEquals(new String[] { "one", "two", "three" }, result);
     }
 
     @Test

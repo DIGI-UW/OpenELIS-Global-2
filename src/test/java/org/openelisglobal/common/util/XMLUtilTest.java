@@ -54,8 +54,7 @@ public class XMLUtilTest {
         String rawXml = "<child>content</child>";
         XMLUtil.appendKeyXmlValue("parent", rawXml, xml);
 
-        assertEquals("Should preserve inner XML",
-                "<parent><child>content</child></parent>", xml.toString());
+        assertEquals("Should preserve inner XML", "<parent><child>content</child></parent>", xml.toString());
     }
 
     @Test
@@ -112,6 +111,7 @@ public class XMLUtilTest {
     public void testConstructor() {
         new XMLUtil();
     }
+
     @Test
     public void testAppendKeyValue_Wrapper() {
         StringBuilder xml = new StringBuilder();

@@ -70,17 +70,13 @@ public class IntegerUtilTest {
 
     @Test
     public void testRoundTrip() {
-        int[] testValues = {
-                0, 1, 9, 10, 26, 27,
-                100, 1000, 1234567,
-                -1, -100, -1234567,
-                Integer.MAX_VALUE, Integer.MIN_VALUE
-        };
+        int[] testValues = { 0, 1, 9, 10, 26, 27, 100, 1000, 1234567, -1, -100, -1234567, Integer.MAX_VALUE,
+                Integer.MIN_VALUE };
 
         for (int val : testValues) {
             String encoded = IntegerUtil.toStringBase27(val);
             int decoded = IntegerUtil.parseIntBase27(encoded);
-            assertEquals("Round trip failed for value: " + val,val, decoded);
+            assertEquals("Round trip failed for value: " + val, val, decoded);
         }
     }
 
