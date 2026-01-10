@@ -1,7 +1,5 @@
 package org.openelisglobal.common.util;
 
-import java.util.Arrays;
-
 public class IntegerUtil {
 
     public static final int MIN_VALUE = -2147483648;
@@ -9,88 +7,79 @@ public class IntegerUtil {
             'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'T', 'V', 'W', 'X', 'Y' };
 
     // developed off of String.toString(int i, int radix)
-    public static String toStringBase27(int i) {
-        int maxLength = 8;
-        int base = 27;
-        byte[] buf = new byte[maxLength]; // length of max int value in base 27
-        boolean negative = i < 0;
-        int charPos = maxLength - 1; // start at final index in byte array
-        if (!negative) {
-            i = -i;
+    // developed off of String.toString(int i, int radix)
+    public static String toStringBase27(int value) {
+        if (value == 0) {
+            return "0";
         }
-
-        while (i <= -base) {
-            buf[charPos--] = (byte) base27Characters[-(i % base)];
-            i /= base;
-        }
-
-        buf[charPos] = (byte) base27Characters[-i];
+        boolean negative = value < 0;
+        long v = value;
         if (negative) {
-            --charPos;
-            buf[charPos] = 45; // 45 = '-', retains the negative digit
+            // use long to avoid overflow for Integer.MIN_VALUE
+            v = -(long) value;
         }
 
-        byte[] val = buf;
-        int index = charPos;
-        int len = maxLength - charPos;
-
-        return new String(Arrays.copyOfRange(val, index, index + len), (byte) 0);
+        StringBuilder sb = new StringBuilder();
+        while (v > 0) {
+            int d = (int) (v % 27L);
+            sb.append(base27Characters[d]);
+            v /= 27L;
+        }
+        if (negative) {
+            sb.append('-');
+        }
+        return sb.reverse().toString();
     }
 
     public static int parseIntBase27(String s) throws NumberFormatException {
-        Integer.parseInt("1", 2);
         if (s == null) {
             throw new NumberFormatException("null");
-        } else {
-            boolean negative = false;
-            int i = 0;
-            int len = s.length();
-            int limit = MIN_VALUE + 1;
-            int base = 27;
-            if (len <= 0) {
-                throw new NumberFormatException("For input string: \"" + s + "\" not long enough");
-            } else {
-                char firstChar = s.charAt(0);
-                if (firstChar < '0') {
-                    if (firstChar == '-') {
-                        negative = true;
-                        limit = MIN_VALUE;
-                    } else if (firstChar != '+') {
-                        throw new NumberFormatException("For input string: \"" + s + "\" invalid first character");
-                    }
+        }
+        s = s.trim();
+        if (s.length() == 0) {
+            throw new NumberFormatException("For input string: \"" + s + "\" not long enough");
+        }
 
-                    if (len == 1) {
-                        throw new NumberFormatException(
-                                "For input string: \"" + s + "\" valid first char, but expected a number to follow");
-                    }
-
-                    ++i;
-                }
-
-                int multmin = limit / base;
-
-                int result;
-                int digit;
-                for (result = 0; i < len; result -= digit) {
-                    digit = searchBase27Characters(s.charAt(i++));
-                    if (digit < 0 || result < multmin) {
-                        throw new NumberFormatException("For input string: \"" + s + "\"");
-                    }
-
-                    result *= base;
-                    if (result < limit + digit) {
-                        throw new NumberFormatException("For input string: \"" + s + "\"");
-                    }
-                }
-
-                return negative ? result : -result;
+        boolean negative = false;
+        int idx = 0;
+        char firstChar = s.charAt(0);
+        if (firstChar == '+' || firstChar == '-') {
+            negative = firstChar == '-';
+            idx = 1;
+            if (s.length() == 1) {
+                throw new NumberFormatException(
+                        "For input string: \"" + s + "\" valid first char, but expected a number to follow");
             }
         }
+
+        long result = 0L;
+        final long max = Integer.MAX_VALUE;
+        final long min = (long) Integer.MIN_VALUE;
+
+        for (; idx < s.length(); idx++) {
+            char c = Character.toUpperCase(s.charAt(idx));
+            int digit = searchBase27Characters(c);
+            if (digit < 0) {
+                throw new NumberFormatException("For input string: \"" + s + "\"");
+            }
+
+            result = result * 27L + digit;
+
+            // check overflow for signed int, considering sign later
+            long candidate = negative ? -result : result;
+            if (candidate > max || candidate < min) {
+                throw new NumberFormatException("For input string: \"" + s + "\"");
+            }
+        }
+
+        int intResult = (int) result;
+        return negative ? -intResult : intResult;
     }
 
-    private static int searchBase27Characters(char charAt) {
+    private static int searchBase27Characters(char c) {
+        char up = Character.toUpperCase(c);
         for (int i = 0; i < base27Characters.length; i++) {
-            if (base27Characters[i] == charAt) {
+            if (base27Characters[i] == up) {
                 return i;
             }
         }

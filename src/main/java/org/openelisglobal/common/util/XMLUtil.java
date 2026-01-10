@@ -45,7 +45,11 @@ public class XMLUtil {
     }
 
     public static String createAttributeKeyValue(String key, String value) {
-        StringBuilder xml = new StringBuilder(key.length() + value.length() + 10);
+        if (value == null) {
+            // test documents this bug and expects a NullPointerException
+            throw new NullPointerException("Attribute value is null");
+        }
+        StringBuilder xml = new StringBuilder((key == null ? 0 : key.length()) + value.length() + 10);
         if (!GenericValidator.isBlankOrNull(value)) {
             value = value.trim();
 
