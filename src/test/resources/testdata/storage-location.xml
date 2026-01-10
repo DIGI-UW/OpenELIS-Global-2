@@ -132,4 +132,26 @@
         position_coordinate="1-1" assigned_date="2024-01-01 00:00:00"
         assigned_by_user_id="1" notes="Test assignment 3" />
 
+    <!-- Additional sample with different status for filtering -->
+    <sample id="50003" accession_number="TEST-SAMPLE-004"
+        fhir_uuid="00000000-0000-0000-0000-000000010003" domain="H"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
+        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+
+    <sample_item id="60003" samp_id="50003" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <!-- Sample in Room 2 for location filtering -->
+    <sample_storage_assignment id="5003"
+        sample_item_id="60003" location_id="5003" location_type="rack"
+        position_coordinate="2-1" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 4" />
+
+    <!-- Status of sample entries for filtering (if not already exists) -->
+    <status_of_sample id="2" description="Disposed"
+        code="2" status_type="S" />
+
+    <status_of_sample id="3" description="Active" code="3"
+        status_type="S" />
+
 </dataset>
