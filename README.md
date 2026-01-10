@@ -83,12 +83,13 @@ Here Artifacts (ie the War file and React code) are compiled/built on the local
 machine outside docker and just mounted into the docker compose setup. This
 speeds up the development process
 
-1.  Fork the
-    [OpenELIS-Global Repository](https://github.com/DIGI-UW/OpenELIS-Global-     2.git) 
-    and clone the forked repo. The `username` below is the `username` of     your
-    Github profile.
+1. Fork the [OpenELIS-Global
+   Repository](https://github.com/DIGI-UW/OpenELIS-Global-2.git) and clone the
+   forked repo. The `username` below is the `username` of your Github profile.
 
-         git clone https://github.com/username/OpenELIS-Global-2.git
+   ```bash
+   git clone https://github.com/username/OpenELIS-Global-2.git
+   ```
 
 1.  Initialize and Build Submodules
 
