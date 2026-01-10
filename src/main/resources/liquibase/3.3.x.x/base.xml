@@ -6,9 +6,9 @@
 
   <!-- Sample Storage Management POC (001-sample-storage) -->
   <!-- Clean consolidated migrations - assumes no storage management data exists -->
-  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
-  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
-  <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml" />
+  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml" />
+  <include relativeToChangelogFile="true" file="003-create-indexes.xml" />
   <!-- NOTE: Storage test fixtures are loaded via DBUnit datasets in tests.
        Keep Liquibase focused on schema migrations; do not seed storage hierarchy
        test data here to avoid dual sources of truth. -->
@@ -40,4 +40,7 @@
   <!-- Patient Merge (008-patient-merge) - formerly 019/020 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="026-patient-merge-create-audit-table.xml"/>
   <include relativeToChangelogFile="true" file="027-patient-merge-alter-patient-table.xml"/>
+  <!-- OGC-284: Barcode expansion (labels domain + sample/sample_item barcode info) -->
+  <include relativeToChangelogFile="true" file="barcode_expansion.xml"/>
+  <include relativeToChangelogFile="true" file="028-barcode-info-tables.xml"/>
 </databaseChangeLog>

@@ -15,7 +15,7 @@ public class BlankLabel extends Label {
         aboveFields = new ArrayList<LabelField>();
         LabelField field;
 
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), "", 12);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), "", 12);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
@@ -23,7 +23,7 @@ public class BlankLabel extends Label {
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);
-        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 10);
+        field = new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 10);
         field.setDisplayFieldName(true);
         field.setUnderline(true);
         aboveFields.add(field);

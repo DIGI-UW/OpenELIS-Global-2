@@ -1,8 +1,7 @@
-package org.openelisglobal.storage.barcode.labeltype;
+package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
 import org.openelisglobal.barcode.LabelField;
-import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -29,9 +28,9 @@ public class StorageLocationLabel extends Label {
         // Set dimensions from configuration properties
         try {
             String widthStr = ConfigurationProperties.getInstance()
-                    .getPropertyValue(Property.STORAGE_LOCATION_BARCODE_WIDTH);
+                    .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_WIDTH);
             String heightStr = ConfigurationProperties.getInstance()
-                    .getPropertyValue(Property.STORAGE_LOCATION_BARCODE_HEIGHT);
+                    .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_HEIGHT);
 
             if (widthStr != null && !widthStr.isEmpty()) {
                 width = Float.parseFloat(widthStr);

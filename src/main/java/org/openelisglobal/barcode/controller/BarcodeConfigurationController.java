@@ -29,12 +29,20 @@ public class BarcodeConfigurationController extends BaseController {
                         "heightFreezerLabels",
                         "widthOrderLabels", "widthSpecimenLabels", "widthBlockLabels", "widthSlideLabels",
                         "widthFreezerLabels", //
-                        "collectionDateCheck", "collectedByCheck", "testsCheck", "patientSexCheck", //
                         "numMaxOrderLabels", "numMaxSpecimenLabels", "numMaxBlockLabels", "numMaxSlideLabels",
                         "numMaxFreezerLabels", //
                         "numDefaultOrderLabels", " numDefaultSpecimenLabels", "numDefaultSlideLabels",
                         "numDefaultBlockLabels",
                         "numDefaultFreezerLabels", //
+                        "orderPatientDobCheck", "orderPatientIdCheck", "orderPatientNameCheck", "orderSiteIdCheck",
+                        "specimenPatientDobCheck", "specimenPatientIdCheck", "specimenPatientNameCheck",
+                        "specimenCollectionDateCheck", "specimenCollectedByCheck", "specimenTestsCheck",
+                        "specimenPatientSexCheck",
+                        "slidePatientIdCheck", "slideSlideIdCheck", "slideStainTypeCheck", "slideBlockIdCheck",
+                        "slideCaseNumberCheck", "blockPatientIdCheck", "blockBlockIdCheck", "blockSpecimenTypeCheck",
+                        "blockCaseNumberCheck",
+                        "freezerPatientIdCheck", "freezerStorageLocationCheck", "freezerSpecimenTypeCheck",
+                        "freezerCollectionDateCheck", "freezerExpiryDateCheck",
                         "prePrintDontUseAltAccession", "prePrintAltAccessionPrefix" };
 
         @Autowired
@@ -73,25 +81,25 @@ public class BarcodeConfigurationController extends BaseController {
 
                 // get the dimension values
                 String heightOrderLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.ORDER_BARCODE_HEIGHT);
+                                .getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT);
                 String widthOrderLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.ORDER_BARCODE_WIDTH);
+                                .getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH);
                 String heightSpecimenLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SPECIMEN_BARCODE_HEIGHT);
+                                .getPropertyValue(Property.SPECIMEN_LABEL_BARCODE_HEIGHT);
                 String widthSpecimenLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SPECIMEN_BARCODE_WIDTH);
+                                .getPropertyValue(Property.SPECIMEN_LABEL_BARCODE_WIDTH);
                 String heightSlideLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SLIDE_BARCODE_HEIGHT);
+                                .getPropertyValue(Property.SLIDE_LABEL_BARCODE_HEIGHT);
                 String widthSlideLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SLIDE_BARCODE_WIDTH);
+                                .getPropertyValue(Property.SLIDE_LABEL_BARCODE_WIDTH);
                 String heightBlockLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.BLOCK_BARCODE_HEIGHT);
+                                .getPropertyValue(Property.BLOCK_LABEL_BARCODE_HEIGHT);
                 String widthBlockLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.BLOCK_BARCODE_WIDTH);
+                                .getPropertyValue(Property.BLOCK_LABEL_BARCODE_WIDTH);
                 String heightFreezerLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.FREEZER_BARCODE_HEIGHT);
+                                .getPropertyValue(Property.FREEZER_LABEL_BARCODE_HEIGHT);
                 String widthFreezerLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.FREEZER_BARCODE_WIDTH);
+                                .getPropertyValue(Property.FREEZER_LABEL_BARCODE_WIDTH);
                 // set the dimension values
                 form.setHeightOrderLabels(Float.parseFloat(heightOrderLabels));
                 form.setWidthOrderLabels(Float.parseFloat(widthOrderLabels));
@@ -106,17 +114,17 @@ public class BarcodeConfigurationController extends BaseController {
 
                 // get the maximum print values
                 String numMaxOrderLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.MAX_ORDER_PRINTED);
+                                .getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED);
                 String numMaxSpecimenLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.MAX_SPECIMEN_PRINTED);
+                                .getPropertyValue(Property.MAX_SPECIMEN_LABEL_PRINTED);
                 String numMaxAliquotLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.MAX_ALIQUOT_PRINTED);
+                                .getPropertyValue(Property.MAX_ALIQUOT_LABEL_PRINTED);
                 String numMaxSlideLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.MAX_SLIDE_PRINTED);
+                                .getPropertyValue(Property.MAX_SLIDE_LABEL_PRINTED);
                 String numMaxBlockLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.MAX_BLOCK_PRINTED);
+                                .getPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED);
                 String numMaxFreezerLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.MAX_FREEZER_PRINTED);
+                                .getPropertyValue(Property.MAX_FREEZER_LABEL_PRINTED);
                 // set the maximum print values
                 form.setNumMaxOrderLabels(Integer.parseInt(numMaxOrderLabels));
                 form.setNumMaxSpecimenLabels(Integer.parseInt(numMaxSpecimenLabels));
@@ -127,17 +135,17 @@ public class BarcodeConfigurationController extends BaseController {
 
                 // get the default print values
                 String numDefaultOrderLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.DEFAULT_ORDER_PRINTED);
+                                .getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED);
                 String numDefaultSpecimenLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.DEFAULT_SPECIMEN_PRINTED);
+                                .getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED);
                 String numDefaultAliquotLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.DEFAULT_ALIQUOT_PRINTED);
+                                .getPropertyValue(Property.DEFAULT_ALIQUOT_LABEL_PRINTED);
                 String numDefaultSlideLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.DEFAULT_SLIDE_PRINTED);
+                                .getPropertyValue(Property.DEFAULT_SLIDE_LABEL_PRINTED);
                 String numDefaultBlockLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.DEFAULT_BLOCK_PRINTED);
+                                .getPropertyValue(Property.DEFAULT_BLOCK_LABEL_PRINTED);
                 String numDefaultFreezerLabels = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.DEFAULT_FREEZER_PRINTED);
+                                .getPropertyValue(Property.DEFAULT_FREEZER_LABEL_PRINTED);
                 // set the maximum print values
                 form.setNumDefaultOrderLabels(Integer.parseInt(numDefaultOrderLabels));
                 form.setNumDefaultSpecimenLabels(Integer.parseInt(numDefaultSpecimenLabels));
@@ -148,18 +156,18 @@ public class BarcodeConfigurationController extends BaseController {
 
                 // get the optional specimen values
                 String collectionDateCheck = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SPECIMEN_FIELD_DATE);
+                                .getPropertyValue(Property.SPECIMEN_LABEL_FIELD_COLLECTION_DATE);
                 String collectedByCheck = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SPECIMEN_FIELD_COLLECTED_BY);
+                                .getPropertyValue(Property.SPECIMEN_LABEL_FIELD_COLLECTED_BY);
                 String testsCheck = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SPECIMEN_FIELD_TESTS);
+                                .getPropertyValue(Property.SPECIMEN_LABEL_FIELD_TESTS);
                 String patientSexCheck = ConfigurationProperties.getInstance()
-                                .getPropertyValue(Property.SPECIMEN_FIELD_SEX);
+                                .getPropertyValue(Property.SPECIMEN_LABEL_FIELD_PATIENT_SEX);
                 // set the optional specimen values
-                form.setCollectionDateCheck(Boolean.valueOf(collectionDateCheck));
-                form.setCollectedByCheck(Boolean.valueOf(collectedByCheck));
-                form.setTestsCheck(Boolean.valueOf(testsCheck));
-                form.setPatientSexCheck(Boolean.valueOf(patientSexCheck));
+                form.setSpecimenCollectionDateCheck(Boolean.valueOf(collectionDateCheck));
+                form.setSpecimenCollectedByCheck(Boolean.valueOf(collectedByCheck));
+                form.setSpecimenTestsCheck(Boolean.valueOf(testsCheck));
+                form.setSpecimenPatientSexCheck(Boolean.valueOf(patientSexCheck));
 
                 Boolean prePrintUseAltAccession = Boolean
                                 .valueOf(ConfigurationProperties.getInstance()

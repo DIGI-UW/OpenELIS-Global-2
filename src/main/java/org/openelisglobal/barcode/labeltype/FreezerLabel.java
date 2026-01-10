@@ -10,10 +10,12 @@ public class FreezerLabel extends Label {
         // set dimensions
         try {
             width = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_BARCODE_WIDTH));
+                    .parseFloat(ConfigurationProperties.getInstance()
+                            .getPropertyValue(Property.FREEZER_LABEL_BARCODE_WIDTH));
             height = Float
                     .parseFloat(
-                            ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_BARCODE_HEIGHT));
+                            ConfigurationProperties.getInstance()
+                                    .getPropertyValue(Property.FREEZER_LABEL_BARCODE_HEIGHT));
         } catch (Exception e) {
             LogEvent.logError("FreezerLabel", "FreezerLabel FreezerLabel()", e.toString());
         }

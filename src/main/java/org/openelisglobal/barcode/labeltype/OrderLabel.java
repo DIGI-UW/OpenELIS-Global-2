@@ -29,15 +29,17 @@ public class OrderLabel extends Label {
         // set dimensions
         try {
             width = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_WIDTH));
+                    .parseFloat(
+                            ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH));
             height = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_HEIGHT));
+                    .parseFloat(ConfigurationProperties.getInstance()
+                            .getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT));
         } catch (Exception e) {
             LogEvent.logError("OrderLabel", "OrderLabel OrderLabel()", e.toString());
         }
         // adding fields above bar code
         aboveFields = new ArrayList<>();
-        LabelField labelField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), "", 12);
+        LabelField labelField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), "", 12);
         labelField.setDisplayFieldName(true);
         labelField.setUnderline(true);
         aboveFields.add(labelField);
@@ -74,9 +76,11 @@ public class OrderLabel extends Label {
         // set dimensions
         try {
             width = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_WIDTH));
+                    .parseFloat(
+                            ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH));
             height = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_HEIGHT));
+                    .parseFloat(ConfigurationProperties.getInstance()
+                            .getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT));
         } catch (Exception e) {
             LogEvent.logError("OrderLabel", "OrderLabel OrderLabel(labNo, sampleType, quantity, from)", e.toString());
         }
@@ -124,9 +128,11 @@ public class OrderLabel extends Label {
      */
     public OrderLabel(Patient patient, Sample sample, String labNo) {
         // set dimensions
-        width = Float.parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_WIDTH));
+        width = Float
+                .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH));
         height = Float
-                .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_HEIGHT));
+                .parseFloat(
+                        ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT));
 
         // get referring facility from sample
         SampleOrderService sampleOrderService = new SampleOrderService(sample);
@@ -149,13 +155,13 @@ public class OrderLabel extends Label {
 
         // adding fields above bar code
         aboveFields = new ArrayList<>();
-        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), patientName, 12));
+        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), patientName, 12));
         aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 8));
         if (patient != null) {
             aboveFields.add(getAvailableIdField(patient));
         } else {
             // Add empty patient ID field for generic samples
-            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 6));
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 6));
         }
         LabelField siteField = new LabelField(MessageUtil.getMessage("barcode.label.info.site"),
                 StringUtils.substring(referringFacility, 0, 20), 8);
@@ -182,15 +188,15 @@ public class OrderLabel extends Label {
         personService.getData(patient.getPerson());
         String patientId = patientPatientService.getSubjectNumber(patient);
         if (!StringUtil.isNullorNill(patientId)) {
-            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"),
+            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"),
                     StringUtils.substring(patientId, 0, 25), 12);
         }
         patientId = patientPatientService.getNationalId(patient);
         if (!StringUtil.isNullorNill(patientId)) {
-            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"),
+            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"),
                     StringUtils.substring(patientId, 0, 25), 12);
         }
-        return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 6);
+        return new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 6);
     }
 
     /*
@@ -249,7 +255,8 @@ public class OrderLabel extends Label {
     public int getMaxNumLabels() {
         int max = 0;
         try {
-            max = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_PRINTED));
+            max = Integer
+                    .parseInt(ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED));
         } catch (RuntimeException e) {
             LogEvent.logError(e);
         }
