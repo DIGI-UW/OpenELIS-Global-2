@@ -10,9 +10,11 @@ public class SlideLabel extends Label {
         // set dimensions
         try {
             width = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.SLIDE_BARCODE_WIDTH));
+                    .parseFloat(
+                            ConfigurationProperties.getInstance().getPropertyValue(Property.SLIDE_LABEL_BARCODE_WIDTH));
             height = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.SLIDE_BARCODE_HEIGHT));
+                    .parseFloat(ConfigurationProperties.getInstance()
+                            .getPropertyValue(Property.SLIDE_LABEL_BARCODE_HEIGHT));
         } catch (Exception e) {
             LogEvent.logError("SlideLabel", "SlideLabel SlideLabel()", e.toString());
         }

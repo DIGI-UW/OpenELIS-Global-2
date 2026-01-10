@@ -75,13 +75,31 @@ public class BarcodeConfigurationForm extends BaseForm {
     @Range(min = 0, max = 1000)
     private float widthFreezerLabels;
 
-    private boolean collectionDateCheck;
-
-    private boolean collectedByCheck;
-
-    private boolean testsCheck;
-
-    private boolean patientSexCheck;
+    private boolean orderPatientDobCheck;
+    private boolean orderPatientIdCheck;
+    private boolean orderPatientNameCheck;
+    private boolean orderSiteIdCheck;
+    private boolean specimenPatientDobCheck;
+    private boolean specimenPatientIdCheck;
+    private boolean specimenPatientNameCheck;
+    private boolean specimenCollectionDateCheck;
+    private boolean specimenCollectedByCheck;
+    private boolean specimenTestsCheck;
+    private boolean specimenPatientSexCheck;
+    private boolean slidePatientIdCheck;
+    private boolean slideSlideIdCheck;
+    private boolean slideStainTypeCheck;
+    private boolean slideBlockIdCheck;
+    private boolean slideCaseNumberCheck;
+    private boolean blockPatientIdCheck;
+    private boolean blockBlockIdCheck;
+    private boolean blockSpecimenTypeCheck;
+    private boolean blockCaseNumberCheck;
+    private boolean freezerPatientIdCheck;
+    private boolean freezerStorageLocationCheck;
+    private boolean freezerSpecimenTypeCheck;
+    private boolean freezerCollectionDateCheck;
+    private boolean freezerExpiryDateCheck;
 
     private boolean prePrintDontUseAltAccession;
 
@@ -224,30 +242,6 @@ public class BarcodeConfigurationForm extends BaseForm {
         this.widthFreezerLabels = widthFreezerLabels;
     }
 
-    public boolean getCollectionDateCheck() {
-        return collectionDateCheck;
-    }
-
-    public void setCollectionDateCheck(boolean collectionDateCheck) {
-        this.collectionDateCheck = collectionDateCheck;
-    }
-
-    public boolean getTestsCheck() {
-        return testsCheck;
-    }
-
-    public void setTestsCheck(boolean testsCheck) {
-        this.testsCheck = testsCheck;
-    }
-
-    public boolean getPatientSexCheck() {
-        return patientSexCheck;
-    }
-
-    public void setPatientSexCheck(boolean patientSexCheck) {
-        this.patientSexCheck = patientSexCheck;
-    }
-
     public boolean getPrePrintDontUseAltAccession() {
         return prePrintDontUseAltAccession;
     }
@@ -320,11 +314,203 @@ public class BarcodeConfigurationForm extends BaseForm {
         this.numDefaultFreezerLabels = numDefaultFreezerLabels;
     }
 
-    public boolean getCollectedByCheck() {
-        return collectedByCheck;
+    public boolean getOrderPatientDobCheck() {
+        return orderPatientDobCheck;
     }
 
-    public void setCollectedByCheck(boolean collectedByCheck) {
-        this.collectedByCheck = collectedByCheck;
+    public void setOrderPatientDobCheck(boolean orderPatientDobCheck) {
+        this.orderPatientDobCheck = orderPatientDobCheck;
+    }
+
+    public boolean getOrderPatientIdCheck() {
+        return orderPatientIdCheck;
+    }
+
+    public void setOrderPatientIdCheck(boolean orderPatientIdCheck) {
+        this.orderPatientIdCheck = orderPatientIdCheck;
+    }
+
+    public boolean getOrderPatientNameCheck() {
+        return orderPatientNameCheck;
+    }
+
+    public void setOrderPatientNameCheck(boolean orderPatientNameCheck) {
+        this.orderPatientNameCheck = orderPatientNameCheck;
+    }
+
+    public boolean getOrderSiteIdCheck() {
+        return orderSiteIdCheck;
+    }
+
+    public void setOrderSiteIdCheck(boolean orderSiteIdCheck) {
+        this.orderSiteIdCheck = orderSiteIdCheck;
+    }
+
+    public boolean getSpecimenPatientDobCheck() {
+        return specimenPatientDobCheck;
+    }
+
+    public void setSpecimenPatientDobCheck(boolean specimenPatientDobCheck) {
+        this.specimenPatientDobCheck = specimenPatientDobCheck;
+    }
+
+    public boolean getSpecimenPatientIdCheck() {
+        return specimenPatientIdCheck;
+    }
+
+    public void setSpecimenPatientIdCheck(boolean specimenPatientIdCheck) {
+        this.specimenPatientIdCheck = specimenPatientIdCheck;
+    }
+
+    public boolean getSpecimenPatientNameCheck() {
+        return specimenPatientNameCheck;
+    }
+
+    public void setSpecimenPatientNameCheck(boolean specimenPatientNameCheck) {
+        this.specimenPatientNameCheck = specimenPatientNameCheck;
+    }
+
+    public boolean getSpecimenCollectionDateCheck() {
+        return specimenCollectionDateCheck;
+    }
+
+    public void setSpecimenCollectionDateCheck(boolean specimenCollectionDateCheck) {
+        this.specimenCollectionDateCheck = specimenCollectionDateCheck;
+    }
+
+    public boolean getSpecimenCollectedByCheck() {
+        return specimenCollectedByCheck;
+    }
+
+    public void setSpecimenCollectedByCheck(boolean specimenCollectedByCheck) {
+        this.specimenCollectedByCheck = specimenCollectedByCheck;
+    }
+
+    public boolean getSpecimenTestsCheck() {
+        return specimenTestsCheck;
+    }
+
+    public void setSpecimenTestsCheck(boolean specimenTestsCheck) {
+        this.specimenTestsCheck = specimenTestsCheck;
+    }
+
+    public boolean getSpecimenPatientSexCheck() {
+        return specimenPatientSexCheck;
+    }
+
+    public void setSpecimenPatientSexCheck(boolean specimenPatientSexCheck) {
+        this.specimenPatientSexCheck = specimenPatientSexCheck;
+    }
+
+    public boolean getSlidePatientIdCheck() {
+        return slidePatientIdCheck;
+    }
+
+    public void setSlidePatientIdCheck(boolean slidePatientIdCheck) {
+        this.slidePatientIdCheck = slidePatientIdCheck;
+    }
+
+    public boolean getSlideSlideIdCheck() {
+        return slideSlideIdCheck;
+    }
+
+    public void setSlideSlideIdCheck(boolean slideSlideIdCheck) {
+        this.slideSlideIdCheck = slideSlideIdCheck;
+    }
+
+    public boolean getSlideStainTypeCheck() {
+        return slideStainTypeCheck;
+    }
+
+    public void setSlideStainTypeCheck(boolean slideStainTypeCheck) {
+        this.slideStainTypeCheck = slideStainTypeCheck;
+    }
+
+    public boolean getSlideBlockIdCheck() {
+        return slideBlockIdCheck;
+    }
+
+    public void setSlideBlockIdCheck(boolean slideBlockIdCheck) {
+        this.slideBlockIdCheck = slideBlockIdCheck;
+    }
+
+    public boolean getSlideCaseNumberCheck() {
+        return slideCaseNumberCheck;
+    }
+
+    public void setSlideCaseNumberCheck(boolean slideCaseNumberCheck) {
+        this.slideCaseNumberCheck = slideCaseNumberCheck;
+    }
+
+    public boolean getBlockPatientIdCheck() {
+        return blockPatientIdCheck;
+    }
+
+    public void setBlockPatientIdCheck(boolean blockPatientIdCheck) {
+        this.blockPatientIdCheck = blockPatientIdCheck;
+    }
+
+    public boolean getBlockBlockIdCheck() {
+        return blockBlockIdCheck;
+    }
+
+    public void setBlockBlockIdCheck(boolean blockBlockIdCheck) {
+        this.blockBlockIdCheck = blockBlockIdCheck;
+    }
+
+    public boolean getBlockSpecimenTypeCheck() {
+        return blockSpecimenTypeCheck;
+    }
+
+    public void setBlockSpecimenTypeCheck(boolean blockSpecimenTypeCheck) {
+        this.blockSpecimenTypeCheck = blockSpecimenTypeCheck;
+    }
+
+    public boolean getBlockCaseNumberCheck() {
+        return blockCaseNumberCheck;
+    }
+
+    public void setBlockCaseNumberCheck(boolean blockCaseNumberCheck) {
+        this.blockCaseNumberCheck = blockCaseNumberCheck;
+    }
+
+    public boolean getFreezerPatientIdCheck() {
+        return freezerPatientIdCheck;
+    }
+
+    public void setFreezerPatientIdCheck(boolean freezerPatientIdCheck) {
+        this.freezerPatientIdCheck = freezerPatientIdCheck;
+    }
+
+    public boolean getFreezerStorageLocationCheck() {
+        return freezerStorageLocationCheck;
+    }
+
+    public void setFreezerStorageLocationCheck(boolean freezerStorageLocationCheck) {
+        this.freezerStorageLocationCheck = freezerStorageLocationCheck;
+    }
+
+    public boolean getFreezerSpecimenTypeCheck() {
+        return freezerSpecimenTypeCheck;
+    }
+
+    public void setFreezerSpecimenTypeCheck(boolean freezerSpecimenTypeCheck) {
+        this.freezerSpecimenTypeCheck = freezerSpecimenTypeCheck;
+    }
+
+    public boolean getFreezerCollectionDateCheck() {
+        return freezerCollectionDateCheck;
+    }
+
+    public void setFreezerCollectionDateCheck(boolean freezerCollectionDateCheck) {
+        this.freezerCollectionDateCheck = freezerCollectionDateCheck;
+    }
+
+    public boolean getFreezerExpiryDateCheck() {
+        return freezerExpiryDateCheck;
+    }
+
+    public void setFreezerExpiryDateCheck(boolean freezerExpiryDateCheck) {
+        this.freezerExpiryDateCheck = freezerExpiryDateCheck;
     }
 }

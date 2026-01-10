@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1" author="csteele">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0"> SELECT COUNT(*) FROM clinlims.site_information_domain
+                WHERE name = 'labels' </sqlCheck>
+        </preConditions>
+        <comment>create domain for labels</comment>
+
+        <insert tableName="site_information_domain" schemaName="clinlims">
+            <column name="id" valueSequenceNext="site_information_domain_seq" />
+            <column name="name" value="labels" />
+            <column name="description" value="items that pertain to barcodes/labels" />
+        </insert>
+    </changeSet>
+
+    <changeSet id="2" author="csteele">
+        <comment>update existing site information that should point to the labels domain</comment>
+        <update tableName="site_information" schemaName="clinlims">
+            <column name="domain_id"
+                valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'labels')" />
+            <where>
+                name = 'numMaxOrderLabels' 
+                OR name = 'numMaxSpecimenLabels'
+                OR name = 'numMaxAliquotLabels'
+                OR name = 'numDefaultOrderLabels'
+                OR name = 'numDefaultAliquotLabels'
+                OR name = 'heightOrderLabels'
+                OR name = 'widthOrderLabels'
+                OR name = 'heightSpecimenLabels'
+                OR name = 'widthSpecimenLabels'
+                OR name = 'collectionDateCheck'
+                OR name = 'patientSexCheck'
+                OR name = 'collectedByCheck'
+                OR name = 'heightBlockLabels'
+                OR name = 'widthBlockLabels'
+                OR name = 'heightSlideLabels'
+                OR name = 'widthSlideLabels'
+                OR name = 'heightStorageLocationLabels'
+                OR name = 'widthStorageLocationLabels'
+            </where>
+        </update>
+    </changeSet>
+
+    <changeSet id="3" author="csteele">
+        <comment>rename site information entries with more informative names</comment>
+
+        <update tableName="site_information" schemaName="clinlims">
+            <column name="name" value="specimenLabelCollectionDate" />
+            <where>
+                name = 'collectionDateCheck' 
+            </where>
+        </update>
+        <update tableName="site_information" schemaName="clinlims">
+            <column name="name" value="specimenLabelPatientSex" />
+            <where>
+                name = 'patientSexCheck' 
+            </where>
+        </update>
+        <update tableName="site_information" schemaName="clinlims">
+            <column name="name" value="specimenLabelCollectedBy" />
+            <where>
+                name = 'collectedByCheck' 
+            </where>
+        </update>
+        <update tableName="site_information" schemaName="clinlims">
+            <column name="name" value="specimenLabelTests" />
+            <where>
+                name = 'testsCheck' 
+            </where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

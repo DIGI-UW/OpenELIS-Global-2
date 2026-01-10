@@ -528,19 +528,7 @@ function BarcodeConfiguration() {
                                 <br />
                                 <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.labnumber" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientdobfull" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientid" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientname" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="datasubmission.siteid" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
                                 </UnorderedList>
                               </div>
@@ -552,16 +540,43 @@ function BarcodeConfiguration() {
                                 <br />
                                 <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.labnumber" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
+                                </UnorderedList>
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.slide" />
+                                <br />
+                                <br />
+                                <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientdobfull" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
+                                </UnorderedList>
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.block" />
+                                <br />
+                                <br />
+                                <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientid" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
+                                </UnorderedList>
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.freezer" />
+                                <br />
+                                <br />
+                                <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientname" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
                                 </UnorderedList>
                               </div>
@@ -582,7 +597,66 @@ function BarcodeConfiguration() {
                                 <FormattedMessage id="siteInfo.title.default.barcode.order" />
                                 <br />
                                 <br />
-                                <FormattedMessage id="siteInfo.title.default.barcode.order.none" />
+                                <Checkbox
+                                  id="orderPatientDobCheck"
+                                  checked={values.orderPatientDobCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderPatientDobCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientDobFull",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="orderPatientIdCheck"
+                                  checked={values.orderPatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderPatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="orderPatientNameCheck"
+                                  checked={values.orderPatientNameCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderPatientNameCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientName",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="orderSiteIdCheck"
+                                  checked={values.orderSiteIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderSiteIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.siteId",
+                                  })}
+                                />
                               </div>
                             </Column>
                             <Column lg={8} md={8} sm={4}>
@@ -590,28 +664,73 @@ function BarcodeConfiguration() {
                                 <FormattedMessage id="siteInfo.title.default.barcode.specimen" />
                                 <br />
                                 <Checkbox
-                                  id="collectionDateCheck"
-                                  checked={values.collectionDateCheck}
+                                  id="specimenPatientDobCheck"
+                                  checked={values.specimenPatientDobCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      collectionDateCheck: isChecked,
+                                      specimenPatientDobCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
                                   labelText={intl.formatMessage({
-                                    id: "barcode.label.info.collectiondatetime",
+                                    id: "barcode.label.info.patientDobFull",
                                   })}
                                 />
                                 <Checkbox
-                                  id="collectedBy"
-                                  checked={values.collectedByCheck}
+                                  id="specimenPatientIdCheck"
+                                  checked={values.specimenPatientIdCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      collectedByCheck: isChecked,
+                                      specimenPatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="specimenPatientNameCheck"
+                                  checked={values.specimenPatientNameCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      specimenPatientNameCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientName",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="specimenCollectionDateCheck"
+                                  checked={values.specimenCollectionDateCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      specimenCollectionDateCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.collectionDateTime",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="specimenCollectedBy"
+                                  checked={values.specimenCollectedByCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      specimenCollectedByCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
@@ -620,13 +739,13 @@ function BarcodeConfiguration() {
                                   })}
                                 />
                                 <Checkbox
-                                  id="tests"
-                                  checked={values.testsCheck}
+                                  id="specimenTests"
+                                  checked={values.specimenTestsCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      testsCheck: isChecked,
+                                      specimenTestsCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
@@ -635,18 +754,247 @@ function BarcodeConfiguration() {
                                   })}
                                 />
                                 <Checkbox
-                                  id="patientsexfull"
-                                  checked={values.patientSexCheck}
+                                  id="specimenPatientSexFull"
+                                  checked={values.specimenPatientSexCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      patientSexCheck: isChecked,
+                                      specimenPatientSexCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
                                   labelText={intl.formatMessage({
-                                    id: "barcode.label.info.patientsexfull",
+                                    id: "barcode.label.info.patientSexFull",
+                                  })}
+                                />
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.slide" />
+                                <br />
+                                <Checkbox
+                                  id="slidePatientIdCheck"
+                                  checked={values.slidePatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slidePatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideSlideIdCheck"
+                                  checked={values.slideSlideIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideSlideIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.slideId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideStainTypeCheck"
+                                  checked={values.slideStainTypeCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideStainTypeCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.stainType",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideBlockIdCheck"
+                                  checked={values.slideBlockIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideBlockIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.blockId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideCaseNumberCheck"
+                                  checked={values.slideCaseNumberCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideCaseNumberCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.caseNumber",
+                                  })}
+                                />
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.block" />
+                                <br />
+
+                                <Checkbox
+                                  id="blockPatientIdCheck"
+                                  checked={values.blockPatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockPatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="blockBlockIdCheck"
+                                  checked={values.blockBlockIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockBlockIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.blockId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="blockSpecimenTypeCheck"
+                                  checked={values.blockSpecimenTypeCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockSpecimenTypeCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.specimenType",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="blockCaseNumberCheck"
+                                  checked={values.blockCaseNumberCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockCaseNumberCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.blockCaseNumber",
+                                  })}
+                                />
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.freezer" />
+                                <br />
+                                <Checkbox
+                                  id="freezerPatientIdCheck"
+                                  checked={values.freezerPatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerPatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerStorageLocationCheck"
+                                  checked={values.freezerStorageLocationCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerStorageLocationCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientName",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerSpecimenTypeCheck"
+                                  checked={values.freezerSpecimenTypeCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerSpecimenTypeCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.specimenType",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerCollectionDateCheck"
+                                  checked={values.freezerCollectionDateCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerCollectionDateCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.collectionDate",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerExpiryDateCheck"
+                                  checked={values.freezerExpiryDateCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerExpiryDateCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.expiryDate",
                                   })}
                                 />
                               </div>

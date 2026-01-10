@@ -3,8 +3,8 @@ package org.openelisglobal.storage.service;
 import java.io.ByteArrayOutputStream;
 import javax.sql.DataSource;
 import org.openelisglobal.barcode.BarcodeLabelMaker;
+import org.openelisglobal.barcode.labeltype.StorageLocationLabel;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.storage.barcode.labeltype.StorageLocationLabel;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -147,32 +147,32 @@ public class LabelManagementServiceImpl implements LabelManagementService {
 
         try {
             switch (locationType.toLowerCase()) {
-            case "device":
-                StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId),
-                        StorageDevice.class);
-                if (device == null) {
+                case "device":
+                    StorageDevice device = (StorageDevice) storageLocationService.get(Integer.parseInt(locationId),
+                            StorageDevice.class);
+                    if (device == null) {
+                        return false;
+                    }
+                    // Code field is always ≤10 chars and required
+                    return device.getCode() != null && !device.getCode().trim().isEmpty();
+                case "shelf":
+                    StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId),
+                            StorageShelf.class);
+                    if (shelf == null) {
+                        return false;
+                    }
+                    // Code field is always ≤10 chars and required
+                    return shelf.getCode() != null && !shelf.getCode().trim().isEmpty();
+                case "rack":
+                    StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId),
+                            StorageRack.class);
+                    if (rack == null) {
+                        return false;
+                    }
+                    // code field is always ≤10 chars and required
+                    return rack.getCode() != null && !rack.getCode().trim().isEmpty();
+                default:
                     return false;
-                }
-                // Code field is always ≤10 chars and required
-                return device.getCode() != null && !device.getCode().trim().isEmpty();
-            case "shelf":
-                StorageShelf shelf = (StorageShelf) storageLocationService.get(Integer.parseInt(locationId),
-                        StorageShelf.class);
-                if (shelf == null) {
-                    return false;
-                }
-                // Code field is always ≤10 chars and required
-                return shelf.getCode() != null && !shelf.getCode().trim().isEmpty();
-            case "rack":
-                StorageRack rack = (StorageRack) storageLocationService.get(Integer.parseInt(locationId),
-                        StorageRack.class);
-                if (rack == null) {
-                    return false;
-                }
-                // code field is always ≤10 chars and required
-                return rack.getCode() != null && !rack.getCode().trim().isEmpty();
-            default:
-                return false;
             }
         } catch (Exception e) {
             LogEvent.logError("LabelManagementServiceImpl", "validateCodeExists",

@@ -187,36 +187,68 @@ public abstract class ConfigurationProperties {
         PATIENT_NATIONAL_ID_REQUIRED("National ID required", "text"), // True if patient national id is required for new
                                                                       // patient
         QA_SAMPLE_ID_REQUIRED("sample id required", "text"), // True if sample id required from referring lab
-        MAX_ORDER_PRINTED("numMaxOrderLabels", "text"), // Max number of order labels that can be printed
-        MAX_SPECIMEN_PRINTED("numMaxSpecimenLabels", "text"), // Max number of specimen labels that can be printed
-        MAX_ALIQUOT_PRINTED("numMaxAliquotLabels", "text"), // Max number of aliquots that can be printed
-        MAX_SLIDE_PRINTED("numMaxSlideLabels", "text"), // Max number of slides that can be printed
-        MAX_BLOCK_PRINTED("numMaxBlockLabels", "text"), // Max number of block labels that can be printed
-        MAX_FREEZER_PRINTED("numMaxFreezerLabels", "text"), // Max number of freezer labels that can be printed
-        DEFAULT_ORDER_PRINTED("numDefaultOrderLabels", "text"), // Max number of order labels that can be printed
-        DEFAULT_SPECIMEN_PRINTED("numDefaultSpecimenLabels", "text"), // Max number of specimen labels that can be
-                                                                      // printed
-        DEFAULT_ALIQUOT_PRINTED("numDefaultAliquotLabels", "text"), // Max number of aliquots that can be printed
-        DEFAULT_SLIDE_PRINTED("numDefaultSlideLabels", "text"), // Max number of slides that can be printed
-        DEFAULT_BLOCK_PRINTED("numDefaultBlockLabels", "text"), // Max number of block labels that can be printed
-        DEFAULT_FREEZER_PRINTED("numDefaultFreezerLabels", "text"), // Max number of freezer labels that can be printed
-        ORDER_BARCODE_HEIGHT("heightOrderLabels", "text"), // Height of the order barcode
-        ORDER_BARCODE_WIDTH("widthOrderLabels", "text"), // Width of the order barcode
-        SPECIMEN_BARCODE_HEIGHT("heightSpecimenLabels", "text"), // Height of the specimen barcode
-        SPECIMEN_BARCODE_WIDTH("widthSpecimenLabels", "text"), // Width of the specimen barcode
-        SPECIMEN_FIELD_DATE("collectionDateCheck", "text"), //
-        SPECIMEN_FIELD_SEX("patientSexCheck", "text"), //
-        SPECIMEN_FIELD_COLLECTED_BY("collectedByCheck", "text"), SPECIMEN_FIELD_TESTS("testsCheck", "text"), //
-        BLOCK_BARCODE_HEIGHT("heightBlockLabels", "text"), //
-        BLOCK_BARCODE_WIDTH("widthBlockLabels", "text"), //
-        SLIDE_BARCODE_HEIGHT("heightSlideLabels", "text"), //
-        SLIDE_BARCODE_WIDTH("widthSlideLabels", "text"), //
-        FREEZER_BARCODE_HEIGHT("heightFreezerLabels", "text"), //
-        FREEZER_BARCODE_WIDTH("widthFreezerLabels", "text"), //
-        STORAGE_LOCATION_BARCODE_HEIGHT("heightStorageLocationLabels", "text"), // Height of storage location barcode
-                                                                                // labels
-        STORAGE_LOCATION_BARCODE_WIDTH("widthStorageLocationLabels", "text"), // Width of storage location barcode
-                                                                              // labels
+
+        MAX_ORDER_LABEL_PRINTED("numMaxOrderLabels", "text"), // Max order labels that can be printed
+        MAX_SPECIMEN_LABEL_PRINTED("numMaxSpecimenLabels", "text"), // Max specimen labels that can be printed
+        MAX_ALIQUOT_LABEL_PRINTED("numMaxAliquotLabels", "text"), // Max aliquots that can be printed
+        MAX_SLIDE_LABEL_PRINTED("numMaxSlideLabels", "text"), // Max slides that can be printed
+        MAX_BLOCK_LABEL_PRINTED("numMaxBlockLabels", "text"), // Max block labels that can be printed
+        MAX_FREEZER_LABEL_PRINTED("numMaxFreezerLabels", "text"), // Max freezer labels that can be printed
+        DEFAULT_ORDER_LABEL_PRINTED("numDefaultOrderLabels", "text"), // Max order labels that can be printed
+        DEFAULT_SPECIMEN_LABEL_PRINTED("numDefaultSpecimenLabels", "text"), // Max specimen labels that can be printed
+        DEFAULT_ALIQUOT_LABEL_PRINTED("numDefaultAliquotLabels", "text"), // Max aliquots that can be printed
+        DEFAULT_SLIDE_LABEL_PRINTED("numDefaultSlideLabels", "text"), // Max slides that can be printed
+        DEFAULT_BLOCK_LABEL_PRINTED("numDefaultBlockLabels", "text"), // Max block labels that can be printed
+        DEFAULT_FREEZER_LABEL_PRINTED("numDefaultFreezerLabels", "text"), // Max freezer labels that can be printed
+
+        ORDER_LABEL_BARCODE_HEIGHT("heightOrderLabels", "text"), //
+        ORDER_LABEL_BARCODE_WIDTH("widthOrderLabels", "text"), //
+        SPECIMEN_LABEL_BARCODE_HEIGHT("heightSpecimenLabels", "text"), //
+        SPECIMEN_LABEL_BARCODE_WIDTH("widthSpecimenLabels", "text"), //
+        BLOCK_LABEL_BARCODE_HEIGHT("heightBlockLabels", "text"), //
+        BLOCK_LABEL_BARCODE_WIDTH("widthBlockLabels", "text"), //
+        SLIDE_LABEL_BARCODE_HEIGHT("heightSlideLabels", "text"), //
+        SLIDE_LABEL_BARCODE_WIDTH("widthSlideLabels", "text"), //
+        FREEZER_LABEL_BARCODE_HEIGHT("heightFreezerLabels", "text"), //
+        FREEZER_LABEL_BARCODE_WIDTH("widthFreezerLabels", "text"), //
+        STORAGE_LOCATION_LABEL_BARCODE_HEIGHT("heightStorageLocationLabels", "text"), //
+        STORAGE_LOCATION_LABEL_BARCODE_WIDTH("widthStorageLocationLabels", "text"), //
+
+        // SPECIMEN_FIELD_DATE("collectionDateCheck", "text"), //
+        // SPECIMEN_FIELD_SEX("patientSexCheck", "text"), //
+        // SPECIMEN_FIELD_COLLECTED_BY("collectedByCheck", "text"),//
+        // SPECIMEN_FIELD_TESTS("testsCheck", "text"), //
+
+        ORDER_LABEL_FIELD_PATIENT_DOB("orderLabelPatientDob", "text"), //
+        ORDER_LABEL_FIELD_PATIENT_ID("orderLabelPatientId", "text"), //
+        ORDER_LABEL_FIELD_PATIENT_NAME("orderLabelPatientName", "text"), //
+        ORDER_LABEL_FIELD_SITE_ID("orderLabelSiteId", "text"), //
+
+        SPECIMEN_LABEL_FIELD_PATIENT_DOB("specimenLabelPatientDob", "text"), //
+        SPECIMEN_LABEL_FIELD_PATIENT_ID("specimenLabelPatientId", "text"), //
+        SPECIMEN_LABEL_FIELD_PATIENT_NAME("specimenLabelPatientName", "text"), //
+        SPECIMEN_LABEL_FIELD_COLLECTION_DATE("specimenLabelCollectionDate", "text"), //
+        SPECIMEN_LABEL_FIELD_COLLECTED_BY("specimenLabelCollectedBy", "text"), //
+        SPECIMEN_LABEL_FIELD_TESTS("specimenLabelTests", "text"), //
+        SPECIMEN_LABEL_FIELD_PATIENT_SEX("specimenLabelPatientSex", "text"), //
+
+        SLIDE_LABEL_FIELD_PATIENT_ID("slideLabelPatientId", "text"), //
+        SLIDE_LABEL_FIELD_SLIDE_ID("slideLabelSlideId", "text"),
+        SLIDE_LABEL_FIELD_STAIN_TYPE("slideLabelStainType", "text"), //
+        SLIDE_LABEL_FIELD_BLOCK_ID("slideLabelBlockId", "text"), //
+        SLIDE_LABEL_FIELD_CASE_NUMBER("slideLabelCaseNumber", "text"), //
+
+        BLOCK_LABEL_FIELD_PATIENT_ID("blockLabelPatientId", "text"), //
+        BLOCK_LABEL_FIELD_BLOCK_ID("blockLabelBlockId", "text"), //
+        BLOCK_LABEL_FIELD_SPECIMEN_TYPE("blockLabelSpecimenType", "text"), //
+        BLOCK_LABEL_FIELD_CASE_NUMBER("blockLabelCaseNumber", "text"), //
+
+        FREEZER_LABEL_FIELD_PATIENT_ID("freezerLabelPatientId", "text"), //
+        FREEZER_LABEL_FIELD_STORAGE_LOCATION("freezerLabelStorageLocation", "text"), //
+        FREEZER_LABEL_FIELD_SPECIMEN_TYPE("freezerLabelSpecimenType", "text"), //
+        FREEZER_LABEL_FIELD_COLLECTION_DATE("freezerLabelCollectionDate", "text"), //
+        FREEZER_LABEL_FIELD_EXPIRY_DATE("freezerLabelExpiryDate", "text"), //
+        // labels
         ALT_ACCESSION_PREFIX("prePrintAltAccessionPrefix", "text"), //
         USE_ALT_ACCESSION_PREFIX("prePrintUseAltAccession", "text"), //
         USE_ALPHANUM_ACCESSION_PREFIX("useAlphanumAccessionPrefix", "text"), //
