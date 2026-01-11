@@ -1,12 +1,15 @@
 package org.openelisglobal.common.util;
 
 public class IntegerUtil {
-
-    public static final int MIN_VALUE = -2147483648;
+    // The base-27 alphabet intentionally omits potentially confusing letters
+    // (A, B, E, I, O, Q, S, U, Z) to avoid visual ambiguity with digits or other
+    // letters
+    // when these values are used in human-readable IDs. Indices 0-9 map to
+    // '0'..'9',
+    // and indices 10..26 map to the chosen letters below.
     private static char[] base27Characters = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', 'D', 'F', 'G',
             'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'T', 'V', 'W', 'X', 'Y' };
 
-    // developed off of String.toString(int i, int radix)
     // developed off of String.toString(int i, int radix)
     public static String toStringBase27(int value) {
         if (value == 0) {
@@ -65,7 +68,14 @@ public class IntegerUtil {
 
             result = result * 27L + digit;
 
-            // check overflow for signed int, considering sign later
+            // Overflow check using a long 'result' and a signed 'candidate':
+            // compute candidate = negative ? -result : result and compare to Integer
+            // bounds.
+            // This ensures we detect values outside the signed 32-bit range before any
+            // cast.
+            // Note: casting a long > Integer.MAX_VALUE to int would wrap (e.g. 2147483648L
+            // -> Integer.MIN_VALUE),
+            // so we must check bounds here to prevent incorrect wraparound.
             long candidate = negative ? -result : result;
             if (candidate > max || candidate < min) {
                 throw new NumberFormatException("For input string: \"" + s + "\"");
@@ -76,6 +86,7 @@ public class IntegerUtil {
         return negative ? -intResult : intResult;
     }
 
+    // Linear search over a tiny alphabet (O(27)) — acceptable for most uses.
     private static int searchBase27Characters(char c) {
         char up = Character.toUpperCase(c);
         for (int i = 0; i < base27Characters.length; i++) {

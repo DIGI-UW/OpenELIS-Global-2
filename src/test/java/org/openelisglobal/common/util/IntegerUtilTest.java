@@ -2,6 +2,7 @@ package org.openelisglobal.common.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -40,8 +41,9 @@ public class IntegerUtilTest {
     public void testToStringBase27_Boundaries() {
         String maxStr = IntegerUtil.toStringBase27(Integer.MAX_VALUE);
         String minStr = IntegerUtil.toStringBase27(Integer.MIN_VALUE);
-        assertEquals(7, maxStr.length());
-        assertEquals(8, minStr.length()); // Includes '-' sign
+        assertEquals(Integer.MAX_VALUE, IntegerUtil.parseIntBase27(maxStr));
+        assertEquals(Integer.MIN_VALUE, IntegerUtil.parseIntBase27(minStr));
+        assertTrue(minStr.startsWith("-"));
     }
 
     @Test

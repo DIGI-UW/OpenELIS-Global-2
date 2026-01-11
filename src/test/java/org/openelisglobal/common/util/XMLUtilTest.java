@@ -1,6 +1,7 @@
 package org.openelisglobal.common.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -74,7 +75,7 @@ public class XMLUtilTest {
     public void testCreateAttributeKeyValue_EscapingValue() {
         String result = XMLUtil.createAttributeKeyValue("title", "Book \"One\"");
         assertTrue("Should start with key", result.startsWith("title=\""));
-        assertTrue("Should not contain raw internal quote", !result.contains("Book \"One\""));
+        assertTrue(result.contains("&quot;") || result.contains("&#34;"));
     }
 
     @Test
@@ -109,7 +110,7 @@ public class XMLUtilTest {
 
     @Test
     public void testConstructor() {
-        new XMLUtil();
+        assertNotNull(new XMLUtil());
     }
 
     @Test

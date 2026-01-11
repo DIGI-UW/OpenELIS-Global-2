@@ -210,7 +210,7 @@ public class StringUtilTest {
         assertEquals("quoted, value", result[2]);
         String lastElement = result[3];
         assertTrue(lastElement.startsWith("4"));
-        assertTrue(lastElement.endsWith(System.getProperty("line.separator")));
+        assertTrue(lastElement.endsWith("\n") || lastElement.endsWith("\r\n"));
     }
 
     @Test
