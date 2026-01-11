@@ -366,28 +366,16 @@ public class LogbookResultsController extends LogbookResultsBaseController {
 
                     if (raw != null && !raw.isEmpty()) {
 
-                        String decoded = org.apache.commons.text.StringEscapeUtils.unescapeHtml4(raw);
-
-                        // 2. Extract first valid JSON object {"n":"value"}
-                        String json = extractMultiSelectJson(decoded);
+                        String json = extractMultiSelectJson(raw);
 
                         if (json != null) {
                             item.setMultiSelectResultValues(json);
-                        } else {
-                            // fallback safety
-                            item.setMultiSelectResultValues("{}");
                         }
-
                     }
-
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "showLogbookResultsUpdate",
-                            "Analysis Id " + item.getAnalysisId() + " Multi-select JSON extracted: "
-                                    + item.getMultiSelectResultValues());
                 }
             }
         }
 
-        // load testSections for drop down
         String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
         form.setTestSections(testSections);
@@ -837,16 +825,38 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     }
 
     private String extractMultiSelectJson(String input) {
-
-        // Matches {"0":"860,1171"} or {"12":"1,2,3"}
-        Pattern pattern = Pattern.compile("\\{\\s*\"\\d+\"\\s*:\\s*\"[^\"]+\"\\s*\\}");
+        // Pattern matches JSON objects like {"0":"860,1171"} or
+        // {"0":"860","1":"1171",... up to N keys}
+        Pattern pattern = Pattern
+                .compile("\\{\\s*(\"\\d+\"\\s*:\\s*\"[^\"]+\"\\s*(,\\s*\"\\d+\"\\s*:\\s*\"[^\"]+\")*)\\s*\\}");
         Matcher matcher = pattern.matcher(input);
 
-        if (matcher.find()) {
-            return matcher.group();
+        String oneKeyJson = null; // fallback if no multi-key JSON is found
+
+        while (matcher.find()) {
+            String json = matcher.group();
+
+            try {
+                JSONParser parser = new JSONParser();
+                JSONObject obj = (JSONObject) parser.parse(json);
+
+                int keyCount = obj.size(); // count keys in this JSON
+
+                if (keyCount > 1) {
+                    // first JSON with more than 1 key
+                    return json;
+                } else if (keyCount == 1 && oneKeyJson == null) {
+                    // store first one-key JSON as fallback
+                    oneKeyJson = json;
+                }
+
+            } catch (ParseException e) {
+                // ignore invalid JSON
+                continue;
+            }
         }
 
-        return null;
+        return oneKeyJson; // returns first single-key JSON if no multi-key JSON found
     }
 
     private String findLogBookForward(String forward) {
