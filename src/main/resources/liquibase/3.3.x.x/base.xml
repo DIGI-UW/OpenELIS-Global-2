@@ -33,7 +33,7 @@
   <include relativeToChangelogFile="true" file="020-storage-box-use-code-not-short-code.xml"/>
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
-  <include relativeToChangelogFile="true" file="../storage/storage-device-connectivity.xml"/>
+  <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
 
   <!-- Patient Merge (008-patient-merge) -->
   <include relativeToChangelogFile="true" file="019-patient-merge-create-audit-table.xml"/>
