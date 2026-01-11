@@ -27,7 +27,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "Billing Menu Management",
-    link: "/MasterListsPage#billingMenuManagement",
+    link: "/MasterListsPage/billingMenuManagement",
   },
 ];
 function BillingMenuManagement() {

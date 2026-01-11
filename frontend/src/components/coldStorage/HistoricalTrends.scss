@@ -1,0 +1,68 @@
+.hist-trends-page {
+  padding: 1.5rem 1.5rem 3rem;
+}
+
+.hist-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.hist-filter-row {
+  margin-bottom: 1rem;
+}
+
+.hist-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.hist-chart-card {
+  background: var(--cds-layer);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.hist-kpis {
+  margin-top: 0.5rem;
+}
+
+.hist-kpi-card {
+  background: var(--cds-layer);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1rem;
+}
+
+.hist-kpi-label {
+  font-size: 0.8rem;
+  color: var(--cds-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.hist-kpi-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.hist-kpi-min {
+  color: #0f62fe;
+}
+
+.hist-kpi-max {
+  color: #da1e28;
+}
+
+.hist-footer {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+}

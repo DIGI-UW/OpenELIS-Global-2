@@ -3,16 +3,21 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import "@testing-library/jest-dom";
 import UnifiedBarcodeInput from "./UnifiedBarcodeInput";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 
 // Mock API utilities
 jest.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
+  postToOpenElisServerJsonResponse: jest.fn(),
 }));
 
 // Mock translations
 const messages = {
   "barcode.scanOrType": "Scan barcode or type location",
+  "barcode.scan": "Scan barcode",
   "barcode.ready": "Ready to scan",
   "barcode.success": "Location found",
   "barcode.error": "Invalid barcode",
@@ -29,12 +34,13 @@ const renderWithIntl = (component) => {
 
 describe("UnifiedBarcodeInput", () => {
   let mockOnScan;
-  let mockOnTypeAhead;
+  let mockOnValidationResult;
 
   beforeEach(() => {
     mockOnScan = jest.fn();
-    mockOnTypeAhead = jest.fn();
+    mockOnValidationResult = jest.fn();
     jest.clearAllMocks();
+    postToOpenElisServerJsonResponse.mockClear();
   });
 
   afterEach(() => {
@@ -46,7 +52,7 @@ describe("UnifiedBarcodeInput", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -61,7 +67,7 @@ describe("UnifiedBarcodeInput", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -87,7 +93,7 @@ describe("UnifiedBarcodeInput", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -112,7 +118,7 @@ describe("UnifiedBarcodeInput", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -136,12 +142,12 @@ describe("UnifiedBarcodeInput", () => {
     });
   });
 
-  describe("Format-Based Detection", () => {
-    it("should detect barcode format (with hyphens)", () => {
+  describe("Barcode Validation", () => {
+    it("should validate barcode format (with hyphens)", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -155,56 +161,103 @@ describe("UnifiedBarcodeInput", () => {
       expect(mockOnScan).toHaveBeenCalledWith(barcodeWithHyphens);
     });
 
-    it("should detect type-ahead format (without hyphens)", () => {
+    it("should validate invalid format (no hyphens) and show error", () => {
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess({
+            valid: false,
+            barcodeType: "location",
+            errorMessage:
+              "Invalid barcode format. Expected format: ROOM-DEVICE or ROOM-DEVICE-SHELF-RACK-POSITION",
+            failedStep: "FORMAT_VALIDATION",
+          });
+        },
+      );
+
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
 
       const input = screen.getByRole("textbox");
-      const typeAheadText = "Freezer";
+      const invalidFormat = "234";
 
-      fireEvent.change(input, { target: { value: typeAheadText } });
+      fireEvent.change(input, { target: { value: invalidFormat } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
-      expect(mockOnTypeAhead).toHaveBeenCalledWith(typeAheadText);
+      // Should still call onScan (validation happens after)
+      expect(mockOnScan).toHaveBeenCalledWith(invalidFormat);
+
+      // Wait for async validation
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          expect(mockOnValidationResult).toHaveBeenCalledWith(
+            expect.objectContaining({
+              success: false,
+              error: expect.objectContaining({
+                errorMessage: expect.stringContaining("Invalid barcode format"),
+              }),
+            }),
+          );
+          resolve();
+        }, 100);
+      });
     });
 
-    it("should distinguish between hyphenated barcode and text search", () => {
+    it("should validate invalid barcode (hyphens but invalid location) and show error", () => {
+      postToOpenElisServerJsonResponse.mockImplementation(
+        (url, payload, onSuccess) => {
+          onSuccess({
+            valid: false,
+            barcodeType: "location",
+            errorMessage: "Location not found: INVALID-CODE",
+            failedStep: "LOCATION_EXISTENCE",
+          });
+        },
+      );
+
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
 
       const input = screen.getByRole("textbox");
+      const invalidBarcode = "INVALID-CODE";
 
-      // Barcode with hyphens
-      fireEvent.change(input, { target: { value: "ROOM-DEVICE" } });
+      fireEvent.change(input, { target: { value: invalidBarcode } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
-      expect(mockOnScan).toHaveBeenCalledWith("ROOM-DEVICE");
 
-      mockOnScan.mockClear();
-      mockOnTypeAhead.mockClear();
+      expect(mockOnScan).toHaveBeenCalledWith(invalidBarcode);
 
-      // Text without hyphens
-      fireEvent.change(input, { target: { value: "Main Lab" } });
-      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
-      expect(mockOnTypeAhead).toHaveBeenCalledWith("Main Lab");
+      // Wait for async validation
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          expect(mockOnValidationResult).toHaveBeenCalledWith(
+            expect.objectContaining({
+              success: false,
+              error: expect.objectContaining({
+                errorMessage: expect.stringContaining("Location not found"),
+              }),
+            }),
+          );
+          resolve();
+        }, 100);
+      });
     });
   });
 
   describe("Enter Key Validation", () => {
-    it("should trigger onScan when Enter pressed on barcode", () => {
+    it("should trigger onScan when Enter pressed on any input", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -219,30 +272,30 @@ describe("UnifiedBarcodeInput", () => {
       expect(mockOnScan).toHaveBeenCalledTimes(1);
     });
 
-    it("should trigger onTypeAhead when Enter pressed on text", () => {
+    it("should trigger validation for any input (including non-hyphenated)", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
 
       const input = screen.getByRole("textbox");
-      const searchText = "Freezer";
+      const text = "234";
 
-      fireEvent.change(input, { target: { value: searchText } });
+      fireEvent.change(input, { target: { value: text } });
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
-      expect(mockOnTypeAhead).toHaveBeenCalledWith(searchText);
-      expect(mockOnTypeAhead).toHaveBeenCalledTimes(1);
+      // Should still call onScan (validation happens after)
+      expect(mockOnScan).toHaveBeenCalledWith(text);
     });
 
     it("should not trigger validation on other keys", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -253,7 +306,6 @@ describe("UnifiedBarcodeInput", () => {
       fireEvent.keyDown(input, { key: "Tab", code: "Tab" });
 
       expect(mockOnScan).not.toHaveBeenCalled();
-      expect(mockOnTypeAhead).not.toHaveBeenCalled();
     });
   });
 
@@ -266,7 +318,7 @@ describe("UnifiedBarcodeInput", () => {
       const { container } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -281,7 +333,7 @@ describe("UnifiedBarcodeInput", () => {
       renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -291,7 +343,6 @@ describe("UnifiedBarcodeInput", () => {
       // Empty input - no validation should occur
       expect(input.value).toBe("");
       expect(mockOnScan).not.toHaveBeenCalled();
-      expect(mockOnTypeAhead).not.toHaveBeenCalled();
     });
   });
 
@@ -300,7 +351,7 @@ describe("UnifiedBarcodeInput", () => {
       const { container } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -313,7 +364,7 @@ describe("UnifiedBarcodeInput", () => {
       const { rerender, container } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -323,7 +374,7 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="success"
           />
         </IntlProvider>,
@@ -337,7 +388,7 @@ describe("UnifiedBarcodeInput", () => {
       const { rerender, container } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -347,22 +398,25 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="error"
             errorMessage={errorMessage}
           />
         </IntlProvider>,
       );
 
-      expect(container.querySelector('[data-state="error"]')).toBeTruthy();
-      expect(screen.getByText(errorMessage)).toBeTruthy();
+      // Error state visual indicator should be visible
+      const errorIndicator = container.querySelector('[data-state="error"]');
+      expect(errorIndicator).toBeTruthy();
+      // Error message is in the title attribute of BarcodeVisualFeedback
+      expect(errorIndicator?.getAttribute("title")).toBe(errorMessage);
     });
 
     it("should transition between states correctly", () => {
       const { rerender, container } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -372,7 +426,7 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="success"
           />
         </IntlProvider>,
@@ -384,7 +438,7 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="error"
             errorMessage="Test error"
           />
@@ -397,7 +451,7 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="ready"
           />
         </IntlProvider>,
@@ -413,7 +467,7 @@ describe("UnifiedBarcodeInput", () => {
       const { rerender } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -433,7 +487,7 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="success"
           />
         </IntlProvider>,
@@ -455,7 +509,7 @@ describe("UnifiedBarcodeInput", () => {
       const { rerender } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="ready"
         />,
       );
@@ -472,7 +526,7 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="error"
             errorMessage="Invalid barcode"
           />
@@ -495,7 +549,7 @@ describe("UnifiedBarcodeInput", () => {
       const { rerender, container } = renderWithIntl(
         <UnifiedBarcodeInput
           onScan={mockOnScan}
-          onTypeAhead={mockOnTypeAhead}
+          onValidationResult={mockOnValidationResult}
           validationState="success"
         />,
       );
@@ -509,7 +563,7 @@ describe("UnifiedBarcodeInput", () => {
         <IntlProvider locale="en" messages={messages}>
           <UnifiedBarcodeInput
             onScan={mockOnScan}
-            onTypeAhead={mockOnTypeAhead}
+            onValidationResult={mockOnValidationResult}
             validationState="ready"
           />
         </IntlProvider>,

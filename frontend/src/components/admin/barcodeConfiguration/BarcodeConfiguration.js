@@ -31,7 +31,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.barcodeconfiguration",
-    link: "/MasterListsPage#barcodeConfiguration",
+    link: "/MasterListsPage/barcodeConfiguration",
   },
 ];
 function BarcodeConfiguration() {
@@ -46,7 +46,7 @@ function BarcodeConfiguration() {
 
   const componentMounted = useRef(false);
   const [saveButton, setSaveButton] = useState(true);
-  const [responseData, setResponseData] = useState({});
+
   const [loading, setLoading] = useState(true);
   const [prePrintDontUseAltAccession, setPrePrintDontUseAltAccession] =
     useState(barcodeFromValues.prePrintDontUseAltAccession);
@@ -177,9 +177,7 @@ function BarcodeConfiguration() {
     postToOpenElisServerJsonResponse(
       `/rest/BarcodeConfiguration`,
       JSON.stringify(e),
-      (data) => {
-        setResponseData(data);
-      },
+      (data) => {},
     );
     setLoading(false);
   }

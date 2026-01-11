@@ -88,16 +88,6 @@ const AddOrder = (props) => {
     });
   }
 
-  function handleBillReferenceNo(e) {
-    setOrderFormValues({
-      ...orderFormValues,
-      sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
-        billingReferenceNumber: e.target.value,
-      },
-    });
-  }
-
   function handleRequesterFax(e) {
     setOrderFormValues({
       ...orderFormValues,
@@ -326,18 +316,8 @@ const AddOrder = (props) => {
     setNotificationVisible(false);
   }
 
-  const handleLabNoValidation = () => {
-    if (orderFormValues.sampleOrderItems.labNo !== "") {
-      getFromOpenElisServer(
-        "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
-          orderFormValues.sampleOrderItems.labNo,
-        accessionNumberValidationResults,
-      );
-    }
-  };
-
   const handleLabNoValidationOnChange = (value) => {
-    if (value !== "") {
+    if (value) {
       getFromOpenElisServer(
         "/rest/SampleEntryAccessionNumberValidation?ignoreYear=false&ignoreUsage=false&field=labNo&accessionNumber=" +
           value,

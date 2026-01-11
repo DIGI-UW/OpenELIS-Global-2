@@ -45,7 +45,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "unifiedSystemUser.browser.title",
-    link: "/MasterListsPage#userManagement",
+    link: "/MasterListsPage/userManagement",
   },
 ];
 
@@ -365,8 +365,8 @@ function UserManagement() {
                   deleteDeactivate={deleteDeactivateUserManagement}
                   id={selectedRowCombinedUserID[0]}
                   otherParmsInLink={`&startingRecNo=1&roleFilter=`}
-                  addButtonRedirectLink={`/MasterListsPage#userEdit?ID=0&startingRecNo=1&roleFilter=`}
-                  modifyButtonRedirectLink={`/MasterListsPage#userEdit?ID=`}
+                  addButtonRedirectLink={`/MasterListsPage/userEdit?ID=0&startingRecNo=1&roleFilter=`}
+                  modifyButtonRedirectLink={`/MasterListsPage/userEdit?ID=`}
                   type="type2"
                 />
                 <br />

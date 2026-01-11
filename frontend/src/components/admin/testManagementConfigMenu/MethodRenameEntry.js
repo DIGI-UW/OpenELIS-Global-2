@@ -18,11 +18,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.type.rename",
-    link: "/MasterListsPage#MethodRenameEntry",
+    link: "/MasterListsPage/MethodRenameEntry",
   },
 ];
 

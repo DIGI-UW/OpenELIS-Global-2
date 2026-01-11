@@ -31,23 +31,38 @@ import {
   Dropdown,
   Button,
   Tooltip,
+  TextInput,
+  TextArea,
+  InlineNotification,
+  Pagination,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
-import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerForPDF,
+} from "../utils/Utils";
+import config from "../../config.json";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import StorageLocationsMetricCard from "./StorageDashboard/StorageLocationsMetricCard";
 import LocationFilterDropdown from "./StorageDashboard/LocationFilterDropdown";
+import BoxCrudControls from "./StorageDashboard/BoxCrudControls";
 import SampleActionsContainer from "./SampleStorage/SampleActionsContainer";
 import LocationActionsOverflowMenu from "./LocationManagement/LocationActionsOverflowMenu";
 import EditLocationModal from "./LocationManagement/EditLocationModal";
 import DeleteLocationModal from "./LocationManagement/DeleteLocationModal";
-import LabelManagementModal from "./LocationManagement/LabelManagementModal";
+import EditBoxModal from "./LocationManagement/EditBoxModal";
+import DeleteBoxModal from "./LocationManagement/DeleteBoxModal";
+import StorageLocationModal from "./StorageLocationModal";
+import PrintLabelButton from "./LocationManagement/PrintLabelButton";
+import PrintLabelConfirmationDialog from "./LocationManagement/PrintLabelConfirmationDialog";
+import LocationManagementModal from "./SampleStorage/LocationManagementModal";
+import DisposeSampleModal from "./SampleStorage/DisposeSampleModal";
 import { useSampleStorage } from "./hooks/useSampleStorage";
 import "./StorageDashboard.css";
 
-const TAB_ROUTES = ["samples", "rooms", "devices", "shelves", "racks"];
+const TAB_ROUTES = ["samples", "rooms", "devices", "shelves", "racks", "boxes"];
 
 const StorageDashboard = () => {
   const intl = useIntl();
@@ -59,6 +74,7 @@ const StorageDashboard = () => {
   const {
     assignSampleItem,
     moveSampleItem,
+    updateSampleItemMetadata,
     isSubmitting: isMovingSample,
   } = useSampleStorage();
 
@@ -69,6 +85,36 @@ const StorageDashboard = () => {
     disposed: 0,
     storageLocations: 0,
   });
+
+  // Dynamic status filter options (loaded from backend for maintainability)
+  const [sampleStatusOptions, setSampleStatusOptions] = useState([
+    { id: "", label: "All" },
+    { id: "active", label: "Active" },
+    { id: "disposed", label: "Disposed" },
+  ]);
+
+  // Callback for child components to refresh metrics (specs/001-sample-storage/spec.md FR-057b, FR-057c)
+  const refreshMetrics = useCallback(() => {
+    const controller = new AbortController();
+
+    getFromOpenElisServer(
+      "/rest/storage/sample-items?countOnly=true",
+      (response) => {
+        if (response) {
+          const metricsData = Array.isArray(response) ? response[0] : response;
+          setMetrics({
+            totalSamples: metricsData?.totalSampleItems ?? 0,
+            active: metricsData?.active ?? 0,
+            disposed: metricsData?.disposed ?? 0,
+            storageLocations: metricsData?.storageLocations ?? 0,
+          });
+        }
+      },
+      controller.signal,
+    );
+
+    return () => controller.abort();
+  }, []);
 
   // Tab state - derive from URL
   const getTabFromUrl = () => {
@@ -86,10 +132,57 @@ const StorageDashboard = () => {
   const [shelves, setShelves] = useState([]);
   const [racks, setRacks] = useState([]);
   const [samples, setSamples] = useState([]);
+  const [selectedRackIdForGrid, setSelectedRackIdForGrid] = useState("");
+  const [selectedRackForGrid, setSelectedRackForGrid] = useState(null);
+  const [boxesForGrid, setBoxesForGrid] = useState([]); // Boxes for grid assignment workflow
+  const [boxesLoading, setBoxesLoading] = useState(false);
+  const [boxesError, setBoxesError] = useState(null);
+  const [selectedBoxId, setSelectedBoxId] = useState("");
+  const [selectedBox, setSelectedBox] = useState(null);
+  const [selectedCoordinate, setSelectedCoordinate] = useState("");
+  const [assignSampleId, setAssignSampleId] = useState("");
+  const [assignNotes, setAssignNotes] = useState("");
+  const [assignStatus, setAssignStatus] = useState(null);
+
+  // Box CRUD modal state
+  const [boxModalOpen, setBoxModalOpen] = useState(false);
+  const [boxModalMode, setBoxModalMode] = useState("create"); // "create" | "edit"
+  const [selectedBoxForCrud, setSelectedBoxForCrud] = useState(null);
+  const [boxDeleteModalOpen, setBoxDeleteModalOpen] = useState(false);
+
+  // OGC-150: Pagination state
+  const [page, setPage] = useState(1); // Carbon Pagination uses 1-based indexing
+  const [pageSize, setPageSize] = useState(25); // Default page size per OGC-150
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Debug logging for pagination responses
+  const logPaginationResponse = (url, response, parsedPage, parsedSize) => {
+    // eslint-disable-next-line no-console
+    console.info("[OGC-150] pagination fetch", {
+      url,
+      page: parsedPage,
+      size: parsedSize,
+      type: Array.isArray(response) ? "array" : typeof response,
+      keys:
+        response && typeof response === "object" ? Object.keys(response) : null,
+      itemsLength:
+        response &&
+        typeof response === "object" &&
+        Array.isArray(response.items)
+          ? response.items.length
+          : Array.isArray(response)
+            ? response.length
+            : null,
+      totalItems: response?.totalItems ?? response?.totalElements ?? null,
+      totalPages: response?.totalPages ?? null,
+      pageSize: response?.pageSize ?? null,
+      currentPage: response?.currentPage ?? null,
+    });
+  };
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
-  const [locationFilter, setLocationFilter] = useState(null); // { id, type, name } for single location dropdown (Samples tab)
+  const [locationFilter, setLocationFilter] = useState(null); // { id, type, name} for single location dropdown (Samples tab)
   const [filterRoom, setFilterRoom] = useState(""); // For other tabs (devices, shelves, racks)
   const [filterDevice, setFilterDevice] = useState(""); // For other tabs
   const [filterStatus, setFilterStatus] = useState("");
@@ -98,11 +191,23 @@ const StorageDashboard = () => {
 
   // Location CRUD modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [labelManagementModalOpen, setLabelManagementModalOpen] =
-    useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocationType, setSelectedLocationType] = useState(null);
+  const [selectedParentLocation, setSelectedParentLocation] = useState(null);
+  const [printLabelLocation, setPrintLabelLocation] = useState(null);
+
+  // Print label dialog state (single instance)
+  const [printLabelDialogOpen, setPrintLabelDialogOpen] = useState(false);
+  const [printLabelLocationData, setPrintLabelLocationData] = useState(null);
+
+  // Sample modal state (single modal instances)
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [selectedSample, setSelectedSample] = useState(null);
+  const [disposeModalOpen, setDisposeModalOpen] = useState(false);
+  const [selectedSampleForDispose, setSelectedSampleForDispose] =
+    useState(null);
 
   // Expandable row state - Object mapping row IDs to expanded state (allows multiple rows to be expanded)
   const [expandedRowIds, setExpandedRowIds] = useState({});
@@ -120,6 +225,78 @@ const StorageDashboard = () => {
   useEffect(() => {
     setExpandedRowIds({});
   }, [selectedTab]);
+
+  // Handle Create location
+  const handleCreateLocation = (parentLocation = null) => {
+    // Determine location type from current tab
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    const locationTypeMap = {
+      rooms: "room",
+      devices: "device",
+      shelves: "shelf",
+      racks: "rack",
+    };
+    const locationType = locationTypeMap[tabName] || tabName.slice(0, -1);
+    setSelectedLocationType(locationType);
+
+    // Store parent location with type information
+    if (parentLocation) {
+      // Ensure parent has type field for modal
+      const parentWithType = {
+        ...parentLocation,
+        type:
+          locationType === "device"
+            ? "room"
+            : locationType === "shelf"
+              ? "device"
+              : "shelf",
+      };
+      setSelectedParentLocation(parentWithType);
+    } else {
+      setSelectedParentLocation(null);
+    }
+    setCreateModalOpen(true);
+  };
+
+  // Handle Create modal close
+  const handleCreateModalClose = () => {
+    setCreateModalOpen(false);
+    setSelectedLocationType(null);
+    setSelectedParentLocation(null);
+  };
+
+  // Handle Create modal save
+  const handleCreateModalSave = (newLocation) => {
+    // Refresh the appropriate table based on location type
+    const tabName = TAB_ROUTES[selectedTab] || "rooms";
+    switch (tabName) {
+      case "rooms":
+        loadRooms();
+        break;
+      case "devices":
+        loadDevices();
+        break;
+      case "shelves":
+        loadShelves();
+        break;
+      case "racks":
+        loadRacks();
+        break;
+    }
+    // Refresh metrics
+    refreshMetrics();
+    // Show success notification
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "storage.add.location.success",
+        defaultMessage: "Location created successfully",
+      }),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleCreateModalClose();
+  };
 
   // Handle Edit location
   const handleEditLocation = (location) => {
@@ -221,7 +398,7 @@ const StorageDashboard = () => {
         break;
     }
     // Refresh metrics
-    loadMetrics();
+    refreshMetrics();
     // Show success notification
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
@@ -235,57 +412,444 @@ const StorageDashboard = () => {
     handleDeleteModalClose();
   };
 
-  // Handle Label Management
-  const handleLabelManagement = (location) => {
-    setSelectedLocation(location);
-    // Determine location type from current tab (rooms -> room, devices -> device, etc.)
-    const tabName = TAB_ROUTES[selectedTab] || "devices";
-    // Map tab names to location types (handle special cases like shelves -> shelf)
-    const locationTypeMap = {
-      rooms: "room",
-      devices: "device",
-      shelves: "shelf",
-      racks: "rack",
-      samples: "sample",
-    };
-    const locationType = locationTypeMap[tabName] || tabName.slice(0, -1);
-    setSelectedLocationType(locationType);
-    setLabelManagementModalOpen(true);
+  // Handle Print Label (opens confirmation dialog)
+  const handlePrintLabel = (location) => {
+    setPrintLabelLocationData(location);
+    setPrintLabelDialogOpen(true);
   };
 
-  // Handle Label Management modal close
-  const handleLabelManagementModalClose = () => {
-    setLabelManagementModalOpen(false);
-    setSelectedLocation(null);
-    setSelectedLocationType(null);
-  };
+  // Handle Print Label confirmation (actually prints)
+  const handlePrintLabelConfirm = async () => {
+    if (!printLabelLocationData) return;
 
-  // Handle Label Management modal short code update
-  const handleLabelManagementShortCodeUpdate = (updatedLocation) => {
-    // Refresh the appropriate table based on location type
-    const tabName = TAB_ROUTES[selectedTab] || "devices";
-    switch (tabName) {
-      case "devices":
-        loadDevices();
-        break;
-      case "shelves":
-        loadShelves();
-        break;
-      case "racks":
-        loadRacks();
-        break;
+    const { type, id, name, label, code } = printLabelLocationData;
+    const locationName = name || label || "";
+    const locationCode = code || label || "";
+
+    try {
+      const endpoint = `${config.serverBaseUrl}/rest/storage/${type}/${id}/print-label`;
+
+      // Fetch PDF using POST request
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+        credentials: "include",
+      });
+
+      // Check if response is PDF or error JSON
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/pdf")) {
+        // PDF response - create blob and open in new tab
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        // Open in new tab instead of downloading
+        window.open(url, "_blank");
+        // Delay revoking URL to allow the new tab to load the PDF
+        setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+
+        // Show success notification
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "label.print.success",
+            defaultMessage: "Label printed successfully",
+          }),
+          kind: "success",
+        });
+        setNotificationVisible(true);
+      } else {
+        // Error response - parse JSON error
+        const errorData = await response.json();
+        const errorMessage =
+          errorData.error ||
+          intl.formatMessage({
+            id: "label.print.error",
+            defaultMessage: "Failed to print label",
+          });
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: errorMessage,
+          kind: "error",
+        });
+        setNotificationVisible(true);
+      }
+    } catch (error) {
+      console.error("Error printing label:", error);
+      const errorMessage =
+        error?.message ||
+        intl.formatMessage({
+          id: "label.print.error",
+          defaultMessage: "Failed to print label",
+        });
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: errorMessage,
+        kind: "error",
+      });
+      setNotificationVisible(true);
+    } finally {
+      // Close dialog
+      setPrintLabelDialogOpen(false);
+      setPrintLabelLocationData(null);
     }
-    // Show success notification
+  };
+
+  // Handle Print Label cancel
+  const handlePrintLabelCancel = () => {
+    setPrintLabelDialogOpen(false);
+    setPrintLabelLocationData(null);
+  };
+
+  // Handle Print Label success
+  const handlePrintLabelSuccess = () => {
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage({
-        id: "label.shortCode.update.success",
-        defaultMessage: "Short code updated successfully",
+        id: "label.print.success",
+        defaultMessage: "Label printed successfully",
       }),
       kind: "success",
     });
     setNotificationVisible(true);
-    handleLabelManagementModalClose();
+    setPrintLabelLocation(null);
+  };
+
+  // Handle Print Label error
+  const handlePrintLabelError = (error) => {
+    // If error is null, user cancelled - don't show error notification
+    if (error === null) {
+      setPrintLabelLocation(null);
+      return;
+    }
+    const errorMessage =
+      error?.message ||
+      intl.formatMessage({
+        id: "label.print.error",
+        defaultMessage: "Failed to print label",
+      });
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: errorMessage,
+      kind: "error",
+    });
+    setNotificationVisible(true);
+    setPrintLabelLocation(null);
+  };
+
+  // Handle Manage Location (open location modal)
+  const handleManageLocation = (sample) => {
+    setSelectedSample(sample);
+    setLocationModalOpen(true);
+  };
+
+  // Handle Location Modal close
+  const handleLocationModalClose = () => {
+    setLocationModalOpen(false);
+    setSelectedSample(null);
+  };
+
+  // Handle Location Modal confirm (reuse existing onLocationConfirm logic)
+  const handleLocationModalConfirm = async (locationData) => {
+    // Reuse the existing onLocationConfirm logic from SampleActionsContainer
+    // This is the same logic that was in the inline callback
+    const {
+      sample,
+      newLocation,
+      reason,
+      conditionNotes,
+      positionCoordinate: directPositionCoordinate,
+    } = locationData;
+    const positionCoordinate =
+      directPositionCoordinate ||
+      newLocation?.positionCoordinate ||
+      newLocation?.position?.coordinate ||
+      null;
+
+    // Determine if this is assignment (no current location) or movement (location exists)
+    const isAssignment = !sample.location || !sample.location.trim();
+
+    // Check if only metadata is being updated (no location change)
+    // This happens when newLocation is null/undefined but position or notes are provided
+    // Note: check for !== undefined to handle empty strings
+    const hasPositionUpdate =
+      positionCoordinate !== undefined && positionCoordinate !== null;
+    const hasNotesUpdate =
+      conditionNotes !== undefined && conditionNotes !== null;
+    const isMetadataOnlyUpdate =
+      !isAssignment && !newLocation && (hasPositionUpdate || hasNotesUpdate);
+
+    try {
+      // Handle metadata-only update
+      if (isMetadataOnlyUpdate) {
+        const updates = {};
+        if (positionCoordinate !== undefined && positionCoordinate !== null) {
+          updates.positionCoordinate = positionCoordinate;
+        }
+        if (conditionNotes !== undefined && conditionNotes !== null) {
+          updates.notes = conditionNotes;
+        }
+
+        const response = await updateSampleItemMetadata(
+          sample.sampleItemId || sample.id,
+          updates,
+        );
+
+        loadSamples();
+        refreshMetrics();
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "storage.update.success",
+            defaultMessage: "Storage metadata updated successfully",
+          }),
+          kind: "success",
+        });
+        setNotificationVisible(true);
+
+        // Close modal on success
+        handleLocationModalClose();
+        return;
+      }
+      let locationId = null;
+      let locationType = null;
+      let finalPositionCoordinate = positionCoordinate;
+
+      // Determine locationId and locationType based on selected hierarchy level
+      if (newLocation.rack && newLocation.rack.id) {
+        locationId = newLocation.rack.id;
+        locationType = "rack";
+        finalPositionCoordinate =
+          positionCoordinate ||
+          newLocation.position?.coordinate ||
+          newLocation.positionCoordinate ||
+          null;
+      } else if (newLocation.shelf && newLocation.shelf.id) {
+        locationId = newLocation.shelf.id;
+        locationType = "shelf";
+        finalPositionCoordinate =
+          positionCoordinate ||
+          newLocation.position?.coordinate ||
+          newLocation.positionCoordinate ||
+          null;
+      } else if (newLocation.device && newLocation.device.id) {
+        locationId = newLocation.device.id;
+        locationType = "device";
+        finalPositionCoordinate =
+          positionCoordinate ||
+          newLocation.position?.coordinate ||
+          newLocation.positionCoordinate ||
+          null;
+      } else if (newLocation.id && newLocation.type) {
+        if (
+          newLocation.type === "rack" ||
+          newLocation.type === "shelf" ||
+          newLocation.type === "device"
+        ) {
+          locationId = newLocation.id;
+          locationType = newLocation.type;
+          finalPositionCoordinate =
+            positionCoordinate || newLocation.positionCoordinate || null;
+        } else if (newLocation.type === "room") {
+          throw new Error(
+            "Please select at least a device (minimum 2 levels: room + device).",
+          );
+        }
+      } else {
+        const hasRoom =
+          newLocation.room && (newLocation.room.id || newLocation.room.name);
+        const hasDevice =
+          newLocation.device &&
+          (newLocation.device.id || newLocation.device.name);
+
+        if (!hasRoom || !hasDevice) {
+          throw new Error(
+            "Room and Device are required (minimum 2 levels). Please select at least a device.",
+          );
+        }
+
+        locationId = newLocation.device.id;
+        locationType = "device";
+        finalPositionCoordinate =
+          positionCoordinate ||
+          newLocation.position?.coordinate ||
+          newLocation.positionCoordinate ||
+          null;
+      }
+
+      if (!locationId || !locationType) {
+        throw new Error(
+          "Could not determine target location. Please ensure a complete location hierarchy is selected.",
+        );
+      }
+
+      let locationPayload;
+      if (isAssignment) {
+        locationPayload = {
+          sampleItemId: sample.sampleItemId || sample.id,
+          locationId: locationId,
+          locationType: locationType,
+          positionCoordinate: finalPositionCoordinate || null,
+          notes: conditionNotes || null,
+        };
+        const response = await assignSampleItem(locationPayload);
+
+        loadSamples();
+        refreshMetrics();
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "storage.assign.success",
+            defaultMessage: "Storage location assigned successfully",
+          }),
+          kind: "success",
+        });
+        setNotificationVisible(true);
+
+        if (response.shelfCapacityWarning) {
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: response.shelfCapacityWarning,
+            kind: "warning",
+          });
+          setNotificationVisible(true);
+        }
+      } else {
+        locationPayload = {
+          sampleItemId: sample.sampleItemId || sample.id,
+          locationId: locationId,
+          locationType: locationType,
+          positionCoordinate: finalPositionCoordinate || null,
+          reason: reason || null,
+          notes: conditionNotes || null,
+        };
+        const response = await moveSampleItem(locationPayload);
+
+        loadSamples();
+        refreshMetrics();
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "storage.move.success",
+            defaultMessage: "Sample moved successfully",
+          }),
+          kind: "success",
+        });
+        setNotificationVisible(true);
+
+        if (response.shelfCapacityWarning) {
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: response.shelfCapacityWarning,
+            kind: "warning",
+          });
+          setNotificationVisible(true);
+        }
+      }
+
+      // Close modal on success
+      handleLocationModalClose();
+    } catch (error) {
+      console.error(
+        `Failed to ${isAssignment ? "assign" : "move"} sample:`,
+        error,
+      );
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message:
+          intl.formatMessage({
+            id: isAssignment ? "storage.assign.error" : "storage.move.error",
+            defaultMessage: isAssignment
+              ? "Failed to assign storage location"
+              : "Failed to move sample",
+          }) + (error.message ? `: ${error.message}` : ""),
+        kind: "error",
+      });
+      setNotificationVisible(true);
+      // Don't close modal on error so user can retry
+    }
+  };
+
+  // Handle Dispose (open dispose modal)
+  const handleDispose = (sample) => {
+    setSelectedSampleForDispose(sample);
+    setDisposeModalOpen(true);
+  };
+
+  // Handle Dispose Modal close
+  const handleDisposeModalClose = () => {
+    setDisposeModalOpen(false);
+    setSelectedSampleForDispose(null);
+  };
+
+  // Handle Dispose Modal confirm (OGC-73: Call API to dispose sample)
+  const handleDisposeModalConfirm = async (disposalData) => {
+    const { sample, reason, method, notes } = disposalData;
+
+    try {
+      // Call disposal API
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/storage/sample-items/dispose`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            // Prefer external ID for API lookup (backend resolves by external ID or accession)
+            // Fall back to numeric ID if external ID not available
+            sampleItemId:
+              sample?.sampleItemExternalId ||
+              sample?.id ||
+              sample?.sampleItemId,
+            reason,
+            method,
+            notes,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to dispose sample");
+      }
+
+      // Success - show notification and refresh data
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "storage.dispose.success",
+          defaultMessage: "Sample disposed successfully",
+        }),
+        kind: "success",
+      });
+      setNotificationVisible(true);
+      handleDisposeModalClose();
+
+      // Refresh sample list and metrics to show updated status
+      loadSamples();
+      refreshMetrics();
+    } catch (error) {
+      console.error("Error disposing sample:", error);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message:
+          error.message ||
+          intl.formatMessage({
+            id: "storage.dispose.error",
+            defaultMessage: "Failed to dispose sample",
+          }),
+        kind: "error",
+      });
+      setNotificationVisible(true);
+    }
   };
 
   // Determine which filters should be visible based on active tab
@@ -320,6 +884,12 @@ const StorageDashboard = () => {
         visibleFilters.device = true;
         visibleFilters.status = true;
         break;
+      case "boxes":
+        // Custom UI handles its own inputs; hide default filters
+        visibleFilters.room = false;
+        visibleFilters.device = false;
+        visibleFilters.status = false;
+        break;
       default:
         visibleFilters.status = true;
     }
@@ -338,6 +908,14 @@ const StorageDashboard = () => {
     setSearchTerm("");
   }, [selectedTab]);
 
+  // OGC-150: Reset pagination to page 1 when filters/search change (prevent empty results)
+  useEffect(() => {
+    if (selectedTab === 0) {
+      // Samples tab - reset pagination when any filter changes
+      setPage(1);
+    }
+  }, [searchTerm, locationFilter, filterStatus, selectedTab]);
+
   // Sync tab with URL changes and handle default route
   useEffect(() => {
     if (location.pathname === "/Storage") {
@@ -353,7 +931,7 @@ const StorageDashboard = () => {
 
   // Load metrics
   useEffect(() => {
-    loadMetrics();
+    const abortMetrics = refreshMetrics();
     loadRooms();
     loadDevices();
     loadShelves();
@@ -362,11 +940,30 @@ const StorageDashboard = () => {
 
     return () => {
       componentMounted.current = false;
+      if (abortMetrics) abortMetrics(); // Cancel metrics request on unmount
     };
+  }, [refreshMetrics]);
+
+  // Load sample item status options dynamically from backend
+  useEffect(() => {
+    getFromOpenElisServer(
+      "/rest/displayList/sample-item-status-types",
+      (response) => {
+        if (response && Array.isArray(response)) {
+          setSampleStatusOptions(
+            response.map((item) => ({
+              id: item.id,
+              label: item.value,
+            })),
+          );
+        }
+      },
+    );
   }, []);
 
   // Reload data when filters change (server-side filtering for all tabs)
   // Note: When searchTerm is present, filters are applied client-side on search results (AND logic)
+  // OGC-150: Also reload when page or pageSize changes for samples tab
   useEffect(() => {
     const tabName = TAB_ROUTES[selectedTab] || "samples";
 
@@ -376,13 +973,6 @@ const StorageDashboard = () => {
       // For samples tab with search, debounced search effect will handle reload with filters
       return;
     }
-
-    console.log(
-      "Filters changed, reloading data for tab:",
-      tabName,
-      "with filters:",
-      { filterRoom, filterDevice, filterStatus },
-    );
 
     switch (tabName) {
       case "samples":
@@ -401,7 +991,15 @@ const StorageDashboard = () => {
         loadRacks();
         break;
     }
-  }, [locationFilter, filterRoom, filterDevice, filterStatus, selectedTab]);
+  }, [
+    locationFilter,
+    filterRoom,
+    filterDevice,
+    filterStatus,
+    selectedTab,
+    page,
+    pageSize,
+  ]); // OGC-150: Added page, pageSize
 
   // Debounced search for samples tab (300-500ms delay after typing stops) - FR-064a
   // For other tabs, search triggers immediate reload
@@ -467,24 +1065,6 @@ const StorageDashboard = () => {
     setSelectedTab(tabIndex);
     const tabName = TAB_ROUTES[tabIndex] || "samples";
     history.push(`/Storage/${tabName}`);
-  };
-
-  const loadMetrics = () => {
-    getFromOpenElisServer(
-      "/rest/storage/sample-items?countOnly=true",
-      (response) => {
-        if (componentMounted.current && response) {
-          // Response is an array with one metrics object
-          const metricsData = Array.isArray(response) ? response[0] : response;
-          setMetrics({
-            totalSamples: metricsData?.totalSampleItems || 0,
-            active: metricsData?.active || 0,
-            disposed: metricsData?.disposed || 0,
-            storageLocations: metricsData?.storageLocations || 0,
-          });
-        }
-      },
-    );
   };
 
   const loadRooms = () => {
@@ -815,9 +1395,7 @@ const StorageDashboard = () => {
     // Use search endpoint if searchTerm is present, otherwise use filter endpoint
     if (searchTerm && searchTerm.trim()) {
       // Call search endpoint (FR-064: Sample Items tab - search by SampleItem ID/External ID, parent Sample accession, location path)
-      // Note: Backend search endpoint is at /rest/storage/samples/search (StorageLocationRestController)
-      // but should ideally be at /rest/storage/sample-items/search for consistency
-      const url = `/rest/storage/samples/search?q=${encodeURIComponent(searchTerm.trim())}`;
+      const url = `/rest/storage/sample-items/search?q=${encodeURIComponent(searchTerm.trim())}`;
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
@@ -836,26 +1414,19 @@ const StorageDashboard = () => {
               });
             }
 
-            // Apply status filter
+            // Apply status filter for Samples tab
+            // filterStatus contains the status ID from the dropdown (e.g., "active", "disposed", or actual status ID)
             if (filterStatus && visibleFilters.status) {
-              const statusFilter =
-                filterStatus === "true"
-                  ? "active"
-                  : filterStatus === "false"
-                    ? "disposed"
-                    : null;
-              if (statusFilter) {
-                filtered = filtered.filter((sampleItem) => {
-                  const sampleItemStatus = sampleItem.status || "active";
-                  return (
-                    sampleItemStatus.toLowerCase() ===
-                    statusFilter.toLowerCase()
-                  );
-                });
-              }
+              filtered = filtered.filter((sampleItem) => {
+                const sampleItemStatus = sampleItem.status || "";
+                // Direct ID comparison - works for both legacy ("active"/"disposed") and actual status IDs
+                return sampleItemStatus === filterStatus;
+              });
             }
 
             setSamples(filtered);
+            // OGC-150: Update pagination totalItems for search results
+            setTotalItems(filtered.length);
           } else {
             console.error(
               "Sample Items search API returned non-array response:",
@@ -879,49 +1450,305 @@ const StorageDashboard = () => {
         }
       }
 
-      // Convert status filter: "true" -> "active", "false" -> "disposed", "" -> no filter
+      // Pass status filter to backend - can be any status ID from the dropdown
+      // Backend handles "active", "disposed", or actual status IDs
       if (filterStatus && visibleFilters.status) {
-        if (filterStatus === "true") {
-          params.append("status", "active");
-        } else if (filterStatus === "false") {
-          params.append("status", "disposed");
-        }
-        // If filterStatus is empty string, don't add status param (show all)
+        params.append("status", filterStatus);
       }
+
+      // OGC-150: Add pagination parameters
+      params.append("page", String(page - 1)); // Convert 1-based to 0-based
+      params.append("size", String(pageSize));
 
       const queryString = params.toString();
       const url = `/rest/storage/sample-items${queryString ? "?" + queryString : ""}`;
 
-      console.log("Loading Sample Items from", url, "with filters:", {
-        locationFilter,
-        filterStatus,
-      });
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
-          console.log(
-            "Sample Items API response received:",
-            response,
-            "Type:",
-            typeof response,
-          );
-          if (response && Array.isArray(response)) {
-            console.log("Sample Items loaded:", response.length, response);
-            setSamples(response);
-            if (response.length === 0) {
-              console.warn(
-                "Sample Items API returned empty array - no sample item assignments found matching filters",
+          logPaginationResponse(url, response, page - 1, pageSize);
+          // OGC-150: Handle paginated response with metadata
+          if (response && typeof response === "object") {
+            if (Array.isArray(response)) {
+              // Backward compatibility: if response is array (old format without pagination)
+              setSamples(response);
+              setTotalItems(response.length);
+              if (response.length === 0) {
+                console.warn(
+                  "Sample Items API returned empty array - no sample item assignments found matching filters",
+                );
+              }
+            } else if (response.items && Array.isArray(response.items)) {
+              // New format with pagination metadata (OGC-150)
+              setSamples(response.items);
+              const total =
+                response.totalItems ??
+                response.totalElements ??
+                response.items.length;
+              setTotalItems(total);
+              if (response.items.length === 0) {
+                console.warn(
+                  "Sample Items API returned empty items array - no sample item assignments found matching filters",
+                );
+              }
+            } else {
+              console.error(
+                "Sample Items API returned unexpected response format:",
+                response,
               );
+              setSamples([]);
+              setTotalItems(0);
             }
           } else {
             console.error(
-              "Sample Items API returned non-array response:",
+              "Sample Items API returned non-object response:",
               response,
             );
-            console.error("Expected array but got:", typeof response, response);
-            console.error("Response is:", JSON.stringify(response));
             setSamples([]);
+            setTotalItems(0);
           }
         }
+      });
+    }
+  };
+
+  const fetchBoxesForRack = useCallback(
+    (rackId) => {
+      if (!rackId) {
+        setBoxesForGrid([]);
+        setSelectedBox(null);
+        return;
+      }
+      setBoxesLoading(true);
+      setBoxesError(null);
+
+      const occupiedUrl = `/rest/storage/boxes?rackId=${rackId}&occupied=true`;
+      const allUrl = `/rest/storage/boxes?rackId=${rackId}`;
+
+      // Fetch all boxes and occupied boxes to derive occupancy status
+      Promise.all([
+        new Promise((resolve) =>
+          getFromOpenElisServer(allUrl, (response) => resolve(response || [])),
+        ),
+        new Promise((resolve) =>
+          getFromOpenElisServer(occupiedUrl, (response) =>
+            resolve(response || []),
+          ),
+        ),
+      ])
+        .then(([allBoxes, occupiedBoxes]) => {
+          if (!componentMounted.current) {
+            return;
+          }
+          const occupiedIds = new Set(
+            (occupiedBoxes || []).map((box) => box.id?.toString()),
+          );
+          const merged =
+            (allBoxes || []).map((box) => ({
+              ...box,
+              occupied: occupiedIds.has(box.id?.toString()),
+            })) || [];
+          setBoxesForGrid(merged);
+
+          // Update selected box with fresh data if one is selected
+          if (selectedBoxId) {
+            const updatedBox = merged.find((box) => box.id === selectedBoxId);
+            if (updatedBox) {
+              setSelectedBox(updatedBox);
+            }
+          }
+        })
+        .catch((err) => {
+          console.error("Error loading boxes for rack", rackId, err);
+          if (componentMounted.current) {
+            setBoxesError(
+              intl.formatMessage({
+                id: "storage.boxes.load.error",
+                defaultMessage: "Unable to load boxes for this rack.",
+              }),
+            );
+          }
+        })
+        .finally(() => {
+          if (componentMounted.current) {
+            setBoxesLoading(false);
+          }
+        });
+    },
+    [intl, selectedBoxId],
+  );
+
+  useEffect(() => {
+    if (selectedRackIdForGrid) {
+      fetchBoxesForRack(selectedRackIdForGrid);
+    } else {
+      setBoxesForGrid([]);
+      setSelectedBoxId("");
+      setSelectedBox(null);
+    }
+  }, [selectedRackIdForGrid, fetchBoxesForRack]);
+
+  const handleRackSelect = (selectedRack) => {
+    if (!selectedRack) {
+      setSelectedRackIdForGrid("");
+      setSelectedRackForGrid(null);
+      setSelectedBoxId("");
+      setSelectedBox(null);
+      setAssignStatus(null);
+      return;
+    }
+    setSelectedRackIdForGrid(selectedRack.id);
+    setSelectedRackForGrid(selectedRack);
+    setSelectedBoxId("");
+    setSelectedBox(null);
+    setAssignStatus(null);
+  };
+
+  const handleBoxSelect = (box) => {
+    if (!box) {
+      setSelectedBoxId("");
+      setSelectedBox(null);
+      setSelectedCoordinate("");
+      setAssignStatus(null);
+      return;
+    }
+    setSelectedBoxId(box.id);
+    setSelectedBox(box);
+    setSelectedCoordinate("");
+    setAssignStatus(null);
+  };
+
+  const handleCreateBox = () => {
+    if (!selectedRackIdForGrid) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "storage.box.validation.parentRack.required",
+          defaultMessage: "Please select a rack first.",
+        }),
+        kind: "error",
+      });
+      setNotificationVisible(true);
+      return;
+    }
+    setSelectedBoxForCrud(null);
+    setBoxModalMode("create");
+    setBoxModalOpen(true);
+  };
+
+  const handleEditBox = (box) => {
+    setSelectedBoxForCrud(box);
+    setBoxModalMode("edit");
+    setBoxModalOpen(true);
+  };
+
+  const handleDeleteBox = (box) => {
+    setSelectedBoxForCrud(box);
+    setBoxDeleteModalOpen(true);
+  };
+
+  const handleBoxModalClose = () => {
+    setBoxModalOpen(false);
+    setSelectedBoxForCrud(null);
+  };
+
+  const handleBoxDeleteModalClose = () => {
+    setBoxDeleteModalOpen(false);
+    setSelectedBoxForCrud(null);
+  };
+
+  const handleBoxSaved = async (savedBox) => {
+    if (selectedRackIdForGrid) {
+      await fetchBoxesForRack(selectedRackIdForGrid);
+    }
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage(
+        {
+          id: "storage.box.save.success",
+          defaultMessage: "{label} saved successfully",
+        },
+        { label: savedBox?.label || "" },
+      ),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleBoxModalClose();
+  };
+
+  const handleBoxDeleted = async () => {
+    if (selectedRackIdForGrid) {
+      await fetchBoxesForRack(selectedRackIdForGrid);
+    }
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "storage.box.delete.success",
+        defaultMessage: "Box deleted successfully",
+      }),
+      kind: "success",
+    });
+    setNotificationVisible(true);
+    handleBoxDeleteModalClose();
+  };
+
+  const handleCoordinateSelect = (coordinate, isOccupied) => {
+    if (isOccupied) {
+      // Show error notification for occupied position
+      setAssignStatus({
+        kind: "error",
+        message: intl.formatMessage(
+          {
+            id: "storage.boxes.coordinate.occupied",
+            defaultMessage:
+              "Position {coordinate} is already occupied. Please select a different position.",
+          },
+          { coordinate },
+        ),
+      });
+      return;
+    }
+    setSelectedCoordinate(coordinate);
+    setAssignStatus(null);
+  };
+
+  const handleAssignToBox = async () => {
+    if (!selectedBox || !assignSampleId || !selectedCoordinate) {
+      return;
+    }
+    setAssignStatus(null);
+    try {
+      await assignSampleItem({
+        sampleItemId: assignSampleId,
+        locationId: selectedBox.id,
+        locationType: "box",
+        positionCoordinate: selectedCoordinate,
+        notes: assignNotes || undefined,
+      });
+      setAssignStatus({
+        kind: "success",
+        message: intl.formatMessage(
+          {
+            id: "storage.boxes.assign.success",
+            defaultMessage: "Sample assigned to {coordinate} in {boxLabel}.",
+          },
+          { coordinate: selectedCoordinate, boxLabel: selectedBox.label },
+        ),
+      });
+      setAssignSampleId("");
+      setAssignNotes("");
+      setSelectedCoordinate("");
+
+      // Refresh boxes data to update occupancy status
+      await fetchBoxesForRack(selectedRackIdForGrid);
+    } catch (error) {
+      setAssignStatus({
+        kind: "error",
+        message:
+          error?.message ||
+          intl.formatMessage({
+            id: "storage.boxes.assign.error",
+            defaultMessage: "Unable to assign sample to box.",
+          }),
       });
     }
   };
@@ -1276,7 +2103,7 @@ const StorageDashboard = () => {
             location={deviceWithType}
             onEdit={handleEditLocation}
             onDelete={handleDeleteLocation}
-            onLabelManagement={handleLabelManagement}
+            onPrintLabel={handlePrintLabel}
           />
         ),
         isExpanded: !!expandedRowIds[String(device.id || "")],
@@ -1384,7 +2211,7 @@ const StorageDashboard = () => {
             location={shelfWithType}
             onEdit={handleEditLocation}
             onDelete={handleDeleteLocation}
-            onLabelManagement={handleLabelManagement}
+            onPrintLabel={handlePrintLabel}
           />
         ),
         isExpanded: !!expandedRowIds[String(shelf.id || "")],
@@ -1449,7 +2276,7 @@ const StorageDashboard = () => {
             location={rackWithType}
             onEdit={handleEditLocation}
             onDelete={handleDeleteLocation}
-            onLabelManagement={handleLabelManagement}
+            onPrintLabel={handlePrintLabel}
           />
         ),
         isExpanded: !!expandedRowIds[String(rack.id || "")],
@@ -2026,229 +2853,11 @@ const StorageDashboard = () => {
               status: sampleItem.status || "Active",
               location:
                 sampleItem.location || sampleItem.hierarchicalPath || "",
+              positionCoordinate: sampleItem.positionCoordinate || "",
+              notes: sampleItem.notes || "",
             }}
-            onLocationConfirm={async (locationData) => {
-              // locationData format: { sample: { id, sampleId, type, status }, newLocation: {...}, reason?: "...", conditionNotes?: "...", positionCoordinate?: "..." }
-              // positionCoordinate can come from:
-              // 1. Direct positionCoordinate field in locationData (from LocationManagementModal)
-              // 2. newLocation.positionCoordinate (from location object)
-              // 3. newLocation.position?.coordinate (from nested position object)
-              const {
-                sample,
-                newLocation,
-                reason,
-                conditionNotes,
-                positionCoordinate: directPositionCoordinate,
-              } = locationData;
-              const positionCoordinate =
-                directPositionCoordinate ||
-                newLocation?.positionCoordinate ||
-                newLocation?.position?.coordinate ||
-                null;
-
-              // Determine if this is assignment (no current location) or movement (location exists)
-              const isAssignment = !sample.location || !sample.location.trim();
-
-              try {
-                // NEW FLEXIBLE ASSIGNMENT ARCHITECTURE:
-                // Extract locationId, locationType (device/shelf/rack), and optional positionCoordinate
-                // No longer need to find/create StoragePosition entities
-                // positionCoordinate is already extracted above from locationData
-
-                let locationId = null;
-                let locationType = null;
-                // Use positionCoordinate extracted from locationData above (line 1147)
-                // If not found in locationData, try to extract from newLocation object
-                let finalPositionCoordinate = positionCoordinate;
-
-                // Determine locationId and locationType based on selected hierarchy level
-                // Priority: rack > shelf > device (lowest selected level wins)
-                if (newLocation.rack && newLocation.rack.id) {
-                  locationId = newLocation.rack.id;
-                  locationType = "rack";
-                  // Use positionCoordinate from locationData if available, otherwise try newLocation
-                  finalPositionCoordinate =
-                    positionCoordinate ||
-                    newLocation.position?.coordinate ||
-                    newLocation.positionCoordinate ||
-                    null;
-                } else if (newLocation.shelf && newLocation.shelf.id) {
-                  locationId = newLocation.shelf.id;
-                  locationType = "shelf";
-                  finalPositionCoordinate =
-                    positionCoordinate ||
-                    newLocation.position?.coordinate ||
-                    newLocation.positionCoordinate ||
-                    null;
-                } else if (newLocation.device && newLocation.device.id) {
-                  locationId = newLocation.device.id;
-                  locationType = "device";
-                  finalPositionCoordinate =
-                    positionCoordinate ||
-                    newLocation.position?.coordinate ||
-                    newLocation.positionCoordinate ||
-                    null;
-                } else if (newLocation.id && newLocation.type) {
-                  // LocationFilterDropdown format - type is already the hierarchy level
-                  if (
-                    newLocation.type === "rack" ||
-                    newLocation.type === "shelf" ||
-                    newLocation.type === "device"
-                  ) {
-                    locationId = newLocation.id;
-                    locationType = newLocation.type;
-                    finalPositionCoordinate =
-                      positionCoordinate ||
-                      newLocation.positionCoordinate ||
-                      null;
-                  } else if (newLocation.type === "room") {
-                    // Room alone is not sufficient - need at least device
-                    throw new Error(
-                      "Please select at least a device (minimum 2 levels: room + device).",
-                    );
-                  } else {
-                    throw new Error(
-                      `Invalid location type: ${newLocation.type}. Must be device, shelf, or rack.`,
-                    );
-                  }
-                } else {
-                  // Validate minimum 2 levels (room + device) per FR-033a
-                  const hasRoom =
-                    newLocation.room &&
-                    (newLocation.room.id || newLocation.room.name);
-                  const hasDevice =
-                    newLocation.device &&
-                    (newLocation.device.id || newLocation.device.name);
-
-                  if (!hasRoom || !hasDevice) {
-                    throw new Error(
-                      "Room and Device are required (minimum 2 levels). Please select at least a device.",
-                    );
-                  }
-
-                  // If we have room+device but no specific shelf/rack, use device level
-                  locationId = newLocation.device.id;
-                  locationType = "device";
-                  finalPositionCoordinate =
-                    positionCoordinate ||
-                    newLocation.position?.coordinate ||
-                    newLocation.positionCoordinate ||
-                    null;
-                }
-
-                if (!locationId || !locationType) {
-                  throw new Error(
-                    "Could not determine target location. Please ensure a complete location hierarchy is selected.",
-                  );
-                }
-
-                // Build location data using new flexible assignment format
-                let locationPayload;
-                if (isAssignment) {
-                  // Assignment mode - use assign endpoint
-                  // SampleAssignmentForm expects: sampleItemId, locationId, locationType, positionCoordinate, notes
-                  locationPayload = {
-                    sampleItemId: sample.sampleItemId || sample.id, // Use sampleItemId (SampleItem-level tracking)
-                    locationId: locationId,
-                    locationType: locationType,
-                    positionCoordinate: finalPositionCoordinate || null,
-                    notes: conditionNotes || null, // Assignment form uses "notes" field
-                  };
-                  const response = await assignSampleItem(locationPayload);
-
-                  // Refresh samples table and metrics after successful assignment
-                  loadSamples();
-                  loadMetrics();
-
-                  // Show success notification
-                  addNotification({
-                    title: intl.formatMessage({ id: "notification.title" }),
-                    message: intl.formatMessage({
-                      id: "storage.assign.success",
-                      defaultMessage: "Storage location assigned successfully",
-                    }),
-                    kind: "success",
-                  });
-                  setNotificationVisible(true);
-
-                  // Show shelf capacity warning if present (informational only)
-                  if (response.shelfCapacityWarning) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message: response.shelfCapacityWarning,
-                      kind: "warning",
-                    });
-                    setNotificationVisible(true);
-                  }
-                } else {
-                  // Movement mode - use move endpoint
-                  // SampleMovementForm expects: sampleItemId, locationId, locationType, positionCoordinate, reason
-                  // Note: conditionNotes is NOT supported in movement form
-                  locationPayload = {
-                    sampleItemId: sample.sampleItemId || sample.id, // Use sampleItemId (SampleItem-level tracking)
-                    locationId: locationId,
-                    locationType: locationType,
-                    positionCoordinate: finalPositionCoordinate || null,
-                    reason: reason || null, // Movement form uses "reason" field
-                  };
-                  const response = await moveSampleItem(locationPayload);
-
-                  // Refresh samples table and metrics after successful move
-                  loadSamples();
-                  loadMetrics();
-
-                  // Show success notification
-                  addNotification({
-                    title: intl.formatMessage({ id: "notification.title" }),
-                    message: intl.formatMessage({
-                      id: "storage.move.success",
-                      defaultMessage: "Sample moved successfully",
-                    }),
-                    kind: "success",
-                  });
-                  setNotificationVisible(true);
-
-                  // Show shelf capacity warning if present (informational only)
-                  if (response.shelfCapacityWarning) {
-                    addNotification({
-                      title: intl.formatMessage({ id: "notification.title" }),
-                      message: response.shelfCapacityWarning,
-                      kind: "warning",
-                    });
-                    setNotificationVisible(true);
-                  }
-                }
-              } catch (error) {
-                console.error(
-                  `Failed to ${isAssignment ? "assign" : "move"} sample:`,
-                  error,
-                );
-                addNotification({
-                  title: intl.formatMessage({ id: "notification.title" }),
-                  message:
-                    intl.formatMessage({
-                      id: isAssignment
-                        ? "storage.assign.error"
-                        : "storage.move.error",
-                      defaultMessage: isAssignment
-                        ? "Failed to assign storage location"
-                        : "Failed to move sample",
-                    }) + (error.message ? `: ${error.message}` : ""),
-                  kind: "error",
-                });
-                setNotificationVisible(true);
-              }
-            }}
-            onDisposeConfirm={(sample, reason, method, notes) => {
-              console.log("Dispose sample confirmed", {
-                sample,
-                reason,
-                method,
-                notes,
-              });
-              // TODO: Implement API call to dispose sample
-            }}
-            onNotification={addNotification}
+            onManageLocation={handleManageLocation}
+            onDispose={handleDispose}
           />
         ),
       };
@@ -2260,6 +2869,119 @@ const StorageDashboard = () => {
   const filteredShelves = filterData(shelves, "shelves");
   const filteredRacks = filterData(racks, "racks");
   const filteredSamples = filterData(samples, "samples");
+  const rackDropdownItems = (racks || []).map((rack) => ({
+    id: rack.id,
+    label: rack.label,
+    description: rack.roomName ? `${rack.roomName}` : rack.label,
+    ...rack,
+  }));
+
+  const boxDropdownItems = (boxesForGrid || []).map((box) => ({
+    id: box.id,
+    label: box.label,
+    description: `${box.type || ""} (${box.rows || 0}×${box.columns || 0}) ${box.occupied ? "• Occupied" : ""}`,
+    ...box,
+  }));
+
+  const renderBoxGrid = () => {
+    if (!selectedBox) {
+      return (
+        <Tile className="rack-grid-placeholder">
+          <FormattedMessage
+            id="storage.boxes.selectBox"
+            defaultMessage="Select a box to view its grid."
+          />
+        </Tile>
+      );
+    }
+
+    const rows = Array.from({ length: selectedBox.rows || 0 });
+    const cols = Array.from({ length: selectedBox.columns || 0 });
+    // occupiedCoordinates is now an object: { "A1": { externalId: "...", sampleItemId: "..." }, ... }
+    const occupiedCoordinates = selectedBox.occupiedCoordinates || {};
+
+    // Generate coordinate labels based on position schema hint
+    const getCoordinateLabel = (rowIdx, colIdx) => {
+      const hint = selectedBox.positionSchemaHint || "letter-number";
+      if (hint === "letter-number") {
+        // A1, A2, ..., B1, B2, etc.
+        const letter = String.fromCharCode(65 + rowIdx); // A=65
+        return `${letter}${colIdx + 1}`;
+      } else {
+        // 1-1, 1-2, etc.
+        return `${rowIdx + 1}-${colIdx + 1}`;
+      }
+    };
+
+    return (
+      <div className="rack-grid">
+        {rows.map((_, rowIdx) => (
+          <div className="rack-grid-row" key={`row-${rowIdx}`}>
+            {cols.map((__, colIdx) => {
+              const coordinate = getCoordinateLabel(rowIdx, colIdx);
+              const isSelected = selectedCoordinate === coordinate;
+              const sampleInfo = occupiedCoordinates[coordinate];
+              const occupied = !!sampleInfo;
+              const externalId = sampleInfo?.externalId || "";
+              const tooltip = externalId || sampleInfo?.sampleItemId || "";
+
+              return (
+                <button
+                  key={`cell-${rowIdx}-${colIdx}`}
+                  type="button"
+                  className={`rack-grid-cell ${
+                    occupied ? "occupied" : "available"
+                  } ${isSelected ? "selected" : ""}`}
+                  onClick={() => handleCoordinateSelect(coordinate, occupied)}
+                  aria-disabled={occupied}
+                  title={
+                    occupied && tooltip
+                      ? `Sample: ${tooltip}`
+                      : occupied
+                        ? intl.formatMessage({
+                            id: "storage.boxes.status.occupied",
+                            defaultMessage: "Occupied",
+                          })
+                        : undefined
+                  }
+                  aria-label={
+                    occupied
+                      ? intl.formatMessage(
+                          {
+                            id: "storage.boxes.grid.occupied",
+                            defaultMessage: "Position {coordinate} (occupied)",
+                          },
+                          { coordinate },
+                        )
+                      : intl.formatMessage(
+                          {
+                            id: "storage.boxes.grid.available",
+                            defaultMessage: "Position {coordinate} (available)",
+                          },
+                          { coordinate },
+                        )
+                  }
+                >
+                  <span className="rack-grid-label">{coordinate}</span>
+                  <span className="rack-grid-status">
+                    {occupied
+                      ? intl.formatMessage({
+                          id: "storage.boxes.status.occupied",
+                          defaultMessage: "Occupied",
+                        })
+                      : intl.formatMessage({
+                          id: "storage.boxes.status.available",
+                          defaultMessage: "Available",
+                        })}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="storage-dashboard">
@@ -2293,7 +3015,7 @@ const StorageDashboard = () => {
           </Tile>
         </Column>
         <Column lg={4} md={4} sm={4}>
-          <Tile>
+          <Tile data-testid="metric-disposed">
             <h3>
               <FormattedMessage id="storage.metrics.disposed" />
             </h3>
@@ -2324,6 +3046,12 @@ const StorageDashboard = () => {
               </Tab>
               <Tab className="tab-racks" data-testid="tab-racks">
                 <FormattedMessage id="storage.tab.racks" />
+              </Tab>
+              <Tab className="tab-boxes" data-testid="tab-boxes">
+                <FormattedMessage
+                  id="storage.tab.boxes"
+                  defaultMessage="Boxes"
+                />
               </Tab>
             </TabList>
             <TabPanels>
@@ -2468,39 +3196,53 @@ const StorageDashboard = () => {
                               titleText={intl.formatMessage({
                                 id: "storage.filter.status",
                               })}
-                              items={[
-                                {
-                                  id: "",
-                                  label: intl.formatMessage({
-                                    id: "label.all",
-                                  }),
-                                },
-                                {
-                                  id: "true",
-                                  label: intl.formatMessage({
-                                    id: "label.active",
-                                  }),
-                                },
-                                {
-                                  id: "false",
-                                  label: intl.formatMessage({
-                                    id: "label.inactive",
-                                  }),
-                                },
-                              ]}
+                              items={
+                                selectedTab === 0
+                                  ? sampleStatusOptions
+                                  : [
+                                      // Other tabs: active/inactive (boolean field)
+                                      {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      },
+                                      {
+                                        id: "true",
+                                        label: intl.formatMessage({
+                                          id: "label.active",
+                                        }),
+                                      },
+                                      {
+                                        id: "false",
+                                        label: intl.formatMessage({
+                                          id: "label.inactive",
+                                        }),
+                                      },
+                                    ]
+                              }
                               selectedItem={
                                 filterStatus
-                                  ? {
-                                      id: filterStatus,
-                                      label:
-                                        filterStatus === "true"
-                                          ? intl.formatMessage({
-                                              id: "label.active",
-                                            })
-                                          : intl.formatMessage({
-                                              id: "label.inactive",
-                                            }),
-                                    }
+                                  ? selectedTab === 0
+                                    ? sampleStatusOptions.find(
+                                        (opt) => opt.id === filterStatus,
+                                      ) || {
+                                        id: "",
+                                        label: intl.formatMessage({
+                                          id: "label.all",
+                                        }),
+                                      }
+                                    : {
+                                        id: filterStatus,
+                                        label:
+                                          filterStatus === "true"
+                                            ? intl.formatMessage({
+                                                id: "label.active",
+                                              })
+                                            : intl.formatMessage({
+                                                id: "label.inactive",
+                                              }),
+                                      }
                                   : {
                                       id: "",
                                       label: intl.formatMessage({
@@ -2609,6 +3351,26 @@ const StorageDashboard = () => {
                       </DataTable>
                     </div>
                   </Column>
+                  {/* OGC-150: Pagination for Samples tab */}
+                  <Column lg={16} md={8} sm={4}>
+                    <Pagination
+                      data-testid="sample-items-pagination"
+                      page={page}
+                      pageSize={pageSize}
+                      pageSizes={[5, 25, 50, 100]}
+                      totalItems={totalItems}
+                      onChange={({ page, pageSize }) => {
+                        // eslint-disable-next-line no-console
+                        console.info("[OGC-150] pagination change", {
+                          page,
+                          pageSize,
+                          totalItems,
+                        });
+                        setPage(page);
+                        setPageSize(pageSize);
+                      }}
+                    />
+                  </Column>
                 </Grid>
               </TabPanel>
               <TabPanel>
@@ -2704,9 +3466,28 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.rooms" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.rooms" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => handleCreateLocation()}
+                        data-testid="add-room-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.room"
+                          defaultMessage="Add Room"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatRoomsData(filteredRooms)}
                       headers={roomsHeaders}
@@ -2938,9 +3719,37 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.devices" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.devices" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => {
+                          // For devices, parent room is required - use filterRoom if set, or first room
+                          const parentRoom = filterRoom
+                            ? rooms.find((r) => r.id === filterRoom)
+                            : rooms.length > 0
+                              ? rooms[0]
+                              : null;
+                          handleCreateLocation(parentRoom);
+                        }}
+                        disabled={rooms.length === 0}
+                        data-testid="add-device-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.device"
+                          defaultMessage="Add Device"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatDevicesData(filteredDevices)}
                       headers={devicesHeaders}
@@ -3235,9 +4044,37 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.shelves" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.shelves" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => {
+                          // For shelves, parent device is required - use filterDevice if set, or first device
+                          const parentDevice = filterDevice
+                            ? devices.find((d) => d.id === filterDevice)
+                            : devices.length > 0
+                              ? devices[0]
+                              : null;
+                          handleCreateLocation(parentDevice);
+                        }}
+                        disabled={devices.length === 0}
+                        data-testid="add-shelf-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.shelf"
+                          defaultMessage="Add Shelf"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatShelvesData(filteredShelves)}
                       headers={shelvesHeaders}
@@ -3532,9 +4369,38 @@ const StorageDashboard = () => {
 
                   {/* Table with title */}
                   <Column lg={16} md={8} sm={4} className="table-section">
-                    <h3 className="table-title">
-                      <FormattedMessage id="storage.tab.racks" />
-                    </h3>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <h3 className="table-title" style={{ margin: 0 }}>
+                        <FormattedMessage id="storage.tab.racks" />
+                      </h3>
+                      <Button
+                        kind="primary"
+                        onClick={() => {
+                          // For racks, parent shelf is required - use first shelf from filtered shelves
+                          const parentShelf =
+                            filteredShelves.length > 0
+                              ? filteredShelves[0]
+                              : shelves.length > 0
+                                ? shelves[0]
+                                : null;
+                          handleCreateLocation(parentShelf);
+                        }}
+                        disabled={shelves.length === 0}
+                        data-testid="add-rack-button"
+                      >
+                        <FormattedMessage
+                          id="storage.add.rack"
+                          defaultMessage="Add Rack"
+                        />
+                      </Button>
+                    </div>
                     <DataTable
                       rows={formatRacksData(filteredRacks)}
                       headers={racksHeaders}
@@ -3635,31 +4501,379 @@ const StorageDashboard = () => {
                   </Column>
                 </Grid>
               </TabPanel>
+              <TabPanel>
+                <Grid fullWidth className="boxes-tab">
+                  <Column lg={16} md={8} sm={4} className="boxes-tab-header">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <div>
+                        <h3 className="table-title">
+                          <FormattedMessage
+                            id="storage.tab.boxes"
+                            defaultMessage="Boxes"
+                          />
+                        </h3>
+                        <p className="helper-text">
+                          <FormattedMessage
+                            id="storage.boxes.helper"
+                            defaultMessage="Manage boxes/plates, or select a rack and box to assign samples to coordinates."
+                          />
+                        </p>
+                      </div>
+                    </div>
+                  </Column>
+
+                  {/* Grid Assignment Section (existing functionality) */}
+                  <Column lg={16} md={8} sm={4} className="boxes-tab-header">
+                    <h4>
+                      <FormattedMessage
+                        id="storage.boxes.grid.assignment"
+                        defaultMessage="Grid Assignment"
+                      />
+                    </h4>
+                    <p className="helper-text">
+                      <FormattedMessage
+                        id="storage.boxes.helper.grid"
+                        defaultMessage="Select a rack, then a box (plate) to view its grid and assign samples to coordinates."
+                      />
+                    </p>
+                  </Column>
+
+                  <Column lg={8} md={8} sm={4} className="boxes-controls">
+                    <Dropdown
+                      id="rack-selector"
+                      data-testid="rack-selector"
+                      titleText={intl.formatMessage({
+                        id: "storage.boxes.selectRack",
+                        defaultMessage: "Select rack",
+                      })}
+                      label={intl.formatMessage({
+                        id: "storage.boxes.selectRack",
+                        defaultMessage: "Select rack",
+                      })}
+                      items={rackDropdownItems}
+                      itemToString={(item) =>
+                        item ? `${item.label} (${item.description})` : ""
+                      }
+                      selectedItem={
+                        selectedRackIdForGrid
+                          ? rackDropdownItems.find(
+                              (r) =>
+                                r.id?.toString() ===
+                                selectedRackIdForGrid?.toString(),
+                            )
+                          : null
+                      }
+                      onChange={({ selectedItem }) =>
+                        handleRackSelect(selectedItem)
+                      }
+                    />
+                  </Column>
+
+                  <Column lg={8} md={8} sm={4} className="boxes-controls">
+                    <Dropdown
+                      id="box-selector"
+                      data-testid="box-selector"
+                      titleText={intl.formatMessage({
+                        id: "storage.boxes.selectBox",
+                        defaultMessage: "Select box/plate",
+                      })}
+                      label={intl.formatMessage({
+                        id: "storage.boxes.selectBox",
+                        defaultMessage: "Select box/plate",
+                      })}
+                      items={boxDropdownItems}
+                      itemToString={(item) =>
+                        item ? `${item.label} - ${item.description}` : ""
+                      }
+                      selectedItem={
+                        selectedBoxId
+                          ? boxDropdownItems.find(
+                              (b) =>
+                                b.id?.toString() === selectedBoxId?.toString(),
+                            )
+                          : null
+                      }
+                      onChange={({ selectedItem }) =>
+                        handleBoxSelect(selectedItem)
+                      }
+                      disabled={!selectedRackIdForGrid || boxesLoading}
+                    />
+                    <BoxCrudControls
+                      selectedRackId={selectedRackIdForGrid}
+                      selectedBox={selectedBox}
+                      onCreate={handleCreateBox}
+                      onEdit={handleEditBox}
+                      onDelete={handleDeleteBox}
+                    />
+                  </Column>
+
+                  <Column lg={16} md={8} sm={4} className="boxes-status">
+                    {selectedBox && (
+                      <Tile>
+                        <p className="rack-details">
+                          <strong>{selectedBox.label}</strong>{" "}
+                          {selectedBox.type ? `(${selectedBox.type})` : ""}
+                        </p>
+                        <p className="rack-details">
+                          <FormattedMessage
+                            id="storage.boxes.grid.dimensions"
+                            defaultMessage="Grid: {rows} × {cols} = {capacity} positions"
+                            values={{
+                              rows: selectedBox.rows || 0,
+                              cols: selectedBox.columns || 0,
+                              capacity: selectedBox.capacity || 0,
+                            }}
+                          />
+                        </p>
+                      </Tile>
+                    )}
+                  </Column>
+
+                  <Column lg={10} md={8} sm={4}>
+                    {boxesError && (
+                      <InlineNotification
+                        lowContrast
+                        kind="error"
+                        title={intl.formatMessage({
+                          id: "storage.boxes.load.error",
+                          defaultMessage: "Unable to load boxes",
+                        })}
+                        subtitle={boxesError}
+                      />
+                    )}
+                    {boxesLoading && (
+                      <ProgressBar
+                        hideLabel
+                        label={intl.formatMessage({
+                          id: "storage.boxes.loading",
+                          defaultMessage: "Loading boxes…",
+                        })}
+                      />
+                    )}
+                    {renderBoxGrid()}
+                  </Column>
+
+                  <Column lg={6} md={8} sm={4}>
+                    <Tile className="assign-box-tile">
+                      <h4>
+                        <FormattedMessage
+                          id="storage.boxes.assign.title"
+                          defaultMessage="Assign sample to box"
+                        />
+                      </h4>
+                      <p className="helper-text">
+                        {selectedBox && selectedCoordinate ? (
+                          <FormattedMessage
+                            id="storage.boxes.assign.selected"
+                            defaultMessage="Selected: {boxLabel} position {coordinate}"
+                            values={{
+                              boxLabel: selectedBox.label,
+                              coordinate: selectedCoordinate,
+                            }}
+                          />
+                        ) : selectedBox ? (
+                          <FormattedMessage
+                            id="storage.boxes.assign.selectCoordinate"
+                            defaultMessage="Select a position in the grid to assign."
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="storage.boxes.assign.noSelection"
+                            defaultMessage="Select a box and position from the grid to assign."
+                          />
+                        )}
+                      </p>
+                      <TextInput
+                        id="assign-sample-id"
+                        data-testid="assign-sample-id"
+                        labelText={intl.formatMessage({
+                          id: "storage.boxes.assign.sampleLabel",
+                          defaultMessage: "Sample item ID or barcode",
+                        })}
+                        placeholder={intl.formatMessage({
+                          id: "storage.boxes.assign.samplePlaceholder",
+                          defaultMessage: "Enter Sample Item ID",
+                        })}
+                        value={assignSampleId}
+                        onChange={(e) => setAssignSampleId(e.target.value)}
+                        disabled={!selectedBox || !selectedCoordinate}
+                      />
+                      <TextArea
+                        id="assign-notes"
+                        data-testid="assign-notes"
+                        labelText={intl.formatMessage({
+                          id: "storage.boxes.assign.notesLabel",
+                          defaultMessage: "Notes (optional)",
+                        })}
+                        value={assignNotes}
+                        onChange={(e) => setAssignNotes(e.target.value)}
+                        rows={3}
+                        disabled={!selectedBox}
+                      />
+                      {assignStatus && (
+                        <InlineNotification
+                          lowContrast
+                          kind={assignStatus.kind}
+                          title={
+                            assignStatus.kind === "success"
+                              ? intl.formatMessage({
+                                  id: "storage.boxes.assign.success.title",
+                                  defaultMessage: "Assignment saved",
+                                })
+                              : intl.formatMessage({
+                                  id: "storage.boxes.assign.error.title",
+                                  defaultMessage: "Assignment failed",
+                                })
+                          }
+                          subtitle={assignStatus.message}
+                        />
+                      )}
+                      <div className="assign-actions">
+                        <Button
+                          kind="primary"
+                          disabled={
+                            !selectedBox ||
+                            !assignSampleId ||
+                            boxesLoading ||
+                            isMovingSample
+                          }
+                          onClick={handleAssignToBox}
+                        >
+                          <FormattedMessage
+                            id="storage.boxes.assign.button"
+                            defaultMessage="Assign"
+                          />
+                        </Button>
+                      </div>
+                    </Tile>
+                  </Column>
+                </Grid>
+              </TabPanel>
             </TabPanels>
           </Tabs>
         </Column>
       </Grid>
 
       {/* Location CRUD Modals */}
-      <EditLocationModal
-        open={editModalOpen}
-        location={selectedLocation}
-        locationType={selectedLocationType}
-        onClose={handleEditModalClose}
-        onSave={handleEditModalSave}
+      {createModalOpen && (
+        <StorageLocationModal
+          open={createModalOpen}
+          locationType={selectedLocationType}
+          mode="create"
+          parentRoom={
+            selectedLocationType === "device" ? selectedParentLocation : null
+          }
+          parentDevice={
+            selectedLocationType === "shelf" ? selectedParentLocation : null
+          }
+          parentShelf={
+            selectedLocationType === "rack" ? selectedParentLocation : null
+          }
+          onClose={handleCreateModalClose}
+          onSave={handleCreateModalSave}
+        />
+      )}
+      {editModalOpen && (
+        <EditLocationModal
+          open={editModalOpen}
+          location={selectedLocation}
+          locationType={selectedLocationType}
+          onClose={handleEditModalClose}
+          onSave={handleEditModalSave}
+        />
+      )}
+      {deleteModalOpen && (
+        <DeleteLocationModal
+          open={deleteModalOpen}
+          location={selectedLocation}
+          locationType={selectedLocationType}
+          onClose={handleDeleteModalClose}
+          onDelete={handleDeleteModalConfirm}
+        />
+      )}
+      {boxModalOpen && (
+        <EditBoxModal
+          open={boxModalOpen}
+          mode={boxModalMode}
+          box={selectedBoxForCrud}
+          parentRack={selectedRackForGrid}
+          onClose={handleBoxModalClose}
+          onSave={handleBoxSaved}
+        />
+      )}
+      {boxDeleteModalOpen && (
+        <DeleteBoxModal
+          open={boxDeleteModalOpen}
+          box={selectedBoxForCrud}
+          onClose={handleBoxDeleteModalClose}
+          onDeleted={handleBoxDeleted}
+        />
+      )}
+      {/* Print Label Confirmation Dialog (single instance) */}
+      <PrintLabelConfirmationDialog
+        open={printLabelDialogOpen}
+        locationName={
+          printLabelLocationData?.name || printLabelLocationData?.label || ""
+        }
+        locationCode={
+          printLabelLocationData?.code || printLabelLocationData?.label || ""
+        }
+        onConfirm={handlePrintLabelConfirm}
+        onCancel={handlePrintLabelCancel}
       />
-      <DeleteLocationModal
-        open={deleteModalOpen}
-        location={selectedLocation}
-        locationType={selectedLocationType}
-        onClose={handleDeleteModalClose}
-        onDelete={handleDeleteModalConfirm}
+
+      {/* Legacy Print Label Button (auto-triggers dialog when printLabelLocation is set) */}
+      {/* TODO: Remove this after migrating all usage to handlePrintLabel callback */}
+      {printLabelLocation && (
+        <PrintLabelButton
+          locationType={printLabelLocation.type}
+          locationId={String(printLabelLocation.id)}
+          locationName={printLabelLocation.name || printLabelLocation.label}
+          locationCode={printLabelLocation.code || printLabelLocation.label}
+          onPrintSuccess={handlePrintLabelSuccess}
+          onPrintError={handlePrintLabelError}
+          autoTrigger={true}
+        />
+      )}
+
+      {/* Sample Modals (single instances) - always render, control via open prop */}
+      <LocationManagementModal
+        open={locationModalOpen && !!selectedSample}
+        sample={selectedSample}
+        currentLocation={(() => {
+          const currentLoc = selectedSample?.location
+            ? {
+                path: selectedSample.location,
+                position: selectedSample.positionCoordinate
+                  ? { coordinate: selectedSample.positionCoordinate }
+                  : null,
+                notes: selectedSample.notes || "",
+              }
+            : null;
+          return currentLoc;
+        })()}
+        onClose={handleLocationModalClose}
+        onConfirm={handleLocationModalConfirm}
+        onAssignmentSuccess={refreshMetrics}
       />
-      <LabelManagementModal
-        open={labelManagementModalOpen}
-        location={selectedLocation}
-        onClose={handleLabelManagementModalClose}
-        onShortCodeUpdate={handleLabelManagementShortCodeUpdate}
+      <DisposeSampleModal
+        open={disposeModalOpen && !!selectedSampleForDispose}
+        sample={selectedSampleForDispose}
+        currentLocation={
+          selectedSampleForDispose?.location
+            ? { path: selectedSampleForDispose.location, position: null }
+            : null
+        }
+        onClose={handleDisposeModalClose}
+        onConfirm={handleDisposeModalConfirm}
+        onDisposalSuccess={refreshMetrics}
       />
     </div>
   );

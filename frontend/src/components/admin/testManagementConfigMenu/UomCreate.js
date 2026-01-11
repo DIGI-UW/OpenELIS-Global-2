@@ -26,15 +26,15 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.uom.manage",
-    link: "/MasterListsPage#UomManagement",
+    link: "/MasterListsPage/UomManagement",
   },
   {
     label: "configuration.uom.create",
-    link: "/MasterListsPage#UomCreate",
+    link: "/MasterListsPage/UomCreate",
   },
 ];
 
@@ -209,7 +209,9 @@ function UomCreate() {
                 <FormattedMessage id="next.action.button" />
               </Button>{" "}
               <Button
-                onClick={() => window.location.replace("/admin#UomManagement")}
+                onClick={() =>
+                  window.location.replace("/MasterListsPage/UomManagement")
+                }
                 kind="tertiary"
                 type="button"
               >

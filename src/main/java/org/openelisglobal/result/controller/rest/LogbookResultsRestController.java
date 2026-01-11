@@ -49,8 +49,6 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -210,7 +208,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             @RequestParam(required = false) String selectedSampleStatus,
             @RequestParam(required = false) String selectedAnalysisStatus,
             @RequestParam(required = false) String upperRangeAccessionNumber,
-            @RequestParam(required = false) boolean doRange, @RequestParam boolean finished,
+            @RequestParam(required = false) boolean doRange,
+            @RequestParam(required = false, defaultValue = "false") boolean finished,
             @Validated(LogbookResults.class) @ModelAttribute("form") LogbookResultsForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
@@ -253,7 +252,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         List<TestResultItem> filteredTests = new ArrayList<>();
 
         ResultsPaging paging = new ResultsPaging();
-        List<InventoryKitItem> inventoryList = new ArrayList<>();
+        // TODO: Re-enable after new inventory frontend integration
+        // List<InventoryKitItem> inventoryList = new ArrayList<>();
         ResultsLoadUtility resultsLoadUtility = SpringContext.getBean(ResultsLoadUtility.class);
         resultsLoadUtility.setSysUser(getSysUserId(request));
 
@@ -285,8 +285,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                             .isPropertyValueEqual(Property.configurationName, "Haiti Clinical");
                     if (resultsLoadUtility.inventoryNeeded()
                             || (isHaitiClinical && ("VCT").equals(ts.getTestSectionName()))) {
-                        InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
-                        inventoryList = inventoryUtility.getExistingActiveInventory();
+                        // TODO: Re-enable after new inventory frontend integration
+                        // InventoryUtility inventoryUtility =
+                        // SpringContext.getBean(InventoryUtility.class);
+                        // inventoryList = inventoryUtility.getExistingActiveInventory();
 
                         form.setDisplayTestKit(true);
                     }
@@ -315,16 +317,28 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                             upperRangeAccessionNumber, doRange, finished);
                 } else {
                     resultsLoadUtility.setLockCurrentResults(modifyResultsRoleBased() && userNotInRole(request));
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                            "Searching for sample with labNumber: " + labNumber);
                     Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
                     if (sample != null) {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults", "Found sample: id="
+                                + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
                         if (!GenericValidator.isBlankOrNull(sample.getId())) {
                             patient = getPatient(sample);
 
                             tests = resultsLoadUtility.getGroupedTestsForSample(sample, patient);
-                            patientName = patientService.getLastFirstName(patient);
-                            patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
-                                    + patient.getBirthDateForDisplay();
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                                    "getGroupedTestsForSample returned " + tests.size() + " tests for sample "
+                                            + sample.getId());
+                            if (patient != null) {
+                                patientName = patientService.getLastFirstName(patient);
+                                patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
+                                        + patient.getBirthDateForDisplay();
+                            }
                         }
+                    } else {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "getLogbookResults",
+                                "No sample found for labNumber: " + labNumber);
                     }
                 }
 
@@ -349,6 +363,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                        "After filterResultsByLabUnitRoles: tests.size()=" + tests.size() + ", filteredTests.size()="
+                                + filteredTests.size());
 
                 int count = resultsLoadUtility.getTotalCountAnalysisByAccessionAndStatus(form.getAccessionNumber());
 
@@ -375,29 +392,38 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
 
             paging.setDatabaseResults(request, form, filteredTests);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
+                    "After setDatabaseResults: form.getTestResult() size="
+                            + (form.getTestResult() != null ? form.getTestResult().size() : 0));
 
         } else {
             int requestedPageNumber = Integer.parseInt(requestedPage);
             paging.page(request, form, requestedPageNumber);
         }
         form.setDisplayTestKit(false);
-        List<String> hivKits = new ArrayList<>();
-        List<String> syphilisKits = new ArrayList<>();
+        // TODO: Re-enable after new inventory frontend integration
+        // List<String> hivKits = new ArrayList<>();
+        // List<String> syphilisKits = new ArrayList<>();
+        // for (InventoryKitItem item : inventoryList) {
+        // if (item.getType().equals("HIV")) {
+        // hivKits.add(item.getInventoryLocationId());
+        // } else {
+        // syphilisKits.add(item.getInventoryLocationId());
+        // }
+        // }
+        // form.setHivKits(hivKits);
+        // form.setSyphilisKits(syphilisKits);
 
-        for (InventoryKitItem item : inventoryList) {
-            if (item.getType().equals("HIV")) {
-                hivKits.add(item.getInventoryLocationId());
-            } else {
-                syphilisKits.add(item.getInventoryLocationId());
-            }
-        }
-        form.setHivKits(hivKits);
-        form.setSyphilisKits(syphilisKits);
-        form.setInventoryItems(inventoryList);
+        // Temporary fix: Set empty lists
+        form.setHivKits(new ArrayList<String>());
+        form.setSyphilisKits(new ArrayList<String>());
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(inventoryList);
 
         addFlashMsgsToRequest(request);
 
         for (TestResultItem resultItem : filteredTests) {
+            AddPatientIdToResult(patient, resultItem);
             if (patientName != "")
                 resultItem.setPatientName(patientName);
             if (patientInfo != "")
@@ -405,6 +431,21 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         return (form);
+    }
+
+    private void AddPatientIdToResult(Patient patient, TestResultItem resultItem) {
+        if (patient != null) {
+            resultItem.setPatientId(patient.getId());
+        } else if (resultItem.getAccessionNumber() != null) {
+            // Si le patient n'est pas défini globalement, le récupérer via l'échantillon
+            Sample sample = sampleService.getSampleByAccessionNumber(resultItem.getAccessionNumber());
+            if (sample != null) {
+                Patient itemPatient = sampleHumanService.getPatientForSample(sample);
+                if (itemPatient != null) {
+                    resultItem.setPatientId(itemPatient.getId());
+                }
+            }
+        }
     }
 
     private String getCurrentDate() {

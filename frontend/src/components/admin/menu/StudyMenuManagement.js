@@ -27,7 +27,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.menu.study",
-    link: "/MasterListsPage#studyMenuManagement",
+    link: "/MasterListsPage/studyMenuManagement",
   },
 ];
 

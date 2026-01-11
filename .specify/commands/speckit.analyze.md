@@ -139,6 +139,30 @@ in overflow summary.
 - Conflicting requirements (e.g., one requires Next.js while other specifies
   Vue)
 
+#### G. PR Scope Validation (Constitution Principle IX)
+
+**CRITICAL CHECK**: Validate that work is properly scoped for manageable PRs.
+
+- **Milestone Plan Present**: Verify plan.md contains Milestone Plan table
+  (REQUIRED for features >3 days)
+- **User Story to Milestone Mapping**: Each milestone must reference which user
+  stories (P1, P2, etc.) it covers
+- **Milestone Size**: Flag milestones with >30 tasks (likely too large for
+  single PR)
+- **Cross-Milestone Dependencies**: Flag tasks that depend on multiple
+  milestones (integration complexity)
+- **Branch Scope**: If on a milestone branch (feat/.../m{N}-\*), verify all
+  tasks are scoped to that milestone
+- **Parallel Milestone Conflicts**: Flag parallel milestones [P] that modify
+  same files (merge conflict risk)
+
+**Scope Metrics to Report**:
+
+- Tasks per milestone (flag if >30)
+- Files touched per milestone (flag if >20)
+- Estimated PR size (LOC if detectable from task descriptions)
+- User stories covered per milestone (should be 1-3 typically)
+
 ### 5. Severity Assignment
 
 Use this heuristic to prioritize findings:
@@ -181,6 +205,18 @@ Output a Markdown report (no file writes) with the following structure:
 - Ambiguity Count
 - Duplication Count
 - Critical Issues Count
+
+**PR Scope Summary (Principle IX):**
+
+| Milestone | Tasks | Files | User Stories | Status      |
+| --------- | ----- | ----- | ------------ | ----------- |
+| M1        | 15    | 8     | P1, P2       | ✓ OK        |
+| M2 [P]    | 12    | 6     | P1, P2       | ✓ OK        |
+| M3        | 35    | 22    | All          | ⚠ TOO LARGE |
+
+- Milestones >30 tasks: [list or "None"]
+- Parallel milestones with file conflicts: [list or "None"]
+- Missing Milestone Plan: [Yes/No - CRITICAL if Yes for large features]
 
 ### 7. Provide Next Actions
 

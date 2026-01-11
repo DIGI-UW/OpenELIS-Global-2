@@ -18,6 +18,8 @@ public class ImmunohistochemistryDisplayItem {
 
     private Integer immunohistochemistrySampleId;
 
+    private String patientPK;
+
     public Date getRequestDate() {
         return requestDate;
     }
@@ -80,5 +82,13 @@ public class ImmunohistochemistryDisplayItem {
 
     public void setImmunohistochemistrySampleId(Integer immunohistochemistrySampleId) {
         this.immunohistochemistrySampleId = immunohistochemistrySampleId;
+    }
+
+    public String getPatientPK() {
+        return patientPK;
+    }
+
+    public void setPatientPK(String patientPK) {
+        this.patientPK = patientPK;
     }
 }

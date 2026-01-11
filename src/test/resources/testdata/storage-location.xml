@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <status_of_sample id="1" description="Test Status"
+        code="1" status_type="S" />
+
+    <localization id="1" english="Test Sample Type"
+        french="Type d'échantillon de test" />
+
+    <type_of_sample id="1" description="Test Sample Type"
+        domain="H" name_localization_id="1" />
+
+    <storage_room id="5000"
+        fhir_uuid="00000000-0000-0000-0000-000000001000" code="TEST-R01"
+        name="Test Room 1" description="First test room" active="true"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_room id="5001"
+        fhir_uuid="00000000-0000-0000-0000-000000001001" code="TEST-R02"
+        name="Test Room 2" description="Second test room" active="true"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_room id="5002"
+        fhir_uuid="00000000-0000-0000-0000-000000001002" code="TEST-R03"
+        name="Test Room 3" description="Inactive test room" active="false"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_device id="5000"
+        fhir_uuid="00000000-0000-0000-0000-000000002000" name="Test Freezer 1"
+        code="TEST-F01" type="freezer" temperature_setting="-80.0"
+        capacity_limit="100" parent_room_id="5000" active="true"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_device id="5001"
+        fhir_uuid="00000000-0000-0000-0000-000000002001"
+        name="Test Refrigerator 1" code="TEST-R01" type="refrigerator"
+        temperature_setting="4.0" capacity_limit="50" parent_room_id="5000"
+        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_device id="5002"
+        fhir_uuid="00000000-0000-0000-0000-000000002002" name="Test Cabinet 1"
+        code="TEST-C01" type="cabinet" parent_room_id="5001" active="true"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_device id="5003"
+        fhir_uuid="00000000-0000-0000-0000-000000002003"
+        name="Test Device Inactive" code="TEST-D01" type="freezer"
+        parent_room_id="5001" active="false" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <storage_shelf id="5000"
+        fhir_uuid="00000000-0000-0000-0000-000000003000" label="Shelf A"
+        code="TEST-SA" capacity_limit="50" parent_device_id="5000"
+        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_shelf id="5001"
+        fhir_uuid="00000000-0000-0000-0000-000000003001" label="Shelf B"
+        code="TEST-SB" capacity_limit="60" parent_device_id="5000"
+        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_shelf id="5002"
+        fhir_uuid="00000000-0000-0000-0000-000000003002" label="Shelf C"
+        code="TEST-SC" capacity_limit="40" parent_device_id="5001"
+        active="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_shelf id="5003"
+        fhir_uuid="00000000-0000-0000-0000-000000003003"
+        label="Shelf Inactive" code="TEST-SI" parent_device_id="5001"
+        active="false" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <storage_rack id="5000"
+        fhir_uuid="00000000-0000-0000-0000-000000004000" label="Rack R1"
+        code="TEST-RR1" parent_shelf_id="5000" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <storage_rack id="5001"
+        fhir_uuid="00000000-0000-0000-0000-000000004001" label="Rack R2"
+        code="TEST-RR2" parent_shelf_id="5000" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <storage_rack id="5002"
+        fhir_uuid="00000000-0000-0000-0000-000000004002" label="Rack R3"
+        code="TEST-RR3" parent_shelf_id="5001" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <storage_rack id="5003"
+        fhir_uuid="00000000-0000-0000-0000-000000004003" label="Rack Flexible"
+        code="TEST-RF" parent_shelf_id="5002" active="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+
+
+
+
+
+
+    <sample id="50000" accession_number="TEST-SAMPLE-001"
+        fhir_uuid="00000000-0000-0000-0000-000000010000" domain="H"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
+        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+
+    <sample id="50001" accession_number="TEST-SAMPLE-002"
+        fhir_uuid="00000000-0000-0000-0000-000000010001" domain="H"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
+        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+
+    <sample id="50002" accession_number="TEST-SAMPLE-003"
+        fhir_uuid="00000000-0000-0000-0000-000000010002" domain="H"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
+        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+
+    <sample_item id="60000" samp_id="50000" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <sample_item id="60001" samp_id="50001" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <sample_item id="60002" samp_id="50002" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <sample_storage_assignment id="5000"
+        sample_item_id="60000" location_id="5000" location_type="rack"
+        position_coordinate="A1" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 1" />
+
+    <sample_storage_assignment id="5001"
+        sample_item_id="60001" location_id="5000" location_type="rack"
+        position_coordinate="A2" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 2" />
+
+    <sample_storage_assignment id="5002"
+        sample_item_id="60002" location_id="5001" location_type="rack"
+        position_coordinate="1-1" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 3" />
+
+    <!-- Additional sample with different status for filtering -->
+    <sample id="50003" accession_number="TEST-SAMPLE-004"
+        fhir_uuid="00000000-0000-0000-0000-000000010003" domain="H"
+        status_id="1" entered_date="2024-01-01 00:00:00" sys_user_id="1"
+        received_date="2024-01-01 00:00:00" is_confirmation="false" />
+
+    <sample_item id="60003" samp_id="50003" sort_order="1"
+        status_id="1" typeosamp_id="1" />
+
+    <!-- Sample in Room 2 for location filtering -->
+    <sample_storage_assignment id="5003"
+        sample_item_id="60003" location_id="5003" location_type="rack"
+        position_coordinate="2-1" assigned_date="2024-01-01 00:00:00"
+        assigned_by_user_id="1" notes="Test assignment 4" />
+
+    <!-- Status of sample entries for filtering (if not already exists) -->
+    <status_of_sample id="2" description="Disposed"
+        code="2" status_type="S" />
+
+    <status_of_sample id="3" description="Active" code="3"
+        status_type="S" />
+
+</dataset>

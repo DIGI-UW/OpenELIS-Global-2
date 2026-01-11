@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
@@ -21,8 +22,10 @@ import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -58,11 +61,9 @@ public class NoteBook extends BaseObject<Integer> {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "type")
-    private String type;
-
-    @Column(name = "project")
-    private String project;
+    @ManyToOne
+    @JoinColumn(name = "type", referencedColumnName = "id")
+    private Dictionary type;
 
     @Column(name = "objective")
     private String objective;
@@ -86,8 +87,13 @@ public class NoteBook extends BaseObject<Integer> {
     @JoinColumn(name = "technician_id", referencedColumnName = "id")
     private SystemUser technician;
 
+    @Valid
+    @OneToOne
+    @JoinColumn(name = "creator_id", referencedColumnName = "id")
+    private SystemUser creator;
+
     @OneToMany
-    @JoinTable(name = "notebook_samples", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "sample_item_id"))
+    @JoinTable(name = "notebook_samples_list", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "sample_item_id"))
     private List<SampleItem> samples;
 
     @OneToMany
@@ -111,6 +117,8 @@ public class NoteBook extends BaseObject<Integer> {
     @OneToMany
     @JoinTable(name = "notebook_entries", joinColumns = @JoinColumn(name = "notebook_id"), inverseJoinColumns = @JoinColumn(name = "entry_id"))
     private List<NoteBook> entries;
+    @Column(name = "questionnaire_fhir_uuid")
+    private UUID questionnaireFhirUuid;
 
     @Override
     public Integer getId() {
@@ -130,20 +138,12 @@ public class NoteBook extends BaseObject<Integer> {
         this.title = title;
     }
 
-    public String getType() {
+    public Dictionary getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(Dictionary type) {
         this.type = type;
-    }
-
-    public String getProject() {
-        return project;
-    }
-
-    public void setProject(String project) {
-        this.project = project;
     }
 
     public String getObjective() {
@@ -279,4 +279,19 @@ public class NoteBook extends BaseObject<Integer> {
         this.isTemplate = isTemplate;
     }
 
+    public UUID getQuestionnaireFhirUuid() {
+        return questionnaireFhirUuid;
+    }
+
+    public void setQuestionnaireFhirUuid(UUID questionnaireFhirUuid) {
+        this.questionnaireFhirUuid = questionnaireFhirUuid;
+    }
+
+    public SystemUser getCreator() {
+        return creator;
+    }
+
+    public void setCreator(SystemUser creator) {
+        this.creator = creator;
+    }
 }

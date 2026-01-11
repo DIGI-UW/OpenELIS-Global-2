@@ -78,6 +78,16 @@
             type="java.util.UUID" />
         <property name="upidCode" column="upid_code"
             type="java.lang.String" />
+        <property name="mergedIntoPatientId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="merged_into_patient_id" precision="10" scale="0" />
+        </property>
+        <property name="isMerged" type="java.lang.Boolean">
+            <column name="is_merged" not-null="true" default="false" />
+        </property>
+        <property name="mergeDate" type="java.sql.Timestamp">
+            <column name="merge_date" length="7" />
+        </property>
 
     </class>
 </hibernate-mapping>

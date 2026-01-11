@@ -33,12 +33,14 @@ public interface StorageShelfDAO extends BaseDAO<StorageShelf, Integer> {
      */
     int countByDeviceId(Integer deviceId);
 
+    StorageShelf findByLabelAndParentDeviceId(String label, Integer parentDeviceId);
+
     /**
-     * Find shelf by short code (for label management) TODO: Add shortCode field to
-     * StorageShelf entity in Phase 5.4
+     * Find shelf by code (for code uniqueness validation)
      *
-     * @param shortCode Short code
+     * @param code Shelf code
      * @return StorageShelf or null if not found
      */
-    StorageShelf findByShortCode(String shortCode);
+    StorageShelf findByCode(String code);
+
 }

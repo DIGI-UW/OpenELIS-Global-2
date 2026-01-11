@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>0</fix.version>
+        <fix.version>2</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -28,7 +28,7 @@
         <log4j.version>2.17.1</log4j.version>
         <springframework.version>6.2.2</springframework.version>
         <springsecurity.version>6.0.4</springsecurity.version>
-        <testContainersVersion>1.15.3</testContainersVersion>
+        <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
     <dependencies>
         <dependency>
@@ -302,6 +302,21 @@
             <groupId>jakarta.xml.ws</groupId>
             <artifactId>jakarta.xml.ws-api</artifactId>
             <version>4.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.digitalpetri.modbus</groupId>
+            <artifactId>modbus-tcp</artifactId>
+            <version>2.1.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.digitalpetri.modbus</groupId>
+            <artifactId>modbus-serial</artifactId>
+            <version>2.1.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fazecast</groupId>
+            <artifactId>jSerialComm</artifactId>
+            <version>2.11.0</version>
         </dependency>
         <dependency>
             <groupId>jakarta.validation</groupId>
@@ -614,7 +629,7 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
-            <scope>runtime</scope>
+            <scope>scope</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
@@ -782,6 +797,9 @@
                 <version>2.43.0</version>
                 <configuration>
                     <pom>
+                        <includes>
+                            <include>pom.xml</include>
+                        </includes>
                         <sortPom>
                             <expandEmptyElements>false</expandEmptyElements>
                         </sortPom>
@@ -803,6 +821,7 @@
                             </includes>
                             <excludes>
                                 <exclude>.idea/**</exclude>
+                                <exclude>.cursor/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -835,12 +854,15 @@
                             <!-- ignore build files -->
                             <excludes>
                                 <exclude>.idea/**</exclude>
+                                <exclude>.cursor/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
                                 <exclude>bin/**</exclude>
                                 <exclude>tmp/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
+                                <exclude>tools/astm-http-bridge/**</exclude>
+                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -856,7 +878,10 @@
                             </includes>
                             <excludes>
                                 <exclude>**/target/**</exclude>
+                                <exclude>.cursor/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
+                                <exclude>tools/astm-http-bridge/**</exclude>
+                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>
@@ -889,7 +914,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
                 <configuration>
-                    <skipTests>true</skipTests>
+                    <skipTests>${skipTests}</skipTests>
                 </configuration>
             </plugin>
             <plugin>
@@ -900,6 +925,11 @@
                     <excludes>
                         <exclude>**/*.jar</exclude>
                         <exclude>naughty-dependency/**/*.class</exclude>
+                        <!-- Exclude only configuration classes that run at startup (not tested) -->
+                        <exclude>**/config/**/*Config.class</exclude>
+                        <exclude>**/liquibase/**</exclude>
+                        <!-- Exclude generated code if any -->
+                        <exclude>**/generated/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -911,7 +941,7 @@
                     </execution>
                     <execution>
                         <id>report</id>
-                        <phase>verify</phase>
+                        <phase>package</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
@@ -925,37 +955,6 @@
                         </rules> </configuration> </execution> -->
 
                 </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.5.3</version>
-                <executions>
-                    <execution>
-                        <id>integration-tests</id>
-                        <phase>integration-test</phase>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify-tests</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <includes>
-                        <include>**/*Test.java</include>
-                    </includes>
-                    <!--Tempoaralily skip storage tests -->
-                    <excludes>
-                        <exclude>**/storage/**/*.java</exclude>
-                    </excludes>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

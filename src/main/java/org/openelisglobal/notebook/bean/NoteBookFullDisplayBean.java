@@ -11,14 +11,14 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
     private String protocol;
     private String objective;
     private List<IdValuePair> analyzers;
-    private String project;
     private String content;
     private List<NoteBookPage> pages;
     private List<NoteBookFile> files;
     private List<NoteBookComment> comments;
     private List<SampleDisplayBean> samples;
-    private Integer technicianId;
     private String technicianName;
+    private String creatorName;
+    private Integer templateId; // Parent template ID (for instances only)
 
     public String getProtocol() {
         return protocol;
@@ -34,14 +34,6 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
 
     public void setObjective(String objective) {
         this.objective = objective;
-    }
-
-    public String getProject() {
-        return project;
-    }
-
-    public void setProject(String project) {
-        this.project = project;
     }
 
     public String getContent() {
@@ -66,14 +58,6 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
 
     public void setFiles(List<NoteBookFile> files) {
         this.files = files;
-    }
-
-    public Integer getTechnicianId() {
-        return technicianId;
-    }
-
-    public void setTechnicianId(Integer technicianId) {
-        this.technicianId = technicianId;
     }
 
     public List<SampleDisplayBean> getSamples() {
@@ -106,5 +90,21 @@ public class NoteBookFullDisplayBean extends NoteBookDisplayBean {
 
     public void setComments(List<NoteBookComment> comments) {
         this.comments = comments;
+    }
+
+    public Integer getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(Integer templateId) {
+        this.templateId = templateId;
+    }
+
+    public String getCreatorName() {
+        return creatorName;
+    }
+
+    public void setCreatorName(String creatorName) {
+        this.creatorName = creatorName;
     }
 }

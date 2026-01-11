@@ -134,6 +134,11 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean reportable;
     private String patientName;
 
+    private String patientId;
+
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
+    private String sampleItemId;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { WorkplanForm.PrintWorkplan.class })
     private String patientInfo;
 
@@ -150,6 +155,8 @@ public class TestResultItem implements ResultItem, Serializable {
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
+
+    private String sampleItemExternalId;
 
     private String analysisStatusId;
 
@@ -621,6 +628,14 @@ public class TestResultItem implements ResultItem, Serializable {
         this.analysisId = analysisId;
     }
 
+    public String getSampleItemExternalId() {
+        return sampleItemExternalId;
+    }
+
+    public void setSampleItemExternalId(String sampleItemExternalId) {
+        this.sampleItemExternalId = sampleItemExternalId;
+    }
+
     public void setAnalysisStatusId(String analysisStatusId) {
         this.analysisStatusId = analysisStatusId;
     }
@@ -978,6 +993,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setReferralItem(ReferralItem referralItem) {
         this.referralItem = referralItem;
+    }
+
+    public String getPatientId() {
+        return patientId;
+    }
+
+    public void setPatientId(String patientId) {
+        this.patientId = patientId;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
     }
 
     public ResultFileForm getResultFile() {

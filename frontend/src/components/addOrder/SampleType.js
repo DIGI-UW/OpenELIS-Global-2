@@ -115,10 +115,13 @@ const SampleType = (props) => {
     });
   }
 
-  function handleStorageLocationChange(location, sampleIndex) {
+  function handleStorageLocationChange(location, positionCoordinate) {
     setSampleXml({
       ...sampleXml,
-      storageLocation: location,
+      storageLocation: {
+        ...location,
+        positionCoordinate: positionCoordinate || "",
+      },
       storagePositionId: location?.position?.id || null,
     });
   }
@@ -140,10 +143,6 @@ const SampleType = (props) => {
   useEffect(() => {
     updateSampleXml(sampleXml, index);
   }, [sampleXml]);
-
-  const handleRemoveSampleTest = (index) => {
-    removeSample(index);
-  };
 
   const handleReferralRequest = () => {
     setRequestTestReferral(!requestTestReferral);
@@ -246,20 +245,6 @@ const SampleType = (props) => {
       index++;
     }
   };
-
-  function addReferralRequest(test) {
-    setReferralRequests([
-      ...referralRequests,
-      {
-        reasonForReferral: referralReasons[0].id,
-        referrer:
-          userSessionDetails.firstName + " " + userSessionDetails.lastName,
-        institute: referralOrganizations[0].id,
-        sentDate: "",
-        testId: test.id,
-      },
-    ]);
-  }
 
   function removeReferralRequest(test) {
     let index = 0;
@@ -596,12 +581,14 @@ const SampleType = (props) => {
               type: selectedSampleType?.name || sampleXml?.sampleTypeName || "",
               status: sampleXml?.rejected ? "Rejected" : "Active",
             }}
+            initialLocation={sampleXml?.storageLocation || null}
             onLocationChange={(locationData) => {
               // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-              // Extract newLocation from locationData for backward compatibility
+              // Extract newLocation and positionCoordinate from locationData
               // Store location preference - will be assigned to SampleItem after SampleItems are created
               const location = locationData?.newLocation || locationData;
-              handleStorageLocationChange(location, index);
+              const positionCoordinate = locationData?.positionCoordinate || "";
+              handleStorageLocationChange(location, positionCoordinate);
             }}
           />
         </div>
@@ -679,7 +666,7 @@ const SampleType = (props) => {
                         <Tile className={"emptyFilterTests"}>
                           <span>
                             <FormattedMessage id="sample.panel.search.error.msg" />{" "}
-                            <strong>"{panelSearchTerm}"</strong>{" "}
+                            <strong>&quot;{panelSearchTerm}&quot;</strong>{" "}
                           </span>
                         </Tile>
                       </Layer>
@@ -779,7 +766,7 @@ const SampleType = (props) => {
                       <Tile className={"emptyFilterTests"}>
                         <span>
                           <FormattedMessage id="title.notestfoundmatching" />
-                          <strong> "{testSearchTerm}"</strong>{" "}
+                          <strong> &quot;{testSearchTerm}&quot;</strong>{" "}
                         </span>
                       </Tile>
                     </Layer>
