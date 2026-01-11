@@ -17,9 +17,11 @@
 package org.openelisglobal.common.services;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -84,6 +86,8 @@ public class ResultSaveService {
                 JSONParser parser = new JSONParser();
                 try {
                     JSONObject jsonResult = (JSONObject) parser.parse(serviceBean.getMultiSelectResultValues());
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "createResultsFromTestResultItem",
+                            "Parsing multi-select result values: " + jsonResult.toJSONString());
 
                     List<Result> existingResults = resultService.getResultsByAnalysis(analysis);
                     for (Object key : jsonResult.keySet()) {
@@ -169,73 +173,77 @@ public class ResultSaveService {
         int groupingKey = Integer.parseInt(key);
         String[] multiResults = value.split(",");
 
-        /*
-         * We will go through all of selections made by the user and compare them to the
-         * selections already in the DB. If a match is found then it will be removed
-         * from the DB list and we will go on to the next selection made by the user. If
-         * a match is not found then a new result will be created.
-         */
-        for (String resultAsString : multiResults) {
-            Result existingResultFromDB = null;
-            for (Result existingResult : existingResults) {
-                if (resultAsString.equals(existingResult.getValue()) && existingResult.getGrouping() == groupingKey) {
-                    existingResultFromDB = existingResult;
-                    break;
-                }
-            }
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForMultiSelect",
+                "Processing multi-select results for grouping key: {} with values: {}" + groupingKey + ", " + value);
+
+        Arrays.stream(multiResults).forEach(resultAsString -> {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForMultiSelect",
+                    "Processing multi-select result value: {} " + resultAsString);
+
+            // Find existing result using stream
+            Result existingResultFromDB = existingResults.stream()
+                    .filter(existingResult -> resultAsString.equals(existingResult.getValue())
+                            && existingResult.getGrouping() == groupingKey)
+                    .findFirst().orElse(null);
 
             if (existingResultFromDB != null) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForMultiSelect",
+                        "Found existing result in DB with ID: {} " + existingResultFromDB.getId());
+
+                existingResultFromDB.setSysUserId(currentUserId);
+                results.add(existingResultFromDB);
                 existingResults.remove(existingResultFromDB);
-                continue;
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForMultiSelect",
+                        "Added existing result to results list: {} " + existingResultFromDB.getId());
+            } else {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForMultiSelect",
+                        "Creating NEW result for value: {} " + resultAsString);
+
+                Result result = new Result();
+                setTestResultsForDictionaryResult(serviceBean.getTestId(), resultAsString, result);
+                setNewResultValues(serviceBean, result);
+                setAnalyteForResult(result);
+                setStandardResultValues(resultAsString, result);
+                result.setSortOrder(getResultSortOrder(result.getValue()));
+                result.setGrouping(groupingKey);
+
+                results.add(result);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "getResultsForMultiSelect",
+                        "Created new result with value: {}" + resultAsString);
             }
-
-            Result result = new Result();
-
-            setTestResultsForDictionaryResult(serviceBean.getTestId(), resultAsString, result);
-            setNewResultValues(serviceBean, result);
-            setAnalyteForResult(result);
-            setStandardResultValues(resultAsString, result);
-            result.setSortOrder(getResultSortOrder(result.getValue()));
-            result.setGrouping(groupingKey);
-
-            results.add(result);
-        }
+        });
 
         /*
-         * A quantifiable result may or may not be in the DB
+         * Handle quantifiable results
          */
         if (isQualifiedResult) {
-            // cases that it is in DB
             if (!existingResults.isEmpty() && serviceBean.getQualifiedResultId() != null) {
-                List<Result> removableResults = new ArrayList<>();
-                for (Result existingResult : existingResults) {
-                    if (serviceBean.getQualifiedResultId().equals(existingResult.getId())) {
-                        removableResults.add(existingResult);
-                        setStandardResultValues(serviceBean.getQualifiedResultValue(), existingResult);
-                        results.add(existingResult);
-                    }
-                }
+                List<Result> removableResults = existingResults.stream()
+                        .filter(existingResult -> serviceBean.getQualifiedResultId().equals(existingResult.getId()))
+                        .collect(Collectors.toList());
+
+                removableResults.forEach(existingResult -> {
+                    setStandardResultValues(serviceBean.getQualifiedResultValue(), existingResult);
+                    results.add(existingResult);
+                });
+
                 existingResults.removeAll(removableResults);
-                // case this is a new quantified result
             } else {
                 String[] quantifiableResults = serviceBean.getQualifiedDictionaryId()
                         .substring(1, serviceBean.getQualifiedDictionaryId().length() - 1).split(",");
-                for (String quantifiableResultId : quantifiableResults) {
-                    for (Result selectedResult : results) {
-                        if (selectedResult.getValue().equals(quantifiableResultId)) {
-                            Result quantifiedResult = getQuantifiedResult(serviceBean, selectedResult);
-                            setStandardResultValues(serviceBean.getQualifiedResultValue(), quantifiedResult);
-                            results.add(quantifiedResult);
-                            break;
-                        }
-                    }
-                }
+
+                Arrays.stream(quantifiableResults).forEach(quantifiableResultId -> {
+                    results.stream().filter(selectedResult -> selectedResult.getValue().equals(quantifiableResultId))
+                            .findFirst().ifPresent(selectedResult -> {
+                                Result quantifiedResult = getQuantifiedResult(serviceBean, selectedResult);
+                                setStandardResultValues(serviceBean.getQualifiedResultValue(), quantifiedResult);
+                                results.add(quantifiedResult);
+                            });
+                });
             }
         }
 
-        for (Result result : existingResults) {
-            result.setSysUserId(currentUserId);
-        }
+        existingResults.forEach(result -> result.setSysUserId(currentUserId));
     }
 
     private TestResult setTestResultsForDictionaryResult(String testId, String dictValue, Result result) {

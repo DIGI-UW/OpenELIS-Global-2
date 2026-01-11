@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
@@ -355,6 +357,35 @@ public class LogbookResultsController extends LogbookResultsBaseController {
                 .isPropertyValueEqual(Property.ALWAYS_VALIDATE_RESULTS, "true");
         boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
         String statusRuleSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.StatusRules);
+
+        if (form.getTestResult() != null) {
+            for (TestResultItem item : form.getTestResult()) {
+                if ("M".equals(item.getResultType()) || "C".equals(item.getResultType())) {
+
+                    String raw = item.getMultiSelectResultValues();
+
+                    if (raw != null && !raw.isEmpty()) {
+
+                        String decoded = org.apache.commons.text.StringEscapeUtils.unescapeHtml4(raw);
+
+                        // 2. Extract first valid JSON object {"n":"value"}
+                        String json = extractMultiSelectJson(decoded);
+
+                        if (json != null) {
+                            item.setMultiSelectResultValues(json);
+                        } else {
+                            // fallback safety
+                            item.setMultiSelectResultValues("{}");
+                        }
+
+                    }
+
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "showLogbookResultsUpdate",
+                            "Analysis Id " + item.getAnalysisId() + " Multi-select JSON extracted: "
+                                    + item.getMultiSelectResultValues());
+                }
+            }
+        }
 
         // load testSections for drop down
         String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
@@ -803,6 +834,19 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             sig.setSysUserId(getSysUserId(request));
         }
         return sig;
+    }
+
+    private String extractMultiSelectJson(String input) {
+
+        // Matches {"0":"860,1171"} or {"12":"1,2,3"}
+        Pattern pattern = Pattern.compile("\\{\\s*\"\\d+\"\\s*:\\s*\"[^\"]+\"\\s*\\}");
+        Matcher matcher = pattern.matcher(input);
+
+        if (matcher.find()) {
+            return matcher.group();
+        }
+
+        return null;
     }
 
     private String findLogBookForward(String forward) {
