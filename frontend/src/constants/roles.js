@@ -34,6 +34,15 @@ export const Roles = {
 
   // Notebook-specific role
   NOTEBOOK_ADMIN: "Notebook Administrator",
+
+  // Bioanalytical Laboratory Roles
+  BIOANALYTICAL_ANALYST: "Bioanalytical Analyst",
+  BIOANALYTICAL_SUPERVISOR: "Bioanalytical Supervisor",
+  SAMPLE_RECEIVER: "Sample Receiver",
+  CHEMICAL_ANALYST: "Chemical Analyst",
+  PHARMACIST: "Pharmacist",
+  STUDY_DIRECTOR: "Study Director",
+  QA_AUDITOR: "QA Auditor",
 };
 
 /**
@@ -127,6 +136,68 @@ export const Permissions = {
 
   // Full system administration
   SYSTEM_ADMIN: [Roles.GLOBAL_ADMIN],
+
+  // ========== Bioanalytical Permissions ==========
+
+  // Can receive and log bioanalytical samples
+  BIOANALYTICAL_SAMPLE_RECEPTION: [
+    Roles.GLOBAL_ADMIN,
+    Roles.SAMPLE_RECEIVER,
+    Roles.BIOANALYTICAL_SUPERVISOR,
+    Roles.RECEPTION,
+  ],
+
+  // Can perform bioanalytical analysis and instrument operations
+  BIOANALYTICAL_ANALYSIS: [
+    Roles.GLOBAL_ADMIN,
+    Roles.BIOANALYTICAL_ANALYST,
+    Roles.CHEMICAL_ANALYST,
+    Roles.BIOANALYTICAL_SUPERVISOR,
+    Roles.TECHNICIAN,
+  ],
+
+  // Can review and approve bioanalytical results
+  BIOANALYTICAL_REVIEW: [
+    Roles.GLOBAL_ADMIN,
+    Roles.BIOANALYTICAL_SUPERVISOR,
+    Roles.PHARMACIST,
+    Roles.STUDY_DIRECTOR,
+    Roles.SUPERVISOR,
+  ],
+
+  // Can perform QC activities and validation
+  BIOANALYTICAL_QC: [
+    Roles.GLOBAL_ADMIN,
+    Roles.BIOANALYTICAL_ANALYST,
+    Roles.CHEMICAL_ANALYST,
+    Roles.BIOANALYTICAL_SUPERVISOR,
+    Roles.QA_AUDITOR,
+  ],
+
+  // Can access study management and reporting features
+  BIOANALYTICAL_STUDY_MANAGEMENT: [
+    Roles.GLOBAL_ADMIN,
+    Roles.STUDY_DIRECTOR,
+    Roles.BIOANALYTICAL_SUPERVISOR,
+    Roles.PHARMACIST,
+  ],
+
+  // Can perform final report generation and approval
+  BIOANALYTICAL_REPORTING: [
+    Roles.GLOBAL_ADMIN,
+    Roles.STUDY_DIRECTOR,
+    Roles.BIOANALYTICAL_SUPERVISOR,
+    Roles.PHARMACIST,
+    Roles.REPORTS,
+  ],
+
+  // Can audit bioanalytical processes
+  BIOANALYTICAL_AUDIT: [
+    Roles.GLOBAL_ADMIN,
+    Roles.QA_AUDITOR,
+    Roles.STUDY_DIRECTOR,
+    Roles.AUDIT_TRAIL,
+  ],
 };
 
 /**
@@ -146,6 +217,15 @@ export const RoleGroups = {
     Roles.REPORTS,
   ],
   PATHOLOGY_ROLES: [Roles.PATHOLOGIST, Roles.CYTOPATHOLOGIST],
+  BIOANALYTICAL_ROLES: [
+    Roles.BIOANALYTICAL_ANALYST,
+    Roles.BIOANALYTICAL_SUPERVISOR,
+    Roles.SAMPLE_RECEIVER,
+    Roles.CHEMICAL_ANALYST,
+    Roles.PHARMACIST,
+    Roles.STUDY_DIRECTOR,
+    Roles.QA_AUDITOR,
+  ],
 };
 
 export default Roles;

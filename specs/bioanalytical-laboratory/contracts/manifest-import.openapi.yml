@@ -1,0 +1,478 @@
+openapi: 3.0.3
+info:
+  title: Bioanalytical Laboratory - Manifest Import API
+  description: |
+    API for CSV manifest import of bioanalytical samples.
+
+    Supports importing biological samples (plasma, serum, urine) and pharmaceutical
+    products (API, tablets, capsules) with complete reception metadata capture.
+
+    Part of the Bioanalytical & Bioequivalence Laboratory Notebook feature.
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Support
+    url: https://github.com/I-TECH-UW/OpenELIS-Global-2
+
+servers:
+  - url: /rest/notebook/bioanalytical
+    description: Bioanalytical lab API base path
+
+tags:
+  - name: Manifest Import
+    description: CSV manifest import operations
+  - name: Sample Configuration
+    description: Configuration and validation data
+
+paths:
+  /sample-types:
+    get:
+      summary: Get valid bioanalytical sample types
+      description: |
+        Retrieve list of valid sample types for the bioanalytical laboratory.
+        Includes biological matrices (plasma, serum, urine) and pharmaceutical
+        products (API, tablets, capsules, etc.).
+      operationId: getValidSampleTypes
+      tags:
+        - Sample Configuration
+      responses:
+        '200':
+          description: Sample types retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SampleTypesResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tests:
+    get:
+      summary: Get valid bioanalytical tests
+      description: |
+        Retrieve list of valid analytical tests for bioanalytical laboratory.
+        Includes bioanalytical tests (HPLC, LC-MS/MS) and pharmaceutical quality
+        tests (assay, dissolution, hardness, friability, etc.).
+      operationId: getValidAnalyticalTests
+      tags:
+        - Sample Configuration
+      responses:
+        '200':
+          description: Tests retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /source-origins:
+    get:
+      summary: Get valid source origins
+      description: |
+        Retrieve list of valid source origins for bioanalytical samples.
+        Includes Medical Lab, External Client, CRO, Internal Researcher, etc.
+      operationId: getValidSourceOrigins
+      tags:
+        - Sample Configuration
+      responses:
+        '200':
+          description: Source origins retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceOriginsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/samples/preview-manifest:
+    post:
+      summary: Preview manifest CSV before importing
+      description: |
+        Parse and validate CSV manifest file before actual import.
+        Returns preview of data to be imported including validation errors.
+
+        **Required CSV columns**:
+        - Sample ID
+        - Sample Type
+        - Source Origin
+        - Requested Tests
+        - Date/Time of Receipt
+        - Receiving Personnel
+
+        **Optional columns**:
+        - Project/Study Association
+        - Storage Condition
+        - Sample Volume
+        - Transport Temperature
+        - Manifest Verification Status
+        - Notes
+      operationId: previewManifest
+      tags:
+        - Manifest Import
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID to link samples to
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV file to preview
+                mapping:
+                  $ref: '#/components/schemas/ManifestColumnMapping'
+              required:
+                - file
+                - mapping
+      responses:
+        '200':
+          description: Manifest preview successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestPreviewResponse'
+        '400':
+          description: Bad request (invalid file, missing columns)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestErrorResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/samples/import-manifest:
+    post:
+      summary: Import manifest CSV and create samples
+      description: |
+        Parse, validate, and import CSV manifest file.
+        Creates samples, sample items, and notebook page samples with reception metadata.
+
+        **Workflow**:
+        1. Parse CSV file
+        2. Validate data against bioanalytical rules
+        3. Create samples in database
+        4. Link to notebook entry
+        5. Store reception metadata
+        6. Return summary with created sample IDs
+      operationId: importManifest
+      tags:
+        - Manifest Import
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID to link samples to
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV file to import
+                mapping:
+                  $ref: '#/components/schemas/ManifestColumnMapping'
+              required:
+                - file
+                - mapping
+      responses:
+        '200':
+          description: Manifest imported successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestImportResponse'
+        '400':
+          description: Bad request (validation failures)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestErrorResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    SampleTypesResponse:
+      type: object
+      properties:
+        sampleTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleType'
+        total:
+          type: integer
+          description: Total number of sample types
+
+    SampleType:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "1"
+        description:
+          type: string
+          example: "Plasma - EDTA"
+
+    TestsResponse:
+      type: object
+      properties:
+        tests:
+          type: array
+          items:
+            $ref: '#/components/schemas/Test'
+        total:
+          type: integer
+          description: Total number of tests
+
+    Test:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "assay"
+        description:
+          type: string
+          example: "Assay"
+
+    SourceOriginsResponse:
+      type: object
+      properties:
+        sourceOrigins:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceOrigin'
+        total:
+          type: integer
+          description: Total number of source origins
+
+    SourceOrigin:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "medical-lab"
+        description:
+          type: string
+          example: "Medical Laboratory (CTD-BE)"
+
+    ManifestColumnMapping:
+      type: object
+      required:
+        - uniqueSampleIdColumn
+        - sampleTypeColumn
+        - sourceOriginColumn
+        - requestedTestsColumn
+        - dateTimeOfReceiptColumn
+        - receivingPersonnelColumn
+      properties:
+        uniqueSampleIdColumn:
+          type: string
+          example: "Sample ID"
+        sampleTypeColumn:
+          type: string
+          example: "Sample Type"
+        sourceOriginColumn:
+          type: string
+          example: "Source"
+        requestedTestsColumn:
+          type: string
+          example: "Tests"
+        dateTimeOfReceiptColumn:
+          type: string
+          example: "Receipt Date/Time"
+        receivingPersonnelColumn:
+          type: string
+          example: "Personnel"
+        projectStudyAssociationColumn:
+          type: string
+          example: "Project"
+        storageConditionPriorColumn:
+          type: string
+          example: "Storage"
+        sampleVolumeColumn:
+          type: string
+          example: "Volume"
+        transportTemperatureColumn:
+          type: string
+          example: "Transport Temp"
+        manifestVerificationStatusColumn:
+          type: string
+          example: "Verification"
+        notesColumn:
+          type: string
+          example: "Notes"
+
+    ManifestPreviewResponse:
+      type: object
+      properties:
+        entryId:
+          type: integer
+          description: Notebook entry ID
+        totalRows:
+          type: integer
+          description: Total number of data rows in CSV
+        validRows:
+          type: integer
+          description: Number of valid rows (no errors)
+        totalSamplesToCreate:
+          type: integer
+          description: Total samples that would be created
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManifestRow'
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          description: Validation errors found in CSV
+
+    ManifestRow:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+          description: Row number in CSV (starting from 2, after header)
+        uniqueSampleId:
+          type: string
+        sampleType:
+          type: string
+        sourceOrigin:
+          type: string
+        requestedTests:
+          type: string
+          description: Semicolon-separated test list
+        dateTimeOfReceipt:
+          type: string
+          format: date-time
+        receivingPersonnel:
+          type: string
+        projectStudyAssociation:
+          type: string
+        storageConditionPrior:
+          type: string
+        sampleVolume:
+          type: string
+        transportTemperature:
+          type: string
+        manifestVerificationStatus:
+          type: string
+        notes:
+          type: string
+
+    ManifestImportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: True if all samples created successfully
+        totalRequested:
+          type: integer
+          description: Total samples requested to create
+        totalCreated:
+          type: integer
+          description: Number of samples actually created
+        createdSampleIds:
+          type: array
+          items:
+            type: string
+          description: List of created sample accession numbers
+        partialSuccess:
+          type: boolean
+          description: True if some samples failed but others succeeded
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          description: Errors that prevented sample creation
+
+    ValidationError:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+          description: Row number in CSV where error occurred
+        column:
+          type: string
+          description: Column name that caused error
+        message:
+          type: string
+          description: Error message
+
+    ManifestErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Manifest validation failed"
+        totalErrors:
+          type: integer
+          example: 3
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        timestamp:
+          type: string
+          format: date-time
+          description: When error occurred
+        status:
+          type: integer
+          description: HTTP status code

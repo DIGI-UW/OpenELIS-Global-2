@@ -14,10 +14,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.util.UUID;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 
@@ -107,10 +105,7 @@ public class LabEnvironmentalLog extends BaseObject<Long> {
     private Timestamp loggedAt;
 
     public enum StorageUnitType {
-        ROOM,
-        FREEZER,
-        EQUIPMENT_ANALYZER,
-        MOVABLE_FRIDGE
+        ROOM, FREEZER, EQUIPMENT_ANALYZER, MOVABLE_FRIDGE
     }
 
     public LabEnvironmentalLog() {

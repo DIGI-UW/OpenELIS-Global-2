@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- BIOANALYTICAL SUPPORTING TABLES -->
+    <!-- Tables for analytical data management, QC tracking, -->
+    <!-- environmental monitoring, and bioequivalence study support -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- TABLE: analytical_raw_file -->
+    <!-- Purpose: Store raw instrument data files (chromatograms, spectra, etc.) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-analytical-raw-file-table" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analytical_raw_file" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create analytical_raw_file table for storing raw instrument data files</comment>
+
+        <createTable tableName="analytical_raw_file" schemaName="clinlims">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="filename" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_type" type="VARCHAR(20)" remarks="CDF, mzML, CSV, PDF, etc.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_path" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_size_bytes" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="data_format" type="VARCHAR(100)" remarks="e.g., chromatogram, mass_spectrum, physical_test_result">
+                <constraints nullable="true"/>
+            </column>
+            <column name="upload_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uploaded_by_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="analytical_raw_file_seq" schemaName="clinlims" startValue="1"/>
+        <createIndex indexName="idx_arf_notebook_entry" schemaName="clinlims" tableName="analytical_raw_file">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+        <createIndex indexName="idx_arf_instrument" schemaName="clinlims" tableName="analytical_raw_file">
+            <column name="instrument_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="analytical_raw_file" schemaName="clinlims"/>
+            <dropSequence sequenceName="analytical_raw_file_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- TABLE: calibration_curve -->
+    <!-- Purpose: Store calibration curve details for each analytical run -->
+    <!-- ======================================================== -->
+    <changeSet id="create-calibration-curve-table" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="calibration_curve" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create calibration_curve table for storing analytical calibration data</comment>
+
+        <createTable tableName="calibration_curve" schemaName="clinlims">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="curve_equation" type="VARCHAR(500)" remarks="e.g., y = mx + b">
+                <constraints nullable="true"/>
+            </column>
+            <column name="r_squared" type="NUMERIC(5,4)" remarks="Correlation coefficient, e.g., 0.9995">
+                <constraints nullable="false"/>
+            </column>
+            <column name="slope" type="NUMERIC(15,8)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="intercept" type="NUMERIC(15,8)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="concentration_range_low" type="NUMERIC(15,8)" remarks="Lower limit of quantification (LLOQ)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="concentration_range_high" type="NUMERIC(15,8)" remarks="Upper limit of quantification (ULOQ)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acceptance_criteria" type="VARCHAR(500)" remarks="e.g., r² &gt;= 0.99">
+                <constraints nullable="true"/>
+            </column>
+            <column name="curve_status" type="VARCHAR(20)" remarks="PASS or FAIL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyst_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="calibration_curve_seq" schemaName="clinlims" startValue="1"/>
+        <createIndex indexName="idx_cc_notebook_entry" schemaName="clinlims" tableName="calibration_curve">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+        <createIndex indexName="idx_cc_instrument" schemaName="clinlims" tableName="calibration_curve">
+            <column name="instrument_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="calibration_curve" schemaName="clinlims"/>
+            <dropSequence sequenceName="calibration_curve_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- TABLE: qc_result -->
+    <!-- Purpose: Track QC sample results (Low, Medium, High) for each batch -->
+    <!-- ======================================================== -->
+    <changeSet id="create-qc-result-table" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_result" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create qc_result table for QC sample tracking and trending</comment>
+
+        <createTable tableName="qc_result" schemaName="clinlims">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="qc_level" type="VARCHAR(20)" remarks="LOW, MEDIUM, or HIGH">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expected_concentration" type="NUMERIC(15,8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="measured_concentration" type="NUMERIC(15,8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="percent_recovery" type="NUMERIC(10,2)" remarks="Calculated as (measured/expected)*100">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acceptance_criteria_lower" type="NUMERIC(10,2)" remarks="e.g., 85 for 85%">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acceptance_criteria_upper" type="NUMERIC(10,2)" remarks="e.g., 115 for 115%">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pass_fail" type="VARCHAR(10)" remarks="PASS or FAIL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="batch_run_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="qc_result_seq" schemaName="clinlims" startValue="1"/>
+        <createIndex indexName="idx_qcr_notebook_entry" schemaName="clinlims" tableName="qc_result">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+        <createIndex indexName="idx_qcr_instrument" schemaName="clinlims" tableName="qc_result">
+            <column name="instrument_id"/>
+        </createIndex>
+        <createIndex indexName="idx_qcr_batch_run" schemaName="clinlims" tableName="qc_result">
+            <column name="batch_run_number"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="qc_result" schemaName="clinlims"/>
+            <dropSequence sequenceName="qc_result_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- TABLE: environmental_monitoring -->
+    <!-- Purpose: Track temperature, humidity, and other environmental conditions -->
+    <!-- ======================================================== -->
+    <changeSet id="create-environmental-monitoring-table" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="environmental_monitoring" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create environmental_monitoring table for storage condition tracking</comment>
+
+        <createTable tableName="environmental_monitoring" schemaName="clinlims">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="storage_location_id" type="INTEGER" remarks="Reference to storage location hierarchy">
+                <constraints nullable="true"/>
+            </column>
+            <column name="measurement_type" type="VARCHAR(50)" remarks="TEMPERATURE, HUMIDITY, etc.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="measured_value" type="NUMERIC(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="measurement_unit" type="VARCHAR(10)" remarks="C, F, %RH, etc.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="measurement_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="logged_manually" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="alert_triggered" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="corrective_action_taken" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="environmental_monitoring_seq" schemaName="clinlims" startValue="1"/>
+        <createIndex indexName="idx_em_notebook_entry" schemaName="clinlims" tableName="environmental_monitoring">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+        <createIndex indexName="idx_em_storage_location" schemaName="clinlims" tableName="environmental_monitoring">
+            <column name="storage_location_id"/>
+        </createIndex>
+        <createIndex indexName="idx_em_measurement_date" schemaName="clinlims" tableName="environmental_monitoring">
+            <column name="measurement_date"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="environmental_monitoring" schemaName="clinlims"/>
+            <dropSequence sequenceName="environmental_monitoring_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- TABLE: bioequivalence_study -->
+    <!-- Purpose: Track bioequivalence study protocols and parameters -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bioequivalence-study-table" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="bioequivalence_study" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create bioequivalence_study table for BE study management</comment>
+
+        <createTable tableName="bioequivalence_study" schemaName="clinlims">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="study_code" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="study_title" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sponsor" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="protocol_version" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="active_from_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="active_to_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="target_sample_count" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="retention_period_days" type="INTEGER" remarks="Default 730 days (2 years) for bioequivalence" defaultValueNumeric="730">
+                <constraints nullable="false"/>
+            </column>
+            <column name="regulatory_submission_required" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="bioequivalence_study_seq" schemaName="clinlims" startValue="1"/>
+        <createIndex indexName="idx_bes_study_code" schemaName="clinlims" tableName="bioequivalence_study">
+            <column name="study_code"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="bioequivalence_study" schemaName="clinlims"/>
+            <dropSequence sequenceName="bioequivalence_study_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- TABLE: be_sample_assignment -->
+    <!-- Purpose: Link samples to bioequivalence studies with sampling timepoints -->
+    <!-- ======================================================== -->
+    <changeSet id="create-be-sample-assignment-table" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="be_sample_assignment" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create be_sample_assignment table for linking samples to BE studies</comment>
+
+        <createTable tableName="be_sample_assignment" schemaName="clinlims">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="study_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject_id" type="VARCHAR(100)" remarks="Subject or participant identifier">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sampling_timepoint" type="VARCHAR(100)" remarks="e.g., '0h', '0.5h', '1h', '2h', '3h'">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sampling_time" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="expected_retention_until" type="DATE" remarks="Calculated based on study retention period">
+                <constraints nullable="true"/>
+            </column>
+            <column name="regulatory_submission_included" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createSequence sequenceName="be_sample_assignment_seq" schemaName="clinlims" startValue="1"/>
+        <createIndex indexName="idx_besa_sample" schemaName="clinlims" tableName="be_sample_assignment">
+            <column name="sample_id"/>
+        </createIndex>
+        <createIndex indexName="idx_besa_study" schemaName="clinlims" tableName="be_sample_assignment">
+            <column name="study_id"/>
+        </createIndex>
+        <createIndex indexName="idx_besa_subject" schemaName="clinlims" tableName="be_sample_assignment">
+            <column name="subject_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="be_sample_assignment" schemaName="clinlims"/>
+            <dropSequence sequenceName="be_sample_assignment_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- EXTEND sample TABLE - Add bioanalytical-specific columns -->
+    <!-- ======================================================== -->
+    <changeSet id="extend-sample-table-bioanalytical" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="sample" columnName="source_laboratory" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add bioanalytical-specific columns to sample table</comment>
+
+        <addColumn tableName="sample" schemaName="clinlims">
+            <column name="source_laboratory" type="VARCHAR(100)" remarks="e.g., Medical Lab, External Client, Internal">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample" schemaName="clinlims">
+            <column name="source_lab_sample_id" type="VARCHAR(255)" remarks="Original sample ID from source laboratory">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample" schemaName="clinlims">
+            <column name="chain_of_custody_path" type="TEXT" remarks="JSON array of transfer events: [{timestamp, from, to, notes}, ...]">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="sample" columnName="source_laboratory" schemaName="clinlims"/>
+            <dropColumn tableName="sample" columnName="source_lab_sample_id" schemaName="clinlims"/>
+            <dropColumn tableName="sample" columnName="chain_of_custody_path" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
