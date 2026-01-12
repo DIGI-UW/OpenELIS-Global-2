@@ -1,12 +1,15 @@
 package org.openelisglobal.medlab.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.medlab.service.MedLabPatientOrderService;
+import org.openelisglobal.medlab.service.MedLabTestRequirementsService;
+import org.openelisglobal.medlab.valueholder.MedLabTestRequirements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +31,95 @@ public class MedLabPatientOrderRestController extends BaseRestController {
 
     @Autowired
     private MedLabPatientOrderService medLabPatientOrderService;
+
+    @Autowired
+    private MedLabTestRequirementsService medLabTestRequirementsService;
+
+    @Autowired
+    private org.openelisglobal.medlab.service.OrderSampleLinkService orderSampleLinkService;
+
+    @Autowired
+    private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
+
+    @Autowired
+    private org.openelisglobal.dataexchange.service.order.ElectronicOrderService electronicOrderService;
+
+    @Autowired
+    private org.openelisglobal.sample.service.SampleService sampleService;
+
+    // ==================== Test Requirements Endpoints (FR-007)
+    // ====================
+
+    /**
+     * Gets sample collection requirements for specified tests. Supports the
+     * order-driven workflow (FR-007) by displaying container type, volume, and
+     * handling requirements when tests are selected.
+     *
+     * @param testIds comma-separated list of test IDs
+     * @return list of requirements for the specified tests
+     */
+    @GetMapping(value = "/test-requirements", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getTestRequirements(
+            @org.springframework.web.bind.annotation.RequestParam(value = "testIds", required = false) String testIds) {
+
+        try {
+            List<Map<String, Object>> requirements = new java.util.ArrayList<>();
+
+            if (testIds != null && !testIds.isEmpty()) {
+                String[] ids = testIds.split(",");
+                List<Integer> testIdList = new java.util.ArrayList<>();
+                for (String id : ids) {
+                    try {
+                        testIdList.add(Integer.parseInt(id.trim()));
+                    } catch (NumberFormatException e) {
+                        // Skip invalid IDs
+                    }
+                }
+
+                if (!testIdList.isEmpty()) {
+                    List<MedLabTestRequirements> reqs = medLabTestRequirementsService
+                            .getRequirementsByTestIds(testIdList);
+                    for (MedLabTestRequirements req : reqs) {
+                        Map<String, Object> reqMap = new java.util.HashMap<>();
+                        reqMap.put("id", req.getId());
+                        reqMap.put("testId", req.getTestId());
+                        reqMap.put("typeOfSampleId", req.getTypeOfSampleId());
+                        reqMap.put("containerType", req.getContainerType());
+                        reqMap.put("volumeRequiredMl", req.getVolumeRequiredMl());
+                        reqMap.put("handlingRequirements", req.getHandlingRequirements());
+                        reqMap.put("storageTemperature", req.getStorageTemperature());
+                        reqMap.put("maxDelayMinutes", req.getMaxDelayMinutes());
+                        reqMap.put("departmentId", req.getDepartmentId());
+                        requirements.add(reqMap);
+                    }
+                }
+            } else {
+                // Return all active requirements if no testIds specified
+                List<MedLabTestRequirements> allReqs = medLabTestRequirementsService.getActiveRequirements();
+                for (MedLabTestRequirements req : allReqs) {
+                    Map<String, Object> reqMap = new java.util.HashMap<>();
+                    reqMap.put("id", req.getId());
+                    reqMap.put("testId", req.getTestId());
+                    reqMap.put("typeOfSampleId", req.getTypeOfSampleId());
+                    reqMap.put("containerType", req.getContainerType());
+                    reqMap.put("volumeRequiredMl", req.getVolumeRequiredMl());
+                    reqMap.put("handlingRequirements", req.getHandlingRequirements());
+                    reqMap.put("storageTemperature", req.getStorageTemperature());
+                    reqMap.put("maxDelayMinutes", req.getMaxDelayMinutes());
+                    reqMap.put("departmentId", req.getDepartmentId());
+                    requirements.add(reqMap);
+                }
+            }
+
+            return ResponseEntity.ok(requirements);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "getTestRequirements",
+                    "Error fetching test requirements: " + e.getMessage());
+            return ResponseEntity.status(500).body(List.of());
+        }
+    }
 
     /**
      * Creates a new patient order for the MedLab workflow.
@@ -101,6 +193,101 @@ public class MedLabPatientOrderRestController extends BaseRestController {
     }
 
     /**
+     * Creates bulk patient orders for multiple patients at once. Uses
+     * AccessionService for unique lab number generation with the specified prefix.
+     *
+     * @param body    request body containing bulk order details
+     * @param request HTTP request for user session
+     * @return response with created orders information
+     */
+    @PostMapping(value = "/bulk-patient-orders", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> createBulkPatientOrders(@RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> patients = (List<Map<String, Object>>) body.get("patients");
+            String labNumberPrefix = (String) body.get("labNumberPrefix");
+            @SuppressWarnings("unchecked")
+            List<String> testIds = (List<String>) body.get("testIds");
+            String priority = (String) body.get("priority");
+
+            Integer notebookEntryId = null;
+            if (body.get("notebookEntryId") != null) {
+                try {
+                    notebookEntryId = Integer.valueOf(body.get("notebookEntryId").toString());
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createBulkPatientOrders",
+                            "Invalid notebookEntryId format: " + body.get("notebookEntryId"));
+                }
+            }
+            Integer notebookPageId = null;
+            if (body.get("notebookPageId") != null) {
+                try {
+                    notebookPageId = Integer.valueOf(body.get("notebookPageId").toString());
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createBulkPatientOrders",
+                            "Invalid notebookPageId format: " + body.get("notebookPageId"));
+                }
+            }
+
+            // Validate required fields
+            if (patients == null || patients.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one patient is required"));
+            }
+            if (labNumberPrefix == null || labNumberPrefix.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Lab number prefix is required"));
+            }
+            if (testIds == null || testIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one test is required"));
+            }
+
+            Map<String, Object> result = medLabPatientOrderService.createBulkPatientOrders(patients, labNumberPrefix,
+                    testIds, priority, notebookEntryId, notebookPageId, sysUserId);
+
+            if (Boolean.TRUE.equals(result.get("success"))) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500).body(Map.of("error", "Error creating bulk orders: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Gets a preview of lab numbers that would be generated for bulk order
+     * creation. Does not increment the sequence - just shows what numbers would be
+     * assigned.
+     *
+     * @param prefix the lab number prefix
+     * @param count  the number of lab numbers to preview
+     * @return list of preview lab numbers
+     */
+    @GetMapping(value = "/lab-number-preview", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<String>> getLabNumberPreview(
+            @org.springframework.web.bind.annotation.RequestParam("prefix") String prefix,
+            @org.springframework.web.bind.annotation.RequestParam("count") int count) {
+
+        try {
+            List<String> previewNumbers = medLabPatientOrderService.getLabNumberPreview(prefix, count);
+            return ResponseEntity.ok(previewNumbers);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500).body(List.of());
+        }
+    }
+
+    /**
      * Gets orders for a notebook page.
      *
      * @param pageId the notebook page ID
@@ -145,6 +332,328 @@ public class MedLabPatientOrderRestController extends BaseRestController {
 
         List<Map<String, Object>> orders = medLabPatientOrderService.getOrdersForPage(pageId);
         return ResponseEntity.ok(orders);
+    }
+
+    /**
+     * Links a sample to an order with selected tests. Creates OrderSampleLink
+     * records for the order-sample relationship.
+     *
+     * @param sampleItemId the sample item ID
+     * @param body         request body containing orderId, testIds
+     * @param request      HTTP request for user session
+     * @return linking result
+     */
+    @PostMapping(value = "/samples/{sampleItemId}/link-order", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> linkSampleToOrder(@PathVariable("sampleItemId") Integer sampleItemId,
+            @RequestBody Map<String, Object> body, HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        try {
+            // Extract request parameters
+            Integer orderId = null;
+            if (body.get("orderId") != null) {
+                orderId = Integer.valueOf(body.get("orderId").toString());
+            }
+
+            @SuppressWarnings("unchecked")
+            List<String> testIds = (List<String>) body.get("testIds");
+
+            // Validate required fields
+            if (orderId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order ID is required"));
+            }
+            if (sampleItemId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Sample item ID is required"));
+            }
+            if (testIds == null || testIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one test is required"));
+            }
+
+            // Verify order exists
+            org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder order = electronicOrderService
+                    .get(String.valueOf(orderId));
+            if (order == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order not found: " + orderId));
+            }
+
+            // Verify sample item exists
+            org.openelisglobal.sampleitem.valueholder.SampleItem sampleItem = sampleItemService
+                    .get(String.valueOf(sampleItemId));
+            if (sampleItem == null || sampleItem.getSample() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Sample item not found: " + sampleItemId));
+            }
+
+            Integer sampleId = Integer.valueOf(sampleItem.getSample().getId());
+
+            // Create OrderSampleLink for each test
+            int linksCreated = 0;
+            for (String testIdStr : testIds) {
+                try {
+                    Integer testId = Integer.valueOf(testIdStr);
+
+                    // Check if link already exists
+                    org.openelisglobal.medlab.valueholder.OrderSampleLink existingLink = orderSampleLinkService
+                            .getLinkByOrderSampleTest(orderId, sampleId, testId);
+
+                    if (existingLink == null) {
+                        // Create new link
+                        orderSampleLinkService.linkSampleToOrder(orderId, sampleId, sampleItemId, testId,
+                                Integer.valueOf(sysUserId));
+                        linksCreated++;
+                    }
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "linkSampleToOrder",
+                            "Invalid test ID format: " + testIdStr);
+                }
+            }
+
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("success", true);
+            result.put("linksCreated", linksCreated);
+            result.put("orderId", orderId);
+            result.put("sampleItemId", sampleItemId);
+            result.put("testsLinked", testIds.size());
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500).body(Map.of("error", "Error linking sample to order: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Bulk link multiple samples to a shared order.
+     *
+     * <p>
+     * Links all provided samples to ONE order with selected tests. This is used
+     * when all samples belong to the same patient or fulfilling requirements of a
+     * single order.
+     *
+     * @param body    request body containing sampleIds, orderId, testIds
+     * @param request HTTP request for user session
+     * @return linking result with counts
+     */
+    @PostMapping(value = "/samples/bulk-link-shared-order", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkLinkSamplesToSharedOrder(@RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        try {
+            // Extract request parameters
+            List<Integer> sampleIds = new java.util.ArrayList<>();
+            if (body.get("sampleIds") != null) {
+                List<?> rawSampleIds = (List<?>) body.get("sampleIds");
+                for (Object obj : rawSampleIds) {
+                    sampleIds.add(Integer.valueOf(obj.toString()));
+                }
+            }
+            Integer orderId = body.get("orderId") != null ? Integer.valueOf(body.get("orderId").toString()) : null;
+            List<String> testIds = new java.util.ArrayList<>();
+            if (body.get("testIds") != null) {
+                List<?> rawTestIds = (List<?>) body.get("testIds");
+                for (Object obj : rawTestIds) {
+                    testIds.add(obj.toString());
+                }
+            }
+
+            // Validate required fields
+            if (sampleIds == null || sampleIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Sample IDs are required"));
+            }
+            if (orderId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order ID is required"));
+            }
+            if (testIds == null || testIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one test is required"));
+            }
+
+            // Verify order exists
+            org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder order = electronicOrderService
+                    .get(String.valueOf(orderId));
+            if (order == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Order not found: " + orderId));
+            }
+
+            int linksCreated = 0;
+            int samplesLinked = 0;
+            List<String> errors = new java.util.ArrayList<>();
+
+            // Loop through each sample
+            for (Integer sampleId : sampleIds) {
+                try {
+                    // Verify sample exists
+                    org.openelisglobal.sample.valueholder.Sample sample = sampleService.get(String.valueOf(sampleId));
+                    if (sample == null) {
+                        errors.add("Sample not found: " + sampleId);
+                        continue;
+                    }
+
+                    // Get sample item ID (first sample item for the sample)
+                    Integer sampleItemId = null;
+                    List<org.openelisglobal.sampleitem.valueholder.SampleItem> sampleItems = sampleItemService
+                            .getSampleItemsBySampleId(sample.getId());
+                    if (sampleItems != null && !sampleItems.isEmpty()) {
+                        sampleItemId = Integer.valueOf(sampleItems.get(0).getId());
+                    }
+
+                    int linksForSample = 0;
+
+                    // Create OrderSampleLink for each test
+                    for (String testIdStr : testIds) {
+                        try {
+                            Integer testId = Integer.valueOf(testIdStr);
+
+                            // Check if link already exists
+                            org.openelisglobal.medlab.valueholder.OrderSampleLink existingLink = orderSampleLinkService
+                                    .getLinkByOrderSampleTest(orderId, sampleId, testId);
+
+                            if (existingLink == null) {
+                                // Create new link
+                                orderSampleLinkService.linkSampleToOrder(orderId, sampleId, sampleItemId, testId,
+                                        Integer.valueOf(sysUserId));
+                                linksCreated++;
+                                linksForSample++;
+                            }
+                        } catch (NumberFormatException e) {
+                            LogEvent.logWarn(this.getClass().getSimpleName(), "bulkLinkSamplesToSharedOrder",
+                                    "Invalid test ID format: " + testIdStr);
+                        }
+                    }
+
+                    if (linksForSample > 0) {
+                        samplesLinked++;
+                    }
+                } catch (Exception e) {
+                    errors.add("Error processing sample " + sampleId + ": " + e.getMessage());
+                    LogEvent.logError(this.getClass().getSimpleName(), "bulkLinkSamplesToSharedOrder",
+                            "Error processing sample " + sampleId + ": " + e.getMessage());
+                }
+            }
+
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("success", true);
+            result.put("linksCreated", linksCreated);
+            result.put("samplesLinked", samplesLinked);
+            result.put("orderId", orderId);
+            result.put("totalSamplesRequested", sampleIds.size());
+            result.put("totalTestsRequested", testIds.size());
+
+            if (!errors.isEmpty()) {
+                result.put("errors", errors);
+                result.put("partialSuccess", true);
+            }
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error bulk linking samples to order: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Bulk link multiple samples to independent orders.
+     *
+     * <p>
+     * Creates a separate order for each sample with sequential lab numbers. Each
+     * sample gets its own order with the specified tests. This is used for bulk
+     * entry workflows where samples should be tracked independently.
+     *
+     * @param body    request body containing sampleIds, labNumberPrefix, testIds
+     * @param request HTTP request for user session
+     * @return creation result with list of created orders
+     */
+    @PostMapping(value = "/samples/bulk-link-independent-orders", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkLinkSamplesToIndependentOrders(@RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found"));
+        }
+
+        try {
+            // Extract request parameters
+            @SuppressWarnings("unchecked")
+            List<Object> sampleIdsRaw = (List<Object>) body.get("sampleIds");
+            List<Integer> sampleIds = new ArrayList<>();
+            for (Object id : sampleIdsRaw) {
+                if (id instanceof Integer) {
+                    sampleIds.add((Integer) id);
+                } else if (id instanceof String) {
+                    sampleIds.add(Integer.parseInt((String) id));
+                } else if (id instanceof Number) {
+                    sampleIds.add(((Number) id).intValue());
+                }
+            }
+
+            String labNumberPrefix = (String) body.get("labNumberPrefix");
+            @SuppressWarnings("unchecked")
+            List<Object> testIdsRaw = (List<Object>) body.get("testIds");
+            List<String> testIds = new ArrayList<>();
+            for (Object id : testIdsRaw) {
+                testIds.add(id.toString());
+            }
+
+            Integer notebookPageId = null;
+            if (body.get("notebookPageId") != null) {
+                try {
+                    notebookPageId = Integer.valueOf(body.get("notebookPageId").toString());
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "bulkLinkSamplesToIndependentOrders",
+                            "Invalid notebookPageId format: " + body.get("notebookPageId"));
+                }
+            }
+
+            Integer notebookEntryId = null;
+            if (body.get("notebookEntryId") != null) {
+                try {
+                    notebookEntryId = Integer.valueOf(body.get("notebookEntryId").toString());
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "bulkLinkSamplesToIndependentOrders",
+                            "Invalid notebookEntryId format: " + body.get("notebookEntryId"));
+                }
+            }
+
+            // Validate required fields
+            if (sampleIds == null || sampleIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Sample IDs are required"));
+            }
+            if (labNumberPrefix == null || labNumberPrefix.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Lab number prefix is required"));
+            }
+            if (testIds == null || testIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "At least one test is required"));
+            }
+
+            // Delegate to service layer for transactional processing
+            Map<String, Object> result = medLabPatientOrderService.createBulkIndependentOrders(sampleIds,
+                    labNumberPrefix, testIds, notebookEntryId, notebookPageId, sysUserId);
+
+            if (Boolean.TRUE.equals(result.get("success"))) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.badRequest().body(result);
+            }
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error bulk linking samples to independent orders: " + e.getMessage()));
+        }
     }
 
     /**

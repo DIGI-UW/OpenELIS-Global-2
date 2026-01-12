@@ -1,0 +1,23 @@
+sample_id,sample_type,container_type,custom_label,quantity,unit_of_measure,collection_source,collector,collection_date,collection_time,order_id,patient_id,notes
+VALID-001,Blood,vacutainer,CBC-DAY0,2.5,mL,Clinic A,Dr. Girma,2026-01-08,09:00,ORD-VALID-001,PAT-VALID-001,Valid row - existing patient and order
+VALID-002,Serum,edta,CHEM-001,3.0,mL,Clinic B,Dr. Anye,2026-01-08,09:15,ORD-VALID-002,PAT-VALID-002,Valid row - existing patient and order
+VALID-003,Urine,urine_cup,UA-001,10.0,mL,Lab Reception,Melat,2026-01-08,09:30,,,Anonymous sample - no patient or order
+VALID-004,Blood,heparin,LIPID-001,2.0,mL,Mobile Unit,Kebede,2026-01-08,09:45,,PAT-VALID-001,Valid with patient only (no order)
+VALID-005,Stool,stool_jar,PARA-001,5.0,g,Field Site,Alemayehu,2026-01-08,10:00,ORD-VALID-001,,Valid with order only (no patient)
+WARN-001,Blood,vacutainer,WARN-PAT,2.5,mL,Clinic A,Dr. Girma,2026-01-08,10:15,,PAT-NONEXISTENT-999,WARNING: Patient not found - sample can still be imported
+WARN-002,Serum,sst,WARN-ORD,3.0,mL,Clinic B,Dr. Anye,2026-01-08,10:30,ORD-NONEXISTENT-999,,WARNING: Order not found - manual linking needed
+WARN-003,Blood,citrate,WARN-BOTH,2.0,mL,Lab Reception,Melat,2026-01-08,10:45,ORD-FAKE-123,PAT-FAKE-456,WARNING: Both patient and order not found
+WARN-004,Plasma,plain,MISMATCH-001,1.5,mL,Mobile Unit,Kebede,2026-01-08,11:00,ORD-MISMATCH-001,PAT-VALID-001,WARNING: Order belongs to different patient (Bob Wilson not John Doe)
+VALID-006,Blood,cryovial,NATID-001,1.0,mL,Clinic A,Dr. Girma,2026-01-08,11:15,,NID-AB-22222,Valid - patient found by national ID (Alice Brown)
+ERR-001,InvalidSampleType,vacutainer,BAD-TYPE,2.0,mL,Clinic A,Dr. Girma,2026-01-08,11:30,,,ERROR: Invalid sample type - row will be skipped
+ERR-002,Blood,InvalidContainer,BAD-CONT,2.0,mL,Clinic B,Dr. Anye,2026-01-08,11:45,,,ERROR: Invalid container type - row will be skipped
+ERR-003,,vacutainer,NO-TYPE,2.0,mL,Lab Reception,Melat,2026-01-08,12:00,,,ERROR: Missing sample type - row will be skipped
+ERR-004,Blood,edta,,2.0,mL,Mobile Unit,Kebede,2026-01-08,12:15,,,ERROR: Missing sample ID - row will be skipped
+,Blood,vacutainer,NO-ID,2.0,mL,Clinic A,Dr. Girma,2026-01-08,12:30,,,ERROR: Missing sample ID - row will be skipped
+ERR-005,Blood,vacutainer,NO-QTY,,mL,Clinic B,Dr. Anye,2026-01-08,12:45,,,ERROR: Missing quantity - row will be skipped
+ERR-006,Blood,vacutainer,NO-DATE,2.0,mL,Lab Reception,Melat,,12:00,,,ERROR: Missing collection date - row will be skipped
+ERR-007,Blood,vacutainer,NO-TIME,2.0,mL,Mobile Unit,Kebede,2026-01-08,,,,ERROR: Missing collection time - row will be skipped
+ERR-008,Blood,vacutainer,NO-SOURCE,2.0,mL,,Dr. Girma,2026-01-08,13:00,,,ERROR: Missing collection source - row will be skipped
+ERR-009,Blood,vacutainer,NO-COLL,2.0,mL,Clinic A,,2026-01-08,13:15,,,ERROR: Missing collector - row will be skipped
+ERR-010,FakeSampleType,BadContainer,MULTI-ERR,2.0,mL,Clinic B,Dr. Anye,2026-01-08,13:30,,,ERROR: Multiple errors - invalid sample type AND container type
+VALID-007,Blood,vacutainer,LAST-VALID,2.5,mL,Clinic A,Dr. Girma,2026-01-08,14:00,ORD-VALID-002,PAT-VALID-002,Valid row at end of file

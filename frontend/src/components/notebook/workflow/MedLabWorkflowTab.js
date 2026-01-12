@@ -14,7 +14,8 @@ import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
 import PatientOrderEntryPage from "../pages/PatientOrderEntryPage";
 import SampleCollectionPage from "../pages/SampleCollectionPage";
-import TransportPackagingPage from "../pages/TransportPackagingPage";
+// TODO: Remove TransportPackagingPage import after cleanup
+// import TransportPackagingPage from "../pages/TransportPackagingPage";
 import TestingAnalyzerPage from "../pages/TestingAnalyzerPage";
 import ResultEntryPage from "../pages/ResultEntryPage";
 import ValidationReportingPage from "../pages/ValidationReportingPage";
@@ -286,7 +287,11 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 2:
+      case 2: {
+        // Find Patient Order Entry page (page 1) to pass to Sample Collection
+        const orderEntryPage = effectivePages.find(
+          (p) => (p.pageOrder ?? p.order ?? 0) === 1,
+        );
         return (
           <SampleCollectionPage
             key={`medlab-collection-${page.id}`}
@@ -295,20 +300,12 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            orderEntryPageId={orderEntryPage?.id}
           />
         );
+      }
+      // Page 3: Sample Receipt & Quality Assessment (was page 4)
       case 3:
-        return (
-          <TransportPackagingPage
-            key={`medlab-transport-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-            notebookId={notebook?.id}
-          />
-        );
-      case 4:
         return (
           <MedLabQualityCheckPage
             key={`medlab-qc-${page.id}`}
@@ -319,7 +316,8 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 5:
+      // Page 4: Sample Routing (was page 5)
+      case 4:
         return (
           <MedLabSampleRoutingPage
             key={`medlab-routing-${page.id}`}
@@ -330,7 +328,8 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 6:
+      // Page 5: Sample Processing (was page 6)
+      case 5:
         return (
           <MedLabSampleProcessingPage
             key={`medlab-processing-${page.id}`}
@@ -341,7 +340,8 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 7:
+      // Page 6: Testing & Analyzer (was page 7)
+      case 6:
         return (
           <TestingAnalyzerPage
             key={`medlab-testing-${page.id}`}
@@ -352,7 +352,8 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 8:
+      // Page 7: Result Entry (was page 8)
+      case 7:
         return (
           <ResultEntryPage
             key={`medlab-result-${page.id}`}
@@ -363,7 +364,8 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 9:
+      // Page 8: Validation, Reporting & Performance Monitoring (was page 9)
+      case 8:
         return (
           <ValidationReportingPage
             key={`medlab-validation-${page.id}`}
@@ -374,7 +376,8 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 10:
+      // Page 9: Disposal, Archiving & Accreditation (was page 10)
+      case 9:
         return (
           <EndOfProjectArchivingPage
             key={`medlab-disposal-${page.id}`}

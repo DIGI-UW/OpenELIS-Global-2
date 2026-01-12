@@ -1444,3 +1444,142 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* ========================================== */
+/* Bulk Order Modal Styles                    */
+/* ========================================== */
+
+.bulk-order-modal {
+  padding: 0.5rem 0;
+}
+
+.bulk-order-summary {
+  margin-bottom: 1rem;
+}
+
+.bulk-order-patients-preview {
+  background-color: var(--cds-layer-02);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.bulk-order-patients-preview .section-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.bulk-order-patients-preview .patient-list {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+}
+
+.bulk-order-patients-preview .patient-list li {
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.bulk-order-patients-preview .more-patients {
+  font-style: italic;
+  color: var(--cds-text-secondary);
+}
+
+.bulk-order-field {
+  margin-bottom: 1.5rem;
+}
+
+.bulk-order-field .section-label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.bulk-order-field .required-marker {
+  color: var(--cds-support-error);
+  margin-left: 0.25rem;
+}
+
+.test-selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.test-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background-color: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* Wrapper for test checkbox items - handles clicks */
+.test-checkbox-item {
+  display: block;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+  cursor: pointer;
+}
+
+.test-checkbox-item:hover {
+  background-color: var(--cds-layer-hover-02, rgba(0, 0, 0, 0.05));
+}
+
+.test-checkbox-item .cds--checkbox-wrapper {
+  pointer-events: none;
+}
+
+.selected-count {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+
+/* Patient selection in table */
+.patient-selection-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+.patient-selection-count {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+
+/* Validation Errors List (for Bulk Order Modal) */
+.validation-errors-list {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--cds-support-error-container, rgba(218, 30, 40, 0.1));
+  border: 1px solid var(--cds-support-error);
+  border-radius: 4px;
+}
+
+.validation-errors-list ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style-type: disc;
+}
+
+.validation-error-item {
+  font-size: 0.875rem;
+  color: var(--cds-text-primary);
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+}
+
+.validation-error-item:last-child {
+  margin-bottom: 0;
+}

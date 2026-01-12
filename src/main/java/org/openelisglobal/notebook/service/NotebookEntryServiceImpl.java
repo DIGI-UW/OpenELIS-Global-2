@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.notebook.dao.NotebookEntryDAO;
 import org.openelisglobal.notebook.valueholder.NoteBook;
@@ -181,24 +182,75 @@ public class NotebookEntryServiceImpl extends AuditableBaseObjectServiceImpl<Not
     @Override
     @Transactional
     public void addSamples(Integer entryId, List<SampleItem> samples, String sysUserId) {
+        LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                "START: entryId=" + entryId + ", samples=" + samples.size());
+
         Optional<NotebookEntry> optEntry = notebookEntryDAO.get(entryId);
         if (optEntry.isPresent()) {
             NotebookEntry entry = optEntry.get();
+            LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                    "Entry found, notebookId=" + (entry.getNotebook() != null ? entry.getNotebook().getId() : "null"));
+
             Hibernate.initialize(entry.getSamples());
+            LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                    "Initialized samples collection, current size: " + entry.getSamples().size());
+
             for (SampleItem sample : samples) {
+                LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                        "Adding sample " + sample.getId() + " to entry samples collection");
                 entry.addSample(sample);
             }
+
+            LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                    "All samples added to collection, new size: " + entry.getSamples().size());
+
             entry.setSysUserId(sysUserId);
-            update(entry);
+
+            LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples", "Calling update(entry)...");
+            try {
+                update(entry);
+                LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples", "update(entry) completed successfully");
+            } catch (Exception e) {
+                LogEvent.logError("NotebookEntryServiceImpl", "addSamples",
+                        "EXCEPTION in update(entry): " + e.getClass().getName() + " - " + e.getMessage());
+                java.io.StringWriter sw = new java.io.StringWriter();
+                e.printStackTrace(new java.io.PrintWriter(sw));
+                LogEvent.logError("NotebookEntryServiceImpl", "addSamples", "Stack trace: " + sw.toString());
+                throw e;
+            }
+
+            LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples", "Entry updated, creating page samples...");
 
             // Create NotebookPageSample records for all pages in the notebook
             NoteBook notebook = entry.getNotebook();
             if (notebook != null) {
+                LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                        "Creating page samples for " + samples.size() + " samples in notebook " + notebook.getId());
+
                 for (SampleItem sample : samples) {
-                    notebookPageSampleService.createPageSamplesForNotebook(notebook.getId(),
-                            Integer.valueOf(sample.getId()));
+                    LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                            "Calling createPageSamplesForNotebook for sampleItemId=" + sample.getId());
+                    try {
+                        notebookPageSampleService.createPageSamplesForNotebook(notebook.getId(),
+                                Integer.valueOf(sample.getId()));
+                        LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                                "Successfully created page samples for sampleItemId=" + sample.getId());
+                    } catch (Exception e) {
+                        LogEvent.logError("NotebookEntryServiceImpl", "addSamples",
+                                "EXCEPTION creating page samples for sampleItemId=" + sample.getId() + ": "
+                                        + e.getClass().getName() + " - " + e.getMessage());
+                        throw e;
+                    }
                 }
+            } else {
+                LogEvent.logWarn("NotebookEntryServiceImpl", "addSamples",
+                        "Notebook is null for entry " + entryId + ", skipping page sample creation");
             }
+
+            LogEvent.logInfo("NotebookEntryServiceImpl", "addSamples",
+                    "END: Successfully added " + samples.size() + " samples to entry " + entryId);
+        } else {
+            LogEvent.logError("NotebookEntryServiceImpl", "addSamples", "Entry not found: " + entryId);
         }
     }
 

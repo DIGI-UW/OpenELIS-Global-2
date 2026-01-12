@@ -10,13 +10,9 @@ import {
   Column,
   Button,
   Tile,
-  Tag,
   InlineNotification,
   Loading,
   Modal,
-  TextInput,
-  Select,
-  SelectItem,
   DataTable,
   TableContainer,
   Table,
@@ -31,21 +27,22 @@ import {
   TableToolbarContent,
   TableBatchActions,
   TableBatchAction,
-  TextArea,
 } from "@carbon/react";
 import {
   Upload,
   Chemistry,
   CheckmarkFilled,
   Link as LinkIcon,
+  Barcode,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
-import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
-import CustomDatePicker from "../../common/CustomDatePicker";
-import ManifestImportModal from "../workflow/ManifestImportModal";
+import MedLabManifestImportModal from "../workflow/MedLabManifestImportModal";
 import LinkPatientModal from "../workflow/LinkPatientModal";
+import LinkOrderModal from "../workflow/LinkOrderModal";
+import BulkLinkOrderModal from "../workflow/BulkLinkOrderModal";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -58,18 +55,19 @@ import "../workflow/NotebookWorkflow.css";
  * @param {Object} props.pageData - The notebook page data
  * @param {Object} props.progress - Page progress
  * @param {function} props.onProgressUpdate - Callback when progress changes
+ * @param {number} props.orderEntryPageId - The Patient Order Entry page ID (for fetching available orders)
  */
 function SampleCollectionPage({
   entryId,
   pageData,
   progress,
   onProgressUpdate,
+  orderEntryPageId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { configurationProperties } = useContext(ConfigurationContext);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -79,34 +77,16 @@ function SampleCollectionPage({
 
   // Modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
-  const [bulkCollectionModalOpen, setBulkCollectionModalOpen] = useState(false);
   const [linkPatientModalOpen, setLinkPatientModalOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [linkOrderModalOpen, setLinkOrderModalOpen] = useState(false);
+  const [bulkLinkOrderModalOpen, setBulkLinkOrderModalOpen] = useState(false);
+  const [sampleForLinking, setSampleForLinking] = useState(null);
+  const [samplesForBulkLinking, setSamplesForBulkLinking] = useState([]);
 
-  // Collection form state
-  const [collectionForm, setCollectionForm] = useState({
-    sampleType: "",
-    containerType: "",
-    collectionTime: "",
-    collectionDate: "",
-    collectorId: "",
-    volume: "",
-    notes: "",
-  });
-
-  // Available container types
-  const [containerTypes] = useState([
-    { id: "EDTA", name: "EDTA Tube (Purple)" },
-    { id: "SST", name: "SST Tube (Gold/Red)" },
-    { id: "HEPARIN", name: "Heparin Tube (Green)" },
-    { id: "CITRATE", name: "Citrate Tube (Blue)" },
-    { id: "PLAIN", name: "Plain Tube (Red)" },
-    { id: "URINE_CUP", name: "Urine Cup" },
-    { id: "STOOL_CONTAINER", name: "Stool Container" },
-    { id: "SWAB", name: "Swab" },
-    { id: "CRYOVIAL", name: "Cryovial" },
-  ]);
+  // Barcode generation state
+  const [barcodeSource, setBarcodeSource] = useState("about:blank");
+  const [renderBarcode, setRenderBarcode] = useState(false);
+  const [barcodeLabNo, setBarcodeLabNo] = useState("");
 
   // Load data on mount
   useEffect(() => {
@@ -143,17 +123,32 @@ function SampleCollectionPage({
             // Patient info is stored in sample.data field from Link to Patient feature
             const transformedSamples = response.map((sample) => ({
               id: String(sample.id || sample.sampleItemId),
+              sampleId: sample.id || sample.sampleItemId,
+              sampleItemId: sample.sampleItemId || sample.id,
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || "PENDING",
-              patientName: sample.data?.patientName || sample.patientName || "",
-              patientId: sample.data?.patientId || "",
+              // Display "Participant" for anonymous samples (no patientId)
+              patientName:
+                sample.data?.patientName ||
+                sample.patientName ||
+                (!sample.data?.patientId && !sample.patientId
+                  ? intl.formatMessage({
+                      id: "medlab.collection.participant",
+                      defaultMessage: "Participant",
+                    })
+                  : ""),
+              patientId: sample.data?.patientId || sample.patientId || "",
               patientNationalId: sample.data?.patientNationalId || "",
               volume: sample.volume,
               containerType: sample.containerType,
               labNo: sample.labNo || sample.accessionNumber,
+              linkedOrderId:
+                sample.linkedOrderId || sample.data?.linkedOrderId || "",
+              linkedOrderLabNo:
+                sample.linkedOrderLabNo || sample.data?.linkedOrderLabNo || "",
               data: sample.data, // Preserve full data for other uses
             }));
             setSamples(transformedSamples);
@@ -164,7 +159,7 @@ function SampleCollectionPage({
         }
       },
     );
-  }, [pageData?.id]);
+  }, [pageData?.id, intl]);
 
   // Handle manifest import success
   const handleImportSuccess = useCallback(
@@ -200,95 +195,71 @@ function SampleCollectionPage({
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
-  // Handle bulk mark as collected
-  const handleBulkMarkCollected = useCallback(() => {
-    if (selectedSampleIds.length === 0) return;
+  // Handle bulk mark as collected - direct status update without modal
+  const handleBulkMarkCollected = useCallback(
+    (sampleIds) => {
+      if (!sampleIds || sampleIds.length === 0) return;
 
-    // Require real page ID for bulk actions
-    if (!hasRealPageId) {
-      setError(
-        "Cannot mark samples: Page not properly initialized. Please refresh the page.",
-      );
-      return;
-    }
+      // Require real page ID for bulk actions
+      if (!hasRealPageId) {
+        setError(
+          "Cannot mark samples: Page not properly initialized. Please refresh the page.",
+        );
+        return;
+      }
 
-    // Open bulk collection modal to gather collection details
-    setBulkCollectionModalOpen(true);
-  }, [selectedSampleIds, hasRealPageId]);
+      // Simply mark samples as COMPLETED - data already exists from manifest
+      const bulkCollectionData = {
+        sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+        status: "COMPLETED",
+      };
 
-  // Submit bulk collection
-  const handleSubmitBulkCollection = useCallback(() => {
-    if (selectedSampleIds.length === 0) return;
-
-    const bulkCollectionData = {
-      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-      status: "COMPLETED",
-      containerType: collectionForm.containerType,
-      collectionDate:
-        collectionForm.collectionDate ||
-        configurationProperties?.currentDateAsText,
-      collectionTime: collectionForm.collectionTime,
-      collectorId: collectionForm.collectorId,
-      volume: collectionForm.volume,
-      notes: collectionForm.notes,
-    };
-
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-      JSON.stringify(bulkCollectionData),
-      (status) => {
-        if (status === 200) {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage(
-              {
-                id: "medlab.collection.bulk.success",
-                defaultMessage: "{count} samples marked as collected",
-              },
-              { count: selectedSampleIds.length },
-            ),
-            kind: NotificationKinds.success,
-          });
-          setNotificationVisible(true);
-          setBulkCollectionModalOpen(false);
-          setSelectedSampleIds([]);
-          setCollectionForm({
-            sampleType: "",
-            containerType: "",
-            collectionTime: "",
-            collectionDate: "",
-            collectorId: "",
-            volume: "",
-            notes: "",
-          });
-          loadPageSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify(bulkCollectionData),
+        (status) => {
+          if (status === 200) {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage(
+                {
+                  id: "medlab.collection.bulk.success",
+                  defaultMessage: "{count} samples marked as collected",
+                },
+                { count: sampleIds.length },
+              ),
+              kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
+            setSelectedSampleIds([]);
+            loadPageSamples();
+            if (onProgressUpdate) {
+              onProgressUpdate();
+            }
+          } else {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage({
+                id: "medlab.collection.bulk.error",
+                defaultMessage: "Error marking samples as collected",
+              }),
+              kind: NotificationKinds.error,
+            });
+            setNotificationVisible(true);
           }
-        } else {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "medlab.collection.bulk.error",
-              defaultMessage: "Error marking samples as collected",
-            }),
-            kind: NotificationKinds.error,
-          });
-          setNotificationVisible(true);
-        }
-      },
-    );
-  }, [
-    selectedSampleIds,
-    collectionForm,
-    pageData,
-    configurationProperties,
-    intl,
-    addNotification,
-    setNotificationVisible,
-    loadPageSamples,
-    onProgressUpdate,
-  ]);
+        },
+      );
+    },
+    [
+      hasRealPageId,
+      pageData,
+      intl,
+      addNotification,
+      setNotificationVisible,
+      loadPageSamples,
+      onProgressUpdate,
+    ],
+  );
 
   // Handle individual sample status change
   const handleStatusChange = useCallback(
@@ -321,86 +292,6 @@ function SampleCollectionPage({
     },
     [pageData?.id, hasRealPageId, loadPageSamples, onProgressUpdate],
   );
-
-  // Open collection modal for an individual sample
-  const handleCollectSample = useCallback((sample) => {
-    setSelectedOrder(sample);
-    setCollectionForm({
-      sampleType: sample.sampleType || "",
-      containerType: sample.containerType || "",
-      collectionTime: new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
-      collectionDate: "",
-      collectorId: "",
-      volume: sample.volume || "",
-      notes: "",
-    });
-    setCollectionModalOpen(true);
-  }, []);
-
-  // Submit individual sample collection
-  const handleSubmitCollection = useCallback(() => {
-    if (!selectedOrder) return;
-
-    const collectionData = {
-      sampleIds: [parseInt(selectedOrder.id, 10)],
-      status: "COMPLETED",
-      containerType: collectionForm.containerType,
-      collectionDate:
-        collectionForm.collectionDate ||
-        configurationProperties?.currentDateAsText,
-      collectionTime: collectionForm.collectionTime,
-      collectorId: collectionForm.collectorId,
-      volume: collectionForm.volume,
-      notes: collectionForm.notes,
-    };
-
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-      JSON.stringify(collectionData),
-      (status) => {
-        if (status === 200) {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "medlab.collection.success",
-              defaultMessage: "Sample collected successfully",
-            }),
-            kind: NotificationKinds.success,
-          });
-          setNotificationVisible(true);
-          setCollectionModalOpen(false);
-          loadPageSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
-          }
-        } else {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "medlab.collection.error",
-              defaultMessage: "Error collecting sample",
-            }),
-            kind: NotificationKinds.error,
-          });
-          setNotificationVisible(true);
-        }
-      },
-    );
-  }, [
-    selectedOrder,
-    collectionForm,
-    pageData,
-    configurationProperties,
-    intl,
-    addNotification,
-    setNotificationVisible,
-    loadPageSamples,
-    onProgressUpdate,
-  ]);
 
   // Handle linking samples to patient
   const handleLinkPatient = useCallback(
@@ -495,10 +386,19 @@ function SampleCollectionPage({
   const pendingSamples = samples.filter(
     (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
   );
+
+  // Split pending samples into two groups: unlinked samples and samples ready for collection
+  const unlinkedSamples = pendingSamples.filter(
+    (s) => !s.linkedOrderId && !s.linkedOrderLabNo,
+  );
+  const readyForCollection = pendingSamples.filter(
+    (s) => s.linkedOrderId || s.linkedOrderLabNo,
+  );
+
   const collectedSamples = samples.filter((s) => s.status === "COMPLETED");
 
-  // Table headers for pending samples
-  const pendingHeaders = [
+  // Table headers for unlinked samples (no actions column)
+  const unlinkedHeaders = [
     {
       key: "labNo",
       header: intl.formatMessage({ id: "sample.label.labnumber" }),
@@ -531,121 +431,113 @@ function SampleCollectionPage({
         defaultMessage: "Collection Date",
       }),
     },
+  ];
+
+  // Table headers for ready-for-collection samples (with actions)
+  const readyHeaders = [
+    {
+      key: "labNo",
+      header: intl.formatMessage({ id: "sample.label.labnumber" }),
+    },
+    {
+      key: "externalId",
+      header: intl.formatMessage({
+        id: "notebook.sample.externalId",
+        defaultMessage: "External ID",
+      }),
+    },
+    {
+      key: "sampleType",
+      header: intl.formatMessage({
+        id: "sample.sampleType",
+        defaultMessage: "Sample Type",
+      }),
+    },
+    {
+      key: "patientName",
+      header: intl.formatMessage({
+        id: "medlab.sample.patient",
+        defaultMessage: "Patient",
+      }),
+    },
+    {
+      key: "linkedOrder",
+      header: intl.formatMessage({
+        id: "medlab.collection.linkedOrder",
+        defaultMessage: "Linked Order",
+      }),
+    },
+    {
+      key: "collectionDate",
+      header: intl.formatMessage({
+        id: "notebook.sample.collectionDate",
+        defaultMessage: "Collection Date",
+      }),
+    },
     {
       key: "actions",
       header: intl.formatMessage({ id: "label.button.actions" }),
     },
   ];
 
-  // Render collection form fields (shared between individual and bulk modals)
-  const renderCollectionFormFields = () => (
-    <Grid>
-      <Column lg={8} md={4} sm={4}>
-        <Select
-          id="container-type"
-          labelText={intl.formatMessage({
-            id: "medlab.collection.containerType",
-            defaultMessage: "Container Type",
-          })}
-          value={collectionForm.containerType}
-          onChange={(e) =>
-            setCollectionForm((prev) => ({
-              ...prev,
-              containerType: e.target.value,
-            }))
-          }
-        >
-          <SelectItem value="" text="" />
-          {containerTypes.map((type) => (
-            <SelectItem key={type.id} value={type.id} text={type.name} />
-          ))}
-        </Select>
-      </Column>
-      <Column lg={8} md={4} sm={4}>
-        <CustomDatePicker
-          id="collection-date"
-          labelText={intl.formatMessage({
-            id: "medlab.collection.date",
-            defaultMessage: "Collection Date",
-          })}
-          value={
-            collectionForm.collectionDate ||
-            configurationProperties?.currentDateAsText
-          }
-          onChange={(date) =>
-            setCollectionForm((prev) => ({ ...prev, collectionDate: date }))
-          }
-          disallowFutureDate={true}
-        />
-      </Column>
-      <Column lg={8} md={4} sm={4}>
-        <TextInput
-          id="collection-time"
-          labelText={intl.formatMessage({
-            id: "medlab.collection.time",
-            defaultMessage: "Collection Time",
-          })}
-          value={collectionForm.collectionTime}
-          onChange={(e) =>
-            setCollectionForm((prev) => ({
-              ...prev,
-              collectionTime: e.target.value,
-            }))
-          }
-          placeholder="HH:MM"
-        />
-      </Column>
-      <Column lg={8} md={4} sm={4}>
-        <TextInput
-          id="collector-id"
-          labelText={intl.formatMessage({
-            id: "medlab.collection.collectorId",
-            defaultMessage: "Collector ID",
-          })}
-          value={collectionForm.collectorId}
-          onChange={(e) =>
-            setCollectionForm((prev) => ({
-              ...prev,
-              collectorId: e.target.value,
-            }))
-          }
-        />
-      </Column>
-      <Column lg={8} md={4} sm={4}>
-        <TextInput
-          id="volume"
-          labelText={intl.formatMessage({
-            id: "medlab.collection.volume",
-            defaultMessage: "Volume (mL)",
-          })}
-          value={collectionForm.volume}
-          onChange={(e) =>
-            setCollectionForm((prev) => ({
-              ...prev,
-              volume: e.target.value,
-            }))
-          }
-          type="number"
-        />
-      </Column>
-      <Column lg={16} md={8} sm={4}>
-        <TextArea
-          id="notes"
-          labelText={intl.formatMessage({
-            id: "medlab.collection.notes",
-            defaultMessage: "Notes",
-          })}
-          value={collectionForm.notes}
-          onChange={(e) =>
-            setCollectionForm((prev) => ({
-              ...prev,
-              notes: e.target.value,
-            }))
-          }
-          rows={2}
-        />
-      </Column>
-    </Grid>
+  // Handle link order success
+  const handleLinkOrderSuccess = useCallback(
+    (result) => {
+      setLinkOrderModalOpen(false);
+      setSampleForLinking(null);
+      loadPageSamples();
+      if (onProgressUpdate) {
+        onProgressUpdate();
+      }
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "medlab.collection.linkOrder.success",
+          defaultMessage: "Sample linked to order successfully",
+        }),
+        kind: NotificationKinds.success,
+      });
+      setNotificationVisible(true);
+    },
+    [
+      loadPageSamples,
+      onProgressUpdate,
+      intl,
+      addNotification,
+      setNotificationVisible,
+    ],
+  );
+
+  // Handle bulk link order success
+  const handleBulkLinkOrderSuccess = useCallback(
+    (result) => {
+      setBulkLinkOrderModalOpen(false);
+      setSamplesForBulkLinking([]);
+      setSelectedSampleIds([]);
+      loadPageSamples();
+      if (onProgressUpdate) {
+        onProgressUpdate();
+      }
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage(
+          {
+            id: "medlab.collection.bulkLinkOrder.success",
+            defaultMessage: "{count} sample(s) linked to order(s) successfully",
+          },
+          { count: result?.samplesLinked || result?.linksCreated || 0 },
+        ),
+        kind: NotificationKinds.success,
+      });
+      setNotificationVisible(true);
+    },
+    [
+      loadPageSamples,
+      onProgressUpdate,
+      intl,
+      addNotification,
+      setNotificationVisible,
+    ],
   );
 
   return (
@@ -701,35 +593,30 @@ function SampleCollectionPage({
         </Column>
       </Grid>
 
-      {/* Action Buttons */}
-      <div className="page-actions-bar">
-        <Button
-          kind="primary"
-          size="sm"
-          renderIcon={Upload}
-          onClick={() => setImportModalOpen(true)}
-        >
-          <FormattedMessage
-            id="medlab.page.sampleCollection.importManifest"
-            defaultMessage="Import from Manifest"
-          />
-        </Button>
-
-        {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={CheckmarkFilled}
-            onClick={handleBulkMarkCollected}
-          >
-            <FormattedMessage
-              id="medlab.page.sampleCollection.markCollected"
-              defaultMessage="Mark Selected as Collected ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        )}
-      </div>
+      {/* Sample Import Section */}
+      <Grid fullWidth className="import-section">
+        <Column lg={16} md={8} sm={4}>
+          <div style={{ padding: "1rem 0" }}>
+            <p style={{ marginBottom: "1rem", color: "#525252" }}>
+              <FormattedMessage
+                id="medlab.page.sampleCollection.import.description"
+                defaultMessage="Bulk import samples from a CSV manifest file. Samples will be created with pre-labeled identifiers and can be linked to orders afterward."
+              />
+            </p>
+            <Button
+              kind="primary"
+              size="md"
+              renderIcon={Upload}
+              onClick={() => setImportModalOpen(true)}
+            >
+              <FormattedMessage
+                id="medlab.page.sampleCollection.importManifest"
+                defaultMessage="Import from Manifest"
+              />
+            </Button>
+          </div>
+        </Column>
+      </Grid>
 
       {/* Error Display */}
       {error && (
@@ -744,17 +631,29 @@ function SampleCollectionPage({
       {/* Loading State */}
       {loading && <Loading />}
 
-      {/* Pending Samples Table with Selection */}
-      {!loading && pendingSamples.length > 0 && (
+      {/* Table 1: Samples Awaiting Order Link (no Collect buttons) */}
+      {!loading && unlinkedSamples.length > 0 && (
         <div className="orders-section">
           <h5>
             <FormattedMessage
-              id="medlab.page.sampleCollection.pendingSamples"
-              defaultMessage="Samples Pending Collection"
+              id="medlab.page.sampleCollection.awaitingOrderLink"
+              defaultMessage="Samples Awaiting Order Link"
             />
           </h5>
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "#525252",
+              marginBottom: "1rem",
+            }}
+          >
+            <FormattedMessage
+              id="medlab.page.sampleCollection.awaitingOrderLink.description"
+              defaultMessage="These samples must be linked to orders before they can be collected."
+            />
+          </p>
           <DataTable
-            rows={pendingSamples.map((s) => ({
+            rows={unlinkedSamples.map((s) => ({
               ...s,
               id: String(s.id),
               labNo: s.labNo || s.accessionNumber || "-",
@@ -763,7 +662,149 @@ function SampleCollectionPage({
               patientName: s.patientName || "-",
               collectionDate: s.collectionDate || "-",
             }))}
-            headers={pendingHeaders}
+            headers={unlinkedHeaders}
+            isSortable
+          >
+            {({
+              rows,
+              headers,
+              getHeaderProps,
+              getTableProps,
+              getSelectionProps,
+              getRowProps,
+              selectedRows,
+              getBatchActionProps,
+            }) => {
+              const batchActionProps = getBatchActionProps();
+              return (
+                <TableContainer>
+                  <TableToolbar>
+                    <TableBatchActions {...batchActionProps}>
+                      <TableBatchAction
+                        tabIndex={
+                          batchActionProps.shouldShowBatchActions ? 0 : -1
+                        }
+                        renderIcon={LinkIcon}
+                        onClick={() => {
+                          setSelectedSampleIds(selectedRows.map((r) => r.id));
+                          setLinkPatientModalOpen(true);
+                        }}
+                      >
+                        <FormattedMessage
+                          id="medlab.collection.bulk.linkPatient"
+                          defaultMessage="Link to Patient"
+                        />
+                      </TableBatchAction>
+                      <TableBatchAction
+                        tabIndex={
+                          batchActionProps.shouldShowBatchActions ? 0 : -1
+                        }
+                        renderIcon={LinkIcon}
+                        onClick={() => {
+                          if (selectedRows.length === 0) return;
+
+                          // Get selected samples from unlinked samples
+                          const selectedSamplesData = unlinkedSamples.filter(
+                            (s) =>
+                              selectedRows.some((r) => String(s.id) === r.id),
+                          );
+
+                          if (selectedSamplesData.length === 1) {
+                            // Single sample: use existing LinkOrderModal
+                            setSampleForLinking(selectedSamplesData[0]);
+                            setLinkOrderModalOpen(true);
+                          } else {
+                            // Multiple samples: use new BulkLinkOrderModal
+                            setSamplesForBulkLinking(selectedSamplesData);
+                            setBulkLinkOrderModalOpen(true);
+                          }
+                        }}
+                      >
+                        <FormattedMessage
+                          id="medlab.collection.linkOrder"
+                          defaultMessage="Link to Order"
+                        />
+                      </TableBatchAction>
+                    </TableBatchActions>
+                    <TableToolbarContent>
+                      <p style={{ fontSize: "0.875rem", color: "#525252" }}>
+                        <FormattedMessage
+                          id="medlab.collection.awaitingOrderLink.hint"
+                          defaultMessage="Select samples to link to patients or orders"
+                        />
+                      </p>
+                    </TableToolbarContent>
+                  </TableToolbar>
+                  <Table {...getTableProps()}>
+                    <TableHead>
+                      <TableRow>
+                        <TableSelectAll {...getSelectionProps()} />
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          <TableSelectRow {...getSelectionProps({ row })} />
+                          {row.cells.map((cell) => (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              );
+            }}
+          </DataTable>
+        </div>
+      )}
+
+      {/* Table 2: Ready for Collection (with Collect buttons) */}
+      {!loading && readyForCollection.length > 0 && (
+        <div className="orders-section" style={{ marginTop: "2rem" }}>
+          <h5>
+            <FormattedMessage
+              id="medlab.page.sampleCollection.readyForCollection"
+              defaultMessage="Ready for Collection"
+            />
+          </h5>
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "#525252",
+              marginBottom: "1rem",
+            }}
+          >
+            <FormattedMessage
+              id="medlab.page.sampleCollection.readyForCollection.description"
+              defaultMessage="These samples are linked to orders and ready to be collected."
+            />
+          </p>
+          <DataTable
+            rows={readyForCollection.map((s) => ({
+              ...s,
+              id: String(s.id),
+              labNo: s.labNo || s.accessionNumber || "-",
+              externalId: s.externalId || "-",
+              sampleType: s.sampleType || "-",
+              patientName: s.patientName || "-",
+              linkedOrder:
+                s.linkedOrderLabNo ||
+                intl.formatMessage({
+                  id: "medlab.collection.unlinked",
+                  defaultMessage: "Not Linked",
+                }),
+              collectionDate: s.collectionDate || "-",
+            }))}
+            headers={readyHeaders}
             isSortable
           >
             {({
@@ -787,8 +828,8 @@ function SampleCollectionPage({
                         }
                         renderIcon={CheckmarkFilled}
                         onClick={() => {
-                          setSelectedSampleIds(selectedRows.map((r) => r.id));
-                          setBulkCollectionModalOpen(true);
+                          const ids = selectedRows.map((r) => r.id);
+                          handleBulkMarkCollected(ids);
                         }}
                       >
                         <FormattedMessage
@@ -800,23 +841,72 @@ function SampleCollectionPage({
                         tabIndex={
                           batchActionProps.shouldShowBatchActions ? 0 : -1
                         }
-                        renderIcon={LinkIcon}
+                        renderIcon={Barcode}
                         onClick={() => {
-                          setSelectedSampleIds(selectedRows.map((r) => r.id));
-                          setLinkPatientModalOpen(true);
+                          // Get the first selected sample directly from selectedRows
+                          if (selectedRows.length === 0) return;
+
+                          const selectedSample = readyForCollection.find(
+                            (s) => String(s.id) === selectedRows[0].id,
+                          );
+
+                          if (!selectedSample) {
+                            addNotification({
+                              title: intl.formatMessage({
+                                id: "notification.title",
+                              }),
+                              message: intl.formatMessage({
+                                id: "medlab.collection.barcode.noSample",
+                                defaultMessage: "Selected sample not found",
+                              }),
+                              kind: NotificationKinds.error,
+                            });
+                            setNotificationVisible(true);
+                            return;
+                          }
+
+                          // Get identifier from sample
+                          // Priority: accessionNumber > labNo > externalId
+                          const identifier =
+                            selectedSample.accessionNumber ||
+                            selectedSample.labNo ||
+                            selectedSample.externalId;
+
+                          if (!identifier) {
+                            addNotification({
+                              title: intl.formatMessage({
+                                id: "notification.title",
+                              }),
+                              message: intl.formatMessage({
+                                id: "medlab.collection.barcode.noIdentifier",
+                                defaultMessage:
+                                  "Sample does not have a valid identifier for barcode generation",
+                              }),
+                              kind: NotificationKinds.error,
+                            });
+                            setNotificationVisible(true);
+                            return;
+                          }
+
+                          // Use LabelMakerServlet to generate barcode
+                          setBarcodeLabNo(identifier);
+                          setBarcodeSource(
+                            `/LabelMakerServlet?labNo=${identifier}&type=specimen&quantity=1`,
+                          );
+                          setRenderBarcode(true);
                         }}
                       >
                         <FormattedMessage
-                          id="medlab.collection.bulk.linkPatient"
-                          defaultMessage="Link to Patient"
+                          id="medlab.collection.generateBarcode"
+                          defaultMessage="Generate Barcode"
                         />
                       </TableBatchAction>
                     </TableBatchActions>
                     <TableToolbarContent>
                       <p style={{ fontSize: "0.875rem", color: "#525252" }}>
                         <FormattedMessage
-                          id="medlab.collection.bulk.hint"
-                          defaultMessage="Select samples to perform bulk collection"
+                          id="medlab.collection.readyForCollection.hint"
+                          defaultMessage="Select samples to collect"
                         />
                       </p>
                     </TableToolbarContent>
@@ -837,7 +927,7 @@ function SampleCollectionPage({
                     </TableHead>
                     <TableBody>
                       {rows.map((row) => {
-                        const sample = pendingSamples.find(
+                        const sample = readyForCollection.find(
                           (s) => String(s.id) === row.id,
                         );
                         return (
@@ -850,7 +940,11 @@ function SampleCollectionPage({
                                     kind="primary"
                                     size="sm"
                                     renderIcon={Chemistry}
-                                    onClick={() => handleCollectSample(sample)}
+                                    onClick={() =>
+                                      handleBulkMarkCollected([
+                                        String(sample.id),
+                                      ])
+                                    }
                                   >
                                     <FormattedMessage
                                       id="medlab.collection.collect"
@@ -980,92 +1074,14 @@ function SampleCollectionPage({
         </div>
       )}
 
-      {/* Manifest Import Modal */}
-      <ManifestImportModal
+      {/* Manifest Import Modal - Use MedLab version with 13-field support */}
+      <MedLabManifestImportModal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
         entryId={entryId}
+        pageData={pageData}
         onImportSuccess={handleImportSuccess}
       />
-
-      {/* Individual Collection Modal */}
-      <Modal
-        open={collectionModalOpen}
-        onRequestClose={() => setCollectionModalOpen(false)}
-        modalHeading={intl.formatMessage({
-          id: "medlab.page.sampleCollection.collectModal",
-          defaultMessage: "Collect Sample",
-        })}
-        primaryButtonText={intl.formatMessage({ id: "label.button.save" })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitCollection}
-        size="md"
-      >
-        {selectedOrder && (
-          <Tile className="order-info-tile" style={{ marginBottom: "1rem" }}>
-            <strong>
-              <FormattedMessage id="sample.label.labnumber" />:
-            </strong>{" "}
-            {selectedOrder.labNo || selectedOrder.accessionNumber}
-            <br />
-            <strong>
-              <FormattedMessage
-                id="notebook.sample.externalId"
-                defaultMessage="External ID"
-              />
-              :
-            </strong>{" "}
-            {selectedOrder.externalId || "-"}
-            <br />
-            <strong>
-              <FormattedMessage
-                id="sample.sampleType"
-                defaultMessage="Sample Type"
-              />
-              :
-            </strong>{" "}
-            {selectedOrder.sampleType || "-"}
-          </Tile>
-        )}
-        {renderCollectionFormFields()}
-      </Modal>
-
-      {/* Bulk Collection Modal */}
-      <Modal
-        open={bulkCollectionModalOpen}
-        onRequestClose={() => {
-          setBulkCollectionModalOpen(false);
-          setSelectedSampleIds([]);
-        }}
-        modalHeading={intl.formatMessage({
-          id: "medlab.page.sampleCollection.bulkCollectModal",
-          defaultMessage: "Bulk Sample Collection",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.collection.bulk.collect",
-          defaultMessage: "Mark as Collected",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitBulkCollection}
-        size="md"
-      >
-        <Tile className="order-info-tile" style={{ marginBottom: "1rem" }}>
-          <Tag type="blue">
-            <FormattedMessage
-              id="medlab.collection.bulk.selectedCount"
-              defaultMessage="{count} samples selected"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Tag>
-        </Tile>
-        <p style={{ marginBottom: "1rem", color: "#525252" }}>
-          <FormattedMessage
-            id="medlab.collection.bulk.description"
-            defaultMessage="The following collection details will be applied to all selected samples."
-          />
-        </p>
-        {renderCollectionFormFields()}
-      </Modal>
 
       {/* Link Patient Modal */}
       <LinkPatientModal
@@ -1077,6 +1093,58 @@ function SampleCollectionPage({
         selectedSampleIds={selectedSampleIds}
         onLinkPatient={handleLinkPatient}
       />
+
+      {/* Link Order Modal */}
+      <LinkOrderModal
+        open={linkOrderModalOpen}
+        onClose={() => {
+          setLinkOrderModalOpen(false);
+          setSampleForLinking(null);
+        }}
+        sample={sampleForLinking}
+        orderEntryPageId={orderEntryPageId}
+        onLinkSuccess={handleLinkOrderSuccess}
+      />
+
+      {/* Bulk Link Order Modal */}
+      <BulkLinkOrderModal
+        open={bulkLinkOrderModalOpen}
+        onClose={() => {
+          setBulkLinkOrderModalOpen(false);
+          setSamplesForBulkLinking([]);
+        }}
+        samples={samplesForBulkLinking}
+        orderEntryPageId={orderEntryPageId}
+        onLinkSuccess={handleBulkLinkOrderSuccess}
+      />
+
+      {/* Barcode Display Modal */}
+      <Modal
+        open={renderBarcode}
+        onRequestClose={() => {
+          setRenderBarcode(false);
+          setBarcodeSource("about:blank");
+          setBarcodeLabNo("");
+        }}
+        modalHeading={
+          <>
+            <FormattedMessage id="barcode.header" defaultMessage="Barcode" />
+            {barcodeLabNo && ` - ${barcodeLabNo}`}
+          </>
+        }
+        passiveModal
+        size="lg"
+      >
+        <div style={{ minHeight: "500px" }}>
+          <iframe
+            src={barcodeSource}
+            width="100%"
+            height="500px"
+            title="Barcode Preview"
+            style={{ border: "1px solid #e0e0e0" }}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

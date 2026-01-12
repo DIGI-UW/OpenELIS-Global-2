@@ -7,7 +7,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.medlab.valueholder.OrderSampleLink;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NoteBookService;
@@ -61,6 +63,18 @@ public class NotebookSampleEntryController extends BaseRestController {
 
     @Autowired
     private NoteBookPageService noteBookPageService;
+
+    @Autowired
+    private org.openelisglobal.samplehuman.service.SampleHumanService sampleHumanService;
+
+    @Autowired
+    private org.openelisglobal.patient.service.PatientService patientService;
+
+    @Autowired
+    private org.openelisglobal.medlab.service.OrderSampleLinkService orderSampleLinkService;
+
+    @Autowired
+    private org.openelisglobal.dataexchange.service.order.ElectronicOrderService electronicOrderService;
 
     /**
      * Search for samples to add to a notebook. T035: GET
@@ -393,6 +407,56 @@ public class NotebookSampleEntryController extends BaseRestController {
             sampleMap.put("nestingLevel", 0);
             sampleMap.put("parentSampleItemId", null);
             sampleMap.put("parentExternalId", null);
+        }
+
+        // Patient information
+        if (sampleItem.getSample() != null) {
+            try {
+                org.openelisglobal.patient.valueholder.Patient patient = sampleHumanService
+                        .getPatientForSample(sampleItem.getSample());
+                if (patient != null) {
+                    String patientName = patientService.getLastFirstName(patient);
+                    sampleMap.put("patientName", patientName);
+                    sampleMap.put("patientId", patient.getId());
+                } else {
+                    sampleMap.put("patientName", "Participant");
+                    sampleMap.put("patientId", null);
+                }
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "buildSampleMap",
+                        "Could not load patient for sample " + sampleItem.getId() + ": " + e.getMessage());
+                sampleMap.put("patientName", "Participant");
+                sampleMap.put("patientId", null);
+            }
+        } else {
+            sampleMap.put("patientName", "Participant");
+            sampleMap.put("patientId", null);
+        }
+
+        // Linked order information
+        try {
+            List<OrderSampleLink> orderLinks = orderSampleLinkService
+                    .getLinksBySampleItemId(Integer.parseInt(sampleItem.getId()));
+            if (orderLinks != null && !orderLinks.isEmpty()) {
+                // Get the first order link (could be multiple in some cases)
+                OrderSampleLink firstLink = orderLinks.get(0);
+                ElectronicOrder order = electronicOrderService.get(String.valueOf(firstLink.getElectronicOrderId()));
+                if (order != null) {
+                    sampleMap.put("linkedOrderLabNo", order.getExternalId());
+                    sampleMap.put("linkedOrderId", order.getId());
+                } else {
+                    sampleMap.put("linkedOrderLabNo", null);
+                    sampleMap.put("linkedOrderId", null);
+                }
+            } else {
+                sampleMap.put("linkedOrderLabNo", null);
+                sampleMap.put("linkedOrderId", null);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "buildSampleMap",
+                    "Could not load order for sample " + sampleItem.getId() + ": " + e.getMessage());
+            sampleMap.put("linkedOrderLabNo", null);
+            sampleMap.put("linkedOrderId", null);
         }
 
         return sampleMap;

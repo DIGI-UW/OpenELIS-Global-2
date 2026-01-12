@@ -1,0 +1,16 @@
+sample_id,sample_type,container_type,custom_label,quantity,unit_of_measure,collection_source,collector,collection_date,collection_time,order_id,patient_id,notes
+SITE-A-001,Blood,EDTA,Site A Sample 1,5,mL,Outpatient Clinic,Dr. Smith,2026-01-08,08:30,,,Anonymous research participant
+SITE-A-002,Serum,SST,Site A Sample 2,3,mL,Outpatient Clinic,Dr. Smith,2026-01-08,08:45,ORD-12345,P001,Fasting sample
+SITE-A-003,Urine,urine_cup,Site A Sample 3,30,mL,Outpatient Clinic,Nurse Johnson,2026-01-08,09:00,,,First morning void
+SITE-A-004,Plasma,EDTA,Site A Sample 4,4,mL,Outpatient Clinic,Dr. Smith,2026-01-08,09:15,ORD-12345,P001,Paired with SITE-A-002
+SITE-A-005,Blood,Heparin,Site A Sample 5,5,mL,Outpatient Clinic,Nurse Johnson,2026-01-08,09:30,,,For lithium analysis
+SITE-B-001,Stool,stool_jar,Site B Sample 1,10,g,Field Collection,Tech Wilson,2026-01-08,07:00,ORD-12346,P002,Fresh sample within 30 min
+SITE-B-002,Blood,EDTA,Site B Sample 2,5,mL,Field Collection,Tech Wilson,2026-01-08,07:15,ORD-12346,P002,Hemoglobin test
+SITE-B-003,Urine,urine_cup,Site B Sample 3,25,mL,Field Collection,Tech Wilson,2026-01-08,07:30,,,Random urine sample
+SITE-B-004,CSF,cryovial,Site B Sample 4,2,mL,Hospital Ward,Dr. Lee,2026-01-08,10:00,ORD-12347,P003,Lumbar puncture - urgent
+SITE-B-005,Blood,Citrate,Site B Sample 5,3,mL,Hospital Ward,Dr. Lee,2026-01-08,10:15,ORD-12347,P003,Coagulation studies
+SITE-C-001,Swab,swab_tube,Site C Sample 1,1,unit,Mobile Unit,Nurse Adams,2026-01-08,11:00,,,Throat swab for culture
+SITE-C-002,Blood,SST,Site C Sample 2,4,mL,Mobile Unit,Nurse Adams,2026-01-08,11:15,,,Serology panel
+SITE-C-003,Urine,urine_cup,Site C Sample 3,50,mL,Mobile Unit,Nurse Adams,2026-01-08,11:30,ORD-12348,P004,24-hour collection aliquot
+SITE-C-004,Plasma,EDTA,Site C Sample 4,3,mL,Mobile Unit,Nurse Adams,2026-01-08,11:45,ORD-12348,P004,Viral load testing
+SITE-C-005,Blood,Plain,Site C Sample 5,5,mL,Mobile Unit,Nurse Adams,2026-01-08,12:00,,,No anticoagulant - serum harvest

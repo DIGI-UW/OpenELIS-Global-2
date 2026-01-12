@@ -1,3 +1,9 @@
+/**
+ * TODO: This component is deprecated and should be removed.
+ * Transport & Packaging page has been removed from the Medical Laboratory workflow.
+ * This file remains for reference only and should be deleted in a future cleanup.
+ */
+
 import React, {
   useState,
   useEffect,

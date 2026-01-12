@@ -27,6 +27,49 @@ public interface MedLabPatientOrderService {
             String priority, List<String> testIds, Integer notebookEntryId, Integer notebookPageId, String sysUserId);
 
     /**
+     * Creates bulk patient orders for multiple patients at once. Uses
+     * AccessionService for unique lab number generation with the specified prefix.
+     *
+     * @param patients        list of patient data maps with patientId, firstName,
+     *                        lastName
+     * @param labNumberPrefix the prefix for lab numbers (e.g., "MEDLAB-2026-")
+     * @param testIds         list of test IDs to include in each order
+     * @param priority        the order priority
+     * @param notebookEntryId notebook entry ID (optional)
+     * @param notebookPageId  notebook page ID (optional)
+     * @param sysUserId       the system user ID
+     * @return result with created orders information
+     */
+    Map<String, Object> createBulkPatientOrders(List<Map<String, Object>> patients, String labNumberPrefix,
+            List<String> testIds, String priority, Integer notebookEntryId, Integer notebookPageId, String sysUserId);
+
+    /**
+     * Creates independent orders for multiple samples with sequential lab numbers.
+     * Each sample gets its own order with the specified tests.
+     *
+     * @param sampleIds       list of sample IDs
+     * @param labNumberPrefix the prefix for lab numbers (e.g., "ORD-")
+     * @param testIds         list of test IDs to include in each order
+     * @param notebookEntryId notebook entry ID (optional)
+     * @param notebookPageId  notebook page ID (optional)
+     * @param sysUserId       the system user ID
+     * @return result with created orders and links information
+     */
+    Map<String, Object> createBulkIndependentOrders(List<Integer> sampleIds, String labNumberPrefix,
+            List<String> testIds, Integer notebookEntryId, Integer notebookPageId, String sysUserId);
+
+    /**
+     * Gets a preview of lab numbers that would be generated for bulk order
+     * creation. Does not increment the sequence - just shows what numbers would be
+     * assigned.
+     *
+     * @param prefix the lab number prefix
+     * @param count  the number of lab numbers to preview
+     * @return list of preview lab numbers
+     */
+    List<String> getLabNumberPreview(String prefix, int count);
+
+    /**
      * Gets orders for a notebook page.
      *
      * @param pageId the notebook page ID
@@ -83,7 +126,11 @@ public interface MedLabPatientOrderService {
      *
      * @param entryId the notebook entry ID
      * @return list of collected samples ready for transport packaging
+     * @deprecated Transport & Packaging page has been removed from the Medical
+     *             Laboratory workflow. This method is kept for backward
+     *             compatibility.
      */
+    @Deprecated
     List<Map<String, Object>> getSamplesForTransport(Integer entryId);
 
     /**

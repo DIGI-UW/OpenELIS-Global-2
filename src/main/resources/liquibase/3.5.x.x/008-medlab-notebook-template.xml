@@ -9,8 +9,9 @@
 
     <!-- ======================================================== -->
     <!-- MEDICAL LABORATORY NOTEBOOK TEMPLATE -->
-    <!-- Creates a predefined notebook template with 10 workflow pages -->
+    <!-- Creates a predefined notebook template with 9 workflow pages -->
     <!-- for the Medical Laboratory workflow -->
+    <!-- NOTE: Transport & Packaging page (old page 3) has been removed -->
     <!-- ======================================================== -->
 
     <changeSet id="create-medlab-notebook-template" author="openelis-medlab">
@@ -41,7 +42,7 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 1: PATIENT REGISTRATION -->
+    <!-- PAGE 1: PATIENT & LAB ORDER -->
     <!-- ======================================================== -->
     <changeSet id="create-medlab-page-1-patient-registration" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
@@ -54,14 +55,15 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 1
             </sqlCheck>
         </preConditions>
-        <comment>Create Patient Registration page for Medical Laboratory notebook</comment>
+        <comment>Create Patient and Lab Order page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Patient Registration"/>
-            <column name="instructions" value="Register patients for the workflow. Enter demographic data (name, sex, age, contact). Link existing patients if already registered in the system."/>
-            <column name="content" value="Patient Registration - Register or link patients for lab orders"/>
+            <column name="title" value="Patient &amp; Lab Order"/>
+            <column name="instructions" value="Register patient (with inline search), create lab order. Orders drive all downstream sample collection, processing, and testing activities."/>
+            <column name="content" value="Patient and Lab Order - Register or link patients and create lab orders"/>
             <column name="page_order" value="1"/>
+            <column name="page_id" value="medlab-patient-order"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
@@ -97,6 +99,7 @@
             <column name="instructions" value="Collect specimens from patients. Record container type (EDTA vacutainer, plain tube, etc.), apply barcode label, record collector ID and collection time."/>
             <column name="content" value="Sample Collection - Phlebotomy and specimen labeling"/>
             <column name="page_order" value="2"/>
+            <column name="page_id" value="sample-collection"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
@@ -111,9 +114,10 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 3: TRANSPORT & PACKAGING -->
+    <!-- PAGE 3: SAMPLE RECEIPT & QUALITY ASSESSMENT -->
+    <!-- (was page 4 - Transport & Packaging removed) -->
     <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-3-transport-packaging" author="openelis-medlab">
+    <changeSet id="create-medlab-page-3-quality-check" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
@@ -124,14 +128,15 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 3
             </sqlCheck>
         </preConditions>
-        <comment>Create Transport and Packaging page for Medical Laboratory notebook</comment>
+        <comment>Create Sample Receipt and Quality Assessment page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Transport &amp; Packaging"/>
-            <column name="instructions" value="Document transport packaging compliance per IATA PI650. Check primary container (seal, barcode, absorbent), secondary packaging (integrity, watertight), tertiary packaging (labeling, temperature logger)."/>
-            <column name="content" value="Transport and Packaging - IATA PI650 compliance documentation"/>
+            <column name="title" value="Sample Receipt &amp; Quality Assessment"/>
+            <column name="instructions" value="Receive samples and perform quality checks. Verify labeling, container integrity, order matching, temperature compliance. Check for hemolysis, lipemia, icterus. Record acceptance or rejection with reasons."/>
+            <column name="content" value="Sample Receipt and Quality Assessment - Sample acceptance criteria validation"/>
             <column name="page_order" value="3"/>
+            <column name="page_id" value="medlab-quality-check"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
@@ -146,9 +151,10 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 4: SAMPLE RECEIPT & QUALITY ASSESSMENT -->
+    <!-- PAGE 4: SAMPLE ROUTING -->
+    <!-- (was page 5) -->
     <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-4-quality-check" author="openelis-medlab">
+    <changeSet id="create-medlab-page-4-sample-routing" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
@@ -159,16 +165,17 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 4
             </sqlCheck>
         </preConditions>
-        <comment>Create Sample Receipt and Quality Assessment page for Medical Laboratory notebook</comment>
+        <comment>Create Sample Routing page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Sample Receipt &amp; Quality Assessment"/>
-            <column name="instructions" value="Receive samples and perform quality checks. Verify labeling, container integrity, order matching, temperature compliance. Check for hemolysis, lipemia, icterus. Record acceptance or rejection with reasons."/>
-            <column name="content" value="Sample Receipt and Quality Assessment - Sample acceptance criteria validation"/>
+            <column name="title" value="Sample Routing"/>
+            <column name="instructions" value="Route samples to appropriate destinations. Assign to internal analysis, external laboratory, or storage. Create department worklists and track allocation status."/>
+            <column name="content" value="Sample Routing - Department routing and destination assignment"/>
             <column name="page_order" value="4"/>
+            <column name="page_id" value="medlab-sample-routing"/>
             <column name="completed" valueBoolean="false"/>
-            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="page_type" value="BRANCHING"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
@@ -181,9 +188,10 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 5: SAMPLE ROUTING -->
+    <!-- PAGE 5: SAMPLE PROCESSING -->
+    <!-- (was page 6) -->
     <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-5-sample-routing" author="openelis-medlab">
+    <changeSet id="create-medlab-page-5-sample-processing" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
@@ -194,16 +202,17 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 5
             </sqlCheck>
         </preConditions>
-        <comment>Create Sample Routing page for Medical Laboratory notebook</comment>
+        <comment>Create Sample Processing page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Sample Routing"/>
-            <column name="instructions" value="Route samples to appropriate destinations. Assign to internal analysis, external laboratory, or storage. Create department worklists and track allocation status."/>
-            <column name="content" value="Sample Routing - Department routing and destination assignment"/>
+            <column name="title" value="Sample Processing"/>
+            <column name="instructions" value="Process samples for testing. Perform centrifugation, serum separation, aliquot creation. Record processing type, derived materials, and parent-child sample relationships."/>
+            <column name="content" value="Sample Processing - Centrifugation, aliquoting, and derived materials"/>
             <column name="page_order" value="5"/>
+            <column name="page_id" value="medlab-sample-processing"/>
             <column name="completed" valueBoolean="false"/>
-            <column name="page_type" value="BRANCHING"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
@@ -216,9 +225,10 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 6: SAMPLE PROCESSING -->
+    <!-- PAGE 6: TESTING & ANALYZER -->
+    <!-- (was page 7) -->
     <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-6-sample-processing" author="openelis-medlab">
+    <changeSet id="create-medlab-page-6-testing-analyzer" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
@@ -229,14 +239,15 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 6
             </sqlCheck>
         </preConditions>
-        <comment>Create Sample Processing page for Medical Laboratory notebook</comment>
+        <comment>Create Testing and Analyzer page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Sample Processing"/>
-            <column name="instructions" value="Process samples for testing. Perform centrifugation, serum separation, aliquot creation. Record processing type, derived materials, and parent-child sample relationships."/>
-            <column name="content" value="Sample Processing - Centrifugation, aliquoting, and derived materials"/>
+            <column name="title" value="Testing &amp; Analyzer"/>
+            <column name="instructions" value="Execute tests on analyzers. Generate worklists, import results via CSV/HL7. Monitor QC with Levey-Jennings charts and Westgard rules. Track calibration status and handle deviations."/>
+            <column name="content" value="Testing and Analyzer - Instrument interfacing, QC monitoring, and result import"/>
             <column name="page_order" value="6"/>
+            <column name="page_id" value="medlab-testing-analyzer"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
@@ -251,9 +262,10 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 7: TESTING & ANALYZER -->
+    <!-- PAGE 7: RESULT ENTRY -->
+    <!-- (was page 8) -->
     <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-7-testing-analyzer" author="openelis-medlab">
+    <changeSet id="create-medlab-page-7-result-entry" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
@@ -264,14 +276,15 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 7
             </sqlCheck>
         </preConditions>
-        <comment>Create Testing and Analyzer page for Medical Laboratory notebook</comment>
+        <comment>Create Result Entry page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Testing &amp; Analyzer"/>
-            <column name="instructions" value="Execute tests on analyzers. Generate worklists, import results via CSV/HL7. Monitor QC with Levey-Jennings charts and Westgard rules. Track calibration status and handle deviations."/>
-            <column name="content" value="Testing and Analyzer - Instrument interfacing, QC monitoring, and result import"/>
+            <column name="title" value="Result Entry"/>
+            <column name="instructions" value="Enter test results manually or review auto-imported results. System auto-flags H/L/C based on reference ranges. Add result comments where needed. Validate results for accuracy."/>
+            <column name="content" value="Result Entry - Manual entry, auto-import review, and result flagging"/>
             <column name="page_order" value="7"/>
+            <column name="page_id" value="medlab-result-entry"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
@@ -286,9 +299,10 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 8: RESULT ENTRY -->
+    <!-- PAGE 8: VALIDATION, REPORTING & PERFORMANCE MONITORING -->
+    <!-- (was page 9) -->
     <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-8-result-entry" author="openelis-medlab">
+    <changeSet id="create-medlab-page-8-validation-reporting" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
@@ -299,16 +313,17 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 8
             </sqlCheck>
         </preConditions>
-        <comment>Create Result Entry page for Medical Laboratory notebook</comment>
+        <comment>Create Validation, Reporting and Performance Monitoring page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
             <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Result Entry"/>
-            <column name="instructions" value="Enter test results manually or review auto-imported results. System auto-flags H/L/C based on reference ranges. Add result comments where needed. Validate results for accuracy."/>
-            <column name="content" value="Result Entry - Manual entry, auto-import review, and result flagging"/>
+            <column name="title" value="Validation, Reporting &amp; Performance Monitoring"/>
+            <column name="instructions" value="Authorize results with supervisor approval. Generate patient reports and track delivery. Monitor lab performance including QC trends, turnaround time, sample acceptance rates, and equipment usage."/>
+            <column name="content" value="Validation, Reporting and Performance Monitoring - Result approval, report generation, and KPI tracking"/>
             <column name="page_order" value="8"/>
+            <column name="page_id" value="medlab-validation-reporting"/>
             <column name="completed" valueBoolean="false"/>
-            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="page_type" value="AGGREGATION"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
             <column name="last_updated" valueComputed="${now}"/>
         </insert>
@@ -321,9 +336,10 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- PAGE 9: VALIDATION, REPORTING & PERFORMANCE MONITORING -->
+    <!-- PAGE 9: DISPOSAL, ARCHIVING & ACCREDITATION -->
+    <!-- (was page 10) -->
     <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-9-validation-reporting" author="openelis-medlab">
+    <changeSet id="create-medlab-page-9-disposal-archiving" author="openelis-medlab">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
@@ -334,41 +350,6 @@
                 WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 9
             </sqlCheck>
         </preConditions>
-        <comment>Create Validation, Reporting and Performance Monitoring page for Medical Laboratory notebook</comment>
-
-        <insert tableName="notebook_page" schemaName="clinlims">
-            <column name="id" valueSequenceNext="notebook_page_seq"/>
-            <column name="title" value="Validation, Reporting &amp; Performance Monitoring"/>
-            <column name="instructions" value="Authorize results with supervisor approval. Generate patient reports and track delivery. Monitor lab performance including QC trends, turnaround time, sample acceptance rates, and equipment usage."/>
-            <column name="content" value="Validation, Reporting and Performance Monitoring - Result approval, report generation, and KPI tracking"/>
-            <column name="page_order" value="9"/>
-            <column name="completed" valueBoolean="false"/>
-            <column name="page_type" value="AGGREGATION"/>
-            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
-            <column name="last_updated" valueComputed="${now}"/>
-        </insert>
-
-        <rollback>
-            <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true) AND page_order = 9</where>
-            </delete>
-        </rollback>
-    </changeSet>
-
-    <!-- ======================================================== -->
-    <!-- PAGE 10: DISPOSAL, ARCHIVING & ACCREDITATION -->
-    <!-- ======================================================== -->
-    <changeSet id="create-medlab-page-10-disposal-archiving" author="openelis-medlab">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true
-            </sqlCheck>
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM clinlims.notebook_page np
-                JOIN clinlims.notebook n ON np.notebook_id = n.id
-                WHERE n.title = 'Medical Laboratory' AND n.is_template = true AND np.page_order = 10
-            </sqlCheck>
-        </preConditions>
         <comment>Create Disposal, Archiving and Accreditation page for Medical Laboratory notebook</comment>
 
         <insert tableName="notebook_page" schemaName="clinlims">
@@ -376,7 +357,8 @@
             <column name="title" value="Disposal, Archiving &amp; Accreditation"/>
             <column name="instructions" value="Close sample lifecycle with proper disposal or archiving. Document disposal method (incineration, autoclaving, chemical treatment), biobank transfer, and regulatory compliance. Complete audit trail for accreditation."/>
             <column name="content" value="Disposal, Archiving and Accreditation - Compliant disposal, biorepository transfer, and audit documentation"/>
-            <column name="page_order" value="10"/>
+            <column name="page_order" value="9"/>
+            <column name="page_id" value="medlab-disposal-archiving"/>
             <column name="completed" valueBoolean="false"/>
             <column name="page_type" value="BATCH_VERIFICATION"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true)"/>
@@ -385,7 +367,7 @@
 
         <rollback>
             <delete tableName="notebook_page" schemaName="clinlims">
-                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true) AND page_order = 10</where>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Medical Laboratory' AND is_template = true) AND page_order = 9</where>
             </delete>
         </rollback>
     </changeSet>

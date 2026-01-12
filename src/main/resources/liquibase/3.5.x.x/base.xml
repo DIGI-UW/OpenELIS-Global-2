@@ -7,11 +7,13 @@
 
     <!-- ======================================================== -->
     <!-- OGC-XXX: Medical Laboratory Workflow Feature -->
-    <!-- Includes: QualityCheck, TransportPackaging, QCResult, -->
+    <!-- Includes: QualityCheck, TransportPackaging (table kept for -->
+    <!-- data model, page removed from workflow), QCResult, -->
     <!-- EquipmentUsageLog tables for complete lab workflow -->
     <!-- ======================================================== -->
 
     <include file="liquibase/3.5.x.x/001-quality-check.xml"/>
+    <!-- NOTE: Transport & Packaging page removed from workflow, but table structure kept -->
     <include file="liquibase/3.5.x.x/002-transport-packaging.xml"/>
     <include file="liquibase/3.5.x.x/003-qc-result.xml"/>
     <include file="liquibase/3.5.x.x/004-equipment-usage-log.xml"/>
@@ -19,5 +21,8 @@
     <include file="liquibase/3.5.x.x/006-notebook-page-id.xml"/>
     <include file="liquibase/3.5.x.x/007-notebook-experiment-types.xml"/>
     <include file="liquibase/3.5.x.x/008-medlab-notebook-template.xml"/>
+    <include file="liquibase/3.5.x.x/009-medlab-test-requirements.xml"/>
+    <include file="liquibase/3.5.x.x/010-order-sample-link.xml"/>
+    <include file="liquibase/3.5.x.x/011-add-last-updated-to-order-sample-link.xml"/>
 
 </databaseChangeLog>

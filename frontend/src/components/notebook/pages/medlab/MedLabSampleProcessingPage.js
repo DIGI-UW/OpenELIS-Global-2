@@ -11,15 +11,12 @@ import {
   Checkbox,
   Modal,
   DataTable,
-  TableContainer,
   Table,
   TableHead,
   TableRow,
   TableHeader,
   TableBody,
   TableCell,
-  TableSelectAll,
-  TableSelectRow,
   Tag,
   Tabs,
   TabList,
@@ -42,6 +39,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -379,45 +377,97 @@ function MedLabSampleProcessingPage({
     (s) => s.hasChildren || s.childAliquotCount > 0,
   ).length;
 
-  // Table headers for sample selection
-  const headers = [
-    { key: "labNo", header: "Lab No" },
-    { key: "patientName", header: "Patient" },
-    { key: "sampleType", header: "Sample Type" },
-    { key: "processingType", header: "Processing" },
-    { key: "derivedMaterial", header: "Derived Material" },
-    { key: "aliquots", header: "Aliquots" },
-    { key: "status", header: "Status" },
-  ];
-
-  // Transform samples for table
-  const tableRows = samples.map((sample) => ({
+  // Transform samples for SampleGrid
+  const transformedSamples = samples.map((sample) => ({
     id: String(sample.sampleItemId),
-    labNo: sample.labNo || sample.accessionNumber || "-",
+    sampleItemId: sample.sampleItemId,
+    externalId: sample.externalId || "-",
+    accessionNumber: sample.labNo || sample.accessionNumber || "-",
     patientName: sample.patientName || "-",
     sampleType: sample.sampleType || "-",
-    processingType: sample.processingType
+    processingType: sample.processingType || null,
+    processingTypeLabel: sample.processingType
       ? processingTypeOptions.find((p) => p.id === sample.processingType)
           ?.label || sample.processingType
       : "-",
-    derivedMaterial: sample.derivedMaterial
+    derivedMaterial: sample.derivedMaterial || null,
+    derivedMaterialLabel: sample.derivedMaterial
       ? derivedMaterialOptions.find((d) => d.id === sample.derivedMaterial)
           ?.label || sample.derivedMaterial
       : "-",
-    aliquots: sample.childAliquotCount || 0,
+    childAliquotCount: sample.childAliquotCount || 0,
     status: sample.pageStatus || "PENDING",
     hasChildren: sample.hasChildren || sample.childAliquotCount > 0,
     isBioequivalence: sample.isBioequivalence,
     transferToBioanalytical: sample.transferToBioanalytical,
+    // Hierarchy fields from backend
+    isAliquot: sample.isAliquot || false,
+    nestingLevel: sample.nestingLevel || 0,
+    parentSampleItemId: sample.parentSampleItemId || null,
+    parentExternalId: sample.parentExternalId || null,
   }));
 
-  // Processed samples table
-  const processedRows = tableRows.filter(
-    (r) => r.status === "COMPLETED" || r.processingType !== "-",
+  // Sort samples to group parents with their children
+  // Backend returns all parents first, then all children - we need to interleave them
+  const sortedSamples = [];
+  const parents = transformedSamples.filter((s) => !s.isAliquot);
+  const children = transformedSamples.filter((s) => s.isAliquot);
+
+  // Build a map of children by parent ID for quick lookup
+  const childrenByParentId = {};
+  children.forEach((child) => {
+    const parentId = String(child.parentSampleItemId);
+    if (!childrenByParentId[parentId]) {
+      childrenByParentId[parentId] = [];
+    }
+    childrenByParentId[parentId].push(child);
+  });
+
+  // Add each parent followed immediately by its children
+  parents.forEach((parent) => {
+    sortedSamples.push(parent);
+    const parentChildren =
+      childrenByParentId[String(parent.sampleItemId)] || [];
+    sortedSamples.push(...parentChildren);
+  });
+
+  // Split into pending and processed lists, keeping parent-child hierarchy together
+  // First, identify which parents are pending vs processed
+  const parentSamples = sortedSamples.filter((s) => !s.isAliquot);
+  const childSamples = sortedSamples.filter((s) => s.isAliquot);
+
+  // Build maps of parent status
+  const pendingParentIds = new Set(
+    parentSamples
+      .filter((s) => s.status !== "COMPLETED" && s.processingType === null)
+      .map((s) => String(s.sampleItemId)),
   );
-  const pendingRows = tableRows.filter(
-    (r) => r.status !== "COMPLETED" && r.processingType === "-",
+  const processedParentIds = new Set(
+    parentSamples
+      .filter((s) => s.status === "COMPLETED" || s.processingType !== null)
+      .map((s) => String(s.sampleItemId)),
   );
+
+  // Split samples, keeping children with their parents
+  const pendingSamplesList = sortedSamples.filter((s) => {
+    if (!s.isAliquot) {
+      // Parent: use its own status
+      return pendingParentIds.has(String(s.sampleItemId));
+    } else {
+      // Child: use parent's status
+      return pendingParentIds.has(String(s.parentSampleItemId));
+    }
+  });
+
+  const processedSamplesList = sortedSamples.filter((s) => {
+    if (!s.isAliquot) {
+      // Parent: use its own status
+      return processedParentIds.has(String(s.sampleItemId));
+    } else {
+      // Child: use parent's status
+      return processedParentIds.has(String(s.parentSampleItemId));
+    }
+  });
 
   return (
     <div className="sample-processing-page">
@@ -557,14 +607,14 @@ function MedLabSampleProcessingPage({
             <FormattedMessage
               id="medlab.page.sampleProcessing.tab.pending"
               defaultMessage="Pending Processing ({count})"
-              values={{ count: pendingRows.length }}
+              values={{ count: pendingSamplesList.length }}
             />
           </Tab>
           <Tab>
             <FormattedMessage
               id="medlab.page.sampleProcessing.tab.processed"
               defaultMessage="Processed ({count})"
-              values={{ count: processedRows.length }}
+              values={{ count: processedSamplesList.length }}
             />
           </Tab>
         </TabList>
@@ -574,7 +624,7 @@ function MedLabSampleProcessingPage({
           <TabPanel>
             {loading ? (
               <p>Loading samples...</p>
-            ) : pendingRows.length === 0 ? (
+            ) : pendingSamplesList.length === 0 ? (
               <div className="empty-state">
                 <p>
                   <FormattedMessage
@@ -584,102 +634,63 @@ function MedLabSampleProcessingPage({
                 </p>
               </div>
             ) : (
-              <DataTable
-                rows={pendingRows}
-                headers={headers}
-                isSortable
-                render={({
-                  rows,
-                  headers,
-                  getHeaderProps,
-                  getRowProps,
-                  getSelectionProps,
-                  getTableProps,
-                  selectedRows,
-                }) => {
-                  // Update selectedSampleIds when selection changes
-                  const newSelectedIds = selectedRows.map((r) => r.id);
-                  if (
-                    JSON.stringify(newSelectedIds) !==
-                    JSON.stringify(selectedSampleIds)
-                  ) {
-                    setTimeout(() => setSelectedSampleIds(newSelectedIds), 0);
-                  }
-
-                  return (
-                    <TableContainer>
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            <TableSelectAll {...getSelectionProps()} />
-                            {headers.map((header) => (
-                              <TableHeader
-                                key={header.key}
-                                {...getHeaderProps({ header })}
-                              >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                            <TableHeader>Actions</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map((row) => {
-                            const rowData = pendingRows.find(
-                              (r) => r.id === row.id,
-                            );
-                            return (
-                              <TableRow key={row.id} {...getRowProps({ row })}>
-                                <TableSelectRow
-                                  {...getSelectionProps({ row })}
-                                />
-                                {row.cells.map((cell) => (
-                                  <TableCell key={cell.id}>
-                                    {cell.info.header === "status" ? (
-                                      <Tag
-                                        type={
-                                          cell.value === "COMPLETED"
-                                            ? "green"
-                                            : cell.value === "IN_PROGRESS"
-                                              ? "blue"
-                                              : "gray"
-                                        }
-                                      >
-                                        {cell.value}
-                                      </Tag>
-                                    ) : cell.info.header === "aliquots" ? (
-                                      <span>
-                                        {cell.value > 0 ? (
-                                          <Tag type="cyan">{cell.value}</Tag>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </span>
-                                    ) : (
-                                      cell.value
-                                    )}
-                                  </TableCell>
-                                ))}
-                                <TableCell>
-                                  {rowData?.hasChildren && (
-                                    <Button
-                                      kind="ghost"
-                                      size="sm"
-                                      hasIconOnly
-                                      iconDescription="View Aliquots"
-                                      renderIcon={View}
-                                      onClick={() => handleViewChildren(row.id)}
-                                    />
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  );
-                }}
+              <SampleGrid
+                gridId="medlab-sample-processing-pending"
+                samples={pendingSamplesList}
+                selectedIds={selectedSampleIds}
+                onSelectionChange={setSelectedSampleIds}
+                showSelection={true}
+                showHierarchy={true}
+                showPatient={true}
+                loading={loading}
+                additionalColumns={[
+                  {
+                    key: "processingTypeLabel",
+                    header: intl.formatMessage({
+                      id: "medlab.sample.processingType",
+                      defaultMessage: "Processing",
+                    }),
+                    render: (sample) => sample.processingTypeLabel || "-",
+                  },
+                  {
+                    key: "derivedMaterialLabel",
+                    header: intl.formatMessage({
+                      id: "medlab.sample.derivedMaterial",
+                      defaultMessage: "Derived Material",
+                    }),
+                    render: (sample) => sample.derivedMaterialLabel || "-",
+                  },
+                  {
+                    key: "aliquots",
+                    header: intl.formatMessage({
+                      id: "medlab.sample.aliquots",
+                      defaultMessage: "Aliquots",
+                    }),
+                    render: (sample) => {
+                      return sample.childAliquotCount > 0 ? (
+                        <Tag type="cyan">{sample.childAliquotCount}</Tag>
+                      ) : (
+                        "-"
+                      );
+                    },
+                  },
+                  {
+                    key: "actions",
+                    header: "",
+                    render: (sample) => {
+                      return sample.hasChildren ? (
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          hasIconOnly
+                          iconDescription="View Aliquots"
+                          renderIcon={View}
+                          onClick={() => handleViewChildren(sample.id)}
+                        />
+                      ) : null;
+                    },
+                  },
+                ]}
               />
             )}
           </TabPanel>
@@ -688,7 +699,7 @@ function MedLabSampleProcessingPage({
           <TabPanel>
             {loading ? (
               <p>Loading samples...</p>
-            ) : processedRows.length === 0 ? (
+            ) : processedSamplesList.length === 0 ? (
               <div className="empty-state">
                 <p>
                   <FormattedMessage
@@ -698,86 +709,86 @@ function MedLabSampleProcessingPage({
                 </p>
               </div>
             ) : (
-              <DataTable rows={processedRows} headers={headers} isSortable>
-                {({
-                  rows,
-                  headers,
-                  getHeaderProps,
-                  getRowProps,
-                  getTableProps,
-                }) => (
-                  <TableContainer>
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
-                            >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                          <TableHeader>Flags</TableHeader>
-                          <TableHeader>Actions</TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {rows.map((row) => {
-                          const rowData = processedRows.find(
-                            (r) => r.id === row.id,
-                          );
-                          return (
-                            <TableRow key={row.id} {...getRowProps({ row })}>
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>
-                                  {cell.info.header === "status" ? (
-                                    <Tag type="green">{cell.value}</Tag>
-                                  ) : cell.info.header === "aliquots" ? (
-                                    <span>
-                                      {cell.value > 0 ? (
-                                        <Tag type="cyan">{cell.value}</Tag>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </span>
-                                  ) : (
-                                    cell.value
-                                  )}
-                                </TableCell>
-                              ))}
-                              <TableCell>
-                                {rowData?.isBioequivalence && (
-                                  <Tag type="purple" size="sm">
-                                    BE Study
-                                  </Tag>
-                                )}
-                                {rowData?.transferToBioanalytical && (
-                                  <Tag type="teal" size="sm">
-                                    Bioanalytical
-                                  </Tag>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {rowData?.hasChildren && (
-                                  <Button
-                                    kind="ghost"
-                                    size="sm"
-                                    hasIconOnly
-                                    iconDescription="View Aliquots"
-                                    renderIcon={View}
-                                    onClick={() => handleViewChildren(row.id)}
-                                  />
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </DataTable>
+              <SampleGrid
+                gridId="medlab-sample-processing-processed"
+                samples={processedSamplesList}
+                selectedIds={[]}
+                showSelection={false}
+                showHierarchy={true}
+                showPatient={true}
+                loading={loading}
+                additionalColumns={[
+                  {
+                    key: "processingTypeLabel",
+                    header: intl.formatMessage({
+                      id: "medlab.sample.processingType",
+                      defaultMessage: "Processing",
+                    }),
+                    render: (sample) => sample.processingTypeLabel || "-",
+                  },
+                  {
+                    key: "derivedMaterialLabel",
+                    header: intl.formatMessage({
+                      id: "medlab.sample.derivedMaterial",
+                      defaultMessage: "Derived Material",
+                    }),
+                    render: (sample) => sample.derivedMaterialLabel || "-",
+                  },
+                  {
+                    key: "aliquots",
+                    header: intl.formatMessage({
+                      id: "medlab.sample.aliquots",
+                      defaultMessage: "Aliquots",
+                    }),
+                    render: (sample) => {
+                      return sample.childAliquotCount > 0 ? (
+                        <Tag type="cyan">{sample.childAliquotCount}</Tag>
+                      ) : (
+                        "-"
+                      );
+                    },
+                  },
+                  {
+                    key: "flags",
+                    header: intl.formatMessage({
+                      id: "medlab.sample.flags",
+                      defaultMessage: "Flags",
+                    }),
+                    render: (sample) => {
+                      return (
+                        <>
+                          {sample.isBioequivalence && (
+                            <Tag type="purple" size="sm">
+                              BE Study
+                            </Tag>
+                          )}
+                          {sample.transferToBioanalytical && (
+                            <Tag type="teal" size="sm">
+                              Bioanalytical
+                            </Tag>
+                          )}
+                        </>
+                      );
+                    },
+                  },
+                  {
+                    key: "actions",
+                    header: "",
+                    render: (sample) => {
+                      return sample.hasChildren ? (
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          hasIconOnly
+                          iconDescription="View Aliquots"
+                          renderIcon={View}
+                          onClick={() => handleViewChildren(sample.id)}
+                        />
+                      ) : null;
+                    },
+                  },
+                ]}
+              />
             )}
           </TabPanel>
         </TabPanels>

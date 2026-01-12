@@ -1,72 +1,98 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useContext,
-} from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Grid,
   Column,
   Button,
   Tile,
   InlineNotification,
-  Loading,
   Modal,
-  DataTable,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  TableSelectAll,
-  TableSelectRow,
-  TableToolbar,
-  TableToolbarContent,
-  TableBatchActions,
-  TableBatchAction,
-  Tag,
   TextArea,
   RadioButtonGroup,
   RadioButton,
-  Toggle,
-  Select,
-  SelectItem,
-  Accordion,
-  AccordionItem,
+  Tag,
+  TextInput,
   Checkbox,
-  NumberInput,
+  Dropdown,
 } from "@carbon/react";
-import {
-  Checkmark,
-  Close,
-  CheckmarkFilled,
-  CloseFilled,
-  WarningAlt,
-  View,
-} from "@carbon/react/icons";
+import { Checkmark, Edit, WarningAlt } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
 } from "../../../utils/Utils";
-import { NotificationContext } from "../../../layout/Layout";
-import { NotificationKinds } from "../../../common/CustomNotification";
+import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
- * QualityCheckPage - Sample Receipt & Quality Assessment
+ * QC Criteria checklist items for Medical Laboratory samples
+ * Simplified checklist based on Bacteriology pattern with Medical Lab specific criteria
+ */
+const QC_CRITERIA = [
+  {
+    id: "labelingCorrect",
+    labelId: "notebook.medlab.qc.labelingCorrect",
+    defaultLabel: "Labeling correct and legible",
+  },
+  {
+    id: "correctContainer",
+    labelId: "notebook.medlab.qc.correctContainer",
+    defaultLabel: "Correct container for test",
+  },
+  {
+    id: "volumeAdequate",
+    labelId: "notebook.medlab.qc.volumeAdequate",
+    defaultLabel: "Volume adequate for testing",
+  },
+  {
+    id: "matchingOrder",
+    labelId: "notebook.medlab.qc.matchingOrder",
+    defaultLabel: "Matching lab order",
+  },
+  {
+    id: "noHemolysis",
+    labelId: "notebook.medlab.qc.noHemolysis",
+    defaultLabel: "No significant hemolysis (< moderate)",
+  },
+  {
+    id: "noContamination",
+    labelId: "notebook.medlab.qc.noContamination",
+    defaultLabel: "No visible contamination",
+  },
+  {
+    id: "properTemperature",
+    labelId: "notebook.medlab.qc.properTemperature",
+    defaultLabel: "Proper storage temperature maintained",
+  },
+];
+
+/**
+ * Rejection reasons for failed QC
+ */
+const REJECTION_REASONS = [
+  { id: "hemolysis", label: "Hemolysis" },
+  { id: "lipemia", label: "Lipemia" },
+  { id: "icterus", label: "Icterus" },
+  { id: "clotted", label: "Clotted Sample" },
+  { id: "insufficient_volume", label: "Insufficient Volume" },
+  { id: "wrong_container", label: "Wrong Container" },
+  { id: "labeling_error", label: "Labeling Error" },
+  { id: "delayed", label: "Excessive Delay" },
+  { id: "contamination", label: "Contamination" },
+  { id: "wrong_temperature", label: "Wrong Storage Temperature" },
+  { id: "order_mismatch", label: "Order Mismatch" },
+  { id: "other", label: "Other" },
+];
+
+/**
+ * MedLabQualityCheckPage - Page 3 of the Medical Laboratory workflow.
+ * Handles laboratory reception and quality assessment of samples.
  *
- * Purpose: Accept or reject samples based on defined quality rules.
- * Who uses it: Reception staff, Lab supervisor
- *
- * Features:
- * - General QC Checks (labeling, container, matching order, temperature)
- * - Discipline-Specific QC (Chemistry, Hematology, Stool, Urine, Microbiology)
- * - Acceptance Decision (Accept/Reject)
- * - Rejection handling with reasons and corrective actions
+ * Quality Assessment:
+ * - QC Checklist: Labeling, container, volume, order matching, hemolysis, contamination, temperature
+ * - Pass: All criteria met, proceed to routing
+ * - Fail: Select rejection reason and action:
+ *   1. Discard and notify submitter (sample will not proceed)
+ *   2. Keep with remarks and proceed with flagged status
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
@@ -77,183 +103,61 @@ import "../../workflow/NotebookWorkflow.css";
 function MedLabQualityCheckPage({
   entryId,
   pageData,
-  progress,
+  progress: _progress,
   onProgressUpdate,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
-  const { setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
 
   // State for samples
-  const [pendingSamples, setPendingSamples] = useState([]);
-  const [processedSamples, setProcessedSamples] = useState([]);
+  const [samples, setSamples] = useState([]);
+  const [selectedSampleIds, setSelectedSampleIds] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  // QC Assessment modal state
-  const [qcModalOpen, setQcModalOpen] = useState(false);
-  const [selectedSample, setSelectedSample] = useState(null);
-  const [selectedRows, setSelectedRows] = useState([]);
+  // Bulk apply modal state
+  const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
+  const [isBulkApplying, setIsBulkApplying] = useState(false);
 
-  // QC Form state - General Checks
-  const [qcForm, setQcForm] = useState({
-    // General QC Checks
-    labelingCorrect: true,
-    correctContainerForTest: true,
-    matchingLabOrder: true,
-    storageTemperature: "room_temp", // room_temp, 2_8c, frozen, na
-
-    // Discipline-Specific QC (Chemistry)
-    chemistryDelay: false, // delay > 1hr
-    chemistryVolume: true, // volume >= 3ml
-    hemolysis: "none", // none, slight, moderate, gross
-    lipemia: "none", // none, slight, moderate, gross
-    icterus: "none", // none, slight, moderate, gross
-
-    // Discipline-Specific QC (Hematology)
-    anticoagulantType: "edta", // edta, citrate, heparin, other
-    hematologyDelay: false, // delay > 4hr
-    clotting: false,
-    hematologyHemolysis: false,
-
-    // Discipline-Specific QC (Stool)
-    stoolDelay: false, // delay > 30min
-    stoolVolume: true,
-    stoolContamination: false,
-
-    // Discipline-Specific QC (Urine)
-    urineDelay: false, // delay > 30min
-    urineVolume: true, // volume >= 10ml
-    urineContamination: false,
-
-    // Discipline-Specific QC (Microbiology)
-    microbiologyContamination: false,
-
-    // Decision
-    decision: "accepted", // accepted, rejected
+  // Bulk apply form values
+  const [bulkApplyValues, setBulkApplyValues] = useState({
+    // Receipt Information
+    receivedDateTime: new Date().toISOString().slice(0, 16),
+    receivedBy: "",
+    // Temperature on arrival
+    arrivalTemperature: "",
+    // Condition notes
+    conditionOnArrival: "",
+    // QC Checklist - all criteria
+    qcChecklist: QC_CRITERIA.reduce((acc, item) => {
+      acc[item.id] = false;
+      return acc;
+    }, {}),
+    // QC Result & Actions
+    qcResult: "",
     rejectionReason: "",
-    correctiveAction: "none", // none, recollection, return_to_submitter
-    notes: "",
+    qcRemarks: "",
+    failAction: "",
   });
 
-  // Bulk QC modal state
-  const [bulkQcModalOpen, setBulkQcModalOpen] = useState(false);
-  const [bulkQcAction, setBulkQcAction] = useState("accept");
-  const [bulkRejectionReason, setBulkRejectionReason] = useState("");
-  const [bulkCorrectiveAction, setBulkCorrectiveAction] = useState("none");
+  // Check if page has real ID
+  const hasRealPageId =
+    pageData?.id && !String(pageData.id).startsWith("default-");
 
-  // Discipline options
-  const disciplines = [
-    { id: "chemistry", label: "Chemistry" },
-    { id: "hematology", label: "Hematology" },
-    { id: "stool", label: "Stool" },
-    { id: "urine", label: "Urine" },
-    { id: "microbiology", label: "Microbiology" },
-  ];
+  // Load samples for this page
+  useEffect(() => {
+    componentMounted.current = true;
+    loadPageSamples();
 
-  // Storage temperature options
-  const temperatureOptions = [
-    { id: "room_temp", label: "Room Temperature" },
-    { id: "2_8c", label: "2-8°C (Refrigerated)" },
-    { id: "frozen", label: "Frozen" },
-    { id: "na", label: "N/A" },
-  ];
+    return () => {
+      componentMounted.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryId, pageData?.id]);
 
-  // Hemolysis/Lipemia/Icterus levels
-  const serumQualityLevels = [
-    { id: "none", label: "None" },
-    { id: "slight", label: "Slight (+)" },
-    { id: "moderate", label: "Moderate (++)" },
-    { id: "gross", label: "Gross (+++)" },
-  ];
-
-  // Anticoagulant types
-  const anticoagulantTypes = [
-    { id: "edta", label: "EDTA" },
-    { id: "citrate", label: "Citrate" },
-    { id: "heparin", label: "Heparin" },
-    { id: "other", label: "Other" },
-  ];
-
-  // Corrective action options
-  const correctiveActionOptions = [
-    { id: "none", label: "None Required" },
-    { id: "recollection", label: "Recollection Needed" },
-    { id: "return_to_submitter", label: "Return to Submitter" },
-  ];
-
-  // Rejection reason options
-  const rejectionReasons = [
-    { id: "hemolysis", label: "Hemolysis" },
-    { id: "lipemia", label: "Lipemia" },
-    { id: "icterus", label: "Icterus" },
-    { id: "clotted", label: "Clotted Sample" },
-    { id: "insufficient_volume", label: "Insufficient Volume" },
-    { id: "wrong_container", label: "Wrong Container" },
-    { id: "labeling_error", label: "Labeling Error" },
-    { id: "delayed", label: "Excessive Delay" },
-    { id: "contamination", label: "Contamination" },
-    { id: "wrong_temperature", label: "Wrong Storage Temperature" },
-    { id: "order_mismatch", label: "Order Mismatch" },
-    { id: "other", label: "Other" },
-  ];
-
-  // Determine sample discipline based on sample type
-  const getSampleDiscipline = (sampleType) => {
-    if (!sampleType) return "chemistry";
-    const type = sampleType.toLowerCase();
-    if (type.includes("stool") || type.includes("feces")) return "stool";
-    if (type.includes("urine")) return "urine";
-    if (
-      type.includes("swab") ||
-      type.includes("culture") ||
-      type.includes("wound")
-    )
-      return "microbiology";
-    if (type.includes("edta") || type.includes("cbc") || type.includes("blood"))
-      return "hematology";
-    return "chemistry";
-  };
-
-  // Check if QC form has any issues (auto-suggest rejection)
-  const hasQcIssues = useCallback(() => {
-    // General checks
-    if (!qcForm.labelingCorrect) return true;
-    if (!qcForm.correctContainerForTest) return true;
-    if (!qcForm.matchingLabOrder) return true;
-
-    // Chemistry issues
-    if (qcForm.chemistryDelay) return true;
-    if (!qcForm.chemistryVolume) return true;
-    if (qcForm.hemolysis !== "none" && qcForm.hemolysis !== "slight")
-      return true;
-    if (qcForm.lipemia !== "none" && qcForm.lipemia !== "slight") return true;
-    if (qcForm.icterus !== "none" && qcForm.icterus !== "slight") return true;
-
-    // Hematology issues
-    if (qcForm.hematologyDelay) return true;
-    if (qcForm.clotting) return true;
-    if (qcForm.hematologyHemolysis) return true;
-
-    // Stool issues
-    if (qcForm.stoolDelay) return true;
-    if (!qcForm.stoolVolume) return true;
-    if (qcForm.stoolContamination) return true;
-
-    // Urine issues
-    if (qcForm.urineDelay) return true;
-    if (!qcForm.urineVolume) return true;
-    if (qcForm.urineContamination) return true;
-
-    // Microbiology issues
-    if (qcForm.microbiologyContamination) return true;
-
-    return false;
-  }, [qcForm]);
-
-  // Load samples for QC
-  const loadSamplesForQC = useCallback(() => {
+  const loadPageSamples = useCallback(() => {
     if (!entryId) {
       setLoading(false);
       return;
@@ -262,703 +166,475 @@ function MedLabQualityCheckPage({
     setLoading(true);
     setError(null);
 
-    const url = `/rest/medlab/entry/${entryId}/samples-for-qc`;
-    getFromOpenElisServer(url, (response) => {
-      if (componentMounted.current) {
-        if (response && Array.isArray(response)) {
-          const pending = response.filter((s) => s.qcStatus === "PENDING_QC");
-          const processed = response.filter(
-            (s) =>
-              s.qcStatus === "ACCEPTED" ||
-              s.qcStatus === "REJECTED" ||
-              s.isRejected,
-          );
-          setPendingSamples(pending);
-          setProcessedSamples(processed);
-        } else {
-          setPendingSamples([]);
-          setProcessedSamples([]);
+    console.log("[QC Page] Loading samples for entry:", entryId);
+
+    // Use custom Medical Lab endpoint that returns ALL samples (pending + verified)
+    // The endpoint checks Sample Collection page and QC page, returning samples with their QC status
+    getFromOpenElisServer(
+      `/rest/medlab/entry/${entryId}/samples-for-qc`,
+      (response) => {
+        if (componentMounted.current) {
+          console.log("[QC Page] Raw response from backend:", response);
+
+          if (response && Array.isArray(response)) {
+            console.log(
+              "[QC Page] Number of samples received:",
+              response.length,
+            );
+
+            // Show breakdown by pageStatus
+            const statusCounts = {
+              PENDING: 0,
+              COMPLETED: 0,
+              SKIPPED: 0,
+            };
+            response.forEach((sample) => {
+              const status = sample.pageStatus || "PENDING";
+              if (status in statusCounts) {
+                statusCounts[status]++;
+              }
+            });
+            console.log(
+              "[QC Page] Sample breakdown by pageStatus:",
+              statusCounts,
+            );
+
+            // Show first sample's complete structure for debugging
+            if (response.length > 0) {
+              console.log(
+                "[QC Page] First sample complete structure:",
+                JSON.stringify(response[0], null, 2),
+              );
+            }
+
+            const transformedSamples = response.map((sample) => ({
+              id: String(sample.sampleItemId || sample.id),
+              externalId: sample.externalId,
+              accessionNumber: sample.labNo || sample.accessionNumber,
+              sampleType: sample.sampleType,
+              collectionDate: sample.collectionDate,
+              // Use pageStatus which maps to NotebookPageSample.Status (PENDING, COMPLETED, SKIPPED)
+              status: sample.pageStatus || "PENDING",
+              patientName: sample.patientName,
+              linkedOrderLabNo: sample.orderLabNo,
+              // Reception verification fields from data object (if QC has been performed)
+              receivedDateTime: sample.data?.receivedDateTime,
+              receivedBy: sample.data?.receivedBy,
+              arrivalTemperature: sample.data?.arrivalTemperature,
+              conditionOnArrival: sample.data?.conditionOnArrival,
+              qcChecklist: sample.data?.qcChecklist,
+              qcResult: sample.data?.qcResult,
+              rejectionReason: sample.data?.rejectionReason,
+              qcRemarks: sample.data?.qcRemarks,
+              failAction: sample.data?.failAction,
+            }));
+
+            console.log("[QC Page] Transformed samples:", transformedSamples);
+            console.log(
+              "[QC Page] Transformed samples count by status:",
+              transformedSamples.reduce((acc, s) => {
+                acc[s.status] = (acc[s.status] || 0) + 1;
+                return acc;
+              }, {}),
+            );
+
+            setSamples(transformedSamples);
+          } else {
+            console.log(
+              "[QC Page] Response is not an array or is null/undefined:",
+              response,
+            );
+            setSamples([]);
+          }
+          setLoading(false);
         }
-        setLoading(false);
-      }
-    });
+      },
+    );
   }, [entryId]);
 
-  // Load data on mount
-  useEffect(() => {
-    componentMounted.current = true;
-    loadSamplesForQC();
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [entryId, pageData?.id, loadSamplesForQC]);
-
-  // Open QC assessment modal
-  const handleOpenQcModal = useCallback((sample) => {
-    setSelectedSample(sample);
-    const discipline = getSampleDiscipline(sample?.sampleType);
-
-    // Reset form with defaults
-    setQcForm({
-      labelingCorrect: true,
-      correctContainerForTest: true,
-      matchingLabOrder: true,
-      storageTemperature: "room_temp",
-      chemistryDelay: false,
-      chemistryVolume: true,
-      hemolysis: "none",
-      lipemia: "none",
-      icterus: "none",
-      anticoagulantType: "edta",
-      hematologyDelay: false,
-      clotting: false,
-      hematologyHemolysis: false,
-      stoolDelay: false,
-      stoolVolume: true,
-      stoolContamination: false,
-      urineDelay: false,
-      urineVolume: true,
-      urineContamination: false,
-      microbiologyContamination: false,
-      decision: "accepted",
+  // Reset bulk apply values
+  const resetBulkApplyValues = () => {
+    setBulkApplyValues({
+      receivedDateTime: new Date().toISOString().slice(0, 16),
+      receivedBy: "",
+      arrivalTemperature: "",
+      conditionOnArrival: "",
+      qcChecklist: QC_CRITERIA.reduce((acc, item) => {
+        acc[item.id] = false;
+        return acc;
+      }, {}),
+      qcResult: "",
       rejectionReason: "",
-      correctiveAction: "none",
-      notes: "",
-      discipline: discipline,
+      qcRemarks: "",
+      failAction: "",
     });
-    setQcModalOpen(true);
-  }, []);
+  };
 
-  // Submit QC assessment
-  const handleSubmitQcAssessment = useCallback(() => {
-    if (!selectedSample) return;
+  // Calculate QC result based on checklist
+  const calculateQCResult = (checklist) => {
+    const allPassed = Object.values(checklist).every((v) => v === true);
+    return allPassed ? "Pass" : "Fail";
+  };
 
-    const qcData = {
-      labNo: selectedSample.labNo,
-      accepted: qcForm.decision === "accepted",
-      rejectionReason:
-        qcForm.decision === "rejected" ? qcForm.rejectionReason : null,
-      correctiveAction:
-        qcForm.decision === "rejected" ? qcForm.correctiveAction : null,
-      notebookPageId: pageData?.id,
-      // Include all QC check data
-      qcChecks: {
-        labelingCorrect: qcForm.labelingCorrect,
-        correctContainerForTest: qcForm.correctContainerForTest,
-        matchingLabOrder: qcForm.matchingLabOrder,
-        storageTemperature: qcForm.storageTemperature,
-        hemolysis: qcForm.hemolysis,
-        lipemia: qcForm.lipemia,
-        icterus: qcForm.icterus,
-        clotting: qcForm.clotting,
-        delay:
-          qcForm.chemistryDelay ||
-          qcForm.hematologyDelay ||
-          qcForm.stoolDelay ||
-          qcForm.urineDelay,
-        volumeAdequate:
-          qcForm.chemistryVolume && qcForm.stoolVolume && qcForm.urineVolume,
-        contamination:
-          qcForm.stoolContamination ||
-          qcForm.urineContamination ||
-          qcForm.microbiologyContamination,
-      },
-      notes: qcForm.notes,
+  // Handle checklist change
+  const handleChecklistChange = (criteriaId, checked) => {
+    setBulkApplyValues((prev) => {
+      const newChecklist = { ...prev.qcChecklist, [criteriaId]: checked };
+      const autoResult = calculateQCResult(newChecklist);
+      return {
+        ...prev,
+        qcChecklist: newChecklist,
+        // Auto-set QC result based on checklist
+        qcResult: autoResult,
+        // Clear fail-related fields if now passing
+        failAction: autoResult === "Pass" ? "" : prev.failAction,
+        rejectionReason: autoResult === "Pass" ? "" : prev.rejectionReason,
+      };
+    });
+  };
+
+  // Handle "Check All" for QC criteria
+  const handleCheckAll = () => {
+    setBulkApplyValues((prev) => ({
+      ...prev,
+      qcChecklist: QC_CRITERIA.reduce((acc, item) => {
+        acc[item.id] = true;
+        return acc;
+      }, {}),
+      qcResult: "Pass",
+      failAction: "",
+      rejectionReason: "",
+    }));
+  };
+
+  // Handle "Clear All" for QC criteria
+  const handleClearAll = () => {
+    setBulkApplyValues((prev) => ({
+      ...prev,
+      qcChecklist: QC_CRITERIA.reduce((acc, item) => {
+        acc[item.id] = false;
+        return acc;
+      }, {}),
+      qcResult: "Fail",
+    }));
+  };
+
+  // Handle bulk apply
+  const handleBulkApply = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.medlab.error.noSelection",
+          defaultMessage: "Please select samples to apply values to.",
+        }),
+      );
+      return;
+    }
+
+    if (!hasRealPageId) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.medlab.error.noPage",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
+      );
+      return;
+    }
+
+    // Validate: QC result must be set
+    if (!bulkApplyValues.qcResult) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.medlab.error.noQCResult",
+          defaultMessage:
+            "Please complete the QC checklist to determine pass/fail status.",
+        }),
+      );
+      return;
+    }
+
+    // Validate: If fail, must have rejection reason and fail action
+    if (bulkApplyValues.qcResult === "Fail") {
+      if (!bulkApplyValues.rejectionReason) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.page.medlab.error.noRejectionReason",
+            defaultMessage:
+              "Please select a rejection reason for failed samples.",
+          }),
+        );
+        return;
+      }
+      if (!bulkApplyValues.failAction) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.page.medlab.error.noFailAction",
+            defaultMessage: "Please select an action for failed samples.",
+          }),
+        );
+        return;
+      }
+    }
+
+    setIsBulkApplying(true);
+    setError(null);
+
+    // Prepare the data to apply
+    const data = {};
+
+    // Receipt information
+    if (bulkApplyValues.receivedDateTime)
+      data.receivedDateTime = bulkApplyValues.receivedDateTime;
+    if (bulkApplyValues.receivedBy)
+      data.receivedBy = bulkApplyValues.receivedBy;
+    if (bulkApplyValues.arrivalTemperature)
+      data.arrivalTemperature = bulkApplyValues.arrivalTemperature;
+    if (bulkApplyValues.conditionOnArrival)
+      data.conditionOnArrival = bulkApplyValues.conditionOnArrival;
+
+    // QC checklist and result
+    data.qcChecklist = bulkApplyValues.qcChecklist;
+    data.qcResult = bulkApplyValues.qcResult;
+    if (bulkApplyValues.rejectionReason)
+      data.rejectionReason = bulkApplyValues.rejectionReason;
+    if (bulkApplyValues.qcRemarks) data.qcRemarks = bulkApplyValues.qcRemarks;
+    if (bulkApplyValues.failAction)
+      data.failAction = bulkApplyValues.failAction;
+
+    const applyData = {
+      sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+      data: data,
     };
 
     postToOpenElisServer(
-      "/rest/medlab/qc-decision",
-      JSON.stringify(qcData),
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+      JSON.stringify(applyData),
       (status) => {
+        setIsBulkApplying(false);
         if (status === 200) {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id:
-                qcForm.decision === "accepted"
-                  ? "medlab.qc.accept.success"
-                  : "medlab.qc.reject.success",
-              defaultMessage:
-                qcForm.decision === "accepted"
-                  ? "Sample accepted"
-                  : "Sample rejected",
-            }),
-            kind:
-              qcForm.decision === "accepted"
-                ? NotificationKinds.success
-                : NotificationKinds.warning,
-          });
-          setNotificationVisible(true);
-          setQcModalOpen(false);
-          loadSamplesForQC();
+          setSuccessMessage(
+            intl.formatMessage(
+              {
+                id: "notebook.page.medlab.success.applied",
+                defaultMessage: "Applied values to {count} samples.",
+              },
+              { count: selectedSampleIds.length },
+            ),
+          );
+          setBulkApplyModalOpen(false);
+          loadPageSamples();
+          setSelectedSampleIds([]);
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "medlab.qc.error",
-              defaultMessage: "Error processing QC decision",
+          setError(
+            intl.formatMessage({
+              id: "notebook.page.medlab.error.apply",
+              defaultMessage: "Failed to apply values. Please try again.",
             }),
-            kind: NotificationKinds.error,
-          });
-          setNotificationVisible(true);
+          );
         }
       },
     );
   }, [
-    selectedSample,
-    qcForm,
-    pageData,
+    selectedSampleIds,
+    hasRealPageId,
+    pageData?.id,
+    bulkApplyValues,
     intl,
-    addNotification,
-    setNotificationVisible,
-    loadSamplesForQC,
+    loadPageSamples,
     onProgressUpdate,
   ]);
 
-  // Quick accept sample (bypass detailed form)
-  const handleQuickAccept = useCallback(
-    (sample) => {
-      const qcData = {
-        labNo: sample.labNo,
-        accepted: true,
-        notebookPageId: pageData?.id,
-      };
+  // Handle marking samples as verified (QC complete)
+  const handleMarkVerified = useCallback(() => {
+    if (selectedSampleIds.length === 0) return;
 
-      postToOpenElisServer(
-        "/rest/medlab/qc-decision",
-        JSON.stringify(qcData),
-        (status) => {
-          if (status === 200) {
-            addNotification({
-              title: intl.formatMessage({ id: "notification.title" }),
-              message: intl.formatMessage({
-                id: "medlab.qc.accept.success",
-                defaultMessage: "Sample accepted",
-              }),
-              kind: NotificationKinds.success,
-            });
-            setNotificationVisible(true);
-            loadSamplesForQC();
-            if (onProgressUpdate) {
-              onProgressUpdate();
-            }
-          } else {
-            addNotification({
-              title: intl.formatMessage({ id: "notification.title" }),
-              message: intl.formatMessage({
-                id: "medlab.qc.accept.error",
-                defaultMessage: "Error accepting sample",
-              }),
-              kind: NotificationKinds.error,
-            });
-            setNotificationVisible(true);
-          }
-        },
+    if (!hasRealPageId) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.medlab.error.noPage",
+          defaultMessage:
+            "Cannot update samples: Page not properly initialized.",
+        }),
       );
-    },
-    [
-      pageData,
-      intl,
-      addNotification,
-      setNotificationVisible,
-      loadSamplesForQC,
-      onProgressUpdate,
-    ],
-  );
+      return;
+    }
 
-  // Open bulk QC modal
-  const handleOpenBulkQcModal = useCallback((action, selectedRowIds) => {
-    setSelectedRows(selectedRowIds);
-    setBulkQcAction(action);
-    setBulkRejectionReason("");
-    setBulkCorrectiveAction("none");
-    setBulkQcModalOpen(true);
-  }, []);
+    // Check if all selected samples have QC result
+    const selectedSamples = samples.filter((s) =>
+      selectedSampleIds.includes(s.id),
+    );
+    const missingQC = selectedSamples.filter((s) => !s.qcResult);
+    if (missingQC.length > 0) {
+      setError(
+        intl.formatMessage(
+          {
+            id: "notebook.page.medlab.error.missingQC",
+            defaultMessage:
+              "{count} sample(s) are missing QC result. Please complete verification first.",
+          },
+          { count: missingQC.length },
+        ),
+      );
+      return;
+    }
 
-  // Submit bulk QC decisions
-  const handleSubmitBulkQc = useCallback(() => {
-    if (selectedRows.length === 0) return;
+    // Separate samples by their fail action
+    // Discarded samples should NOT proceed to next page
+    const discardedSamples = selectedSamples.filter(
+      (s) => s.failAction === "discard",
+    );
+    const proceedingSamples = selectedSamples.filter(
+      (s) => s.failAction !== "discard",
+    );
 
-    const selectedLabNos = selectedRows
-      .map((rowId) => {
-        const sample = pendingSamples.find((s) => String(s.id) === rowId);
-        return sample?.labNo;
-      })
-      .filter(Boolean);
+    // Track how many requests we need to make
+    let completedRequests = 0;
+    let failedRequests = 0;
+    const totalRequests =
+      (proceedingSamples.length > 0 ? 1 : 0) +
+      (discardedSamples.length > 0 ? 1 : 0);
 
-    if (selectedLabNos.length === 0) return;
-
-    const bulkQcData = {
-      labNumbers: selectedLabNos,
-      accepted: bulkQcAction === "accept",
-      rejectionReason: bulkQcAction === "reject" ? bulkRejectionReason : null,
-      correctiveAction: bulkQcAction === "reject" ? bulkCorrectiveAction : null,
-      notebookPageId: pageData?.id,
-    };
-
-    postToOpenElisServer(
-      "/rest/medlab/bulk-qc-decision",
-      JSON.stringify(bulkQcData),
-      (status) => {
-        if (status === 200) {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage(
+    const handleRequestComplete = () => {
+      completedRequests++;
+      if (completedRequests === totalRequests) {
+        if (failedRequests === 0) {
+          // Build appropriate success message
+          let message = "";
+          if (proceedingSamples.length > 0 && discardedSamples.length > 0) {
+            message = intl.formatMessage(
               {
-                id:
-                  bulkQcAction === "accept"
-                    ? "medlab.qc.bulk.accept.success"
-                    : "medlab.qc.bulk.reject.success",
+                id: "notebook.page.medlab.success.verifiedMixed",
                 defaultMessage:
-                  bulkQcAction === "accept"
-                    ? "{count} samples accepted"
-                    : "{count} samples rejected",
+                  "{passCount} sample(s) verified and can proceed to routing. {discardCount} sample(s) were discarded and will not proceed.",
               },
-              { count: selectedLabNos.length },
-            ),
-            kind: NotificationKinds.success,
-          });
-          setNotificationVisible(true);
-          setBulkQcModalOpen(false);
-          setSelectedRows([]);
-          loadSamplesForQC();
+              {
+                passCount: proceedingSamples.length,
+                discardCount: discardedSamples.length,
+              },
+            );
+          } else if (discardedSamples.length > 0) {
+            message = intl.formatMessage(
+              {
+                id: "notebook.page.medlab.success.verifiedDiscarded",
+                defaultMessage:
+                  "{count} sample(s) were discarded. They will not proceed to routing.",
+              },
+              { count: discardedSamples.length },
+            );
+          } else {
+            message = intl.formatMessage(
+              {
+                id: "notebook.page.medlab.success.verified",
+                defaultMessage:
+                  "Marked {count} sample(s) as verified. They can now proceed to Sample Routing.",
+              },
+              { count: proceedingSamples.length },
+            );
+          }
+          setSuccessMessage(message);
+          setSelectedSampleIds([]);
+          loadPageSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          addNotification({
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "medlab.qc.bulk.error",
-              defaultMessage: "Error processing bulk QC decision",
+          setError(
+            intl.formatMessage({
+              id: "notebook.page.medlab.error.status",
+              defaultMessage: "Failed to update status. Please try again.",
             }),
-            kind: NotificationKinds.error,
-          });
-          setNotificationVisible(true);
+          );
         }
-      },
-    );
+      }
+    };
+
+    // Update proceeding samples to COMPLETED (they will proceed to next page)
+    if (proceedingSamples.length > 0) {
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: proceedingSamples.map((s) => parseInt(s.id, 10)),
+          status: "COMPLETED",
+        }),
+        (status) => {
+          if (status !== 200) {
+            failedRequests++;
+          }
+          handleRequestComplete();
+        },
+      );
+    }
+
+    // Update discarded samples to SKIPPED (they will NOT proceed to next page)
+    if (discardedSamples.length > 0) {
+      postToOpenElisServer(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: discardedSamples.map((s) => parseInt(s.id, 10)),
+          status: "SKIPPED",
+        }),
+        (status) => {
+          if (status !== 200) {
+            failedRequests++;
+          }
+          handleRequestComplete();
+        },
+      );
+    }
+
+    // If no samples to process, just return
+    if (totalRequests === 0) {
+      return;
+    }
   }, [
-    selectedRows,
-    pendingSamples,
-    bulkQcAction,
-    bulkRejectionReason,
-    bulkCorrectiveAction,
-    pageData,
+    selectedSampleIds,
+    samples,
+    hasRealPageId,
     intl,
-    addNotification,
-    setNotificationVisible,
-    loadSamplesForQC,
+    loadPageSamples,
     onProgressUpdate,
+    pageData?.id,
   ]);
 
   // Calculate stats
-  const totalSamples = pendingSamples.length + processedSamples.length;
-  const acceptedCount = processedSamples.filter((s) => !s.isRejected).length;
-  const rejectedCount = processedSamples.filter((s) => s.isRejected).length;
-  const pendingCount = pendingSamples.length;
+  const qcPassedCount = samples.filter((s) => s.qcResult === "Pass").length;
+  const qcFailedCount = samples.filter((s) => s.qcResult === "Fail").length;
+  const qcPendingCount = samples.filter((s) => !s.qcResult).length;
+  const verifiedCount = samples.filter(
+    (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+  ).length;
 
-  // Table headers for pending QC
-  const pendingHeaders = [
-    {
-      key: "labNo",
-      header: intl.formatMessage({ id: "sample.label.labnumber" }),
-    },
-    {
-      key: "patientName",
-      header: intl.formatMessage({ id: "patient.label" }),
-    },
-    {
-      key: "sampleType",
-      header: intl.formatMessage({
-        id: "sample.sampleType",
-        defaultMessage: "Sample Type",
-      }),
-    },
-    {
-      key: "collectionDate",
-      header: intl.formatMessage({
-        id: "medlab.collection.date",
-        defaultMessage: "Collection Date",
-      }),
-    },
-    {
-      key: "actions",
-      header: intl.formatMessage({ id: "label.button.actions" }),
-    },
-  ];
+  // Count checked criteria
+  const checkedCount = useMemo(() => {
+    return Object.values(bulkApplyValues.qcChecklist).filter((v) => v).length;
+  }, [bulkApplyValues.qcChecklist]);
 
-  // Table headers for processed samples
-  const processedHeaders = [
-    {
-      key: "labNo",
-      header: intl.formatMessage({ id: "sample.label.labnumber" }),
-    },
-    {
-      key: "patientName",
-      header: intl.formatMessage({ id: "patient.label" }),
-    },
-    {
-      key: "sampleType",
-      header: intl.formatMessage({
-        id: "sample.sampleType",
-        defaultMessage: "Sample Type",
-      }),
-    },
-    {
-      key: "qcStatus",
-      header: intl.formatMessage({
-        id: "medlab.qc.status",
-        defaultMessage: "QC Status",
-      }),
-    },
-    {
-      key: "rejectionReason",
-      header: intl.formatMessage({
-        id: "medlab.qc.rejectionReason",
-        defaultMessage: "Rejection Reason",
-      }),
-    },
-  ];
-
-  // Format date for display
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString();
-    } catch {
-      return dateStr;
-    }
-  };
-
-  // Render discipline-specific QC fields
-  const renderDisciplineQcFields = () => {
-    const discipline =
-      qcForm.discipline || getSampleDiscipline(selectedSample?.sampleType);
-
-    return (
-      <AccordionItem
-        title={intl.formatMessage({
-          id: "medlab.qc.disciplineSpecific",
-          defaultMessage: "Discipline-Specific QC",
-        })}
-        open
-      >
-        <Grid>
-          {/* Chemistry QC */}
-          {discipline === "chemistry" && (
-            <>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="chemistry-delay"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.chemistry.delay",
-                    defaultMessage: "Delay > 1 hour?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.chemistryDelay}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, chemistryDelay: checked })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="chemistry-volume"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.chemistry.volume",
-                    defaultMessage: "Volume >= 3ml?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.chemistryVolume}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, chemistryVolume: checked })
-                  }
-                />
-              </Column>
-              <Column lg={5} md={4} sm={4}>
-                <Select
-                  id="hemolysis"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.hemolysis",
-                    defaultMessage: "Hemolysis",
-                  })}
-                  value={qcForm.hemolysis}
-                  onChange={(e) =>
-                    setQcForm({ ...qcForm, hemolysis: e.target.value })
-                  }
-                >
-                  {serumQualityLevels.map((level) => (
-                    <SelectItem
-                      key={level.id}
-                      value={level.id}
-                      text={level.label}
-                    />
-                  ))}
-                </Select>
-              </Column>
-              <Column lg={5} md={4} sm={4}>
-                <Select
-                  id="lipemia"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.lipemia",
-                    defaultMessage: "Lipemia",
-                  })}
-                  value={qcForm.lipemia}
-                  onChange={(e) =>
-                    setQcForm({ ...qcForm, lipemia: e.target.value })
-                  }
-                >
-                  {serumQualityLevels.map((level) => (
-                    <SelectItem
-                      key={level.id}
-                      value={level.id}
-                      text={level.label}
-                    />
-                  ))}
-                </Select>
-              </Column>
-              <Column lg={6} md={4} sm={4}>
-                <Select
-                  id="icterus"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.icterus",
-                    defaultMessage: "Icterus",
-                  })}
-                  value={qcForm.icterus}
-                  onChange={(e) =>
-                    setQcForm({ ...qcForm, icterus: e.target.value })
-                  }
-                >
-                  {serumQualityLevels.map((level) => (
-                    <SelectItem
-                      key={level.id}
-                      value={level.id}
-                      text={level.label}
-                    />
-                  ))}
-                </Select>
-              </Column>
-            </>
-          )}
-
-          {/* Hematology QC */}
-          {discipline === "hematology" && (
-            <>
-              <Column lg={8} md={4} sm={4}>
-                <Select
-                  id="anticoagulant-type"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.anticoagulantType",
-                    defaultMessage: "Anticoagulant Type",
-                  })}
-                  value={qcForm.anticoagulantType}
-                  onChange={(e) =>
-                    setQcForm({ ...qcForm, anticoagulantType: e.target.value })
-                  }
-                >
-                  {anticoagulantTypes.map((type) => (
-                    <SelectItem
-                      key={type.id}
-                      value={type.id}
-                      text={type.label}
-                    />
-                  ))}
-                </Select>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="hematology-delay"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.hematology.delay",
-                    defaultMessage: "Delay > 4 hours?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.hematologyDelay}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, hematologyDelay: checked })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="clotting"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.clotting",
-                    defaultMessage: "Clotting present?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.clotting}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, clotting: checked })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="hematology-hemolysis"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.hemolysis",
-                    defaultMessage: "Hemolysis present?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.hematologyHemolysis}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, hematologyHemolysis: checked })
-                  }
-                />
-              </Column>
-            </>
-          )}
-
-          {/* Stool QC */}
-          {discipline === "stool" && (
-            <>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="stool-delay"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.stool.delay",
-                    defaultMessage: "Delay > 30 minutes?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.stoolDelay}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, stoolDelay: checked })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="stool-volume"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.stool.volume",
-                    defaultMessage: "Adequate volume?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.stoolVolume}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, stoolVolume: checked })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="stool-contamination"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.stool.contamination",
-                    defaultMessage: "Contamination?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.stoolContamination}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, stoolContamination: checked })
-                  }
-                />
-              </Column>
-            </>
-          )}
-
-          {/* Urine QC */}
-          {discipline === "urine" && (
-            <>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="urine-delay"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.urine.delay",
-                    defaultMessage: "Delay > 30 minutes?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.urineDelay}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, urineDelay: checked })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="urine-volume"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.urine.volume",
-                    defaultMessage: "Volume >= 10ml?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.urineVolume}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, urineVolume: checked })
-                  }
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Toggle
-                  id="urine-contamination"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.urine.contamination",
-                    defaultMessage: "Contamination?",
-                  })}
-                  labelA="No"
-                  labelB="Yes"
-                  toggled={qcForm.urineContamination}
-                  onToggle={(checked) =>
-                    setQcForm({ ...qcForm, urineContamination: checked })
-                  }
-                />
-              </Column>
-            </>
-          )}
-
-          {/* Microbiology QC */}
-          {discipline === "microbiology" && (
-            <Column lg={8} md={4} sm={4}>
-              <Toggle
-                id="microbiology-contamination"
-                labelText={intl.formatMessage({
-                  id: "medlab.qc.microbiology.contamination",
-                  defaultMessage: "Visible contamination?",
-                })}
-                labelA="No"
-                labelB="Yes"
-                toggled={qcForm.microbiologyContamination}
-                onToggle={(checked) =>
-                  setQcForm({ ...qcForm, microbiologyContamination: checked })
-                }
-              />
-            </Column>
-          )}
-        </Grid>
-      </AccordionItem>
-    );
+  // Get QC result tag
+  const getQCTag = (qcResult) => {
+    if (!qcResult) return <Tag type="gray">Pending</Tag>;
+    if (qcResult === "Pass") return <Tag type="green">Pass</Tag>;
+    if (qcResult === "Fail") return <Tag type="red">Fail</Tag>;
+    return <Tag type="gray">{qcResult}</Tag>;
   };
 
   return (
-    <div className="quality-check-page">
+    <div className="medlab-quality-check-page">
       {/* Page Header */}
       <div className="page-section-header">
         <h4>
           <FormattedMessage
-            id="medlab.page.qualityCheck.title"
+            id="notebook.page.medlab.qualityCheck.title"
             defaultMessage="Sample Receipt & Quality Assessment"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
-            id="medlab.page.qualityCheck.description"
-            defaultMessage="Accept or reject samples based on defined quality rules. Review labeling, container type, and discipline-specific criteria."
+            id="notebook.page.medlab.qualityCheck.description"
+            defaultMessage="Confirm physical receipt and validate sample quality. Use the QC checklist to assess labeling, container type, volume adequacy, order matching, hemolysis, contamination, and temperature. Samples that pass QC proceed to Sample Routing."
           />
         </p>
       </div>
@@ -970,685 +646,733 @@ function MedLabQualityCheckPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="medlab.page.qualityCheck.totalSamples"
+                  id="notebook.page.medlab.totalSamples"
                   defaultMessage="Total Samples"
                 />
               </span>
-              <span className="progress-value">{totalSamples}</span>
+              <span className="progress-value">{samples.length}</span>
             </Tile>
             <Tile className="progress-tile verified">
               <span className="progress-label">
                 <FormattedMessage
-                  id="medlab.page.qualityCheck.accepted"
-                  defaultMessage="Accepted"
+                  id="notebook.page.medlab.qcPassed"
+                  defaultMessage="QC Passed"
                 />
               </span>
-              <span className="progress-value">{acceptedCount}</span>
+              <span className="progress-value">{qcPassedCount}</span>
             </Tile>
-            <Tile className="progress-tile rejected">
+            <Tile className="progress-tile error">
               <span className="progress-label">
                 <FormattedMessage
-                  id="medlab.page.qualityCheck.rejected"
-                  defaultMessage="Rejected"
+                  id="notebook.page.medlab.qcFailed"
+                  defaultMessage="QC Failed"
                 />
               </span>
-              <span className="progress-value">{rejectedCount}</span>
+              <span className="progress-value">{qcFailedCount}</span>
             </Tile>
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="medlab.page.qualityCheck.pending"
-                  defaultMessage="Pending QC"
+                  id="notebook.page.medlab.qcPending"
+                  defaultMessage="QC Pending"
                 />
               </span>
-              <span className="progress-value">{pendingCount}</span>
+              <span className="progress-value">{qcPendingCount}</span>
+            </Tile>
+            <Tile className="progress-tile">
+              <span className="progress-label">
+                <FormattedMessage
+                  id="notebook.page.medlab.verified"
+                  defaultMessage="Verified"
+                />
+              </span>
+              <span className="progress-value">{verifiedCount}</span>
             </Tile>
           </div>
         </Column>
       </Grid>
 
-      {/* Error Display */}
+      {/* Action Buttons */}
+      <div className="page-actions-bar">
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Edit}
+          onClick={() => {
+            resetBulkApplyValues();
+            setBulkApplyModalOpen(true);
+          }}
+          disabled={selectedSampleIds.length === 0}
+        >
+          <FormattedMessage
+            id="notebook.page.medlab.bulkApply"
+            defaultMessage="Bulk Apply QC ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        {selectedSampleIds.length > 0 && (
+          <Button
+            kind="secondary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={handleMarkVerified}
+          >
+            <FormattedMessage
+              id="notebook.page.medlab.markDone"
+              defaultMessage="Mark as Done ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        )}
+      </div>
+
+      {/* Messages */}
       {error && (
         <InlineNotification
           kind="error"
           title={error}
-          hideCloseButton
+          onClose={() => setError(null)}
+          lowContrast
+        />
+      )}
+      {successMessage && (
+        <InlineNotification
+          kind="success"
+          title={successMessage}
+          onClose={() => setSuccessMessage(null)}
           lowContrast
         />
       )}
 
-      {/* Loading State */}
-      {loading && <Loading />}
-
-      {/* Pending QC Table */}
-      {!loading && pendingSamples.length > 0 && (
-        <div className="orders-section">
+      {/* Pending Verification Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
           <h5>
             <FormattedMessage
-              id="medlab.page.qualityCheck.pendingSamples"
-              defaultMessage="Samples Pending QC"
+              id="notebook.page.medlab.pendingTable.title"
+              defaultMessage="Samples Pending Verification"
             />
+            <Tag type="gray" className="count-tag">
+              {
+                samples.filter(
+                  (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+                ).length
+              }
+            </Tag>
           </h5>
-          <DataTable
-            rows={pendingSamples.map((s) => ({
-              ...s,
-              id: String(s.id),
-              collectionDate: formatDate(s.collectionDate),
-            }))}
-            headers={pendingHeaders}
-            isSortable
-          >
-            {({
-              rows,
-              headers,
-              getHeaderProps,
-              getTableProps,
-              getSelectionProps,
-              getRowProps,
-              selectedRows,
-              getBatchActionProps,
-            }) => {
-              const batchActionProps = getBatchActionProps();
-              return (
-                <TableContainer>
-                  <TableToolbar>
-                    <TableBatchActions {...batchActionProps}>
-                      <TableBatchAction
-                        tabIndex={
-                          batchActionProps.shouldShowBatchActions ? 0 : -1
-                        }
-                        renderIcon={CheckmarkFilled}
-                        onClick={() =>
-                          handleOpenBulkQcModal(
-                            "accept",
-                            selectedRows.map((r) => r.id),
-                          )
-                        }
-                      >
-                        <FormattedMessage
-                          id="medlab.qc.bulk.accept"
-                          defaultMessage="Accept Selected"
-                        />
-                      </TableBatchAction>
-                      <TableBatchAction
-                        tabIndex={
-                          batchActionProps.shouldShowBatchActions ? 0 : -1
-                        }
-                        renderIcon={CloseFilled}
-                        onClick={() =>
-                          handleOpenBulkQcModal(
-                            "reject",
-                            selectedRows.map((r) => r.id),
-                          )
-                        }
-                      >
-                        <FormattedMessage
-                          id="medlab.qc.bulk.reject"
-                          defaultMessage="Reject Selected"
-                        />
-                      </TableBatchAction>
-                    </TableBatchActions>
-                    <TableToolbarContent>
-                      <p style={{ fontSize: "0.875rem", color: "#525252" }}>
-                        <FormattedMessage
-                          id="medlab.qc.bulk.hint"
-                          defaultMessage="Select samples for bulk accept/reject, or click Assess for detailed QC"
-                        />
-                      </p>
-                    </TableToolbarContent>
-                  </TableToolbar>
-                  <Table {...getTableProps()}>
-                    <TableHead>
-                      <TableRow>
-                        <TableSelectAll {...getSelectionProps()} />
-                        {headers.map((header) => (
-                          <TableHeader
-                            key={header.key}
-                            {...getHeaderProps({ header })}
-                          >
-                            {header.header}
-                          </TableHeader>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {rows.map((row) => {
-                        const sample = pendingSamples.find(
-                          (s) => String(s.id) === row.id,
-                        );
-                        return (
-                          <TableRow key={row.id} {...getRowProps({ row })}>
-                            <TableSelectRow {...getSelectionProps({ row })} />
-                            {row.cells.map((cell) => (
-                              <TableCell key={cell.id}>
-                                {cell.info.header === "actions" ? (
-                                  <div
-                                    style={{ display: "flex", gap: "0.5rem" }}
-                                  >
-                                    <Button
-                                      kind="ghost"
-                                      size="sm"
-                                      renderIcon={View}
-                                      onClick={() => handleOpenQcModal(sample)}
-                                    >
-                                      <FormattedMessage
-                                        id="medlab.qc.assess"
-                                        defaultMessage="Assess"
-                                      />
-                                    </Button>
-                                    <Button
-                                      kind="primary"
-                                      size="sm"
-                                      renderIcon={Checkmark}
-                                      onClick={() => handleQuickAccept(sample)}
-                                    >
-                                      <FormattedMessage
-                                        id="medlab.qc.accept"
-                                        defaultMessage="Accept"
-                                      />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  cell.value
-                                )}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              );
-            }}
-          </DataTable>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.medlab.pendingTable.description"
+              defaultMessage="Select samples and use 'Bulk Apply QC' to perform quality assessment. Samples with QC result can be marked as done."
+            />
+          </p>
         </div>
-      )}
-
-      {/* Processed Samples Table */}
-      {!loading && processedSamples.length > 0 && (
-        <div className="orders-section" style={{ marginTop: "2rem" }}>
-          <h5>
-            <FormattedMessage
-              id="medlab.page.qualityCheck.processedSamples"
-              defaultMessage="Processed Samples"
-            />
-          </h5>
-          <DataTable
-            rows={processedSamples.map((s) => ({
-              ...s,
-              id: String(s.id),
-              qcStatus: s.isRejected ? "REJECTED" : "ACCEPTED",
-              rejectionReason: s.rejectionReason || "-",
-            }))}
-            headers={processedHeaders}
-            isSortable
-          >
-            {({ rows, headers, getHeaderProps, getTableProps }) => (
-              <TableContainer>
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      {headers.map((header) => (
-                        <TableHeader
-                          key={header.key}
-                          {...getHeaderProps({ header })}
-                        >
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>
-                            {cell.info.header === "qcStatus" ? (
-                              <Tag
-                                type={
-                                  cell.value === "ACCEPTED" ? "green" : "red"
-                                }
-                              >
-                                {cell.value === "ACCEPTED" ? (
-                                  <FormattedMessage
-                                    id="medlab.qc.status.accepted"
-                                    defaultMessage="Accepted - Ready for Storage"
-                                  />
-                                ) : (
-                                  <FormattedMessage
-                                    id="medlab.qc.status.rejected"
-                                    defaultMessage="Rejected"
-                                  />
-                                )}
-                              </Tag>
-                            ) : (
-                              cell.value
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+        <div className="sample-grid-container">
+          <SampleGrid
+            gridId="pending-verification"
+            samples={samples.filter(
+              (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
             )}
-          </DataTable>
+            selectedIds={selectedSampleIds}
+            onSelectionChange={setSelectedSampleIds}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            showSelection={true}
+            loading={loading}
+            columns={[
+              {
+                key: "accessionNumber",
+                header: intl.formatMessage({
+                  id: "sample.label.labnumber",
+                  defaultMessage: "Lab Number",
+                }),
+              },
+              {
+                key: "patientName",
+                header: intl.formatMessage({
+                  id: "patient.label",
+                  defaultMessage: "Patient",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleType",
+                  defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "linkedOrderLabNo",
+                header: intl.formatMessage({
+                  id: "notebook.grid.linkedOrder",
+                  defaultMessage: "Linked Order",
+                }),
+              },
+              {
+                key: "qcResult",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcResult",
+                  defaultMessage: "QC Result",
+                }),
+                render: (value) => getQCTag(value),
+              },
+              {
+                key: "rejectionReason",
+                header: intl.formatMessage({
+                  id: "notebook.grid.rejectionReason",
+                  defaultMessage: "Rejection Reason",
+                }),
+                render: (value) => {
+                  if (!value) return "-";
+                  const reason = REJECTION_REASONS.find((r) => r.id === value);
+                  return reason ? reason.label : value;
+                },
+              },
+              {
+                key: "failAction",
+                header: intl.formatMessage({
+                  id: "notebook.grid.failAction",
+                  defaultMessage: "Action",
+                }),
+                render: (value) => {
+                  if (!value) return "-";
+                  if (value === "discard")
+                    return <Tag type="red">Discarded</Tag>;
+                  if (value === "proceed_flagged")
+                    return <Tag type="purple">Flagged</Tag>;
+                  return value;
+                },
+              },
+            ]}
+          />
         </div>
-      )}
+        {!loading &&
+          samples.filter(
+            (s) => s.status !== "COMPLETED" && s.status !== "SKIPPED",
+          ).length === 0 && (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.medlab.pendingTable.empty"
+                  defaultMessage="No samples pending verification. All samples have been processed."
+                />
+              </p>
+            </div>
+          )}
+      </div>
 
-      {/* Empty state */}
-      {!loading && totalSamples === 0 && (
+      {/* Verified Samples Table */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.medlab.completedTable.title"
+              defaultMessage="Verified Samples"
+            />
+            <Tag type="green" className="count-tag">
+              {
+                samples.filter(
+                  (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+                ).length
+              }
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.medlab.completedTable.description"
+              defaultMessage="Samples that have completed verification. Passed samples can proceed to Sample Routing."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          <SampleGrid
+            gridId="verified-samples"
+            samples={samples.filter(
+              (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+            )}
+            selectedIds={[]}
+            showSelection={false}
+            loading={loading}
+            columns={[
+              {
+                key: "accessionNumber",
+                header: intl.formatMessage({
+                  id: "sample.label.labnumber",
+                  defaultMessage: "Lab Number",
+                }),
+              },
+              {
+                key: "patientName",
+                header: intl.formatMessage({
+                  id: "patient.label",
+                  defaultMessage: "Patient",
+                }),
+              },
+              {
+                key: "sampleType",
+                header: intl.formatMessage({
+                  id: "notebook.grid.sampleType",
+                  defaultMessage: "Sample Type",
+                }),
+              },
+              {
+                key: "qcResult",
+                header: intl.formatMessage({
+                  id: "notebook.grid.qcResult",
+                  defaultMessage: "QC Result",
+                }),
+                render: (value) => getQCTag(value),
+              },
+              {
+                key: "rejectionReason",
+                header: intl.formatMessage({
+                  id: "notebook.grid.rejectionReason",
+                  defaultMessage: "Rejection Reason",
+                }),
+                render: (value) => {
+                  if (!value) return "-";
+                  const reason = REJECTION_REASONS.find((r) => r.id === value);
+                  return reason ? reason.label : value;
+                },
+              },
+              {
+                key: "status",
+                header: intl.formatMessage({
+                  id: "notebook.grid.disposition",
+                  defaultMessage: "Disposition",
+                }),
+                render: (value) => {
+                  if (value === "SKIPPED") {
+                    return (
+                      <Tag type="red">
+                        <FormattedMessage
+                          id="notebook.disposition.notProceeding"
+                          defaultMessage="Not Proceeding"
+                        />
+                      </Tag>
+                    );
+                  }
+                  if (value === "COMPLETED") {
+                    return (
+                      <Tag type="green">
+                        <FormattedMessage
+                          id="notebook.disposition.proceeding"
+                          defaultMessage="Proceeding"
+                        />
+                      </Tag>
+                    );
+                  }
+                  return "-";
+                },
+              },
+            ]}
+          />
+        </div>
+        {!loading &&
+          samples.filter(
+            (s) => s.status === "COMPLETED" || s.status === "SKIPPED",
+          ).length === 0 && (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.medlab.completedTable.empty"
+                  defaultMessage="No samples have been verified yet."
+                />
+              </p>
+            </div>
+          )}
+      </div>
+
+      {/* Global empty state - only show when no samples at all */}
+      {!loading && samples.length === 0 && (
         <div className="empty-state">
           <p>
             <FormattedMessage
-              id="medlab.page.qualityCheck.empty"
-              defaultMessage="No samples available for quality check. Samples must pass Transport & Packaging verification first."
+              id="notebook.page.medlab.qualityCheck.empty"
+              defaultMessage="No samples available for verification. Samples must be collected in the Sample Collection page first."
             />
           </p>
         </div>
       )}
 
-      {/* QC Assessment Modal */}
+      {/* Bulk Apply Modal */}
       <Modal
-        open={qcModalOpen}
-        onRequestClose={() => setQcModalOpen(false)}
+        open={bulkApplyModalOpen}
+        onRequestClose={() => setBulkApplyModalOpen(false)}
         modalHeading={intl.formatMessage({
-          id: "medlab.page.qualityCheck.assessModal",
+          id: "notebook.medlab.bulkApply.title",
           defaultMessage: "Sample Quality Assessment",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.qc.submit",
-          defaultMessage: "Submit Assessment",
+        primaryButtonText={
+          isBulkApplying
+            ? intl.formatMessage({
+                id: "label.applying",
+                defaultMessage: "Applying...",
+              })
+            : bulkApplyValues.qcResult === "Pass"
+              ? intl.formatMessage({
+                  id: "notebook.medlab.qc.action.pass",
+                  defaultMessage: "Pass - Proceed to Routing",
+                })
+              : bulkApplyValues.qcResult === "Fail"
+                ? intl.formatMessage({
+                    id: "notebook.medlab.qc.action.fail",
+                    defaultMessage: "Fail - Apply Action",
+                  })
+                : intl.formatMessage({
+                    id: "label.apply",
+                    defaultMessage: "Apply",
+                  })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
         })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitQcAssessment}
-        size="lg"
-      >
-        {selectedSample && (
-          <Grid>
-            {/* Sample Info */}
-            <Column lg={16} md={8} sm={4}>
-              <Tile
-                className="order-info-tile"
-                style={{ marginBottom: "1rem" }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div>
-                    <strong>
-                      <FormattedMessage id="sample.label.labnumber" />:
-                    </strong>{" "}
-                    {selectedSample.labNo}
-                  </div>
-                  <div>
-                    <strong>
-                      <FormattedMessage id="patient.label" />:
-                    </strong>{" "}
-                    {selectedSample.patientName}
-                  </div>
-                  <div>
-                    <strong>
-                      <FormattedMessage
-                        id="sample.sampleType"
-                        defaultMessage="Sample Type"
-                      />
-                      :
-                    </strong>{" "}
-                    <Tag type="blue">{selectedSample.sampleType}</Tag>
-                  </div>
-                </div>
-              </Tile>
-            </Column>
-
-            {/* QC Issue Warning */}
-            {hasQcIssues() && (
-              <Column lg={16} md={8} sm={4}>
-                <InlineNotification
-                  kind="warning"
-                  title={intl.formatMessage({
-                    id: "medlab.qc.issuesDetected",
-                    defaultMessage: "Quality issues detected",
-                  })}
-                  subtitle={intl.formatMessage({
-                    id: "medlab.qc.reviewBeforeAccept",
-                    defaultMessage:
-                      "Review the issues below before accepting this sample.",
-                  })}
-                  lowContrast
-                  hideCloseButton
-                  style={{ marginBottom: "1rem" }}
-                />
-              </Column>
-            )}
-
-            <Column lg={16} md={8} sm={4}>
-              <Accordion>
-                {/* General QC Checks */}
-                <AccordionItem
-                  title={intl.formatMessage({
-                    id: "medlab.qc.generalChecks",
-                    defaultMessage: "General QC Checks",
-                  })}
-                  open
-                >
-                  <Grid>
-                    <Column lg={8} md={4} sm={4}>
-                      <Toggle
-                        id="labeling-correct"
-                        labelText={intl.formatMessage({
-                          id: "medlab.qc.labelingCorrect",
-                          defaultMessage: "Labeling Correct?",
-                        })}
-                        labelA="No"
-                        labelB="Yes"
-                        toggled={qcForm.labelingCorrect}
-                        onToggle={(checked) =>
-                          setQcForm({ ...qcForm, labelingCorrect: checked })
-                        }
-                      />
-                    </Column>
-                    <Column lg={8} md={4} sm={4}>
-                      <Toggle
-                        id="correct-container"
-                        labelText={intl.formatMessage({
-                          id: "medlab.qc.correctContainer",
-                          defaultMessage: "Correct Container for Test?",
-                        })}
-                        labelA="No"
-                        labelB="Yes"
-                        toggled={qcForm.correctContainerForTest}
-                        onToggle={(checked) =>
-                          setQcForm({
-                            ...qcForm,
-                            correctContainerForTest: checked,
-                          })
-                        }
-                      />
-                    </Column>
-                    <Column lg={8} md={4} sm={4}>
-                      <Toggle
-                        id="matching-order"
-                        labelText={intl.formatMessage({
-                          id: "medlab.qc.matchingOrder",
-                          defaultMessage: "Matching Lab Order?",
-                        })}
-                        labelA="No"
-                        labelB="Yes"
-                        toggled={qcForm.matchingLabOrder}
-                        onToggle={(checked) =>
-                          setQcForm({ ...qcForm, matchingLabOrder: checked })
-                        }
-                      />
-                    </Column>
-                    <Column lg={8} md={4} sm={4}>
-                      <Select
-                        id="storage-temperature"
-                        labelText={intl.formatMessage({
-                          id: "medlab.qc.storageTemperature",
-                          defaultMessage: "Storage Temperature at Collection",
-                        })}
-                        value={qcForm.storageTemperature}
-                        onChange={(e) =>
-                          setQcForm({
-                            ...qcForm,
-                            storageTemperature: e.target.value,
-                          })
-                        }
-                      >
-                        {temperatureOptions.map((temp) => (
-                          <SelectItem
-                            key={temp.id}
-                            value={temp.id}
-                            text={temp.label}
-                          />
-                        ))}
-                      </Select>
-                    </Column>
-                  </Grid>
-                </AccordionItem>
-
-                {/* Discipline-Specific QC */}
-                {renderDisciplineQcFields()}
-
-                {/* Acceptance Decision */}
-                <AccordionItem
-                  title={intl.formatMessage({
-                    id: "medlab.qc.decision",
-                    defaultMessage: "Acceptance Decision",
-                  })}
-                  open
-                >
-                  <Grid>
-                    <Column
-                      lg={16}
-                      md={8}
-                      sm={4}
-                      style={{ marginBottom: "1rem" }}
-                    >
-                      <RadioButtonGroup
-                        legendText={intl.formatMessage({
-                          id: "medlab.qc.decision.label",
-                          defaultMessage: "Decision",
-                        })}
-                        name="qc-decision"
-                        valueSelected={qcForm.decision}
-                        onChange={(value) =>
-                          setQcForm({ ...qcForm, decision: value })
-                        }
-                        orientation="horizontal"
-                      >
-                        <RadioButton
-                          id="qc-accepted"
-                          labelText={intl.formatMessage({
-                            id: "medlab.qc.decision.accepted",
-                            defaultMessage: "Accepted (A)",
-                          })}
-                          value="accepted"
-                        />
-                        <RadioButton
-                          id="qc-rejected"
-                          labelText={intl.formatMessage({
-                            id: "medlab.qc.decision.rejected",
-                            defaultMessage: "Rejected (R)",
-                          })}
-                          value="rejected"
-                        />
-                      </RadioButtonGroup>
-                    </Column>
-
-                    {qcForm.decision === "rejected" && (
-                      <>
-                        <Column lg={8} md={4} sm={4}>
-                          <Select
-                            id="rejection-reason"
-                            labelText={intl.formatMessage({
-                              id: "medlab.qc.rejectionReason",
-                              defaultMessage: "Reason for Rejection",
-                            })}
-                            value={qcForm.rejectionReason}
-                            onChange={(e) =>
-                              setQcForm({
-                                ...qcForm,
-                                rejectionReason: e.target.value,
-                              })
-                            }
-                          >
-                            <SelectItem value="" text="Select reason..." />
-                            {rejectionReasons.map((reason) => (
-                              <SelectItem
-                                key={reason.id}
-                                value={reason.id}
-                                text={reason.label}
-                              />
-                            ))}
-                          </Select>
-                        </Column>
-                        <Column lg={8} md={4} sm={4}>
-                          <Select
-                            id="corrective-action"
-                            labelText={intl.formatMessage({
-                              id: "medlab.qc.correctiveAction",
-                              defaultMessage: "Corrective Action",
-                            })}
-                            value={qcForm.correctiveAction}
-                            onChange={(e) =>
-                              setQcForm({
-                                ...qcForm,
-                                correctiveAction: e.target.value,
-                              })
-                            }
-                          >
-                            {correctiveActionOptions.map((action) => (
-                              <SelectItem
-                                key={action.id}
-                                value={action.id}
-                                text={action.label}
-                              />
-                            ))}
-                          </Select>
-                        </Column>
-                      </>
-                    )}
-
-                    <Column lg={16} md={8} sm={4}>
-                      <TextArea
-                        id="qc-notes"
-                        labelText={intl.formatMessage({
-                          id: "medlab.qc.notes",
-                          defaultMessage: "Additional Notes",
-                        })}
-                        value={qcForm.notes}
-                        onChange={(e) =>
-                          setQcForm({ ...qcForm, notes: e.target.value })
-                        }
-                        rows={2}
-                        placeholder={intl.formatMessage({
-                          id: "medlab.qc.notes.placeholder",
-                          defaultMessage:
-                            "Enter any additional observations...",
-                        })}
-                      />
-                    </Column>
-                  </Grid>
-                </AccordionItem>
-              </Accordion>
-            </Column>
-          </Grid>
-        )}
-      </Modal>
-
-      {/* Bulk QC Modal */}
-      <Modal
-        open={bulkQcModalOpen}
-        onRequestClose={() => setBulkQcModalOpen(false)}
-        modalHeading={intl.formatMessage({
-          id: "medlab.page.qualityCheck.bulkQcModal",
-          defaultMessage: "Bulk QC Decision",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id:
-            bulkQcAction === "accept"
-              ? "medlab.qc.bulk.accept"
-              : "medlab.qc.bulk.reject",
-          defaultMessage:
-            bulkQcAction === "accept" ? "Accept Selected" : "Reject Selected",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitBulkQc}
-        danger={bulkQcAction === "reject"}
+        onRequestSubmit={handleBulkApply}
+        onSecondarySubmit={() => setBulkApplyModalOpen(false)}
         size="md"
+        primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
+        danger={bulkApplyValues.qcResult === "Fail"}
       >
-        <Grid>
-          <Column lg={16} md={8} sm={4}>
-            <Tile className="order-info-tile" style={{ marginBottom: "1rem" }}>
-              <Tag type="blue">
-                <FormattedMessage
-                  id="medlab.qc.bulk.selectedCount"
-                  defaultMessage="{count} samples selected"
-                  values={{ count: selectedRows.length }}
+        <div className="qc-bulk-apply-modal">
+          <p className="modal-description">
+            <FormattedMessage
+              id="notebook.medlab.bulkApply.description"
+              defaultMessage="Apply reception and quality assessment values to {count} selected sample(s)."
+              values={{ count: selectedSampleIds.length }}
+            />
+          </p>
+
+          {/* Receipt Information Section */}
+          <div className="qc-section">
+            <h5 className="qc-section-header">
+              <FormattedMessage
+                id="notebook.medlab.section.receipt"
+                defaultMessage="Receipt Information"
+              />
+            </h5>
+            <Grid fullWidth>
+              <Column lg={5} md={4} sm={4}>
+                <div className="cds--form-item">
+                  <label className="cds--label">
+                    <FormattedMessage
+                      id="notebook.medlab.receivedDateTime"
+                      defaultMessage="Received Date & Time"
+                    />
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="cds--text-input"
+                    value={bulkApplyValues.receivedDateTime}
+                    onChange={(e) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        receivedDateTime: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </Column>
+              <Column lg={5} md={4} sm={4}>
+                <TextInput
+                  id="receivedBy"
+                  labelText={intl.formatMessage({
+                    id: "notebook.medlab.receivedBy",
+                    defaultMessage: "Received By (Staff Name)",
+                  })}
+                  value={bulkApplyValues.receivedBy}
+                  onChange={(e) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      receivedBy: e.target.value,
+                    }))
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.medlab.receivedBy.placeholder",
+                    defaultMessage: "Enter staff name",
+                  })}
                 />
-              </Tag>
-            </Tile>
-          </Column>
-          <Column lg={16} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <RadioButtonGroup
-              legendText={intl.formatMessage({
-                id: "medlab.qc.bulk.action",
-                defaultMessage: "QC Action",
-              })}
-              name="bulk-qc-action"
-              valueSelected={bulkQcAction}
-              onChange={(value) => setBulkQcAction(value)}
-              orientation="horizontal"
+              </Column>
+              <Column lg={6} md={4} sm={4}>
+                <TextInput
+                  id="arrivalTemperature"
+                  labelText={intl.formatMessage({
+                    id: "notebook.medlab.arrivalTemperature",
+                    defaultMessage: "Temperature on Arrival (°C)",
+                  })}
+                  value={bulkApplyValues.arrivalTemperature}
+                  onChange={(e) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      arrivalTemperature: e.target.value,
+                    }))
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.medlab.arrivalTemperature.placeholder",
+                    defaultMessage: "e.g., 4, -20, Room Temperature",
+                  })}
+                />
+              </Column>
+            </Grid>
+          </div>
+
+          {/* Condition on Arrival */}
+          <div className="qc-section">
+            <Grid fullWidth>
+              <Column lg={16} md={8} sm={4}>
+                <TextArea
+                  id="conditionOnArrival"
+                  labelText={intl.formatMessage({
+                    id: "notebook.medlab.conditionOnArrival",
+                    defaultMessage: "Condition on Arrival",
+                  })}
+                  value={bulkApplyValues.conditionOnArrival}
+                  onChange={(e) =>
+                    setBulkApplyValues((prev) => ({
+                      ...prev,
+                      conditionOnArrival: e.target.value,
+                    }))
+                  }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.medlab.conditionOnArrival.placeholder",
+                    defaultMessage: "Describe sample condition on arrival...",
+                  })}
+                  rows={2}
+                />
+              </Column>
+            </Grid>
+          </div>
+
+          {/* QC Checklist Section */}
+          <div className="qc-section">
+            <h5 className="qc-section-header">
+              <FormattedMessage
+                id="notebook.medlab.section.qcChecklist"
+                defaultMessage="Quality Control Checklist"
+              />
+              <span className="qc-checklist-count">
+                ({checkedCount}/{QC_CRITERIA.length})
+              </span>
+            </h5>
+            <div className="qc-checklist-actions">
+              <Button kind="ghost" size="sm" onClick={handleCheckAll}>
+                <FormattedMessage
+                  id="notebook.medlab.qc.checkAll"
+                  defaultMessage="Check All (Pass)"
+                />
+              </Button>
+              <Button kind="ghost" size="sm" onClick={handleClearAll}>
+                <FormattedMessage
+                  id="notebook.medlab.qc.clearAll"
+                  defaultMessage="Clear All"
+                />
+              </Button>
+            </div>
+            <div className="qc-checklist-items">
+              {QC_CRITERIA.map((criteria) => (
+                <Checkbox
+                  key={criteria.id}
+                  id={`qc-${criteria.id}`}
+                  labelText={intl.formatMessage({
+                    id: criteria.labelId,
+                    defaultMessage: criteria.defaultLabel,
+                  })}
+                  checked={bulkApplyValues.qcChecklist[criteria.id]}
+                  onChange={(_, { checked }) =>
+                    handleChecklistChange(criteria.id, checked)
+                  }
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* QC Status Decision Section */}
+          <div className="qc-section qc-decision-section">
+            <h5 className="qc-section-header">
+              <FormattedMessage
+                id="notebook.medlab.section.qcStatus"
+                defaultMessage="QC Status Decision"
+              />
+            </h5>
+            <p className="qc-decision-hint">
+              <FormattedMessage
+                id="notebook.medlab.qcStatus.hint"
+                defaultMessage="Based on the checklist above, select the final QC decision. You can override the suggested result if needed."
+              />
+            </p>
+            <div className="qc-decision-buttons">
+              <Button
+                kind={bulkApplyValues.qcResult === "Pass" ? "primary" : "ghost"}
+                size="md"
+                renderIcon={Checkmark}
+                onClick={() =>
+                  setBulkApplyValues((prev) => ({
+                    ...prev,
+                    qcResult: "Pass",
+                    rejectionReason: "",
+                    failAction: "",
+                    qcRemarks: "",
+                  }))
+                }
+                className={`qc-decision-btn pass ${bulkApplyValues.qcResult === "Pass" ? "selected" : ""}`}
+              >
+                <FormattedMessage
+                  id="notebook.medlab.qcStatus.pass"
+                  defaultMessage="Pass - Proceed to Routing"
+                />
+              </Button>
+              <Button
+                kind={bulkApplyValues.qcResult === "Fail" ? "danger" : "ghost"}
+                size="md"
+                renderIcon={WarningAlt}
+                onClick={() =>
+                  setBulkApplyValues((prev) => ({
+                    ...prev,
+                    qcResult: "Fail",
+                  }))
+                }
+                className={`qc-decision-btn fail ${bulkApplyValues.qcResult === "Fail" ? "selected" : ""}`}
+              >
+                <FormattedMessage
+                  id="notebook.medlab.qcStatus.fail"
+                  defaultMessage="Fail - Document Rejection"
+                />
+              </Button>
+            </div>
+            <div
+              className={`qc-result-indicator ${bulkApplyValues.qcResult === "Pass" ? "pass" : bulkApplyValues.qcResult === "Fail" ? "fail" : ""}`}
             >
-              <RadioButton
-                id="bulk-qc-accept"
-                labelText={intl.formatMessage({
-                  id: "medlab.qc.accept",
-                  defaultMessage: "Accept",
-                })}
-                value="accept"
-              />
-              <RadioButton
-                id="bulk-qc-reject"
-                labelText={intl.formatMessage({
-                  id: "medlab.qc.reject",
-                  defaultMessage: "Reject",
-                })}
-                value="reject"
-              />
-            </RadioButtonGroup>
-          </Column>
-          {bulkQcAction === "reject" && (
-            <>
-              <Column lg={8} md={4} sm={4}>
-                <Select
-                  id="bulk-rejection-reason"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.rejectionReason",
-                    defaultMessage: "Rejection Reason",
-                  })}
-                  value={bulkRejectionReason}
-                  onChange={(e) => setBulkRejectionReason(e.target.value)}
-                >
-                  <SelectItem value="" text="Select reason..." />
-                  {rejectionReasons.map((reason) => (
-                    <SelectItem
-                      key={reason.id}
-                      value={reason.id}
-                      text={reason.label}
+              {bulkApplyValues.qcResult === "Pass" && (
+                <Tag type="green" size="md">
+                  <Checkmark size={16} style={{ marginRight: "0.5rem" }} />
+                  <FormattedMessage
+                    id="notebook.medlab.qc.resultPass"
+                    defaultMessage="QC PASSED - Sample will proceed to routing"
+                  />
+                </Tag>
+              )}
+              {bulkApplyValues.qcResult === "Fail" && (
+                <Tag type="red" size="md">
+                  <WarningAlt size={16} style={{ marginRight: "0.5rem" }} />
+                  <FormattedMessage
+                    id="notebook.medlab.qc.resultFail"
+                    defaultMessage="QC FAILED - Must document rejection reason and action"
+                  />
+                </Tag>
+              )}
+              {!bulkApplyValues.qcResult && (
+                <Tag type="gray" size="md">
+                  <FormattedMessage
+                    id="notebook.medlab.qc.resultPending"
+                    defaultMessage="Select Pass or Fail to continue"
+                  />
+                </Tag>
+              )}
+            </div>
+          </div>
+
+          {/* Fail Actions - Only show if QC result is Fail */}
+          {bulkApplyValues.qcResult === "Fail" && (
+            <div className="qc-section">
+              <h5 className="qc-section-header">
+                <WarningAlt size={16} style={{ marginRight: "0.5rem" }} />
+                <FormattedMessage
+                  id="notebook.medlab.section.failActions"
+                  defaultMessage="Rejection Details & Actions"
+                />
+              </h5>
+              <div className="qc-fail-actions">
+                <Grid fullWidth>
+                  <Column lg={8} md={4} sm={4}>
+                    <Dropdown
+                      id="rejectionReason"
+                      titleText={intl.formatMessage({
+                        id: "notebook.medlab.rejectionReason.label",
+                        defaultMessage: "Rejection Reason (Required)",
+                      })}
+                      label={intl.formatMessage({
+                        id: "notebook.medlab.rejectionReason.placeholder",
+                        defaultMessage: "Select rejection reason",
+                      })}
+                      items={REJECTION_REASONS}
+                      itemToString={(item) => (item ? item.label : "")}
+                      selectedItem={REJECTION_REASONS.find(
+                        (r) => r.id === bulkApplyValues.rejectionReason,
+                      )}
+                      onChange={({ selectedItem }) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          rejectionReason: selectedItem?.id || "",
+                        }))
+                      }
                     />
-                  ))}
-                </Select>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Select
-                  id="bulk-corrective-action"
-                  labelText={intl.formatMessage({
-                    id: "medlab.qc.correctiveAction",
-                    defaultMessage: "Corrective Action",
-                  })}
-                  value={bulkCorrectiveAction}
-                  onChange={(e) => setBulkCorrectiveAction(e.target.value)}
-                >
-                  {correctiveActionOptions.map((action) => (
-                    <SelectItem
-                      key={action.id}
-                      value={action.id}
-                      text={action.label}
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <RadioButtonGroup
+                      legendText={intl.formatMessage({
+                        id: "notebook.medlab.failAction.label",
+                        defaultMessage: "Action for Failed Samples (Required)",
+                      })}
+                      name="failAction"
+                      valueSelected={bulkApplyValues.failAction}
+                      onChange={(value) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          failAction: value,
+                        }))
+                      }
+                      orientation="vertical"
+                    >
+                      <RadioButton
+                        labelText={intl.formatMessage({
+                          id: "notebook.medlab.failAction.discard",
+                          defaultMessage:
+                            "Discard and notify submitter (sample will NOT proceed)",
+                        })}
+                        value="discard"
+                        id="failAction-discard"
+                      />
+                      <RadioButton
+                        labelText={intl.formatMessage({
+                          id: "notebook.medlab.failAction.proceed",
+                          defaultMessage:
+                            "Keep with remarks and proceed with flagged status",
+                        })}
+                        value="proceed_flagged"
+                        id="failAction-proceed"
+                      />
+                    </RadioButtonGroup>
+                  </Column>
+
+                  {/* QC Remarks */}
+                  <Column lg={16} md={8} sm={4}>
+                    <TextArea
+                      id="qcRemarks"
+                      labelText={intl.formatMessage({
+                        id: "notebook.medlab.qcRemarks",
+                        defaultMessage: "Remarks / Notes",
+                      })}
+                      value={bulkApplyValues.qcRemarks}
+                      onChange={(e) =>
+                        setBulkApplyValues((prev) => ({
+                          ...prev,
+                          qcRemarks: e.target.value,
+                        }))
+                      }
+                      placeholder={intl.formatMessage({
+                        id: "notebook.medlab.qcRemarks.placeholder",
+                        defaultMessage:
+                          "Document the reason for failure and any observations...",
+                      })}
+                      rows={3}
                     />
-                  ))}
-                </Select>
-              </Column>
-            </>
+                  </Column>
+                </Grid>
+              </div>
+            </div>
           )}
-        </Grid>
+        </div>
       </Modal>
     </div>
   );
