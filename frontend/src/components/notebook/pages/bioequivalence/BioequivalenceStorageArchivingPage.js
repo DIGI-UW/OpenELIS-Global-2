@@ -18,14 +18,14 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
-import "./BioanalyticalPages.css";
+import "./BioequivalencePages.css";
 
 /**
- * BioanalyticalStorageArchivingPage - Stage 5 of bioanalytical workflow.
+ * BioequivalenceStorageArchivingPage - Stage 5 of bioequivalence workflow.
  *
  * Features:
  * - Sample storage location and condition tracking
@@ -38,11 +38,11 @@ import "./BioanalyticalPages.css";
  * @param {number} props.entryId - Notebook entry ID
  * @param {Object} props.pageData - Page configuration
  */
-function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
+function BioequivalenceStorageArchivingPage({ entryId, pageData }) {
   const intl = useIntl();
   const { hasAnyRole } = usePermissions();
   const { getPagePermissionLevel, canApproveData, canModify } =
-    useBioanalyticalPermissions();
+    useBioequivalencePermissions();
 
   // PAGE 5 allowed roles per test.pdf Section 11
   const allowedRoles = [
@@ -55,7 +55,9 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   const canAccessPage = hasAnyRole(allowedRoles);
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Storage & Archiving");
+  const pagePermissionLevel = getPagePermissionLevel(
+    "Post-Test Storage & Archiving",
+  );
   const canApproveStorage = canApproveData(pagePermissionLevel);
   const canModifyStorage = canModify(pagePermissionLevel);
 
@@ -64,7 +66,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     return (
       <AccessDeniedMessage
         page="Sample Storage & Archival"
-        reason="This page requires specific bioanalytical laboratory roles to access."
+        reason="This page requires specific bioequivalence laboratory roles to access."
         requiredRoles={allowedRoles}
       />
     );
@@ -245,7 +247,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
           id: sample.id,
           sampleId:
             sample.accessionNumber || sample.externalId || `S${sample.id}`,
-          type: sample.sampleType || "Bioanalytical Sample",
+          type: sample.sampleType || "Bioequivalence Sample",
           volume: sample.data?.sampleVolume || "5.0 mL",
           location: sample.data?.storageLocation || "Not Assigned",
           storageTemp: sample.data?.storageTemperature || "Pending Assignment",
@@ -269,7 +271,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       setStorageSamples([]);
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.loadError",
+          id: "notebook.bioequivalence.storage.loadError",
           defaultMessage: "Failed to load samples. Please refresh the page.",
         }),
       );
@@ -335,7 +337,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (selectedSamples.size === 0) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectSamplesFirst",
+          id: "notebook.bioequivalence.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for disposal",
         }),
       );
@@ -345,7 +347,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (!disposalReason) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectDisposalReason",
+          id: "notebook.bioequivalence.storage.selectDisposalReason",
           defaultMessage: "Please select disposal reason",
         }),
       );
@@ -355,7 +357,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (!disposalMethod) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectDisposalMethod",
+          id: "notebook.bioequivalence.storage.selectDisposalMethod",
           defaultMessage: "Please select disposal method",
         }),
       );
@@ -365,7 +367,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (!supervisorApproval) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.supervisorApprovalRequired",
+          id: "notebook.bioequivalence.storage.supervisorApprovalRequired",
           defaultMessage: "Supervisor approval is required for sample disposal",
         }),
       );
@@ -406,7 +408,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         setSuccessMessage(
           intl.formatMessage(
             {
-              id: "notebook.bioanalytical.storage.disposalSuccess",
+              id: "notebook.bioequivalence.storage.disposalSuccess",
               defaultMessage:
                 "{count} samples scheduled for disposal. Method: {method}. Supervisor: {supervisor}",
             },
@@ -433,7 +435,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       console.error("Sample disposal error:", error);
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.disposalError",
+          id: "notebook.bioequivalence.storage.disposalError",
           defaultMessage: "Failed to schedule sample disposal",
         }),
       );
@@ -491,7 +493,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (selectedSamples.size === 0) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectSamplesFirst",
+          id: "notebook.bioequivalence.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for biorepository transfer",
         }),
       );
@@ -526,7 +528,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       if (response.ok) {
         setSuccessMessage(
           intl.formatMessage({
-            id: "notebook.bioanalytical.storage.biorepositorySuccess",
+            id: "notebook.bioequivalence.storage.biorepositorySuccess",
             defaultMessage:
               "{count} samples transferred to biorepository at {location}",
             values: { count: selectedSamples.size, location: storageLocation },
@@ -545,7 +547,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       console.error("Biorepository transfer error:", error);
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.biorepositoryError",
+          id: "notebook.bioequivalence.storage.biorepositoryError",
           defaultMessage: "Failed to transfer samples to biorepository",
         }),
       );
@@ -567,7 +569,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (selectedSamples.size === 0) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectSamplesFirst",
+          id: "notebook.bioequivalence.storage.selectSamplesFirst",
           defaultMessage: "Please select samples for retention storage",
         }),
       );
@@ -577,7 +579,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (!retentionPeriod) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectRetentionPeriod",
+          id: "notebook.bioequivalence.storage.selectRetentionPeriod",
           defaultMessage: "Please select retention period",
         }),
       );
@@ -614,7 +616,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       if (response.ok) {
         setSuccessMessage(
           intl.formatMessage({
-            id: "notebook.bioanalytical.storage.retentionSuccess",
+            id: "notebook.bioequivalence.storage.retentionSuccess",
             defaultMessage:
               "{count} samples placed in retention storage for {period}",
             values: { count: selectedSamples.size, period: retentionPeriod },
@@ -634,7 +636,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       console.error("Retention storage error:", error);
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.retentionError",
+          id: "notebook.bioequivalence.storage.retentionError",
           defaultMessage: "Failed to place samples in retention storage",
         }),
       );
@@ -674,7 +676,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (!archiveType) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectArchiveType",
+          id: "notebook.bioequivalence.storage.selectArchiveType",
           defaultMessage: "Please select archive type",
         }),
       );
@@ -684,7 +686,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (!archiveLocation) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.enterArchiveLocation",
+          id: "notebook.bioequivalence.storage.enterArchiveLocation",
           defaultMessage: "Please enter archive location/system",
         }),
       );
@@ -694,7 +696,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
     if (!retentionYears) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.selectRetentionYears",
+          id: "notebook.bioequivalence.storage.selectRetentionYears",
           defaultMessage: "Please select retention period",
         }),
       );
@@ -763,7 +765,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       if (archiveResponse.ok) {
         setSuccessMessage(
           intl.formatMessage({
-            id: "notebook.bioanalytical.storage.archiveRecordAdded",
+            id: "notebook.bioequivalence.storage.archiveRecordAdded",
             defaultMessage: "Archive record added: {type}",
             values: { type: newRecord.archiveTypeLabel },
           }),
@@ -776,7 +778,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       console.error("Error archiving samples:", error);
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.storage.archiveRecordError",
+          id: "notebook.bioequivalence.storage.archiveRecordError",
           defaultMessage: "Failed to archive samples. Please try again.",
         }),
       );
@@ -828,35 +830,35 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       case "READY_FOR_STORAGE":
         type = "blue";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.status.ready",
+          id: "notebook.bioequivalence.storage.status.ready",
           defaultMessage: "Ready for Storage",
         });
         break;
       case "BIOREPOSITORY_TRANSFER":
         type = "green";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.status.biorepository",
+          id: "notebook.bioequivalence.storage.status.biorepository",
           defaultMessage: "Biorepository Transfer",
         });
         break;
       case "RETENTION_STORAGE":
         type = "purple";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.status.retention",
+          id: "notebook.bioequivalence.storage.status.retention",
           defaultMessage: "Retention Storage",
         });
         break;
       case "DISPOSED":
         type = "red";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.status.disposed",
+          id: "notebook.bioequivalence.storage.status.disposed",
           defaultMessage: "Disposed",
         });
         break;
       case "ARCHIVED":
         type = "cyan";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.status.archived",
+          id: "notebook.bioequivalence.storage.status.archived",
           defaultMessage: "Archived",
         });
         break;
@@ -875,28 +877,28 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
       case "SCHEDULED":
         type = "green";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.disposalStatus.scheduled",
+          id: "notebook.bioequivalence.storage.disposalStatus.scheduled",
           defaultMessage: "Scheduled",
         });
         break;
       case "PENDING":
         type = "blue";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.disposalStatus.pending",
+          id: "notebook.bioequivalence.storage.disposalStatus.pending",
           defaultMessage: "Pending",
         });
         break;
       case "COMPLETED":
         type = "teal";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.disposalStatus.completed",
+          id: "notebook.bioequivalence.storage.disposalStatus.completed",
           defaultMessage: "Completed",
         });
         break;
       case "CANCELLED":
         type = "red";
         label = intl.formatMessage({
-          id: "notebook.bioanalytical.storage.disposalStatus.cancelled",
+          id: "notebook.bioequivalence.storage.disposalStatus.cancelled",
           defaultMessage: "Cancelled",
         });
         break;
@@ -1000,17 +1002,17 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   );
 
   return (
-    <div className="bioanalytical-page">
+    <div className="bioequivalence-page">
       <div className="page-instructions">
         <h3>
           <FormattedMessage
-            id="notebook.bioanalytical.storage.title"
+            id="notebook.bioequivalence.storage.title"
             defaultMessage="Sample Storage & Archival"
           />
         </h3>
         <p>
           <FormattedMessage
-            id="notebook.bioanalytical.storage.description"
+            id="notebook.bioequivalence.storage.description"
             defaultMessage="Document sample storage locations and conditions, establish retention periods per regulatory requirements, plan long-term archival, and schedule final disposal or archival transfers."
           />
         </p>
@@ -1021,7 +1023,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
           <InlineNotification
             kind="error"
             title={intl.formatMessage({
-              id: "notebook.bioanalytical.storage.error",
+              id: "notebook.bioequivalence.storage.error",
               defaultMessage: "Error",
             })}
             subtitle={errorMessage}
@@ -1036,7 +1038,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
           <InlineNotification
             kind="success"
             title={intl.formatMessage({
-              id: "notebook.bioanalytical.storage.success",
+              id: "notebook.bioequivalence.storage.success",
               defaultMessage: "Success",
             })}
             subtitle={successMessage}
@@ -1052,13 +1054,13 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
             <div className="section-header">
               <h4>
                 <FormattedMessage
-                  id="notebook.bioanalytical.storage.inventorySection"
+                  id="notebook.bioequivalence.storage.inventorySection"
                   defaultMessage="Stage 4 Completed Samples - Ready for Storage & Archival"
                 />
               </h4>
               <p>
                 <FormattedMessage
-                  id="notebook.bioanalytical.storage.inventoryHelp"
+                  id="notebook.bioequivalence.storage.inventoryHelp"
                   defaultMessage="Samples that have completed Stage 4 (QA approved and submitted/exported) are ready for biorepository transfer, retention storage at -80°C (2 years for bioequivalence), and data archival."
                 />
               </p>
@@ -1078,7 +1080,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                     <p style={{ fontSize: "0.875rem", margin: 0 }}>
                       <strong>
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.totalSamples"
+                          id="notebook.bioequivalence.storage.totalSamples"
                           defaultMessage="Total Samples in Storage:"
                         />
                       </strong>{" "}
@@ -1087,7 +1089,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         <span style={{ marginLeft: "1rem", color: "#0043ce" }}>
                           (
                           <FormattedMessage
-                            id="notebook.bioanalytical.storage.samplesSelected"
+                            id="notebook.bioequivalence.storage.samplesSelected"
                             defaultMessage="{count} selected"
                             values={{ count: selectedSamples.size }}
                           />
@@ -1114,7 +1116,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         title="Biorepository integration will be handled in a future phase"
                       >
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.transferBiorepository"
+                          id="notebook.bioequivalence.storage.transferBiorepository"
                           defaultMessage="Transfer to Biorepository"
                         />
                         <span
@@ -1135,7 +1137,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         }
                       >
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.retentionStorage"
+                          id="notebook.bioequivalence.storage.retentionStorage"
                           defaultMessage="Retention Storage"
                         />
                       </Button>
@@ -1145,7 +1147,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                         disabled={isLoading || !canApproveStorage}
                       >
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.manageSampleDisposal"
+                          id="notebook.bioequivalence.storage.manageSampleDisposal"
                           defaultMessage="Manage Sample Disposal"
                         />
                       </Button>
@@ -1184,7 +1186,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 >
                   <p style={{ color: "#525252" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.noSamples"
+                      id="notebook.bioequivalence.storage.noSamples"
                       defaultMessage="No samples in storage"
                     />
                   </p>
@@ -1202,13 +1204,13 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
             <div className="section-header">
               <h4>
                 <FormattedMessage
-                  id="notebook.bioanalytical.storage.archivalSection"
+                  id="notebook.bioequivalence.storage.archivalSection"
                   defaultMessage="Data Archival & Records Management"
                 />
               </h4>
               <p>
                 <FormattedMessage
-                  id="notebook.bioanalytical.storage.archivalHelp"
+                  id="notebook.bioequivalence.storage.archivalHelp"
                   defaultMessage="Archive and track retention of analytical data, reports, calibration records, and study data per regulatory requirements."
                 />
               </p>
@@ -1220,7 +1222,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                   disabled={isLoading}
                 >
                   <FormattedMessage
-                    id="notebook.bioanalytical.storage.addArchiveRecord"
+                    id="notebook.bioequivalence.storage.addArchiveRecord"
                     defaultMessage="Add Archive Record"
                   />
                 </Button>
@@ -1251,7 +1253,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                             }}
                           >
                             <FormattedMessage
-                              id="notebook.bioanalytical.storage.archiveType"
+                              id="notebook.bioequivalence.storage.archiveType"
                               defaultMessage="Archive Type"
                             />
                           </th>
@@ -1263,7 +1265,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                             }}
                           >
                             <FormattedMessage
-                              id="notebook.bioanalytical.storage.archiveLocation"
+                              id="notebook.bioequivalence.storage.archiveLocation"
                               defaultMessage="Location/System"
                             />
                           </th>
@@ -1275,7 +1277,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                             }}
                           >
                             <FormattedMessage
-                              id="notebook.bioanalytical.storage.archiveDate"
+                              id="notebook.bioequivalence.storage.archiveDate"
                               defaultMessage="Archival Date"
                             />
                           </th>
@@ -1287,7 +1289,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                             }}
                           >
                             <FormattedMessage
-                              id="notebook.bioanalytical.storage.purgeDate"
+                              id="notebook.bioequivalence.storage.purgeDate"
                               defaultMessage="Purge/Disposal Date"
                             />
                           </th>
@@ -1317,7 +1319,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                             }}
                           >
                             <FormattedMessage
-                              id="notebook.bioanalytical.storage.notes"
+                              id="notebook.bioequivalence.storage.notes"
                               defaultMessage="Notes"
                             />
                           </th>
@@ -1459,7 +1461,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 >
                   <p style={{ color: "#525252" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.noArchiveRecords"
+                      id="notebook.bioequivalence.storage.noArchiveRecords"
                       defaultMessage="No archive records added yet"
                     />
                   </p>
@@ -1479,7 +1481,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         secondaryButtonText="Cancel"
         onRequestSubmit={handleSampleDisposal}
         preventCloseOnClickOutside
-        size="lg"
+        size="md"
       >
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ marginBottom: "1rem", color: "#525252" }}>
@@ -1612,7 +1614,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         }
         secondaryButtonText="Close"
         primaryButtonText=""
-        size="lg"
+        size="md"
       >
         {detailLoading ? (
           <div style={{ textAlign: "center", padding: "2rem" }}>
@@ -1625,7 +1627,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 <div>
                   <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.sampleId"
+                      id="notebook.bioequivalence.storage.sampleId"
                       defaultMessage="Sample ID"
                     />
                   </h5>
@@ -1641,7 +1643,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 <div>
                   <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.sampleType"
+                      id="notebook.bioequivalence.storage.sampleType"
                       defaultMessage="Sample Type"
                     />
                   </h5>
@@ -1657,7 +1659,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 <div>
                   <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.volume"
+                      id="notebook.bioequivalence.storage.volume"
                       defaultMessage="Volume"
                     />
                   </h5>
@@ -1673,7 +1675,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 <div>
                   <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.storageLocation"
+                      id="notebook.bioequivalence.storage.storageLocation"
                       defaultMessage="Storage Location"
                     />
                   </h5>
@@ -1689,7 +1691,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 <div>
                   <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.temperature"
+                      id="notebook.bioequivalence.storage.temperature"
                       defaultMessage="Storage Temperature"
                     />
                   </h5>
@@ -1705,7 +1707,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                 <div>
                   <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                     <FormattedMessage
-                      id="notebook.bioanalytical.storage.status"
+                      id="notebook.bioequivalence.storage.status"
                       defaultMessage="Status"
                     />
                   </h5>
@@ -1733,7 +1735,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                   >
                     <h5 style={{ color: "#161616", marginBottom: "1rem" }}>
                       <FormattedMessage
-                        id="notebook.bioanalytical.storage.disposalInfo"
+                        id="notebook.bioequivalence.storage.disposalInfo"
                         defaultMessage="Disposal Information"
                       />
                     </h5>
@@ -1748,7 +1750,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                     <div>
                       <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.disposalReason"
+                          id="notebook.bioequivalence.storage.disposalReason"
                           defaultMessage="Disposal Reason"
                         />
                       </h5>
@@ -1767,7 +1769,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                     <div>
                       <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.disposalMethod"
+                          id="notebook.bioequivalence.storage.disposalMethod"
                           defaultMessage="Disposal Method"
                         />
                       </h5>
@@ -1786,7 +1788,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                     <div>
                       <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.disposalDate"
+                          id="notebook.bioequivalence.storage.disposalDate"
                           defaultMessage="Disposal Date"
                         />
                       </h5>
@@ -1805,7 +1807,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                     <div>
                       <h5 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.storage.approvedBy"
+                          id="notebook.bioequivalence.storage.approvedBy"
                           defaultMessage="Approved By"
                         />
                       </h5>
@@ -1827,7 +1829,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
                           style={{ marginBottom: "0.5rem", color: "#161616" }}
                         >
                           <FormattedMessage
-                            id="notebook.bioanalytical.storage.disposalNotes"
+                            id="notebook.bioequivalence.storage.disposalNotes"
                             defaultMessage="Disposal Notes"
                           />
                         </h5>
@@ -1850,7 +1852,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         ) : (
           <p>
             <FormattedMessage
-              id="notebook.bioanalytical.storage.noDetailsAvailable"
+              id="notebook.bioequivalence.storage.noDetailsAvailable"
               defaultMessage="No sample details available"
             />
           </p>
@@ -1866,7 +1868,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         secondaryButtonText="Cancel"
         onRequestSubmit={handleBiorepositoryTransfer}
         preventCloseOnClickOutside
-        size="lg"
+        size="md"
       >
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ marginBottom: "1rem", color: "#525252" }}>
@@ -1979,7 +1981,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         secondaryButtonText="Cancel"
         onRequestSubmit={handleRetentionStorage}
         preventCloseOnClickOutside
-        size="lg"
+        size="md"
       >
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ marginBottom: "1rem", color: "#525252" }}>
@@ -2006,7 +2008,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
               }}
             >
               <FormattedMessage
-                id="notebook.bioanalytical.storage.location"
+                id="notebook.bioequivalence.storage.location"
                 defaultMessage="Storage Location"
               />
               <span style={{ color: "#da1e28" }}> *</span>
@@ -2019,7 +2021,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
               }}
             >
               <FormattedMessage
-                id="notebook.bioanalytical.storage.location.helper"
+                id="notebook.bioequivalence.storage.location.helper"
                 defaultMessage="Select the storage hierarchy where samples will be retained. You can assign at any level (room, device, shelf, rack, or box)."
               />
             </p>
@@ -2158,7 +2160,7 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
         secondaryButtonText="Cancel"
         onRequestSubmit={handleAddArchiveRecord}
         preventCloseOnClickOutside
-        size="lg"
+        size="md"
       >
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ marginBottom: "1rem", color: "#525252" }}>
@@ -2643,4 +2645,4 @@ function BioanalyticalStorageArchivingPage({ entryId, pageData }) {
   );
 }
 
-export default BioanalyticalStorageArchivingPage;
+export default BioequivalenceStorageArchivingPage;

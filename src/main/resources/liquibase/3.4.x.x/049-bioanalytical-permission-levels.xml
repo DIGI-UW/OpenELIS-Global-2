@@ -1,0 +1,619 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- BIOANALYTICAL WORKFLOW PERMISSION LEVELS -->
+    <!-- Adds action-level permissions per test.pdf Section 11 -->
+    <!-- ======================================================== -->
+
+    <!-- CHANGESET 1: Add permission_level column to notebook_page_allowed_roles -->
+    <changeSet id="add-permission-level-column" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_page_allowed_roles" columnName="permission_level" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add permission_level column for action-level access control</comment>
+        <addColumn tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" type="VARCHAR(50)" defaultValue="VIEW">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: Sample Reception & Registration -->
+    <!-- ======================================================== -->
+
+    <!-- Sample Receiver: Can register/import samples -->
+    <changeSet id="page1-sample-receiver-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Sample Receiver'
+            </sqlCheck>
+        </preConditions>
+        <comment>Sample Receiver can register/import samples on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="REGISTER"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Sample Receiver'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Chemical Analyst: Can update/edit sample fields -->
+    <changeSet id="page1-chemical-analyst-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </sqlCheck>
+        </preConditions>
+        <comment>Chemical Analyst can update sample fields on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="UPDATE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Pharmacist: Can update/edit sample fields -->
+    <changeSet id="page1-pharmacist-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Pharmacist can update sample fields on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="UPDATE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Supervisor: Full control on PAGE 1 -->
+    <changeSet id="page1-lab-supervisor-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Supervisor has full control on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Study Director: View only on PAGE 1 -->
+    <changeSet id="page1-study-director-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </sqlCheck>
+        </preConditions>
+        <comment>Study Director has read-only access on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- QA Officer: View only on PAGE 1 -->
+    <changeSet id="page1-qa-officer-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </sqlCheck>
+        </preConditions>
+        <comment>QA Officer has read-only access on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Researcher: View only on PAGE 1 -->
+    <changeSet id="page1-researcher-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Researcher has read-only access on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: Test Assignment & Preparation -->
+    <!-- ======================================================== -->
+
+    <!-- Chemical Analyst: View only on PAGE 2 -->
+    <changeSet id="page2-chemical-analyst-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </sqlCheck>
+        </preConditions>
+        <comment>Chemical Analyst has read-only access on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Pharmacist: Full control on PAGE 2 -->
+    <changeSet id="page2-pharmacist-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Pharmacist has full control on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Supervisor: Full control on PAGE 2 -->
+    <changeSet id="page2-lab-supervisor-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Supervisor has full control on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Study Director: View only on PAGE 2 -->
+    <changeSet id="page2-study-director-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </sqlCheck>
+        </preConditions>
+        <comment>Study Director has read-only access on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- QA Officer: View only on PAGE 2 -->
+    <changeSet id="page2-qa-officer-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </sqlCheck>
+        </preConditions>
+        <comment>QA Officer has read-only access on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Researcher: View only on PAGE 2 -->
+    <changeSet id="page2-researcher-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Researcher has read-only access on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: Analytical Test Execution -->
+    <!-- ======================================================== -->
+
+    <!-- Chemical Analyst: Full control on PAGE 3 -->
+    <changeSet id="page3-chemical-analyst-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </sqlCheck>
+        </preConditions>
+        <comment>Chemical Analyst has full control on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Pharmacist: Full control on PAGE 3 -->
+    <changeSet id="page3-pharmacist-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Pharmacist has full control on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Supervisor: Full control on PAGE 3 -->
+    <changeSet id="page3-lab-supervisor-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Supervisor has full control on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Study Director: View only on PAGE 3 -->
+    <changeSet id="page3-study-director-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </sqlCheck>
+        </preConditions>
+        <comment>Study Director has read-only access on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- QA Officer: View only on PAGE 3 -->
+    <changeSet id="page3-qa-officer-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </sqlCheck>
+        </preConditions>
+        <comment>QA Officer has read-only access on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Researcher: View only on PAGE 3 -->
+    <changeSet id="page3-researcher-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Researcher has read-only access on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: Reporting & Release -->
+    <!-- ======================================================== -->
+
+    <!-- Chemical Analyst: Limited access on PAGE 4 -->
+    <changeSet id="page4-chemical-analyst-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </sqlCheck>
+        </preConditions>
+        <comment>Chemical Analyst has limited access on PAGE 4 (view reports, no release)</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="LIMITED"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Chemical Analyst'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Pharmacist: Full control on PAGE 4 -->
+    <changeSet id="page4-pharmacist-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Pharmacist has full control on PAGE 4</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Pharmacist'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Supervisor: Full control on PAGE 4 -->
+    <changeSet id="page4-lab-supervisor-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Supervisor has full control on PAGE 4</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Study Director: Full control on PAGE 4 -->
+    <changeSet id="page4-study-director-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </sqlCheck>
+        </preConditions>
+        <comment>Study Director has full control on PAGE 4</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- QA Officer: Full control on PAGE 4 -->
+    <changeSet id="page4-qa-officer-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </sqlCheck>
+        </preConditions>
+        <comment>QA Officer has full control on PAGE 4</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Researcher: Project-specific access on PAGE 4 -->
+    <changeSet id="page4-researcher-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Researcher has project-specific access on PAGE 4</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="PROJECT_SPECIFIC"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Researcher'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Data Manager: Full analytics access on PAGE 4 -->
+    <changeSet id="page4-data-manager-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Data Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Data Manager has full analytics access on PAGE 4</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL_ANALYTICS"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Data Manager'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: Post-Test Sample & Data Handling / Archiving -->
+    <!-- ======================================================== -->
+
+    <!-- Sample Receiver: Restricted access on PAGE 5 -->
+    <changeSet id="page5-sample-receiver-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Sample Receiver'
+            </sqlCheck>
+        </preConditions>
+        <comment>Sample Receiver has restricted access on PAGE 5</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="RESTRICTED"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Sample Receiver'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Supervisor: Approval access on PAGE 5 -->
+    <changeSet id="page5-lab-supervisor-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Supervisor can approve archiving on PAGE 5</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="APPROVE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Lab Supervisor'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Study Director: Approval access on PAGE 5 -->
+    <changeSet id="page5-study-director-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </sqlCheck>
+        </preConditions>
+        <comment>Study Director can approve archiving on PAGE 5</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="APPROVE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'Study Director'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- QA Officer: Restricted access on PAGE 5 -->
+    <changeSet id="page5-qa-officer-permission" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </sqlCheck>
+        </preConditions>
+        <comment>QA Officer has restricted access on PAGE 5</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="RESTRICTED"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Bioanalytical%'))
+                AND role = 'QA Officer'
+            </where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

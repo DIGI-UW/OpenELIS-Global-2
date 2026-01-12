@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- BIOANALYTICAL WORKFLOW SYSTEM ROLES -->
+    <!-- Adds 8 new system roles for bioanalytical laboratory -->
+    <!-- Per test.pdf Section 11: USER ROLES & PERMISSIONS -->
+    <!-- ======================================================== -->
+
+    <!-- ROLE 1: Sample Receiver - Receives and registers biological samples -->
+    <changeSet id="add-bioanalytical-sample-receiver-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Sample Receiver'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Sample Receiver role for bioanalytical sample reception (Stage 1)</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Sample Receiver"/>
+            <column name="description" value="Receives and registers biological samples for bioanalytical testing"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.sample.receiver"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 2: Chemical Analyst - Performs chemical analysis and method validation -->
+    <changeSet id="add-bioanalytical-chemical-analyst-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Chemical Analyst'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Chemical Analyst role for bioanalytical testing and analysis</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Chemical Analyst"/>
+            <column name="description" value="Performs chemical analysis, method validation, and data interpretation"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.chemical.analyst"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 3: Pharmacist - Validates pharmaceutical quality and bioequivalence -->
+    <changeSet id="add-bioanalytical-pharmacist-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Pharmacist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Pharmacist role for bioanalytical pharmaceutical validation</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Pharmacist"/>
+            <column name="description" value="Validates pharmaceutical quality and bioequivalence studies"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.pharmacist"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 4: Researcher - Conducts research and method development -->
+    <changeSet id="add-bioanalytical-researcher-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Researcher role for bioanalytical research and method development</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Researcher"/>
+            <column name="description" value="Conducts bioanalytical research and method development"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.researcher"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 5: Lab Supervisor - Oversees laboratory operations and approves work -->
+    <changeSet id="add-bioanalytical-lab-supervisor-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Lab Supervisor'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Lab Supervisor role for bioanalytical laboratory supervision</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Lab Supervisor"/>
+            <column name="description" value="Supervises laboratory operations and approves sample processing"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.lab.supervisor"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 6: Study Director - Manages and approves bioequivalence studies -->
+    <changeSet id="add-bioanalytical-study-director-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Study Director'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Study Director role for bioanalytical study management</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Study Director"/>
+            <column name="description" value="Manages bioequivalence studies and approves study protocols"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.study.director"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 7: QA Officer - Ensures quality assurance and regulatory compliance -->
+    <changeSet id="add-bioanalytical-qa-officer-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'QA Officer'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add QA Officer role for bioanalytical quality assurance</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="QA Officer"/>
+            <column name="description" value="Ensures quality assurance and regulatory compliance"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.qa.officer"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 8: Data Manager - Manages analytical data, exports, and reporting -->
+    <changeSet id="add-bioanalytical-data-manager-role" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Data Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Data Manager role for bioanalytical data management and reporting</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Data Manager"/>
+            <column name="description" value="Manages analytical data and generates reports"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.bioanalytical.data.manager"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

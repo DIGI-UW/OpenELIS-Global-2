@@ -96,5 +96,10 @@
     <include file="liquibase/3.4.x.x/035-add-genome-sequencing-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/036-add-seed-virus-production-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/048-add-trials-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/048-bioanalytical-system-roles.xml"/>
+    <include file="liquibase/3.4.x.x/049-bioanalytical-permission-levels.xml"/>
+    <include file="liquibase/3.4.x.x/050-bioequivalence-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/051-separate-bioanalytical-bioequivalence-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/052-bioequivalence-page-roles.xml"/>
 
 </databaseChangeLog>

@@ -24,12 +24,12 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
-import "./BioanalyticalPages.css";
+import "./BioequivalencePages.css";
 
 /**
- * BioanalyticalReportingPage - Stage 4 of bioanalytical workflow.
+ * BioequivalenceReportingPage - Stage 4 of bioequivalence workflow.
  *
  * Features:
  * - Bioequivalence study result review and validation
@@ -46,7 +46,7 @@ import "./BioanalyticalPages.css";
  * @param {Object} props.notebookData - Notebook configuration data
  * @param {function} props.onPageNavigation - Function to navigate to specific page by order
  */
-function BioanalyticalReportingPage({
+function BioequivalenceReportingPage({
   entryId,
   pageData,
   progress,
@@ -61,7 +61,7 @@ function BioanalyticalReportingPage({
     canAnalytics,
     canApproveData,
     hasFullControl,
-  } = useBioanalyticalPermissions();
+  } = useBioequivalencePermissions();
 
   // PAGE 4 allowed roles per test.pdf Section 11
   const allowedRoles = [
@@ -77,7 +77,7 @@ function BioanalyticalReportingPage({
   const canAccessPage = hasAnyRole(allowedRoles);
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Reporting");
+  const pagePermissionLevel = getPagePermissionLevel("Reporting & Release");
   const canExportData = canAnalytics(pagePermissionLevel);
   const canApproveResults = canApproveData(pagePermissionLevel);
   const canEditReporting = hasFullControl(pagePermissionLevel);
@@ -205,7 +205,7 @@ function BioanalyticalReportingPage({
       setStudyResults([]);
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.loadError",
+          id: "notebook.bioequivalence.reporting.loadError",
           defaultMessage:
             "Failed to load study results. Please refresh the page.",
         }),
@@ -815,7 +815,7 @@ function BioanalyticalReportingPage({
     if (!allChecklistItemsCompleted) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.checklistIncomplete",
+          id: "notebook.bioequivalence.reporting.checklistIncomplete",
           defaultMessage:
             "Please complete all QA checklist items before approval",
         }),
@@ -826,7 +826,7 @@ function BioanalyticalReportingPage({
     if (!qaApproved) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.confirmQa",
+          id: "notebook.bioequivalence.reporting.confirmQa",
           defaultMessage:
             "Please confirm QA approval checkbox before proceeding",
         }),
@@ -837,7 +837,7 @@ function BioanalyticalReportingPage({
     if (!qaComments.trim()) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.qaCommentsRequired",
+          id: "notebook.bioequivalence.reporting.qaCommentsRequired",
           defaultMessage: "QA review comments are required",
         }),
       );
@@ -951,7 +951,7 @@ function BioanalyticalReportingPage({
         setSuccessMessage(
           intl.formatMessage(
             {
-              id: "notebook.bioanalytical.reporting.qaApprovalCompleteWithStage5",
+              id: "notebook.bioequivalence.reporting.qaApprovalCompleteWithStage5",
               defaultMessage:
                 "QA approval completed for {count} samples. {stage5Count} records created in Stage 5 (Post-Test Storage). You can continue to Stage 5 or complete optional export/submission tasks.",
             },
@@ -965,7 +965,7 @@ function BioanalyticalReportingPage({
         setSuccessMessage(
           intl.formatMessage(
             {
-              id: "notebook.bioanalytical.reporting.qaApprovalComplete",
+              id: "notebook.bioequivalence.reporting.qaApprovalComplete",
               defaultMessage:
                 "QA approval completed for {count} samples. Study data is ready for external reporting.",
             },
@@ -981,7 +981,7 @@ function BioanalyticalReportingPage({
       setErrorMessage(
         intl.formatMessage(
           {
-            id: "notebook.bioanalytical.reporting.qaApprovalError",
+            id: "notebook.bioequivalence.reporting.qaApprovalError",
             defaultMessage: "Error submitting QA approval: {error}",
           },
           { error: error.message },
@@ -1025,7 +1025,7 @@ function BioanalyticalReportingPage({
       return [
         `S${mainSampleId}`,
         result.testName || "Unknown Method",
-        result.sampleType || "Bioanalytical Sample",
+        result.sampleType || "Bioequivalence Sample",
         result.mean || "",
         result.sd || "",
         result.cv || "",
@@ -1061,7 +1061,7 @@ function BioanalyticalReportingPage({
     if (!exportFormat) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.selectFormat",
+          id: "notebook.bioequivalence.reporting.selectFormat",
           defaultMessage: "Please select an export format",
         }),
       );
@@ -1071,7 +1071,7 @@ function BioanalyticalReportingPage({
     if (!qaApproved) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.qaRequired",
+          id: "notebook.bioequivalence.reporting.qaRequired",
           defaultMessage: "QA approval is required before exporting data",
         }),
       );
@@ -1125,7 +1125,7 @@ function BioanalyticalReportingPage({
            */
           body: {
             sampleIds,
-            // Include complete bioanalytical workflow data
+            // Include complete bioequivalence workflow data
             studyResults: studyResults,
             bioequivalenceStats: bioequivalenceStats,
             qaApprovalData: {
@@ -1236,7 +1236,7 @@ function BioanalyticalReportingPage({
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `bioanalytical_study_${entryId}_${exportFormat}.${config_export.extension}`;
+      link.download = `bioequivalence_study_${entryId}_${exportFormat}.${config_export.extension}`;
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);
@@ -1247,13 +1247,13 @@ function BioanalyticalReportingPage({
         records: studyResults.length,
         status: "EXPORT_COMPLETE",
         timestamp: new Date().toLocaleString(),
-        filename: `bioanalytical_study_${entryId}_${exportFormat}.${config_export.extension}`,
+        filename: `bioequivalence_study_${entryId}_${exportFormat}.${config_export.extension}`,
       });
 
       setSuccessMessage(
         intl.formatMessage(
           {
-            id: "notebook.bioanalytical.reporting.exportSuccess",
+            id: "notebook.bioequivalence.reporting.exportSuccess",
             defaultMessage:
               "Export to {format} completed successfully. {records} records exported.",
           },
@@ -1267,7 +1267,7 @@ function BioanalyticalReportingPage({
       setErrorMessage(
         intl.formatMessage(
           {
-            id: "notebook.bioanalytical.reporting.exportError",
+            id: "notebook.bioequivalence.reporting.exportError",
             defaultMessage: "Error exporting data: {error}",
           },
           { error: error.message },
@@ -1295,7 +1295,7 @@ function BioanalyticalReportingPage({
     if (!submissionTarget) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.selectSubmissionTarget",
+          id: "notebook.bioequivalence.reporting.selectSubmissionTarget",
           defaultMessage: "Please select a submission target",
         }),
       );
@@ -1305,7 +1305,7 @@ function BioanalyticalReportingPage({
     if (!qaApproved) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.qaRequiredForSubmission",
+          id: "notebook.bioequivalence.reporting.qaRequiredForSubmission",
           defaultMessage: "QA approval is required before submitting results",
         }),
       );
@@ -1315,7 +1315,7 @@ function BioanalyticalReportingPage({
     if (studyResults.length === 0) {
       setErrorMessage(
         intl.formatMessage({
-          id: "notebook.bioanalytical.reporting.noResultsToSubmit",
+          id: "notebook.bioequivalence.reporting.noResultsToSubmit",
           defaultMessage: "No results available for submission",
         }),
       );
@@ -1393,7 +1393,7 @@ function BioanalyticalReportingPage({
         setSuccessMessage(
           intl.formatMessage(
             {
-              id: "notebook.bioanalytical.reporting.submissionSuccess",
+              id: "notebook.bioequivalence.reporting.submissionSuccess",
               defaultMessage:
                 "Results submitted successfully to {target}. Confirmation: {confirmationNumber}",
             },
@@ -1418,7 +1418,7 @@ function BioanalyticalReportingPage({
       setErrorMessage(
         intl.formatMessage(
           {
-            id: "notebook.bioanalytical.reporting.submissionError",
+            id: "notebook.bioequivalence.reporting.submissionError",
             defaultMessage: "Failed to submit results: {error}",
           },
           { error: error.message },
@@ -1443,24 +1443,24 @@ function BioanalyticalReportingPage({
     return (
       <AccessDeniedMessage
         page="Reporting & Release"
-        reason="This page requires specific bioanalytical laboratory roles to access."
+        reason="This page requires specific bioequivalence laboratory roles to access."
         requiredRoles={allowedRoles}
       />
     );
   }
 
   return (
-    <div className="bioanalytical-page">
+    <div className="bioequivalence-page">
       <div className="page-instructions">
         <h3>
           <FormattedMessage
-            id="notebook.bioanalytical.reporting.title"
+            id="notebook.bioequivalence.reporting.title"
             defaultMessage="Quality Assurance Review & External Reporting"
           />
         </h3>
         <p>
           <FormattedMessage
-            id="notebook.bioanalytical.reporting.description"
+            id="notebook.bioequivalence.reporting.description"
             defaultMessage="Conduct comprehensive QA review of bioequivalence study results, verify regulatory compliance, and export validated data to external systems (LMIS, REDCap, CDISC/SDTM) or research formats."
           />
         </p>
@@ -1471,7 +1471,7 @@ function BioanalyticalReportingPage({
           <InlineNotification
             kind="error"
             title={intl.formatMessage({
-              id: "notebook.bioanalytical.reporting.error",
+              id: "notebook.bioequivalence.reporting.error",
               defaultMessage: "Error",
             })}
             subtitle={errorMessage}
@@ -1486,7 +1486,7 @@ function BioanalyticalReportingPage({
           <InlineNotification
             kind="success"
             title={intl.formatMessage({
-              id: "notebook.bioanalytical.reporting.success",
+              id: "notebook.bioequivalence.reporting.success",
               defaultMessage: "Success",
             })}
             subtitle={successMessage}
@@ -1503,20 +1503,20 @@ function BioanalyticalReportingPage({
         <TabList aria-label="Reporting and QA tabs">
           <Tab>
             <FormattedMessage
-              id="notebook.bioanalytical.reporting.tab.results"
+              id="notebook.bioequivalence.reporting.tab.results"
               defaultMessage="Study Results Review"
             />
           </Tab>
           <Tab>
             <FormattedMessage
-              id="notebook.bioanalytical.reporting.tab.qaReview"
+              id="notebook.bioequivalence.reporting.tab.qaReview"
               defaultMessage="QA Approval"
             />
           </Tab>
           <Tab>
             <span>
               <FormattedMessage
-                id="notebook.bioanalytical.reporting.tab.externalExport"
+                id="notebook.bioequivalence.reporting.tab.externalExport"
                 defaultMessage="External Reporting"
               />
               {qaApproved && (
@@ -1529,7 +1529,7 @@ function BioanalyticalReportingPage({
                   }}
                 >
                   <FormattedMessage
-                    id="notebook.bioanalytical.reporting.tab.optional"
+                    id="notebook.bioequivalence.reporting.tab.optional"
                     defaultMessage="(Optional)"
                   />
                 </span>
@@ -1539,7 +1539,7 @@ function BioanalyticalReportingPage({
           <Tab>
             <span>
               <FormattedMessage
-                id="notebook.bioanalytical.reporting.tab.submission"
+                id="notebook.bioequivalence.reporting.tab.submission"
                 defaultMessage="Submit to Requesting Unit"
               />
               {qaApproved && (
@@ -1552,7 +1552,7 @@ function BioanalyticalReportingPage({
                   }}
                 >
                   <FormattedMessage
-                    id="notebook.bioanalytical.reporting.tab.optional"
+                    id="notebook.bioequivalence.reporting.tab.optional"
                     defaultMessage="(Optional)"
                   />
                 </span>
@@ -1570,13 +1570,13 @@ function BioanalyticalReportingPage({
                   <div className="section-header">
                     <h4>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.resultsSection"
+                        id="notebook.bioequivalence.reporting.resultsSection"
                         defaultMessage="Bioequivalence Study Results"
                       />
                     </h4>
                     <p>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.resultsHelp"
+                        id="notebook.bioequivalence.reporting.resultsHelp"
                         defaultMessage="Review summary statistics for all analyzed analytes and metabolites. Data includes mean values, standard deviation, coefficient of variation, and regulatory compliance status."
                       />
                     </p>
@@ -1596,43 +1596,43 @@ function BioanalyticalReportingPage({
                             <TableRow>
                               <TableHeader>
                                 <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.testName"
+                                  id="notebook.bioequivalence.reporting.testName"
                                   defaultMessage="Test Name"
                                 />
                               </TableHeader>
                               <TableHeader>
                                 <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.dataPoints"
+                                  id="notebook.bioequivalence.reporting.dataPoints"
                                   defaultMessage="Data Points"
                                 />
                               </TableHeader>
                               <TableHeader>
                                 <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.mean"
+                                  id="notebook.bioequivalence.reporting.mean"
                                   defaultMessage="Mean"
                                 />
                               </TableHeader>
                               <TableHeader>
                                 <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.sd"
+                                  id="notebook.bioequivalence.reporting.sd"
                                   defaultMessage="Std Dev"
                                 />
                               </TableHeader>
                               <TableHeader>
                                 <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.cv"
+                                  id="notebook.bioequivalence.reporting.cv"
                                   defaultMessage="CV %"
                                 />
                               </TableHeader>
                               <TableHeader>
                                 <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.range"
+                                  id="notebook.bioequivalence.reporting.range"
                                   defaultMessage="Min - Max"
                                 />
                               </TableHeader>
                               <TableHeader>
                                 <FormattedMessage
-                                  id="notebook.bioanalytical.reporting.status"
+                                  id="notebook.bioequivalence.reporting.status"
                                   defaultMessage="Status"
                                 />
                               </TableHeader>
@@ -1679,7 +1679,7 @@ function BioanalyticalReportingPage({
                         >
                           <h5 style={{ marginBottom: "1rem" }}>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.calibrationData"
+                              id="notebook.bioequivalence.reporting.calibrationData"
                               defaultMessage="Calibration Data"
                             />
                           </h5>
@@ -1753,7 +1753,7 @@ function BioanalyticalReportingPage({
                         >
                           <h5 style={{ marginBottom: "1rem" }}>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.qcResultsDetail"
+                              id="notebook.bioequivalence.reporting.qcResultsDetail"
                               defaultMessage="QC Results Summary"
                             />
                           </h5>
@@ -1848,7 +1848,7 @@ function BioanalyticalReportingPage({
                           <p style={{ fontSize: "0.875rem", margin: 0 }}>
                             <strong>
                               <FormattedMessage
-                                id="notebook.bioanalytical.reporting.complianceNote"
+                                id="notebook.bioequivalence.reporting.complianceNote"
                                 defaultMessage="Regulatory Compliance Summary:"
                               />
                             </strong>
@@ -1912,7 +1912,7 @@ function BioanalyticalReportingPage({
                               <p style={{ fontSize: "0.875rem", margin: 0 }}>
                                 <strong>
                                   <FormattedMessage
-                                    id="notebook.bioanalytical.reporting.qcValidationTitle"
+                                    id="notebook.bioequivalence.reporting.qcValidationTitle"
                                     defaultMessage="QC Validation - Westgard Rules Analysis:"
                                   />
                                 </strong>
@@ -2046,7 +2046,7 @@ function BioanalyticalReportingPage({
                       >
                         <p style={{ color: "#525252" }}>
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.noResults"
+                            id="notebook.bioequivalence.reporting.noResults"
                             defaultMessage="No study results available"
                           />
                         </p>
@@ -2066,13 +2066,13 @@ function BioanalyticalReportingPage({
                   <div className="section-header">
                     <h4>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.qaSection"
+                        id="notebook.bioequivalence.reporting.qaSection"
                         defaultMessage="Quality Assurance Approval"
                       />
                     </h4>
                     <p>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.qaHelp"
+                        id="notebook.bioequivalence.reporting.qaHelp"
                         defaultMessage="Conduct final QA review before data release. Document review findings and approval decision. Only approved studies can be exported to external systems."
                       />
                     </p>
@@ -2087,7 +2087,7 @@ function BioanalyticalReportingPage({
                     >
                       <h5 style={{ marginBottom: "1rem" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.reporting.qaChecklist"
+                          id="notebook.bioequivalence.reporting.qaChecklist"
                           defaultMessage="QA Review Checklist"
                         />
                       </h5>
@@ -2131,7 +2131,7 @@ function BioanalyticalReportingPage({
                               }}
                             >
                               <FormattedMessage
-                                id="notebook.bioanalytical.reporting.qaCheck1"
+                                id="notebook.bioequivalence.reporting.qaCheck1"
                                 defaultMessage="All raw data files validated and processed"
                               />
                             </label>
@@ -2206,7 +2206,7 @@ function BioanalyticalReportingPage({
                               }}
                             >
                               <FormattedMessage
-                                id="notebook.bioanalytical.reporting.qaCheck2"
+                                id="notebook.bioequivalence.reporting.qaCheck2"
                                 defaultMessage="Calibration curves meet acceptance criteria (r² ≥ 0.99)"
                               />
                             </label>
@@ -2284,7 +2284,7 @@ function BioanalyticalReportingPage({
                               }}
                             >
                               <FormattedMessage
-                                id="notebook.bioanalytical.reporting.qaCheck3"
+                                id="notebook.bioequivalence.reporting.qaCheck3"
                                 defaultMessage="QC results pass Westgard rules (all 5 rules passed)"
                               />
                             </label>
@@ -2359,7 +2359,7 @@ function BioanalyticalReportingPage({
                               }}
                             >
                               <FormattedMessage
-                                id="notebook.bioanalytical.reporting.qaCheck4"
+                                id="notebook.bioequivalence.reporting.qaCheck4"
                                 defaultMessage="System suitability parameters verified"
                               />
                             </label>
@@ -2437,7 +2437,7 @@ function BioanalyticalReportingPage({
                               }}
                             >
                               <FormattedMessage
-                                id="notebook.bioanalytical.reporting.qaCheck5"
+                                id="notebook.bioequivalence.reporting.qaCheck5"
                                 defaultMessage="Sample results within acceptance criteria"
                               />
                             </label>
@@ -2533,7 +2533,7 @@ function BioanalyticalReportingPage({
                         }}
                       >
                         <FormattedMessage
-                          id="notebook.bioanalytical.reporting.qaComments"
+                          id="notebook.bioequivalence.reporting.qaComments"
                           defaultMessage="QA Review Comments"
                         />
                       </label>
@@ -2541,7 +2541,7 @@ function BioanalyticalReportingPage({
                         id="qa-comments"
                         labelText=""
                         placeholder={intl.formatMessage({
-                          id: "notebook.bioanalytical.reporting.qaCommentsPlaceholder",
+                          id: "notebook.bioequivalence.reporting.qaCommentsPlaceholder",
                           defaultMessage:
                             "Document any observations, deviations, or approvals...",
                         })}
@@ -2570,7 +2570,7 @@ function BioanalyticalReportingPage({
                         style={{ fontSize: "0.875rem", fontWeight: "bold" }}
                       >
                         <FormattedMessage
-                          id="notebook.bioanalytical.reporting.qaApprovalConfirm"
+                          id="notebook.bioequivalence.reporting.qaApprovalConfirm"
                           defaultMessage="I confirm QA approval and authorize data release"
                         />
                       </label>
@@ -2588,7 +2588,7 @@ function BioanalyticalReportingPage({
                           </>
                         ) : (
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.completeQa"
+                            id="notebook.bioequivalence.reporting.completeQa"
                             defaultMessage="Complete QA Approval"
                           />
                         )}
@@ -2610,7 +2610,7 @@ function BioanalyticalReportingPage({
                           style={{ margin: "0 0 0.5rem 0", color: "#198038" }}
                         >
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.stage5Ready"
+                            id="notebook.bioequivalence.reporting.stage5Ready"
                             defaultMessage="✓ Ready for Stage 5: Post-Test Storage & Archiving"
                           />
                         </h5>
@@ -2618,7 +2618,7 @@ function BioanalyticalReportingPage({
                           style={{ margin: "0 0 1rem 0", fontSize: "0.875rem" }}
                         >
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.stage5Description"
+                            id="notebook.bioequivalence.reporting.stage5Description"
                             defaultMessage="Your samples are now available in Stage 5 for storage assignment and archival management. Export and submission (below) are optional."
                           />
                         </p>
@@ -2631,7 +2631,7 @@ function BioanalyticalReportingPage({
                           }}
                         >
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.continueToStage5"
+                            id="notebook.bioequivalence.reporting.continueToStage5"
                             defaultMessage="Continue to Stage 5 →"
                           />
                         </Button>
@@ -2665,7 +2665,7 @@ function BioanalyticalReportingPage({
                   >
                     ℹ️{" "}
                     <FormattedMessage
-                      id="notebook.bioanalytical.reporting.tab3OptionalNote"
+                      id="notebook.bioequivalence.reporting.tab3OptionalNote"
                       defaultMessage="This step is optional. Your samples are ready for Stage 5 (Storage & Archiving). Export data if needed for external reporting."
                     />
                   </p>
@@ -2676,13 +2676,13 @@ function BioanalyticalReportingPage({
                   <div className="section-header">
                     <h4>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.exportSection"
+                        id="notebook.bioequivalence.reporting.exportSection"
                         defaultMessage="External Data Export"
                       />
                     </h4>
                     <p>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.exportHelp"
+                        id="notebook.bioequivalence.reporting.exportHelp"
                         defaultMessage="Export validated study data to external systems supporting LMIS (CHAI integration), REDCap clinical data management, CDISC/SDTM regulatory formats, or custom research formats."
                       />
                     </p>
@@ -2691,7 +2691,7 @@ function BioanalyticalReportingPage({
                       <Select
                         id="export-format"
                         labelText={intl.formatMessage({
-                          id: "notebook.bioanalytical.reporting.selectExportFormat",
+                          id: "notebook.bioequivalence.reporting.selectExportFormat",
                           defaultMessage: "Select Export Format",
                         })}
                         value={exportFormat}
@@ -2719,7 +2719,7 @@ function BioanalyticalReportingPage({
                           }}
                         >
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.qaRequiredNote"
+                            id="notebook.bioequivalence.reporting.qaRequiredNote"
                             defaultMessage="QA approval is required before exporting data"
                           />
                         </p>
@@ -2739,7 +2739,7 @@ function BioanalyticalReportingPage({
                         <p style={{ fontSize: "0.875rem", margin: 0 }}>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.exportDetails"
+                              id="notebook.bioequivalence.reporting.exportDetails"
                               defaultMessage="Export Details:"
                             />
                           </strong>
@@ -2764,7 +2764,7 @@ function BioanalyticalReportingPage({
                           }}
                         >
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.recordsToExport"
+                            id="notebook.bioequivalence.reporting.recordsToExport"
                             defaultMessage="Records: {count}"
                             values={{ count: studyResults.length }}
                           />
@@ -2790,7 +2790,7 @@ function BioanalyticalReportingPage({
                           }}
                         >
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.exportCompleted"
+                            id="notebook.bioequivalence.reporting.exportCompleted"
                             defaultMessage="Export Completed"
                           />
                         </p>
@@ -2803,7 +2803,7 @@ function BioanalyticalReportingPage({
                         >
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.format"
+                              id="notebook.bioequivalence.reporting.format"
                               defaultMessage="Format:"
                             />
                           </strong>{" "}
@@ -2818,7 +2818,7 @@ function BioanalyticalReportingPage({
                         >
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.recordsExported"
+                              id="notebook.bioequivalence.reporting.recordsExported"
                               defaultMessage="Records Exported:"
                             />
                           </strong>{" "}
@@ -2833,7 +2833,7 @@ function BioanalyticalReportingPage({
                         >
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.filename"
+                              id="notebook.bioequivalence.reporting.filename"
                               defaultMessage="File:"
                             />
                           </strong>{" "}
@@ -2866,7 +2866,7 @@ function BioanalyticalReportingPage({
                             </>
                           ) : (
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.exportNow"
+                              id="notebook.bioequivalence.reporting.exportNow"
                               defaultMessage="Export Now"
                             />
                           )}
@@ -2901,7 +2901,7 @@ function BioanalyticalReportingPage({
                   >
                     ℹ️{" "}
                     <FormattedMessage
-                      id="notebook.bioanalytical.reporting.tab4OptionalNote"
+                      id="notebook.bioequivalence.reporting.tab4OptionalNote"
                       defaultMessage="This step is optional. Your samples are ready for Stage 5 (Storage & Archiving). Submit results if required by requesting unit."
                     />
                   </p>
@@ -2912,13 +2912,13 @@ function BioanalyticalReportingPage({
                   <div className="section-header">
                     <h4>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.submissionSection"
+                        id="notebook.bioequivalence.reporting.submissionSection"
                         defaultMessage="Submit Results to Requesting Unit"
                       />
                     </h4>
                     <p>
                       <FormattedMessage
-                        id="notebook.bioanalytical.reporting.submissionHelp"
+                        id="notebook.bioequivalence.reporting.submissionHelp"
                         defaultMessage="Submit validated analytical results to the requesting unit (Medical Laboratory, Research Department, or External Clients). Results must pass QA approval before submission."
                       />
                     </p>
@@ -2929,7 +2929,7 @@ function BioanalyticalReportingPage({
                     <Select
                       id="submission-target"
                       labelText={intl.formatMessage({
-                        id: "notebook.bioanalytical.reporting.selectSubmissionTarget",
+                        id: "notebook.bioequivalence.reporting.selectSubmissionTarget",
                         defaultMessage: "Select Submission Target",
                       })}
                       value={submissionTarget}
@@ -2958,7 +2958,7 @@ function BioanalyticalReportingPage({
                         }}
                       >
                         <FormattedMessage
-                          id="notebook.bioanalytical.reporting.qaRequiredNote"
+                          id="notebook.bioequivalence.reporting.qaRequiredNote"
                           defaultMessage="QA approval is required before submission"
                         />
                       </p>
@@ -2977,7 +2977,7 @@ function BioanalyticalReportingPage({
                     >
                       <h5 style={{ marginBottom: "1rem" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.reporting.submissionDetails"
+                          id="notebook.bioequivalence.reporting.submissionDetails"
                           defaultMessage="Submission Details:"
                         />
                       </h5>
@@ -2991,7 +2991,7 @@ function BioanalyticalReportingPage({
                         <div>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.targetUnit"
+                              id="notebook.bioequivalence.reporting.targetUnit"
                               defaultMessage="Target Unit:"
                             />
                           </strong>
@@ -3007,7 +3007,7 @@ function BioanalyticalReportingPage({
                         <div>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.department"
+                              id="notebook.bioequivalence.reporting.department"
                               defaultMessage="Department:"
                             />
                           </strong>
@@ -3023,7 +3023,7 @@ function BioanalyticalReportingPage({
                         <div>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.resultsToSubmit"
+                              id="notebook.bioequivalence.reporting.resultsToSubmit"
                               defaultMessage="Results to Submit:"
                             />
                           </strong>
@@ -3035,7 +3035,7 @@ function BioanalyticalReportingPage({
                         <div>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.totalSamples"
+                              id="notebook.bioequivalence.reporting.totalSamples"
                               defaultMessage="Total Samples:"
                             />
                           </strong>
@@ -3065,7 +3065,7 @@ function BioanalyticalReportingPage({
                     >
                       <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.reporting.submissionComplete"
+                          id="notebook.bioequivalence.reporting.submissionComplete"
                           defaultMessage="Submission Completed"
                         />
                       </h5>
@@ -3073,7 +3073,7 @@ function BioanalyticalReportingPage({
                         <div style={{ marginBottom: "0.5rem" }}>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.submittedTo"
+                              id="notebook.bioequivalence.reporting.submittedTo"
                               defaultMessage="Submitted To:"
                             />
                           </strong>{" "}
@@ -3083,7 +3083,7 @@ function BioanalyticalReportingPage({
                         <div style={{ marginBottom: "0.5rem" }}>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.confirmationNumber"
+                              id="notebook.bioequivalence.reporting.confirmationNumber"
                               defaultMessage="Confirmation Number:"
                             />
                           </strong>{" "}
@@ -3092,7 +3092,7 @@ function BioanalyticalReportingPage({
                         <div style={{ marginBottom: "0.5rem" }}>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.timestamp"
+                              id="notebook.bioequivalence.reporting.timestamp"
                               defaultMessage="Timestamp:"
                             />
                           </strong>{" "}
@@ -3101,7 +3101,7 @@ function BioanalyticalReportingPage({
                         <div>
                           <strong>
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.recordsSubmitted"
+                              id="notebook.bioequivalence.reporting.recordsSubmitted"
                               defaultMessage="Records Submitted:"
                             />
                           </strong>{" "}
@@ -3124,13 +3124,13 @@ function BioanalyticalReportingPage({
                           <>
                             <Loading description="Submitting..." />
                             <FormattedMessage
-                              id="notebook.bioanalytical.reporting.submitting"
+                              id="notebook.bioequivalence.reporting.submitting"
                               defaultMessage="Submitting..."
                             />
                           </>
                         ) : (
                           <FormattedMessage
-                            id="notebook.bioanalytical.reporting.submitNow"
+                            id="notebook.bioequivalence.reporting.submitNow"
                             defaultMessage="Submit Results Now"
                           />
                         )}
@@ -3151,7 +3151,7 @@ function BioanalyticalReportingPage({
                     >
                       <p style={{ color: "#525252" }}>
                         <FormattedMessage
-                          id="notebook.bioanalytical.reporting.noResultsForSubmission"
+                          id="notebook.bioequivalence.reporting.noResultsForSubmission"
                           defaultMessage="No approved results available for submission. Complete Stage 3 analytical execution first."
                         />
                       </p>
@@ -3167,4 +3167,4 @@ function BioanalyticalReportingPage({
   );
 }
 
-export default BioanalyticalReportingPage;
+export default BioequivalenceReportingPage;

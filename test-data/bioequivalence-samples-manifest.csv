@@ -1,0 +1,9 @@
+uniqueSampleId,sampleType,sourceOrigin,dateTimeOfReceipt,projectStudyAssociation,storageConditionPrior,requestedTests,timepoint,subjectId,receivingPersonnel,notes
+BE-S001,Plasma,Medical Laboratory,2024-01-15 09:30,Bioequivalence-Study-2024-001,Frozen (-20°C),LC-MS/MS,Pre-dose,SUBJ-BE001,John Smith,Test formulation baseline sample
+BE-S002,Plasma,Medical Laboratory,2024-01-15 10:15,Bioequivalence-Study-2024-001,Frozen (-20°C),LC-MS/MS,1h post-dose,SUBJ-BE001,Sarah Johnson,Reference formulation at 1 hour
+BE-S003,Plasma,Medical Laboratory,2024-01-15 11:00,Bioequivalence-Study-2024-001,Frozen (-20°C),LC-MS/MS,2h post-dose,SUBJ-BE001,Michael Chen,Test formulation at 2 hours
+BE-S004,Plasma,Medical Laboratory,2024-01-15 13:30,Bioequivalence-Study-2024-001,Frozen (-20°C),LC-MS/MS,4h post-dose,SUBJ-BE002,Emma Davis,Reference formulation at 4 hours
+BE-S005,Plasma,Medical Laboratory,2024-01-15 17:00,Bioequivalence-Study-2024-001,Frozen (-20°C),LC-MS/MS,8h post-dose,SUBJ-BE002,Robert Wilson,Test formulation at 8 hours
+BE-S006,Plasma,Medical Laboratory,2024-01-16 09:00,Bioequivalence-Study-2024-001,Frozen (-20°C),LC-MS/MS,24h post-dose,SUBJ-BE003,Jessica Martinez,Reference formulation terminal sample
+BE-S007,Plasma,Medical Laboratory,2024-01-16 14:30,Bioequivalence-Study-2024-002,Frozen (-20°C),LC-MS/MS,Pre-dose,SUBJ-BE004,David Thompson,Crossover study baseline
+BE-S008,Plasma,Medical Laboratory,2024-01-16 15:45,Bioequivalence-Study-2024-002,Frozen (-20°C),LC-MS/MS,1h post-dose,SUBJ-BE004,Lauren Anderson,Crossover period sample

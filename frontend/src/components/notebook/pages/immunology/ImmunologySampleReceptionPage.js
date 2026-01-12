@@ -223,14 +223,6 @@ function ImmunologySampleReceptionPage({
   // Custom columns for immunology reception metadata
   const getAdditionalColumns = (intl) => [
     {
-      key: "sampleType",
-      header: intl.formatMessage({
-        id: "notebook.sample.sampleType",
-        defaultMessage: "Sample Type",
-      }),
-      render: (value, sample) => value || sample?.sampleType || "-",
-    },
-    {
       key: "projectNameId",
       header: intl.formatMessage({
         id: "notebook.sample.projectNameId",

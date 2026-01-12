@@ -68,6 +68,7 @@ import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
 import BacteriologyWorkflowTab from "./workflow/BacteriologyWorkflowTab";
 import PathologyWorkflowTab from "./workflow/PathologyWorkflowTab";
 import BioanalyticalWorkflowTab from "./workflow/BioanalyticalWorkflowTab";
+import BioequivalenceWorkflowTab from "./workflow/BioequivalenceWorkflowTab";
 import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
 import BiorepositoryWorkflowTab from "./workflow/BiorepositoryWorkflowTab";
 
@@ -1206,6 +1207,11 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("bioequivalence") && (
+                <BioequivalenceWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
               noteBookData?.title
                 ?.toLowerCase()
                 .includes("medical laboratory") && (
@@ -1226,6 +1232,7 @@ const NoteBookInstanceEntryForm = () => {
               !noteBookData?.title?.toLowerCase().includes("bacteriology") &&
               !noteBookData?.title?.toLowerCase().includes("pathology") &&
               !noteBookData?.title?.toLowerCase().includes("bioanalytical") &&
+              !noteBookData?.title?.toLowerCase().includes("bioequivalence") &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("medical laboratory") &&

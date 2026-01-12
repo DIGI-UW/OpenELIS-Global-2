@@ -3,19 +3,19 @@ import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
-import BioanalyticalManifestImportModal from "../../modals/BioanalyticalManifestImportModal";
+import BioequivalenceManifestImportModal from "../../modals/BioequivalenceManifestImportModal";
 import BulkApplyForm from "../../workflow/BulkApplyForm";
 import SampleGrid from "../../workflow/SampleGrid";
 import { Upload, Checkmark, Edit } from "@carbon/react/icons";
 import { postToOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
-import "./BioanalyticalPages.css";
+import "./BioequivalencePages.css";
 
 /**
- * BioanalyticalSampleReceptionPage - STAGE 1 of bioanalytical workflow.
+ * BioequivalenceSampleReceptionPage - STAGE 1 of bioequivalence workflow.
  *
  * Following established OpenELIS laboratory workflow patterns:
  * - Import samples via manifest CSV
@@ -37,7 +37,7 @@ import "./BioanalyticalPages.css";
  * @param {Object} props.progress - Sample progress counts
  * @param {function} props.onProgressUpdate - Callback after sample changes
  */
-function BioanalyticalSampleReceptionPage({
+function BioequivalenceSampleReceptionPage({
   entryId,
   pageData,
   progress,
@@ -48,7 +48,7 @@ function BioanalyticalSampleReceptionPage({
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
   const { getPagePermissionLevel, canRegisterData, canSaveData } =
-    useBioanalyticalPermissions();
+    useBioequivalencePermissions();
 
   // PAGE 1 allowed roles per test.pdf Section 11
   const allowedRoles = [
@@ -64,9 +64,7 @@ function BioanalyticalSampleReceptionPage({
   const canAccessPage = hasAnyRole(allowedRoles);
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel(
-    "Sample Reception & Registration",
-  );
+  const pagePermissionLevel = getPagePermissionLevel("Sample Reception");
   const canImportSamples = canRegisterData(pagePermissionLevel);
   const canEditMetadata = canSaveData(pagePermissionLevel);
 
@@ -75,7 +73,7 @@ function BioanalyticalSampleReceptionPage({
     return (
       <AccessDeniedMessage
         page="Sample Reception & Registration"
-        reason="This page requires specific bioanalytical laboratory roles to access."
+        reason="This page requires specific bioequivalence laboratory roles to access."
         requiredRoles={allowedRoles}
       />
     );
@@ -127,12 +125,12 @@ function BioanalyticalSampleReceptionPage({
       notify({
         kind: NotificationKinds.success,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.reception.success",
+          id: "notebook.bioequivalence.reception.success",
           defaultMessage: "Success",
         }),
         message: intl.formatMessage(
           {
-            id: "notebook.bioanalytical.reception.importSuccess",
+            id: "notebook.bioequivalence.reception.importSuccess",
             defaultMessage:
               "{count} samples imported successfully for Stage 1 reception",
           },
@@ -156,11 +154,11 @@ function BioanalyticalSampleReceptionPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.reception.error",
+          id: "notebook.bioequivalence.reception.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.reception.error.noSelection",
+          id: "notebook.bioequivalence.reception.error.noSelection",
           defaultMessage: "Please select at least one sample.",
         }),
       });
@@ -171,11 +169,11 @@ function BioanalyticalSampleReceptionPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.reception.error",
+          id: "notebook.bioequivalence.reception.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.reception.error.noPage",
+          id: "notebook.bioequivalence.reception.error.noPage",
           defaultMessage:
             "Cannot update samples: Page not properly initialized.",
         }),
@@ -195,12 +193,12 @@ function BioanalyticalSampleReceptionPage({
           notify({
             kind: NotificationKinds.success,
             title: intl.formatMessage({
-              id: "notebook.bioanalytical.reception.success",
+              id: "notebook.bioequivalence.reception.success",
               defaultMessage: "Success",
             }),
             message: intl.formatMessage(
               {
-                id: "notebook.bioanalytical.reception.success.verified",
+                id: "notebook.bioequivalence.reception.success.verified",
                 defaultMessage:
                   "Marked {count} sample(s) as verified. They are ready for Test Assignment & Preparation.",
               },
@@ -216,11 +214,11 @@ function BioanalyticalSampleReceptionPage({
           notify({
             kind: NotificationKinds.error,
             title: intl.formatMessage({
-              id: "notebook.bioanalytical.reception.error",
+              id: "notebook.bioequivalence.reception.error",
               defaultMessage: "Error",
             }),
             message: intl.formatMessage({
-              id: "notebook.bioanalytical.reception.error.status",
+              id: "notebook.bioequivalence.reception.error.status",
               defaultMessage: "Failed to verify samples. Please try again.",
             }),
           });
@@ -246,7 +244,7 @@ function BioanalyticalSampleReceptionPage({
 
     setIsLoading(true);
 
-    // Load samples for this bioanalytical workflow page
+    // Load samples for this bioequivalence workflow page
     fetch(`${config.serverBaseUrl}/rest/notebook/page/${pageData.id}/samples`, {
       method: "GET",
       credentials: "include",
@@ -263,7 +261,7 @@ function BioanalyticalSampleReceptionPage({
       })
       .then((data) => {
         console.debug(
-          "Loaded samples for bioanalytical page:",
+          "Loaded samples for bioequivalence page:",
           pageData.id,
           "Count:",
           Array.isArray(data) ? data.length : 0,
@@ -297,13 +295,13 @@ function BioanalyticalSampleReceptionPage({
               sampleType: sample.sampleType || sample.typeOfSample?.description,
               status: sampleStatus,
 
-              // Map bioanalytical-specific fields to SampleGrid default columns
+              // Map bioequivalence-specific fields to SampleGrid default columns
               // to avoid duplicates while providing the data
               sourceFacility: sampleDataFields.sourceOrigin, // Maps to "Source" column
               receivedDate: sampleDataFields.dateTimeOfReceipt, // Maps to "Received Date" column
               // collectionDate is intentionally NOT mapped (will show as "-")
 
-              // Stage 1 bioanalytical-specific metadata from JSONB data
+              // Stage 1 bioequivalence-specific metadata from JSONB data
               // Spread all JSONB data fields to capture bulk-applied values
               ...sampleDataFields,
 
@@ -342,11 +340,11 @@ function BioanalyticalSampleReceptionPage({
         notify({
           kind: NotificationKinds.error,
           title: intl.formatMessage({
-            id: "notebook.bioanalytical.reception.error",
+            id: "notebook.bioequivalence.reception.error",
             defaultMessage: "Error",
           }),
           message: intl.formatMessage({
-            id: "notebook.bioanalytical.stage1.error.loadSamples",
+            id: "notebook.bioequivalence.stage1.error.loadSamples",
             defaultMessage: "Failed to load samples. Please refresh the page.",
           }),
         });
@@ -361,18 +359,18 @@ function BioanalyticalSampleReceptionPage({
   }, [loadPageSamples]);
 
   return (
-    <div className="bioanalytical-page">
+    <div className="bioequivalence-page">
       {/* Stage 1 Header - Following established patterns */}
       <div className="page-instructions">
         <h3>
           <FormattedMessage
-            id="notebook.bioanalytical.stage1.title"
+            id="notebook.bioequivalence.stage1.title"
             defaultMessage="STAGE 1: Sample Reception & Registration"
           />
         </h3>
         <p>
           <FormattedMessage
-            id="notebook.bioanalytical.stage1.description"
+            id="notebook.bioequivalence.stage1.description"
             defaultMessage="Import samples via manifest CSV, review and verify metadata, then mark as complete to proceed to Test Assignment & Preparation."
           />
         </p>
@@ -392,7 +390,7 @@ function BioanalyticalSampleReceptionPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.bioanalytical.stage1.totalSamples"
+                  id="notebook.bioequivalence.stage1.totalSamples"
                   defaultMessage="Total Samples"
                 />
               </span>
@@ -401,7 +399,7 @@ function BioanalyticalSampleReceptionPage({
             <Tile className="progress-tile verified">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.bioanalytical.stage1.verified"
+                  id="notebook.bioequivalence.stage1.verified"
                   defaultMessage="Verified"
                 />
               </span>
@@ -410,7 +408,7 @@ function BioanalyticalSampleReceptionPage({
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.bioanalytical.stage1.awaitingVerification"
+                  id="notebook.bioequivalence.stage1.awaitingVerification"
                   defaultMessage="Awaiting Verification"
                 />
               </span>
@@ -419,7 +417,7 @@ function BioanalyticalSampleReceptionPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.bioanalytical.stage1.biological"
+                  id="notebook.bioequivalence.stage1.biological"
                   defaultMessage="Biological"
                 />
               </span>
@@ -436,7 +434,7 @@ function BioanalyticalSampleReceptionPage({
             <Tile className="progress-tile">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.bioanalytical.stage1.pharmaceutical"
+                  id="notebook.bioequivalence.stage1.pharmaceutical"
                   defaultMessage="Pharmaceutical"
                 />
               </span>
@@ -470,7 +468,7 @@ function BioanalyticalSampleReceptionPage({
               title={
                 !canImportSamples
                   ? intl.formatMessage({
-                      id: "notebook.bioanalytical.stage1.insufficientPermissions",
+                      id: "notebook.bioequivalence.stage1.insufficientPermissions",
                       defaultMessage:
                         "Insufficient permissions to import samples",
                     })
@@ -478,7 +476,7 @@ function BioanalyticalSampleReceptionPage({
               }
             >
               <FormattedMessage
-                id="notebook.bioanalytical.stage1.importManifest"
+                id="notebook.bioequivalence.stage1.importManifest"
                 defaultMessage="Import from Manifest"
               />
             </Button>
@@ -495,7 +493,7 @@ function BioanalyticalSampleReceptionPage({
                   title={
                     !canEditMetadata
                       ? intl.formatMessage({
-                          id: "notebook.bioanalytical.stage1.insufficientPermissionsEdit",
+                          id: "notebook.bioequivalence.stage1.insufficientPermissionsEdit",
                           defaultMessage:
                             "Insufficient permissions to edit metadata",
                         })
@@ -514,7 +512,7 @@ function BioanalyticalSampleReceptionPage({
                   title={
                     !canSaveData(pagePermissionLevel)
                       ? intl.formatMessage({
-                          id: "notebook.bioanalytical.stage1.insufficientPermissionsVerify",
+                          id: "notebook.bioequivalence.stage1.insufficientPermissionsVerify",
                           defaultMessage:
                             "Insufficient permissions to verify samples",
                         })
@@ -543,7 +541,7 @@ function BioanalyticalSampleReceptionPage({
             }}
           >
             <FormattedMessage
-              id="notebook.bioanalytical.stage1.pending.title"
+              id="notebook.bioequivalence.stage1.pending.title"
               defaultMessage="Pending Verification"
             />
             <Tag type="gray" size="sm" className="count-tag">
@@ -552,7 +550,7 @@ function BioanalyticalSampleReceptionPage({
           </h5>
           <p style={{ marginBottom: "1.5rem", color: "#525252" }}>
             <FormattedMessage
-              id="notebook.bioanalytical.stage1.pending.description"
+              id="notebook.bioequivalence.stage1.pending.description"
               defaultMessage="Select samples to edit metadata or mark as verified. Verified samples will proceed to Test Assignment & Preparation."
             />
           </p>
@@ -566,14 +564,14 @@ function BioanalyticalSampleReceptionPage({
             >
               <p>
                 <FormattedMessage
-                  id="notebook.bioanalytical.stage1.pending.empty"
+                  id="notebook.bioequivalence.stage1.pending.empty"
                   defaultMessage="No pending samples. Import a CSV manifest to add samples for verification."
                 />
               </p>
             </div>
           ) : (
             <SampleGrid
-              gridId="pending-bioanalytical-samples"
+              gridId="pending-bioequivalence-samples"
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
@@ -615,7 +613,7 @@ function BioanalyticalSampleReceptionPage({
                     defaultMessage: "Source",
                   }),
                 },
-                // Collection Date intentionally removed (not used in bioanalytical workflow)
+                // Collection Date intentionally removed (not used in bioequivalence workflow)
                 {
                   key: "receivedDate",
                   header: intl.formatMessage({
@@ -652,7 +650,7 @@ function BioanalyticalSampleReceptionPage({
                 {
                   key: "pending-accessionNumber",
                   header: intl.formatMessage({
-                    id: "notebook.bioanalytical.stage1.column.accessionNumber",
+                    id: "notebook.bioequivalence.stage1.column.accessionNumber",
                     defaultMessage: "Accession Number",
                   }),
                   render: (value, sample) => {
@@ -674,7 +672,7 @@ function BioanalyticalSampleReceptionPage({
                 {
                   key: "pending-uniqueSampleId",
                   header: intl.formatMessage({
-                    id: "notebook.bioanalytical.stage1.column.uniqueSampleId",
+                    id: "notebook.bioequivalence.stage1.column.uniqueSampleId",
                     defaultMessage: "Sample ID",
                   }),
                   render: (value, sample) => {
@@ -697,7 +695,7 @@ function BioanalyticalSampleReceptionPage({
                 {
                   key: "pending-projectStudyAssociation",
                   header: intl.formatMessage({
-                    id: "notebook.bioanalytical.stage1.column.projectStudyAssociation",
+                    id: "notebook.bioequivalence.stage1.column.projectStudyAssociation",
                     defaultMessage: "Project/Study",
                   }),
                   render: (value, sample) => {
@@ -712,7 +710,7 @@ function BioanalyticalSampleReceptionPage({
                 {
                   key: "pending-storageConditionPrior",
                   header: intl.formatMessage({
-                    id: "notebook.bioanalytical.stage1.column.storageCondition",
+                    id: "notebook.bioequivalence.stage1.column.storageCondition",
                     defaultMessage: "Storage Condition",
                   }),
                   render: (value, sample) => {
@@ -741,7 +739,7 @@ function BioanalyticalSampleReceptionPage({
                 {
                   key: "pending-manifestVerificationStatus",
                   header: intl.formatMessage({
-                    id: "notebook.bioanalytical.stage1.column.verificationStatus",
+                    id: "notebook.bioequivalence.stage1.column.verificationStatus",
                     defaultMessage: "Verification Status",
                   }),
                   render: (value, sample) => {
@@ -766,7 +764,7 @@ function BioanalyticalSampleReceptionPage({
                 {
                   key: "pending-timepoint",
                   header: intl.formatMessage({
-                    id: "notebook.bioanalytical.stage1.column.timepoint",
+                    id: "notebook.bioequivalence.stage1.column.timepoint",
                     defaultMessage: "Timepoint",
                   }),
                   render: (value, sample) => {
@@ -795,7 +793,7 @@ function BioanalyticalSampleReceptionPage({
                 {
                   key: "pending-requestedTests",
                   header: intl.formatMessage({
-                    id: "notebook.bioanalytical.stage1.column.requestedTests",
+                    id: "notebook.bioequivalence.stage1.column.requestedTests",
                     defaultMessage: "Requested Tests",
                   }),
                   render: (value, sample) => {
@@ -874,7 +872,7 @@ function BioanalyticalSampleReceptionPage({
               }}
             >
               <FormattedMessage
-                id="notebook.bioanalytical.stage1.verified.title"
+                id="notebook.bioequivalence.stage1.verified.title"
                 defaultMessage="Verified Samples"
               />
               <Tag type="green" size="sm" className="count-tag">
@@ -883,14 +881,14 @@ function BioanalyticalSampleReceptionPage({
             </h5>
             <p style={{ marginBottom: "1.5rem", color: "#525252" }}>
               <FormattedMessage
-                id="notebook.bioanalytical.stage1.verified.description"
+                id="notebook.bioequivalence.stage1.verified.description"
                 defaultMessage="Samples verified and ready for Test Assignment & Preparation."
               />
             </p>
           </div>
 
           <SampleGrid
-            gridId="verified-bioanalytical-samples"
+            gridId="verified-bioequivalence-samples"
             samples={completedSamples}
             showSelection={false}
             loading={isLoading}
@@ -930,7 +928,7 @@ function BioanalyticalSampleReceptionPage({
                   defaultMessage: "Source",
                 }),
               },
-              // Collection Date intentionally removed (not used in bioanalytical workflow)
+              // Collection Date intentionally removed (not used in bioequivalence workflow)
               {
                 key: "receivedDate",
                 header: intl.formatMessage({
@@ -967,7 +965,7 @@ function BioanalyticalSampleReceptionPage({
               {
                 key: "verified-accessionNumber",
                 header: intl.formatMessage({
-                  id: "notebook.bioanalytical.stage1.column.accessionNumber",
+                  id: "notebook.bioequivalence.stage1.column.accessionNumber",
                   defaultMessage: "Accession Number",
                 }),
                 render: (value, sample) => {
@@ -986,7 +984,7 @@ function BioanalyticalSampleReceptionPage({
               {
                 key: "verified-uniqueSampleId",
                 header: intl.formatMessage({
-                  id: "notebook.bioanalytical.stage1.column.uniqueSampleId",
+                  id: "notebook.bioequivalence.stage1.column.uniqueSampleId",
                   defaultMessage: "Sample ID",
                 }),
                 render: (value, sample) => {
@@ -1006,7 +1004,7 @@ function BioanalyticalSampleReceptionPage({
               {
                 key: "verified-sampleType",
                 header: intl.formatMessage({
-                  id: "notebook.bioanalytical.stage1.column.sampleType",
+                  id: "notebook.bioequivalence.stage1.column.sampleType",
                   defaultMessage: "Sample Type",
                 }),
                 render: (value, sample) => {
@@ -1038,7 +1036,7 @@ function BioanalyticalSampleReceptionPage({
               {
                 key: "verified-projectStudyAssociation",
                 header: intl.formatMessage({
-                  id: "notebook.bioanalytical.stage1.column.projectStudyAssociation",
+                  id: "notebook.bioequivalence.stage1.column.projectStudyAssociation",
                   defaultMessage: "Project/Study",
                 }),
                 render: (value, sample) => {
@@ -1053,7 +1051,7 @@ function BioanalyticalSampleReceptionPage({
               {
                 key: "verified-requestedTests",
                 header: intl.formatMessage({
-                  id: "notebook.bioanalytical.stage1.column.requestedTests",
+                  id: "notebook.bioequivalence.stage1.column.requestedTests",
                   defaultMessage: "Requested Tests",
                 }),
                 render: (value, sample) => {
@@ -1113,7 +1111,7 @@ function BioanalyticalSampleReceptionPage({
               {
                 key: "verified-timepoint",
                 header: intl.formatMessage({
-                  id: "notebook.bioanalytical.stage1.column.timepoint",
+                  id: "notebook.bioequivalence.stage1.column.timepoint",
                   defaultMessage: "Timepoint",
                 }),
                 render: (value, sample) => {
@@ -1147,7 +1145,7 @@ function BioanalyticalSampleReceptionPage({
       {/* Modals Following Established Patterns */}
 
       {/* Import Modal */}
-      <BioanalyticalManifestImportModal
+      <BioequivalenceManifestImportModal
         open={isImportModalOpen}
         onClose={handleImportModalClose}
         entryId={entryId}
@@ -1310,12 +1308,12 @@ function BioanalyticalSampleReceptionPage({
             notify({
               kind: NotificationKinds.success,
               title: intl.formatMessage({
-                id: "notebook.bioanalytical.reception.success",
+                id: "notebook.bioequivalence.reception.success",
                 defaultMessage: "Success",
               }),
               message: intl.formatMessage(
                 {
-                  id: "notebook.bioanalytical.reception.bulkApplySuccess",
+                  id: "notebook.bioequivalence.reception.bulkApplySuccess",
                   defaultMessage:
                     "Metadata applied to {count} sample(s) successfully.",
                 },
@@ -1338,4 +1336,4 @@ function BioanalyticalSampleReceptionPage({
   );
 }
 
-export default BioanalyticalSampleReceptionPage;
+export default BioequivalenceSampleReceptionPage;
