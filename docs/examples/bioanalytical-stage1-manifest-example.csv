@@ -1,0 +1,13 @@
+Sample ID,Sample Type,Source Origin,Requested Tests,Date/Time of Receipt,Receiving Personnel,Project/Study Association,Storage Condition Prior,Sample Volume,Transport Temperature,Manifest Verification Status,Subject/Patient ID,Timepoint,Notes
+BIO-2024-001,Plasma,Medical Laboratory - Clinical Site A,"LC-MS/MS, Bioequivalence",2024-01-15 14:30,Dr. Sarah Johnson,BE-2024-001,Frozen (-80°C),5 mL,4°C,Verified,SUBJ-001,Pre-dose,Sample received in good condition
+BIO-2024-002,Serum,Medical Laboratory - Clinical Site A,"LC-MS/MS, Bioequivalence",2024-01-15 14:35,Dr. Sarah Johnson,BE-2024-001,Frozen (-80°C),3 mL,4°C,Verified,SUBJ-001,1h,Sample received in good condition
+BIO-2024-003,Plasma,Medical Laboratory - Clinical Site B,"LC-MS/MS, Bioequivalence",2024-01-15 15:00,Lab Tech Mike,BE-2024-001,Frozen (-80°C),5 mL,4°C,Verified,SUBJ-002,Pre-dose,Sample received in good condition
+API-2024-001,API,External Client - Pharma Research Inc,"Assay, Dissolution",2024-01-15 16:00,Dr. Emily Chen,STAB-API-001,Room Temperature,100 mg,Ambient,Verified,,N/A,Reference standard for bioequivalence study
+TAB-2024-001,Tablet,External Client - Pharma Research Inc,"Assay, Dissolution, Content Uniformity",2024-01-15 16:05,Dr. Emily Chen,STAB-API-001,Room Temperature,10 tablets,Ambient,Verified,,Batch-001,Finished product for stability testing
+BIO-2024-004,Urine,Medical Laboratory - Clinical Site C,LC-MS/MS,2024-01-16 09:00,Dr. Sarah Johnson,PK-STUDY-002,Frozen (-20°C),10 mL,4°C,Pending,SUBJ-003,2h,Sample volume slightly lower than expected
+CAP-2024-001,Capsule,Researcher - University Lab,"HPLC, Assay",2024-01-16 10:30,Lab Tech Mike,FORMDEV-001,Room Temperature,20 capsules,Ambient,Verified,,Prototype,Formulation development samples
+BIO-2024-005,Plasma,Medical Laboratory - Clinical Site A,"LC-MS/MS, Bioequivalence",2024-01-16 11:00,Dr. Sarah Johnson,BE-2024-001,Frozen (-80°C),4.5 mL,4°C,Verified,SUBJ-004,4h,Sample received in good condition
+BIO-2024-006,Serum,Medical Laboratory - Clinical Site A,Bioequivalence,2024-01-16 11:30,Dr. Sarah Johnson,BE-2024-001,Frozen (-80°C),3.5 mL,4°C,Verified,SUBJ-004,8h,Sample received in good condition
+REF-2024-001,Reference Standard,External Client - CRO Partner,"HPLC, Assay",2024-01-16 14:00,Dr. Emily Chen,BE-2024-001,Refrigerated (2-8°C),50 mg,4°C,Verified,,N/A,Reference standard for bioequivalence study
+BIO-2024-007,Whole Blood,Medical Laboratory - Clinical Site B,LC-MS/MS,2024-01-17 08:30,Lab Tech Mike,PK-STUDY-003,Frozen (-80°C),2 mL,4°C,Verified,SUBJ-005,Pre-dose,Special handling required
+SUS-2024-001,Suspension,Researcher - Formulation Lab,"Assay, Dissolution",2024-01-17 12:00,Dr. Emily Chen,FORMDEV-002,Refrigerated (2-8°C),15 mL,4°C,Pending,,Batch-A01,Pediatric formulation development

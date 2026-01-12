@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.service;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -142,6 +143,15 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 // page
                 // Samples routed to INTERNAL_ANALYSIS go to the next page (Analysis)
                 if (!nextPageLoaded) {
+                    LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                            "T150: Loading next page for pageId=" + pageId);
+                    NoteBookPage currentPageDebug = noteBookService.getPage(pageId);
+                    if (currentPageDebug != null) {
+                        LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                "T150: Current page details - id=" + currentPageDebug.getId() + " title='"
+                                        + currentPageDebug.getTitle() + "' order=" + currentPageDebug.getOrder());
+                    }
+
                     nextPage = noteBookService.getNextPage(pageId);
                     nextPageLoaded = true;
                     LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
@@ -204,6 +214,11 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 for (Integer sampleId : batch) {
                     NoteBookPage targetPage = nextPage; // default to next page
 
+                    LogEvent.logDebug(this.getClass().getName(), "bulkUpdateStatus",
+                            "T150: Processing sample " + sampleId + ": isRoutingPage=" + isRoutingPage
+                                    + ", isStoragePage=" + isStoragePage + ", targetPage="
+                                    + (targetPage != null ? targetPage.getId() : "null"));
+
                     // For storage pages, always skip to archiving page (Disposal & Archiving)
                     // Storage samples skip the Reporting page
                     if (isStoragePage && archivingPage != null) {
@@ -240,11 +255,26 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                         NotebookPageSample existingOnTargetPage = getByPageIdAndSampleItemId(targetPage.getId(),
                                 sampleId);
                         if (existingOnTargetPage == null) {
+                            // Get source page sample data to copy to target page
+                            NotebookPageSample sourcePageSample = getByPageIdAndSampleItemId(pageId, sampleId);
+                            Map<String, Object> sourceData = null;
+                            if (sourcePageSample != null && sourcePageSample.getData() != null) {
+                                // Create a deep copy of the data to avoid reference issues
+                                sourceData = new HashMap<>(sourcePageSample.getData());
+                            }
+
                             // Create a PENDING record on the target page
                             NotebookPageSample targetPageNps = new NotebookPageSample();
                             targetPageNps.setNotebookPage(targetPage);
                             targetPageNps.setSampleItemId(sampleId.toString());
                             targetPageNps.setStatus(Status.PENDING);
+                            // Copy data from source page to target page
+                            if (sourceData != null) {
+                                targetPageNps.setData(sourceData);
+                                LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
+                                        "T150: Copying " + sourceData.size() + " data fields for sample " + sampleId
+                                                + " from pageId=" + pageId + " to targetPage id=" + targetPage.getId());
+                            }
                             insert(targetPageNps);
                             LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
                                     "T150: Created PENDING record for sample " + sampleId + " on targetPage id="
@@ -465,6 +495,13 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Override
     @Transactional
     public void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status) {
+        createPageSampleForPageString(pageId, sampleItemId, status, null);
+    }
+
+    @Override
+    @Transactional
+    public void createPageSampleForPageString(Integer pageId, String sampleItemId, Status status,
+            java.util.Map<String, Object> data) {
         if (pageId == null || sampleItemId == null || sampleItemId.isEmpty()) {
             return;
         }
@@ -484,6 +521,11 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         nps.setNotebookPage(page);
         nps.setSampleItemId(sampleItemId);
         nps.setStatus(status != null ? status : Status.PENDING);
+        // Set initial data from source page (preserves test assignments, metadata,
+        // etc.)
+        if (data != null && !data.isEmpty()) {
+            nps.setData(data);
+        }
         insert(nps);
     }
 

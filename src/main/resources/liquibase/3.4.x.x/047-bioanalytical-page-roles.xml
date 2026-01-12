@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- BIOANALYTICAL NOTEBOOK PAGE ROLE RESTRICTIONS -->
+    <!-- Applies role-based access control to bioanalytical workflow pages -->
+    <!-- ======================================================== -->
+
+    <!-- PAGE 1: Sample Reception & Registration - Restricted to Sample Receivers and Supervisors -->
+    <changeSet id="add-bioanalytical-page-1-roles" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for Sample Reception &amp; Registration page</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="Sample Receiver"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="Bioanalytical Supervisor"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)"/>
+            <column name="role" value="Reception"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- PAGE 2: Test Assignment & Preparation - Restricted to Supervisors and Study Directors -->
+    <changeSet id="add-bioanalytical-page-2-roles" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for Test Assignment &amp; Preparation page</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
+            <column name="role" value="Bioanalytical Supervisor"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
+            <column name="role" value="Study Director"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)"/>
+            <column name="role" value="Supervisor"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- PAGE 3: Analytical Test Execution - Restricted to Analysts and Technical Staff -->
+    <changeSet id="add-bioanalytical-page-3-roles" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for Analytical Test Execution page</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="Bioanalytical Analyst"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="Chemical Analyst"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="Bioanalytical Supervisor"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)"/>
+            <column name="role" value="Technician"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- PAGE 4: Reporting & Release - Restricted to Senior Staff and Study Management -->
+    <changeSet id="add-bioanalytical-page-4-roles" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for Reporting &amp; Release page</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="Study Director"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="Pharmacist"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="Bioanalytical Supervisor"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)"/>
+            <column name="role" value="Reports"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- PAGE 5: Post-Test Storage & Archiving - Restricted to Storage Staff and QA -->
+    <changeSet id="add-bioanalytical-page-5-roles" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles npar
+                JOIN clinlims.notebook_page np ON npar.notebook_page_id = np.id
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Add role restrictions for Post-Test Storage &amp; Archiving page</comment>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="Sample Receiver"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="Bioanalytical Supervisor"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="QA Auditor"/>
+        </insert>
+
+        <insert tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="notebook_page_id"
+                    valueComputed="(SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)"/>
+            <column name="role" value="Reception"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page_allowed_roles" schemaName="clinlims">
+                <where>notebook_page_id = (SELECT np.id FROM clinlims.notebook_page np JOIN clinlims.notebook n ON np.notebook_id = n.id WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5)</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

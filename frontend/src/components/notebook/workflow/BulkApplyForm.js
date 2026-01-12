@@ -29,6 +29,7 @@ import "./NotebookWorkflow.css";
  * @param {Array} props.selectedSampleIds - Array of selected sample IDs
  * @param {function} props.onApplySuccess - Callback when apply succeeds
  * @param {Array} props.fields - Array of field definitions to show in the form
+ * @param {Array} props.formFields - Alternative prop name for fields (for compatibility)
  */
 function BulkApplyForm({
   open,
@@ -36,8 +37,11 @@ function BulkApplyForm({
   pageId,
   selectedSampleIds = [],
   onApplySuccess,
-  fields = defaultFields,
+  fields = null,
+  formFields = null,
 }) {
+  // Support both 'fields' and 'formFields' prop names for flexibility
+  const fieldsToUse = fields || formFields || defaultFields;
   const intl = useIntl();
 
   // Form state
@@ -143,17 +147,19 @@ function BulkApplyForm({
 
   // Render field based on type - no checkboxes, all fields always enabled
   const renderField = (field) => {
-    const value = formValues[field.id];
+    // Support both 'id' and 'key' field identifiers
+    const fieldId = field.id || field.key;
+    const value = formValues[fieldId];
 
     switch (field.type) {
       case "text":
         return (
-          <FormGroup key={field.id} legendText="">
+          <FormGroup key={fieldId} legendText="">
             <TextInput
-              id={field.id}
+              id={fieldId}
               labelText={field.label}
               value={value || ""}
-              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              onChange={(e) => handleFieldChange(fieldId, e.target.value)}
               placeholder={field.placeholder}
             />
           </FormGroup>
@@ -161,13 +167,13 @@ function BulkApplyForm({
 
       case "number":
         return (
-          <FormGroup key={field.id} legendText="">
+          <FormGroup key={fieldId} legendText="">
             <NumberInput
-              id={field.id}
+              id={fieldId}
               label={field.label}
               value={value ?? field.initialValue ?? ""}
-              onChange={(e, { value: numValue }) =>
-                handleFieldChange(field.id, numValue)
+              onChange={({ value: numValue }) =>
+                handleFieldChange(fieldId, numValue)
               }
               min={field.min ?? 0}
               max={field.max ?? 10000}
@@ -179,15 +185,15 @@ function BulkApplyForm({
 
       case "date":
         return (
-          <FormGroup key={field.id} legendText="">
+          <FormGroup key={fieldId} legendText="">
             <DatePicker
               datePickerType="single"
               onChange={([date]) =>
-                handleFieldChange(field.id, date?.toISOString())
+                handleFieldChange(fieldId, date?.toISOString())
               }
             >
               <DatePickerInput
-                id={field.id}
+                id={fieldId}
                 labelText={field.label}
                 placeholder="mm/dd/yyyy"
               />
@@ -197,9 +203,9 @@ function BulkApplyForm({
 
       case "dropdown":
         return (
-          <FormGroup key={field.id} legendText="">
+          <FormGroup key={fieldId} legendText="">
             <Dropdown
-              id={field.id}
+              id={fieldId}
               titleText={field.label}
               label="Select..."
               items={field.options || []}
@@ -208,7 +214,7 @@ function BulkApplyForm({
                 field.options?.find((opt) => opt.id === value) || null
               }
               onChange={({ selectedItem }) =>
-                handleFieldChange(field.id, selectedItem?.id)
+                handleFieldChange(fieldId, selectedItem?.id)
               }
             />
           </FormGroup>
@@ -282,7 +288,7 @@ function BulkApplyForm({
 
         {/* Form fields in a grid layout */}
         <Form className="bulk-apply-fields-grid">
-          {fields.map((field) => renderField(field))}
+          {fieldsToUse.map((field) => renderField(field))}
         </Form>
       </div>
     </Modal>

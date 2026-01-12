@@ -1,0 +1,417 @@
+/* Bioanalytical Workflow Pages */
+
+.bioanalytical-page {
+  padding: 1.5rem;
+  background-color: #f4f4f4;
+}
+
+.page-instructions {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #0f62fe;
+}
+
+.page-instructions h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #161616;
+  font-size: 1.125rem;
+}
+
+.page-instructions p {
+  margin: 0.5rem 0;
+  color: #525252;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.section-header {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.section-header h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #161616;
+  font-size: 1rem;
+}
+
+.section-header p {
+  margin: 0.5rem 0;
+  color: #525252;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Tabs */
+.cds--tabs {
+  background-color: white;
+  padding: 0 1.5rem;
+}
+
+.cds--tab-list {
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.cds--tabs__nav-item {
+  border-bottom: 2px solid transparent;
+  color: #525252;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cds--tabs__nav-item:hover {
+  background-color: #f4f4f4;
+}
+
+.cds--tabs__nav-item--selected {
+  border-bottom-color: #0f62fe;
+  color: #0f62fe;
+  font-weight: 600;
+}
+
+.cds--tab-content {
+  padding: 1.5rem;
+}
+
+/* Tables */
+.cds--data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cds--data-table thead {
+  background-color: #f4f4f4;
+}
+
+.cds--data-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #161616;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.cds--data-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  color: #525252;
+}
+
+.cds--data-table tbody tr:hover {
+  background-color: #f4f4f4;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 1.5rem;
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 4px;
+}
+
+.form-field {
+  margin-bottom: 1rem;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #161616;
+  font-size: 0.875rem;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #8d8d8d;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: #0f62fe;
+  box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.2);
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.success {
+  background-color: #24a148;
+  color: white;
+}
+
+.status-badge.warning {
+  background-color: #f1c21b;
+  color: #161616;
+}
+
+.status-badge.error {
+  background-color: #da1e28;
+  color: white;
+}
+
+.status-badge.info {
+  background-color: #0f62fe;
+  color: white;
+}
+
+/* Notifications */
+.notification {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.notification.success {
+  background-color: #d0e2d4;
+  border-left: 4px solid #24a148;
+  color: #24a148;
+}
+
+.notification.error {
+  background-color: #fdd8d8;
+  border-left: 4px solid #da1e28;
+  color: #da1e28;
+}
+
+.notification.warning {
+  background-color: #fef5e6;
+  border-left: 4px solid #f1c21b;
+  color: #f1c21b;
+}
+
+.notification.info {
+  background-color: #d5e8f7;
+  border-left: 4px solid #0f62fe;
+  color: #0f62fe;
+}
+
+/* Progress */
+.progress-container {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: #0f62fe;
+  transition: width 0.3s ease;
+}
+
+/* Modal */
+.manifest-import-container {
+  padding: 1.5rem;
+}
+
+.step-content {
+  min-height: 300px;
+}
+
+.step-content h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #161616;
+  font-size: 1rem;
+}
+
+.step-content h4 {
+  margin: 1.5rem 0 0.5rem;
+  color: #161616;
+  font-size: 0.9375rem;
+}
+
+.step-content p {
+  color: #525252;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0.5rem 0;
+}
+
+/* File Uploader */
+.cds--file-input {
+  margin-bottom: 1rem;
+}
+
+.cds--file-container {
+  background-color: #f4f4f4;
+  padding: 1.5rem;
+  border: 2px dashed #8d8d8d;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.cds--file-container.dragover {
+  background-color: #e8f4ff;
+  border-color: #0f62fe;
+}
+
+/* Buttons */
+.cds--btn {
+  border-radius: 4px;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cds--btn svg {
+  flex-shrink: 0;
+}
+
+.cds--btn .cds--btn__icon {
+  position: static;
+}
+
+.cds--btn--primary {
+  background-color: #0f62fe;
+  color: white;
+  border: none;
+}
+
+.cds--btn--primary:hover {
+  background-color: #0d51da;
+}
+
+.cds--btn--secondary {
+  background-color: #e0e0e0;
+  color: #161616;
+  border: none;
+}
+
+.cds--btn--secondary:hover {
+  background-color: #c5c5c5;
+}
+
+.cds--btn--ghost {
+  background-color: transparent;
+  color: #0f62fe;
+  border: 1px solid #0f62fe;
+}
+
+.cds--btn--ghost:hover {
+  background-color: #e8f4ff;
+}
+
+.cds--btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Utility */
+.mt-1 {
+  margin-top: 0.5rem;
+}
+.mt-2 {
+  margin-top: 1rem;
+}
+.mt-3 {
+  margin-top: 1.5rem;
+}
+
+.mb-1 {
+  margin-bottom: 0.5rem;
+}
+.mb-2 {
+  margin-bottom: 1rem;
+}
+.mb-3 {
+  margin-bottom: 1.5rem;
+}
+
+.p-1 {
+  padding: 0.5rem;
+}
+.p-2 {
+  padding: 1rem;
+}
+.p-3 {
+  padding: 1.5rem;
+}
+
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+
+.text-muted {
+  color: #525252;
+}
+.text-danger {
+  color: #da1e28;
+}
+.text-success {
+  color: #24a148;
+}
+.text-warning {
+  color: #f1c21b;
+}
+.text-info {
+  color: #0f62fe;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .bioanalytical-page {
+    padding: 1rem;
+  }
+
+  .page-instructions,
+  .section-header {
+    padding: 1rem;
+  }
+
+  .cds--tab-content {
+    padding: 1rem;
+  }
+
+  .form-group {
+    padding: 1rem;
+  }
+
+  .section-header h4 {
+    font-size: 0.9375rem;
+  }
+
+  .step-content h3 {
+    font-size: 0.9375rem;
+  }
+}

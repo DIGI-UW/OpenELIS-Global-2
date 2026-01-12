@@ -398,16 +398,18 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @GetMapping("/devices")
     public ResponseEntity<List<Map<String, Object>>> getDevices(@RequestParam(required = false) String roomId,
-            @RequestParam(required = false) String type, @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String type, @RequestParam(required = false) String status,
+            @RequestParam(required = false) String temperatureSetting) {
         try {
             List<Map<String, Object>> response;
-            if (type != null || roomId != null || status != null) {
+            if (type != null || roomId != null || status != null || temperatureSetting != null) {
                 // Apply filters - service returns Maps with all data resolved
                 StorageDevice.DeviceType deviceType = type != null ? StorageDevice.DeviceType.valueOf(type) : null;
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
                 Boolean activeStatus = status != null && !status.isEmpty() ? ("active".equalsIgnoreCase(status) ? true
                         : "inactive".equalsIgnoreCase(status) ? false : null) : null;
-                response = storageDashboardService.filterDevicesForAPI(deviceType, roomIdInt, activeStatus);
+                java.math.BigDecimal temperatureValue = temperatureSetting != null ? new java.math.BigDecimal(temperatureSetting) : null;
+                response = storageDashboardService.filterDevicesForAPI(deviceType, roomIdInt, activeStatus, temperatureValue);
             } else {
                 // No filters - return all devices
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;

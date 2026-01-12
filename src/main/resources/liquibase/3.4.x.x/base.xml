@@ -78,5 +78,9 @@
     <include file="liquibase/3.4.x.x/041-add-equipment-usage-menu.xml"/>
     <include file="liquibase/3.4.x.x/042-equipment-usage-form-fields.xml"/>
     <include file="liquibase/3.4.x.x/043-lab-environmental-log-table.xml"/>
+    <include file="liquibase/3.4.x.x/044-bioanalytical-workflow-pages.xml"/>
+    <include file="liquibase/3.4.x.x/045-bioanalytical-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/046-bioanalytical-supporting-tables.xml"/>
+    <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles.xml"/>
 
 </databaseChangeLog>

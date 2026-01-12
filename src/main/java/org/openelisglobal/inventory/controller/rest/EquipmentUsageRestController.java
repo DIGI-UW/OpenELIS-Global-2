@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -299,9 +298,10 @@ public class EquipmentUsageRestController extends BaseRestController {
             Map<Long, EquipmentUsageStat> equipmentStats = new HashMap<>();
             usageList.forEach(usage -> {
                 Long itemId = usage.getInventoryItem().getId();
-                EquipmentUsageStat stat = equipmentStats.computeIfAbsent(itemId, k -> EquipmentUsageStat.builder().equipmentId(itemId)
-                        .equipmentName(usage.getInventoryItem().getName()).usageCount(0).totalQuantityUsed(0.0)
-                        .build());
+                EquipmentUsageStat stat = equipmentStats.computeIfAbsent(itemId,
+                        k -> EquipmentUsageStat.builder().equipmentId(itemId)
+                                .equipmentName(usage.getInventoryItem().getName()).usageCount(0).totalQuantityUsed(0.0)
+                                .build());
                 stat.setUsageCount(stat.getUsageCount() + 1);
                 stat.setTotalQuantityUsed(stat.getTotalQuantityUsed() + usage.getQuantityUsed());
             });
