@@ -487,7 +487,7 @@ function OEHeader(props) {
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              height: "100%"
+                              height: "100%",
                             }}
                           >
                             {!notificationsOpen ? (
