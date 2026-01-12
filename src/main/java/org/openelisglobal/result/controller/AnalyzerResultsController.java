@@ -1484,6 +1484,204 @@ public class AnalyzerResultsController extends BaseController {
         return key;
     }
 
+    /**
+     * NEW ENDPOINTS FOR ANALYZER IMPORT REDESIGN
+     * Following SPEC requirements for QC-first workflow
+     */
+
+    /**
+     * Get run settings (analyzer and reagent lots) for the current analyzer type
+     * Endpoint: GET /rest/AnalyzerResults/runSettings?type={analyzerType}
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/runSettings", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getRunSettings(@RequestParam(required = false) String type, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        if (GenericValidator.isBlankOrNull(type)) {
+            return response;
+        }
+
+        String analyzerId = AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(type);
+        
+        // Basic analyzer info
+        response.put("analyzerId", analyzerId);
+        response.put("analyzerName", type);
+        response.put("analyzerStatus", "online"); // TODO: Implement actual status check
+        response.put("analyzerQcStatus", "pass"); // TODO: Implement actual QC status check
+        
+        // Reagent lots - placeholder for now
+        // TODO: Implement actual reagent lot retrieval from inventory
+        List<Map<String, Object>> reagentLots = new ArrayList<>();
+        response.put("reagentLots", reagentLots);
+        
+        return response;
+    }
+
+    /**
+     * Get QC history for analyzer
+     * Endpoint: GET /rest/AnalyzerResults/qcHistory?type={analyzerType}
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/qcHistory", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getQcHistory(@RequestParam(required = false) String type, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        List<Map<String, Object>> history = new ArrayList<>();
+        
+        // TODO: Implement actual QC history retrieval
+        // For now, return empty list
+        
+        response.put("history", history);
+        return response;
+    }
+
+    /**
+     * Get analyzer information
+     * Endpoint: GET /rest/AnalyzerResults/analyzerInfo?type={analyzerType}
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/analyzerInfo", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getAnalyzerInfo(@RequestParam(required = false) String type, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        if (!GenericValidator.isBlankOrNull(type)) {
+            response.put("name", type);
+            response.put("status", "online");
+            response.put("lastCalibration", DateUtil.getCurrentDateAsText());
+        }
+        
+        return response;
+    }
+
+    /**
+     * Get reagent status for analyzer
+     * Endpoint: GET /rest/AnalyzerResults/reagents?type={analyzerType}
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/reagents", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getReagents(@RequestParam(required = false) String type, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        List<Map<String, Object>> reagents = new ArrayList<>();
+        
+        // TODO: Implement actual reagent status retrieval
+        
+        response.put("reagents", reagents);
+        return response;
+    }
+
+    /**
+     * Get detailed information for a specific result (for expandable row)
+     * Endpoint: GET /rest/AnalyzerResults/details?resultId={resultId}
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/details", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
+    @ResponseBody
+    public Map<String, Object> getResultDetails(@RequestParam(required = false) String resultId, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        if (GenericValidator.isBlankOrNull(resultId)) {
+            return response;
+        }
+
+        try {
+            // Fetch previous results for delta check calculation
+            List<Map<String, Object>> history = new ArrayList<>();
+            
+            // TODO: Query actual previous results from database
+            // Result currentResult = resultService.get(resultId);
+            // if (currentResult != null && currentResult.getAnalysis() != null) {
+            //     Analysis analysis = currentResult.getAnalysis();
+            //     SampleItem sampleItem = analysis.getSampleItem();
+            //     Sample sample = sampleItem.getSample();
+            //     
+            //     // Find previous samples for same patient
+            //     if (sample != null) {
+            //         SampleHuman sampleHuman = sampleHumanService.getForSample(sample);
+            //         if (sampleHuman != null && sampleHuman.getPatientId() != null) {
+            //             // Get previous results for same test and patient
+            //             List<Result> previousResults = resultService.getResultsByPatientAndTest(
+            //                 sampleHuman.getPatientId(), 
+            //                 analysis.getTest().getId(),
+            //                 5  // limit to last 5
+            //             );
+            //             
+            //             for (Result prevResult : previousResults) {
+            //                 if (!prevResult.getId().equals(resultId)) {
+            //                     Map<String, Object> histEntry = new HashMap<>();
+            //                     histEntry.put("date", DateUtil.convertTimestampToStringDate(prevResult.getLastupdated()));
+            //                     histEntry.put("value", prevResult.getValue());
+            //                     histEntry.put("unit", analysis.getTest().getUnitOfMeasure());
+            //                     histEntry.put("interpretation", ""); // Add if available
+            //                     history.add(histEntry);
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
+            
+            response.put("history", history);
+
+            // QC linkage data
+            Map<String, Object> qcLinkage = new HashMap<>();
+            qcLinkage.put("runId", "RUN-" + DateUtil.getCurrentDateAsText());
+            qcLinkage.put("status", "pass");
+            qcLinkage.put("controlLevels", List.of("Level 1", "Level 2", "Level 3"));
+            response.put("qcLinkage", qcLinkage);
+
+            // Analyzer info
+            Map<String, Object> analyzer = new HashMap<>();
+            analyzer.put("name", getAnalyzerNameFromRequest());
+            response.put("analyzer", analyzer);
+
+            // Reagents used
+            List<Map<String, Object>> reagents = new ArrayList<>();
+            response.put("reagents", reagents);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+        }
+
+        return response;
+    }
+
+    /**
+     * Get available reagent lots for analyzer (FIFO ordering)
+     * Frontend needs: GET /rest/AnalyzerResults/availableReagentLots?type={type}
+     */
+    @RequestMapping(value = "/availableReagentLots", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> getAvailableReagentLots(@RequestParam(required = false) String type) {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, List<Map<String, Object>>> reagents = new HashMap<>();
+
+        // Mock data - integrate with actual inventory system
+        List<Map<String, Object>> cbcReagents = new ArrayList<>();
+        
+        Map<String, Object> lot1 = new HashMap<>();
+        lot1.put("reagentId", "CBC_REAGENT_1");
+        lot1.put("reagentName", "CBC Reagent Pack");
+        lot1.put("lotNumber", "LOT12345");
+        lot1.put("receivedDate", "2024-01-15");
+        lot1.put("expirationDate", "2024-12-31");
+        lot1.put("fifo", true);
+        lot1.put("isExpiring", false);
+        cbcReagents.add(lot1);
+
+        Map<String, Object> lot2 = new HashMap<>();
+        lot2.put("reagentId", "CBC_REAGENT_1");
+        lot2.put("reagentName", "CBC Reagent Pack");
+        lot2.put("lotNumber", "LOT12346");
+        lot2.put("receivedDate", "2024-02-10");
+        lot2.put("expirationDate", "2025-01-31");
+        lot2.put("fifo", false);
+        lot2.put("isExpiring", false);
+        cbcReagents.add(lot2);
+
+        reagents.put("CBC_REAGENT_1", cbcReagents);
+        response.put("reagents", reagents);
+
+        return response;
+    }
+
     public class SampleGrouping {
         public boolean accepted = true;
         public Sample sample;

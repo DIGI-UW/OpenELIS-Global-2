@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import AnalyserResults from "./AnalyserResults";
+import AnalyzerImportRedesign from "../analyzerResults/AnalyzerImportRedesign";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
@@ -8,13 +8,10 @@ import {
   Grid,
   Column,
   Section,
-  Link,
-  Button,
   Loading,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
@@ -112,65 +109,22 @@ const Index = () => {
       }
     }
   };
+
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>
-            <Section>
-              <Heading>{type}</Heading>
-            </Section>
+            <Heading>{type}</Heading>
           </Section>
         </Column>
       </Grid>
       <div className="orderLegendBody">
         {notificationVisible === true ? <AlertDialog /> : ""}
         {isLoading && <Loading></Loading>}
-        <>
-          {pagination && (
-            <Grid>
-              <Column lg={14} />
-              <Column
-                lg={2}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "10px",
-                  width: "110%",
-                }}
-              >
-                <Link>
-                  {currentApiPage} / {totalApiPages}
-                </Link>
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <Button
-                    hasIconOnly
-                    id="loadpreviousresults"
-                    onClick={loadPreviousResultsPage}
-                    disabled={previousPage != null ? false : true}
-                    renderIcon={ArrowLeft}
-                    iconDescription="previous"
-                  ></Button>
-                  <Button
-                    hasIconOnly
-                    id="loadnextresults"
-                    onClick={loadNextResultsPage}
-                    disabled={nextPage != null ? false : true}
-                    renderIcon={ArrowRight}
-                    iconDescription="next"
-                  ></Button>
-                </div>
-              </Column>
-            </Grid>
-          )}
-        </>
-        <AnalyserResults
-          type={type}
-          results={results}
-          sampleGroup={sampleGroup}
-        />
+        
+        <AnalyzerImportRedesign analyzerType={type} />
       </div>
     </>
   );

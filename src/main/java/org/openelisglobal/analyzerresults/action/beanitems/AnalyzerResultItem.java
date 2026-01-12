@@ -16,7 +16,10 @@ package org.openelisglobal.analyzerresults.action.beanitems;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.result.form.AnalyzerResultsForm;
@@ -92,6 +95,15 @@ public class AnalyzerResultItem implements Serializable {
     private String selectionTwoValue = "";
     private boolean nonconforming = false;
     private String significantDigits = "";
+
+    // QC-related fields for redesigned UI
+    private String qcStatus = "none"; // "pass", "fail", "none"
+    private String normalRange = "";
+    private List<String> flags = new ArrayList<>();
+    private Map<String, Object> interpretation;
+    private Map<String, Object> deltaCheck;
+    private Map<String, Object> previousResult;
+    private String patientName = "";
 
     public String getSignificantDigits() {
         return significantDigits;
@@ -392,5 +404,62 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
+    }
+
+    // Getters and setters for QC-related fields
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
+    }
+
+    public String getNormalRange() {
+        return normalRange;
+    }
+
+    public void setNormalRange(String normalRange) {
+        this.normalRange = normalRange;
+    }
+
+    public List<String> getFlags() {
+        return flags;
+    }
+
+    public void setFlags(List<String> flags) {
+        this.flags = flags;
+    }
+
+    public Map<String, Object> getInterpretation() {
+        return interpretation;
+    }
+
+    public void setInterpretation(Map<String, Object> interpretation) {
+        this.interpretation = interpretation;
+    }
+
+    public Map<String, Object> getDeltaCheck() {
+        return deltaCheck;
+    }
+
+    public void setDeltaCheck(Map<String, Object> deltaCheck) {
+        this.deltaCheck = deltaCheck;
+    }
+
+    public Map<String, Object> getPreviousResult() {
+        return previousResult;
+    }
+
+    public void setPreviousResult(Map<String, Object> previousResult) {
+        this.previousResult = previousResult;
+    }
+
+    public String getPatientName() {
+        return patientName;
+    }
+
+    public void setPatientName(String patientName) {
+        this.patientName = patientName;
     }
 }
