@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Implementation of bulk operations for notebook page samples. Processes
  * operations in batches of 50 to prevent timeout.
  *
+ * <p>
  * Per FR-033: System MUST process bulk operations in batches of 50.
  */
 @Service
@@ -50,7 +51,11 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     @Override
     @Transactional
     public int bulkApplyValues(Integer pageId, List<Integer> sampleIds, Map<String, Object> data, String userId) {
+        LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
+                "Called with pageId=" + pageId + ", sampleIds=" + sampleIds + ", data keys=" + data.keySet());
+
         if (sampleIds == null || sampleIds.isEmpty() || data == null || data.isEmpty()) {
+            LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues", "Empty sampleIds or data, returning 0");
             return 0;
         }
 
@@ -76,6 +81,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             List<Integer> batch = sampleIds.subList(i, endIndex);
 
             for (Integer sampleId : batch) {
+                LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
+                        "Looking up pageId=" + pageId + ", sampleItemId=" + sampleId);
                 NotebookPageSample nps = notebookPageSampleService.getByPageIdAndSampleItemId(pageId, sampleId);
                 if (nps == null) {
                     // Sample doesn't have a NotebookPageSample record for this page yet
@@ -120,6 +127,8 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
             }
         }
 
+        LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
+                "Completed. Total updated: " + updatedCount + " of " + sampleIds.size());
         return updatedCount;
     }
 

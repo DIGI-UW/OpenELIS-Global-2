@@ -5,9 +5,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.notebook.valueholder.SampleRouting;
 import org.openelisglobal.notebook.valueholder.SampleRouting.DestinationType;
 
-/**
- * DAO interface for SampleRouting entity operations.
- */
+/** DAO interface for SampleRouting entity operations. */
 public interface SampleRoutingDAO extends BaseDAO<SampleRouting, Integer> {
 
     /**

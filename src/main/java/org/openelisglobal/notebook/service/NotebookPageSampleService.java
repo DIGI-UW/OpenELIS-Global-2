@@ -169,9 +169,7 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
      */
     NotebookPageSample getBySampleItemIdAndPageId(String sampleItemId, Integer pageId);
 
-    /**
-     * Progress information for a notebook page.
-     */
+    /** Progress information for a notebook page. */
     record PageProgress(int total, int pending, int inProgress, int completed, int skipped, double percentage) {
     }
 

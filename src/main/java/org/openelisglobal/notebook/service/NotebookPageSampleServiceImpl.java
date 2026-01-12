@@ -1,5 +1,7 @@
 package org.openelisglobal.notebook.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +32,9 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         implements NotebookPageSampleService {
 
     private static final int BATCH_SIZE = 50;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private NotebookPageSampleDAO baseObjectDAO;
@@ -425,28 +430,51 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Override
     @Transactional
     public void createPageSamplesForNotebook(Integer notebookId, Integer sampleItemId) {
+        LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                "START: notebookId=" + notebookId + ", sampleItemId=" + sampleItemId);
+
         NoteBook notebook;
         try {
             notebook = noteBookService.get(notebookId);
+            LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "Notebook retrieved: " + (notebook != null ? notebook.getId() : "null"));
         } catch (org.hibernate.ObjectNotFoundException e) {
+            LogEvent.logError("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "Notebook ObjectNotFoundException: " + notebookId + " - " + e.getMessage());
             throw new IllegalArgumentException("Notebook not found: " + notebookId, e);
+        } catch (Exception e) {
+            LogEvent.logError("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "Unexpected exception getting notebook: " + e.getClass().getName() + " - " + e.getMessage());
+            throw e;
         }
+
         if (notebook == null) {
+            LogEvent.logError("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "Notebook is null for ID: " + notebookId);
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
 
         SampleItem sampleItem = sampleItemService.get(sampleItemId.toString());
         if (sampleItem == null) {
+            LogEvent.logError("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "SampleItem not found: " + sampleItemId);
             throw new IllegalArgumentException("SampleItem not found: " + sampleItemId);
         }
+        LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                "SampleItem retrieved: " + sampleItemId);
 
         // Initialize lazy-loaded pages collection
         org.hibernate.Hibernate.initialize(notebook.getPages());
 
         List<NoteBookPage> pages = notebook.getPages();
         if (pages == null || pages.isEmpty()) {
+            LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "Notebook has no pages, skipping: notebookId=" + notebookId);
             return;
         }
+
+        LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                "Notebook has " + pages.size() + " pages");
 
         // T150: Only create NotebookPageSample for the FIRST page (Page 1 - Reception)
         // Samples will be auto-created on subsequent pages when completed on previous
@@ -454,17 +482,40 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
         // Find the first page by order
         NoteBookPage firstPage = pages.stream().filter(p -> p.getOrder() != null)
                 .min((p1, p2) -> p1.getOrder().compareTo(p2.getOrder())).orElse(pages.get(0)); // Fallback to first in
-                                                                                               // list if no order set
+        // list if no order set
+
+        LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                "First page ID: " + firstPage.getId() + ", order: " + firstPage.getOrder());
 
         // Check if page sample already exists on first page
         NotebookPageSample existing = getByPageIdAndSampleItemId(firstPage.getId(), sampleItemId);
         if (existing == null) {
+            LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "Creating new NotebookPageSample for pageId=" + firstPage.getId() + ", sampleItemId="
+                            + sampleItemId);
             NotebookPageSample nps = new NotebookPageSample();
             nps.setNotebookPage(firstPage);
             nps.setSampleItemId(sampleItem.getId());
             nps.setStatus(Status.PENDING);
-            insert(nps);
+            try {
+                insert(nps);
+                // Force flush to prevent Hibernate batching issues with duplicate inserts
+                // This ensures subsequent queries can see the newly inserted record
+                entityManager.flush();
+                LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                        "Successfully inserted and flushed NotebookPageSample");
+            } catch (Exception e) {
+                LogEvent.logError("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                        "Error inserting NotebookPageSample: " + e.getClass().getName() + " - " + e.getMessage());
+                throw e;
+            }
+        } else {
+            LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                    "NotebookPageSample already exists, skipping");
         }
+
+        LogEvent.logInfo("NotebookPageSampleServiceImpl", "createPageSamplesForNotebook",
+                "END: notebookId=" + notebookId + ", sampleItemId=" + sampleItemId);
     }
 
     @Override

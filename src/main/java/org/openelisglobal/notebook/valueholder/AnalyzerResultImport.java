@@ -78,35 +78,25 @@ public class AnalyzerResultImport extends BaseObject<Integer> {
     @Column(name = "error_details", columnDefinition = "jsonb")
     private String errorDetailsJson;
 
-    /**
-     * Unique identifier for the assay run (per workflow requirements).
-     */
+    /** Unique identifier for the assay run (per workflow requirements). */
     @Column(name = "assay_run_id", length = 100)
     private String assayRunId;
 
-    /**
-     * Operator who performed the assay (may differ from importer).
-     */
+    /** Operator who performed the assay (may differ from importer). */
     @Column(name = "operator_id", length = 100)
     private String operatorId;
 
-    /**
-     * Machine/instrument parameters as key-value pairs (stored as JSON string).
-     */
+    /** Machine/instrument parameters as key-value pairs (stored as JSON string). */
     @Type(type = "jsonb")
     @Column(name = "machine_parameters", columnDefinition = "jsonb")
     private String machineParametersJson;
 
-    /**
-     * Reagent lot numbers used in the assay (stored as JSON string).
-     */
+    /** Reagent lot numbers used in the assay (stored as JSON string). */
     @Type(type = "jsonb")
     @Column(name = "reagent_lots", columnDefinition = "jsonb")
     private String reagentLotsJson;
 
-    /**
-     * File format of the imported file (CSV, XLSX, XLS).
-     */
+    /** File format of the imported file (CSV, XLSX, XLS). */
     @Column(name = "file_format", length = 20)
     private String fileFormat;
 
@@ -341,16 +331,12 @@ public class AnalyzerResultImport extends BaseObject<Integer> {
         this.fileFormat = fileFormat;
     }
 
-    /**
-     * Returns true if all rows were imported successfully.
-     */
+    /** Returns true if all rows were imported successfully. */
     public boolean isFullySuccessful() {
         return failedRows != null && failedRows == 0;
     }
 
-    /**
-     * Returns the success rate as a percentage.
-     */
+    /** Returns the success rate as a percentage. */
     public double getSuccessRate() {
         if (totalRows == null || totalRows == 0) {
             return 0.0;

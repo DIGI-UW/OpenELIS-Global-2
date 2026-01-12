@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- MEDLAB WORKFLOW PAGE TEMPLATES -->
+    <!-- 16-page workflow for complete medical laboratory process -->
+    <!-- From patient registration through disposal/archiving -->
+    <!-- ======================================================== -->
+
+    <!-- Sync sequence with max existing ID to avoid conflicts with explicit IDs -->
+    <changeSet id="sync-workflow-page-template-seq" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure sequence is past any explicitly inserted IDs</comment>
+        <sql>
+            SELECT setval('clinlims.workflow_page_template_seq',
+                COALESCE((SELECT MAX(id) FROM clinlims.workflow_page_template), 0) + 1,
+                false);
+        </sql>
+    </changeSet>
+
+    <changeSet id="insert-medlab-workflow-page-templates" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Insert predefined medical laboratory workflow page templates (16 pages)</comment>
+
+        <!-- Page 1: Patient & Lab Order -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Patient &amp; Lab Order"/>
+            <column name="display_key" value="workflow.page.patientLabOrder"/>
+            <column name="description" value="Register patient and create lab order"/>
+            <column name="default_instructions" value="Register patient with demographic data (name, sex, age, contact). Create lab order selecting required tests (CBC, Chemistry, etc.). Link existing patient if already registered."/>
+            <column name="default_content" value="Patient Registration and Lab Order Entry"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 2: Sample Collection -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Sample Collection"/>
+            <column name="display_key" value="workflow.page.sampleCollection"/>
+            <column name="description" value="Record specimen collection details"/>
+            <column name="default_instructions" value="Collect specimens from patient. Record container type (EDTA vacutainer, plain tube, etc.), apply barcode label, record collector ID and collection time. Support multiple sample types per order."/>
+            <column name="default_content" value="Sample Collection - Phlebotomy and specimen labeling"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 3: Sample Reception -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Sample Reception"/>
+            <column name="display_key" value="workflow.page.sampleReception"/>
+            <column name="description" value="Receive samples at laboratory"/>
+            <column name="default_instructions" value="Scan sample barcode to retrieve details. Verify sample matches order. Check transport conditions. Accept samples that pass initial inspection."/>
+            <column name="default_content" value="Sample Reception - Barcode scan and order verification"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 4: Quality Control -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Quality Control"/>
+            <column name="display_key" value="workflow.page.qualityControl"/>
+            <column name="description" value="Sample-type-specific QC checks"/>
+            <column name="default_instructions" value="Perform sample-type-specific quality checks. Chemistry: check hemolysis, lipemia, icterus, volume. Hematology: check clotting, anticoagulant, delay. Record pass/fail with rejection reasons if applicable."/>
+            <column name="default_content" value="Quality Control - Sample acceptance criteria validation"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 5: Transport Packaging (P2) -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Transport Packaging"/>
+            <column name="display_key" value="workflow.page.transportPackaging"/>
+            <column name="description" value="IATA PI650 packaging compliance"/>
+            <column name="default_instructions" value="Document transport packaging compliance per IATA PI650. Check primary container (seal, barcode, absorbent), secondary packaging (integrity, watertight), tertiary packaging (labeling, temperature logger). Record compliance status."/>
+            <column name="default_content" value="Transport Packaging - IATA PI650 compliance documentation"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 6: Sample Allocation -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Sample Allocation"/>
+            <column name="display_key" value="workflow.page.sampleAllocation"/>
+            <column name="description" value="Route samples to departments"/>
+            <column name="default_instructions" value="Route samples to appropriate departments based on ordered tests. Assign priority (STAT/Routine). Create department worklists. Track allocation status."/>
+            <column name="default_content" value="Sample Allocation - Department routing and worklist generation"/>
+            <column name="page_type" value="BRANCHING"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 7: Sample Processing -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Sample Processing"/>
+            <column name="display_key" value="workflow.page.sampleProcessing"/>
+            <column name="description" value="Department-specific processing"/>
+            <column name="default_instructions" value="Perform department-specific processing. Hematology: prepare smears, staining. Chemistry: centrifugation, serum separation. Microbiology: inoculation, culture setup. Create aliquots as needed."/>
+            <column name="default_content" value="Sample Processing - Centrifugation, smears, staining, aliquots"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 8: Storage Assignment -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Storage Assignment"/>
+            <column name="display_key" value="workflow.page.storageAssignment"/>
+            <column name="description" value="Assign samples to storage locations"/>
+            <column name="default_instructions" value="Assign samples to storage locations using hierarchical selector (Room > Device > Rack > Box > Position). Record storage temperature requirements. Support barcode scanning for rapid assignment."/>
+            <column name="default_content" value="Storage Assignment - Hierarchical location assignment"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="8"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 9: Environmental Monitoring -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Environmental Monitoring"/>
+            <column name="display_key" value="workflow.page.environmentalMonitoring"/>
+            <column name="description" value="Temperature and storage monitoring"/>
+            <column name="default_instructions" value="Record AM/PM temperature readings for storage locations. Flag excursions outside acceptable range. Document corrective actions for any excursions."/>
+            <column name="default_content" value="Environmental Monitoring - Temperature logging and alerts"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="9"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 10: Testing -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Testing"/>
+            <column name="display_key" value="workflow.page.testing"/>
+            <column name="description" value="Instrument worklist and result import"/>
+            <column name="default_instructions" value="Generate analyzer worklists. Import results from instruments via CSV/HL7. Match results to samples by well position or sample ID. Flag abnormal values automatically."/>
+            <column name="default_content" value="Testing - Instrument interfacing and result import"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="10"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 11: QC Dashboard -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="QC Dashboard"/>
+            <column name="display_key" value="workflow.page.qcDashboard"/>
+            <column name="description" value="Levey-Jennings charts and Westgard rules"/>
+            <column name="default_instructions" value="Review QC results on Levey-Jennings charts. Monitor for Westgard rule violations (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10x). Enter corrective actions for failures. Track dual-level QC (Normal/Pathologic)."/>
+            <column name="default_content" value="QC Dashboard - Levey-Jennings charting and rule monitoring"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="11"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 12: Result Entry -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Result Entry"/>
+            <column name="display_key" value="workflow.page.resultEntry"/>
+            <column name="description" value="Manual and automated result entry"/>
+            <column name="default_instructions" value="Enter test results manually or review auto-imported results. System auto-flags H/L/C based on reference ranges. Add result comments where needed."/>
+            <column name="default_content" value="Result Entry - Manual entry and result flagging"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="12"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 13: Result Validation -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Result Validation"/>
+            <column name="display_key" value="workflow.page.resultValidation"/>
+            <column name="description" value="Technical and clinical approval"/>
+            <column name="default_instructions" value="Review results for technical accuracy. Apply 2-level approval workflow (Technician > Supervisor). Request retest if needed. Document approval with electronic signature."/>
+            <column name="default_content" value="Result Validation - Two-level approval workflow"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="13"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 14: Reporting -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Reporting"/>
+            <column name="display_key" value="workflow.page.reporting"/>
+            <column name="description" value="Generate and distribute reports"/>
+            <column name="default_instructions" value="Generate patient reports with validated results. Print or export to PDF. Track turnaround time metrics. Support electronic delivery to ordering provider."/>
+            <column name="default_content" value="Reporting - Report generation and distribution"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="14"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 15: Sample Tracking -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Sample Tracking"/>
+            <column name="display_key" value="workflow.page.sampleTracking"/>
+            <column name="description" value="Real-time sample location and status"/>
+            <column name="default_instructions" value="Track sample location and status in real-time. View complete chain of custody. Search samples by accession number, patient, or barcode. Monitor sample journey through workflow."/>
+            <column name="default_content" value="Sample Tracking - Chain of custody and location tracking"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="15"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <!-- Page 16: Disposal & Archiving -->
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Disposal &amp; Archiving"/>
+            <column name="display_key" value="workflow.page.disposalArchiving"/>
+            <column name="description" value="Sample disposal and biorepository transfer"/>
+            <column name="default_instructions" value="Document sample disposal with method, facility, date, and operator. Support transfer to biorepository for long-term storage. Verify regulatory compliance. Complete audit trail."/>
+            <column name="default_content" value="Disposal and Archiving - Compliant disposal and biorepository transfer"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="16"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MEDLAB"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MEDLAB'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add MEDLAB to notebook type dictionary if not exists -->
+    <changeSet id="add-medlab-notebook-type" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.dictionary d
+                JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
+                WHERE dc.local_abbrev = 'noteBookType' AND d.dict_entry = 'MEDLAB'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add MEDLAB notebook type to dictionary</comment>
+        <sql>
+            INSERT INTO clinlims.dictionary (id, is_active, dict_entry, dictionary_category_id, sort_order, lastupdated)
+            SELECT nextval('clinlims.dictionary_seq'), 'Y', 'MEDLAB',
+                   (SELECT id FROM clinlims.dictionary_category WHERE local_abbrev = 'noteBookType'),
+                   (SELECT COALESCE(MAX(sort_order), 0) + 10 FROM clinlims.dictionary d
+                    JOIN clinlims.dictionary_category dc ON d.dictionary_category_id = dc.id
+                    WHERE dc.local_abbrev = 'noteBookType'),
+                   NOW()
+            WHERE EXISTS (SELECT 1 FROM clinlims.dictionary_category WHERE local_abbrev = 'noteBookType');
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.dictionary
+                WHERE dict_entry = 'MEDLAB'
+                AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE local_abbrev = 'noteBookType');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

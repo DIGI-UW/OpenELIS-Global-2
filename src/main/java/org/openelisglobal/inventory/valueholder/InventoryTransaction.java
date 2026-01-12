@@ -72,16 +72,12 @@ public class InventoryTransaction extends BaseObject<Long> {
     @NotNull
     private Integer performedByUser;
 
-    /**
-     * Check if this is a consumption transaction (negative quantity change)
-     */
+    /** Check if this is a consumption transaction (negative quantity change) */
     public boolean isConsumption() {
         return transactionType == TransactionType.CONSUMPTION && quantityChange < 0;
     }
 
-    /**
-     * Check if this is a receipt transaction (positive quantity change)
-     */
+    /** Check if this is a receipt transaction (positive quantity change) */
     public boolean isReceipt() {
         return transactionType == TransactionType.RECEIPT && quantityChange > 0;
     }

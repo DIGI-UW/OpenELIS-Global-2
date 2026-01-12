@@ -1,11 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   Modal,
   FileUploaderDropContainer,
   FileUploaderItem,
   Select,
   SelectItem,
-  Button,
   InlineNotification,
   DataTable,
   Table,
@@ -19,10 +18,7 @@ import {
 } from "@carbon/react";
 import { Upload, Warning, Checkmark } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import {
-  postToOpenElisServerFormData,
-  getFromOpenElisServer,
-} from "../../utils/Utils";
+import { postToOpenElisServerFormData } from "../../utils/Utils";
 import config from "../../../config.json";
 import "../workflow/NotebookWorkflow.css";
 
@@ -37,6 +33,15 @@ import "../workflow/NotebookWorkflow.css";
  */
 function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
   const intl = useIntl();
+  const componentMounted = useRef(true);
+
+  // Track component mount state
+  useEffect(() => {
+    componentMounted.current = true;
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
 
   // State for file upload
   const [file, setFile] = useState(null);
@@ -60,7 +65,7 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Steps: 1 = Upload, 2 = Map Columns, 3 = Preview, 4 = Import
+  // Steps: 1 = Upload, 2 = Map Columns, 3 = Preview, 4 = Success
   const [step, setStep] = useState(1);
 
   const handleFileAdded = useCallback(
@@ -85,6 +90,7 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       // Parse headers from file
       const reader = new FileReader();
       reader.onload = (e) => {
+        if (!componentMounted.current) return;
         const text = e.target.result;
         const firstLine = text.split("\n")[0];
         const headers = firstLine
@@ -201,7 +207,9 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
     formData.append("file", file);
     formData.append(
       "mapping",
-      new Blob([JSON.stringify(columnMapping)], { type: "application/json" }),
+      new Blob([JSON.stringify(columnMapping)], {
+        type: "application/json",
+      }),
     );
 
     const endpoint = `${config.serverBaseUrl}/rest/notebook/entry/${entryId}/samples/create-from-manifest`;
@@ -219,7 +227,7 @@ function ManifestImportModal({ open, onClose, entryId, onImportSuccess }) {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setStep(4);
+        setStep(4); // Go to success step
         if (onImportSuccess) {
           onImportSuccess(data);
         }

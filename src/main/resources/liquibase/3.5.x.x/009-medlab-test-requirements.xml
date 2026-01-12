@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- MEDLAB_TEST_REQUIREMENTS TABLE -->
+    <!-- Configuration table linking tests to sample requirements -->
+    <!-- Drives order-driven architecture (FR-006, FR-007) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-medlab-test-requirements-sequence" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="medlab_test_requirements_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for medlab_test_requirements table.</comment>
+        <createSequence sequenceName="medlab_test_requirements_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-medlab-test-requirements-table" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="medlab_test_requirements" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating MEDLAB_TEST_REQUIREMENTS configuration table for order-driven sample collection requirements.</comment>
+        <createTable tableName="medlab_test_requirements">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="medlab_test_requirements_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_medlab_test_requirements"/>
+            </column>
+            <column name="test_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type_of_sample_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="container_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="volume_required_ml" type="DECIMAL(5,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="handling_requirements" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="storage_temperature" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_delay_minutes" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="department_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Foreign key to test table -->
+    <changeSet id="add-medlab-test-requirements-test-fk" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="medlab_test_requirements" schemaName="clinlims"/>
+            <tableExists tableName="test" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_medlab_test_req_test" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_medlab_test_req_test"
+            baseTableName="medlab_test_requirements"
+            baseColumnNames="test_id"
+            referencedTableName="test"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Foreign key to type_of_sample table -->
+    <changeSet id="add-medlab-test-requirements-sample-type-fk" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="medlab_test_requirements" schemaName="clinlims"/>
+            <tableExists tableName="type_of_sample" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_medlab_test_req_sample_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_medlab_test_req_sample_type"
+            baseTableName="medlab_test_requirements"
+            baseColumnNames="type_of_sample_id"
+            referencedTableName="type_of_sample"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Unique constraint: one requirement per test + sample type combination -->
+    <changeSet id="add-medlab-test-requirements-unique-constraint" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="medlab_test_requirements" schemaName="clinlims"/>
+            <not>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM pg_constraint WHERE conname = 'uq_medlab_test_sample_type'
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <addUniqueConstraint
+            constraintName="uq_medlab_test_sample_type"
+            tableName="medlab_test_requirements"
+            columnNames="test_id, type_of_sample_id"/>
+    </changeSet>
+
+    <!-- Index for efficient lookups by test -->
+    <changeSet id="add-medlab-test-requirements-test-index" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="medlab_test_requirements" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_medlab_test_req_test" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_medlab_test_req_test" tableName="medlab_test_requirements">
+            <column name="test_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

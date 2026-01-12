@@ -6,9 +6,7 @@ import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.notebook.valueholder.AnalyzerResultImport;
 import org.springframework.stereotype.Component;
 
-/**
- * DAO implementation for AnalyzerResultImport entity operations.
- */
+/** DAO implementation for AnalyzerResultImport entity operations. */
 @Component
 public class AnalyzerResultImportDAOImpl extends BaseDAOImpl<AnalyzerResultImport, Integer>
         implements AnalyzerResultImportDAO {

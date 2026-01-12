@@ -4,9 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.notebook.valueholder.AnalyzerResultImport;
 
-/**
- * DAO interface for AnalyzerResultImport entity operations.
- */
+/** DAO interface for AnalyzerResultImport entity operations. */
 public interface AnalyzerResultImportDAO extends BaseDAO<AnalyzerResultImport, Integer> {
 
     /**

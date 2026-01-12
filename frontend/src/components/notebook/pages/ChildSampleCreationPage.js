@@ -36,14 +36,12 @@ import "../workflow/NotebookWorkflow.css";
  *
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
- * @param {number} props.notebookId - The notebook ID (used for API calls)
  * @param {Object} props.pageData - The notebook page data
  * @param {Object} props.progress - Page progress
  * @param {function} props.onProgressUpdate - Callback when progress changes
  */
 function ChildSampleCreationPage({
   entryId,
-  notebookId,
   pageData,
   progress,
   onProgressUpdate,
@@ -147,16 +145,11 @@ function ChildSampleCreationPage({
   const handleCreateChildren = useCallback(() => {
     if (selectedParentIds.length === 0 || !hasRealPageId) return;
 
-    if (!notebookId) {
-      setError("Notebook ID is required to create child samples.");
-      return;
-    }
-
     setCreating(true);
     setError(null);
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${notebookId}/samples/create-children`,
+      `/rest/notebook/${entryId}/samples/create-children`,
       JSON.stringify({
         parentSampleIds: selectedParentIds.map((id) => parseInt(id, 10)),
         childCountPerParent: childCount,
@@ -184,10 +177,9 @@ function ChildSampleCreationPage({
   }, [
     selectedParentIds,
     hasRealPageId,
-    notebookId,
+    entryId,
     childCount,
     externalIdPrefix,
-    pageData?.id,
     loadPageSamples,
     onProgressUpdate,
   ]);

@@ -232,11 +232,6 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         if (StringUtils.isEmpty(override)) {
             override = "false";
         }
-        // correct incorrect formatting of specimen number
-        if (labNo.contains("-") && !labNo.contains(".")) {
-            labNo = labNo.replace('-', '.');
-        }
-
         // For generic sample labels, skip validation and use custom label generation
         if ("generic".equals(type)) {
             printGenericSampleLabel(request, response, labNo, sampleType, sampleQuantity, from, quantity);
@@ -314,31 +309,43 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type) && !"blank".equals(type)) {
             errors.reject("barcode.label.error.type.invalid", "barcode.label.error.type.invalid");
         }
-        // Validate "labNo" (either labNo, labNo.itemNo)
-        boolean validateAccessionNumber = ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(Property.ACCESSION_NUMBER_VALIDATE, "true");
-        if (validateAccessionNumber) {
-            IAccessionNumberValidator accessionNumberValidator = AccessionNumberUtil
-                    .getGeneralAccessionNumberValidator();
-            String accessionNumber;
-            // String sampleItemNumber;
-            if (labNo.indexOf(".") > 0) {
-                accessionNumber = labNo.substring(0, labNo.indexOf("."));
-                // sampleItemNumber = labNo.substring(labNo.indexOf(".") + 1);
-            } else {
-                accessionNumber = labNo;
-                // sampleItemNumber = "0";
+
+        // For specimen type, skip strict format validation
+        // This allows samples with various formats (including hyphens) to generate
+        // barcodes
+        if ("specimen".equals(type)) {
+            // Only verify sample exists in database
+            SampleService sampleService = SpringContext.getBean(SampleService.class);
+            if (sampleService.getSampleByAccessionNumber(labNo) == null) {
+                errors.reject("barcode.label.error.accession.nosample", "barcode.label.error.accession.nosample");
             }
-            if (!(IAccessionNumberValidator.ValidationResults.SUCCESS == accessionNumberValidator
-                    .validFormat(accessionNumber, false))) {
+        } else {
+            // For other types (order, default, blank), perform strict format validation
+            boolean validateAccessionNumber = ConfigurationProperties.getInstance()
+                    .isPropertyValueEqual(Property.ACCESSION_NUMBER_VALIDATE, "true");
+            if (validateAccessionNumber) {
+                IAccessionNumberValidator accessionNumberValidator = AccessionNumberUtil
+                        .getGeneralAccessionNumberValidator();
+                String accessionNumber;
+                // String sampleItemNumber;
+                if (labNo.indexOf(".") > 0) {
+                    accessionNumber = labNo.substring(0, labNo.indexOf("."));
+                    // sampleItemNumber = labNo.substring(labNo.indexOf(".") + 1);
+                } else {
+                    accessionNumber = labNo;
+                    // sampleItemNumber = "0";
+                }
+                if (!(IAccessionNumberValidator.ValidationResults.SUCCESS == accessionNumberValidator
+                        .validFormat(accessionNumber, false))) {
+                    errors.reject("barcode.label.error.accession.invalid", "barcode.label.error.accession.invalid");
+                }
+            } else if (AccessionNumberUtil.containsBlackListCharacters(labNo)) {
                 errors.reject("barcode.label.error.accession.invalid", "barcode.label.error.accession.invalid");
             }
-        } else if (AccessionNumberUtil.containsBlackListCharacters(labNo)) {
-            errors.reject("barcode.label.error.accession.invalid", "barcode.label.error.accession.invalid");
-        }
-        SampleService sampleService = SpringContext.getBean(SampleService.class);
-        if (sampleService.getSampleByAccessionNumber(labNo) == null) {
-            errors.reject("barcode.label.error.accession.nosample", "barcode.label.error.accession.nosample");
+            SampleService sampleService = SpringContext.getBean(SampleService.class);
+            if (sampleService.getSampleByAccessionNumber(labNo) == null) {
+                errors.reject("barcode.label.error.accession.nosample", "barcode.label.error.accession.nosample");
+            }
         }
         // validate override
         if (!GenericValidator.isBool(override)
