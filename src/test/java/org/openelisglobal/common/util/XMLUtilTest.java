@@ -90,9 +90,9 @@ public class XMLUtilTest {
         assertEquals("", XMLUtil.createAttributeKeyValue("key", ""));
     }
 
-    @Test(expected = NullPointerException.class)
-    public void testCreateAttributeKeyValue_Null_BugDocumentation() {
-        XMLUtil.createAttributeKeyValue("key", null);
+    @Test
+    public void testCreateAttributeKeyValue_Null() {
+        assertEquals("", XMLUtil.createAttributeKeyValue("key", null));
     }
 
     @Test

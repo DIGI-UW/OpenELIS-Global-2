@@ -45,21 +45,19 @@ public class XMLUtil {
     }
 
     public static String createAttributeKeyValue(String key, String value) {
-        if (value == null) {
-            // test documents this bug and expects a NullPointerException
-            throw new NullPointerException("Attribute value is null");
+        if (GenericValidator.isBlankOrNull(value)) {
+            return "";
         }
-        StringBuilder xml = new StringBuilder((key == null ? 0 : key.length()) + value.length() + 10);
-        if (!GenericValidator.isBlankOrNull(value)) {
-            value = value.trim();
 
-            if (value.length() > 0) {
-                xml.append(makeAttributeName(key));
-                xml.append("=\"");
-                xml.append(Encode.forXmlAttribute(value));
-                xml.append("\" ");
-            }
-        }
+        value = value.trim();
+
+        StringBuilder xml = new StringBuilder((key == null ? 0 : key.length()) + value.length() + 10);
+
+        xml.append(makeAttributeName(key));
+        xml.append("=\"");
+        xml.append(Encode.forXmlAttribute(value));
+        xml.append("\" ");
+
         return xml.toString();
     }
 

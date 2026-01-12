@@ -22,7 +22,7 @@ public class IntegerUtil {
             v = -(long) value;
         }
 
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(7);
         while (v > 0) {
             int d = (int) (v % 27L);
             sb.append(base27Characters[d]);
@@ -88,9 +88,8 @@ public class IntegerUtil {
 
     // Linear search over a tiny alphabet (O(27)) — acceptable for most uses.
     private static int searchBase27Characters(char c) {
-        char up = Character.toUpperCase(c);
         for (int i = 0; i < base27Characters.length; i++) {
-            if (base27Characters[i] == up) {
+            if (base27Characters[i] == c) {
                 return i;
             }
         }
