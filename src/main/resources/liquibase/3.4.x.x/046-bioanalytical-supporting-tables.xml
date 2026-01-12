@@ -151,18 +151,18 @@
     </changeSet>
 
     <!-- ======================================================== -->
-    <!-- TABLE: qc_result -->
+    <!-- TABLE: bioanalytical_qc_result -->
     <!-- Purpose: Track QC sample results (Low, Medium, High) for each batch -->
     <!-- ======================================================== -->
-    <changeSet id="create-qc-result-table" author="openelis-bioanalytical">
+    <changeSet id="create-bioanalytical-qc-result-table" author="openelis-bioanalytical">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="qc_result" schemaName="clinlims"/>
+                <tableExists tableName="bioanalytical_qc_result" schemaName="clinlims"/>
             </not>
         </preConditions>
-        <comment>Create qc_result table for QC sample tracking and trending</comment>
+        <comment>Create bioanalytical_qc_result table for QC sample tracking and trending</comment>
 
-        <createTable tableName="qc_result" schemaName="clinlims">
+        <createTable tableName="bioanalytical_qc_result" schemaName="clinlims">
             <column name="id" type="BIGSERIAL">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
@@ -207,20 +207,20 @@
             </column>
         </createTable>
 
-        <createSequence sequenceName="qc_result_seq" schemaName="clinlims" startValue="1"/>
-        <createIndex indexName="idx_qcr_notebook_entry" schemaName="clinlims" tableName="qc_result">
+        <createSequence sequenceName="bioanalytical_qc_result_seq" schemaName="clinlims" startValue="1"/>
+        <createIndex indexName="idx_bioanalytical_qcr_notebook_entry" schemaName="clinlims" tableName="bioanalytical_qc_result">
             <column name="notebook_entry_id"/>
         </createIndex>
-        <createIndex indexName="idx_qcr_instrument" schemaName="clinlims" tableName="qc_result">
+        <createIndex indexName="idx_bioanalytical_qcr_instrument" schemaName="clinlims" tableName="bioanalytical_qc_result">
             <column name="instrument_id"/>
         </createIndex>
-        <createIndex indexName="idx_qcr_batch_run" schemaName="clinlims" tableName="qc_result">
+        <createIndex indexName="idx_bioanalytical_qcr_batch_run" schemaName="clinlims" tableName="bioanalytical_qc_result">
             <column name="batch_run_number"/>
         </createIndex>
 
         <rollback>
-            <dropTable tableName="qc_result" schemaName="clinlims"/>
-            <dropSequence sequenceName="qc_result_seq" schemaName="clinlims"/>
+            <dropTable tableName="bioanalytical_qc_result" schemaName="clinlims"/>
+            <dropSequence sequenceName="bioanalytical_qc_result_seq" schemaName="clinlims"/>
         </rollback>
     </changeSet>
 
