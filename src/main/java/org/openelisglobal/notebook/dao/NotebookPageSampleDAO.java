@@ -6,9 +6,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 
-/**
- * DAO interface for NotebookPageSample entity operations.
- */
+/** DAO interface for NotebookPageSample entity operations. */
 public interface NotebookPageSampleDAO extends BaseDAO<NotebookPageSample, Integer> {
 
     /**

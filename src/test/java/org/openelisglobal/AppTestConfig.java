@@ -58,6 +58,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
+        "org.openelisglobal.common.service", "org.openelisglobal.common.dao", "org.openelisglobal.common.daoimpl",
         "org.openelisglobal.patient", "org.openelisglobal.patientidentity", "org.openelisglobal.gender",
         "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype", "org.openelisglobal.address",
         "org.openelisglobal.dictionary", "org.openelisglobal.person", "org.openelisglobal.audittrail",
@@ -93,7 +94,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.storage",
         "org.openelisglobal.coldstorage", "org.openelisglobal.alert", "org.openelisglobal.notification",
-        "org.openelisglobal.scheduler", "org.openelisglobal.equipmentusage" }, excludeFilters = {
+        "org.openelisglobal.scheduler", "org.openelisglobal.equipmentusage", "org.openelisglobal.medlab" },
+        excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),

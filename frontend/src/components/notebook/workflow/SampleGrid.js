@@ -57,12 +57,13 @@ function SampleGrid({
   onStatusFilterChange,
   loading = false,
   showHierarchy = false,
+  showPatient = false,
   additionalColumns = [],
   columns = null,
 }) {
   const intl = useIntl();
 
-  // Pagination state - default page size 10
+  // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -108,61 +109,9 @@ function SampleGrid({
     },
   ];
 
-  // Build hierarchical sort order so children appear after their parents
-  const sortedSamplesWithHierarchy = useMemo(() => {
-    if (!samples || samples.length === 0) return [];
-
-    // Create a map for quick lookup by ID
-    const sampleMap = new Map();
-    samples.forEach((s) => sampleMap.set(String(s.id), s));
-
-    // Build parent-to-children mapping
-    const childrenMap = new Map();
-    samples.forEach((s) => {
-      if (s.parentSampleItemId) {
-        const parentId = String(s.parentSampleItemId);
-        if (!childrenMap.has(parentId)) {
-          childrenMap.set(parentId, []);
-        }
-        childrenMap.get(parentId).push(s);
-      }
-    });
-
-    // Sort children by external ID for consistent ordering
-    childrenMap.forEach((children) => {
-      children.sort((a, b) =>
-        (a.externalId || "").localeCompare(b.externalId || ""),
-      );
-    });
-
-    // Recursively add sample and its descendants
-    const addWithDescendants = (sample, result) => {
-      result.push(sample);
-      const children = childrenMap.get(String(sample.id)) || [];
-      children.forEach((child) => addWithDescendants(child, result));
-    };
-
-    // Start with root samples (no parent) and build the sorted list
-    const result = [];
-    const rootSamples = samples
-      .filter((s) => !s.parentSampleItemId)
-      .sort((a, b) => (a.externalId || "").localeCompare(b.externalId || ""));
-
-    rootSamples.forEach((root) => addWithDescendants(root, result));
-
-    // Add any orphans (samples whose parent isn't in this list)
-    samples.forEach((s) => {
-      if (!result.includes(s)) {
-        result.push(s);
-      }
-    });
-
-    return result;
-  }, [samples]);
-
   // Filter samples based on search and status
   const filteredSamples = useMemo(() => {
-    let result = sortedSamplesWithHierarchy;
+    let result = samples;
 
     // Apply status filter
     if (statusFilter && statusFilter !== "ALL") {
@@ -178,16 +127,12 @@ function SampleGrid({
           (s.accessionNumber &&
             s.accessionNumber.toLowerCase().includes(term)) ||
           (s.sampleType && s.sampleType.toLowerCase().includes(term)) ||
-          (s.patientName && s.patientName.toLowerCase().includes(term)) ||
-          (s.firstName && s.firstName.toLowerCase().includes(term)) ||
-          (s.surname && s.surname.toLowerCase().includes(term)) ||
-          (s.sampleCategory && s.sampleCategory.toLowerCase().includes(term)) ||
-          (s.sourceFacility && s.sourceFacility.toLowerCase().includes(term)),
+          (s.patientName && s.patientName.toLowerCase().includes(term)),
       );
     }
 
     return result;
-  }, [sortedSamplesWithHierarchy, statusFilter, searchTerm]);
+  }, [samples, statusFilter, searchTerm]);
 
   // Paginate
   const paginatedSamples = useMemo(() => {
@@ -315,32 +260,22 @@ function SampleGrid({
             defaultMessage: "Sample Type",
           }),
         },
-        {
-          key: "sampleCategory",
-          header: intl.formatMessage({
-            id: "notebook.sample.category",
-            defaultMessage: "Category",
-          }),
-        },
-        {
-          key: "sourceFacility",
-          header: intl.formatMessage({
-            id: "notebook.sample.sourceFacility",
-            defaultMessage: "Source",
-          }),
-        },
+        ...(showPatient
+          ? [
+              {
+                key: "patientName",
+                header: intl.formatMessage({
+                  id: "medlab.sample.patient",
+                  defaultMessage: "Patient",
+                }),
+              },
+            ]
+          : []),
         {
           key: "collectionDate",
           header: intl.formatMessage({
             id: "notebook.sample.collectionDate",
             defaultMessage: "Collection Date",
-          }),
-        },
-        {
-          key: "receivedDate",
-          header: intl.formatMessage({
-            id: "notebook.sample.receivedDate",
-            defaultMessage: "Received Date",
           }),
         },
         {
@@ -352,11 +287,13 @@ function SampleGrid({
         },
       ];
 
-  // Add additional column headers (always include additionalColumns)
-  const additionalHeaders = additionalColumns.map((col) => ({
-    key: col.key,
-    header: col.header,
-  }));
+  // Add additional column headers (only when not using custom columns)
+  const additionalHeaders = columns
+    ? []
+    : additionalColumns.map((col) => ({
+        key: col.key,
+        header: col.header,
+      }));
 
   const headers = [
     ...baseHeaders,
@@ -406,48 +343,14 @@ function SampleGrid({
     );
   };
 
-  // Format date for display
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "-";
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      return date.toLocaleDateString();
-    } catch {
-      return dateStr;
-    }
-  };
-
-  // Format category for display with tag
-  const getCategoryTag = (category) => {
-    if (!category) return "-";
-    if (category === "Clinical diagnostic" || category === "Clinical") {
-      return (
-        <Tag type="blue" size="sm">
-          Clinical
-        </Tag>
-      );
-    }
-    if (category === "Research") {
-      return (
-        <Tag type="purple" size="sm">
-          Research
-        </Tag>
-      );
-    }
-    return category;
-  };
-
   // Transform samples to rows
   const rows = paginatedSamples.map((sample) => ({
     id: String(sample.id),
     externalId: sample.externalId || "-",
     accessionNumber: sample.accessionNumber || "-",
     sampleType: sample.sampleType || sample.typeOfSample?.description || "-",
-    sampleCategory: sample.sampleCategory || "-",
-    sourceFacility: sample.sourceFacility || "-",
-    collectionDate: sample.collectionDate || sample.collectionDateTime || "-",
-    receivedDate: sample.receivedDate || sample.receivedDateTime || "-",
+    patientName: sample.patientName || sample.data?.patientName || "-",
+    collectionDate: sample.collectionDate || "-",
     status: sample.status || "PENDING",
     _original: sample,
   }));
@@ -554,23 +457,13 @@ function SampleGrid({
                   )}
                   {/* Render custom columns if provided */}
                   {customColumns.length > 0 ? (
-                    <>
-                      {customColumns.map((col) => (
-                        <TableCell key={col.key}>
-                          {col.render
-                            ? col.render(row._original[col.key], row._original)
-                            : row._original[col.key] || row[col.key] || "-"}
-                        </TableCell>
-                      ))}
-                      {/* Also render additional columns when using custom columns */}
-                      {additionalColumns.map((col) => (
-                        <TableCell key={col.key}>
-                          {col.render
-                            ? col.render(row._original[col.key], row._original)
-                            : row._original[col.key] || "-"}
-                        </TableCell>
-                      ))}
-                    </>
+                    customColumns.map((col) => (
+                      <TableCell key={col.key}>
+                        {col.render
+                          ? col.render(row._original[col.key], row._original)
+                          : row._original[col.key] || row[col.key] || "-"}
+                      </TableCell>
+                    ))
                   ) : (
                     /* Default column rendering */
                     <>
@@ -582,31 +475,20 @@ function SampleGrid({
                       <TableCell>{row.externalId}</TableCell>
                       <TableCell>{row.accessionNumber}</TableCell>
                       <TableCell>{row.sampleType}</TableCell>
-                      <TableCell>
-                        {getCategoryTag(row.sampleCategory)}
-                      </TableCell>
-                      <TableCell>{row.sourceFacility}</TableCell>
-                      <TableCell>{formatDate(row.collectionDate)}</TableCell>
-                      <TableCell>{formatDate(row.receivedDate)}</TableCell>
+                      {showPatient && <TableCell>{row.patientName}</TableCell>}
+                      <TableCell>{row.collectionDate}</TableCell>
                       <TableCell>{getStatusTag(row.status)}</TableCell>
                       {additionalColumns.map((col) => (
                         <TableCell key={col.key}>
                           {col.render
-                            ? col.render(row._original[col.key], row._original)
+                            ? col.render(row._original)
                             : row._original[col.key]}
                         </TableCell>
                       ))}
                     </>
                   )}
                   <TableCell>
-                    <OverflowMenu
-                      flipped
-                      size="sm"
-                      ariaLabel={intl.formatMessage({
-                        id: "notebook.sample.actions",
-                        defaultMessage: "Sample actions",
-                      })}
-                    >
+                    <OverflowMenu flipped size="sm">
                       <OverflowMenuItem
                         itemText={intl.formatMessage({
                           id: "notebook.sample.action.view",

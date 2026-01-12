@@ -14,9 +14,12 @@ public class NoteBookForm {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String title;
+
     private Integer type;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String objective;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String protocol;
 
@@ -31,6 +34,7 @@ public class NoteBookForm {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String content;
+
     private Integer technicianId;
     private Integer systemUserId;
     private NoteBookStatus status;
@@ -279,6 +283,7 @@ public class NoteBookForm {
 
     public static class NoteBookCommentForm {
         private Integer id;
+
         @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
         private String text;
 
@@ -298,5 +303,4 @@ public class NoteBookForm {
             this.text = text;
         }
     }
-
 }

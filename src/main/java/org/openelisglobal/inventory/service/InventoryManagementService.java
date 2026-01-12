@@ -62,7 +62,6 @@ public interface InventoryManagementService {
             this.quantityConsumed = quantityConsumed;
             this.remainingQuantity = remainingQuantity;
         }
-
     }
 
     @Setter
@@ -71,6 +70,5 @@ public interface InventoryManagementService {
         private List<org.openelisglobal.inventory.valueholder.InventoryItem> lowStockItems;
         private List<InventoryLot> expiringLots;
         private List<InventoryLot> expiredLots;
-
     }
 }

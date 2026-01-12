@@ -32,9 +32,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 @TypeDef(name = "jsonb-map", typeClass = JsonMapType.class)
 public class NotebookPageSample extends BaseObject<Integer> {
 
-    /**
-     * Status values for per-sample-per-page tracking.
-     */
+    /** Status values for per-sample-per-page tracking. */
     public enum Status {
         /** Not yet processed on this page */
         PENDING,

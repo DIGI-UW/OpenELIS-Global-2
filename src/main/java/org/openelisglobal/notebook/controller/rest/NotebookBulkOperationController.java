@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.controller.rest;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -48,6 +49,7 @@ import org.springframework.web.multipart.MultipartFile;
  * REST controller for notebook bulk operations. Handles bulk data entry, value
  * application, and page progress tracking.
  *
+ * <p>
  * Per FR-033: System MUST process bulk operations in batches of 50. Per FR-034:
  * System MUST provide bulk apply endpoint for common values. Per FR-035: System
  * MUST provide page progress endpoint.
@@ -78,6 +80,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Bulk apply values to multiple samples on a page. POST
      * /notebook/bulk/page/{pageId}/samples/apply
      *
+     * <p>
      * Per FR-034: Apply common values to all selected samples in one request.
      *
      * @param pageId      the notebook page ID
@@ -171,6 +174,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Get progress information for a notebook page. GET
      * /notebook/bulk/page/{pageId}/progress
      *
+     * <p>
      * Per FR-035: Real-time progress tracking for bulk operations.
      *
      * @param pageId the notebook page ID
@@ -370,6 +374,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Flag a sample with validation status. POST
      * /notebook/bulk/page/{pageId}/samples/flag
      *
+     * <p>
      * Per T122: Implement sample flagging (VALID, INVALID, INCONCLUSIVE)
      *
      * @param pageId      the notebook page ID
@@ -417,6 +422,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Bulk flag samples with same status. POST
      * /notebook/bulk/page/{pageId}/samples/bulk-flag
      *
+     * <p>
      * Per T122b: Implement bulk flagging with reason for each sample
      *
      * @param pageId      the notebook page ID
@@ -460,6 +466,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Get validation summary for a page. GET
      * /notebook/bulk/page/{pageId}/validation-summary
      *
+     * <p>
      * Per T121: Get validation statistics for result compilation
      *
      * @param pageId the notebook page ID
@@ -534,6 +541,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Export results to Excel. GET
      * /notebook/bulk/notebook/{notebookId}/export/excel
      *
+     * <p>
      * Per T123: Implement Excel report generation using Apache POI
      *
      * @param notebookId          the notebook ID
@@ -585,6 +593,7 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Export results to CSV. GET /notebook/bulk/notebook/{notebookId}/export/csv
      *
+     * <p>
      * Per T129: Add export format selection (Excel, PDF, CSV)
      *
      * @param notebookId          the notebook ID
@@ -988,6 +997,7 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Record delivery of results. POST /notebook/bulk/notebook/{notebookId}/deliver
      *
+     * <p>
      * Per T125b: Implement POST /notebook/{id}/results/deliver endpoint
      *
      * @param notebookId  the notebook ID
@@ -1021,6 +1031,7 @@ public class NotebookBulkOperationController extends BaseRestController {
      * Get delivery history for a notebook. GET
      * /notebook/bulk/notebook/{notebookId}/delivery-history
      *
+     * <p>
      * Per T129b: Add delivery confirmation tracking and display
      *
      * @param notebookId the notebook ID
@@ -1219,6 +1230,32 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
 
         int updatedCount = bulkOperationService.bulkUpdateStatus(pageId, request.getSampleIds(), status, sysUserId);
+
+        // Also persist any additional data fields (containerType, collectionDate, etc.)
+        Map<String, Object> additionalData = new HashMap<>();
+        if (request.getContainerType() != null && !request.getContainerType().isBlank()) {
+            additionalData.put("containerType", request.getContainerType());
+        }
+        if (request.getCollectionDate() != null && !request.getCollectionDate().isBlank()) {
+            additionalData.put("collectionDate", request.getCollectionDate());
+        }
+        if (request.getCollectionTime() != null && !request.getCollectionTime().isBlank()) {
+            additionalData.put("collectionTime", request.getCollectionTime());
+        }
+        if (request.getCollectorId() != null && !request.getCollectorId().isBlank()) {
+            additionalData.put("collectorId", request.getCollectorId());
+        }
+        if (request.getVolume() != null && !request.getVolume().isBlank()) {
+            additionalData.put("volume", request.getVolume());
+        }
+        if (request.getNotes() != null && !request.getNotes().isBlank()) {
+            additionalData.put("notes", request.getNotes());
+        }
+
+        // If there's additional data, apply it to the samples
+        if (!additionalData.isEmpty()) {
+            bulkOperationService.bulkApplyValues(pageId, request.getSampleIds(), additionalData, sysUserId);
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("updatedCount", updatedCount);
@@ -1613,9 +1650,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for mark complete operation.
-     */
+    /** Request body for mark complete operation. */
     public static class MarkCompleteRequest {
         private boolean requireComplete;
         private boolean lockData;
@@ -1637,9 +1672,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for flag sample operation.
-     */
+    /** Request body for flag sample operation. */
     public static class FlagSampleRequest {
         private String sampleId;
         private String status;
@@ -1670,9 +1703,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for bulk flag operation.
-     */
+    /** Request body for bulk flag operation. */
     public static class BulkFlagRequest {
         private List<String> sampleIds;
         private String status;
@@ -1703,9 +1734,7 @@ public class NotebookBulkOperationController extends BaseRestController {
         }
     }
 
-    /**
-     * Request body for delivery operation.
-     */
+    /** Request body for delivery operation. */
     public static class DeliveryRequest {
         private String recipientName;
         private String recipientEmail;
@@ -1844,9 +1873,16 @@ public class NotebookBulkOperationController extends BaseRestController {
     /**
      * Request body for status update operation.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class StatusUpdateRequest {
         private List<Integer> sampleIds;
         private String status;
+        private String containerType;
+        private String collectionDate;
+        private String collectionTime;
+        private String collectorId;
+        private String volume;
+        private String notes;
 
         public List<Integer> getSampleIds() {
             return sampleIds;
@@ -1862,6 +1898,54 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+
+        public String getContainerType() {
+            return containerType;
+        }
+
+        public void setContainerType(String containerType) {
+            this.containerType = containerType;
+        }
+
+        public String getCollectionDate() {
+            return collectionDate;
+        }
+
+        public void setCollectionDate(String collectionDate) {
+            this.collectionDate = collectionDate;
+        }
+
+        public String getCollectionTime() {
+            return collectionTime;
+        }
+
+        public void setCollectionTime(String collectionTime) {
+            this.collectionTime = collectionTime;
+        }
+
+        public String getCollectorId() {
+            return collectorId;
+        }
+
+        public void setCollectorId(String collectorId) {
+            this.collectorId = collectorId;
+        }
+
+        public String getVolume() {
+            return volume;
+        }
+
+        public void setVolume(String volume) {
+            this.volume = volume;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
         }
     }
 

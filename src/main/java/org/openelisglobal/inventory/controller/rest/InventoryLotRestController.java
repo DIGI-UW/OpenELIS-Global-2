@@ -451,7 +451,6 @@ public class InventoryLotRestController extends BaseRestController {
     @Getter
     public static class OpenLotRequest {
         private Timestamp openedDate;
-
     }
 
     @Setter
@@ -459,14 +458,12 @@ public class InventoryLotRestController extends BaseRestController {
     public static class QCStatusRequest {
         private QCStatus qcStatus;
         private String notes;
-
     }
 
     @Setter
     @Getter
     public static class StatusRequest {
         private LotStatus status;
-
     }
 
     @Setter
@@ -474,7 +471,6 @@ public class InventoryLotRestController extends BaseRestController {
     public static class AdjustQuantityRequest {
         private Double newQuantity;
         private String reason;
-
     }
 
     @Setter
@@ -482,7 +478,6 @@ public class InventoryLotRestController extends BaseRestController {
     public static class DisposeRequest {
         private String reason;
         private String notes;
-
     }
 
     @Setter
@@ -493,7 +488,6 @@ public class InventoryLotRestController extends BaseRestController {
         public QuantityResponse(Double quantity) {
             this.quantity = quantity;
         }
-
     }
 
     @Setter
@@ -504,7 +498,6 @@ public class InventoryLotRestController extends BaseRestController {
         public ProcessExpiredResponse(Integer lotsUpdated) {
             this.lotsUpdated = lotsUpdated;
         }
-
     }
 
     @Setter
@@ -513,7 +506,6 @@ public class InventoryLotRestController extends BaseRestController {
         private List<Long> lotIds;
         private String reason;
         private String notes;
-
     }
 
     @Setter
@@ -528,7 +520,6 @@ public class InventoryLotRestController extends BaseRestController {
             this.failedCount = failedCount;
             this.errors = errors;
         }
-
     }
 
     /**

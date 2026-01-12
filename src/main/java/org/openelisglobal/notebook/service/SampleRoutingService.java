@@ -8,34 +8,22 @@ import org.openelisglobal.notebook.valueholder.SampleRouting;
 import org.openelisglobal.notebook.valueholder.SampleRouting.DestinationType;
 import org.openelisglobal.notebook.valueholder.StorageCondition;
 
-/**
- * Service interface for SampleRouting operations.
- */
+/** Service interface for SampleRouting operations. */
 public interface SampleRoutingService extends BaseObjectService<SampleRouting, Integer> {
 
-    /**
-     * Get all routing records for a notebook.
-     */
+    /** Get all routing records for a notebook. */
     List<SampleRouting> getByNotebookId(Integer notebookId);
 
-    /**
-     * Get routing record for a sample in a specific notebook.
-     */
+    /** Get routing record for a sample in a specific notebook. */
     SampleRouting getByNotebookIdAndSampleItemId(Integer notebookId, Integer sampleItemId);
 
-    /**
-     * Get routing records by destination type.
-     */
+    /** Get routing records by destination type. */
     List<SampleRouting> getByNotebookIdAndDestinationType(Integer notebookId, DestinationType destinationType);
 
-    /**
-     * Find routing by box and well coordinate (for analyzer import matching).
-     */
+    /** Find routing by box and well coordinate (for analyzer import matching). */
     SampleRouting getByBoxAndWell(Integer notebookId, Integer boxId, String wellCoordinate);
 
-    /**
-     * Route a sample to internal analysis with box/well assignment.
-     */
+    /** Route a sample to internal analysis with box/well assignment. */
     SampleRouting routeToInternalAnalysis(Integer notebookId, Integer sampleItemId, Integer boxId,
             String wellCoordinate, String userId);
 
@@ -67,9 +55,7 @@ public interface SampleRoutingService extends BaseObjectService<SampleRouting, I
     int bulkRouteToAssayPlate(Integer notebookId, List<Integer> sampleItemIds, String assayPlateName,
             Map<Integer, String> wellAssignments, String userId);
 
-    /**
-     * Route a sample to external lab.
-     */
+    /** Route a sample to external lab. */
     SampleRouting routeToExternalLab(Integer notebookId, Integer sampleItemId, String externalLabName,
             java.time.LocalDate shipmentDate, String userId);
 
@@ -79,21 +65,15 @@ public interface SampleRoutingService extends BaseObjectService<SampleRouting, I
      */
     SampleRouting routeToStorage(Integer notebookId, Integer sampleItemId, Integer storageAssignmentId, String userId);
 
-    /**
-     * Route a sample to storage with specific box and well assignment.
-     */
+    /** Route a sample to storage with specific box and well assignment. */
     SampleRouting routeToStorageWithBox(Integer notebookId, Integer sampleItemId, Integer boxId, String wellCoordinate,
             String userId);
 
-    /**
-     * Bulk route samples to internal analysis.
-     */
+    /** Bulk route samples to internal analysis. */
     int bulkRouteToInternalAnalysis(Integer notebookId, List<Integer> sampleItemIds, Integer boxId,
             Map<Integer, String> wellAssignments, String userId);
 
-    /**
-     * Bulk route samples to storage with box/well assignments.
-     */
+    /** Bulk route samples to storage with box/well assignments. */
     int bulkRouteToStorage(Integer notebookId, List<Integer> sampleItemIds, Integer boxId,
             Map<Integer, String> wellAssignments, String userId);
 
@@ -138,48 +118,14 @@ public interface SampleRoutingService extends BaseObjectService<SampleRouting, I
      */
     LocalDate calculateExpiryDate(int retentionYears);
 
-    /**
-     * Get routing summary counts by destination type.
-     */
+    /** Get routing summary counts by destination type. */
     RoutingSummary getRoutingSummary(Integer notebookId);
 
-    /**
-     * Check if a well coordinate is available in a box for a notebook.
-     */
+    /** Check if a well coordinate is available in a box for a notebook. */
     boolean isWellAvailable(Integer notebookId, Integer boxId, String wellCoordinate);
 
-    /**
-     * Summary class for routing statistics.
-     */
-    class RoutingSummary {
-        private final long internalAnalysis;
-        private final long externalLab;
-        private final long storage;
-        private final long unrouted;
-
-        public RoutingSummary(long internalAnalysis, long externalLab, long storage, long unrouted) {
-            this.internalAnalysis = internalAnalysis;
-            this.externalLab = externalLab;
-            this.storage = storage;
-            this.unrouted = unrouted;
-        }
-
-        public long internalAnalysis() {
-            return internalAnalysis;
-        }
-
-        public long externalLab() {
-            return externalLab;
-        }
-
-        public long storage() {
-            return storage;
-        }
-
-        public long unrouted() {
-            return unrouted;
-        }
-
+    /** Summary record for routing statistics. */
+    record RoutingSummary(long internalAnalysis, long externalLab, long storage, long unrouted) {
         public long total() {
             return internalAnalysis + externalLab + storage;
         }

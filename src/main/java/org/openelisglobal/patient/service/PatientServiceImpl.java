@@ -631,6 +631,9 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     }
 
     private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (patientInfo.getPatientContact() == null) {
+            return;
+        }
         if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
             PatientContact contact = patientInfo.getPatientContact();
             Person contactPerson = patientInfo.getPatientContact().getPerson();

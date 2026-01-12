@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Test data for OrderSampleLinkDAOIntegrationTest -->
+    <!-- This file exercises Hibernate ORM and would catch mapping errors like
+        missing last_updated column -->
+
+    <!-- Test Orders -->
+    <electronic_order id="9001" external_id="ORDER-9001"
+        status_id="1" order_timestamp="2026-01-08 10:00:00"
+        data="Test order 9001 for DAO integration test" type="FHIR"
+        lastupdated="2026-01-08 10:00:00" />
+
+    <electronic_order id="9002" external_id="ORDER-9002"
+        status_id="1" order_timestamp="2026-01-08 11:00:00"
+        data="Test order 9002 for DAO integration test" type="FHIR"
+        lastupdated="2026-01-08 11:00:00" />
+
+    <!-- Test Samples -->
+    <sample id="9101" accession_number="SAM-9101" status_id="1"
+        entered_date="2026-01-08 10:00:00" received_date="2026-01-08 10:00:00"
+        sys_user_id="1" lastupdated="2026-01-08 10:00:00" />
+
+    <sample id="9102" accession_number="SAM-9102" status_id="1"
+        entered_date="2026-01-08 10:00:00" received_date="2026-01-08 10:00:00"
+        sys_user_id="1" lastupdated="2026-01-08 10:00:00" />
+
+    <!-- Test Sample Items -->
+    <sample_item id="9201" samp_id="9101" typeosamp_id="1"
+        status_id="1" sort_order="1" lastupdated="2026-01-08 10:00:00" />
+
+    <sample_item id="9202" samp_id="9102" typeosamp_id="1"
+        status_id="1" sort_order="1" lastupdated="2026-01-08 10:00:00" />
+
+    <!-- OrderSampleLink test records - These will FAIL to load if last_updated
+        column is missing -->
+    <order_sample_link id="9301"
+        electronic_order_id="9001" sample_id="9101" sample_item_id="9201"
+        container_type_required="EDTA Tube" volume_required_ml="5.0"
+        handling_requirements="Keep refrigerated" validated="false"
+        created_by="1" created_at="2026-01-08 10:00:00"
+        last_updated="2026-01-08 10:00:00" />
+
+    <order_sample_link id="9302"
+        electronic_order_id="9002" sample_id="9102" sample_item_id="9202"
+        validated="true" validated_by="1" validated_at="2026-01-08 11:00:00"
+        created_by="1" created_at="2026-01-08 10:00:00"
+        last_updated="2026-01-08 10:00:00" />
+
+</dataset>

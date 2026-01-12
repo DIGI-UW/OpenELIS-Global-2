@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.form;
 
+import java.util.List;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
 /**
@@ -32,6 +33,9 @@ public class ManifestImportForm {
     // Date format for parsing collection dates
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String dateFormat;
+
+    // Selected test IDs to create Analysis records for each sample
+    private List<String> selectedTestIds;
 
     public Integer getNotebookId() {
         return notebookId;
@@ -95,5 +99,13 @@ public class ManifestImportForm {
 
     public void setDateFormat(String dateFormat) {
         this.dateFormat = dateFormat;
+    }
+
+    public List<String> getSelectedTestIds() {
+        return selectedTestIds;
+    }
+
+    public void setSelectedTestIds(List<String> selectedTestIds) {
+        this.selectedTestIds = selectedTestIds;
     }
 }

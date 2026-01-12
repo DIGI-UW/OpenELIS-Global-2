@@ -1,0 +1,151 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- * Test data for MedLabManifestImportServiceIntegrationTest * Tests createSamplesForEntry()
+    method with actual database inserts to catch * constraint violations like
+    missing status_id, sysUserId, etc. -->
+<dataset>
+    <!-- System users for creator/audit trail -->
+    <system_user id="1" login_name="testuser" first_name="Test"
+        last_name="User" is_active="Y" is_employee="Y" />
+    <system_user id="2" login_name="labtech" first_name="Lab"
+        last_name="Technician" is_active="Y" is_employee="Y" />
+
+    <!-- Dictionary entries for notebook type -->
+    <dictionary id="100" />
+
+    <!-- Notebook (template) -->
+    <notebook id="1" title="MedLab Test Notebook" type="100"
+        protocol="Test Protocol" content="Template content"
+        objective="Test Objective" status="DRAFT" is_template="true"
+        technician_id="1" creator_id="1" date_created="2026-01-01 10:00:00"
+        last_updated="2026-01-01 10:00:00" />
+
+    <!-- Notebook Entry (instance) - required for manifest import -->
+    <notebook_entry id="1" notebook_id="1"
+        title="Test Entry 1" status="DRAFT" creator_id="1" technician_id="1"
+        date_created="2026-01-08 10:00:00" />
+
+    <notebook_entry id="2" notebook_id="1"
+        title="Test Entry 2" status="DRAFT" creator_id="2" technician_id="2"
+        date_created="2026-01-08 11:00:00" />
+
+    <!-- Localizations for sample types -->
+    <localization id="1001" description="Blood sample"
+        english="Blood" french="Sang" lastupdated="2026-01-01 12:00:00" />
+    <localization id="1002" description="Serum sample"
+        english="Serum" french="Serum" lastupdated="2026-01-01 12:00:00" />
+    <localization id="1003" description="Urine sample"
+        english="Urine" french="Urine" lastupdated="2026-01-01 12:00:00" />
+
+    <!-- Sample types (type_of_sample) for validation -->
+    <type_of_sample id="1001" description="Blood" domain="H"
+        lastupdated="2026-01-01 12:00:00" local_abbrev="Blood"
+        is_active="true" sort_order="1" name_localization_id="1001"
+        display_key="sample.type.Blood" />
+    <type_of_sample id="1002" description="Serum" domain="H"
+        lastupdated="2026-01-01 12:00:00" local_abbrev="Serum"
+        is_active="true" sort_order="2" name_localization_id="1002"
+        display_key="sample.type.Serum" />
+    <type_of_sample id="1003" description="Urine" domain="H"
+        lastupdated="2026-01-01 12:00:00" local_abbrev="Urine"
+        is_active="true" sort_order="3" name_localization_id="1003"
+        display_key="sample.type.Urine" />
+
+    <!-- Tests for analysis creation -->
+    <test id="2001" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2026-01-01 12:00:00"
+        active_end="2026-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="CBC" sort_order="1" name="Complete Blood Count"
+        orderable="true" guid="test-cbc-001" name_localization_id="1001"
+        antimicrobial_resistance="false" />
+
+    <test id="2002" description="Urine Test" loinc="654321"
+        reporting_description="Urinalysis" sticker_req_flag="N" is_active="Y"
+        active_begin="2026-01-01 12:00:00" active_end="2026-12-31 12:00:00"
+        is_reportable="Y" time_holding="25" time_wait="10"
+        time_ta_average="50" time_ta_warning="70" time_ta_max="90"
+        label_qty="1" lastupdated="2026-01-01 12:00:00" local_code="UA"
+        sort_order="2" name="Urinalysis" orderable="true" guid="test-ua-002"
+        name_localization_id="1003" antimicrobial_resistance="false" />
+
+    <!-- Sample type to test mappings -->
+    <sampletype_test id="1" sample_type_id="1001"
+        test_id="2001" is_panel="false" />
+    <sampletype_test id="2" sample_type_id="1003"
+        test_id="2002" is_panel="false" />
+
+    <!-- ============================================================= -->
+    <!-- Data for order-sample and patient-sample linkage tests -->
+    <!-- ============================================================= -->
+
+    <!-- Note: status_of_sample entries are already set up by Liquibase. We
+        use high IDs (5000+) to avoid conflicts with existing data. -->
+
+    <!-- Person records (required for Patient) -->
+    <person id="5001" last_name="TestPatient" first_name="John"
+        middle_name="A" city="TestCity" state="TestState" zip_code="12345"
+        country="TestCountry" work_phone="1234567890" home_phone="0987654321"
+        cell_phone="5555555555" primary_phone="1234567890" fax="1111111111"
+        email="john.testpatient@test.com" lastupdated="2026-01-01 12:00:00" />
+
+    <person id="5002" last_name="TestPatient" first_name="Jane"
+        middle_name="B" city="TestCity2" state="TestState2" zip_code="67890"
+        country="TestCountry" work_phone="2345678901" home_phone="1098765432"
+        cell_phone="6666666666" primary_phone="2345678901" fax="2222222222"
+        email="jane.testpatient@test.com" lastupdated="2026-01-01 12:00:00" />
+
+    <!-- Patient records for testing patient linking -->
+    <patient id="3001" person_id="5001" race="A" gender="M"
+        epi_first_name="John" epi_middle_name="A" epi_last_name="TestPatient"
+        national_id="NAT-TEST-001" ethnicity="1" school_attend="Test School"
+        medicare_id="MED-TEST-001" medicaid_id="MCAID-TEST-001"
+        birth_place="TestCity" external_id="EXT-PAT-001"
+        lastupdated="2026-01-01 12:00:00" />
+
+    <patient id="3002" person_id="5002" race="B" gender="F"
+        epi_first_name="Jane" epi_middle_name="B" epi_last_name="TestPatient"
+        national_id="NAT-TEST-002" ethnicity="2" school_attend="Test Academy"
+        medicare_id="MED-TEST-002" medicaid_id="MCAID-TEST-002"
+        birth_place="TestCity2" external_id="EXT-PAT-002"
+        lastupdated="2026-01-01 12:00:00" />
+
+    <!-- ElectronicOrder records for testing order linking Note: status_id must
+        reference an existing status_of_sample from Liquibase. The "Entered" status
+        for external orders has been set up during DB init. -->
+    <electronic_order id="4001"
+        external_id="ORDER-TEST-001" patient_id="3001" status_id="1"
+        order_timestamp="2026-01-07 10:00:00"
+        data="Test order data for patient 3001" type="FHIR"
+        lastupdated="2026-01-07 10:00:00" />
+
+    <electronic_order id="4002"
+        external_id="ORDER-TEST-002" patient_id="3002" status_id="1"
+        order_timestamp="2026-01-07 11:00:00"
+        data="Test order data for patient 3002" type="FHIR"
+        lastupdated="2026-01-07 11:00:00" />
+
+    <!-- Order without patient (anonymous order) -->
+    <electronic_order id="4003"
+        external_id="ORDER-TEST-003" status_id="1"
+        order_timestamp="2026-01-07 12:00:00" data="Anonymous order data"
+        type="FHIR" lastupdated="2026-01-07 12:00:00" />
+
+    <!-- Additional patient with alphanumeric IDs matching production screenshot -->
+    <person id="5003" last_name="ValidPatient" first_name="Valid"
+        middle_name="Test" city="TestCity3" state="TestState3"
+        zip_code="11111" country="TestCountry" work_phone="3456789012"
+        home_phone="2109876543" cell_phone="7777777777"
+        primary_phone="3456789012" fax="3333333333"
+        email="valid.patient@test.com" lastupdated="2026-01-01 12:00:00" />
+
+    <!-- Patient with alphanumeric external_id matching production (PAT-VALID-001) -->
+    <patient id="3003" person_id="5003" race="C" gender="M"
+        epi_first_name="Valid" epi_middle_name="Test"
+        epi_last_name="ValidPatient" national_id="NID-AB-22222" ethnicity="1"
+        school_attend="Valid School" medicare_id="MED-VALID-001"
+        medicaid_id="MCAID-VALID-001" birth_place="TestCity3"
+        external_id="PAT-VALID-001" lastupdated="2026-01-01 12:00:00" />
+
+</dataset>

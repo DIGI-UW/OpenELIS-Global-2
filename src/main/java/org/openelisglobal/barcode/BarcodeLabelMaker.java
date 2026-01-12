@@ -51,6 +51,7 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 /**
  * Class for taking lists of Label objects and turning them into a printable
@@ -301,19 +302,47 @@ public class BarcodeLabelMaker {
 
             // specimen case
         } else if ("specimen".equals(type)) {
-            String specimenNumber = labNo.substring(labNo.lastIndexOf(".") + 1);
-            labNo = labNo.substring(0, labNo.lastIndexOf("."));
-            Sample sample = sampleService.getSampleByAccessionNumber(labNo);
+            String sampleAccessionNumber;
+            String specimenNumber = null;
+
+            // Check if labNo contains a specimen number (format: LABNO.SPECIMEN)
+            int lastDotIndex = labNo.lastIndexOf(".");
+            if (lastDotIndex > 0) {
+                // Traditional format with specimen number (e.g., "12345.1")
+                specimenNumber = labNo.substring(lastDotIndex + 1);
+                sampleAccessionNumber = labNo.substring(0, lastDotIndex);
+            } else {
+                // Imported sample without specimen number (e.g., "VALID-006")
+                // Use whole identifier as accession number
+                sampleAccessionNumber = labNo;
+            }
+
+            Sample sample = sampleService.getSampleByAccessionNumber(sampleAccessionNumber);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
                     getEnteredStatusSampleList());
-            for (SampleItem sampleItem : sampleItemList) {
-                // get only the sample item matching the specimen number
-                if (sampleItem.getSortOrder().equals(specimenNumber)) {
-                    SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                            labNo);
+
+            Patient patient = sampleService.getPatient(sample);
+
+            if (specimenNumber != null) {
+                // Print specific specimen matching the specimen number
+                for (SampleItem sampleItem : sampleItemList) {
+                    if (sampleItem.getSortOrder().equals(specimenNumber)) {
+                        SpecimenLabel specLabel = createSpecimenLabel(patient, sample, sampleItem,
+                                sampleAccessionNumber);
+                        specLabel.setNumLabels(Integer.parseInt(quantity));
+                        specLabel.linkBarcodeLabelInfo();
+                        specLabel.setSysUserId(sysUserId);
+                        if (specLabel.checkIfPrintable() || "true".equals(override)) {
+                            labels.add(specLabel);
+                        }
+                    }
+                }
+            } else {
+                // Print all specimen labels for this sample (for imported samples)
+                for (SampleItem sampleItem : sampleItemList) {
+                    SpecimenLabel specLabel = createSpecimenLabel(patient, sample, sampleItem, sampleAccessionNumber);
                     specLabel.setNumLabels(Integer.parseInt(quantity));
                     specLabel.linkBarcodeLabelInfo();
-                    // get sysUserId from login module
                     specLabel.setSysUserId(sysUserId);
                     if (specLabel.checkIfPrintable() || "true".equals(override)) {
                         labels.add(specLabel);
@@ -331,6 +360,24 @@ public class BarcodeLabelMaker {
                 labels.add(blankLabel);
             }
         }
+    }
+
+    /**
+     * Creates a SpecimenLabel, handling the case where patient may be null. For
+     * samples without patients (e.g., environmental or imported samples), uses the
+     * non-patient constructor with sample type information.
+     */
+    private SpecimenLabel createSpecimenLabel(Patient patient, Sample sample, SampleItem sampleItem,
+            String accessionNumber) {
+        if (patient != null) {
+            return new SpecimenLabel(patient, sample, sampleItem, accessionNumber);
+        }
+        // For samples without patient, use alternative constructor with sample metadata
+        TypeOfSample typeOfSample = sampleItem.getTypeOfSample();
+        String sampleType = typeOfSample != null ? typeOfSample.getLocalizedName() : "";
+        String quantity = sampleItem.getQuantity() != null ? String.valueOf(sampleItem.getQuantity()) : "";
+        String externalId = sampleItem.getExternalId() != null ? sampleItem.getExternalId() : "";
+        return new SpecimenLabel(sampleItem, accessionNumber, sampleType, quantity, externalId);
     }
 
     /**

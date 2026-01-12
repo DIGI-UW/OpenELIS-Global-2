@@ -1,0 +1,130 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Test data for MedLabPatientOrderServiceIntegrationTest Tests createPatientOrder()
+    and recordSampleCollection() methods with actual database inserts to verify
+    order-driven workflow. -->
+<dataset>
+    <!-- System users for creator/audit trail -->
+    <system_user id="1" login_name="testuser" first_name="Test"
+        last_name="User" is_active="Y" is_employee="Y" />
+    <system_user id="2" login_name="labtech" first_name="Lab"
+        last_name="Technician" is_active="Y" is_employee="Y" />
+
+    <!-- Dictionary entries for notebook type -->
+    <dictionary id="100" />
+
+    <!-- Notebook (template) -->
+    <notebook id="8001" title="MedLab Order Test Notebook"
+        type="100" protocol="Test Protocol" content="Template content"
+        objective="Test Objective" status="DRAFT" is_template="true"
+        technician_id="1" creator_id="1" date_created="2026-01-01 10:00:00"
+        last_updated="2026-01-01 10:00:00" />
+
+    <!-- Notebook Entry (instance) -->
+    <notebook_entry id="8001" notebook_id="8001"
+        title="Test Entry for Orders" status="DRAFT" creator_id="1"
+        technician_id="1" date_created="2026-01-09 10:00:00" />
+
+    <!-- Notebook Pages -->
+    <notebook_page id="8001" notebook_id="8001"
+        title="Patient Order Entry" page_order="1" page_id="PatientOrderEntry" />
+    <notebook_page id="8002" notebook_id="8001"
+        title="Sample Collection" page_order="2" page_id="SampleCollection" />
+    <notebook_page id="8003" notebook_id="8001"
+        title="Quality Check" page_order="3" page_id="medlab-quality-check" />
+    <notebook_page id="8004" notebook_id="8001"
+        title="Sample Routing" page_order="4" page_id="medlab-sample-routing" />
+    <notebook_page id="8005" notebook_id="8001"
+        title="Sample Processing" page_order="5"
+        page_id="medlab-sample-processing" />
+    <notebook_page id="8006" notebook_id="8001"
+        title="Testing and Analyzer" page_order="6"
+        page_id="medlab-testing-analyzer" />
+    <notebook_page id="8007" notebook_id="8001"
+        title="Result Entry" page_order="7" page_id="medlab-result-entry" />
+
+    <!-- Localizations for sample types -->
+    <localization id="8001" description="Blood sample"
+        english="Blood" french="Sang" lastupdated="2026-01-01 12:00:00" />
+    <localization id="8002" description="Serum sample"
+        english="Serum" french="Serum" lastupdated="2026-01-01 12:00:00" />
+
+    <!-- Sample types (type_of_sample) for validation -->
+    <type_of_sample id="8001" description="Blood" domain="H"
+        lastupdated="2026-01-01 12:00:00" local_abbrev="Blood"
+        is_active="true" sort_order="1" name_localization_id="8001"
+        display_key="sample.type.Blood" />
+    <type_of_sample id="8002" description="Serum" domain="H"
+        lastupdated="2026-01-01 12:00:00" local_abbrev="Serum"
+        is_active="true" sort_order="2" name_localization_id="8002"
+        display_key="sample.type.Serum" />
+
+    <!-- Tests for analysis creation -->
+    <test id="8001" description="Blood Test" loinc="123456"
+        reporting_description="Complete Blood Count" sticker_req_flag="Y"
+        is_active="Y" active_begin="2026-01-01 12:00:00"
+        active_end="2026-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="CBC" sort_order="1" name="Complete Blood Count"
+        orderable="true" guid="test-cbc-8001" name_localization_id="8001"
+        antimicrobial_resistance="false" />
+
+    <test id="8002" description="Chemistry Panel" loinc="654321"
+        reporting_description="Basic Metabolic Panel" sticker_req_flag="N"
+        is_active="Y" active_begin="2026-01-01 12:00:00"
+        active_end="2026-12-31 12:00:00" is_reportable="Y" time_holding="25"
+        time_wait="10" time_ta_average="50" time_ta_warning="70"
+        time_ta_max="90" label_qty="1" lastupdated="2026-01-01 12:00:00"
+        local_code="BMP" sort_order="2" name="Basic Metabolic Panel"
+        orderable="true" guid="test-bmp-8002" name_localization_id="8002"
+        antimicrobial_resistance="false" />
+
+    <!-- Sample type to test mappings -->
+    <sampletype_test id="8001" sample_type_id="8001"
+        test_id="8001" is_panel="false" />
+    <sampletype_test id="8002" sample_type_id="8002"
+        test_id="8002" is_panel="false" />
+
+    <!-- Person records (required for Patient) -->
+    <person id="8001" last_name="OrderTest" first_name="Patient1"
+        middle_name="A" city="TestCity" state="TestState" zip_code="12345"
+        country="TestCountry" work_phone="1234567890" home_phone="0987654321"
+        cell_phone="5555555555" primary_phone="1234567890" fax="1111111111"
+        email="patient1@test.com" lastupdated="2026-01-01 12:00:00" />
+
+    <person id="8002" last_name="OrderTest" first_name="Patient2"
+        middle_name="B" city="TestCity2" state="TestState2" zip_code="67890"
+        country="TestCountry" work_phone="2345678901" home_phone="1098765432"
+        cell_phone="6666666666" primary_phone="2345678901" fax="2222222222"
+        email="patient2@test.com" lastupdated="2026-01-01 12:00:00" />
+
+    <person id="8003" last_name="BulkTest" first_name="Patient3"
+        middle_name="C" city="TestCity3" state="TestState3" zip_code="11111"
+        country="TestCountry" work_phone="3456789012" home_phone="2109876543"
+        cell_phone="7777777777" primary_phone="3456789012" fax="3333333333"
+        email="patient3@test.com" lastupdated="2026-01-01 12:00:00" />
+
+    <!-- Patient records for testing -->
+    <patient id="8001" person_id="8001" race="A" gender="M"
+        birth_date="1990-05-15 00:00:00" birth_time="1990-05-15 00:00:00"
+        external_id="PAT-ORDER-001" national_id="NID-ORDER-001"
+        entered_birth_date="1990-05-15" lastupdated="2026-01-01 12:00:00" />
+
+    <patient id="8002" person_id="8002" race="B" gender="F"
+        birth_date="1985-10-20 00:00:00" birth_time="1985-10-20 00:00:00"
+        external_id="PAT-ORDER-002" national_id="NID-ORDER-002"
+        entered_birth_date="1985-10-20" lastupdated="2026-01-01 12:00:00" />
+
+    <patient id="8003" person_id="8003" race="C" gender="M"
+        birth_date="1992-03-25 00:00:00" birth_time="1992-03-25 00:00:00"
+        external_id="PAT-BULK-001" national_id="NID-BULK-001"
+        entered_birth_date="1992-03-25" lastupdated="2026-01-01 12:00:00" />
+
+    <!-- Pre-existing electronic order for duplicate check test -->
+    <electronic_order id="8001"
+        external_id="EXISTING-ORDER-001" patient_id="8001" status_id="1"
+        order_timestamp="2026-01-08 10:00:00" type="FHIR"
+        data="{&quot;testIds&quot;:[&quot;8001&quot;]}"
+        order_priority="ROUTINE" lastupdated="2026-01-08 10:00:00" />
+
+</dataset>

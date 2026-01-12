@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- ORDER_SAMPLE_LINK TABLE -->
+    <!-- Links samples to their fulfilling orders for QC validation -->
+    <!-- Enables order-driven validation: samples without orders are rejected (FR-021, FR-025) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-order-sample-link-sequence" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="order_sample_link_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for order_sample_link table.</comment>
+        <createSequence sequenceName="order_sample_link_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-order-sample-link-table" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating ORDER_SAMPLE_LINK table to link samples to orders for order-driven validation.</comment>
+        <createTable tableName="order_sample_link">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="order_sample_link_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_order_sample_link"/>
+            </column>
+            <column name="electronic_order_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="test_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Requirements snapshot at link time (audit trail) -->
+            <column name="container_type_required" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="volume_required_ml" type="DECIMAL(5,2)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="handling_requirements" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Validation status -->
+            <column name="validated" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="validated_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="validated_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Audit fields -->
+            <column name="created_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="true" unique="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Foreign key to electronic_order table -->
+    <changeSet id="add-order-sample-link-order-fk" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <tableExists tableName="electronic_order" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_order_sample_link_order" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_order_sample_link_order"
+            baseTableName="order_sample_link"
+            baseColumnNames="electronic_order_id"
+            referencedTableName="electronic_order"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Foreign key to sample table -->
+    <changeSet id="add-order-sample-link-sample-fk" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <tableExists tableName="sample" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_order_sample_link_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_order_sample_link_sample"
+            baseTableName="order_sample_link"
+            baseColumnNames="sample_id"
+            referencedTableName="sample"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Foreign key to sample_item table (optional) -->
+    <changeSet id="add-order-sample-link-sample-item-fk" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <tableExists tableName="sample_item" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_order_sample_link_sample_item" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_order_sample_link_sample_item"
+            baseTableName="order_sample_link"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <!-- Foreign key to test table (optional) -->
+    <changeSet id="add-order-sample-link-test-fk" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <tableExists tableName="test" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_order_sample_link_test" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            constraintName="fk_order_sample_link_test"
+            baseTableName="order_sample_link"
+            baseColumnNames="test_id"
+            referencedTableName="test"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+    </changeSet>
+
+    <!-- Index for efficient lookups by sample -->
+    <changeSet id="add-order-sample-link-sample-index" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_order_sample_link_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_order_sample_link_sample" tableName="order_sample_link">
+            <column name="sample_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Index for efficient lookups by order -->
+    <changeSet id="add-order-sample-link-order-index" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_order_sample_link_order" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_order_sample_link_order" tableName="order_sample_link">
+            <column name="electronic_order_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Unique constraint: one link per order + sample + sample_item + test combination -->
+    <changeSet id="add-order-sample-link-unique-constraint" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <not>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM pg_constraint WHERE conname = 'uq_order_sample_link'
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <addUniqueConstraint
+            constraintName="uq_order_sample_link"
+            tableName="order_sample_link"
+            columnNames="electronic_order_id, sample_id, sample_item_id, test_id"/>
+    </changeSet>
+
+</databaseChangeLog>

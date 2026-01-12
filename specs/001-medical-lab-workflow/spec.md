@@ -1,62 +1,136 @@
 # Feature Specification: Medical Laboratory Workflow
 
 **Feature Branch**: `001-medical-lab-workflow` **Created**: 2024-12-14
-**Status**: Draft **Input**: User description: Medical Laboratory workflow
-covering patient registration, sample collection, tracking, storage, processing,
-testing, result entry, validation, reporting, accreditation support, and
-disposal/archiving
+**Updated**: 2026-01-07 **Status**: Draft **SRS Version**: Medical Laboratory
+Workflow Documentation v1.0 (January 2026)
+
+**Input**: Medical Laboratory Workflow Documentation SRS covering order-driven
+sample lifecycle management, quality control procedures, testing protocols, and
+compliance standards for clinical laboratory operations and biorepository
+functions.
 
 ## Executive Summary
 
 Medical laboratories require comprehensive workflow management to handle samples
 from collection through disposal. This feature introduces a complete Laboratory
-Information System (LIS) workflow module supporting:
+Information Management System (LIMS) workflow module with an **order-driven
+architecture** where lab orders drive all downstream sample collection,
+processing, and testing activities.
 
-- **Patient/Participant Management**: Registration and tracking of patients and
-  research participants with lab order management
-- **Sample Collection**: Multi-department sample collection (Hematology,
-  Chemistry, Parasitology, Urinalysis, Serology, Microbiology) with flexible
-  labeling
-- **Sample Tracking**: Quality control with pass/fail criteria, IATA
-  PI650-compliant transport packaging validation
-- **Storage Management**: Hierarchical storage (room → device → rack → box →
-  position) with environmental monitoring
-- **Sample Processing**: Department-specific processing protocols
-  (centrifugation, smears, staining)
-- **Testing Phase**: Instrument interfacing, QC monitoring (Levey-Jennings
-  charts), EQA support
-- **Result Management**: Manual and automated result entry with validation and
-  approval workflows
-- **Reporting & Analytics**: Turnaround time monitoring, equipment usage, sample
-  utilization dashboards
-- **Disposal & Archiving**: Compliant disposal workflows with biorepository
-  transfer support
+**Core Architecture: Order-Driven Workflow**
+
+The system follows an order-centric model where:
+
+- **Orders drive sample collection** - Lab orders specify required container
+  types, volumes, and handling requirements
+- **Orders enable QC validation** - Samples without corresponding orders are
+  rejected
+- **Orders determine routing** - Sample-to-test allocation and department
+  routing based on ordered tests
+- **Orders generate worklists** - Electronic work lists for analyzers generated
+  from orders
+
+**10-Stage Workflow**:
+
+1. **Patient Information & Lab Orders** - Establish patient identity, capture
+   test requisitions
+2. **Sample Collection** - Physically fulfill orders by obtaining specimens
+3. **Sample Tracking & QC** - Assess integrity, verify order matching,
+   accept/reject
+4. **Storage** - Hierarchical storage with environmental monitoring
+5. **Sample Processing** - Department-specific preparation (centrifugation,
+   smears, staining)
+6. **Testing Phase** - Analyzer worklists, instrument interfacing, QC monitoring
+7. **Result Entry** - Machine-generated and manual result capture
+8. **Validation & Reporting** - Technical/clinical validation, dashboards, KPIs
+9. **System Accreditation** - ISO 15189, SLIPTA compliance support
+10. **Disposal & Archiving** - Compliant disposal, biorepository transfers
 
 **Target Users**: Laboratory technicians, technologists, sample collectors,
-supervisors, quality managers, administrators
+supervisors, quality managers, administrators, clinical management,
+bioanalytical lab staff, biorepository staff
 
 **Expected Impact**:
 
 - Complete sample traceability from collection to disposal
-- Regulatory compliance support (ISO 15189, CAP, CLIA)
+- Regulatory compliance support (ISO 15189, SLIPTA, CAP, CLIA)
 - Reduced manual transcription errors through instrument interfacing
 - Real-time visibility into laboratory operations and performance metrics
+- ALCOA+ compliant data handling for audit readiness
+
+## System Overview
+
+### Organizational Roles and Responsibilities
+
+| Role                      | Responsibilities                                                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Patient/Participant**   | Provides demographic information, receives test results                                                                                                            |
+| **Clinical Management**   | Patient registration, test ordering, clinical trial enrollment, scheduling sample collections, reviewing and releasing results, archiving data                     |
+| **Laboratory Operations** | Sample collection, labeling, tracking, QC assessment, storage, processing, testing, result entry, report preparation, disposal management, biorepository transfers |
+| **Quality & Compliance**  | Rejection investigation, corrective action initiation, QC metrics monitoring, deviation investigation, result approval, compliance reporting                       |
+| **Bioanalytical Lab**     | Receives samples for specialized bioanalysis, returns analytical results                                                                                           |
+| **Biorepository**         | Long-term sample storage, biobanking operations                                                                                                                    |
+
+### Sample Categories
+
+The system handles two main sample categories:
+
+- **Patient Samples**: Specimens collected for routine clinical testing and
+  diagnostics
+- **Participant Samples**: Specimens collected from clinical trial participants;
+  participants selected on screening continue as enrolled participants with
+  scheduled collection events
+
+### Workflow Decision Points
+
+Based on the workflow stages, the following key decision points drive workflow
+branching:
+
+**1. QC Pass/Fail Gateway (After Stage 3: Sample Tracking & QC)**
+
+- **Pass**: Sample proceeds to allocation, storage, processing, and testing
+- **Fail**: Routes to Quality & Compliance for rejection investigation and
+  corrective action initiation
+
+**2. Test Deviation Gateway (After Stage 6: Testing Phase)**
+
+- **No Deviation**: Proceeds to result entry and report preparation
+- **Deviation Detected**: Routes to Quality & Compliance for deviation
+  investigation before result approval
+
+**3. Post-Testing Sample Disposition (After Stage 6)**
+
+- **Store**: Sample retained per storage protocols
+- **Dispose**: Routes to disposal workflow
+- **Transfer to Biorepository**: Long-term storage for biobanking or
+  bioequivalence studies
 
 ## User Scenarios & Testing _(mandatory)_
 
-### User Story 1 - Patient/Participant Registration and Lab Orders (Priority: P1)
+### User Story 1 - Patient/Participant Registration and Lab Orders (Priority: P0)
 
 Laboratory staff need to register patients or participants and create lab orders
 before sample collection can occur. The system must support both clinical
 patients and research participants with scheduled sample collections.
 
 **Why this priority**: This is the entry point for all laboratory workflows.
-Without patient/participant registration and lab orders, no samples can be
-collected or tracked.
+Orders are the **driving force** for all downstream activities - without orders,
+samples cannot be collected, validated, routed, or tested.
+
+**Order Significance** (per SRS Section 3.1.2):
+
+Orders created at this stage serve multiple critical functions:
+
+- **Drive sample collection requirements** - Specify container type, volume, and
+  handling instructions
+- **Enable QC validation** - Samples without corresponding orders are rejected
+- **Determine sample-to-test allocation** - Route samples to appropriate
+  departments
+- **Generate electronic work lists** - Create analyzer worklists for testing
 
 **Independent Test**: Register a new patient with demographic data, create a lab
 order for CBC and Chemistry panel, verify patient and order appear in the
-system.
+system, verify order specifies required container types.
 
 **Acceptance Scenarios**:
 
@@ -66,27 +140,94 @@ system.
 2. **Given** a patient record exists, **When** the user creates a lab order
    selecting tests (CBC, LFT, FBS), **Then** the order is created with pending
    status and linked to the patient
-3. **Given** a participant is enrolled in a study, **When** the user sets up a
+3. **Given** a lab order is created, **When** viewing the order details,
+   **Then** the system displays required container types, volumes, and handling
+   requirements for each ordered test
+4. **Given** a participant is enrolled in a study, **When** the user sets up a
    collection schedule (e.g., Day 0, Day 7, Day 14), **Then** scheduled
    collection dates are created and visible on the participant dashboard
-4. **Given** lab orders exist for a patient, **When** viewing the patient
+5. **Given** lab orders exist for a patient, **When** viewing the patient
    profile, **Then** all pending and completed orders are displayed with their
    status
+6. **Given** a participant is selected for trial participation (screening),
+   **When** screening eligibility is determined, **Then** the participant status
+   is updated and scheduled collections are activated
 
 ---
 
 ### User Story 2 - Sample Collection and Labeling (Priority: P1)
 
-Laboratory technicians, technologists, or sample collectors need to collect
-samples from patients/participants, label them appropriately, and record
-collection details including sample type and container information.
+Laboratory technicians, technologists, or sample collectors need to **physically
+fulfill orders** by collecting samples from patients/participants according to
+test requirements, labeling them appropriately, and recording collection
+details.
 
-**Why this priority**: Sample collection is the first physical step in the
-workflow. Accurate collection and labeling is critical for downstream processes.
+**Why this priority**: Sample collection is the first physical step that
+**fulfills the lab orders** created in Stage 1. Accurate collection and labeling
+is critical for downstream processes.
 
-**Independent Test**: Create a sample collection for an existing lab order,
-enter sample type (Whole Blood/EDTA), apply label, verify sample appears in
-tracking queue.
+**Performed by**: Lab technicians, technologists, sample collectors
+
+**Sample Types by Department** (per SRS Section 3.2.1):
+
+| Department         | Tests/Sample Types                                  |
+| ------------------ | --------------------------------------------------- |
+| Hematology         | CBC (Complete Blood Count), Differential Count      |
+| Clinical Chemistry | LFT, KFT, Lipid Profile, FBS, Electrolytes, Enzymes |
+| Urinalysis         | Dipstick, Microscopy                                |
+| Stool              | Ova, Parasite, Occult Blood                         |
+| Serology           | HIV, HBsAg, HCV                                     |
+| Other              | ECG (if integrated), Pregnancy Test                 |
+
+**Labeling Requirements** (per SRS Section 3.2.2):
+
+- Free-text alphanumeric entries supported
+- Labels can be generated pre-collection or at reception
+- Barcode/QR code support for automated tracking
+- Label contents: Unique Sample Identifier, date, technician initials, sample
+  type
+
+**Sample Collection Workflow (Two-Step Process)**:
+
+1. **Step 1: Import Samples from Manifest** - Bulk import collected samples from
+   CSV manifest file. At this point, samples exist in the system but are not yet
+   linked to orders.
+2. **Step 2: Link Samples to Orders/Tests** - Associate imported samples with
+   existing lab orders and assign tests. One sample can have multiple tests
+   (Analysis records). Anonymous samples (NULL patient) are supported.
+
+**Manifest File Specification**:
+
+The sample import manifest CSV MUST contain only these fields (per FR-010 to
+FR-014):
+
+| Field              | Required | Description                                                    |
+| ------------------ | -------- | -------------------------------------------------------------- |
+| `sampleId`         | Yes      | Unique sample identifier (FR-012)                              |
+| `sampleTypeId`     | Yes      | Sample type: Blood, Urine, Stool, Serum, etc. (FR-010)         |
+| `containerType`    | Yes      | Container: vacutainer, cryovial, urine_cup, stool_jar (FR-014) |
+| `customLabel`      | No       | Free-text alphanumeric label (FR-011)                          |
+| `quantity`         | Yes      | Collected volume/amount                                        |
+| `unitOfMeasure`    | Yes      | Unit: ml, g, etc.                                              |
+| `collectionSource` | Yes      | Collection location/site                                       |
+| `collector`        | Yes      | Collector identity (FR-013)                                    |
+| `collectionDate`   | Yes      | Collection date YYYY-MM-DD (FR-013)                            |
+| `collectionTime`   | Yes      | Collection time HH:MM (FR-013)                                 |
+| `orderId`          | No       | Lab order ID to link (optional for anonymous samples)          |
+| `patientId`        | No       | Patient ID (NULL for anonymous participants)                   |
+| `notes`            | No       | Observations or comments                                       |
+
+**Sample-Test Relationship**:
+
+- One SampleItem can have multiple Analysis records (tests assigned)
+- Aliquoting is NOT automatic - it is a manual operation in Stage 6 (Sample
+  Processing) via SampleManagementService
+- When assigning multiple tests to a sample, decide upfront whether the sample
+  volume supports all tests or if aliquoting is needed
+
+**Independent Test**: Import 5 samples via manifest CSV, link 3 to existing
+orders, verify 2 remain unlinked (anonymous), verify samples appear in tracking
+queue with correct test assignments.
 
 **Acceptance Scenarios**:
 
@@ -99,47 +240,74 @@ tracking queue.
    can be used for tracking
 3. **Given** multiple sample types are needed (blood, urine, stool), **When**
    the collector creates samples for each, **Then** each sample is assigned
-   appropriate container type and storage requirements
+   appropriate container type and storage requirements based on the order
 4. **Given** a participant has a scheduled collection, **When** the technician
    opens their profile, **Then** the scheduled collection is highlighted and can
    be started with pre-filled order information
 5. **Given** sample collection is complete, **When** the user records collection
    time and collector ID, **Then** the collection metadata is saved for audit
    purposes
+6. **Given** a lab order specifies required containers, **When** collecting
+   samples, **Then** the system validates the selected container matches order
+   requirements
 
 ---
 
 ### User Story 3 - Sample Reception and Quality Control (Priority: P1)
 
 Laboratory staff need to receive samples into the tracking system, perform
-quality checks, and accept or reject samples based on defined criteria specific
-to each sample type.
+quality checks including **order matching**, and accept or reject samples based
+on defined criteria specific to each sample type.
 
 **Why this priority**: Quality control at reception prevents downstream errors
-and wasted resources on unsuitable samples.
+and wasted resources on unsuitable samples. **Samples without corresponding
+orders must be rejected.**
+
+**Common Quality Assessment Criteria (Pass/Fail)** (per SRS Section 3.3.1):
+
+- Mislabeling or unlabeled specimens
+- Inappropriate container or test tube type
+- **Without corresponding test request/order** ← Order validation is mandatory
+- Storage temperature at collection: room temp, 2-8°C, frozen, N/A
+
+**Sample-Specific Quality Requirements** (per SRS Section 3.3.3):
+
+| Sample Type  | Quality Criteria (Rejection Reasons)                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Chemistry    | Delayed >1 hour; Leaked; Volume <3 ml; Hemolysis in serum; Lipemic; Icteric                                         |
+| Hematology   | Wrong anticoagulant (EDTA, citrate, heparin, fluoride); Delayed >4 hours; Leaked; Volume <2 ml; Clotting; Hemolysis |
+| Stool        | Delayed >30 minutes; Volume less than pea grain; Leaked; Contaminated with urine; Improper container                |
+| Urine        | Delayed >30 minutes; Volume <10 ml; Leaked container; Contaminated with stool                                       |
+| Microbiology | Visible contamination; Sterility breach; Inappropriate transport medium                                             |
 
 **Independent Test**: Receive 5 samples, mark 4 as accepted (quality checks
 pass), reject 1 for hemolysis, verify rejection triggers corrective action
-workflow.
+workflow. Also test rejection of sample without matching order.
 
 **Acceptance Scenarios**:
 
 1. **Given** samples arrive at the laboratory, **When** the technician scans the
    barcode, **Then** the sample details are displayed including patient info,
    tests requested, and collection time
-2. **Given** a Chemistry sample is being received, **When** the technician
+2. **Given** a sample is scanned, **When** no corresponding lab order exists,
+   **Then** the sample is flagged for rejection with reason "Without
+   corresponding test request/order"
+3. **Given** a Chemistry sample is being received, **When** the technician
    checks quality criteria, **Then** options include: volume (<3ml), hemolysis,
    lipemia, icterus, delay (>1 hour), leakage
-3. **Given** a Hematology sample is being received, **When** checking quality,
+4. **Given** a Hematology sample is being received, **When** checking quality,
    **Then** anticoagulant type (EDTA, citrate, heparin, fluoride), delay (>4
    hours), clotting, volume (<2ml) are validated
-4. **Given** a Stool sample is received delayed (>30 minutes), **When** the
+5. **Given** a Stool sample is received delayed (>30 minutes), **When** the
    technician marks quality check as failed, **Then** the sample status changes
    to "Rejected" with reason "Delayed >30 minutes"
-5. **Given** a sample is rejected, **When** the rejection is confirmed, **Then**
+6. **Given** a sample is rejected, **When** the rejection is confirmed, **Then**
    corrective action options are presented: recollection or return to submitter
-6. **Given** all quality checks pass, **When** the technician clicks "Accept",
-   **Then** the sample moves to "Accepted" status and is ready for allocation
+7. **Given** all quality checks pass AND order matching verified, **When** the
+   technician clicks "Accept", **Then** the sample moves to "Accepted" status
+   and is ready for allocation
+8. **Given** QC is complete, **When** verifying sample-test matching, **Then**
+   lab orders appropriately match collected samples before department allocation
 
 ---
 
@@ -572,9 +740,16 @@ remaining samples to biobank, verify all data accessible in archive.
 
 ### User Story 19 - Accreditation Support (Priority: P3)
 
-The system needs to support laboratory accreditation requirements (ISO 15189,
-CAP, CLIA) through comprehensive audit trails, document control, and compliance
-reporting.
+The system needs to support laboratory accreditation requirements through
+comprehensive audit trails, document control, and compliance reporting.
+
+**Supported Accreditation Standards** (per SRS Section 3.9):
+
+- **ISO 15189** - Medical laboratories - Requirements for quality and competence
+- **SLIPTA** - Stepwise Laboratory Quality Improvement Process Towards
+  Accreditation
+- **CAP** - College of American Pathologists
+- **CLIA** - Clinical Laboratory Improvement Amendments
 
 **Why this priority**: Accreditation support is valuable but can be enhanced
 iteratively after core functions work.
@@ -591,6 +766,8 @@ to result, verify all actions documented with user, timestamp, and action type.
    actions are exportable
 3. **Given** document control is needed, **When** managing SOPs, **Then**
    version control, approval workflows, and training records are maintained
+4. **Given** SLIPTA assessment is needed, **When** generating reports, **Then**
+   system produces documentation supporting stepwise quality improvement
 
 ---
 
@@ -634,6 +811,16 @@ to result, verify all actions documented with user, timestamp, and action type.
 - **FR-005**: System MUST distinguish between patient samples and participant
   samples
 
+#### Lab Order Management (Order-Driven Architecture)
+
+- **FR-006**: Lab orders MUST specify required container types, volumes, and
+  handling requirements for each ordered test
+- **FR-007**: Lab orders MUST drive sample collection requirements - collectors
+  see order-specified container/volume needs
+- **FR-008**: Lab orders MUST determine sample-to-test allocation and department
+  routing
+- **FR-009**: Lab orders MUST generate electronic work lists for analyzers
+
 #### Sample Collection
 
 - **FR-010**: System MUST support sample collection for multiple sample types:
@@ -649,7 +836,13 @@ to result, verify all actions documented with user, timestamp, and action type.
 #### Sample Reception and Quality Control
 
 - **FR-020**: System MUST support sample reception with barcode scanning
-- **FR-021**: System MUST enforce sample-type-specific quality criteria:
+- **FR-021**: System MUST enforce common quality criteria for ALL samples:
+  - Mislabeling or unlabeled specimens
+  - Inappropriate container or test tube type
+  - **Without corresponding test request/order** (samples without orders MUST be
+    rejected)
+  - Storage temperature at collection validation
+- **FR-022**: System MUST enforce sample-type-specific quality criteria:
   - Chemistry: delay (>1 hour), leak, volume (<3ml), hemolysis, lipemia, icterus
   - Hematology: anticoagulant type (EDTA, citrate, heparin, fluoride), delay (>4
     hours), clotting, volume (<2ml), hemolysis
@@ -657,10 +850,13 @@ to result, verify all actions documented with user, timestamp, and action type.
     improper container
   - Urine: delay (>30 minutes), volume (<10ml), leak, stool contamination
   - Microbiology: visible contamination
-- **FR-022**: System MUST record Accept (A) or Reject (R) status for each sample
-- **FR-023**: System MUST capture corrective action for rejected samples:
+- **FR-023**: System MUST record Accept (A) or Reject (R) status for each sample
+- **FR-024**: System MUST capture corrective action for rejected samples:
   recollection or return to submitter
-- **FR-024**: System MUST verify lab orders match collected samples
+- **FR-025**: System MUST verify lab orders match collected samples before
+  acceptance
+- **FR-026**: System MUST verify sample-test matching to allocate samples to
+  specific test departments
 
 #### Transport Packaging Validation
 
@@ -797,8 +993,43 @@ to result, verify all actions documented with user, timestamp, and action type.
 
 - **FR-130**: System MUST maintain complete audit trails for all sample
   operations
-- **FR-131**: System MUST support accreditation standards (ISO 15189, CAP, CLIA)
+- **FR-131**: System MUST support accreditation standards: ISO 15189 (Medical
+  laboratories - Requirements for quality and competence), SLIPTA (Stepwise
+  Laboratory Quality Improvement Process Towards Accreditation), CAP, CLIA
 - **FR-132**: System MUST generate compliance reports on demand
+
+#### Data Handling (ALCOA+ Compliance)
+
+All data MUST meet ALCOA+ requirements per SRS Section 5.3:
+
+- **FR-140**: Data MUST be **Attributable** - User identification for all
+  entries
+- **FR-141**: Data MUST be **Legible** - Clear and readable
+- **FR-142**: Data MUST be **Contemporaneous** - Real-time entry
+- **FR-143**: Data MUST be **Original** - Original data or certified copy
+- **FR-144**: Data MUST be **Accurate** - Verified data
+- **FR-145**: Data MUST be **Complete** - All required data captured
+- **FR-146**: Data MUST be **Consistent** - Uniform data practices
+- **FR-147**: Data MUST be **Enduring** - Preserved for required retention
+  period
+- **FR-148**: Data MUST be **Available** - Accessible when needed
+- **FR-149**: System MUST support automatic result upload from analyzers via
+  instrument interfacing
+- **FR-150**: System MUST support Delta checks - comparison with previous
+  patient results for anomaly detection
+
+#### Sample Retrieval and Distribution
+
+- **FR-160**: System MUST support sample retrieval requests via LIMS with
+  authorization by supervisor for external requests
+- **FR-161**: System MUST document retrieval: date/time, personnel, purpose,
+  sample condition, remaining volume/quantity
+- **FR-162**: System MUST support inter-lab transfers with complete chain of
+  custody
+- **FR-163**: System MUST support temperature monitoring during transfer
+- **FR-164**: System MUST support Material Transfer Agreements (MTAs) for
+  external distribution
+- **FR-165**: System MUST support proper packaging and shipping documentation
 
 ### Key Entities
 
@@ -829,12 +1060,22 @@ to result, verify all actions documented with user, timestamp, and action type.
 #### Existing Entities to Reuse
 
 - **Patient**: Existing patient registration (extend for participant support)
-- **LabOrder/TestRequest**: Existing lab order system
-- **SampleItem**: Existing sample tracking (extend with medical lab attributes)
+- **LabOrder/TestRequest**: Existing lab order system - **CRITICAL** for
+  order-driven architecture. Orders specify container types, volumes, handling
+  requirements, and drive all downstream activities
+- **SampleItem**: Existing sample tracking (extend with medical lab attributes
+  and order linkage)
 - **StorageLocation**: Existing hierarchical storage (extend for cryo-box well
   mapping)
 - **Analyzer**: Existing analyzer configuration for interfacing
 - **SystemUser**: Existing user management for audit trails
+
+#### New Entities for Order-Based Architecture
+
+- **OrderSampleLink**: Links samples to their fulfilling orders, enabling QC
+  validation that samples have corresponding orders
+- **SampleRetrievalRequest**: Tracks sample retrieval requests with
+  authorization, purpose, and chain of custody
 
 ## Success Criteria _(mandatory)_
 
@@ -873,22 +1114,66 @@ to result, verify all actions documented with user, timestamp, and action type.
 
 ## Dependencies
 
-### Existing Services to Reuse
+### Existing Services to Reuse (Backend)
 
-- **PatientService**: Patient registration and lookup
-- **SampleService/SampleItemService**: Core sample management
-- **StorageService**: Hierarchical storage assignment
-- **AnalyzerService**: Analyzer configuration and interfacing
-- **UserService**: User authentication and authorization
-- **AuditService**: Audit trail logging
+The following existing backend services will be reused directly or extended:
+
+| Service                     | Package                    | Reuse Strategy | Notes                                    |
+| --------------------------- | -------------------------- | -------------- | ---------------------------------------- |
+| **PatientService**          | `patient.service`          | REUSE AS-IS    | Patient registration and lookup          |
+| **SampleService**           | `sample.service`           | REUSE AS-IS    | Core sample tracking                     |
+| **SampleItemService**       | `sampleitem.service`       | EXTEND         | Add collection_temperature, custom_label |
+| **SampleManagementService** | `sampleitem.service`       | REUSE AS-IS    | Aliquoting, test management              |
+| **StorageLocationService**  | `storage.service`          | REUSE AS-IS    | Full hierarchy support exists            |
+| **SampleStorageService**    | `storage.service`          | REUSE AS-IS    | Assignment, movement, disposal           |
+| **AnalyzerService**         | `analyzer.service`         | REUSE AS-IS    | Instrument integration                   |
+| **AnalysisService**         | `analysis.service`         | REUSE AS-IS    | Test order lifecycle                     |
+| **ResultService**           | `result.service`           | EXTEND         | Add panic value alerting                 |
+| **ResultValidationService** | `resultvalidation.service` | REUSE AS-IS    | Approval workflow                        |
+| **NoteBookService**         | `notebook.service`         | REUSE          | Workflow templating framework            |
+| **QaEventService**          | `qaevent.service`          | REUSE          | Adapt for sample QC events               |
+| **NoteService**             | `note.service`             | REUSE AS-IS    | Documentation attachment                 |
+| **AuditTrailService**       | `audittrail.dao`           | REUSE AS-IS    | Compliance logging                       |
+
+### Existing UI Components to Reuse (Frontend)
+
+The following existing React components will be reused or extended:
+
+| Component                         | Path                 | Reuse Strategy | Notes                           |
+| --------------------------------- | -------------------- | -------------- | ------------------------------- |
+| **StorageDashboard.jsx**          | `storage/`           | REUSE AS-IS    | Complete storage management     |
+| **SampleReceptionPage.js**        | `notebook/pages/`    | EXTEND         | Add QC checklist for medlab     |
+| **InitialProcessingPage.js**      | `notebook/pages/`    | EXTEND         | Add department-specific methods |
+| **ChildSampleCreationPage.js**    | `notebook/pages/`    | REUSE AS-IS    | Aliquot creation                |
+| **ResultCompilationPage.js**      | `notebook/pages/`    | REUSE AS-IS    | Result export/delivery          |
+| **FreezerMonitoringDashboard.js** | `coldStorage/`       | EXTEND         | Add twice-daily schedule        |
+| **SearchResultForm.js**           | `resultPage/`        | REUSE AS-IS    | Result entry/viewing            |
+| **Validation.js**                 | `validation/`        | EXTEND         | Add department queue filtering  |
+| **Dashboard.tsx**                 | `home/`              | EXTEND         | Add medlab-specific metrics     |
+| **Workplan.js**                   | `workplan/`          | REUSE AS-IS    | Worklist management             |
+| **SampleGrid.js**                 | `notebook/workflow/` | REUSE AS-IS    | Sample display grid             |
+| **StorageHierarchySelector.js**   | `notebook/workflow/` | REUSE AS-IS    | Location picker                 |
+| **BoxLayoutViewer.js**            | `notebook/workflow/` | REUSE AS-IS    | Box visualization               |
 
 ### New Components Required
 
-- Medical Lab workflow pages (React components with Carbon Design System)
-- Quality control dashboard and Levey-Jennings charting
-- Environmental monitoring module
-- Disposal and archiving workflow
-- Enhanced reporting/analytics engine
+Only the following genuinely new components are needed:
+
+**Backend (New Entities/Services):**
+
+- **QualityCheck** entity + service - Sample-type-specific QC criteria
+- **TransportPackaging** entity + service - IATA PI650 compliance tracking
+- **QCResult** entity + service - Levey-Jennings QC data
+- **EquipmentUsageLog** entity - Instrument usage tracking
+
+**Frontend (New Pages):**
+
+- **PatientOrderEntryPage.js** - Simplified inline patient registration + lab
+  order form
+- **SampleCollectionPage.js** - Create samples from orders
+- **MedLabQCDashboard.js** - Levey-Jennings charting (Carbon Charts)
+- **TransportPackagingForm.js** - IATA PI650 compliance form
+- **QualityCheckForm.js** - Sample-type-specific QC criteria checklist
 
 ## Out of Scope
 
@@ -901,32 +1186,56 @@ to result, verify all actions documented with user, timestamp, and action type.
 
 ## UI Pages Summary
 
-Based on the requirements, the following pages are needed:
+The Medical Lab workflow is implemented as a **Notebook workflow** using the
+existing notebook framework. All pages are embedded within the Notebook - users
+never navigate away from the workflow context.
 
-1. **Patient/Participant Registration** - Demographics, enrollment, scheduled
-   collections
-2. **Lab Order Entry** - Test selection, patient linking, order management
-3. **Sample Collection** - Collection form with labeling and container selection
-4. **Sample Reception** - Barcode scanning, quality checks, accept/reject
-   workflow
-5. **Transport Packaging Validation** - Primary/secondary/tertiary packaging
-   documentation
-6. **Sample Allocation** - Department routing, worklist assignment
-7. **Storage Management** - Hierarchical location selection, box mapping, sample
-   lookup
-8. **Environmental Monitoring** - Temperature recording, alert dashboard,
-   excursion management
-9. **Sample Processing** - Department-specific processing forms, aliquot
-   creation
-10. **Testing Worklist** - Department worklists, instrument worklist generation
-11. **Result Entry** - Manual entry, result review, editing
-12. **QC Dashboard** - Daily QC entry, Levey-Jennings charts, EQA tracking
-13. **Result Validation** - Department-specific approval queues, validation
-    workflow
-14. **Result Reporting** - Report generation, printing, delivery documentation
-15. **Laboratory Dashboard** - KPIs, TAT metrics, QC rates, equipment usage
-16. **Sample Utilization** - Usage tracking, depletion management
-17. **Disposal Management** - Disposal workflow, compliance documentation
-18. **Archive/Biobank Transfer** - Archiving workflow, transfer documentation
-19. **Administration** - Reference ranges, retention policies, accreditation
-    settings
+### Architecture
+
+- **Patient-centric workflow**: Patient → Order → Sample → Processing → Results
+- **Sample tracking**: Cross-cutting concern visible in every page via
+  `SampleGrid.js`
+- **Status progression**:
+  `COLLECTED → RECEIVED → ACCEPTED → ALLOCATED → PROCESSING → TESTED → VALIDATED → REPORTED → STORED/DISPOSED`
+
+### Medical Lab Notebook Pages
+
+| #   | Page                         | Description                                                       | Strategy | Base Component                  |
+| --- | ---------------------------- | ----------------------------------------------------------------- | -------- | ------------------------------- |
+| 1   | **Patient & Lab Order**      | Register patient (with inline search), create lab order           | NEW      | `PatientOrderEntryPage.js`      |
+| 2   | **Sample Collection**        | Record specimen collection: container, label, collector, time     | NEW      | `SampleCollectionPage.js`       |
+| 3   | **Sample Reception**         | Receive at lab: scan barcode, verify order, check transport       | EXTEND   | `SampleReceptionPage.js`        |
+| 4   | **Quality Control**          | Sample-type-specific QC (hemolysis, volume, delay), accept/reject | NEW      | `QualityCheckPage.js`           |
+| 5   | **Transport Packaging**      | IATA PI650 compliance documentation (P2)                          | NEW      | `TransportPackagingPage.js`     |
+| 6   | **Sample Allocation**        | Route to departments based on ordered tests                       | EXTEND   | `SampleRoutingPage.js`          |
+| 7   | **Sample Processing**        | Centrifugation, smears, staining, aliquot creation                | EXTEND   | `InitialProcessingPage.js`      |
+| 8   | **Storage Assignment**       | Assign samples to storage locations                               | EMBED    | `StorageHierarchySelector.js`   |
+| 9   | **Environmental Monitoring** | Temperature recording, alerts, excursions                         | EMBED    | `FreezerMonitoringDashboard.js` |
+| 10  | **Testing & Worklist**       | Analyzer worklist, result import, manual entry                    | EXTEND   | `AnalysisPage.js`               |
+| 11  | **QC Dashboard**             | Levey-Jennings charts, Westgard rules, calibration, EQA           | NEW      | `QCDashboardPage.js`            |
+| 12  | **Result Validation**        | Department queues, approve/reject/retest workflow                 | EMBED    | `Validation.js`                 |
+| 13  | **Result Reporting**         | Generate reports, track delivery                                  | REUSE    | `ResultCompilationPage.js`      |
+| 14  | **Lab Dashboard**            | TAT metrics, acceptance rates, equipment usage, KPIs              | EMBED    | `Dashboard.tsx` components      |
+| 15  | **Sample Utilization**       | Track usage, mark depletion                                       | EXTEND   | `SampleGrid.js` + actions       |
+| 16  | **Disposal/Archiving**       | Dispose or archive with compliance documentation                  | REUSE    | `EndOfProjectArchivingPage.js`  |
+
+### Strategy Legend
+
+- **NEW**: Create new page component for medlab
+- **EXTEND**: Modify existing notebook page to add medlab-specific features
+- **EMBED**: Wrap existing component to display within notebook page
+- **REUSE**: Use existing notebook page as-is
+
+### Workflow Context
+
+The notebook maintains patient context throughout all pages:
+
+```javascript
+workflowContext = {
+  patientId: "12345",
+  patientName: "John Doe",
+  orderId: "ORD-2024-001",
+  orderedTests: ["CBC", "LFT", "FBS"],
+  samples: [...] // All samples linked to this patient/order
+}
+```
