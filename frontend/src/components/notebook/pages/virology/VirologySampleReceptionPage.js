@@ -239,7 +239,7 @@ function VirologySampleReceptionPage({
     notify,
   ]);
 
-  // Progress verified samples to Virus Culture stage
+  // Progress verified samples to Media Preparation (Page 2)
   const progressToVirusCulture = useCallback(() => {
     const verifiedSamples = samples.filter(
       (s) =>
@@ -256,7 +256,7 @@ function VirologySampleReceptionPage({
         subtitle: intl.formatMessage({
           id: "notebook.page.virology.error.noVerifiedSelection",
           defaultMessage:
-            "Please select verified samples to progress to Virus Culture stage.",
+            "Please select verified samples to progress to Media Preparation.",
         }),
       });
       return;
@@ -283,13 +283,26 @@ function VirologySampleReceptionPage({
       return;
     }
 
-    // Progress samples to virus culture stage
+    if (!hasRealPageId) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        subtitle: intl.formatMessage({
+          id: "notebook.page.virology.error.noPage",
+          defaultMessage:
+            "Cannot progress samples: Page not properly initialized.",
+        }),
+      });
+      return;
+    }
+
+    // Progress samples to next page (Media Preparation)
     postToOpenElisServer(
-      `/rest/notebook/virology/progression/advance`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/progress`,
       JSON.stringify({
-        entryId: parseInt(entryId),
-        fromStage: "stage1_reception",
-        toStage: "stage2_culture",
         sampleIds: verifiedSamples.map((s) => parseInt(s.id)),
       }),
       (status) => {
@@ -304,7 +317,7 @@ function VirologySampleReceptionPage({
               {
                 id: "notebook.page.virology.success.progressed",
                 defaultMessage:
-                  "Successfully progressed {count} sample(s) to Virus Culture stage. Samples are now ready for culture batch creation.",
+                  "Successfully progressed {count} sample(s) to Media Preparation page. Samples are now ready for media preparation.",
               },
               { count: verifiedSamples.length },
             ),
@@ -324,7 +337,7 @@ function VirologySampleReceptionPage({
             subtitle: intl.formatMessage({
               id: "notebook.page.virology.error.progression",
               defaultMessage:
-                "Failed to progress samples to Virus Culture stage. Please try again.",
+                "Failed to progress samples to Media Preparation page. Please try again.",
             }),
           });
         }
@@ -333,7 +346,8 @@ function VirologySampleReceptionPage({
   }, [
     selectedCompletedSampleIds,
     samples,
-    entryId,
+    hasRealPageId,
+    pageData?.id,
     intl,
     loadPageSamples,
     onProgressUpdate,
@@ -618,8 +632,8 @@ function VirologySampleReceptionPage({
               onClick={progressToVirusCulture}
             >
               <FormattedMessage
-                id="notebook.page.virology.progressToVirusCulture"
-                defaultMessage="Progress to Virus Culture ({count})"
+                id="notebook.page.virology.progressToMediaPreparation"
+                defaultMessage="Progress to Media Preparation ({count})"
                 values={{ count: selectedCompletedSampleIds.length }}
               />
             </Button>
