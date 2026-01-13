@@ -13,7 +13,6 @@
  */
 package org.openelisglobal.reportdefinition.valueholder;
 
-import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -28,19 +27,35 @@ public class ReportDefinition extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @Column(name = "id", nullable = false, length = 50)
     private String id;
+
+    @Column(name = "name", nullable = false, length = 200)
     private String name;
+
+    @Column(name = "description")
     private String description;
+
+    @Column(name = "category", length = 100)
     private String category;
+
+    @Column(name = "definition_json", nullable = false, columnDefinition = "TEXT")
     private String definitionJson;
+
+    @Column(name = "created_by", length = 50)
     private String createdBy;
+
+    @Column(name = "created_date")
     private Timestamp createdDate;
+
+    @Column(name = "last_modified")
     private Timestamp lastModified;
+
+    @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
     @Override
-    @Id
-    @Column(name = "id", nullable = false, length = 50)
     public String getId() {
         return id;
     }
@@ -50,8 +65,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.id = id;
     }
 
-    @Basic
-    @Column(name = "name", nullable = false, length = 200)
     public String getName() {
         return name;
     }
@@ -60,8 +73,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.name = name;
     }
 
-    @Basic
-    @Column(name = "description", nullable = true)
     public String getDescription() {
         return description;
     }
@@ -70,8 +81,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.description = description;
     }
 
-    @Basic
-    @Column(name = "category", nullable = true, length = 100)
     public String getCategory() {
         return category;
     }
@@ -80,8 +89,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.category = category;
     }
 
-    @Basic
-    @Column(name = "definition_json", nullable = false, columnDefinition = "TEXT")
     public String getDefinitionJson() {
         return definitionJson;
     }
@@ -90,8 +97,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.definitionJson = definitionJson;
     }
 
-    @Basic
-    @Column(name = "created_by", nullable = true, length = 50)
     public String getCreatedBy() {
         return createdBy;
     }
@@ -100,8 +105,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.createdBy = createdBy;
     }
 
-    @Basic
-    @Column(name = "created_date", nullable = true)
     public Timestamp getCreatedDate() {
         return createdDate;
     }
@@ -110,8 +113,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.createdDate = createdDate;
     }
 
-    @Basic
-    @Column(name = "last_modified", nullable = true)
     public Timestamp getLastModified() {
         return lastModified;
     }
@@ -120,8 +121,6 @@ public class ReportDefinition extends BaseObject<String> {
         this.lastModified = lastModified;
     }
 
-    @Basic
-    @Column(name = "is_active", nullable = false)
     public Boolean getIsActive() {
         return isActive;
     }
