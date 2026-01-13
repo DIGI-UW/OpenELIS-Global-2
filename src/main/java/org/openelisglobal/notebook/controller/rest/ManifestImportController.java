@@ -185,9 +185,8 @@ public class ManifestImportController extends BaseRestController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Create samples for the entry with selected tests
-            ManifestImportResult result = manifestImportService.createSamplesForEntry(entryId, parsed,
-                    form.getSelectedTestIds(), sysUserId);
+            // Create samples for the entry
+            ManifestImportResult result = manifestImportService.createSamplesForEntry(entryId, parsed, sysUserId);
 
             // Build response
             Map<String, Object> response = new HashMap<>();
