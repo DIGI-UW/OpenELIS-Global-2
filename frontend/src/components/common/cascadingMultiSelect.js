@@ -8,7 +8,6 @@ export default function CascadingMultiSelect({
   dictionaryValues = [],
   value = "{}",
   onChange,
-  maxLevels = 5,
 }) {
   const items = useMemo(
     () =>
@@ -51,8 +50,6 @@ export default function CascadingMultiSelect({
 
   const addCascade = () => {
     const nextKey = cascadeKeys.length ? Math.max(...cascadeKeys) + 1 : 0;
-
-    if (cascadeKeys.length >= maxLevels) return;
 
     const updated = { ...cascades, [nextKey]: [] };
     setCascades(updated);
@@ -116,17 +113,15 @@ export default function CascadingMultiSelect({
             );
           })}
 
-          {cascadeKeys.length < maxLevels && (
-            <Button
-              kind="ghost"
-              size="sm"
-              style={{ marginTop: "0.5rem" }}
-              renderIcon={Add}
-              onClick={addCascade}
-            >
-              Add
-            </Button>
-          )}
+          <Button
+            kind="ghost"
+            size="sm"
+            style={{ marginTop: "0.5rem" }}
+            renderIcon={Add}
+            onClick={addCascade}
+          >
+            Add
+          </Button>
         </div>
       </Column>
     </>
