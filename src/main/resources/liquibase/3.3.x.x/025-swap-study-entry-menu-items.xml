@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+>
+
+    <!-- Hide old Study Initial Entry menu from React UI -->
+    <changeSet author="sagar" id="hide-old-study-initial-entry-in-new-ui-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_sample_create_initial'
+            </sqlCheck>
+        </preConditions>
+        <comment>Hide old Study Initial Entry menu from React UI</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="hide_in_new_ui" valueBoolean="true" />
+            <where>element_id = 'menu_sample_create_initial'</where>
+        </update>
+    </changeSet>
+
+    <!-- Hide old Study Double Entry menu from React UI -->
+    <changeSet author="sagar" id="hide-old-study-double-entry-in-new-ui-2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id = 'menu_sample_create_double'
+            </sqlCheck>
+        </preConditions>
+        <comment>Hide old Study Double Entry menu from React UI</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="hide_in_new_ui" valueBoolean="true" />
+            <where>element_id = 'menu_sample_create_double'</where>
+        </update>
+    </changeSet>
+
+    <!-- Add new React Study Initial Entry menu item -->
+    <changeSet author="sagar" id="add-study-initial-entry-react-menu-3">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_study_initial_entry_react'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_sample_create'
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Adds Study Initial Entry React menu item under Order->Study menu (hidden from old UI)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column
+                name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample_create')"
+            />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_study_initial_entry_react" />
+            <column name="action_url" value="/StudyInitialEntry" />
+            <column name="display_key" value="banner.menu.createInitial" />
+            <column
+                name="tool_tip_key"
+                value="tooltip.banner.menu.createInitial"
+            />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Add new React Study Double Entry menu item -->
+    <changeSet author="sagar" id="add-study-double-entry-react-menu-4">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_study_double_entry_react'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_sample_create'
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Adds Study Double Entry React menu item under Order->Study menu (hidden from old UI)</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column
+                name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample_create')"
+            />
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_study_double_entry_react" />
+            <column name="action_url" value="/StudyDoubleEntry" />
+            <column name="display_key" value="banner.menu.createDouble" />
+            <column
+                name="tool_tip_key"
+                value="tooltip.banner.menu.createDouble"
+            />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Add system module for React Study Initial Entry -->
+    <changeSet
+        author="sagar"
+        id="add-study-initial-entry-react-system-module-5"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyInitialEntryReact'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add system module for React Study Initial Entry</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="StudyInitialEntryReact" />
+            <column
+                name="description"
+                value="React implementation of Study Initial Entry"
+            />
+            <column name="has_select_flag" value="Y" />
+            <column name="has_add_flag" value="Y" />
+            <column name="has_update_flag" value="Y" />
+            <column name="has_delete_flag" value="Y" />
+        </insert>
+    </changeSet>
+
+    <!-- Add system module for React Study Double Entry -->
+    <changeSet author="sagar" id="add-study-double-entry-react-system-module-6">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyDoubleEntryReact'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add system module for React Study Double Entry</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="StudyDoubleEntryReact" />
+            <column
+                name="description"
+                value="React implementation of Study Double Entry (Verification)"
+            />
+            <column name="has_select_flag" value="Y" />
+            <column name="has_add_flag" value="Y" />
+            <column name="has_update_flag" value="Y" />
+            <column name="has_delete_flag" value="Y" />
+        </insert>
+    </changeSet>
+
+    <!-- Add Reception role access for React Study Initial Entry -->
+    <changeSet author="sagar" id="add-study-initial-entry-react-role-7">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyInitialEntryReact'
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Add Reception role access for React Study Initial Entry</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/StudyInitialEntry" />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyInitialEntryReact')"
+            />
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column
+                name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"
+            />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyInitialEntryReact')"
+            />
+        </insert>
+    </changeSet>
+
+    <!-- Add Reception role access for React Study Double Entry -->
+    <changeSet author="sagar" id="add-study-double-entry-react-role-8">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyDoubleEntryReact'
+            </sqlCheck>
+        </preConditions>
+        <comment
+        >Add Reception role access for React Study Double Entry</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/StudyDoubleEntry" />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyDoubleEntryReact')"
+            />
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column
+                name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"
+            />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyDoubleEntryReact')"
+            />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

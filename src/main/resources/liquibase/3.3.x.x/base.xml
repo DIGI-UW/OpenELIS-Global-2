@@ -55,4 +55,8 @@
   <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
   <!-- Address Hierarchy Configuration -->
   <include relativeToChangelogFile="true" file="030-add-address-hierarchy-config.xml"/>
+
+  <!-- Study Initial & Double Entry (react-ui-2): add hide_in_new_ui column then swap menu items -->
+  <include relativeToChangelogFile="true" file="023-add-hide-in-new-ui-to-menu.xml"/>
+  <include relativeToChangelogFile="true" file="025-swap-study-entry-menu-items.xml"/>
 </databaseChangeLog>
