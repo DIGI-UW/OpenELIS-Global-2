@@ -4,38 +4,38 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
   let loginPage = null;
 
   before(() => {
-    // Ensure backend and login endpoint are up before running the test
-    cy.waitForBackend("/api/OpenELIS-Global/rest/StudyElectronicOrders");
-
     loginPage = new LoginPage();
     loginPage.visit();
     loginPage.goToHomePage();
-
-    // Create test data
-    cy.exec(
-      'docker exec openelisglobal-database psql -U clinlims -d clinlims -c "' +
-        "INSERT INTO clinlims.person (id, first_name, last_name, lastupdated) " +
-        "VALUES (999, 'Test', 'Patient', NOW()) ON CONFLICT (id) DO NOTHING; " +
-        "INSERT INTO clinlims.patient (id, person_id, national_id, external_id, birth_date, gender, lastupdated) " +
-        "VALUES (999, 999, 'TEST123456', 'TEST-PAT-001', '1990-01-01', 'M', NOW()) ON CONFLICT (id) DO NOTHING; " +
-        "INSERT INTO clinlims.electronic_order (id, external_id, patient_id, status_id, order_timestamp, data, type, order_priority, lastupdated) " +
-        "VALUES (2, 'TEST-EORDER-001', 999, 21, NOW(), '{\"resourceType\": \"Task\"}', 'FHIR', 'ROUTINE', NOW()), " +
-        "(3, 'TEST-EORDER-002', 999, 21, NOW(), '{\"resourceType\": \"Task\"}', 'FHIR', 'ASAP', NOW()), " +
-        "(4, 'TEST-EORDER-003', 999, 21, NOW(), '{\"resourceType\": \"Task\"}', 'FHIR', 'STAT', NOW()) " +
-        "ON CONFLICT (id) DO UPDATE SET status_id = 21, reject_reason_id = NULL, reject_comment = NULL;" +
-        '"',
-    );
   });
 
-  after(() => {
-    // Clean up test data
-    cy.exec(
-      'docker exec openelisglobal-database psql -U clinlims -d clinlims -c "' +
-        "DELETE FROM clinlims.electronic_order WHERE patient_id = 999; " +
-        "DELETE FROM clinlims.patient WHERE id = 999; " +
-        "DELETE FROM clinlims.person WHERE id = 999;" +
-        '"',
-    );
+  beforeEach(() => {
+    // Mock API responses instead of using database
+    // Mock initial load for organizations and QA events
+    cy.intercept("GET", "**/rest/StudyElectronicOrders", (req) => {
+      // If no query params, return initial data
+      if (!req.url.includes("searchType")) {
+        req.reply({
+          organizationList: [
+            { id: "1", value: "Test Hospital" },
+            { id: "2", value: "Test Clinic" },
+          ],
+          qaEvents: [
+            { id: "1", value: "Sample not received" },
+            { id: "2", value: "Incorrect patient information" },
+          ],
+        });
+      }
+    }).as("initialLoad");
+
+    // Mock status list
+    cy.intercept("GET", "**/rest/displayList/ELECTRONIC_ORDER_STATUSES", {
+      body: [
+        { id: "21", value: "Entered" },
+        { id: "22", value: "Cancelled" },
+        { id: "23", value: "Realized" },
+      ],
+    }).as("statusList");
   });
 
   it("loads Study Electronic Orders page and verifies UI elements", () => {
@@ -55,9 +55,31 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
   });
 
   it("searches for electronic orders by patient identifier", () => {
-    cy.intercept("GET", "/api/OpenELIS-Global/rest/StudyElectronicOrders*").as(
-      "searchRequest",
-    );
+    // Mock search response
+    cy.intercept(
+      "GET",
+      "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
+      {
+        eOrders: [
+          {
+            electronicOrderId: "1",
+            externalOrderId: "TEST-EORDER-001",
+            requestingFacility: "Test Hospital",
+            patientNationalId: "TEST123456",
+            patientUpid: "UPID-001",
+            gender: "M",
+            birthDate: "1990-01-01",
+            requestDateDisplay: "2024-01-05",
+            collectionDateDisplay: "2024-01-05",
+            status: "Entered",
+            testName: "HIV Viral Load",
+            labNumber: "",
+            qaEventId: null,
+          },
+        ],
+        paging: { currentPage: 1, totalPages: 1 },
+      },
+    ).as("searchRequest");
 
     cy.visit("/StudyElectronicOrders");
 
@@ -96,9 +118,31 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
   });
 
   it("opens reject modal and validates form", () => {
-    cy.intercept("GET", "/api/OpenELIS-Global/rest/StudyElectronicOrders*").as(
-      "searchRequest",
-    );
+    // Mock search response
+    cy.intercept(
+      "GET",
+      "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
+      {
+        eOrders: [
+          {
+            electronicOrderId: "1",
+            externalOrderId: "TEST-EORDER-001",
+            requestingFacility: "Test Hospital",
+            patientNationalId: "TEST123456",
+            patientUpid: "UPID-001",
+            gender: "M",
+            birthDate: "1990-01-01",
+            requestDateDisplay: "2024-01-05",
+            collectionDateDisplay: "2024-01-05",
+            status: "Entered",
+            testName: "HIV Viral Load",
+            labNumber: "",
+            qaEventId: null,
+          },
+        ],
+        paging: { currentPage: 1, totalPages: 1 },
+      },
+    ).as("searchRequest");
 
     cy.visit("/StudyElectronicOrders");
 
@@ -128,7 +172,8 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
     cy.get("#reject-note").should("exist");
 
     // Verify primary Reject button is disabled without selecting reason
-    cy.get(".cds--modal-footer")
+    cy.get("[data-cy='reject-eorder-modal']")
+      .parent()
       .find("button")
       .contains("Reject")
       .should("be.disabled");
@@ -139,13 +184,37 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
   });
 
   it("rejects an electronic order successfully", () => {
-    cy.intercept("GET", "/api/OpenELIS-Global/rest/StudyElectronicOrders*").as(
-      "searchRequest",
-    );
+    // Mock search response
     cy.intercept(
-      "POST",
-      "/api/OpenELIS-Global/rest/rejectStudyElectronicOrder",
-    ).as("rejectRequest");
+      "GET",
+      "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
+      {
+        eOrders: [
+          {
+            electronicOrderId: "1",
+            externalOrderId: "TEST-EORDER-001",
+            requestingFacility: "Test Hospital",
+            patientNationalId: "TEST123456",
+            patientUpid: "UPID-001",
+            gender: "M",
+            birthDate: "1990-01-01",
+            requestDateDisplay: "2024-01-05",
+            collectionDateDisplay: "2024-01-05",
+            status: "Entered",
+            testName: "HIV Viral Load",
+            labNumber: "",
+            qaEventId: null,
+          },
+        ],
+        paging: { currentPage: 1, totalPages: 1 },
+      },
+    ).as("searchRequest");
+
+    // Mock reject response
+    cy.intercept("POST", "**/rest/rejectStudyElectronicOrder", {
+      statusCode: 200,
+      body: { success: true },
+    }).as("rejectRequest");
 
     cy.visit("/StudyElectronicOrders");
 
@@ -174,8 +243,9 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
     cy.get("#reject-authorizer").type("Test Authorizer");
     cy.get("#reject-note").type("Test rejection for Cypress");
 
-    // Submit rejection - find the primary button in modal footer
-    cy.get(".cds--modal-footer")
+    // Submit rejection
+    cy.get("[data-cy='reject-eorder-modal']")
+      .parent()
       .find("button")
       .contains("Reject")
       .should("not.be.disabled")
@@ -195,9 +265,31 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
   });
 
   it("displays rejected orders with disabled buttons", () => {
-    cy.intercept("GET", "/api/OpenELIS-Global/rest/StudyElectronicOrders*").as(
-      "searchRequest",
-    );
+    // Mock search response with rejected order
+    cy.intercept(
+      "GET",
+      "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
+      {
+        eOrders: [
+          {
+            electronicOrderId: "1",
+            externalOrderId: "TEST-EORDER-001",
+            requestingFacility: "Test Hospital",
+            patientNationalId: "TEST123456",
+            patientUpid: "UPID-001",
+            gender: "M",
+            birthDate: "1990-01-01",
+            requestDateDisplay: "2024-01-05",
+            collectionDateDisplay: "2024-01-05",
+            status: "Cancelled",
+            testName: "HIV Viral Load",
+            labNumber: "",
+            qaEventId: "1",
+          },
+        ],
+        paging: { currentPage: 1, totalPages: 1 },
+      },
+    ).as("searchRequest");
 
     cy.visit("/StudyElectronicOrders");
 
@@ -232,9 +324,31 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
   });
 
   it("Edit button redirects to order entry page", () => {
-    cy.intercept("GET", "/api/OpenELIS-Global/rest/StudyElectronicOrders*").as(
-      "searchRequest",
-    );
+    // Mock search response
+    cy.intercept(
+      "GET",
+      "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
+      {
+        eOrders: [
+          {
+            electronicOrderId: "1",
+            externalOrderId: "TEST-EORDER-001",
+            requestingFacility: "Test Hospital",
+            patientNationalId: "TEST123456",
+            patientUpid: "UPID-001",
+            gender: "M",
+            birthDate: "1990-01-01",
+            requestDateDisplay: "2024-01-05",
+            collectionDateDisplay: "2024-01-05",
+            status: "Entered",
+            testName: "HIV Viral Load",
+            labNumber: "",
+            qaEventId: null,
+          },
+        ],
+        paging: { currentPage: 1, totalPages: 1 },
+      },
+    ).as("searchRequest");
 
     cy.visit("/StudyElectronicOrders");
 

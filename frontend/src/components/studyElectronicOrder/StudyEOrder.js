@@ -264,6 +264,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
           defaultMessage: "Cancel",
         })}
         primaryButtonDisabled={isSubmitting || !rejectReason}
+        data-cy="reject-eorder-modal"
       >
         <Select
           id="reject-reason"
