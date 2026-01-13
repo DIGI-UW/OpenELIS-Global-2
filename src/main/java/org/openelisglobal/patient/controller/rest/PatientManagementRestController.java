@@ -56,7 +56,7 @@ public class PatientManagementRestController extends BaseRestController {
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> savepatient(HttpServletRequest request,
+    public void savepatient(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
             BindingResult bindingResult) throws Exception {
 
@@ -74,8 +74,6 @@ public class PatientManagementRestController extends BaseRestController {
                     throw new BindException(bindingResult);
                 } catch (BindException e) {
                     LogEvent.logError(e);
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("success", false, "error", "Validation errors: " + e.getMessage()));
                 }
             }
             try {
@@ -83,30 +81,19 @@ public class PatientManagementRestController extends BaseRestController {
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
                 photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
-
-                // Return the patient ID to the frontend
-                return ResponseEntity.ok(Map.of("success", true, "patientPK", patient.getId(), "message",
-                        patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD ? "Patient created successfully"
-                                : "Patient updated successfully"));
             } catch (LIMSRuntimeException e) {
 
                 if (e.getCause() instanceof StaleObjectStateException) {
-                    return ResponseEntity.status(409)
-                            .body(Map.of("success", false, "error", "Patient data has been modified by another user"));
+
                 } else {
                     LogEvent.logDebug(e);
-                    return ResponseEntity.status(500)
-                            .body(Map.of("success", false, "error", "Error saving patient: " + e.getMessage()));
                 }
+                request.setAttribute(ALLOW_EDITS_KEY, "false");
 
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
-                return ResponseEntity.status(500)
-                        .body(Map.of("success", false, "error", "FHIR transformation error: " + e.getMessage()));
             }
         }
-
-        return ResponseEntity.ok(Map.of("success", true, "message", "No action required"));
     }
 
     @GetMapping("patient-photos/{id}/{isThumbnail}")
@@ -152,9 +139,7 @@ public class PatientManagementRestController extends BaseRestController {
         for (PatientIdentity identity : patientInfo.getPatientIdentities()) {
             identity.setSysUserId(getSysUserId(request));
         }
-        if (patientInfo.getPatientContact() != null) {
-            patientInfo.getPatientContact().setSysUserId(getSysUserId(request));
-        }
+        patientInfo.getPatientContact().setSysUserId(getSysUserId(request));
     }
 
     private void initMembers(Patient patient) {

@@ -11,20 +11,28 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
  */
 public interface ManifestImportService {
 
-    /** Result of manifest parsing operation. */
+    /**
+     * Result of manifest parsing operation.
+     */
     record ParsedManifest(List<ManifestRow> rows, List<ParseError> errors) {
     }
 
-    /** A single row from the manifest CSV. */
+    /**
+     * A single row from the manifest CSV.
+     */
     record ManifestRow(int rowNumber, String groupId, String sampleType, String collectionDate, String volume,
             int numOfSamples, String notes) {
     }
 
-    /** Error during manifest parsing or validation. */
+    /**
+     * Error during manifest parsing or validation.
+     */
     record ParseError(int rowNumber, String column, String message) {
     }
 
-    /** Result of sample creation from manifest. */
+    /**
+     * Result of sample creation from manifest.
+     */
     record ManifestImportResult(int totalRequested, int totalCreated, List<SampleItem> createdSamples,
             List<ParseError> errors) {
     }
@@ -49,18 +57,14 @@ public interface ManifestImportService {
     /**
      * Create SampleItem records from a manifest for a notebook entry. Each row with
      * num_of_samples > 1 creates multiple SampleItem records with sequential
-     * external_id values (e.g., GRP-001-001, GRP-001-002, etc.). Also creates
-     * Analysis records for each selected test.
+     * external_id values (e.g., GRP-001-001, GRP-001-002, etc.).
      *
-     * @param entryId         the notebook entry to link samples to
-     * @param manifest        the parsed and validated manifest
-     * @param selectedTestIds list of test IDs to create Analysis records for each
-     *                        sample
-     * @param sysUserId       the user creating the samples
+     * @param entryId   the notebook entry to link samples to
+     * @param manifest  the parsed and validated manifest
+     * @param sysUserId the user creating the samples
      * @return result containing created samples and any errors
      */
-    ManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, List<String> selectedTestIds,
-            String sysUserId);
+    ManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId);
 
     /**
      * Generate external ID for a sample based on group ID and sequence number.

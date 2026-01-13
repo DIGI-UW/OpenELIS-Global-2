@@ -11,24 +11,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.openelisglobal.analysis.service.AnalysisService;
-import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
-import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.notebook.form.ManifestImportForm;
-import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,12 +48,6 @@ public class ManifestImportServiceImpl implements ManifestImportService {
 
     @Autowired
     private IStatusService statusService;
-
-    @Autowired
-    private TestService testService;
-
-    @Autowired
-    private AnalysisService analysisService;
 
     @Override
     public ParsedManifest parseManifestCsv(InputStream csvInput, ManifestImportForm columnMapping) {
@@ -163,8 +147,7 @@ public class ManifestImportServiceImpl implements ManifestImportService {
 
     @Override
     @Transactional
-    public ManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest,
-            List<String> selectedTestIds, String sysUserId) {
+    public ManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest, String sysUserId) {
         List<SampleItem> createdSamples = new ArrayList<>();
         List<ParseError> errors = new ArrayList<>();
 
@@ -176,54 +159,7 @@ public class ManifestImportServiceImpl implements ManifestImportService {
         }
 
         NotebookEntry entry = optEntry.get();
-
-        // Get the notebook ID from the entry - needed for linking samples to pages
-        NoteBook notebook = entry.getNotebook();
-        if (notebook == null) {
-            errors.add(new ParseError(0, "entry", "Notebook entry has no associated notebook: " + entryId));
-            return new ManifestImportResult(0, 0, createdSamples, errors);
-        }
-        Integer notebookId = notebook.getId();
-
-        // Load selected tests
-        List<Test> selectedTests = new ArrayList<>();
-        if (selectedTestIds != null && !selectedTestIds.isEmpty()) {
-            for (String testId : selectedTestIds) {
-                Test test = testService.get(testId);
-                if (test != null) {
-                    selectedTests.add(test);
-                } else {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "createSamplesForEntry",
-                            "Test not found: " + testId);
-                }
-            }
-        }
-
-        LogEvent.logInfo(this.getClass().getSimpleName(), "createSamplesForEntry",
-                "Creating samples with " + selectedTests.size() + " tests for entry " + entryId);
-
         int totalRequested = 0;
-        int analysesCreated = 0;
-
-        // Get the main accession number generator to generate proper accession numbers
-        IAccessionNumberGenerator accessionGenerator = null;
-        try {
-            accessionGenerator = AccessionNumberUtil.getMainAccessionNumberGenerator();
-        } catch (NoClassDefFoundError | ExceptionInInitializerError e) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "createSamplesForEntry",
-                    "AccessionNumberUtil not available - using timestamp for accession numbers");
-        }
-
-        // Get status IDs
-        String sampleEnteredStatusId = statusService.getStatusID(SampleStatus.Entered);
-        if (sampleEnteredStatusId == null || "-1".equals(sampleEnteredStatusId)) {
-            sampleEnteredStatusId = "20";
-        }
-
-        String analysisNotStartedStatusId = statusService.getStatusID(AnalysisStatus.NotStarted);
-        if (analysisNotStartedStatusId == null || "-1".equals(analysisNotStartedStatusId)) {
-            analysisNotStartedStatusId = "1";
-        }
 
         for (ManifestRow row : manifest.rows()) {
             if (row.numOfSamples() <= 0) {
@@ -242,29 +178,29 @@ public class ManifestImportServiceImpl implements ManifestImportService {
                 continue;
             }
 
-            // Create individual Sample and SampleItem records - each with its own unique
-            // accession number
-            // This ensures each sample has a unique Lab Number for proper tracking through
-            // the workflow
+            // Create a parent Sample record for this batch with generated accession number
+            Sample parentSample = new Sample();
+            parentSample.setSysUserId(sysUserId);
+            parentSample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
+            parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
+            String sampleId = sampleService.generateAccessionNumberAndInsert(parentSample);
+            parentSample.setId(sampleId);
+
+            // Create individual SampleItem records
+            // Get status ID for SampleEntered - use hardcoded fallback if not found
+            String sampleEnteredStatusId = statusService.getStatusID(SampleStatus.Entered);
+            if (sampleEnteredStatusId == null || "-1".equals(sampleEnteredStatusId)) {
+                // Fallback to hardcoded status ID for SampleEntered (from status_of_sample
+                // table)
+                sampleEnteredStatusId = "20";
+            }
+
             for (int seq = 1; seq <= row.numOfSamples(); seq++) {
-                // Generate a UNIQUE accession number for EACH sample
-                String accessionNumber = accessionGenerator != null
-                        ? accessionGenerator.getNextAccessionNumber(null, true)
-                        : String.valueOf(System.currentTimeMillis()) + "-" + seq;
-
-                Sample sample = new Sample();
-                sample.setSysUserId(sysUserId);
-                sample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
-                sample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
-                sample.setAccessionNumber(accessionNumber);
-                String sampleId = sampleService.insert(sample);
-                sample.setId(sampleId);
-
                 SampleItem item = new SampleItem();
-                item.setSample(sample);
+                item.setSample(parentSample);
                 item.setTypeOfSample(sampleType);
                 item.setExternalId(generateExternalId(row.groupId(), seq));
-                item.setSortOrder("1"); // Each sample has only one item now
+                item.setSortOrder(Integer.toString(seq));
                 item.setStatusId(sampleEnteredStatusId);
                 item.setSysUserId(sysUserId);
 
@@ -280,19 +216,6 @@ public class ManifestImportServiceImpl implements ManifestImportService {
                 item.setId(itemId);
                 createdSamples.add(item);
 
-                // Create Analysis records for each selected test
-                for (Test test : selectedTests) {
-                    Analysis analysis = new Analysis();
-                    analysis.setSampleItem(item);
-                    analysis.setTest(test);
-                    analysis.setAnalysisType("MANUAL");
-                    analysis.setStatusId(analysisNotStartedStatusId);
-                    analysis.setSysUserId(sysUserId);
-                    analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
-                    analysisService.insert(analysis);
-                    analysesCreated++;
-                }
-
                 // Add sample to entry
                 notebookEntryService.addSample(entryId, item, sysUserId);
             }
@@ -302,13 +225,11 @@ public class ManifestImportServiceImpl implements ManifestImportService {
             List<Integer> createdIds = createdSamples.stream().map(s -> Integer.parseInt(s.getId()))
                     .collect(Collectors.toList());
             // Use notebook ID from entry, not entry ID
+            Integer notebookId = entry.getNotebook() != null ? entry.getNotebook().getId() : null;
             if (notebookId != null) {
                 notebookSampleEntryService.linkSamplesToNotebook(notebookId, createdIds);
             }
         }
-
-        LogEvent.logInfo(this.getClass().getSimpleName(), "createSamplesForEntry",
-                "Created " + createdSamples.size() + " samples and " + analysesCreated + " analysis records");
 
         return new ManifestImportResult(totalRequested, createdSamples.size(), createdSamples, errors);
     }
