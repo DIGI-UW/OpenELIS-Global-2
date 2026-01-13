@@ -3,6 +3,34 @@ import LoginPage from "../pages/LoginPage";
 describe("Study Electronic Orders - UI and functionality tests", () => {
   let loginPage = null;
 
+  // Mock data constants
+  const MOCK_EORDER = {
+    electronicOrderId: "1",
+    externalOrderId: "TEST-EORDER-001",
+    requestingFacility: "Test Hospital",
+    patientNationalId: "TEST123456",
+    patientUpid: "UPID-001",
+    gender: "M",
+    birthDate: "1990-01-01",
+    requestDateDisplay: "2024-01-05",
+    collectionDateDisplay: "2024-01-05",
+    status: "Entered",
+    testName: "HIV Viral Load",
+    labNumber: "",
+    qaEventId: null,
+  };
+
+  const MOCK_SEARCH_RESPONSE = {
+    eOrders: [MOCK_EORDER],
+    paging: { currentPage: 1, totalPages: 1 },
+  };
+
+  const MOCK_REJECTED_EORDER = {
+    ...MOCK_EORDER,
+    status: "Cancelled",
+    qaEventId: "1",
+  };
+
   before(() => {
     loginPage = new LoginPage();
     loginPage.visit();
@@ -59,26 +87,7 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
     cy.intercept(
       "GET",
       "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
-      {
-        eOrders: [
-          {
-            electronicOrderId: "1",
-            externalOrderId: "TEST-EORDER-001",
-            requestingFacility: "Test Hospital",
-            patientNationalId: "TEST123456",
-            patientUpid: "UPID-001",
-            gender: "M",
-            birthDate: "1990-01-01",
-            requestDateDisplay: "2024-01-05",
-            collectionDateDisplay: "2024-01-05",
-            status: "Entered",
-            testName: "HIV Viral Load",
-            labNumber: "",
-            qaEventId: null,
-          },
-        ],
-        paging: { currentPage: 1, totalPages: 1 },
-      },
+      MOCK_SEARCH_RESPONSE,
     ).as("searchRequest");
 
     cy.visit("/StudyElectronicOrders");
@@ -122,26 +131,7 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
     cy.intercept(
       "GET",
       "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
-      {
-        eOrders: [
-          {
-            electronicOrderId: "1",
-            externalOrderId: "TEST-EORDER-001",
-            requestingFacility: "Test Hospital",
-            patientNationalId: "TEST123456",
-            patientUpid: "UPID-001",
-            gender: "M",
-            birthDate: "1990-01-01",
-            requestDateDisplay: "2024-01-05",
-            collectionDateDisplay: "2024-01-05",
-            status: "Entered",
-            testName: "HIV Viral Load",
-            labNumber: "",
-            qaEventId: null,
-          },
-        ],
-        paging: { currentPage: 1, totalPages: 1 },
-      },
+      MOCK_SEARCH_RESPONSE,
     ).as("searchRequest");
 
     cy.visit("/StudyElectronicOrders");
@@ -188,26 +178,7 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
     cy.intercept(
       "GET",
       "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
-      {
-        eOrders: [
-          {
-            electronicOrderId: "1",
-            externalOrderId: "TEST-EORDER-001",
-            requestingFacility: "Test Hospital",
-            patientNationalId: "TEST123456",
-            patientUpid: "UPID-001",
-            gender: "M",
-            birthDate: "1990-01-01",
-            requestDateDisplay: "2024-01-05",
-            collectionDateDisplay: "2024-01-05",
-            status: "Entered",
-            testName: "HIV Viral Load",
-            labNumber: "",
-            qaEventId: null,
-          },
-        ],
-        paging: { currentPage: 1, totalPages: 1 },
-      },
+      MOCK_SEARCH_RESPONSE,
     ).as("searchRequest");
 
     // Mock reject response
@@ -270,23 +241,7 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
       "GET",
       "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
       {
-        eOrders: [
-          {
-            electronicOrderId: "1",
-            externalOrderId: "TEST-EORDER-001",
-            requestingFacility: "Test Hospital",
-            patientNationalId: "TEST123456",
-            patientUpid: "UPID-001",
-            gender: "M",
-            birthDate: "1990-01-01",
-            requestDateDisplay: "2024-01-05",
-            collectionDateDisplay: "2024-01-05",
-            status: "Cancelled",
-            testName: "HIV Viral Load",
-            labNumber: "",
-            qaEventId: "1",
-          },
-        ],
+        eOrders: [MOCK_REJECTED_EORDER],
         paging: { currentPage: 1, totalPages: 1 },
       },
     ).as("searchRequest");
@@ -328,26 +283,7 @@ describe("Study Electronic Orders - UI and functionality tests", () => {
     cy.intercept(
       "GET",
       "**/rest/StudyElectronicOrders?searchType=IDENTIFIER&searchValue=TEST123456",
-      {
-        eOrders: [
-          {
-            electronicOrderId: "1",
-            externalOrderId: "TEST-EORDER-001",
-            requestingFacility: "Test Hospital",
-            patientNationalId: "TEST123456",
-            patientUpid: "UPID-001",
-            gender: "M",
-            birthDate: "1990-01-01",
-            requestDateDisplay: "2024-01-05",
-            collectionDateDisplay: "2024-01-05",
-            status: "Entered",
-            testName: "HIV Viral Load",
-            labNumber: "",
-            qaEventId: null,
-          },
-        ],
-        paging: { currentPage: 1, totalPages: 1 },
-      },
+      MOCK_SEARCH_RESPONSE,
     ).as("searchRequest");
 
     cy.visit("/StudyElectronicOrders");
