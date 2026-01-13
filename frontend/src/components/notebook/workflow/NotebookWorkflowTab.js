@@ -23,8 +23,7 @@ import ImmunologyResultCompilationPage from "../pages/immunology/ImmunologyResul
 import ImmunologyArchivingPage from "../pages/immunology/ImmunologyArchivingPage";
 import ImmunologyDataAnalysisPage from "../pages/immunology/ImmunologyDataAnalysisPage";
 import VirologySampleReceptionPage from "../pages/virology/VirologySampleReceptionPage";
-import VirusCultureWorkflowPage from "../pages/virology/VirusCultureWorkflowPage";
-import VaccineevelopmentPage from "../pages/virology/VaccineevelopmentPage";
+import VirologyMediaPreparationPage from "../pages/virology/VirologyMediaPreparationPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -309,14 +308,13 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       workflowType,
     });
 
-    // Virology & Vaccine Unit workflow (3 stages per PDF spec)
-    // Stage 1: Sample Intake & Registration
-    // Stage 2: Virus Culture Growth (In-Lab)
-    // Stage 3: Vaccine Development (Partially External)
+    // Virology & Vaccine Unit workflow (2 pages)
+    // Page 1: Sample Intake & Registration
+    // Page 2: Media Preparation & Quality Control
     if (workflowType === "virology") {
       switch (pageOrder) {
         case 1:
-          // Stage 1: Sample Intake & Registration
+          // Page 1: Sample Intake & Registration
           // Sample arrival (pre-labeled or labeled), metadata entry, test type assignment
           return (
             <VirologySampleReceptionPage
@@ -328,32 +326,17 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
             />
           );
         case 2:
-          // Stage 2: Virus Culture Growth (In-Lab)
-          // Media prep, sterilization, cell culture, QC, virus culture,
-          // dark room imaging, formulation, feeding, packaging
+          // Page 2: Media Preparation & Quality Control
+          // Ensure full traceability of materials and equipment for media preparation
+          // Captures: media type, reagents (supplier, lot, expiry), equipment, QC parameters
           return (
-            <VirusCultureWorkflowPage
-              key={`virology-culture-${page.id}`}
+            <VirologyMediaPreparationPage
+              key={`virology-media-prep-${page.id}`}
               entryId={entryId}
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
-              notebookEntry={entry}
-            />
-          );
-        case 3:
-          // Stage 3: Vaccine Development (Specialized)
-          // Virus isolation, titer measurement, genome sequencing,
-          // seed virus production, preclinical trials with specific data capture
-          return (
-            <VaccineevelopmentPage
-              key={`virology-vaccine-dev-${page.id}`}
-              entryId={entryId}
-              pageData={page}
-              progress={progress}
-              onProgressUpdate={handleProgressUpdate}
-              notebookId={notebook?.id}
-              notebookInstruments={notebook?.analyzers}
+              templateInstruments={notebook?.analyzers}
             />
           );
         default:

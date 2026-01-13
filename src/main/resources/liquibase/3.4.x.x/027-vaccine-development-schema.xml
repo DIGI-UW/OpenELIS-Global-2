@@ -8,595 +8,405 @@
     <property name="now" value="now()" dbms="postgresql"/>
 
     <!-- ======================================================== -->
-    <!-- VACCINE DEVELOPMENT WORKFLOW DATABASE SCHEMA -->
-    <!-- ======================================================== -->
-    <!--
-    This changeset creates comprehensive database support for the
-    Vaccine Development workflow (Stage 3 of Virology & Vaccine Unit).
-
-    Covers 5 vaccine development stages per PDF requirements:
-    1. Virus Isolation - Link to culture batch
-    2. Titer Measurement - TCID50, PFU/ml values
-    3. Genome Sequencing - FASTA uploads, GenBank accessions
-    4. Seed Virus Production - Selection criteria, batch tracking
-    5. Preclinical Trials - Animal testing tracking (external)
-    -->
+    <!-- UPDATE VIROLOGY NOTEBOOK: REMOVE PAGES 2 & 3             -->
+    <!-- AND ADD NEW MEDIA PREPARATION PAGE                       -->
     <!-- ======================================================== -->
 
-    <!-- Main vaccine development entry table -->
-    <changeSet id="create-vaccine-development-table" author="openelis-virology">
+    <!-- ======================================================== -->
+    <!-- ADD NEW PAGE 2: MEDIA PREPARATION & QUALITY CONTROL      -->
+    <!-- Similar to Bacteriology Processing & QC Page              -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virology-page-2-media-preparation" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology and Vaccine Unit' AND n.is_template = true
+                AND np.page_order = 2
+                AND np.title = 'Media Preparation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create new Media Preparation and Quality Control page for Virology notebook (Page 2)</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Media Preparation"/>
+            <column name="instructions" value="Media Preparation - Notebook Page Requirements: Ensure full traceability of materials and equipment selected. Page Must Capture: 1) Media name and type (controlled vocabulary) - Select from predefined media types (DMEM, RPMI-1640, MEM, etc.). 2) Reagents used (each as a line item) with reagent metadata: Supplier, Lot number, Expiration date. 3) Equipment used (select from registered equipment list). System Requirements: Mandatory fields for lot number and expiry, Automatic expiry validation (warning if expired), Ability to attach supporting documents (COA, spec sheet), Time-stamped user signature. Outputs: Material usage log, Media preparation record ID (linked forward)."/>
+            <column name="content" value="Media Preparation and Quality Control - Comprehensive tracking of materials, reagents, and equipment used in media preparation with full LMIS traceability. Captures media type, reagent details (supplier, lot, expiry), equipment used, quality control parameters (pH, osmolality, sterility), and supporting documentation."/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>
+                    notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)
+                    AND page_order = 2
+                    AND title = 'Media Preparation'
+                </where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION TRACKING TABLE                  -->
+    <!-- Stores media preparation records with full traceability  -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-table" author="openelis-virology">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="vaccine_development" schemaName="clinlims"/>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation"/>
             </not>
         </preConditions>
-        <comment>Create main vaccine development tracking table</comment>
+        <comment>Create table to store virology media preparation records</comment>
 
-        <createTable schemaName="clinlims" tableName="vaccine_development">
-            <column name="id" type="BIGSERIAL">
+        <createTable tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="id" type="INTEGER">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="fhir_uuid" type="UUID" defaultValueComputed="gen_random_uuid()">
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_media_prep_notebook_entry"
+                             references="clinlims.notebook_entry(id)"/>
+            </column>
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_media_prep_notebook_page"
+                             references="clinlims.notebook_page(id)"/>
+            </column>
+            <column name="media_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media_name" type="VARCHAR(255)"/>
+            <column name="batch_id" type="VARCHAR(100)">
                 <constraints nullable="false" unique="true"/>
             </column>
-            <column name="notebook_entry_id" type="BIGINT">
+            <column name="preparation_date" type="DATE">
                 <constraints nullable="false"/>
             </column>
-            <column name="development_stage" type="VARCHAR(50)">
-                <constraints nullable="false"/>
+            <column name="expiration_date" type="DATE"/>
+            <column name="volume" type="NUMERIC(10,2)"/>
+            <column name="volume_unit" type="VARCHAR(10)"/>
+            <column name="ph" type="NUMERIC(4,2)"/>
+            <column name="osmolality" type="NUMERIC(10,2)"/>
+            <column name="sterility_test" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints checkConstraint="sterility_test IN ('PENDING', 'PASS', 'FAIL')"/>
             </column>
-            <column name="stage_status" type="VARCHAR(20)" defaultValue="PENDING">
-                <constraints nullable="false"/>
-            </column>
-            <column name="started_date" type="TIMESTAMP">
-                <constraints nullable="true"/>
-            </column>
-            <column name="completed_date" type="TIMESTAMP">
-                <constraints nullable="true"/>
-            </column>
-            <column name="created_by" type="INTEGER">
-                <constraints nullable="false"/>
-            </column>
-            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
-            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
-            <column name="version" type="INTEGER" defaultValue="0">
-                <constraints nullable="false"/>
-            </column>
+            <column name="notes" type="TEXT"/>
+            <column name="prepared_by" type="VARCHAR(255)"/>
+            <column name="preparation_timestamp" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
         </createTable>
 
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_development"
-            baseColumnNames="notebook_entry_id"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="notebook_entry"
-            referencedColumnNames="id"
-            constraintName="fk_vaccine_development_notebook_entry"
-            onDelete="CASCADE"/>
+        <createSequence sequenceName="virology_media_preparation_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
 
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_development"
-            baseColumnNames="created_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_vaccine_development_created_by"/>
-
-        <createIndex schemaName="clinlims" tableName="vaccine_development" indexName="idx_vaccine_dev_notebook_entry">
-            <column name="notebook_entry_id"/>
-        </createIndex>
-
-        <createIndex schemaName="clinlims" tableName="vaccine_development" indexName="idx_vaccine_dev_stage">
-            <column name="development_stage"/>
-        </createIndex>
-
-        <sql>
-            ALTER TABLE clinlims.vaccine_development
-            ADD CONSTRAINT chk_development_stage
-            CHECK (development_stage IN ('VIRUS_ISOLATION', 'TITER_MEASUREMENT', 'GENOME_SEQUENCING', 'SEED_VIRUS_PRODUCTION', 'PRECLINICAL_TRIALS'));
-
-            ALTER TABLE clinlims.vaccine_development
-            ADD CONSTRAINT chk_stage_status
-            CHECK (stage_status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'ON_HOLD'));
-        </sql>
+        <rollback>
+            <dropTable tableName="virology_media_preparation" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_seq" schemaName="clinlims"/>
+        </rollback>
     </changeSet>
 
-    <!-- Virus Isolation data table -->
-    <changeSet id="create-virus-isolation-table" author="openelis-virology">
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION REAGENTS TABLE                  -->
+    <!-- Stores reagent line items for each media preparation     -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-reagents-table" author="openelis-virology">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="vaccine_virus_isolation" schemaName="clinlims"/>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_reagent"/>
             </not>
         </preConditions>
-        <comment>Create virus isolation data table</comment>
+        <comment>Create table to store reagents used in media preparation</comment>
 
-        <createTable schemaName="clinlims" tableName="vaccine_virus_isolation">
-            <column name="id" type="BIGSERIAL">
+        <createTable tableName="virology_media_preparation_reagent" schemaName="clinlims">
+            <column name="id" type="INTEGER">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="vaccine_development_id" type="BIGINT">
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_reagent_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="reagent_name" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="culture_batch_id" type="BIGINT">
+            <column name="reagent_category" type="VARCHAR(50)"/>
+            <column name="supplier" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="isolation_date" type="DATE">
+            <column name="catalog_number" type="VARCHAR(100)"/>
+            <column name="lot_number" type="VARCHAR(100)">
                 <constraints nullable="false"/>
-            </column>
-            <column name="isolation_method" type="VARCHAR(100)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="isolation_notes" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="performed_by" type="INTEGER">
-                <constraints nullable="false"/>
-            </column>
-            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_virus_isolation"
-            baseColumnNames="vaccine_development_id"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="vaccine_development"
-            referencedColumnNames="id"
-            constraintName="fk_virus_isolation_vaccine_dev"
-            onDelete="CASCADE"/>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_virus_isolation"
-            baseColumnNames="culture_batch_id"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="virus_culture_batch"
-            referencedColumnNames="id"
-            constraintName="fk_virus_isolation_culture_batch"/>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_virus_isolation"
-            baseColumnNames="performed_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_virus_isolation_performed_by"/>
-    </changeSet>
-
-    <!-- Titer Measurement data table -->
-    <changeSet id="create-titer-measurement-table" author="openelis-virology">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <tableExists tableName="vaccine_titer_measurement" schemaName="clinlims"/>
-            </not>
-        </preConditions>
-        <comment>Create titer measurement data table</comment>
-
-        <createTable schemaName="clinlims" tableName="vaccine_titer_measurement">
-            <column name="id" type="BIGSERIAL">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="vaccine_development_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="measurement_method" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="tcid50_value" type="DECIMAL(15,2)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="pfu_ml_value" type="BIGINT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="ha_titer" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="qpcr_ct_value" type="DECIMAL(10,2)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="other_value" type="VARCHAR(100)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="measurement_date" type="DATE">
-                <constraints nullable="false"/>
-            </column>
-            <column name="dilution_series" type="VARCHAR(200)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="assay_conditions" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="performed_by" type="INTEGER">
-                <constraints nullable="false"/>
-            </column>
-            <column name="validated_by" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_titer_measurement"
-            baseColumnNames="vaccine_development_id"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="vaccine_development"
-            referencedColumnNames="id"
-            constraintName="fk_titer_measurement_vaccine_dev"
-            onDelete="CASCADE"/>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_titer_measurement"
-            baseColumnNames="performed_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_titer_measurement_performed_by"/>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_titer_measurement"
-            baseColumnNames="validated_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_titer_measurement_validated_by"/>
-
-        <sql>
-            ALTER TABLE clinlims.vaccine_titer_measurement
-            ADD CONSTRAINT chk_measurement_method
-            CHECK (measurement_method IN ('TCID50', 'PFU_ML', 'HA', 'QPCR', 'OTHER'));
-        </sql>
-    </changeSet>
-
-    <!-- Genome Sequencing data table -->
-    <changeSet id="create-genome-sequencing-table" author="openelis-virology">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <tableExists tableName="vaccine_genome_sequencing" schemaName="clinlims"/>
-            </not>
-        </preConditions>
-        <comment>Create genome sequencing data table</comment>
-
-        <createTable schemaName="clinlims" tableName="vaccine_genome_sequencing">
-            <column name="id" type="BIGSERIAL">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="vaccine_development_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="sequencing_platform" type="VARCHAR(100)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="sequencing_date" type="DATE">
-                <constraints nullable="false"/>
-            </column>
-            <column name="fasta_file_name" type="VARCHAR(255)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="fasta_file_path" type="VARCHAR(500)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="fasta_file_size" type="BIGINT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="genbank_accession" type="VARCHAR(50)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="genome_length" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="sequence_quality_score" type="DECIMAL(5,2)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="coverage_depth" type="DECIMAL(10,2)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="analysis_results" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="phylogenetic_analysis" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="mutation_summary" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="performed_by" type="INTEGER">
-                <constraints nullable="false"/>
-            </column>
-            <column name="analyzed_by" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_genome_sequencing"
-            baseColumnNames="vaccine_development_id"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="vaccine_development"
-            referencedColumnNames="id"
-            constraintName="fk_genome_sequencing_vaccine_dev"
-            onDelete="CASCADE"/>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_genome_sequencing"
-            baseColumnNames="performed_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_genome_sequencing_performed_by"/>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_genome_sequencing"
-            baseColumnNames="analyzed_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_genome_sequencing_analyzed_by"/>
-    </changeSet>
-
-    <!-- Seed Virus Production data table -->
-    <changeSet id="create-seed-virus-production-table" author="openelis-virology">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <tableExists tableName="vaccine_seed_virus_production" schemaName="clinlims"/>
-            </not>
-        </preConditions>
-        <comment>Create seed virus production data table</comment>
-
-        <createTable schemaName="clinlims" tableName="vaccine_seed_virus_production">
-            <column name="id" type="BIGSERIAL">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="vaccine_development_id" type="BIGINT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="seed_batch_id" type="VARCHAR(100)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="seed_type" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="parent_virus_strain" type="VARCHAR(100)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="passage_level" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="production_date" type="DATE">
-                <constraints nullable="false"/>
-            </column>
-            <column name="production_method" type="VARCHAR(200)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="selection_criteria" type="TEXT">
-                <constraints nullable="false"/>
-            </column>
-            <column name="genetic_stability_data" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="immunogenicity_data" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="safety_profile" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="storage_conditions" type="VARCHAR(200)">
-                <constraints nullable="true"/>
             </column>
             <column name="expiration_date" type="DATE">
-                <constraints nullable="true"/>
-            </column>
-            <column name="produced_by" type="INTEGER">
                 <constraints nullable="false"/>
             </column>
-            <column name="approved_by" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
+            <column name="concentration" type="VARCHAR(100)"/>
+            <column name="volume" type="NUMERIC(10,2)"/>
+            <column name="volume_unit" type="VARCHAR(10)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
         </createTable>
 
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_seed_virus_production"
-            baseColumnNames="vaccine_development_id"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="vaccine_development"
-            referencedColumnNames="id"
-            constraintName="fk_seed_virus_production_vaccine_dev"
-            onDelete="CASCADE"/>
+        <createSequence sequenceName="virology_media_preparation_reagent_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
 
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_seed_virus_production"
-            baseColumnNames="produced_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_seed_virus_production_produced_by"/>
-
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_seed_virus_production"
-            baseColumnNames="approved_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_seed_virus_production_approved_by"/>
-
-        <sql>
-            ALTER TABLE clinlims.vaccine_seed_virus_production
-            ADD CONSTRAINT chk_seed_type
-            CHECK (seed_type IN ('MASTER', 'WORKING', 'PRODUCTION'));
-        </sql>
+        <rollback>
+            <dropTable tableName="virology_media_preparation_reagent" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_reagent_seq" schemaName="clinlims"/>
+        </rollback>
     </changeSet>
 
-    <!-- Preclinical Trials data table -->
-    <changeSet id="create-preclinical-trials-table" author="openelis-virology">
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION EQUIPMENT TABLE                 -->
+    <!-- Links equipment used in media preparation                -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-equipment-table" author="openelis-virology">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="vaccine_preclinical_trials" schemaName="clinlims"/>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_equipment"/>
             </not>
         </preConditions>
-        <comment>Create preclinical trials data table</comment>
+        <comment>Create table to link equipment used in media preparation</comment>
 
-        <createTable schemaName="clinlims" tableName="vaccine_preclinical_trials">
-            <column name="id" type="BIGSERIAL">
+        <createTable tableName="virology_media_preparation_equipment" schemaName="clinlims">
+            <column name="id" type="INTEGER">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="vaccine_development_id" type="BIGINT">
-                <constraints nullable="false"/>
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_equipment_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
             </column>
-            <column name="trial_protocol_id" type="VARCHAR(100)">
-                <constraints nullable="true"/>
+            <column name="equipment_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_equipment_registered"
+                             references="clinlims.equipment(id)"/>
             </column>
-            <column name="initiation_date" type="DATE">
-                <constraints nullable="false"/>
-            </column>
-            <column name="estimated_completion_date" type="DATE">
-                <constraints nullable="true"/>
-            </column>
-            <column name="actual_completion_date" type="DATE">
-                <constraints nullable="true"/>
-            </column>
-            <column name="animal_species" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="animal_count" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="animal_age_weeks" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="trial_status" type="VARCHAR(20)" defaultValue="PLANNED">
-                <constraints nullable="false"/>
-            </column>
-            <column name="trial_objectives" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="vaccination_protocol" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="immunogenicity_outcomes" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="safety_outcomes" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="adverse_events" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="efficacy_data" type="TEXT">
-                <constraints nullable="true"/>
-            </column>
-            <column name="external_lab_name" type="VARCHAR(200)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="principal_investigator" type="VARCHAR(200)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="ethics_approval_number" type="VARCHAR(100)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="initiated_by" type="INTEGER">
-                <constraints nullable="false"/>
-            </column>
-            <column name="monitored_by" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
-            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
-                <constraints nullable="false"/>
-            </column>
+            <column name="usage_notes" type="TEXT"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
         </createTable>
 
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_preclinical_trials"
-            baseColumnNames="vaccine_development_id"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="vaccine_development"
-            referencedColumnNames="id"
-            constraintName="fk_preclinical_trials_vaccine_dev"
-            onDelete="CASCADE"/>
+        <createSequence sequenceName="virology_media_preparation_equipment_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
 
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_preclinical_trials"
-            baseColumnNames="initiated_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_preclinical_trials_initiated_by"/>
+        <!-- Add unique constraint to prevent duplicate equipment entries -->
+        <addUniqueConstraint
+            schemaName="clinlims"
+            tableName="virology_media_preparation_equipment"
+            columnNames="media_preparation_id,equipment_id"
+            constraintName="uk_media_prep_equipment"/>
 
-        <addForeignKeyConstraint
-            baseTableSchemaName="clinlims"
-            baseTableName="vaccine_preclinical_trials"
-            baseColumnNames="monitored_by"
-            referencedTableSchemaName="clinlims"
-            referencedTableName="system_user"
-            referencedColumnNames="id"
-            constraintName="fk_preclinical_trials_monitored_by"/>
-
-        <sql>
-            ALTER TABLE clinlims.vaccine_preclinical_trials
-            ADD CONSTRAINT chk_animal_species
-            CHECK (animal_species IN ('MICE', 'RATS', 'RABBITS', 'NHP', 'FERRETS', 'OTHER'));
-
-            ALTER TABLE clinlims.vaccine_preclinical_trials
-            ADD CONSTRAINT chk_trial_status
-            CHECK (trial_status IN ('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'ON_HOLD', 'TERMINATED'));
-        </sql>
+        <rollback>
+            <dropTable tableName="virology_media_preparation_equipment" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_equipment_seq" schemaName="clinlims"/>
+        </rollback>
     </changeSet>
 
-    <!-- Add additional indexes for performance -->
-    <changeSet id="create-vaccine-development-indexes" author="openelis-virology">
-        <comment>Create additional indexes for vaccine development queries</comment>
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION DOCUMENTS TABLE                 -->
+    <!-- Stores attached documents (COA, spec sheets, etc.)       -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-documents-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_document"/>
+            </not>
+        </preConditions>
+        <comment>Create table to store supporting documents for media preparation</comment>
 
-        <createIndex schemaName="clinlims" tableName="vaccine_virus_isolation" indexName="idx_virus_isolation_culture_batch">
-            <column name="culture_batch_id"/>
-        </createIndex>
+        <createTable tableName="virology_media_preparation_document" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_document_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="document_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="document_type" type="VARCHAR(50)">
+                <constraints checkConstraint="document_type IN ('COA', 'SPEC_SHEET', 'SOP', 'OTHER')"/>
+            </column>
+            <column name="file_path" type="VARCHAR(500)"/>
+            <column name="file_size" type="BIGINT"/>
+            <column name="mime_type" type="VARCHAR(100)"/>
+            <column name="uploaded_by" type="VARCHAR(255)"/>
+            <column name="upload_timestamp" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
 
-        <createIndex schemaName="clinlims" tableName="vaccine_titer_measurement" indexName="idx_titer_measurement_method">
-            <column name="measurement_method"/>
-        </createIndex>
+        <createSequence sequenceName="virology_media_preparation_document_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
 
-        <createIndex schemaName="clinlims" tableName="vaccine_genome_sequencing" indexName="idx_genome_sequencing_genbank">
-            <column name="genbank_accession"/>
-        </createIndex>
+        <rollback>
+            <dropTable tableName="virology_media_preparation_document" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_document_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
 
-        <createIndex schemaName="clinlims" tableName="vaccine_seed_virus_production" indexName="idx_seed_virus_batch_id">
-            <column name="seed_batch_id"/>
-        </createIndex>
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION SAMPLE LINK TABLE               -->
+    <!-- Links samples to media preparation records               -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-sample-link-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_sample"/>
+            </not>
+        </preConditions>
+        <comment>Create table to link samples to media preparation records</comment>
 
-        <createIndex schemaName="clinlims" tableName="vaccine_preclinical_trials" indexName="idx_preclinical_trials_status">
-            <column name="trial_status"/>
-        </createIndex>
+        <createTable tableName="virology_media_preparation_sample" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_sample_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="sample_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_media_prep_sample"
+                             references="clinlims.sample(id)"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
 
-        <createIndex schemaName="clinlims" tableName="vaccine_preclinical_trials" indexName="idx_preclinical_trials_species">
-            <column name="animal_species"/>
-        </createIndex>
+        <createSequence sequenceName="virology_media_preparation_sample_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <!-- Add unique constraint to prevent duplicate sample links -->
+        <addUniqueConstraint
+            schemaName="clinlims"
+            tableName="virology_media_preparation_sample"
+            columnNames="media_preparation_id,sample_id"
+            constraintName="uk_media_prep_sample"/>
+
+        <rollback>
+            <dropTable tableName="virology_media_preparation_sample" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_sample_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ADD STERILIZATION FIELDS TO MEDIA PREPARATION TABLE      -->
+    <!-- Captures sterilization method, parameters, and compliance-->
+    <!-- ======================================================== -->
+    <changeSet id="add-sterilization-fields-to-media-preparation" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="virology_media_preparation" columnName="sterilization_method"/>
+            </not>
+        </preConditions>
+        <comment>Add sterilization tracking fields to media preparation table for compliance and QC</comment>
+
+        <!-- Sterilization method and equipment -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_method" type="VARCHAR(50)">
+                <constraints checkConstraint="sterilization_method IN ('STEAM_AUTOCLAVE', 'DRY_HEAT', 'FILTER_022', 'FILTER_010', 'GAMMA_RADIATION', 'UV_STERILIZATION', 'OTHER')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_equipment_id" type="INTEGER">
+                <constraints foreignKeyName="fk_sterilization_equipment"
+                             references="clinlims.equipment(id)"/>
+            </column>
+        </addColumn>
+
+        <!-- Sterilization parameters -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_temperature" type="NUMERIC(6,2)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_temperature_unit" type="VARCHAR(10)" defaultValue="°C"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_time" type="NUMERIC(10,2)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_time_unit" type="VARCHAR(20)" defaultValue="minutes"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_pressure" type="NUMERIC(6,2)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_pressure_unit" type="VARCHAR(10)" defaultValue="PSI"/>
+        </addColumn>
+
+        <!-- Sterilization metadata -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_date" type="DATE"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_operator" type="VARCHAR(255)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="biological_indicator" type="VARCHAR(50)">
+                <constraints checkConstraint="biological_indicator IN ('GEOBACILLUS', 'BACILLUS_ATROPHAEUS', 'NONE')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="bi_test_result" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints checkConstraint="bi_test_result IN ('PENDING', 'PASS', 'FAIL')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_notes" type="TEXT"/>
+        </addColumn>
+
+        <!-- Compliance flags -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_pass_fail_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints checkConstraint="sterilization_pass_fail_status IN ('PENDING', 'PASS', 'FAIL')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="out_of_range_flag" type="BOOLEAN" defaultValueBoolean="false"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="out_of_range_reason" type="TEXT"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_method"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_equipment_id"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_temperature"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_temperature_unit"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_time"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_time_unit"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_pressure"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_pressure_unit"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_date"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_operator"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="biological_indicator"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="bi_test_result"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_notes"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_pass_fail_status"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="out_of_range_flag"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="out_of_range_reason"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>
