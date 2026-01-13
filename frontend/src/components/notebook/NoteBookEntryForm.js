@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef, useMemo } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
@@ -54,6 +54,8 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
+import { usePermissions } from "../../hooks/usePermissions";
+import { Permissions } from "../../constants/roles";
 import {
   NoteBookFormValues,
   NoteBookInitialData,
@@ -95,6 +97,11 @@ const NoteBookEntryForm = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { hasAnyRole } = usePermissions();
+
+  // Check if user can create/edit notebook templates
+  const canEditTemplate = hasAnyRole(Permissions.CREATE_OR_EDIT_NOTEBOOK);
+
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
   const [technicianUsers, setTechnicianUsers] = useState([]);
@@ -134,20 +141,7 @@ const NoteBookEntryForm = () => {
   const [selectedAllowedRoles, setSelectedAllowedRoles] = useState([]);
   const [rolesLoaded, setRolesLoaded] = useState(false);
   const [pendingSelectedRoleIds, setPendingSelectedRoleIds] = useState(null);
-  const [availableRoles] = useState([
-    { id: "Technician", label: "Technician" },
-    { id: "Supervisor", label: "Supervisor" },
-    { id: "Results", label: "Results" },
-    { id: "Validation", label: "Validation" },
-    { id: "Reception", label: "Reception" },
-    { id: "Reports", label: "Reports" },
-  ]);
-
-  // Page templates are now defined in database via Liquibase notebook templates
-  // This returns an empty array since pages come from the database when creating from a template
-  const filteredWorkflowPageTemplates = useMemo(() => {
-    return [];
-  }, []);
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   const isFormValid = () => {
     return (
@@ -203,6 +197,10 @@ const NoteBookEntryForm = () => {
     noteBookForm.type = noteBookData.type;
     noteBookForm.objective = noteBookData.objective;
     noteBookForm.protocol = noteBookData.protocol;
+    noteBookForm.principalInvestigator = noteBookData.principalInvestigator;
+    noteBookForm.fundingSource = noteBookData.fundingSource;
+    noteBookForm.budget = noteBookData.budget;
+    noteBookForm.projectTimeline = noteBookData.projectTimeline;
     noteBookForm.content = noteBookData.content;
     noteBookForm.status = noteBookData.status;
     noteBookForm.technicianId = noteBookData.technicianId;
@@ -282,8 +280,9 @@ const NoteBookEntryForm = () => {
     sampleTypeId: null,
     panels: [],
     tests: [],
-    pageId: null, // Registry page ID for component rendering
+    allowedRoles: [],
   });
+  const [pageSelectedRoles, setPageSelectedRoles] = useState([]);
   const [newTag, setNewTag] = useState("");
   const [pageError, setPageError] = useState("");
   const [tagError, setTagError] = useState("");
@@ -304,10 +303,11 @@ const NoteBookEntryForm = () => {
       sampleTypeId: null,
       panels: [],
       tests: [],
-      pageId: null,
+      allowedRoles: [],
     });
     setPageSelectedTests([]);
     setPageSelectedPanels([]);
+    setPageSelectedRoles([]);
     setPageSampleTypeTests(sampleTypeTestsStructure);
     setPageTestSearchTerm("");
     setPagePanelSearchTerm("");
@@ -323,9 +323,8 @@ const NoteBookEntryForm = () => {
     setSelectedTemplateId(templateId);
 
     if (templateId) {
-      // Look up from filtered templates - handles both string IDs (registry-xxx) and numeric IDs
-      const template = filteredWorkflowPageTemplates.find(
-        (t) => String(t.id) === String(templateId),
+      const template = workflowPageTemplates.find(
+        (t) => t.id === parseInt(templateId, 10),
       );
       if (template) {
         setNewPage((prev) => ({
@@ -333,7 +332,6 @@ const NoteBookEntryForm = () => {
           title: template.name || "",
           content: template.defaultContent || "",
           instructions: template.defaultInstructions || "",
-          pageId: template.pageId || null, // Store registry pageId for component rendering
         }));
       }
     }
@@ -350,7 +348,14 @@ const NoteBookEntryForm = () => {
       sampleTypeId: page.sampleTypeId || null,
       panels: page.panels || [],
       tests: page.tests || [],
+      allowedRoles: page.allowedRoles || [],
     });
+    // Set selected roles for the multiselect
+    const existingRoles = page.allowedRoles || [];
+    const matchedRoles = availableRoles.filter((role) =>
+      existingRoles.includes(role.id),
+    );
+    setPageSelectedRoles(matchedRoles);
     // If page has sampleTypeId, fetch the tests for that sample type
     if (page.sampleTypeId) {
       getFromOpenElisServer(
@@ -417,11 +422,12 @@ const NoteBookEntryForm = () => {
       );
       return;
     }
-    // Update newPage with selected tests and panels
+    // Update newPage with selected tests, panels, and allowed roles
     const updatedPage = {
       ...newPage,
       tests: pageSelectedTests.map((test) => test.id),
       panels: pageSelectedPanels.map((panel) => parseInt(panel.id)),
+      allowedRoles: pageSelectedRoles.map((role) => role.id),
     };
     if (editingPageIndex !== null) {
       // Update existing page
@@ -695,7 +701,6 @@ const NoteBookEntryForm = () => {
             `/rest/notebook/${data.id}/allowed-roles`,
             (rolesResponse) => {
               if (Array.isArray(rolesResponse)) {
-                // Store role IDs to match against availableRoles
                 setPendingSelectedRoleIds(rolesResponse);
                 setRolesLoaded(true);
               }
@@ -788,12 +793,19 @@ const NoteBookEntryForm = () => {
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
     getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
     getFromOpenElisServer("/rest/notebook/departments", (depts) => {
+      console.log("Departments API response:", depts);
       if (Array.isArray(depts)) {
-        setOrganizations(
-          depts.map((dept) => ({
-            id: dept.id,
-            label: dept.name || dept.shortName,
-          })),
+        const mappedOrgs = depts.map((dept) => ({
+          id: dept.id,
+          label: dept.name || dept.shortName,
+        }));
+        console.log("Mapped organizations:", mappedOrgs);
+        setOrganizations(mappedOrgs);
+      } else {
+        console.warn(
+          "Departments response was not an array:",
+          typeof depts,
+          depts,
         );
       }
     });
@@ -808,10 +820,31 @@ const NoteBookEntryForm = () => {
         }
       },
     );
+    // Fetch available roles dynamically from backend
+    // Using /rest/systemroles which returns {label: description, value: name}
+    getFromOpenElisServer("/rest/systemroles", (roles) => {
+      console.log("System roles API response:", roles);
+      if (Array.isArray(roles)) {
+        const mappedRoles = roles.map((role) => ({
+          id: role.value?.trim(), // role name is the ID we store (trim whitespace)
+          label: role.value?.trim(), // show role name as label
+        }));
+        console.log("Mapped available roles:", mappedRoles);
+        setAvailableRoles(mappedRoles);
+      } else {
+        console.warn(
+          "System roles response was not an array:",
+          typeof roles,
+          roles,
+        );
+      }
+    });
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  console.log({ organizations });
 
   // Match pending selected department IDs to actual organization objects once both are loaded
   useEffect(() => {
@@ -847,23 +880,11 @@ const NoteBookEntryForm = () => {
       availableRoles.length > 0 &&
       pendingSelectedRoleIds.length > 0
     ) {
-      // Convert IDs to strings for comparison
-      const pendingRolesAsStrings = pendingSelectedRoleIds.map((id) =>
-        String(id),
-      );
       const matchedRoles = availableRoles.filter((role) =>
-        pendingRolesAsStrings.includes(String(role.id)),
-      );
-      console.log(
-        "Matching roles - pending:",
-        pendingRolesAsStrings,
-        "available:",
-        availableRoles.map((r) => r.id),
-        "matched:",
-        matchedRoles,
+        pendingSelectedRoleIds.includes(role.id),
       );
       setSelectedAllowedRoles(matchedRoles);
-      setPendingSelectedRoleIds(null); // Clear pending to avoid re-running
+      setPendingSelectedRoleIds(null);
     }
   }, [pendingSelectedRoleIds, availableRoles]);
 
@@ -980,6 +1001,99 @@ const NoteBookEntryForm = () => {
         )}
         {selectedTab === TABS.METADATA && (
           <Column lg={16} md={8} sm={4}>
+            {/* Project Information Fieldset */}
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="principalInvestigator"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.principalInvestigator",
+                    defaultMessage: "Principal Investigator (PI)",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.principalInvestigator.placeholder",
+                    defaultMessage: "Enter principal investigator name",
+                  })}
+                  value={noteBookData.principalInvestigator || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      principalInvestigator: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="fundingSource"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.fundingSource",
+                    defaultMessage: "Funding Source",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.fundingSource.placeholder",
+                    defaultMessage: "Enter funding source",
+                  })}
+                  value={noteBookData.fundingSource || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      fundingSource: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="budget"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.budget",
+                    defaultMessage: "Budget",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.budget.placeholder",
+                    defaultMessage: "Enter budget amount",
+                  })}
+                  value={noteBookData.budget || ""}
+                  type="number"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setNoteBookData({
+                      ...noteBookData,
+                      budget: value ? parseFloat(value) : null,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="projectTimeline"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.projectTimeline",
+                    defaultMessage: "Project Timeline",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.projectTimeline.placeholder",
+                    defaultMessage: "e.g., Jan 2025 - Dec 2025",
+                  })}
+                  value={noteBookData.projectTimeline || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      projectTimeline: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+            </Grid>
+            <br />
+            {/* Experiment Details */}
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={8} md={8} sm={4}>
                 <Select
@@ -1069,47 +1183,29 @@ const NoteBookEntryForm = () => {
                 <br />
               </Column>
               <Column lg={8} md={8} sm={4}>
-                <Select
+                <FilterableMultiSelect
+                  key={`departments-${selectedOrganizations.map((o) => o.id).join(",")}`}
                   id="organizations"
-                  labelText={intl.formatMessage({
+                  titleText={intl.formatMessage({
                     id: "notebook.label.organizations",
-                    defaultMessage: "Department",
+                    defaultMessage: "Locations/Organizations",
                   })}
-                  value={
-                    selectedOrganizations.length > 0
-                      ? selectedOrganizations[0].id
-                      : ""
-                  }
-                  onChange={(event) => {
-                    const selectedId = event.target.value;
-                    if (selectedId) {
-                      const selectedOrg = organizations.find(
-                        (org) => String(org.id) === String(selectedId),
-                      );
-                      setSelectedOrganizations(
-                        selectedOrg ? [selectedOrg] : [],
-                      );
-                      setDepartmentsLoaded(true);
-                    } else {
-                      setSelectedOrganizations([]);
-                      setDepartmentsLoaded(true);
-                    }
+                  placeholder={intl.formatMessage({
+                    id: "notebook.label.selectDepartments",
+                    defaultMessage: "Select departments/units",
+                  })}
+                  items={organizations}
+                  itemToString={(item) => (item ? item.label : "")}
+                  initialSelectedItems={selectedOrganizations}
+                  onChange={({ selectedItems }) => {
+                    setSelectedOrganizations(selectedItems);
+                    setDepartmentsLoaded(true);
                   }}
-                >
-                  <SelectItem
-                    text={intl.formatMessage({
-                      id: "label.button.select",
-                      defaultMessage: "Select department",
-                    })}
-                    value=""
-                  />
-                  {organizations.map((org) => (
-                    <SelectItem key={org.id} text={org.label} value={org.id} />
-                  ))}
-                </Select>
+                />
               </Column>
               <Column lg={8} md={8} sm={4}>
                 <FilterableMultiSelect
+                  key={`roles-${selectedAllowedRoles.map((r) => r.id).join(",")}`}
                   id="allowedRoles"
                   titleText={intl.formatMessage({
                     id: "notebook.label.allowedRoles",
@@ -1121,7 +1217,7 @@ const NoteBookEntryForm = () => {
                   })}
                   items={availableRoles}
                   itemToString={(item) => (item ? item.label : "")}
-                  selectedItems={selectedAllowedRoles}
+                  initialSelectedItems={selectedAllowedRoles}
                   onChange={({ selectedItems }) => {
                     setSelectedAllowedRoles(selectedItems || []);
                   }}
@@ -1186,8 +1282,9 @@ const NoteBookEntryForm = () => {
                   noteBookData.analyzers.map((item, index) => (
                     <Tag
                       key={index}
-                      filter
+                      filter={canEditTemplate}
                       onClose={() => {
+                        if (!canEditTemplate) return;
                         var info = { ...noteBookData };
                         info["analyzers"].splice(index, 1);
                         setNoteBookData(info);
@@ -1207,7 +1304,21 @@ const NoteBookEntryForm = () => {
                 </h5>
               </Column>
               <Column lg={8} md={8} sm={4}>
-                <Button onClick={openTagModal} kind="primary" size="sm">
+                <Button
+                  onClick={openTagModal}
+                  kind="primary"
+                  size="sm"
+                  disabled={!canEditTemplate}
+                  title={
+                    !canEditTemplate
+                      ? intl.formatMessage({
+                          id: "notebook.permission.edit.required",
+                          defaultMessage:
+                            "You need Notebook Administrator role to edit templates",
+                        })
+                      : undefined
+                  }
+                >
                   <Add />
                   <FormattedMessage id="notebook.tags.add" />
                 </Button>
@@ -1219,8 +1330,9 @@ const NoteBookEntryForm = () => {
                 {noteBookData.tags.map((tag, index) => (
                   <Tag
                     key={index}
-                    filter
+                    filter={canEditTemplate}
                     onClose={() => {
+                      if (!canEditTemplate) return;
                       handleRemoveTag(index);
                     }}
                   >
@@ -1242,6 +1354,7 @@ const NoteBookEntryForm = () => {
                   multiple
                   onAddFiles={handleAddFiles}
                   accept={[".pdf", ".png", ".jpg", ".txt"]}
+                  disabled={!canEditTemplate}
                 />
                 {uploadedFiles.map((fileObj, index) => (
                   <FileUploaderItem
@@ -1280,6 +1393,16 @@ const NoteBookEntryForm = () => {
                             kind="danger--tertiary"
                             size="sm"
                             onClick={() => handleRemoveFile(index)}
+                            disabled={!canEditTemplate}
+                            title={
+                              !canEditTemplate
+                                ? intl.formatMessage({
+                                    id: "notebook.permission.edit.required",
+                                    defaultMessage:
+                                      "You need Notebook Administrator role to edit templates",
+                                  })
+                                : undefined
+                            }
                           >
                             <FormattedMessage id="label.button.remove" />
                           </Button>
@@ -1302,7 +1425,21 @@ const NoteBookEntryForm = () => {
                 </h5>
               </Column>
               <Column lg={2} md={2} sm={4}>
-                <Button onClick={openPageModal} size="sm" kind="primary">
+                <Button
+                  onClick={openPageModal}
+                  size="sm"
+                  kind="primary"
+                  disabled={!canEditTemplate}
+                  title={
+                    !canEditTemplate
+                      ? intl.formatMessage({
+                          id: "notebook.permission.edit.required",
+                          defaultMessage:
+                            "You need Notebook Administrator role to edit templates",
+                        })
+                      : undefined
+                  }
+                >
                   <Add /> <FormattedMessage id="notebook.label.addpage" />
                 </Button>
               </Column>
@@ -1323,190 +1460,233 @@ const NoteBookEntryForm = () => {
                 )}
                 {noteBookData?.pages?.length > 0 && (
                   <Accordion>
-                    {[...noteBookData.pages]
-                      .sort((a, b) => (a.order || 0) - (b.order || 0))
-                      .map((page, index) => (
-                        <AccordionItem
-                          key={index}
-                          style={{ marginBottom: "1rem" }}
-                          title={
-                            <span
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.5rem",
-                              }}
-                            >
-                              {intl.formatMessage(
-                                { id: "pagination.page" },
-                                { page: page.order || index + 1 },
-                              )}
-                              :{" "}
-                              <h5 style={{ margin: 0, display: "inline" }}>
-                                {page.title}
-                              </h5>
-                            </span>
-                          }
-                        >
-                          <Grid>
-                            <Column lg={2} md={8} sm={4}>
-                              <h6>
-                                {intl.formatMessage({
-                                  id: "notebook.page.instructions",
-                                })}
-                              </h6>
-                            </Column>
-                            <Column lg={14} md={8} sm={4}>
-                              {page.instructions}
-                            </Column>
-                            <Column lg={2} md={8} sm={4}>
-                              <h6>
-                                {intl.formatMessage({
-                                  id: "notebook.page.content",
-                                })}
-                              </h6>
-                            </Column>
-                            <Column lg={14} md={8} sm={4}>
-                              {page.content}
-                            </Column>
-                            {page.sampleTypeId && (
+                    {noteBookData.pages.map((page, index) => (
+                      <AccordionItem
+                        key={index}
+                        style={{ marginBottom: "1rem" }}
+                        title={
+                          <span
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                            }}
+                          >
+                            {intl.formatMessage(
+                              { id: "pagination.page" },
+                              { page: page.order || index + 1 },
+                            )}
+                            :{" "}
+                            <h5 style={{ margin: 0, display: "inline" }}>
+                              {page.title}
+                            </h5>
+                          </span>
+                        }
+                      >
+                        <Grid>
+                          <Column lg={2} md={8} sm={4}>
+                            <h6>
+                              {intl.formatMessage({
+                                id: "notebook.page.instructions",
+                              })}
+                            </h6>
+                          </Column>
+                          <Column lg={14} md={8} sm={4}>
+                            {page.instructions}
+                          </Column>
+                          <Column lg={2} md={8} sm={4}>
+                            <h6>
+                              {intl.formatMessage({
+                                id: "notebook.page.content",
+                              })}
+                            </h6>
+                          </Column>
+                          <Column lg={14} md={8} sm={4}>
+                            {page.content}
+                          </Column>
+                          {page.sampleTypeId && (
+                            <>
+                              <Column lg={2} md={8} sm={4}>
+                                <h6>
+                                  {intl.formatMessage({
+                                    id: "sample.type",
+                                  })}
+                                </h6>
+                              </Column>
+                              <Column lg={14} md={8} sm={4}>
+                                <div>
+                                  <span style={{ marginRight: "0.5rem" }}>
+                                    {intl.formatMessage({ id: "sample.type" })}
+                                    :{" "}
+                                  </span>
+                                  {(() => {
+                                    const sampleType = sampleTypes.find(
+                                      (st) => st.id == page.sampleTypeId,
+                                    );
+                                    return sampleType ? (
+                                      <Tag type="blue" size="sm">
+                                        {sampleType.value}
+                                      </Tag>
+                                    ) : (
+                                      <></>
+                                    );
+                                  })()}
+                                </div>
+                              </Column>
+                            </>
+                          )}
+                          {page.panels &&
+                            Array.isArray(page.panels) &&
+                            page.panels.length > 0 && (
                               <>
                                 <Column lg={2} md={8} sm={4}>
                                   <h6>
-                                    {intl.formatMessage({
-                                      id: "sample.type",
-                                    })}
+                                    <FormattedMessage id="sample.label.orderpanel" />
                                   </h6>
                                 </Column>
                                 <Column lg={14} md={8} sm={4}>
                                   <div>
                                     <span style={{ marginRight: "0.5rem" }}>
-                                      {intl.formatMessage({
-                                        id: "sample.type",
-                                      })}
+                                      <FormattedMessage id="sample.label.orderpanel" />
                                       :{" "}
                                     </span>
-                                    {(() => {
-                                      const sampleType = sampleTypes.find(
-                                        (st) => st.id == page.sampleTypeId,
-                                      );
-                                      return sampleType ? (
-                                        <Tag type="blue" size="sm">
-                                          {sampleType.value}
-                                        </Tag>
-                                      ) : (
-                                        <></>
-                                      );
-                                    })()}
+                                    {page.panels
+                                      .filter((panelId) => panelId != null)
+                                      .map((panelId, panelIndex) => {
+                                        // Try to find panel by ID (handle both string and number)
+                                        const panel = allPanels.find((p) => {
+                                          if (!p || p.id == null) return false;
+                                          // Normalize both to strings for comparison
+                                          const pId = String(p.id).trim();
+                                          const pagePanelId =
+                                            String(panelId).trim();
+                                          // Compare as both string and number
+                                          return (
+                                            pId === pagePanelId ||
+                                            Number(p.id) === Number(panelId) ||
+                                            p.id == panelId
+                                          );
+                                        });
+                                        // Only show panel if found (don't show ID fallback)
+                                        return panel ? (
+                                          <Tag
+                                            key={panelIndex}
+                                            type="green"
+                                            size="sm"
+                                            style={{ marginRight: "0.5rem" }}
+                                          >
+                                            {panel.value}
+                                          </Tag>
+                                        ) : null;
+                                      })
+                                      .filter((tag) => tag !== null)}
                                   </div>
                                 </Column>
                               </>
                             )}
-                            {page.panels &&
-                              Array.isArray(page.panels) &&
-                              page.panels.length > 0 && (
-                                <>
-                                  <Column lg={2} md={8} sm={4}>
-                                    <h6>
-                                      <FormattedMessage id="sample.label.orderpanel" />
-                                    </h6>
-                                  </Column>
-                                  <Column lg={14} md={8} sm={4}>
-                                    <div>
-                                      <span style={{ marginRight: "0.5rem" }}>
-                                        <FormattedMessage id="sample.label.orderpanel" />
-                                        :{" "}
-                                      </span>
-                                      {page.panels
-                                        .filter((panelId) => panelId != null)
-                                        .map((panelId, panelIndex) => {
-                                          // Try to find panel by ID (handle both string and number)
-                                          const panel = allPanels.find((p) => {
-                                            if (!p || p.id == null)
-                                              return false;
-                                            // Normalize both to strings for comparison
-                                            const pId = String(p.id).trim();
-                                            const pagePanelId =
-                                              String(panelId).trim();
-                                            // Compare as both string and number
-                                            return (
-                                              pId === pagePanelId ||
-                                              Number(p.id) ===
-                                                Number(panelId) ||
-                                              p.id == panelId
-                                            );
-                                          });
-                                          // Only show panel if found (don't show ID fallback)
-                                          return panel ? (
-                                            <Tag
-                                              key={panelIndex}
-                                              type="green"
-                                              size="sm"
-                                              style={{ marginRight: "0.5rem" }}
-                                            >
-                                              {panel.value}
-                                            </Tag>
-                                          ) : null;
-                                        })
-                                        .filter((tag) => tag !== null)}
-                                    </div>
-                                  </Column>
-                                </>
-                              )}
-                            {page.tests &&
-                              Array.isArray(page.tests) &&
-                              page.tests.length > 0 && (
-                                <>
-                                  <Column lg={2} md={8} sm={4}>
-                                    <h6>
-                                      {intl.formatMessage({
-                                        id: "barcode.label.info.tests",
-                                      })}
-                                    </h6>
-                                  </Column>
-                                  <Column lg={14} md={8} sm={4}>
-                                    <div>
-                                      {page.tests.map((testId, testIndex) => {
-                                        const test = allTests.find(
-                                          (t) => t.id == testId,
-                                        );
-                                        return test ? (
-                                          <Tag
-                                            key={testIndex}
-                                            type="blue"
-                                            size="sm"
-                                          >
-                                            {test.value}
-                                          </Tag>
-                                        ) : (
-                                          <></>
-                                        );
-                                      })}
-                                    </div>
-                                  </Column>
-                                </>
-                              )}
-                            <Column lg={16} md={8} sm={4}>
-                              <br />
-                              <Button
-                                kind="primary"
-                                size="sm"
-                                onClick={() => openEditPageModal(index)}
-                                style={{ marginRight: "0.5rem" }}
-                              >
-                                <FormattedMessage id="label.button.edit" />
-                              </Button>
-                              <Button
-                                kind="danger--tertiary"
-                                size="sm"
-                                onClick={() => handleRemovePage(index)}
-                              >
-                                <FormattedMessage id="label.button.remove" />
-                              </Button>
-                            </Column>
-                          </Grid>
-                        </AccordionItem>
-                      ))}
+                          {page.tests &&
+                            Array.isArray(page.tests) &&
+                            page.tests.length > 0 && (
+                              <>
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    {intl.formatMessage({
+                                      id: "barcode.label.info.tests",
+                                    })}
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  <div>
+                                    {page.tests.map((testId, testIndex) => {
+                                      const test = allTests.find(
+                                        (t) => t.id == testId,
+                                      );
+                                      return test ? (
+                                        <Tag
+                                          key={testIndex}
+                                          type="blue"
+                                          size="sm"
+                                        >
+                                          {test.value}
+                                        </Tag>
+                                      ) : (
+                                        <></>
+                                      );
+                                    })}
+                                  </div>
+                                </Column>
+                              </>
+                            )}
+                          {page.allowedRoles &&
+                            Array.isArray(page.allowedRoles) &&
+                            page.allowedRoles.length > 0 && (
+                              <>
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    {intl.formatMessage({
+                                      id: "notebook.page.allowedRoles",
+                                      defaultMessage: "Access Roles",
+                                    })}
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  <div>
+                                    {page.allowedRoles.map(
+                                      (roleName, roleIndex) => (
+                                        <Tag
+                                          key={roleIndex}
+                                          type="purple"
+                                          size="sm"
+                                        >
+                                          {roleName}
+                                        </Tag>
+                                      ),
+                                    )}
+                                  </div>
+                                </Column>
+                              </>
+                            )}
+                          <Column lg={16} md={8} sm={4}>
+                            <br />
+                            <Button
+                              kind="primary"
+                              size="sm"
+                              onClick={() => openEditPageModal(index)}
+                              style={{ marginRight: "0.5rem" }}
+                              disabled={!canEditTemplate}
+                              title={
+                                !canEditTemplate
+                                  ? intl.formatMessage({
+                                      id: "notebook.permission.edit.required",
+                                      defaultMessage:
+                                        "You need Notebook Administrator role to edit templates",
+                                    })
+                                  : undefined
+                              }
+                            >
+                              <FormattedMessage id="label.button.edit" />
+                            </Button>
+                            <Button
+                              kind="danger--tertiary"
+                              size="sm"
+                              onClick={() => handleRemovePage(index)}
+                              disabled={!canEditTemplate}
+                              title={
+                                !canEditTemplate
+                                  ? intl.formatMessage({
+                                      id: "notebook.permission.edit.required",
+                                      defaultMessage:
+                                        "You need Notebook Administrator role to edit templates",
+                                    })
+                                  : undefined
+                              }
+                            >
+                              <FormattedMessage id="label.button.remove" />
+                            </Button>
+                          </Column>
+                        </Grid>
+                      </AccordionItem>
+                    ))}
                   </Accordion>
                 )}
               </Column>
@@ -1751,8 +1931,8 @@ const NoteBookEntryForm = () => {
           />
         )}
         {editingPageIndex === null &&
-          Array.isArray(filteredWorkflowPageTemplates) &&
-          filteredWorkflowPageTemplates.length > 0 && (
+          Array.isArray(workflowPageTemplates) &&
+          workflowPageTemplates.length > 0 && (
             <Select
               id="pageTemplate"
               name="pageTemplate"
@@ -1775,7 +1955,7 @@ const NoteBookEntryForm = () => {
                 })}
                 value=""
               />
-              {filteredWorkflowPageTemplates.map((template) => (
+              {workflowPageTemplates.map((template) => (
                 <SelectItem
                   key={template.id}
                   text={`${template.displayOrder}. ${template.name} - ${template.description}`}
@@ -2021,6 +2201,27 @@ const NoteBookEntryForm = () => {
           onChange={handlePageChange}
           required
         />
+        <FilterableMultiSelect
+          key={`pageRoles-${pageSelectedRoles.map((r) => r.id).join(",")}`}
+          id="pageAllowedRoles"
+          titleText={intl.formatMessage({
+            id: "notebook.page.modal.roles.label",
+            defaultMessage: "Page Access Roles (Optional)",
+          })}
+          placeholder={intl.formatMessage({
+            id: "notebook.page.modal.roles.placeholder",
+            defaultMessage: "Select roles that can view this page",
+          })}
+          items={availableRoles}
+          itemToString={(item) => (item ? item.label : "")}
+          initialSelectedItems={pageSelectedRoles}
+          onChange={({ selectedItems }) => setPageSelectedRoles(selectedItems)}
+          helperText={intl.formatMessage({
+            id: "notebook.page.modal.roles.helper",
+            defaultMessage:
+              "Leave empty to allow all users. Selected roles restrict page access.",
+          })}
+        />
       </Modal>
       <Modal
         open={showTagModal}
@@ -2120,7 +2321,18 @@ const NoteBookEntryForm = () => {
               <Button
                 kind="primary"
                 disabled={
-                  isSubmitting || (mode === MODES.CREATE && !isFormValid())
+                  !canEditTemplate ||
+                  isSubmitting ||
+                  (mode === MODES.CREATE && !isFormValid())
+                }
+                title={
+                  !canEditTemplate
+                    ? intl.formatMessage({
+                        id: "notebook.permission.edit.required",
+                        defaultMessage:
+                          "You need Notebook Administrator role to edit templates",
+                      })
+                    : undefined
                 }
                 onClick={() => handleSubmit()}
               >
