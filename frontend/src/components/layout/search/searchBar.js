@@ -37,13 +37,10 @@ const SearchBar = (props) => {
 
   const handleClearSearch = () => {
     setSearchInput("");
-   // setTextValue("");
-
+  
    if (typeof setTextValue === "function") {
     setTextValue("");
   }
-
-    
 
     setPatientData([]);
   };

@@ -298,7 +298,7 @@ public abstract class BaseController extends ControllerUtills implements IAction
 
         Errors errors = (Errors) inputFlashMap.get(Constants.REQUEST_ERRORS);
         if (errors != null) {
-            request.setAttribute(Constants.REQUEST_ERRORS, errors); // ✅ fixed
+            request.setAttribute(Constants.REQUEST_ERRORS, errors);
         }
 
         List<String> messages =
