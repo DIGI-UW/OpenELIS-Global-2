@@ -1,5 +1,6 @@
 package org.openelisglobal.validation;
 
+import jakarta.validation.ConstraintValidatorContext;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,8 +12,6 @@ import org.openelisglobal.validation.annotations.ValidName;
 import org.openelisglobal.validation.constraintvalidator.NameValidator;
 import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import jakarta.validation.ConstraintValidatorContext;
 
 public class NameValidatorTest extends BaseWebContextSensitiveTest {
 
