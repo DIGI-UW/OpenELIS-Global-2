@@ -66,13 +66,13 @@ actionable tasks. Each phase corresponds to an implementation phase in
       `src/main/java/org/openelisglobal/storage/` with subdirectories:
       valueholder/, dao/, service/, controller/, form/, fhir/
 - [x] T002 Create Liquibase changeset
-      `src/main/resources/liquibase/storage/001-create-storage-hierarchy-tables.xml`
+      `src/main/resources/liquibase/3.3.x.x/001-create-storage-hierarchy-tables.xml`
       for Room, Device, Shelf, Rack, Position tables with fhir_uuid columns
 - [x] T003 Create Liquibase changeset
-      `src/main/resources/liquibase/storage/002-create-assignment-tables.xml`
+      `src/main/resources/liquibase/3.3.x.x/002-create-assignment-tables.xml`
       for SampleStorageAssignment and SampleStorageMovement tables
 - [x] T004 Create Liquibase changeset
-      `src/main/resources/liquibase/storage/003-create-indexes.xml` for
+      `src/main/resources/liquibase/3.3.x.x/003-create-indexes.xml` for
       performance indexes (parent lookups, FHIR UUID, occupancy queries)
 - [x] T005 Verify database migration: Run application, check `databasechangelog`
       table contains storage changesets, verify tables created with
@@ -2916,7 +2916,7 @@ simplified label printing (see Amendment 2025-11-16).
       code exists (≤10 chars) before printing, returns error if missing or
       invalid
 - [ ] T307 [US1] Create Liquibase changeset
-      `src/main/resources/liquibase/storage/006-create-print-history-table.xml`
+      `src/main/resources/liquibase/3.3.x.x/XXX-create-print-history-table.xml`
       for storage_location_print_history table with columns: id, location_type,
       location_id, code, printed_by, printed_date (tracked but not displayed in
       UI)
