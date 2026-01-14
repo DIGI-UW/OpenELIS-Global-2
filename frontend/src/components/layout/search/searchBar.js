@@ -43,7 +43,7 @@ const SearchBar = (props) => {
     setTextValue("");
   }
 
-    console.log("setTextValue: jai shree", setTextValue);
+    
 
     setPatientData([]);
   };
