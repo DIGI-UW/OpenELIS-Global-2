@@ -11,8 +11,28 @@ const AutocompleteMode = ({ onLocationChange }) => {
   const [searchResults, setSearchResults] = useState([]);
 
   const handleSearch = (inputValue) => {
-    // TODO: Implement search API call
-    // For now, empty implementation
+
+    if (!inputValue) {
+      setSearchResults([]);
+      return;
+    }
+
+    fetch(`/rest/storage/devices/search?q=${inputValue}`)
+      .then((response) => response.json())
+      .then((data) => {
+        
+        const formattedResults = data.map((item) => ({
+          ...item,
+          hierarchicalPath: item.hierarchicalPath || item.name,
+        }));
+        
+        setSearchResults(formattedResults);
+      })
+      
+      .catch((error) => {
+        console.error("Error fetching storage locations:", error);
+        setSearchResults([]);
+      });
   };
 
   return (
