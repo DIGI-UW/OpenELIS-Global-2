@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ComboBox } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -9,15 +9,30 @@ import { FormattedMessage, useIntl } from "react-intl";
 const AutocompleteMode = ({ onLocationChange }) => {
   const intl = useIntl();
   const [searchResults, setSearchResults] = useState([]);
+  const debounceTimer = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if(debounceTimer.current){
+        clearTimeout(debounceTimer.current);
+      }
+    };
+
+  }, []);
 
   const handleSearch = (inputValue) => {
+
+    if(debounceTimer.current){
+      clearTimeout(debounceTimer.current);
+    }
 
     if (!inputValue) {
       setSearchResults([]);
       return;
     }
 
-    fetch(`/rest/storage/devices/search?q=${inputValue}`)
+    debounceTimer.current = setTimeout(() => {
+      fetch(`/rest/storage/devices/search?q=${encodeURIComponent(inputValue)}`)
       .then((response) => response.json())
       .then((data) => {
         
@@ -30,9 +45,12 @@ const AutocompleteMode = ({ onLocationChange }) => {
       })
       
       .catch((error) => {
-        console.error("Error fetching storage locations:", error);
         setSearchResults([]);
       });
+
+    }, 500);
+
+    
   };
 
   return (
