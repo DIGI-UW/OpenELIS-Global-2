@@ -1354,6 +1354,8 @@
   "result.noTestsFound": "No appropriate tests were found.",
   "result.nonconforming.item": "Sample or order is nonconforming OR test has been rejected",
   "result.outOfValidRange.msg": "The value you entered (red field) is outside the range of allowable values for that record. Please check the value",
+  "result.validation.outOfValid": "Outside valid range",
+  "result.validation.outOfNormal": "Outside normal range",
   "result.reject.warning": "Rejecting the result will permanently delete test results \nThe results will no longer be available.",
   "result.report.queue.size": "Queue Size :",
   "result.search.noresult": "No results found",
