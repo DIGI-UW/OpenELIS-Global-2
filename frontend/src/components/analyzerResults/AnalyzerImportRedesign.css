@@ -1,0 +1,173 @@
+/* AnalyzerImportRedesign.css - Styles for the redesigned analyzer import UI */
+
+/* QC Panel Styles */
+.qc-panel {
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.qc-panel--pass {
+  border: 2px solid #24a148;
+  background-color: #defbe6;
+}
+
+.qc-panel--fail {
+  border: 2px solid #da1e28;
+  background-color: #fff1f1;
+}
+
+.qc-panel--warning {
+  border: 2px solid #f1c21b;
+  background-color: #fcf4d6;
+}
+
+.qc-panel__header {
+  padding: 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.qc-panel__header:hover {
+  opacity: 0.9;
+}
+
+.qc-panel__content {
+  padding: 1rem;
+}
+
+/* QC Card Styles */
+.qc-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 1rem;
+  min-width: 200px;
+  flex: 1 1 auto;
+  background-color: #ffffff;
+}
+
+.qc-card--pass {
+  border-left: 4px solid #24a148 !important;
+}
+
+.qc-card--fail {
+  border-left: 4px solid #da1e28 !important;
+}
+
+/* Run Settings Panel */
+.run-settings-panel {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: #f4f4f4;
+}
+
+/* Non-Conforming Row Styles */
+.non-conforming-row {
+  background-color: #fff1f1 !important;
+}
+
+.critical-row {
+  background-color: #fff4e5 !important;
+}
+
+/* Flag Icons */
+.flag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.25rem;
+}
+
+/* Result Value Coloring */
+.result-normal {
+  color: #161616;
+}
+
+.result-abnormal {
+  color: #f1c21b;
+}
+
+.result-critical {
+  color: #da1e28;
+}
+
+/* Expandable Row Content */
+.expanded-row-content {
+  padding: 1rem;
+  background-color: #f4f4f4;
+}
+
+/* QA/QC Sidebar */
+.qa-sidebar {
+  padding: 1rem;
+  background-color: #f4f4f4;
+  height: 100%;
+}
+
+.qa-sidebar h5 {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+.qa-sidebar-section {
+  margin-bottom: 1.5rem;
+}
+
+/* Reagent Cards */
+.reagent-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.75rem;
+  background-color: #ffffff;
+  min-width: 180px;
+}
+
+.reagent-card--expiring {
+  border-color: #f1c21b;
+  background-color: #fcf4d6;
+}
+
+/* Summary Stats */
+.summary-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Bulk Actions Bar */
+.bulk-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1rem;
+  background-color: #f4f4f4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .qc-card {
+    min-width: 100%;
+  }
+
+  .reagent-card {
+    min-width: 100%;
+  }
+
+  .summary-stats {
+    flex-direction: column;
+  }
+
+  .bulk-actions-bar {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

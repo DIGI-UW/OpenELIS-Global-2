@@ -61,8 +61,8 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } = useContext(NotificationContext);
 
-  // Core state
-  const [loading, setLoading] = useState(true);
+  // Core state - start with loading false, set to true when fetching
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [results, setResults] = useState([]);
   const [qcSamples, setQcSamples] = useState([]);
@@ -100,49 +100,37 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
    * Fetch analyzer results from backend
    * Endpoint: GET /rest/AnalyzerResults?type={analyzerType}
    */
-  const fetchAnalyzerResults = useCallback(async () => {
+  const fetchAnalyzerResults = useCallback(() => {
     setLoading(true);
-    try {
-      const response = await getFromOpenElisServer(
-        `/rest/AnalyzerResults?type=${analyzerType}`,
-      );
+    getFromOpenElisServer(
+      `/rest/AnalyzerResults?type=${analyzerType}`,
+      (response) => {
+        if (response) {
+          // Extract QC samples (control samples identified by isControl flag)
+          const qcSamplesList = response.resultList?.filter((r) => r.isControl) || [];
+          const patientResults = response.resultList?.filter((r) => !r.isControl) || [];
 
-      if (response) {
-        // Extract QC samples (control samples identified by isControl flag)
-        const qcSamplesList = response.resultList?.filter((r) => r.isControl) || [];
-        const patientResults = response.resultList?.filter((r) => !r.isControl) || [];
+          // Enrich patient results with computed fields
+          const enrichedResults = patientResults.map((result) => 
+            enrichResultWithComputedFields(result)
+          );
 
-        // Enrich patient results with computed fields
-        const enrichedResults = patientResults.map((result) => 
-          enrichResultWithComputedFields(result)
-        );
+          setQcSamples(qcSamplesList);
+          setResults(enrichedResults);
 
-        setQcSamples(qcSamplesList);
-        setResults(enrichedResults);
+          // Evaluate QC status
+          evaluateQcStatus(qcSamplesList);
 
-        // Evaluate QC status
-        evaluateQcStatus(qcSamplesList);
-
-        // Fetch run settings
-        await fetchRunSettings();
-
-        // Fetch QA/QC sidebar data
-        await fetchQcHistory();
-        await fetchAnalyzerInfo();
-        await fetchReagentStatus();
+          // Fetch run settings and QA/QC sidebar data
+          fetchRunSettings();
+          fetchQcHistory();
+          fetchAnalyzerInfo();
+          fetchReagentStatus();
+        }
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching analyzer results:", error);
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.fetch.analyzer.results" }) || "Error fetching analyzer results",
-      });
-      setNotificationVisible(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [analyzerType, intl]);
+    );
+  }, [analyzerType]);
 
   /**
    * Enrich result with computed fields (flags, interpretation, delta check)
@@ -344,121 +332,106 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
    * Create non-conformity record when QC fails
    * Implementation of TODO: Non-conformity management
    */
-  const createNonConformityRecord = async (failedQcSamples) => {
-    try {
-      const ncPayload = {
-        date: new Date().toISOString(),
-        type: "QC_FAILURE",
-        analyzerType: analyzerType,
-        failedControls: failedQcSamples.filter((qc) => qc.qcStatus === "fail"),
-        affectedResultCount: results.length,
-        status: "OPEN",
-      };
+  const createNonConformityRecord = (failedQcSamples) => {
+    const ncPayload = {
+      date: new Date().toISOString(),
+      type: "QC_FAILURE",
+      analyzerType: analyzerType,
+      failedControls: failedQcSamples.filter((qc) => qc.qcStatus === "fail"),
+      affectedResultCount: results.length,
+      status: "OPEN",
+    };
 
-      const response = await postToOpenElisServer(
-        "/rest/non-conformities",
-        JSON.stringify(ncPayload),
-      );
-
-      if (response && response.id) {
-        setNonConformityId(response.id);
+    postToOpenElisServer(
+      "/rest/non-conformities",
+      JSON.stringify(ncPayload),
+      (status) => {
+        console.log("Non-conformity record created, status:", status);
       }
-    } catch (error) {
-      console.error("Error creating non-conformity record:", error);
-    }
+    );
   };
 
   /**
    * Fetch run settings (analyzer and reagent lots)
    * Endpoint: GET /rest/AnalyzerResults/runSettings?type={analyzerType}
    */
-  const fetchRunSettings = async () => {
-    try {
-      const response = await getFromOpenElisServer(
-        `/rest/AnalyzerResults/runSettings?type=${analyzerType}`,
-      );
-      if (response) {
-        setRunSettings(response);
-        // Initialize selected reagent lots from FIFO pre-selection
-        if (response.reagentLots) {
-          const selected = {};
-          response.reagentLots.forEach((lot) => {
-            selected[lot.reagentId] = lot.lotNumber;
-          });
-          setSelectedReagentLots(selected);
+  const fetchRunSettings = () => {
+    getFromOpenElisServer(
+      `/rest/AnalyzerResults/runSettings?type=${analyzerType}`,
+      (response) => {
+        if (response) {
+          setRunSettings(response);
+          // Initialize selected reagent lots from FIFO pre-selection
+          if (response.reagentLots) {
+            const selected = {};
+            response.reagentLots.forEach((lot) => {
+              selected[lot.reagentId] = lot.lotNumber;
+            });
+            setSelectedReagentLots(selected);
+          }
         }
       }
-    } catch (error) {
-      console.error("Error fetching run settings:", error);
-    }
+    );
   };
 
   /**
    * Fetch available reagent lots for analyzer
    * Implementation of TODO: Reagent inventory integration
    */
-  const fetchAvailableReagentLots = async () => {
-    try {
-      const response = await getFromOpenElisServer(
-        `/rest/AnalyzerResults/availableReagentLots?type=${analyzerType}`,
-      );
-      if (response && response.reagents) {
-        setAvailableReagentLots(response.reagents);
+  const fetchAvailableReagentLots = () => {
+    getFromOpenElisServer(
+      `/rest/AnalyzerResults/availableReagentLots?type=${analyzerType}`,
+      (response) => {
+        if (response && response.reagents) {
+          setAvailableReagentLots(response.reagents);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching available reagent lots:", error);
-    }
+    );
   };
 
   /**
    * Fetch recent QC history
    * Endpoint: GET /rest/AnalyzerResults/qcHistory?analyzerId={id}
    */
-  const fetchQcHistory = async () => {
-    try {
-      const response = await getFromOpenElisServer(
-        `/rest/AnalyzerResults/qcHistory?type=${analyzerType}`,
-      );
-      if (response) {
-        setQcHistory(response.history || []);
+  const fetchQcHistory = () => {
+    getFromOpenElisServer(
+      `/rest/AnalyzerResults/qcHistory?type=${analyzerType}`,
+      (response) => {
+        if (response) {
+          setQcHistory(response.history || []);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching QC history:", error);
-    }
+    );
   };
 
   /**
    * Fetch analyzer information
    * Endpoint: GET /rest/AnalyzerResults/analyzerInfo?type={analyzerType}
    */
-  const fetchAnalyzerInfo = async () => {
-    try {
-      const response = await getFromOpenElisServer(
-        `/rest/AnalyzerResults/analyzerInfo?type=${analyzerType}`,
-      );
-      if (response) {
-        setAnalyzerInfo(response);
+  const fetchAnalyzerInfo = () => {
+    getFromOpenElisServer(
+      `/rest/AnalyzerResults/analyzerInfo?type=${analyzerType}`,
+      (response) => {
+        if (response) {
+          setAnalyzerInfo(response);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching analyzer info:", error);
-    }
+    );
   };
 
   /**
    * Fetch reagent status
    * Endpoint: GET /rest/AnalyzerResults/reagents?type={analyzerType}
    */
-  const fetchReagentStatus = async () => {
-    try {
-      const response = await getFromOpenElisServer(
-        `/rest/AnalyzerResults/reagents?type=${analyzerType}`,
-      );
-      if (response) {
-        setReagentStatus(response.reagents || []);
+  const fetchReagentStatus = () => {
+    getFromOpenElisServer(
+      `/rest/AnalyzerResults/reagents?type=${analyzerType}`,
+      (response) => {
+        if (response) {
+          setReagentStatus(response.reagents || []);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching reagent status:", error);
-    }
+    );
   };
 
   /**
@@ -466,38 +439,34 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
    * Fetches: History, QA/QC linkage, Method & Reagents
    * Implementation of TODO: Previous results and delta check retrieval
    */
-  const fetchRowDetails = async (resultId, result) => {
+  const fetchRowDetails = (resultId, result) => {
     if (rowDetailsCache[resultId]) {
       return;
     }
 
-    try {
-      const response = await getFromOpenElisServer(
-        `/rest/AnalyzerResults/details?resultId=${resultId}`,
-      );
-      
-      if (response) {
-        // Enrich with delta check calculation if history exists
-        if (response.history && response.history.length > 0) {
-          const currentValue = parseFloat(result.result);
-          const previousValue = parseFloat(response.history[0].value);
-          
-          if (!isNaN(currentValue) && !isNaN(previousValue)) {
-            const deltaPercent = calculateDeltaPercent(currentValue, previousValue);
-            response.deltaCheck = {
-              previous: response.history[0].value,
-              change: `${deltaPercent > 0 ? "+" : ""}${deltaPercent.toFixed(1)}%`,
-              threshold: "50%",
-              exceeded: Math.abs(deltaPercent) > 50,
-            };
+    getFromOpenElisServer(
+      `/rest/AnalyzerResults/details?resultId=${resultId}`,
+      (response) => {
+        if (response) {
+          // Enrich with delta check calculation if history exists
+          if (response.history && response.history.length > 0) {
+            const currentValue = parseFloat(result.result);
+            const previousValue = parseFloat(response.history[0].value);
+            
+            if (!isNaN(currentValue) && !isNaN(previousValue)) {
+              const deltaPercent = calculateDeltaPercent(currentValue, previousValue);
+              response.deltaCheck = {
+                previous: response.history[0].value,
+                change: `${deltaPercent > 0 ? "+" : ""}${deltaPercent.toFixed(1)}%`,
+                threshold: "50%",
+                exceeded: Math.abs(deltaPercent) > 50,
+              };
+            }
           }
+          setRowDetailsCache((prev) => ({ ...prev, [resultId]: response }));
         }
-
-        setRowDetailsCache((prev) => ({ ...prev, [resultId]: response }));
       }
-    } catch (error) {
-      console.error(`Error fetching details for result ${resultId}:`, error);
-    }
+    );
   };
 
   /**
@@ -544,7 +513,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
    * Handle Save/Accept action
    * QC-FIRST ENFORCEMENT: Blocked if QC fails
    */
-  const handleSave = async () => {
+  const handleSave = () => {
     if (overallQcStatus === "fail") {
       addNotification({
         kind: NotificationKinds.error,
@@ -568,102 +537,96 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     }
 
     setSaving(true);
-    try {
-      const selectedResults = results.filter((r) => selectedRows.includes(r.id));
-      const payload = {
-        resultList: selectedResults.map((r) => ({
-          ...r,
-          isAccepted: true,
-          analyzerId: runSettings?.analyzerId,
-          reagentLots: runSettings?.reagentLots,
-        })),
-      };
+    const selectedResults = results.filter((r) => selectedRows.includes(r.id));
+    const payload = {
+      resultList: selectedResults.map((r) => ({
+        ...r,
+        isAccepted: true,
+        analyzerId: runSettings?.analyzerId,
+        reagentLots: runSettings?.reagentLots,
+      })),
+    };
 
-      await postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload));
-
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "success.results.saved" }) || 
-                "Results imported successfully",
-      });
-      setNotificationVisible(true);
-      
-      // Refresh data
-      await fetchAnalyzerResults();
-      setSelectedRows([]);
-    } catch (error) {
-      console.error("Error saving results:", error);
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.results" }) || 
-                "Error saving results",
-      });
-      setNotificationVisible(true);
-    } finally {
+    postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload), (status) => {
+      if (status === 200) {
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "success.results.saved" }) || 
+                  "Results imported successfully",
+        });
+        setNotificationVisible(true);
+        
+        // Refresh data
+        fetchAnalyzerResults();
+        setSelectedRows([]);
+      } else {
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "error.save.results" }) || 
+                  "Error saving results",
+        });
+        setNotificationVisible(true);
+      }
       setSaving(false);
-    }
+    });
   };
 
   /**
    * Handle Retest action
    */
-  const handleRetest = async () => {
+  const handleRetest = () => {
     if (selectedRows.length === 0) {
       return;
     }
 
-    try {
-      const selectedResults = results.filter((r) => selectedRows.includes(r.id));
-      const payload = {
-        resultList: selectedResults.map((r) => ({ ...r, isRejected: true })),
-      };
+    const selectedResults = results.filter((r) => selectedRows.includes(r.id));
+    const payload = {
+      resultList: selectedResults.map((r) => ({ ...r, isRejected: true })),
+    };
 
-      await postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload));
-
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "success.results.retest" }) || 
-                "Results marked for retest",
-      });
-      setNotificationVisible(true);
-      await fetchAnalyzerResults();
-      setSelectedRows([]);
-    } catch (error) {
-      console.error("Error marking retest:", error);
-    }
+    postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload), (status) => {
+      if (status === 200) {
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "success.results.retest" }) || 
+                  "Results marked for retest",
+        });
+        setNotificationVisible(true);
+        fetchAnalyzerResults();
+        setSelectedRows([]);
+      }
+    });
   };
 
   /**
    * Handle Ignore action
    */
-  const handleIgnore = async () => {
+  const handleIgnore = () => {
     if (selectedRows.length === 0) {
       return;
     }
 
-    try {
-      const selectedResults = results.filter((r) => selectedRows.includes(r.id));
-      const payload = {
-        resultList: selectedResults.map((r) => ({ ...r, isDeleted: true })),
-      };
+    const selectedResults = results.filter((r) => selectedRows.includes(r.id));
+    const payload = {
+      resultList: selectedResults.map((r) => ({ ...r, isDeleted: true })),
+    };
 
-      await postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload));
-
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "success.results.ignored" }) || 
-                "Results ignored",
-      });
-      setNotificationVisible(true);
-      await fetchAnalyzerResults();
-      setSelectedRows([]);
-    } catch (error) {
-      console.error("Error ignoring results:", error);
-    }
+    postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload), (status) => {
+      if (status === 200) {
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "success.results.ignored" }) || 
+                  "Results ignored",
+        });
+        setNotificationVisible(true);
+        fetchAnalyzerResults();
+        setSelectedRows([]);
+      }
+    });
   };
 
   /**
@@ -676,8 +639,8 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
   /**
    * Open reagent lot change modal
    */
-  const handleOpenReagentModal = async () => {
-    await fetchAvailableReagentLots();
+  const handleOpenReagentModal = () => {
+    fetchAvailableReagentLots();
     setShowReagentModal(true);
   };
 
