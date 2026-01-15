@@ -5,6 +5,9 @@
     <document_type id="2" name="Test Type 2"
         description="Test Document Type 2" lastupdated="2024-03-06 10:00:00" />
 
+    <reference_tables id="1" name="document_track"
+        keep_history="N" is_hl7_encoded="N" lastupdated="2024-01-01 00:00:00" />
+
     <document_track id="1" document_type_id="1" table_id="1"
         row_id="1" name="Test Doc 1"
         report_generation_time="2024-03-06 10:00:00"
