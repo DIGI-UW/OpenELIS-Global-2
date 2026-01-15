@@ -75,6 +75,9 @@ function CreatePatientForm(props) {
     contactPhone: { body: "", status: true },
   });
 
+  const [duplicateErrors, setDuplicateErrors] = useState({});
+  const [isChecking, setIsChecking] = useState(false);
+
   const handlePhotoChange = (photo, setFieldValue) => {
     if (setFieldValue) {
       setFieldValue("photo", photo);
@@ -84,12 +87,27 @@ function CreatePatientForm(props) {
   const handleNationalIdChange = (event) => {
     const newValue = event.target.value;
     setNationalId(newValue);
+
+    if (duplicateErrors.nationalId) {
+      setDuplicateErrors((prev) => ({
+        ...prev,
+        nationalId: false,
+      }));
+    }
   };
 
   const handleSubjectNoChange = (event) => {
     const newValue = event.target.value;
     setSubjectNo(newValue);
+
+    if (duplicateErrors.subjectNumber) {
+      setDuplicateErrors((prev) => ({
+        ...prev,
+        subjectNumber: false,
+      }));
+    }
   };
+
   const handleDatePickerChange = (values, date) => {
     var patient = { ...values };
     if ("date-picker-default-id" in patient) {
@@ -159,16 +177,11 @@ function CreatePatientForm(props) {
   };
 
   function handleYearsChange(e, values) {
-    // Ensure years is not negative
     const years = Math.max(0, Number(e.target.value));
-
-    // Update form values with the validated years
     setPatientDetails({
       ...values,
-      // Update the specific field that contains years to ensure the form shows the corrected value
       [e.target.name]: years,
     });
-
     let dobFormatter = {
       ...dateOfBirthFormatter,
       years: years,
@@ -177,16 +190,11 @@ function CreatePatientForm(props) {
   }
 
   function handleMonthsChange(e, values) {
-    // Ensure months is not negative
     const months = Math.max(0, Number(e.target.value));
-
-    // Update form values with the validated months
     setPatientDetails({
       ...values,
-      // Update the specific field that contains months to ensure the form shows the corrected value
       [e.target.name]: months,
     });
-
     let dobFormatter = {
       ...dateOfBirthFormatter,
       months: months,
@@ -195,22 +203,18 @@ function CreatePatientForm(props) {
   }
 
   function handleDaysChange(e, values) {
-    // Ensure days is not negative
     const days = Math.max(0, Number(e.target.value));
-
-    // Update form values with the validated days
     setPatientDetails({
       ...values,
-      // Update the specific field that contains days to ensure the form shows the corrected value
       [e.target.name]: days,
     });
-
     let dobFormatter = {
       ...dateOfBirthFormatter,
       days: days,
     };
     getDOBByYearMonthsDays(dobFormatter);
   }
+
   const handleRegionSelection = (e, values) => {
     var patient = values;
     patient.healthDistrict = "";
@@ -239,6 +243,7 @@ function CreatePatientForm(props) {
       props.setPhoneValidation(phoneValidation);
     }
   }, [phoneValidation]);
+
   function handleFirstNameChange(event) {
     const regexFlags = "iu";
     const regex = new RegExp(
@@ -304,14 +309,11 @@ function CreatePatientForm(props) {
           fetchHealthDistrictsCallback,
         );
       } else {
-        //nextState.healthDistricts = [];
         setHealthDistricts([]);
       }
-      //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       let patient = props.selectedPatient;
       patient.patientUpdateStatus = "UPDATE";
       patient.photo = "";
-      //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       const patientContactPerson = {
         ...patientDetails?.patientContact?.person,
         ...patient?.patientContact?.person,
@@ -333,12 +335,10 @@ function CreatePatientForm(props) {
       });
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
       setFormAction("UPDATE");
-      // Fetch patient photo if patient exists
       getFromOpenElisServer(
         `/rest/patient-photos/${patient.patientPK}/${false}`,
         (response) => {
           if (response && response.data) {
-            // Update patient details with photo
             setPatientDetails((prevDetails) => ({
               ...prevDetails,
               photo: response.data,
@@ -368,7 +368,6 @@ function CreatePatientForm(props) {
     getFromOpenElisServer("/rest/health-regions", fetchHeathRegions);
     getFromOpenElisServer("/rest/education-list", fetchEducationList);
     getFromOpenElisServer("/rest/marital-statuses", fetchMaritalStatuses);
-    // getFromOpenElisServer("/rest/nationalities", fetchNationalities);
     repopulatePatientInfo();
     return () => {
       componentMounted.current = false;
@@ -383,11 +382,15 @@ function CreatePatientForm(props) {
 
   const accessionNumberValidationResponse = (res, numberType, numberValue) => {
     let error;
-    if (
+
+    setIsChecking(false);
+
+    const isDuplicate =
       res.status === false &&
       (props.selectedPatient.nationalId !== nationalId ||
-        props.selectedPatient.subjectNumber !== subjectNo)
-    ) {
+        props.selectedPatient.subjectNumber !== subjectNo);
+
+    if (isDuplicate) {
       setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
@@ -396,6 +399,12 @@ function CreatePatientForm(props) {
       });
       error = "duplicate";
     }
+
+    setDuplicateErrors((prev) => ({
+      ...prev,
+      [numberType]: isDuplicate,
+    }));
+
     return error;
   };
 
@@ -406,6 +415,8 @@ function CreatePatientForm(props) {
   ) => {
     let error;
     if (numberValue !== "") {
+      setIsChecking(true);
+
       error = getFromOpenElisServer(
         `/rest/subjectNumberValidationProvider?fieldId=${fieldId}&numberType=${numberType}&subjectNumber=${numberValue}`,
         (response) =>
@@ -432,8 +443,12 @@ function CreatePatientForm(props) {
   };
 
   const handleSubmit = async (values, { resetForm }) => {
-    // Prevent multiple submissions.
-    if (isSubmitting) {
+    if (
+      isSubmitting ||
+      isChecking ||
+      Object.values(duplicateErrors).some((err) => err === true) ||
+      Object.values(phoneValidation).some((item) => item.status === false)
+    ) {
       return;
     }
 
@@ -531,7 +546,6 @@ function CreatePatientForm(props) {
                 </FormLabel>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                {" "}
                 <br></br>
               </Column>
               <Column lg={16} md={8} sm={4}>
@@ -554,7 +568,8 @@ function CreatePatientForm(props) {
                         id={field.name}
                         invalid={errors.subjectNumber && touched.subjectNumber}
                         invalidText={errors.subjectNumber}
-                        onMouseOut={() => {
+                        onBlur={(e) => {
+                          handleBlur(e);
                           handleSubjectNoValidation(
                             "subjectNumber",
                             "subjectNumberID",
@@ -586,18 +601,19 @@ function CreatePatientForm(props) {
                       }
                       id={field.name}
                       invalid={
-                        props.error
-                          ? props.error("patientProperties.nationalId")
-                            ? true
-                            : false
-                          : false
+                        duplicateErrors.nationalId ||
+                        (props.error &&
+                          props.error("patientProperties.nationalId"))
                       }
                       invalidText={
-                        props.error
-                          ? props.error("patientProperties.nationalId")
-                          : ""
+                        duplicateErrors.nationalId
+                          ? "National ID already being used"
+                          : props.error
+                            ? props.error("patientProperties.nationalId")
+                            : ""
                       }
-                      onMouseOut={() => {
+                      onBlur={(e) => {
+                        handleBlur(e);
                         handleSubjectNoValidation(
                           "nationalId",
                           "nationalID",
@@ -616,7 +632,6 @@ function CreatePatientForm(props) {
                 </div>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                {" "}
                 <br></br>
               </Column>
               <Column lg={8} md={4} sm={4}>
@@ -660,7 +675,6 @@ function CreatePatientForm(props) {
                 </Field>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                {" "}
                 <br></br>
               </Column>
               <Column lg={8} md={4} sm={4}>
@@ -727,7 +741,6 @@ function CreatePatientForm(props) {
                 </div>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                {" "}
                 <br></br>
               </Column>
               <Column lg={8} md={4} sm={4}>
@@ -806,7 +819,6 @@ function CreatePatientForm(props) {
                 </div>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                {" "}
                 <br></br>
               </Column>
               <Column lg={16} md={8} sm={4}>
@@ -818,7 +830,6 @@ function CreatePatientForm(props) {
                   >
                     <Grid>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
@@ -862,7 +873,6 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
@@ -924,7 +934,6 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                     </Grid>
@@ -936,7 +945,6 @@ function CreatePatientForm(props) {
                   >
                     <Grid>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
@@ -974,7 +982,6 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
@@ -995,7 +1002,6 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
@@ -1054,7 +1060,6 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
@@ -1112,7 +1117,6 @@ function CreatePatientForm(props) {
                         </Field>
                       </Column>
                       <Column lg={16} md={8} sm={4}>
-                        {" "}
                         <br></br>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
@@ -1164,22 +1168,12 @@ function CreatePatientForm(props) {
                 </Accordion>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                {" "}
                 <br></br>
               </Column>
               {props.showActionsButton && (
                 <>
                   <Column lg={4} md={4} sm={4}>
-                    <Button
-                      type="submit"
-                      id="submit"
-                      disabled={
-                        isSubmitting ||
-                        Object.values(phoneValidation).some(
-                          (item) => item.status === false,
-                        )
-                      }
-                    >
+                    <Button type="submit" id="submit" disabled={isSubmitting}>
                       <FormattedMessage id="label.button.save" />
                     </Button>
                   </Column>
