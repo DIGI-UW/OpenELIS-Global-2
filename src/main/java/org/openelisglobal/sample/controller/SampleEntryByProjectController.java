@@ -302,7 +302,8 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LogEvent.logError(this.getClass().getSimpleName(), "processRequest",
+                    "Error processing sample entry request", e);
         }
     }
 
@@ -747,8 +748,8 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            LogEvent.logError(e);
+            LogEvent.logError(this.getClass().getSimpleName(), "saveDataToDatabase",
+                    "Error saving sample data to database", e);
         }
     }
 

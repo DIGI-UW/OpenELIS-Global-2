@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.patient.action.bean.PatientSearch;
@@ -51,7 +52,8 @@ public class NonConformingEventsCorrectionActionRestController extends BaseRestC
 
         searchResults = ncEventService.getAllMatching(searchParameters);
 
-        System.out.println("search Results Size" + searchResults.size());
+        LogEvent.logDebug(this.getClass().getSimpleName(), "getNCECorrectionActions",
+                "Search results size: " + searchResults.size());
 
         nceForm.setnceEventsSearchResults(searchResults);
         nceForm.setReportingUnits(

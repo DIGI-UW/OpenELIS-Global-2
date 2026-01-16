@@ -16,6 +16,7 @@ package org.openelisglobal.patient.daoimpl;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.patient.dao.PatientPhotoDAO;
 import org.openelisglobal.patient.valueholder.PatientPhoto;
 import org.springframework.stereotype.Component;
@@ -50,7 +51,7 @@ public class PatientPhotoDAOImpl extends BaseDAOImpl<PatientPhoto, Integer> impl
 
             return result;
         } catch (Exception e) {
-            System.out.println("---- Exception in getByPatientId: " + e.getMessage() + " ----");
+            LogEvent.logError(this.getClass().getSimpleName(), "getByPatientId", e.getMessage());
             handleException(e, "getByPatientId");
             return null;
         }

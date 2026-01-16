@@ -18,6 +18,7 @@ import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.util.DateUtil;
@@ -209,7 +210,8 @@ public class SampleTbEntryController extends BaseSampleEntryController {
             response.put("tests", testsList);
             response.put("panels", newPanelsList);
         } catch (Exception e) {
-            e.printStackTrace();
+            LogEvent.logError(this.getClass().getSimpleName(), "getTestAndPanels", "Error retrieving tests and panels",
+                    e);
         }
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

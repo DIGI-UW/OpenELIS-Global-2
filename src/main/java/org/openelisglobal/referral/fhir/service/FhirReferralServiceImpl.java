@@ -217,11 +217,11 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                 Organization fhirOrg = fhirTransformService.transformToFhirOrganization(organization);
                 fhirPersistanceService.createFhirResourceInFhirStore(fhirOrg);
             } catch (FhirTransformationException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                LogEvent.logError(this.getClass().getSimpleName(), "getFhirOrganization",
+                        "Error transforming to FHIR Organization", e);
             } catch (FhirPersistanceException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                LogEvent.logError(this.getClass().getSimpleName(), "getFhirOrganization",
+                        "Error persisting FHIR Organization", e);
             }
         }
 
@@ -325,7 +325,8 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                     "fhirPersistanceService.updateFhirResourceInFhirStore");
             fhirPersistanceService.updateFhirResourceInFhirStore(resultsImport.originalReferralObjects.task);
         } catch (FhirPersistanceException e) {
-            LogEvent.logError(e);
+            LogEvent.logError(this.getClass().getSimpleName(), "setReferralResult", "Error persisting FHIR resource",
+                    e);
         }
     }
 

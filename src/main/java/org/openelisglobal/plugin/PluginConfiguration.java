@@ -177,7 +177,8 @@ public class PluginConfiguration implements BeanFactoryAware {
                 try {
                     controller.afterPropertiesSet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogEvent.logError(this.getClass().getSimpleName(), "loadServlet",
+                            "Error initializing servlet controller: " + servletName, e);
                 }
             }
 
