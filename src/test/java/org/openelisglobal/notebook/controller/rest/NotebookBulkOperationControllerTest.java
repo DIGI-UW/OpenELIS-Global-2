@@ -39,6 +39,7 @@ public class NotebookBulkOperationControllerTest extends BaseWebContextSensitive
     public void setUp() throws Exception {
         super.setUp();
         objectMapper = new ObjectMapper();
+        executeDataSetWithStateManagement("testdata/notebook-test-data.xml");
 
         // Set up mock session with user data for authentication
         mockSession = new MockHttpSession();

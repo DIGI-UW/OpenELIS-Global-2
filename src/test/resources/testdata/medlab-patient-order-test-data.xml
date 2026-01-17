@@ -122,7 +122,7 @@
 
     <!-- Pre-existing electronic order for duplicate check test -->
     <electronic_order id="8001"
-        external_id="EXISTING-ORDER-001" patient_id="8001" status_id="1"
+        external_id="EXISTING-ORDER-001" patient_id="8001" status_id="2001"
         order_timestamp="2026-01-08 10:00:00" type="FHIR"
         data="{&quot;testIds&quot;:[&quot;8001&quot;]}"
         order_priority="ROUTINE" lastupdated="2026-01-08 10:00:00" />

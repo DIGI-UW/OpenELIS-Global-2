@@ -1,6 +1,7 @@
 package org.openelisglobal.testconfiguration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.sql.Timestamp;
 import java.util.List;
@@ -99,12 +100,15 @@ public class SampleTypeCreateServiceTest extends BaseWebContextSensitiveTest {
 
         List<Localization> newLocalizations = localizationService.getAll();
         assertEquals((initialLocalizationCount + 1), newLocalizations.size());
-        assertEquals("Salut", newLocalizations.get(initialLocalizationCount).getFrench());
+        Localization createdLocalization = newLocalizations.stream()
+                .filter(loc -> "Hi!".equals(loc.getEnglish()) && "Salut".equals(loc.getFrench())).findFirst().orElse(null);
+        assertNotNull(createdLocalization);
 
         List<TypeOfSample> newTypeOfSamples = typeOfSampleService.getAll();
-
         assertEquals((initialTypeOfSampleCount + 1), newTypeOfSamples.size());
-        assertEquals("Fluidal acids", newTypeOfSamples.get(initialTypeOfSampleCount).getDescription());
+        TypeOfSample createdType = newTypeOfSamples.stream()
+                .filter(sampleType -> "Fluidal acids".equals(sampleType.getDescription())).findFirst().orElse(null);
+        assertNotNull(createdType);
 
         List<SystemModule> newSystemModules = systemModuleService.getAll();
         assertEquals(initialSystemModuleCount + 3, newSystemModules.size());

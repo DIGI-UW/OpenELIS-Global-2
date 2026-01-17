@@ -26,6 +26,8 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
+import jakarta.persistence.EntityManager;
+
 /**
  * Unit tests for NotebookPageSampleService - Verifies workflow tracking logic
  */
@@ -43,6 +45,9 @@ public class NotebookPageSampleServiceTest {
 
     @Mock
     private SystemUserService systemUserService;
+
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private NotebookPageSampleServiceImpl service;

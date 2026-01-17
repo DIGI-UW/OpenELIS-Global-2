@@ -226,8 +226,8 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void createChildInstance_inheritsInstruments() throws Exception {
-        // Load inventory test data for valid instrument IDs (needed for FK constraint)
-        executeDataSetWithStateManagement("testdata/inventory-test-data.xml");
+        // Load minimal inventory items for valid instrument IDs (needed for FK constraint)
+        executeDataSetWithStateManagement("testdata/inventory-items-test-data.xml");
 
         // Use notebook 7 (template without pages to avoid page cascade issues)
         // Insert instruments using native SQL (join table has no PK, can't use DBUnit

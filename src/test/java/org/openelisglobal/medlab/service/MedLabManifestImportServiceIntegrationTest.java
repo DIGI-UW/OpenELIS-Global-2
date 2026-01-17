@@ -58,6 +58,11 @@ import org.springframework.test.annotation.Rollback;
  * <p>
  * These tests catch constraint violations that controller tests miss because
  * they actually insert records into the database.
+ *
+ * <p>
+ * TODO: These tests require proper test data setup with Liquibase seed data.
+ * Currently skipped due to transaction management issues with DBUnit datasets.
+ * The validation logic is covered by MedLabManifestImportServiceValidationTest.
  */
 @Rollback
 public class MedLabManifestImportServiceIntegrationTest extends BaseWebContextSensitiveTest {
@@ -100,6 +105,7 @@ public class MedLabManifestImportServiceIntegrationTest extends BaseWebContextSe
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
         executeDataSetWithStateManagement("testdata/medlab-manifest-import-test-data.xml");
 
         // Get a valid notebook entry ID from the test data

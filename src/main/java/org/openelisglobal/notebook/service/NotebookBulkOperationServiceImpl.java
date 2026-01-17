@@ -51,13 +51,13 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
     @Override
     @Transactional
     public int bulkApplyValues(Integer pageId, List<Integer> sampleIds, Map<String, Object> data, String userId) {
-        LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
-                "Called with pageId=" + pageId + ", sampleIds=" + sampleIds + ", data keys=" + data.keySet());
-
         if (sampleIds == null || sampleIds.isEmpty() || data == null || data.isEmpty()) {
             LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues", "Empty sampleIds or data, returning 0");
             return 0;
         }
+
+        LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
+                "Called with pageId=" + pageId + ", sampleIds=" + sampleIds + ", data keys=" + data.keySet());
 
         int updatedCount = 0;
 

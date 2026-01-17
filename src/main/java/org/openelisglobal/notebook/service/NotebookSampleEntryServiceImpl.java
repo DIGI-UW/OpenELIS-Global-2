@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.valueholder.NoteBook;
@@ -77,6 +80,24 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
 
         int linkedCount = 0;
         List<NoteBookPage> pages = notebook.getPages();
+        int sampleItemCount = sampleItemIds != null ? sampleItemIds.size() : 0;
+        int pageCount = pages != null ? pages.size() : 0;
+        int insertCount = 0;
+        // #region agent log
+        debugLog("H2", "NotebookSampleEntryServiceImpl.linkSamplesToNotebook:entry", "Link samples entry",
+                "{\"notebookId\":" + (notebookId != null ? notebookId : -1) + ",\"sampleItemIdsCount\":"
+                        + sampleItemCount + ",\"pagesCount\":" + pageCount + "}");
+        // #endregion
+
+        List<NoteBookPage> sortedPages = new ArrayList<>();
+        if (pages != null && !pages.isEmpty()) {
+            sortedPages.addAll(pages);
+            sortedPages.sort((p1, p2) -> {
+                Integer o1 = p1.getOrder() != null ? p1.getOrder() : Integer.MAX_VALUE;
+                Integer o2 = p2.getOrder() != null ? p2.getOrder() : Integer.MAX_VALUE;
+                return o1.compareTo(o2);
+            });
+        }
 
         for (Integer sampleItemId : sampleItemIds) {
             SampleItem sampleItem = sampleItemService.get(sampleItemId.toString());
@@ -85,35 +106,28 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
                 continue;
             }
 
-            // Create NotebookPageSample record ONLY on the first page
-            // Samples should only appear on subsequent pages after completing the previous
-            // page
-            // (auto-progression is handled by bulkUpdateStatus when status changes to
-            // COMPLETED)
-            if (pages != null && !pages.isEmpty()) {
-                // Sort pages by order to find the first page
-                List<NoteBookPage> sortedPages = new ArrayList<>(pages);
-                sortedPages.sort((p1, p2) -> {
-                    Integer o1 = p1.getOrder() != null ? p1.getOrder() : Integer.MAX_VALUE;
-                    Integer o2 = p2.getOrder() != null ? p2.getOrder() : Integer.MAX_VALUE;
-                    return o1.compareTo(o2);
-                });
-                NoteBookPage firstPage = sortedPages.get(0);
-
-                // Check if record already exists on first page
-                NotebookPageSample existing = notebookPageSampleDAO.getByPageIdAndSampleItemId(firstPage.getId(),
-                        sampleItemId);
-                if (existing == null) {
-                    NotebookPageSample nps = new NotebookPageSample();
-                    nps.setNotebookPage(firstPage);
-                    nps.setSampleItemId(sampleItem.getId());
-                    nps.setStatus(Status.PENDING);
-                    notebookPageSampleService.insert(nps);
+            if (!sortedPages.isEmpty()) {
+                for (NoteBookPage page : sortedPages) {
+                    NotebookPageSample existing = notebookPageSampleDAO.getByPageIdAndSampleItemId(page.getId(),
+                            sampleItemId);
+                    if (existing == null) {
+                        NotebookPageSample nps = new NotebookPageSample();
+                        nps.setNotebookPage(page);
+                        nps.setSampleItemId(sampleItem.getId());
+                        nps.setStatus(Status.PENDING);
+                        notebookPageSampleService.insert(nps);
+                        insertCount++;
+                    }
                 }
             }
             linkedCount++;
         }
 
+        // #region agent log
+        debugLog("H2", "NotebookSampleEntryServiceImpl.linkSamplesToNotebook:exit", "Link samples exit",
+                "{\"linkedCount\":" + linkedCount + ",\"insertCount\":" + insertCount + ",\"pagesCount\":" + pageCount
+                        + "}");
+        // #endregion
         return linkedCount;
     }
 
@@ -511,5 +525,24 @@ public class NotebookSampleEntryServiceImpl implements NotebookSampleEntryServic
             return null;
         }
         return child.getParentSampleItem();
+    }
+
+    private void debugLog(String hypothesisId, String location, String message, String dataJson) {
+        try {
+            String payload = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\""
+                    + escapeJson(hypothesisId) + "\",\"location\":\"" + escapeJson(location) + "\",\"message\":\""
+                    + escapeJson(message) + "\",\"data\":" + dataJson + ",\"timestamp\":"
+                    + System.currentTimeMillis() + "}";
+            Files.writeString(Paths.get("/home/ubuntu/OpenELIS-Global-2/.cursor/debug.log"), payload + "\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

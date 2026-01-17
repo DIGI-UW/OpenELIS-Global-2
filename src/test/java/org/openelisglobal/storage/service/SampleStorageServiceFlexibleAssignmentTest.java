@@ -205,10 +205,25 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         sampleStorageService.assignSampleItemWithLocation(TEST_EXTERNAL_ID, null, "device", null, "Test notes");
     }
 
-    @Test(expected = LIMSRuntimeException.class)
-    public void testAssignSampleItemWithLocation_MissingLocationType_ThrowsException() {
-        // Execute - should throw exception
-        sampleStorageService.assignSampleItemWithLocation(TEST_EXTERNAL_ID, "10", null, null, "Test notes");
+    @Test
+    public void testAssignSampleItemWithLocation_MissingLocationType_DefaultsToGeneral() {
+        // Setup - allow general storage without specific location
+        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
+
+        // Execute - should default to 'general' storage
+        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
+                TEST_EXTERNAL_ID, "10", null, null, "Test notes");
+
+        // Verify - should succeed with 'general' storage type
+        assertNotNull(result);
+        assertEquals("100", result.get("assignmentId"));
+
+        // Verify assignment was created with 'general' locationType
+        verify(sampleStorageAssignmentDAO).insert(argThat(assignment -> {
+            SampleStorageAssignment a = (SampleStorageAssignment) assignment;
+            return "general".equals(a.getLocationType());
+        }));
     }
 
     @Test(expected = LIMSRuntimeException.class)
@@ -234,14 +249,23 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         sampleStorageService.assignSampleItemWithLocation(TEST_EXTERNAL_ID, "10", "device", null, "Test notes");
     }
 
-    @Test(expected = LIMSRuntimeException.class)
-    public void testAssignSampleItemWithLocation_DeviceWithoutRoom_ThrowsException() {
+    @Test
+    public void testAssignSampleItemWithLocation_DeviceWithoutRoom_AllowsSingleLevel() {
         // Setup - device without parent room (external ID lookup is mocked in setUp())
+        // Now allows single-level assignment (device only, no room required)
         testDevice.setParentRoom(null);
         when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+        when(sampleStorageAssignmentDAO.insert(any(SampleStorageAssignment.class))).thenReturn(100);
+        when(sampleStorageMovementDAO.insert(any(SampleStorageMovement.class))).thenReturn(200);
 
-        // Execute - should throw exception (minimum 2 levels: room + device)
-        sampleStorageService.assignSampleItemWithLocation(TEST_EXTERNAL_ID, "10", "device", null, "Test notes");
+        // Execute - should succeed (single-level assignments now allowed)
+        Map<String, Object> result = sampleStorageService.assignSampleItemWithLocation(
+                TEST_EXTERNAL_ID, "10", "device", null, "Test notes");
+
+        // Verify
+        assertNotNull(result);
+        assertEquals("100", result.get("assignmentId"));
+        assertTrue(result.get("hierarchicalPath").toString().contains("Freezer Unit 1"));
     }
 
     @Test

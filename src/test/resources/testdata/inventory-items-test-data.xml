@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Minimal inventory items for notebook instrument inheritance tests -->
+    <inventory_item id="1000"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" name="Test Reagent A"
+        description="Test reagent for notebook instrument tests" item_type="REAGENT"
+        category="CHEMISTRY" manufacturer="Test Manufacturer"
+        catalog_number="CAT-001" units="mL" low_stock_threshold="10"
+        stability_after_opening="30" is_active="Y"
+        last_updated="2025-12-06 00:00:00" />
+
+    <inventory_item id="1001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440002" name="Test RDT Kit"
+        description="Test kit for notebook instrument tests" item_type="RDT"
+        category="QC" units="kits" low_stock_threshold="5" is_active="Y"
+        last_updated="2025-12-06 00:00:00" />
+</dataset>

@@ -26,6 +26,9 @@ import org.springframework.test.annotation.Rollback;
  * <p>
  * These tests verify the fix for the order-to-sample deviation bug where
  * createPatientOrder was directly creating samples instead of orders.
+ *
+ * <p>
+ * TODO: Requires proper test data setup with Liquibase seed data.
  */
 @Rollback
 public class MedLabPatientOrderServiceIntegrationTest extends BaseWebContextSensitiveTest {
@@ -74,6 +77,7 @@ public class MedLabPatientOrderServiceIntegrationTest extends BaseWebContextSens
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
         executeDataSetWithStateManagement("testdata/medlab-patient-order-test-data.xml");
     }
 

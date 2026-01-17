@@ -340,11 +340,12 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
             Patient patient = null;
             List<ElectronicOrder> orders = null;
 
-            // Validate patientId if provided - patient must exist to import
+            // Validate patientId if provided - warn if not found (non-blocking)
             if (patientId != null && !patientId.isBlank()) {
                 if (notFoundPatients.contains(patientId)) {
-                    // Already checked, not found - block import
-                    errors.add(new ParseError(row.rowNumber(), "patientId", "Patient not found: " + patientId));
+                    // Already checked, not found - warn but allow import
+                    warnings.add(new ValidationWarning(row.rowNumber(), "patientId",
+                            "Patient not found: " + patientId, ValidationWarning.WarningType.PATIENT_NOT_FOUND));
                 } else if (patientCache.containsKey(patientId)) {
                     patient = patientCache.get(patientId);
                 } else {
@@ -354,16 +355,18 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                         patientCache.put(patientId, patient);
                     } else {
                         notFoundPatients.add(patientId);
-                        errors.add(new ParseError(row.rowNumber(), "patientId", "Patient not found: " + patientId));
+                        warnings.add(new ValidationWarning(row.rowNumber(), "patientId",
+                                "Patient not found: " + patientId, ValidationWarning.WarningType.PATIENT_NOT_FOUND));
                     }
                 }
             }
 
-            // Validate orderId if provided - order must exist to import
+            // Validate orderId if provided - warn if not found (non-blocking)
             if (orderId != null && !orderId.isBlank()) {
                 if (notFoundOrders.contains(orderId)) {
-                    // Already checked, not found - block import
-                    errors.add(new ParseError(row.rowNumber(), "orderId", "Order not found: " + orderId));
+                    // Already checked, not found - warn but allow import
+                    warnings.add(new ValidationWarning(row.rowNumber(), "orderId",
+                            "Order not found: " + orderId, ValidationWarning.WarningType.ORDER_NOT_FOUND));
                 } else if (orderCache.containsKey(orderId)) {
                     orders = orderCache.get(orderId);
                 } else {
@@ -374,13 +377,15 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                             orderCache.put(orderId, orders);
                         } else {
                             notFoundOrders.add(orderId);
-                            errors.add(new ParseError(row.rowNumber(), "orderId", "Order not found: " + orderId));
+                            warnings.add(new ValidationWarning(row.rowNumber(), "orderId",
+                                    "Order not found: " + orderId, ValidationWarning.WarningType.ORDER_NOT_FOUND));
                         }
                     } catch (Exception e) {
                         LogEvent.logDebug(this.getClass().getSimpleName(), "validatePatientAndOrderReferences",
                                 "Error looking up order: " + orderId);
                         notFoundOrders.add(orderId);
-                        errors.add(new ParseError(row.rowNumber(), "orderId", "Order not found: " + orderId));
+                        warnings.add(new ValidationWarning(row.rowNumber(), "orderId",
+                                "Order not found: " + orderId, ValidationWarning.WarningType.ORDER_NOT_FOUND));
                     }
                 }
             }
@@ -391,7 +396,7 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                     ElectronicOrder order = orders.get(0);
                     String orderPatientId = order.getPatient() != null ? order.getPatient().getId() : null;
                     if (orderPatientId != null && !orderPatientId.equals(patient.getId())) {
-                        // Mismatch: order belongs to different patient - block import
+                        // Mismatch: order belongs to different patient - warn but allow import
                         String orderPatientName = "Unknown";
                         try {
                             if (order.getPatient() != null) {
@@ -400,8 +405,10 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                         } catch (Exception e) {
                             // Use default "Unknown"
                         }
-                        errors.add(new ParseError(row.rowNumber(), "patientId", "Patient mismatch: Order " + orderId
-                                + " belongs to '" + orderPatientName + "', not '" + patientId + "'"));
+                        warnings.add(new ValidationWarning(row.rowNumber(), "patientId",
+                                "Patient mismatch: Order " + orderId + " belongs to patient '" + orderPatientName
+                                        + "', not '" + patientId + "'",
+                                ValidationWarning.WarningType.PATIENT_ORDER_MISMATCH));
                     }
                 } catch (Exception e) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "validatePatientAndOrderReferences",
@@ -414,14 +421,14 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
     }
 
     /**
-     * Find a patient by structured identifier (external ID, national ID, or subject
-     * number). For manifest imports, patients should ONLY be referenced by
-     * structured identifiers, NOT by internal database PK. Attempting to look up by
-     * PK with an alphanumeric structured ID causes exceptions that mark the
-     * transaction for rollback.
+     * Find a patient by structured identifier (external ID or national ID). For
+     * manifest imports, patients should ONLY be referenced by structured
+     * identifiers, NOT by internal database PK. Attempting to look up by PK with an
+     * alphanumeric structured ID causes exceptions that mark the transaction for
+     * rollback.
      *
      * @param patientId the patient structured identifier to search for
-     *                  (external_id, national_id, or subject number)
+     *                  (external_id or national_id)
      * @return the Patient if found, null otherwise
      */
     private Patient findPatient(String patientId) {
@@ -451,22 +458,9 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                     "Patient not found by national ID: " + patientId);
         }
 
-        // Try by subject number third (via SUBJECT identity type in PatientIdentity)
-        try {
-            Patient patient = patientService.getPatientBySubjectNumber(patientId);
-            if (patient != null) {
-                LogEvent.logDebug(this.getClass().getSimpleName(), "findPatient",
-                        "Found patient by subject number: " + patientId);
-                return patient;
-            }
-        } catch (Exception e) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "findPatient",
-                    "Patient not found by subject number: " + patientId);
-        }
-
         // DO NOT look up by internal PK (getData) for manifest imports.
         // Manifest files should ONLY use structured identifiers (external_id,
-        // national_id, subject number).
+        // national_id).
         // Calling getData() with alphanumeric IDs like "PAT-VALID-001" throws
         // exceptions when Hibernate tries to convert to numeric PK, marking the
         // transaction for rollback.

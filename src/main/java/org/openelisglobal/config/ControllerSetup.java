@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -70,6 +71,13 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         LogEvent.logError(ex);
         return super.handleMissingServletRequestParameter(ex, headers, status, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMissingServletRequestPart(MissingServletRequestPartException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        LogEvent.logError(ex);
+        return super.handleMissingServletRequestPart(ex, headers, status, request);
     }
 
     // error handle for @Valid

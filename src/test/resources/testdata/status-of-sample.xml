@@ -26,6 +26,25 @@
         lastupdated="2025-03-18" name="Status 4"
         display_key="sample_display_key_4" is_active="Y" />
 
+    <!-- External order statuses (required by MedLab order workflows) -->
+    <status_of_sample id="2001" description="External order entered" code="1"
+        status_type="EXTERNAL_ORDER" lastupdated="2026-01-01"
+        name="Entered" display_key="status.externalOrder.entered" is_active="Y" />
+    <status_of_sample id="2002" description="External order cancelled" code="2"
+        status_type="EXTERNAL_ORDER" lastupdated="2026-01-01"
+        name="Cancelled" display_key="status.externalOrder.cancelled" is_active="Y" />
+    <status_of_sample id="2003" description="External order realized" code="3"
+        status_type="EXTERNAL_ORDER" lastupdated="2026-01-01"
+        name="Realized" display_key="status.externalOrder.realized" is_active="Y" />
+    <status_of_sample id="2004" description="External order nonconforming" code="4"
+        status_type="EXTERNAL_ORDER" lastupdated="2026-01-01"
+        name="NonConforming" display_key="status.externalOrder.nonconforming" is_active="Y" />
+
+    <!-- Analysis statuses (required by OrderSampleLinkService analysis creation) -->
+    <status_of_sample id="3001" description="Analysis not tested" code="1"
+        status_type="ANALYSIS" lastupdated="2026-01-01"
+        name="Not Tested" display_key="status.analysis.notTested" is_active="Y" />
+
     <!-- Storage Room -->
     <storage_room id="1000" name="Test Room" code="TESTROOM01"
         active="true" fhir_uuid="550e8400-e29b-41d4-a716-446655440000"

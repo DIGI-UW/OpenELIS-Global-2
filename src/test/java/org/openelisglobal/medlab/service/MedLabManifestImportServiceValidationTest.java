@@ -139,7 +139,7 @@ public class MedLabManifestImportServiceValidationTest {
         List<MedLabManifestRow> rows = List.of(createRow(2, "SAMPLE-001", "P001", "ORD-001"));
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("P001")).thenReturn(patient);
+        when(patientService.getPatientByExternalId("P001")).thenReturn(patient);
         when(electronicOrderService.getElectronicOrdersByExternalId("ORD-001")).thenReturn(List.of(order));
 
         // Act
@@ -160,9 +160,8 @@ public class MedLabManifestImportServiceValidationTest {
         List<MedLabManifestRow> rows = List.of(createRow(2, "SAMPLE-001", "P999", null));
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("P999")).thenReturn(null);
         when(patientService.getPatientByExternalId("P999")).thenReturn(null);
-        // Note: getPatientBySubjectNumber and getPatientByNationalId have HQL issues
+        when(patientService.getPatientByNationalId("P999")).thenReturn(null);
 
         // Act
         ValidationResult result = manifestImportService.validatePatientAndOrderReferences(manifest);
@@ -220,7 +219,7 @@ public class MedLabManifestImportServiceValidationTest {
         List<MedLabManifestRow> rows = List.of(createRow(2, "SAMPLE-001", "P001", "ORD-12345"));
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("P001")).thenReturn(testPatient);
+        when(patientService.getPatientByExternalId("P001")).thenReturn(testPatient);
         when(electronicOrderService.getElectronicOrdersByExternalId("ORD-12345")).thenReturn(List.of(testOrder));
         when(patientService.getLastFirstName(differentPatient)).thenReturn("Doe, John");
 
@@ -250,7 +249,7 @@ public class MedLabManifestImportServiceValidationTest {
         List<MedLabManifestRow> rows = List.of(createRow(2, "SAMPLE-001", "P001", null));
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("P001")).thenReturn(testPatient);
+        when(patientService.getPatientByExternalId("P001")).thenReturn(testPatient);
 
         // Act
         ValidationResult result = manifestImportService.validatePatientAndOrderReferences(manifest);
@@ -293,10 +292,9 @@ public class MedLabManifestImportServiceValidationTest {
 
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("P001")).thenReturn(testPatient);
-        when(patientService.getData("P999")).thenReturn(null);
+        when(patientService.getPatientByExternalId("P001")).thenReturn(testPatient);
         when(patientService.getPatientByExternalId("P999")).thenReturn(null);
-        // Note: getPatientBySubjectNumber and getPatientByNationalId have HQL issues
+        when(patientService.getPatientByNationalId("P999")).thenReturn(null);
         when(electronicOrderService.getElectronicOrdersByExternalId("ORD-INVALID")).thenReturn(List.of());
 
         // Act
@@ -331,7 +329,7 @@ public class MedLabManifestImportServiceValidationTest {
 
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("P001")).thenReturn(testPatient);
+        when(patientService.getPatientByExternalId("P001")).thenReturn(testPatient);
 
         // Act
         ValidationResult result = manifestImportService.validatePatientAndOrderReferences(manifest);
@@ -352,7 +350,6 @@ public class MedLabManifestImportServiceValidationTest {
         List<MedLabManifestRow> rows = List.of(createRow(2, "SAMPLE-001", "EXT-P001", null));
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("EXT-P001")).thenReturn(null);
         when(patientService.getPatientByExternalId("EXT-P001")).thenReturn(testPatient);
 
         // Act
@@ -373,7 +370,6 @@ public class MedLabManifestImportServiceValidationTest {
         List<MedLabManifestRow> rows = List.of(createRow(2, "SAMPLE-001", "NAT-001", null));
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("NAT-001")).thenReturn(null);
         when(patientService.getPatientByExternalId("NAT-001")).thenReturn(null);
         when(patientService.getPatientByNationalId("NAT-001")).thenReturn(testPatient);
 
@@ -397,7 +393,6 @@ public class MedLabManifestImportServiceValidationTest {
         List<MedLabManifestRow> rows = List.of(createRow(2, "SAMPLE-001", "UNKNOWN-001", null));
         ParsedMedLabManifest manifest = new ParsedMedLabManifest(rows, List.of());
 
-        when(patientService.getData("UNKNOWN-001")).thenReturn(null);
         when(patientService.getPatientByExternalId("UNKNOWN-001")).thenReturn(null);
         when(patientService.getPatientByNationalId("UNKNOWN-001")).thenReturn(null);
 

@@ -59,7 +59,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
         "org.openelisglobal.common.service", "org.openelisglobal.common.dao", "org.openelisglobal.common.daoimpl",
-        "org.openelisglobal.patient", "org.openelisglobal.patientidentity", "org.openelisglobal.gender",
+        "org.openelisglobal.common.rest", "org.openelisglobal.patient", "org.openelisglobal.patientidentity",
+        "org.openelisglobal.gender",
         "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype", "org.openelisglobal.address",
         "org.openelisglobal.dictionary", "org.openelisglobal.person", "org.openelisglobal.audittrail",
         "org.openelisglobal.referencetables", "org.openelisglobal.history", "org.openelisglobal.menu",

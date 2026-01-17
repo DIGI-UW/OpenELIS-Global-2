@@ -115,20 +115,20 @@
         reference an existing status_of_sample from Liquibase. The "Entered" status
         for external orders has been set up during DB init. -->
     <electronic_order id="4001"
-        external_id="ORDER-TEST-001" patient_id="3001" status_id="1"
+        external_id="ORDER-TEST-001" patient_id="3001" status_id="2001"
         order_timestamp="2026-01-07 10:00:00"
         data="Test order data for patient 3001" type="FHIR"
         lastupdated="2026-01-07 10:00:00" />
 
     <electronic_order id="4002"
-        external_id="ORDER-TEST-002" patient_id="3002" status_id="1"
+        external_id="ORDER-TEST-002" patient_id="3002" status_id="2001"
         order_timestamp="2026-01-07 11:00:00"
         data="Test order data for patient 3002" type="FHIR"
         lastupdated="2026-01-07 11:00:00" />
 
     <!-- Order without patient (anonymous order) -->
     <electronic_order id="4003"
-        external_id="ORDER-TEST-003" status_id="1"
+        external_id="ORDER-TEST-003" status_id="2001"
         order_timestamp="2026-01-07 12:00:00" data="Anonymous order data"
         type="FHIR" lastupdated="2026-01-07 12:00:00" />
 

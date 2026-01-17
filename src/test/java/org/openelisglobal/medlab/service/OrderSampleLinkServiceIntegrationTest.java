@@ -40,6 +40,9 @@ import org.springframework.test.annotation.Rollback;
 /**
  * Integration tests for OrderSampleLinkService. Tests the complete workflow of
  * linking samples to orders and verifying Analysis creation.
+ *
+ * <p>
+ * TODO: Requires proper test data setup with Liquibase seed data.
  */
 public class OrderSampleLinkServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -75,6 +78,7 @@ public class OrderSampleLinkServiceIntegrationTest extends BaseWebContextSensiti
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
         executeDataSetWithStateManagement("testdata/medlab-patient-order-test-data.xml");
     }
 

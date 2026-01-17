@@ -2143,26 +2143,26 @@ public class NotebookBulkOperationController extends BaseRestController {
             String extension;
             String actualFormat = reportFormat.toUpperCase();
             switch (actualFormat) {
-            case "PDF":
-                // PDF generation not yet implemented - return as CSV with CSV content type
-                contentType = "text/csv; charset=UTF-8";
-                extension = ".csv";
-                actualFormat = "CSV"; // Update for filename
-                break;
-            case "EXCEL":
-                // Excel generation returns CSV for now
-                contentType = "text/csv; charset=UTF-8";
-                extension = ".csv";
-                actualFormat = "CSV";
-                break;
-            case "JSON":
-                contentType = "application/json; charset=UTF-8";
-                extension = ".json";
-                break;
-            case "CSV":
-            default:
-                contentType = "text/csv; charset=UTF-8";
-                extension = ".csv";
+                case "PDF":
+                    // PDF generation not yet implemented - return as CSV with CSV content type
+                    contentType = "text/csv; charset=UTF-8";
+                    extension = ".csv";
+                    actualFormat = "CSV"; // Update for filename
+                    break;
+                case "EXCEL":
+                    // Excel generation returns CSV for now
+                    contentType = "text/csv; charset=UTF-8";
+                    extension = ".csv";
+                    actualFormat = "CSV";
+                    break;
+                case "JSON":
+                    contentType = "application/json; charset=UTF-8";
+                    extension = ".json";
+                    break;
+                case "CSV":
+                default:
+                    contentType = "text/csv; charset=UTF-8";
+                    extension = ".csv";
             }
 
             String filename = "MNTD_Report_" + reportType + "_" + java.time.LocalDate.now().toString() + extension;

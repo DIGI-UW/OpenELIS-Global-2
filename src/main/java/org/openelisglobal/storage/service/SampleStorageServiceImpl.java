@@ -4,6 +4,9 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
@@ -490,6 +493,19 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     public java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
             String locationType, String positionCoordinate, String notes) {
         try {
+            boolean hasLocationType = locationType != null && !locationType.trim().isEmpty();
+            boolean hasLocationId = locationId != null && !locationId.trim().isEmpty();
+            int locationIdLength = locationId != null ? locationId.length() : 0;
+            boolean hasPosition = positionCoordinate != null && !positionCoordinate.trim().isEmpty();
+            boolean hasNotes = notes != null && !notes.trim().isEmpty();
+            // #region agent log
+            debugLog("H3", "SampleStorageServiceImpl.assignSampleItemWithLocation:entry",
+                    "Assign sample entry",
+                    "{\"hasLocationType\":" + hasLocationType + ",\"locationType\":\""
+                            + escapeJson(locationType) + "\",\"hasLocationId\":" + hasLocationId
+                            + ",\"locationIdLength\":" + locationIdLength + ",\"hasPosition\":" + hasPosition
+                            + ",\"hasNotes\":" + hasNotes + "}");
+            // #endregion
             // Validate inputs - allow flexible storage without specific location
             if (locationType != null && !locationType.trim().isEmpty()) {
                 // Validate locationType is valid enum when provided
@@ -510,6 +526,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 // Default to 'general' storage when no specific location type is provided
                 locationType = "general";
             }
+            // #region agent log
+            debugLog("H3", "SampleStorageServiceImpl.assignSampleItemWithLocation:validated",
+                    "Assign sample validated",
+                    "{\"effectiveLocationType\":\"" + escapeJson(locationType) + "\",\"hasLocationId\":" + hasLocationId
+                            + "}");
+            // #endregion
 
             // Resolve SampleItem: accept either SampleItem ID or accession number
             SampleItem sampleItem = resolveSampleItem(sampleItemId);
@@ -1316,5 +1338,24 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             return java.util.Collections.emptyList();
         }
         return sampleStorageMovementDAO.findBySampleItemId(sampleItem.getId());
+    }
+
+    private void debugLog(String hypothesisId, String location, String message, String dataJson) {
+        try {
+            String payload = "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\""
+                    + escapeJson(hypothesisId) + "\",\"location\":\"" + escapeJson(location) + "\",\"message\":\""
+                    + escapeJson(message) + "\",\"data\":" + dataJson + ",\"timestamp\":"
+                    + System.currentTimeMillis() + "}";
+            Files.writeString(Paths.get("/home/ubuntu/OpenELIS-Global-2/.cursor/debug.log"), payload + "\n",
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

@@ -93,6 +93,7 @@ public class ManifestImportServiceTest {
         testNotebook.setPages(pages);
 
         NotebookEntry entry = new NotebookEntry();
+        entry.setNotebook(testNotebook);
         when(notebookEntryService.getMatch(eq("id"), any())).thenReturn(Optional.of(entry));
         when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("20");
     }

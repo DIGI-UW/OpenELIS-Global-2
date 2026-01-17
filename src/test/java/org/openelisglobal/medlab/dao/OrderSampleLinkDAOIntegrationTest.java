@@ -49,6 +49,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * transaction abortion in production.
  *
  * <p>
+ * TODO: Requires proper test data setup with Liquibase seed data.
+ *
+ * <p>
  * Uses BaseWebContextSensitiveTest (legacy pattern) since project doesn't use
  * Spring Boot. Reference: Testing Roadmap > BaseWebContextSensitiveTest (Legacy
  * Integration)
@@ -77,6 +80,8 @@ public class OrderSampleLinkDAOIntegrationTest extends BaseWebContextSensitiveTe
         super.setUp();
         jdbcTemplate = new JdbcTemplate(dataSource);
 
+        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
+        executeDataSetWithStateManagement("testdata/typeofsample.xml");
         // Load test data using DBUnit - this will FAIL if last_updated column is
         // missing
         executeDataSetWithStateManagement("testdata/order-sample-link-dao-test-data.xml");
@@ -89,12 +94,13 @@ public class OrderSampleLinkDAOIntegrationTest extends BaseWebContextSensitiveTe
 
     private void cleanTestData() {
         try {
+            // Clean in reverse dependency order
             jdbcTemplate.execute("DELETE FROM clinlims.order_sample_link WHERE id IN (9301, 9302)");
-            jdbcTemplate.execute("DELETE FROM clinlims.sample_item WHERE id IN ('9201', '9202')");
+            jdbcTemplate.execute("DELETE FROM clinlims.sample_item WHERE id IN (9201, 9202)");
             jdbcTemplate.execute("DELETE FROM clinlims.sample WHERE id IN (9101, 9102)");
             jdbcTemplate.execute("DELETE FROM clinlims.electronic_order WHERE id IN (9001, 9002)");
         } catch (Exception e) {
-            // Ignore cleanup errors
+            // Ignore cleanup errors - data may not exist
         }
     }
 

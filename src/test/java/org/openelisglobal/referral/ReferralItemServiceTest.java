@@ -18,6 +18,7 @@ public class ReferralItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        executeDataSetWithStateManagement("testdata/status-of-sample.xml");
         executeDataSetWithStateManagement("testdata/referral-item.xml");
     }
 

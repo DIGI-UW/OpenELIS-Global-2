@@ -66,19 +66,19 @@
     <notebook_page id="10" notebook_id="1" page_order="1"
         title="Sample Reception"
         instructions="Receive and log incoming samples"
-        content="Page 1 content" />
+        content="Page 1 content" last_updated="2025-01-01 10:00:00" />
     <notebook_page id="11" notebook_id="1" page_order="2"
         title="Initial Processing" instructions="Process samples for analysis"
-        content="Page 2 content" />
+        content="Page 2 content" last_updated="2025-01-01 10:00:00" />
     <notebook_page id="12" notebook_id="1" page_order="3"
         title="Analysis" instructions="Perform analysis on samples"
-        content="Page 3 content" />
+        content="Page 3 content" last_updated="2025-01-01 10:00:00" />
 
     <!-- Pages for Entry Notebook 2 -->
     <notebook_page id="1" notebook_id="2" page_order="1"
-        content="Page 1" />
+        content="Page 1" last_updated="2025-01-02 10:00:00" />
     <notebook_page id="2" notebook_id="2" page_order="2"
-        content="Page 2" />
+        content="Page 2" last_updated="2025-01-02 10:00:00" />
 
     <!-- Comments -->
     <notebook_comment id="1" notebook_id="2"
