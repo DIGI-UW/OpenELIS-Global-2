@@ -489,8 +489,9 @@ function MedLabSampleRoutingPage({
   };
 
   // Render destination tag
-  const renderDestinationTag = (sample) => {
-    if (!sample.destinationType) {
+  const renderDestinationTag = (value, sample) => {
+    const s = sample || value;
+    if (!s?.destinationType) {
       return <span style={{ color: "#8d8d8d" }}>-</span>;
     }
 
@@ -507,9 +508,9 @@ function MedLabSampleRoutingPage({
     };
 
     return (
-      <Tag type={tagTypes[sample.destinationType] || "gray"}>
-        {labels[sample.destinationType] || sample.destinationType}
-        {sample.wellCoordinate && ` (${sample.wellCoordinate})`}
+      <Tag type={tagTypes[s.destinationType] || "gray"}>
+        {labels[s.destinationType] || s.destinationType}
+        {s.wellCoordinate && ` (${s.wellCoordinate})`}
       </Tag>
     );
   };
