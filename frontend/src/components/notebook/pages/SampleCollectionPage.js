@@ -122,8 +122,8 @@ function SampleCollectionPage({
             // Transform samples for the grid
             // Patient info is stored in sample.data field from Link to Patient feature
             const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              sampleId: sample.id || sample.sampleItemId,
+              id: String(sample.sampleId || sample.sampleItemId),
+              sampleId: sample.sampleId || sample.sampleItemId,
               sampleItemId: sample.sampleItemId || sample.id,
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
@@ -828,7 +828,7 @@ function SampleCollectionPage({
                         }
                         renderIcon={CheckmarkFilled}
                         onClick={() => {
-                          const ids = selectedRows.map((r) => r.id);
+                          const ids = selectedRows.map((r) => r.sampleItemId);
                           handleBulkMarkCollected(ids);
                         }}
                       >
@@ -942,7 +942,7 @@ function SampleCollectionPage({
                                     renderIcon={Chemistry}
                                     onClick={() =>
                                       handleBulkMarkCollected([
-                                        String(sample.id),
+                                        String(sample.sampleItemId),
                                       ])
                                     }
                                   >

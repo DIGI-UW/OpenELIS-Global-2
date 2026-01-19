@@ -4381,7 +4381,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebook.getId());
 
             for (NoteBookPage page : pages) {
-                if ("testing-analyzer".equals(page.getPageId())) {
+                if ("medlab-testing-analyzer".equals(page.getPageId())) {
                     // Get all page samples for this page
                     List<NotebookPageSample> pageSamples = notebookPageSampleService.getByPageId(page.getId());
                     for (NotebookPageSample nps : pageSamples) {
@@ -4472,7 +4472,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             List<NoteBookPage> pages = noteBookPageService.getByNotebookId(notebook.getId());
 
             for (NoteBookPage page : pages) {
-                if ("testing-analyzer".equals(page.getPageId())) {
+                if ("medlab-testing-analyzer".equals(page.getPageId())) {
                     List<NotebookPageSample> pageSamples = notebookPageSampleService.getByPageId(page.getId());
                     for (NotebookPageSample nps : pageSamples) {
                         // Deviation records have sampleItemId = "-2"

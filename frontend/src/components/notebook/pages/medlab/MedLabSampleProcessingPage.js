@@ -650,7 +650,7 @@ function MedLabSampleProcessingPage({
                       id: "medlab.sample.processingType",
                       defaultMessage: "Processing",
                     }),
-                    render: (sample) => sample.processingTypeLabel || "-",
+                    render: (_, sample) => sample.processingTypeLabel || "-",
                   },
                   {
                     key: "derivedMaterialLabel",
@@ -658,7 +658,7 @@ function MedLabSampleProcessingPage({
                       id: "medlab.sample.derivedMaterial",
                       defaultMessage: "Derived Material",
                     }),
-                    render: (sample) => sample.derivedMaterialLabel || "-",
+                    render: (_, sample) => sample.derivedMaterialLabel || "-",
                   },
                   {
                     key: "aliquots",
@@ -666,7 +666,7 @@ function MedLabSampleProcessingPage({
                       id: "medlab.sample.aliquots",
                       defaultMessage: "Aliquots",
                     }),
-                    render: (sample) => {
+                    render: (_, sample) => {
                       return sample.childAliquotCount > 0 ? (
                         <Tag type="cyan">{sample.childAliquotCount}</Tag>
                       ) : (
@@ -677,7 +677,7 @@ function MedLabSampleProcessingPage({
                   {
                     key: "actions",
                     header: "",
-                    render: (sample) => {
+                    render: (_, sample) => {
                       return sample.hasChildren ? (
                         <Button
                           kind="ghost"
@@ -724,7 +724,7 @@ function MedLabSampleProcessingPage({
                       id: "medlab.sample.processingType",
                       defaultMessage: "Processing",
                     }),
-                    render: (sample) => sample.processingTypeLabel || "-",
+                    render: (_, sample) => sample.processingTypeLabel || "-",
                   },
                   {
                     key: "derivedMaterialLabel",
@@ -732,7 +732,7 @@ function MedLabSampleProcessingPage({
                       id: "medlab.sample.derivedMaterial",
                       defaultMessage: "Derived Material",
                     }),
-                    render: (sample) => sample.derivedMaterialLabel || "-",
+                    render: (_, sample) => sample.derivedMaterialLabel || "-",
                   },
                   {
                     key: "aliquots",
@@ -740,7 +740,7 @@ function MedLabSampleProcessingPage({
                       id: "medlab.sample.aliquots",
                       defaultMessage: "Aliquots",
                     }),
-                    render: (sample) => {
+                    render: (_, sample) => {
                       return sample.childAliquotCount > 0 ? (
                         <Tag type="cyan">{sample.childAliquotCount}</Tag>
                       ) : (
@@ -754,7 +754,7 @@ function MedLabSampleProcessingPage({
                       id: "medlab.sample.flags",
                       defaultMessage: "Flags",
                     }),
-                    render: (sample) => {
+                    render: (_, sample) => {
                       return (
                         <>
                           {sample.isBioequivalence && (
@@ -774,7 +774,7 @@ function MedLabSampleProcessingPage({
                   {
                     key: "actions",
                     header: "",
-                    render: (sample) => {
+                    render: (_, sample) => {
                       return sample.hasChildren ? (
                         <Button
                           kind="ghost"

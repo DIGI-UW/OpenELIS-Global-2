@@ -7,7 +7,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
+import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.medlab.service.OrderSampleLinkService;
+import org.openelisglobal.medlab.valueholder.OrderSampleLink;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.service.NoteBookPageService;
@@ -20,6 +24,9 @@ import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.SampleRouting;
 import org.openelisglobal.notebook.valueholder.SampleRouting.DestinationType;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.StorageBoxDAO;
@@ -71,6 +78,18 @@ public class NotebookSampleEntryController extends BaseRestController {
 
     @Autowired
     private NotebookPageSampleDAO notebookPageSampleDAO;
+
+    @Autowired
+    private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private PatientService patientService;
+
+    @Autowired
+    private OrderSampleLinkService orderSampleLinkService;
+
+    @Autowired
+    private ElectronicOrderService electronicOrderService;
 
     /**
      * Search for samples to add to a notebook. T035: GET
@@ -294,7 +313,7 @@ public class NotebookSampleEntryController extends BaseRestController {
             }
         }
 
-// Second pass: for each parent sample on the page, also include its children
+        // Second pass: for each parent sample on the page, also include its children
         // ONLY if the children have their own NotebookPageSample record for this page
         // This prevents children from appearing on pages they haven't been explicitly
         // added to
@@ -490,6 +509,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         sampleMap.put("sampleItemId", sampleItem.getId()); // Duplicate for routing lookup
         sampleMap.put("externalId", sampleItem.getExternalId());
         sampleMap.put("sortOrder", sampleItem.getSortOrder());
+        sampleMap.put("sampleId", sampleItem.getSample() != null ? sampleItem.getSample().getId() : null);
 
         if (nps != null) {
             sampleMap.put("pageStatus", nps.getStatus() != null ? nps.getStatus().name() : "PENDING");
@@ -554,6 +574,54 @@ public class NotebookSampleEntryController extends BaseRestController {
             sampleMap.put("nestingLevel", 0);
             sampleMap.put("parentSampleItemId", null);
             sampleMap.put("parentExternalId", null);
+        }
+
+        // Patient information (for MedLab workflow)
+        if (sampleItem.getSample() != null) {
+            try {
+                Patient patient = sampleHumanService.getPatientForSample(sampleItem.getSample());
+                if (patient != null) {
+                    String patientName = patientService.getLastFirstName(patient);
+                    sampleMap.put("patientName", patientName);
+                    sampleMap.put("patientId", patient.getId());
+                } else {
+                    sampleMap.put("patientName", "Participant");
+                    sampleMap.put("patientId", null);
+                }
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getName(), "buildSampleMap",
+                        "Could not load patient for sample " + sampleItem.getId() + ": " + e.getMessage());
+                sampleMap.put("patientName", "Participant");
+                sampleMap.put("patientId", null);
+            }
+        } else {
+            sampleMap.put("patientName", "Participant");
+            sampleMap.put("patientId", null);
+        }
+
+        // Linked order information (for MedLab workflow)
+        try {
+            List<OrderSampleLink> orderLinks = orderSampleLinkService
+                    .getLinksBySampleItemId(Integer.parseInt(sampleItem.getId()));
+            if (orderLinks != null && !orderLinks.isEmpty()) {
+                OrderSampleLink firstLink = orderLinks.get(0);
+                ElectronicOrder order = electronicOrderService.get(String.valueOf(firstLink.getElectronicOrderId()));
+                if (order != null) {
+                    sampleMap.put("linkedOrderLabNo", order.getExternalId());
+                    sampleMap.put("linkedOrderId", order.getId());
+                } else {
+                    sampleMap.put("linkedOrderLabNo", null);
+                    sampleMap.put("linkedOrderId", null);
+                }
+            } else {
+                sampleMap.put("linkedOrderLabNo", null);
+                sampleMap.put("linkedOrderId", null);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "buildSampleMap",
+                    "Could not load order for sample " + sampleItem.getId() + ": " + e.getMessage());
+            sampleMap.put("linkedOrderLabNo", null);
+            sampleMap.put("linkedOrderId", null);
         }
 
         return sampleMap;
