@@ -275,7 +275,7 @@ function BulkLinkOrderModal({
     setLinkError(null);
 
     const requestData = {
-      sampleIds: samples.map((s) => s.id),
+      sampleIds: samples.map((s) => s.sampleId),
       orderId: selectedOrder.orderId || selectedOrder.id,
       testIds: selectedTestIds,
     };
@@ -317,7 +317,7 @@ function BulkLinkOrderModal({
     setLinkError(null);
 
     const requestData = {
-      sampleIds: samples.map((s) => s.id),
+      sampleIds: samples.map((s) => s.sampleId),
       labNumberPrefix: labNumberPrefix.trim(),
       testIds: selectedIndependentTests.map((t) => t.id),
     };

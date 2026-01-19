@@ -489,7 +489,7 @@ function MedLabSampleRoutingPage({
   };
 
   // Render destination tag
-  const renderDestinationTag = (sample) => {
+  const renderDestinationTag = (_, sample) => {
     if (!sample.destinationType) {
       return <span style={{ color: "#8d8d8d" }}>-</span>;
     }

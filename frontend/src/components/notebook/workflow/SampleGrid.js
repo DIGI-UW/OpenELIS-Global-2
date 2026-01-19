@@ -57,6 +57,7 @@ function SampleGrid({
   onStatusFilterChange,
   loading = false,
   showHierarchy = false,
+  showPatient = false,
   additionalColumns = [],
   columns = null,
 }) {
@@ -308,6 +309,17 @@ function SampleGrid({
             defaultMessage: "Accession #",
           }),
         },
+        ...(showPatient
+          ? [
+              {
+                key: "patientName",
+                header: intl.formatMessage({
+                  id: "notebook.sample.patient",
+                  defaultMessage: "Patient",
+                }),
+              },
+            ]
+          : []),
         {
           key: "sampleType",
           header: intl.formatMessage({
@@ -443,6 +455,7 @@ function SampleGrid({
     id: String(sample.id),
     externalId: sample.externalId || "-",
     accessionNumber: sample.accessionNumber || "-",
+    patientName: sample.patientName || "-",
     sampleType: sample.sampleType || sample.typeOfSample?.description || "-",
     sampleCategory: sample.sampleCategory || "-",
     sourceFacility: sample.sourceFacility || "-",
@@ -581,6 +594,7 @@ function SampleGrid({
                       )}
                       <TableCell>{row.externalId}</TableCell>
                       <TableCell>{row.accessionNumber}</TableCell>
+                      {showPatient && <TableCell>{row.patientName}</TableCell>}
                       <TableCell>{row.sampleType}</TableCell>
                       <TableCell>
                         {getCategoryTag(row.sampleCategory)}
