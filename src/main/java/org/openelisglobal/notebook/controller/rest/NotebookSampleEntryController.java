@@ -12,9 +12,6 @@ import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.medlab.service.OrderSampleLinkService;
 import org.openelisglobal.medlab.valueholder.OrderSampleLink;
-import org.openelisglobal.patient.service.PatientService;
-import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.service.NoteBookPageService;
@@ -27,6 +24,9 @@ import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.SampleRouting;
 import org.openelisglobal.notebook.valueholder.SampleRouting.DestinationType;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.StorageBoxDAO;
@@ -313,7 +313,7 @@ public class NotebookSampleEntryController extends BaseRestController {
             }
         }
 
-// Second pass: for each parent sample on the page, also include its children
+        // Second pass: for each parent sample on the page, also include its children
         // ONLY if the children have their own NotebookPageSample record for this page
         // This prevents children from appearing on pages they haven't been explicitly
         // added to
@@ -509,6 +509,7 @@ public class NotebookSampleEntryController extends BaseRestController {
         sampleMap.put("sampleItemId", sampleItem.getId()); // Duplicate for routing lookup
         sampleMap.put("externalId", sampleItem.getExternalId());
         sampleMap.put("sortOrder", sampleItem.getSortOrder());
+        sampleMap.put("sampleId", sampleItem.getSample() != null ? sampleItem.getSample().getId() : null);
 
         if (nps != null) {
             sampleMap.put("pageStatus", nps.getStatus() != null ? nps.getStatus().name() : "PENDING");

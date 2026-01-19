@@ -405,8 +405,7 @@ function PatientOrderEntryPage({
       patientForm.firstName.trim() !== "" &&
       patientForm.lastName.trim() !== "" &&
       patientForm.dateOfBirth !== "" &&
-      patientForm.gender !== "" &&
-      patientForm.nationalId.trim() !== ""
+      patientForm.gender !== ""
     );
   }, [patientForm]);
 
@@ -787,8 +786,7 @@ function PatientOrderEntryPage({
                         {intl.formatMessage({
                           id: "patient.natioanalid",
                           defaultMessage: "National ID",
-                        })}{" "}
-                        <span className="requiredlabel">*</span>
+                        })}
                       </>
                     }
                     value={patientForm.nationalId}
