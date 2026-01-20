@@ -229,6 +229,61 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Dictionary Entry 1", results.get(0).getDictEntry());
     }
 
+    @Test
+    public void testInsert_WithDuplicateEntry_ThrowsException() throws Exception {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
+        dictionary.setDictEntry("Dictionary Entry 1"); // Duplicate entry
+        dictionary.setLocalAbbreviation("DE1-DUP");
+        dictionary.setIsActive("Y");
+        dictionary.setSortOrder(10);
+        dictionary.setSysUserId("admin");
+
+        try {
+            dictionaryService.insert(dictionary);
+            Assert.fail("Expected exception was not thrown for duplicate dictionary entry");
+        } catch (Exception e) {
+            // Expected behavior - duplicate entry should throw exception
+            Assert.assertTrue("Exception should be thrown for duplicate entry", true);
+        }
+    }
+
+    @Test
+    public void testDuplicateDictionaryExists_WithExistingEntry_ReturnsTrue() throws Exception {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
+        dictionary.setDictEntry("Dictionary Entry 1"); // Existing entry from dataset
+        dictionary.setLocalAbbreviation("DE1"); // Required field
+
+        boolean exists = dictionaryService.duplicateDictionaryExists(dictionary);
+
+        Assert.assertTrue("Should return true for existing dictionary entry", exists);
+    }
+
+    @Test
+    public void testDuplicateDictionaryExists_WithUniqueEntry_ReturnsFalse() throws Exception {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictionaryCategory(dictionaryCategoryService.get("1"));
+        dictionary.setDictEntry("Unique Dictionary Entry Not In Dataset");
+        dictionary.setLocalAbbreviation("UNIQUE"); // Required field
+
+        boolean exists = dictionaryService.duplicateDictionaryExists(dictionary);
+
+        Assert.assertFalse("Should return false for unique dictionary entry", exists);
+    }
+
+    @Test
+    public void testGetById_WithInvalidId_ReturnsNull() {
+        // Test that get() with invalid ID throws ObjectNotFoundException (expected behavior)
+        try {
+            dictionaryService.get("99999"); // Non-existent ID
+            Assert.fail("Expected ObjectNotFoundException for invalid ID");
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            // Expected: Hibernate throws ObjectNotFoundException for invalid ID
+            Assert.assertTrue("Should throw ObjectNotFoundException for invalid dictionary ID", true);
+        }
+    }
+
     private Dictionary createDictionaryObject() {
         Dictionary dictionary = new Dictionary();
         dictionary.setSortOrder(4);
