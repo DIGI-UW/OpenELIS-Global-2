@@ -193,6 +193,105 @@ public class AnalysisItem implements Serializable {
 
     private boolean isNormal;
 
+    private PatientInfo patientInfoObject;
+    private EnteredByInfo enteredByObject;
+    private String method; // "manual" or "analyzer"
+    private String analyzer;
+    private List<String> flags; // above-normal, below-normal, delta-check, critical
+    private String qcStatus; // pass, fail
+    private String sampleType;
+    private String testDate;
+
+    public static class PatientInfo implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String name;
+        private String id;
+        private String dob;
+        private String sex;
+        private String age;
+
+        public PatientInfo() {
+        }
+
+        public PatientInfo(String name, String id, String dob, String sex, String age) {
+            this.name = name;
+            this.id = id;
+            this.dob = dob;
+            this.sex = sex;
+            this.age = age;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getDob() {
+            return dob;
+        }
+
+        public void setDob(String dob) {
+            this.dob = dob;
+        }
+
+        public String getSex() {
+            return sex;
+        }
+
+        public void setSex(String sex) {
+            this.sex = sex;
+        }
+
+        public String getAge() {
+            return age;
+        }
+
+        public void setAge(String age) {
+            this.age = age;
+        }
+    }
+
+    public static class EnteredByInfo implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String name;
+        private String date;
+
+        public EnteredByInfo() {
+        }
+
+        public EnteredByInfo(String name, String date) {
+            this.name = name;
+            this.date = date;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public void setDate(String date) {
+            this.date = date;
+        }
+    }
+
     public String getRejectReasonId() {
         return rejectReasonId;
     }
@@ -818,5 +917,69 @@ public class AnalysisItem implements Serializable {
 
     public void setPatientInfo(String patientInfo) {
         this.patientInfo = patientInfo;
+    }
+
+    public PatientInfo getPatientInfoObject() {
+        return patientInfoObject;
+    }
+
+    public void setPatientInfoObject(PatientInfo patientInfoObject) {
+        this.patientInfoObject = patientInfoObject;
+    }
+
+    public EnteredByInfo getEnteredByObject() {
+        return enteredByObject;
+    }
+
+    public void setEnteredByObject(EnteredByInfo enteredByObject) {
+        this.enteredByObject = enteredByObject;
+    }
+
+    public String getMethod() {
+        return method;
+    }
+
+    public void setMethod(String method) {
+        this.method = method;
+    }
+
+    public String getAnalyzer() {
+        return analyzer;
+    }
+
+    public void setAnalyzer(String analyzer) {
+        this.analyzer = analyzer;
+    }
+
+    public List<String> getFlags() {
+        return flags;
+    }
+
+    public void setFlags(List<String> flags) {
+        this.flags = flags;
+    }
+
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
+    }
+
+    public String getSampleType() {
+        return sampleType;
+    }
+
+    public void setSampleType(String sampleType) {
+        this.sampleType = sampleType;
+    }
+
+    public String getTestDate() {
+        return testDate;
+    }
+
+    public void setTestDate(String testDate) {
+        this.testDate = testDate;
     }
 }

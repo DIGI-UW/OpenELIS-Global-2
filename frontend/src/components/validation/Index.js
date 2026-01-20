@@ -1,39 +1,73 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useState } from "react";
+import { Grid, Column, Section, Heading } from "@carbon/react";
+import { FormattedMessage } from "react-intl";
 import SearchForm from "./SearchForm";
-import Validation from "./Validation";
+import ValidationPage from "./Validation";
 import { AlertDialog } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
-import { Heading, Grid, Column, Section } from "@carbon/react";
-import { injectIntl, FormattedMessage } from "react-intl";
-import PageBreadCrumb from "../common/PageBreadCrumb";
+import { getFromOpenElisServer } from "../utils/Utils";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
-
-const Index = () => {
-  const { notificationVisible } = useContext(NotificationContext);
+function ValidationIndex() {
   const [results, setResults] = useState({ resultList: [] });
-  const [params, setParams] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchParams, setSearchParams] = useState(null);
+
+  const handleRefresh = () => {
+    if (searchParams) {
+      setIsLoading(true);
+      getFromOpenElisServer(
+        `/rest/AccessionValidation?${searchParams}`,
+        (data) => {
+          setIsLoading(false);
+          if (data && data.resultList && data.resultList.length > 0) {
+            setResults(data);
+          } else {
+            setResults({ resultList: [] });
+          }
+        },
+      );
+    } else {
+      window.location.reload();
+    }
+  };
+
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
+      <AlertDialog />
+      <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
           <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="sidenav.label.validation" />
-              </Heading>
-            </Section>
+            <Heading>
+              <FormattedMessage id="validation.page.title" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
-      <div className="orderLegendBody">
-        {notificationVisible === true ? <AlertDialog /> : ""}
-        <SearchForm setParams={setParams} setResults={setResults} />
-        <Validation params={params} results={results} />
-      </div>
+
+      <SearchForm
+        setResults={setResults}
+        setIsLoading={setIsLoading}
+        setSearchParams={setSearchParams}
+      />
+
+      {isLoading ? (
+        <Section>
+          <Grid>
+            <Column lg={16}>
+              <div style={{ textAlign: "center", padding: "2rem" }}>
+                <FormattedMessage id="label.loading" />
+              </div>
+            </Column>
+          </Grid>
+        </Section>
+      ) : (
+        <ValidationPage
+          results={results}
+          setResults={setResults}
+          onRefresh={handleRefresh}
+        />
+      )}
     </>
   );
-};
+}
 
-export default Index;
+export default ValidationIndex;

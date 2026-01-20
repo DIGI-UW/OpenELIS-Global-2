@@ -75,14 +75,13 @@ public class ResultValidationServiceImpl implements ResultValidationService {
             }
         }
 
-        checkIfSamplesFinished(resultItemList, sampleUpdateList);
+        checkIfSamplesFinished(resultItemList, sampleUpdateList, sysUserId);
 
-        // update finished samples
         for (Sample sample : sampleUpdateList) {
+            sample.setSysUserId(sysUserId);
             sampleService.update(sample);
         }
 
-        // create or update notes
         for (Note note : noteUpdateList) {
             if (note != null) {
                 if (note.getId() == null) {
@@ -111,14 +110,18 @@ public class ResultValidationServiceImpl implements ResultValidationService {
         return false;
     }
 
-    private void checkIfSamplesFinished(List<AnalysisItem> resultItemList, List<Sample> sampleUpdateList) {
+    private void checkIfSamplesFinished(List<AnalysisItem> resultItemList, List<Sample> sampleUpdateList,
+            String sysUserId) {
         String currentSampleId = "";
         boolean sampleFinished = true;
         List<Integer> sampleFinishedStatus = getSampleFinishedStatuses();
 
         for (AnalysisItem analysisItem : resultItemList) {
-            String analysisSampleId = sampleService.getSampleByAccessionNumber(analysisItem.getAccessionNumber())
-                    .getId();
+            Sample analysisSample = sampleService.getSampleByAccessionNumber(analysisItem.getAccessionNumber());
+            if (analysisSample == null) {
+                continue;
+            }
+            String analysisSampleId = analysisSample.getId();
             if (!analysisSampleId.equals(currentSampleId)) {
 
                 currentSampleId = analysisSampleId;
@@ -135,6 +138,7 @@ public class ResultValidationServiceImpl implements ResultValidationService {
                 if (sampleFinished) {
                     Sample sample = sampleService.get(currentSampleId);
                     sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished));
+                    sample.setSysUserId(sysUserId);
                     sampleUpdateList.add(sample);
                 }
 

@@ -5,6 +5,7 @@ import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -23,6 +24,7 @@ import org.openelisglobal.common.services.registration.ValidationUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
@@ -101,6 +103,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     private ResultValidationService resultValidationService;
     private NoteService noteService;
     private FhirTransformService fhirTransformService;
+    @Autowired
+    private org.openelisglobal.resultvalidation.service.ValidationDetailsService validationDetailsService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private final String RESULT_TABLE_ID;
@@ -136,10 +140,18 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     @ResponseBody
     public ResultValidationForm showAccessionValidationRange(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String date,
-            @RequestParam(required = false) String unitType, @RequestParam(defaultValue = "true") Boolean doRange)
+            @RequestParam(required = false) String unitType, @RequestParam(required = false) String q,
+            @RequestParam(required = false) String labUnit, @RequestParam(required = false) String labNumberFrom,
+            @RequestParam(required = false) String labNumberTo, @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo, @RequestParam(required = false) String testSection,
+            @RequestParam(required = false) String analyzer, @RequestParam(required = false) String enteredBy,
+            @RequestParam(required = false) Boolean flagged, @RequestParam(required = false) Boolean normal,
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize,
+            @RequestParam(defaultValue = "true") Boolean doRange)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         ResultValidationForm newForm = new ResultValidationForm();
+
         if (StringUtils.isNotBlank(accessionNumber)) {
             newForm.setAccessionNumber(accessionNumber);
         } else if (StringUtils.isNotBlank(date)) {
@@ -147,6 +159,15 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         } else if (StringUtils.isNotBlank(unitType)) {
             newForm.setTestSectionId(unitType);
         }
+
+        if (StringUtils.isNotBlank(q)) {
+            newForm.setAccessionNumber(q);
+        }
+
+        if (StringUtils.isNotBlank(labUnit)) {
+            newForm.setTestSectionId(labUnit);
+        }
+
         return getResultValidation(request, newForm, doRange);
     }
 
@@ -207,6 +228,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 filteredresultList = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), resultList,
                         Constants.ROLE_VALIDATION);
+
+                filteredresultList = applyAdditionalFilters(request, filteredresultList);
+
                 request.setAttribute("pageSize", filteredresultList.size());
                 form.setSearchFinished(true);
             } else {
@@ -245,6 +269,14 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             @Validated(ResultValidationForm.ResultValidation.class) @RequestBody ResultValidationForm form,
             BindingResult result) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        int resultCount = form.getResultList() != null ? form.getResultList().size() : 0;
+        int acceptedCount = 0;
+        if (form.getResultList() != null) {
+            acceptedCount = (int) form.getResultList().stream().filter(AnalysisItem::getIsAccepted).count();
+        }
+        LogEvent.logInfo(this.getClass().getSimpleName(), "showAccessionValidationRangeSave",
+                "Processing validation: " + resultCount + " items, " + acceptedCount + " marked for acceptance");
+
         if ("true".equals(request.getParameter("pageResults"))) {
             return getResultValidation(request, form, false);
         }
@@ -260,10 +292,15 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
         List<Result> checkPagedResults = (List<Result>) request.getSession()
                 .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+
+        if (checkPagedResults == null || checkPagedResults.isEmpty()) {
+            return processValidationDirectly(request, form);
+        }
+
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
-            return form;
+            return processValidationDirectly(request, form);
         }
 
         ResultValidationPaging paging = new ResultValidationPaging();
@@ -612,6 +649,228 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     private void setEmptyResults(ResultValidationForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         form.setResultList(new ArrayList<AnalysisItem>());
+    }
+
+    /**
+     * Get detailed validation information for a specific analysis result This
+     * endpoint is called on-demand when a result row is expanded
+     * 
+     * @param analysisId The analysis ID
+     * @return ValidationDetailsDTO containing history, QC data, reagent lots, order
+     *         info, attachments
+     */
+    @GetMapping(value = "AccessionValidation/{analysisId}/details", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.openelisglobal.resultvalidation.bean.ValidationDetailsDTO getValidationDetails(
+            @PathVariable String analysisId) {
+        return validationDetailsService.getValidationDetails(analysisId);
+    }
+
+    @PostMapping(value = "AccessionValidation/retest", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> requestRetest(HttpServletRequest request,
+            @jakarta.validation.Valid @RequestBody org.openelisglobal.resultvalidation.bean.RetestRequest retestRequest,
+            BindingResult bindingResult) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        if (bindingResult.hasErrors()) {
+            response.put("success", false);
+            response.put("message", "Validation errors");
+            response.put("errors", bindingResult.getAllErrors());
+            return response;
+        }
+
+        try {
+            String sysUserId = getSysUserId(request);
+            retestRequest.setRequestedBy(sysUserId);
+            retestRequest.setRequestedAt(java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+            String technicalAcceptanceStatusId = SpringContext.getBean(IStatusService.class)
+                    .getStatusID(AnalysisStatus.TechnicalAcceptance);
+            String biologistRejectedStatusId = SpringContext.getBean(IStatusService.class)
+                    .getStatusID(AnalysisStatus.BiologistRejected);
+
+            int processedCount = 0;
+            for (String analysisId : retestRequest.getResultIds()) {
+                Analysis analysis = analysisService.get(analysisId);
+                if (analysis != null && technicalAcceptanceStatusId.equals(analysis.getStatusId())) {
+                    analysis.setStatusId(biologistRejectedStatusId);
+                    analysis.setSysUserId(sysUserId);
+                    analysisService.update(analysis);
+
+                    Note note = noteService.createSavableNote(analysis, NoteType.INTERNAL,
+                            "[RETEST REQUESTED] " + retestRequest.getReason(), RESULT_SUBJECT, sysUserId);
+                    noteService.insert(note);
+                    processedCount++;
+                }
+            }
+
+            response.put("success", true);
+            response.put("message", "Retest request processed successfully");
+            response.put("count", processedCount);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            response.put("success", false);
+            response.put("message", "Error processing retest request: " + e.getMessage());
+        }
+
+        return response;
+    }
+
+    /**
+     * Apply additional filters from query parameters to the result list
+     */
+    private List<AnalysisItem> applyAdditionalFilters(HttpServletRequest request, List<AnalysisItem> resultList) {
+        List<AnalysisItem> filtered = new ArrayList<>(resultList);
+
+        String labNumberFrom = request.getParameter("labNumberFrom");
+        String labNumberTo = request.getParameter("labNumberTo");
+        if (StringUtils.isNotBlank(labNumberFrom) || StringUtils.isNotBlank(labNumberTo)) {
+            filtered = filtered.stream().filter(item -> {
+                String accessionNumber = item.getAccessionNumber();
+                if (StringUtils.isNotBlank(labNumberFrom) && accessionNumber.compareTo(labNumberFrom) < 0) {
+                    return false;
+                }
+                if (StringUtils.isNotBlank(labNumberTo) && accessionNumber.compareTo(labNumberTo) > 0) {
+                    return false;
+                }
+                return true;
+            }).collect(Collectors.toList());
+        }
+
+        String dateFrom = request.getParameter("dateFrom");
+        String dateTo = request.getParameter("dateTo");
+        if (StringUtils.isNotBlank(dateFrom) || StringUtils.isNotBlank(dateTo)) {
+            try {
+                Date fromDate = StringUtils.isNotBlank(dateFrom) ? DateUtil.convertStringDateToSqlDate(dateFrom) : null;
+                Date toDate = StringUtils.isNotBlank(dateTo) ? DateUtil.convertStringDateToSqlDate(dateTo) : null;
+                final Date finalFromDate = fromDate;
+                final Date finalToDate = toDate;
+
+                filtered = filtered.stream().filter(item -> {
+                    if (item.getTestDate() == null) {
+                        return false;
+                    }
+                    Date testDate = DateUtil.convertStringDateToSqlDate(item.getTestDate());
+                    if (finalFromDate != null && testDate.before(finalFromDate)) {
+                        return false;
+                    }
+                    if (finalToDate != null && testDate.after(finalToDate)) {
+                        return false;
+                    }
+                    return true;
+                }).collect(Collectors.toList());
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "applyAdditionalFilters",
+                        "Error parsing date filters: " + e.getMessage());
+            }
+        }
+
+        String analyzer = request.getParameter("analyzer");
+        if (StringUtils.isNotBlank(analyzer)) {
+            filtered = filtered.stream().filter(item -> analyzer.equals(item.getAnalyzer()))
+                    .collect(Collectors.toList());
+        }
+
+        String enteredBy = request.getParameter("enteredBy");
+        if (StringUtils.isNotBlank(enteredBy)) {
+            filtered = filtered.stream().filter(item -> {
+                if (item.getEnteredByObject() != null) {
+                    return enteredBy.equals(item.getEnteredByObject().getName());
+                }
+                return false;
+            }).collect(Collectors.toList());
+        }
+
+        String normalParam = request.getParameter("normal");
+        if (StringUtils.isNotBlank(normalParam)) {
+            boolean isNormal = Boolean.parseBoolean(normalParam);
+            filtered = filtered.stream().filter(item -> item.isNormal() == isNormal).collect(Collectors.toList());
+        }
+
+        String flaggedParam = request.getParameter("flagged");
+        if (StringUtils.isNotBlank(flaggedParam) && Boolean.parseBoolean(flaggedParam)) {
+            filtered = filtered.stream().filter(item -> item.getFlags() != null && !item.getFlags().isEmpty())
+                    .collect(Collectors.toList());
+        }
+
+        return filtered;
+    }
+
+    /**
+     * Process validation directly from the form without relying on session cache.
+     * This handles REST API calls from the new React frontend.
+     */
+    private ResultValidationForm processValidationDirectly(HttpServletRequest request, ResultValidationForm form) {
+        List<AnalysisItem> resultItemList = form.getResultList();
+        if (resultItemList == null || resultItemList.isEmpty()) {
+            return form;
+        }
+
+        createSystemUser();
+
+        List<Analysis> analysisUpdateList = new ArrayList<>();
+        ArrayList<Sample> sampleUpdateList = new ArrayList<>();
+        ArrayList<Note> noteUpdateList = new ArrayList<>();
+        ArrayList<Result> resultUpdateList = new ArrayList<>();
+        List<Result> deletableList = new ArrayList<>();
+
+        IResultSaveService resultSaveService = new ResultValidationSaveService();
+        List<IResultUpdate> updaters = ValidationUpdateRegister.getRegisteredUpdaters();
+
+        List<String> analysisIdList = new ArrayList<>();
+
+        for (AnalysisItem analysisItem : resultItemList) {
+            if (analysisItem.getIsAccepted() || analysisItem.getIsRejected()) {
+                Analysis analysis = analysisService.get(analysisItem.getAnalysisId());
+                if (analysis == null) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processValidationDirectly",
+                            "Analysis not found for id: " + analysisItem.getAnalysisId());
+                    continue;
+                }
+
+                analysis.setSysUserId(getSysUserId(request));
+
+                if (!analysisIdList.contains(analysis.getId())) {
+                    if (analysisItem.getIsAccepted()) {
+                        analysis.setStatusId(
+                                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+                        analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
+                        analysisIdList.add(analysis.getId());
+                        analysisUpdateList.add(analysis);
+                    }
+
+                    if (analysisItem.getIsRejected()) {
+                        analysis.setStatusId(SpringContext.getBean(IStatusService.class)
+                                .getStatusID(AnalysisStatus.BiologistRejected));
+                        analysisIdList.add(analysis.getId());
+                        analysisUpdateList.add(analysis);
+                    }
+                }
+            }
+        }
+
+        if (!analysisUpdateList.isEmpty()) {
+            try {
+                resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, resultItemList,
+                        sampleUpdateList, noteUpdateList, resultSaveService, updaters, getSysUserId(request));
+
+                try {
+                    fhirTransformService.transformPersistResultValidationFhirObjects(deletableList, analysisUpdateList,
+                            resultUpdateList, resultItemList, sampleUpdateList, noteUpdateList);
+                } catch (FhirLocalPersistingException e) {
+                    LogEvent.logError(e);
+                }
+            } catch (LIMSRuntimeException e) {
+                LogEvent.logError(e);
+            }
+        }
+
+        form.setSearchFinished(true);
+        return form;
     }
 
     @Override

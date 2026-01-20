@@ -2,418 +2,492 @@ import React, { useState, useEffect, useContext } from "react";
 import {
   Button,
   Column,
-  Form,
-  FormLabel,
-  Heading,
-  Row,
-  Section,
-  Stack,
-  TextInput,
-  SelectItem,
-  Select,
-  Loading,
   Grid,
-  Link,
+  Section,
+  Select,
+  SelectItem,
+  TextInput,
+  DatePicker,
+  DatePickerInput,
+  Checkbox,
+  Stack,
 } from "@carbon/react";
-import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import { Filter, Search, Close } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Formik, Field } from "formik";
-import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import { getFromOpenElisServer, Roles } from "../utils/Utils";
+import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import { format } from "date-fns";
-import CustomDatePicker from "../common/CustomDatePicker";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
 
-const SearchForm = (props) => {
-  const { setNotificationVisible, addNotification } =
+const SearchForm = ({ setResults, setIsLoading, setSearchParams }) => {
+  const intl = useIntl();
+  const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLabUnit, setSelectedLabUnit] = useState("");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  const [searchResults, setSearchResults] = useState();
-  const [searchBy, setSearchBy] = useState();
-  const [doRange, setDoRagnge] = useState(true);
+  const [labNumberFrom, setLabNumberFrom] = useState("");
+  const [labNumberTo, setLabNumberTo] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [testSection, setTestSection] = useState("");
+  const [analyzer, setAnalyzer] = useState("");
+  const [enteredBy, setEnteredBy] = useState("");
+  const [showFlaggedOnly, setShowFlaggedOnly] = useState(false);
+  const [showNormalOnly, setShowNormalOnly] = useState(false);
+  const [showAbnormalOnly, setShowAbnormalOnly] = useState(false);
+
+  const [labUnits, setLabUnits] = useState([]);
   const [testSections, setTestSections] = useState([]);
-  const [defaultTestSectionId, setDefaultTestSectionId] = useState("");
-  const [defaultTestSectionLabel, setDefaultTestSectionLabel] = useState("");
-  const [searchFormValues, setSearchFormValues] = useState(
-    ValidationSearchFormValues,
-  );
-  const [testDate, setTestDate] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
-  const [url, setUrl] = useState("");
+  const [analyzers] = useState([
+    "Sysmex XN-L",
+    "Sysmex XS-1000i",
+    "Cobas c 501",
+    "Cobas e 411",
+    "Manual",
+  ]);
+  const [users] = useState([
+    "J. Smith",
+    "M. Johnson",
+    "K. Davis",
+    "A. Williams",
+  ]);
 
-  const validationResults = (data) => {
-    if (data) {
-      setSearchResults(data);
-      setIsLoading(false);
-      if (data.paging) {
-        var { totalPages, currentPage } = data.paging;
-        if (totalPages > 1) {
-          setPagination(true);
-          setCurrentApiPage(currentPage);
-          setTotalApiPages(totalPages);
-          if (parseInt(currentPage) < parseInt(totalPages)) {
-            setNextPage(parseInt(currentPage) + 1);
-          } else {
-            setNextPage(null);
-          }
-          if (parseInt(currentPage) > 1) {
-            setPreviousPage(parseInt(currentPage) - 1);
-          } else {
-            setPreviousPage(null);
-          }
+  useEffect(() => {
+    getFromOpenElisServer("/rest/user-test-sections/Validation", (data) => {
+      setLabUnits(data || []);
+      if (data && data.length > 0) {
+        setTestSections(data.map((unit) => unit.value));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const typeParam = urlParams.get("type");
+    const testParam = urlParams.get("test");
+
+    if (typeParam) {
+      if (labUnits.length > 0) {
+        const matchingUnit = labUnits.find(
+          (unit) =>
+            unit.value.toLowerCase() === typeParam.toLowerCase() ||
+            unit.label?.toLowerCase() === typeParam.toLowerCase(),
+        );
+        if (matchingUnit) {
+          setSelectedLabUnit(matchingUnit.id);
+          setTimeout(() => {
+            handleSearch();
+          }, 100);
         }
       }
-      if (data?.resultList?.length > 0) {
-        const newResultsList = data.resultList.map((data, id) => {
-          let tempData = { ...data };
-          tempData.id = id;
-          return tempData;
-        });
-        setSearchResults((prevState) => ({
-          ...prevState,
-          resultList: newResultsList,
-        }));
-      } else {
+    }
+
+    if (testParam && testParam.trim()) {
+      setSearchQuery(testParam);
+    }
+  }, [labUnits]);
+
+  const handleSearch = (e) => {
+    if (e) e.preventDefault();
+
+    if (!selectedLabUnit && !searchQuery) {
+      addNotification({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "validation.search.required",
+        }),
+      });
+      setNotificationVisible(true);
+      return;
+    }
+
+    setIsLoading(true);
+
+    const params = new URLSearchParams();
+
+    if (searchQuery) {
+      params.append("q", searchQuery);
+    }
+    if (selectedLabUnit) {
+      params.append("labUnit", selectedLabUnit);
+    }
+    if (labNumberFrom) {
+      params.append("labNumberFrom", labNumberFrom);
+    }
+    if (labNumberTo) {
+      params.append("labNumberTo", labNumberTo);
+    }
+    if (dateFrom) {
+      params.append("dateFrom", dateFrom);
+    }
+    if (dateTo) {
+      params.append("dateTo", dateTo);
+    }
+    if (testSection) {
+      params.append("testSection", testSection);
+    }
+    if (analyzer) {
+      params.append("analyzer", analyzer);
+    }
+    if (enteredBy) {
+      params.append("enteredBy", enteredBy);
+    }
+    if (showFlaggedOnly) {
+      params.append("flagged", "true");
+    }
+    if (showNormalOnly) {
+      params.append("normal", "true");
+    }
+    if (showAbnormalOnly) {
+      params.append("normal", "false");
+    }
+
+    if (setSearchParams) {
+      setSearchParams(params.toString());
+    }
+
+    getFromOpenElisServer(
+      `/rest/AccessionValidation?${params.toString()}`,
+      (data) => {
         setIsLoading(false);
-        setSearchResults((prevState) => ({
-          ...prevState,
-          resultList: [],
-        }));
-
-        addNotification({
-          kind: NotificationKinds.warning,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "validation.search.noresult" }),
-        });
-        setNotificationVisible(true);
-      }
-    }
-  };
-
-  useEffect(() => {
-    props.setResults(searchResults);
-  }, [searchResults]);
-
-  const handleSubmit = (values) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
-    setIsLoading(true);
-    var accessionNumber = values.accessionNumber
-      ? values.accessionNumber.split("-")[0]
-      : "";
-    var unitType = values.unitType ? values.unitType : "";
-    var defaultDate = values.defaultDate ? values.defaultDate : "";
-    var date = testDate ? testDate : defaultDate;
-    let searchEndPoint =
-      "/rest/AccessionValidation?" +
-      "accessionNumber=" +
-      accessionNumber +
-      "&unitType=" +
-      unitType +
-      "&date=" +
-      date +
-      "&doRange=" +
-      doRange;
-    setUrl(searchEndPoint);
-    switch (searchBy) {
-      case "routine":
-        props.setParams("?type=" + searchBy + "&testSectionId=" + unitType);
-        break;
-      case "order":
-        props.setParams(
-          "?type=" + searchBy + "&accessionNumber=" + accessionNumber,
-        );
-        break;
-      case "testDate":
-        props.setParams("?type=" + searchBy + "&date=" + date);
-        break;
-      case "range":
-        props.setParams(
-          "?type=" + searchBy + "&accessionNumber=" + accessionNumber,
-        );
-        break;
-    }
-    getFromOpenElisServer(searchEndPoint, validationResults);
-  };
-
-  const handleChange = () => {};
-
-  const loadNextResultsPage = () => {
-    setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, validationResults);
-  };
-
-  const loadPreviousResultsPage = () => {
-    setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, validationResults);
-  };
-  const fetchTestSections = (response) => {
-    setTestSections(response);
-  };
-
-  const submitOnSelect = (e) => {
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
-    var values = { unitType: e.target.value };
-    handleSubmit(values);
-  };
-
-  function handleDatePickerChange(date) {
-    setTestDate(date);
-  }
-
-  useEffect(() => {
-    var param = "";
-    if (window.location.pathname == "/validation") {
-      param = new URLSearchParams(window.location.search).get("type");
-    } else if (window.location.pathname == "/ResultValidation") {
-      param = "routine";
-    } else if (window.location.pathname == "/AccessionValidation") {
-      param = "order";
-    } else if (window.location.pathname == "/AccessionValidationRange") {
-      param = "range";
-    } else if (window.location.pathname == "/ResultValidationByTestDate") {
-      param = "testDate";
-    }
-    setSearchBy(param);
-    if (param === "order") {
-      setDoRagnge(false);
-    }
-    switch (searchBy) {
-      case "routine": {
-        let testSectionId = new URLSearchParams(window.location.search).get(
-          "testSectionId",
-        );
-        testSectionId = testSectionId ? testSectionId : "";
-        getFromOpenElisServer(
-          "/rest/user-test-sections/" + Roles.VALIDATION,
-          (fetchedTestSections) => {
-            let testSection = fetchedTestSections.find(
-              (testSection) => testSection.id === testSectionId,
-            );
-            let testSectionLabel = testSection ? testSection.value : "";
-            setDefaultTestSectionId(testSectionId);
-            setDefaultTestSectionLabel(testSectionLabel);
-            fetchTestSections(fetchedTestSections);
-          },
-        );
-        if (testSectionId) {
-          let values = { unitType: testSectionId };
-          handleSubmit(values);
+        if (data && data.resultList && data.resultList.length > 0) {
+          setResults(data);
+        } else {
+          setResults({ resultList: [] });
+          addNotification({
+            kind: NotificationKinds.info,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({
+              id: "validation.search.noresults",
+            }),
+          });
+          setNotificationVisible(true);
         }
-        break;
-      }
+      },
+    );
+  };
 
-      case "order":
-      case "range": {
-        let accessionNumber = new URLSearchParams(window.location.search).get(
-          "accessionNumber",
-        );
-        if (accessionNumber) {
-          let searchValues = {
-            ...searchFormValues,
-            accessionNumber: accessionNumber,
-          };
-          handleSubmit(searchValues);
-          setSearchFormValues(searchValues);
-        }
-        break;
-      }
-      case "testDate": {
-        let date = new URLSearchParams(window.location.search).get("date");
-        if (date) {
-          setTestDate(date);
-          handleSubmit({ defaultDate: date });
-        }
-        break;
-      }
+  const handleClear = () => {
+    setSearchQuery("");
+    setSelectedLabUnit("");
+    setLabNumberFrom("");
+    setLabNumberTo("");
+    setDateFrom("");
+    setDateTo("");
+    setTestSection("");
+    setAnalyzer("");
+    setEnteredBy("");
+    setShowFlaggedOnly(false);
+    setShowNormalOnly(false);
+    setShowAbnormalOnly(false);
+    setResults({ resultList: [] });
+  };
+
+  const handleLabUnitChange = (e) => {
+    const value = e.target.value;
+    setSelectedLabUnit(value);
+    if (value) {
+      setTimeout(() => {
+        handleSearch();
+      }, 100);
     }
+  };
 
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
-  }, [searchBy, doRange]);
+  const handleQuickFilterChange = (filterType) => {
+    if (filterType === "flagged") {
+      setShowFlaggedOnly(!showFlaggedOnly);
+      setShowNormalOnly(false);
+      setShowAbnormalOnly(false);
+    } else if (filterType === "normal") {
+      setShowNormalOnly(!showNormalOnly);
+      setShowFlaggedOnly(false);
+      setShowAbnormalOnly(false);
+    } else if (filterType === "abnormal") {
+      setShowAbnormalOnly(!showAbnormalOnly);
+      setShowFlaggedOnly(false);
+      setShowNormalOnly(false);
+    }
+  };
+
   return (
-    <>
-      {isLoading && <Loading></Loading>}
-      <Formik
-        initialValues={searchFormValues}
-        enableReinitialize={true}
-        //validationSchema={}
-        onSubmit={handleSubmit}
-        onChange
-      >
-        {({
-          values,
-          errors,
-          touched,
-          setFieldValue,
-          handleChange,
-          //handleBlur,
-          handleSubmit,
-        }) => (
-          <Form
-            onSubmit={handleSubmit}
-            onChange={handleChange}
-            //onBlur={handleBlur}
-          >
-            <Stack gap={2}>
+    <Section className="validation-search-section">
+      <Grid className="validation-search-grid">
+        <Column lg={16}>
+          <form onSubmit={handleSearch}>
+            <Stack gap={4}>
               <Grid>
-                <Column lg={16}>
-                  <h4>
-                    <FormattedMessage id="label.button.search" />
-                  </h4>
+                <Column lg={4} md={4} sm={4}>
+                  <Select
+                    id="lab-unit-select"
+                    labelText={intl.formatMessage({
+                      id: "validation.search.labunit",
+                    })}
+                    value={selectedLabUnit}
+                    onChange={handleLabUnitChange}
+                  >
+                    <SelectItem
+                      text={intl.formatMessage({
+                        id: "validation.search.labunit.placeholder",
+                      })}
+                      value=""
+                    />
+                    {labUnits.map((unit) => (
+                      <SelectItem
+                        key={unit.id}
+                        text={unit.value}
+                        value={unit.id}
+                      />
+                    ))}
+                  </Select>
                 </Column>
 
-                {(searchBy === "order" || searchBy === "range") && (
-                  <>
-                    <Column lg={6} md={8} sm={4}>
-                      <Field name="accessionNumber">
-                        {({ field }) => (
-                          <CustomLabNumberInput
-                            placeholder={"Enter Lab No"}
-                            name={field.name}
-                            id={field.name}
-                            value={values[field.name]}
-                            onChange={(e, rawValue) => {
-                              setFieldValue(field.name, rawValue);
-                            }}
-                            labelText={
-                              searchBy == "order" ? (
-                                <FormattedMessage id="search.label.accession" />
-                              ) : (
-                                <FormattedMessage id="search.label.loadnext" />
-                              )
-                            }
-                          />
-                        )}
-                      </Field>
-                    </Column>
-                    <Column lg={10} />
-                  </>
-                )}
+                <Column lg={1} md={1} sm={1} className="or-separator">
+                  <div style={{ textAlign: "center", paddingTop: "2rem" }}>
+                    <FormattedMessage id="label.or" />
+                  </div>
+                </Column>
 
-                {searchBy === "testDate" && (
-                  <>
-                    <Column lg={6} md={8} sm={4}>
-                      <Field name="date">
-                        {({ field }) => (
-                          <CustomDatePicker
-                            id={field.id}
-                            labelText={intl.formatMessage({
-                              id: "search.label.testdate",
-                            })}
-                            value={testDate}
-                            onChange={(date) => handleDatePickerChange(date)}
-                            name={field.name}
-                          />
-                        )}
-                      </Field>
-                    </Column>
-                    <Column lg={10} />
-                  </>
-                )}
-                {searchBy !== "routine" && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Button
-                      type="submit"
-                      id="submit"
-                      style={{ marginTop: "16px" }}
-                      data-testid="Search-btn"
-                    >
-                      <FormattedMessage id="label.button.search" />
-                    </Button>
-                  </Column>
-                )}
+                <Column lg={7} md={7} sm={7}>
+                  <TextInput
+                    id="search-query"
+                    labelText={intl.formatMessage({
+                      id: "validation.search.query",
+                    })}
+                    placeholder={intl.formatMessage({
+                      id: "validation.search.query.placeholder",
+                    })}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </Column>
+
+                <Column lg={2} md={2} sm={2}>
+                  <Button
+                    type="submit"
+                    style={{ marginTop: "1.5rem" }}
+                    renderIcon={Search}
+                    disabled={!selectedLabUnit && !searchQuery}
+                  >
+                    <FormattedMessage id="label.button.search" />
+                  </Button>
+                </Column>
+
+                <Column lg={2} md={2} sm={2}>
+                  <Button
+                    kind={showAdvancedFilters ? "primary" : "secondary"}
+                    style={{ marginTop: "1.5rem" }}
+                    renderIcon={Filter}
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  >
+                    <FormattedMessage id="validation.filters.toggle" />
+                  </Button>
+                </Column>
               </Grid>
-            </Stack>
-          </Form>
-        )}
-      </Formik>
 
-      {searchBy === "routine" && (
-        <>
-          <Grid>
-            <Column lg={6} md={8} sm={4}>
-              <Select
-                labelText={intl.formatMessage({ id: "search.label.testunit" })}
-                name="unitType"
-                id="unitType"
-                onChange={submitOnSelect}
-              >
-                <SelectItem
-                  text={defaultTestSectionLabel}
-                  value={defaultTestSectionId}
-                />
-                {testSections
-                  .filter((item) => item.id !== defaultTestSectionId)
-                  .map((test, index) => {
-                    return (
-                      <SelectItem
-                        key={index}
-                        text={test.value}
-                        value={test.id}
+              {showAdvancedFilters && (
+                <Grid className="advanced-filters-panel">
+                  <Column lg={16}>
+                    <h4>
+                      <FormattedMessage id="validation.filters.advanced" />
+                    </h4>
+                  </Column>
+
+                  <Column lg={4} md={4} sm={4}>
+                    <TextInput
+                      id="lab-number-from"
+                      labelText={intl.formatMessage({
+                        id: "validation.filter.labnumber.from",
+                      })}
+                      placeholder="DEV0125000"
+                      value={labNumberFrom}
+                      onChange={(e) => setLabNumberFrom(e.target.value)}
+                    />
+                  </Column>
+
+                  <Column lg={4} md={4} sm={4}>
+                    <TextInput
+                      id="lab-number-to"
+                      labelText={intl.formatMessage({
+                        id: "validation.filter.labnumber.to",
+                      })}
+                      placeholder="DEV0125999"
+                      value={labNumberTo}
+                      onChange={(e) => setLabNumberTo(e.target.value)}
+                    />
+                  </Column>
+
+                  <Column lg={4} md={4} sm={4}>
+                    <DatePicker
+                      datePickerType="single"
+                      onChange={(dates) => {
+                        if (dates && dates.length > 0) {
+                          setDateFrom(dates[0].toISOString().split("T")[0]);
+                        }
+                      }}
+                    >
+                      <DatePickerInput
+                        id="date-from"
+                        labelText={intl.formatMessage({
+                          id: "validation.filter.date.from",
+                        })}
+                        placeholder="mm/dd/yyyy"
                       />
-                    );
-                  })}
-              </Select>
-            </Column>
-            <Column lg={10} />
-          </Grid>
-        </>
-      )}
+                    </DatePicker>
+                  </Column>
 
-      <>
-        {pagination && (
-          <Grid>
-            <Column lg={14} />
-            <Column
-              lg={2}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "10px",
-                width: "110%",
-              }}
-            >
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={previousPage != null ? false : true}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={nextPage != null ? false : true}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </div>
-            </Column>
-          </Grid>
-        )}
-      </>
-    </>
+                  <Column lg={4} md={4} sm={4}>
+                    <DatePicker
+                      datePickerType="single"
+                      onChange={(dates) => {
+                        if (dates && dates.length > 0) {
+                          setDateTo(dates[0].toISOString().split("T")[0]);
+                        }
+                      }}
+                    >
+                      <DatePickerInput
+                        id="date-to"
+                        labelText={intl.formatMessage({
+                          id: "validation.filter.date.to",
+                        })}
+                        placeholder="mm/dd/yyyy"
+                      />
+                    </DatePicker>
+                  </Column>
+
+                  <Column lg={4} md={4} sm={4}>
+                    <Select
+                      id="test-section"
+                      labelText={intl.formatMessage({
+                        id: "validation.filter.testsection",
+                      })}
+                      value={testSection}
+                      onChange={(e) => setTestSection(e.target.value)}
+                    >
+                      <SelectItem
+                        text={intl.formatMessage({
+                          id: "validation.filter.all",
+                        })}
+                        value=""
+                      />
+                      {testSections.map((section) => (
+                        <SelectItem
+                          key={section}
+                          text={section}
+                          value={section}
+                        />
+                      ))}
+                    </Select>
+                  </Column>
+
+                  <Column lg={4} md={4} sm={4}>
+                    <Select
+                      id="analyzer"
+                      labelText={intl.formatMessage({
+                        id: "validation.filter.analyzer",
+                      })}
+                      value={analyzer}
+                      onChange={(e) => setAnalyzer(e.target.value)}
+                    >
+                      <SelectItem
+                        text={intl.formatMessage({
+                          id: "validation.filter.all",
+                        })}
+                        value=""
+                      />
+                      {analyzers.map((ana) => (
+                        <SelectItem key={ana} text={ana} value={ana} />
+                      ))}
+                    </Select>
+                  </Column>
+
+                  <Column lg={4} md={4} sm={4}>
+                    <Select
+                      id="entered-by"
+                      labelText={intl.formatMessage({
+                        id: "validation.filter.enteredby",
+                      })}
+                      value={enteredBy}
+                      onChange={(e) => setEnteredBy(e.target.value)}
+                    >
+                      <SelectItem
+                        text={intl.formatMessage({
+                          id: "validation.filter.all",
+                        })}
+                        value=""
+                      />
+                      {users.map((user) => (
+                        <SelectItem key={user} text={user} value={user} />
+                      ))}
+                    </Select>
+                  </Column>
+
+                  <Column lg={4} md={4} sm={4}>
+                    <fieldset className="cds--fieldset">
+                      <legend className="cds--label">
+                        <FormattedMessage id="validation.filter.quickfilters" />
+                      </legend>
+                      <Checkbox
+                        id="filter-flagged"
+                        labelText={intl.formatMessage({
+                          id: "validation.filter.flagged",
+                        })}
+                        checked={showFlaggedOnly}
+                        onChange={() => handleQuickFilterChange("flagged")}
+                      />
+                      <Checkbox
+                        id="filter-normal"
+                        labelText={intl.formatMessage({
+                          id: "validation.filter.normal",
+                        })}
+                        checked={showNormalOnly}
+                        onChange={() => handleQuickFilterChange("normal")}
+                      />
+                      <Checkbox
+                        id="filter-abnormal"
+                        labelText={intl.formatMessage({
+                          id: "validation.filter.abnormal",
+                        })}
+                        checked={showAbnormalOnly}
+                        onChange={() => handleQuickFilterChange("abnormal")}
+                      />
+                    </fieldset>
+                  </Column>
+
+                  <Column lg={16}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: "1rem",
+                        marginTop: "1rem",
+                      }}
+                    >
+                      <Button
+                        kind="secondary"
+                        renderIcon={Close}
+                        onClick={handleClear}
+                      >
+                        <FormattedMessage id="label.button.clear" />
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSearch}
+                        disabled={!selectedLabUnit && !searchQuery}
+                      >
+                        <FormattedMessage id="validation.filter.apply" />
+                      </Button>
+                    </div>
+                  </Column>
+                </Grid>
+              )}
+            </Stack>
+          </form>
+        </Column>
+      </Grid>
+    </Section>
   );
 };
 
