@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Migration: Add Packaging page to Virology workflow
+
+        This changeset adds a new "Packaging" page (Page 9) to both the Virology notebook
+        template and existing notebook instances for final product packaging.
+
+        Author: openelis-virology
+        Date: 2026-01-20
+    -->
+
+    <changeSet id="add-packaging-page-to-virology-template" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if the Virology template exists -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*)
+                FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit'
+                AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Packaging page (Page 9) to the Virology notebook template</comment>
+
+        <sql>
+            -- Insert Packaging page into the template
+            INSERT INTO clinlims.notebook_page (
+                id,
+                title,
+                instructions,
+                content,
+                page_order,
+                completed,
+                page_type,
+                notebook_id,
+                last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Packaging',
+                'Log final product packaging specifications. Record batch ID, vial type (glass vial 2mL/5mL/10mL, plastic vial, ampoule), fill volume, labeling information (product name, batch number, expiry date, storage instructions, warnings), packaging date, expiry date, and storage conditions for regulatory compliance and traceability.',
+                'Packaging - Final product packaging and labeling',
+                9,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title = 'Virology and Vaccine Unit'
+            AND n.is_template = true
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id
+                AND np.page_order = 9
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                -- Remove Packaging page from template
+                DELETE FROM clinlims.notebook_page
+                WHERE title = 'Packaging'
+                AND page_order = 9
+                AND notebook_id IN (
+                    SELECT id
+                    FROM clinlims.notebook
+                    WHERE title = 'Virology and Vaccine Unit'
+                    AND is_template = true
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-packaging-page-to-existing-virology-notebooks" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if the Virology template exists -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*)
+                FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit'
+                AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Packaging page (Page 9) to existing Virology notebook instances that don't have it</comment>
+
+        <sql>
+            -- Insert Packaging page for each Virology notebook instance that doesn't have page 9
+            INSERT INTO clinlims.notebook_page (
+                id,
+                title,
+                instructions,
+                content,
+                page_order,
+                completed,
+                page_type,
+                notebook_id,
+                last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Packaging',
+                'Log final product packaging specifications. Record batch ID, vial type (glass vial 2mL/5mL/10mL, plastic vial, ampoule), fill volume, labeling information (product name, batch number, expiry date, storage instructions, warnings), packaging date, expiry date, and storage conditions for regulatory compliance and traceability.',
+                'Packaging - Final product packaging and labeling',
+                9,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title LIKE '%Virology%'
+            AND n.is_template = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id
+                AND np.page_order = 9
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                -- Remove Packaging pages added by this changeset
+                DELETE FROM clinlims.notebook_page
+                WHERE title = 'Packaging'
+                AND page_order = 9
+                AND notebook_id IN (
+                    SELECT id
+                    FROM clinlims.notebook
+                    WHERE title LIKE '%Virology%'
+                    AND is_template = false
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

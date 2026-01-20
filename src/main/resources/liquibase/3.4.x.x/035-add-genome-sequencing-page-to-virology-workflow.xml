@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="1" author="AI-Assistant" context="base">
+    <comment>Add Genome Sequencing page (Page 12) to Virology workflow template</comment>
+    <insert tableName="notebook_page" schemaName="clinlims">
+      <column name="id" valueSequenceNext="notebook_page_seq"/>
+      <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE name = 'Virology &amp; Vaccine Development')"/>
+      <column name="title" value="Genome Sequencing"/>
+      <column name="page_order" value="12"/>
+      <column name="instructions" value="Viral genome analysis - record FASTA files and GenBank accession data"/>
+      <column name="is_template" valueBoolean="true"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="2" author="AI-Assistant" context="base">
+    <comment>Add Genome Sequencing page to existing Virology workflow instances</comment>
+    <sql>
+      INSERT INTO clinlims.notebook_page (id, notebook_id, title, page_order, instructions, is_template, lastupdated)
+      SELECT
+        nextval('clinlims.notebook_page_seq'),
+        n.id,
+        'Genome Sequencing',
+        12,
+        'Viral genome analysis - record FASTA files and GenBank accession data',
+        false,
+        now()
+      FROM clinlims.notebook n
+      WHERE n.workflow_type = 'virology'
+        AND n.is_template = false
+        AND NOT EXISTS (
+          SELECT 1 FROM clinlims.notebook_page np
+          WHERE np.notebook_id = n.id AND np.page_order = 12
+        );
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

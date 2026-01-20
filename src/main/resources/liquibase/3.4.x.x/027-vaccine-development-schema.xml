@@ -186,9 +186,7 @@
                              deleteCascade="true"/>
             </column>
             <column name="equipment_id" type="INTEGER">
-                <constraints nullable="false"
-                             foreignKeyName="fk_equipment_registered"
-                             references="clinlims.equipment(id)"/>
+                <constraints nullable="false"/>
             </column>
             <column name="usage_notes" type="TEXT"/>
             <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
@@ -318,10 +316,7 @@
         </addColumn>
 
         <addColumn tableName="virology_media_preparation" schemaName="clinlims">
-            <column name="sterilization_equipment_id" type="INTEGER">
-                <constraints foreignKeyName="fk_sterilization_equipment"
-                             references="clinlims.equipment(id)"/>
-            </column>
+            <column name="sterilization_equipment_id" type="INTEGER"/>
         </addColumn>
 
         <!-- Sterilization parameters -->

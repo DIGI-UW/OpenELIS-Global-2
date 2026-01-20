@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Table,
   TableHead,
@@ -61,6 +61,13 @@ function SampleGrid({
   additionalColumns = [],
   columns = null,
 }) {
+  console.log("🔧 SampleGrid VERSION: 2026-01-20-v2", {
+    gridId,
+    selectedIds,
+    onSelectionChange: !!onSelectionChange,
+    showSelection,
+    samplesCount: samples.length,
+  });
   const intl = useIntl();
 
   // Pagination state
@@ -113,9 +120,11 @@ function SampleGrid({
   const filteredSamples = useMemo(() => {
     let result = samples;
 
-    // Apply status filter
+    // Apply status filter (check both status and pageStatus for compatibility)
     if (statusFilter && statusFilter !== "ALL") {
-      result = result.filter((s) => s.status === statusFilter);
+      result = result.filter(
+        (s) => (s.status || s.pageStatus) === statusFilter,
+      );
     }
 
     // Apply search filter
@@ -154,13 +163,26 @@ function SampleGrid({
 
   // Handle row selection - toggle based on current state
   const handleSelectRow = (id) => {
+    console.log("🔵 handleSelectRow called", {
+      id,
+      idType: typeof id,
+      selectedIds,
+      selectedIdsTypes: selectedIds.map((sid) => typeof sid),
+      onSelectionChange: !!onSelectionChange,
+    });
     if (onSelectionChange) {
       const isCurrentlySelected = selectedIds.includes(id);
       if (isCurrentlySelected) {
-        onSelectionChange(selectedIds.filter((sid) => sid !== id));
+        const newSelection = selectedIds.filter((sid) => sid !== id);
+        console.log("🔴 Deselecting, new selection:", newSelection);
+        onSelectionChange(newSelection);
       } else {
-        onSelectionChange([...selectedIds, id]);
+        const newSelection = [...selectedIds, id];
+        console.log("🟢 Selecting, new selection:", newSelection);
+        onSelectionChange(newSelection);
       }
+    } else {
+      console.warn("⚠️ onSelectionChange is not provided!");
     }
   };
 
@@ -344,16 +366,44 @@ function SampleGrid({
   };
 
   // Transform samples to rows
-  const rows = paginatedSamples.map((sample) => ({
-    id: String(sample.id),
-    externalId: sample.externalId || "-",
-    accessionNumber: sample.accessionNumber || "-",
-    sampleType: sample.sampleType || sample.typeOfSample?.description || "-",
-    patientName: sample.patientName || sample.data?.patientName || "-",
-    collectionDate: sample.collectionDate || "-",
-    status: sample.status || "PENDING",
-    _original: sample,
-  }));
+  const rows = paginatedSamples.map((sample, index) => {
+    // Helper function to safely extract string value from any field
+    const safeString = (value, fallback = "-") => {
+      if (!value) return fallback;
+      if (typeof value === "string") return value;
+      if (typeof value === "number") return String(value);
+      if (typeof value === "object") {
+        return (
+          value.value ||
+          value.name ||
+          value.description ||
+          value.text ||
+          fallback
+        );
+      }
+      return String(value);
+    };
+
+    // Safely extract ID - MUST be a valid ID, never fallback to index
+    let safeId = String(sample.id || sample.sampleItemId || `sample-${index}`);
+
+    // Safely extract all fields
+    const safeSampleType = safeString(
+      sample.sampleType || sample.typeOfSample,
+      "-",
+    );
+
+    return {
+      id: safeId,
+      externalId: safeString(sample.externalId),
+      accessionNumber: safeString(sample.accessionNumber),
+      sampleType: safeSampleType,
+      patientName: safeString(sample.patientName || sample.data?.patientName),
+      collectionDate: safeString(sample.collectionDate),
+      status: safeString(sample.status, "PENDING"),
+      _original: sample,
+    };
+  });
 
   return (
     <div className="sample-grid">
@@ -457,13 +507,56 @@ function SampleGrid({
                   )}
                   {/* Render custom columns if provided */}
                   {customColumns.length > 0 ? (
-                    customColumns.map((col) => (
-                      <TableCell key={col.key}>
-                        {col.render
-                          ? col.render(row._original[col.key], row._original)
-                          : row._original[col.key] || row[col.key] || "-"}
-                      </TableCell>
-                    ))
+                    customColumns.map((col) => {
+                      // Always use render function if provided, otherwise safely extract value
+                      let cellValue;
+                      try {
+                        if (col.render) {
+                          cellValue = col.render(
+                            row._original[col.key],
+                            row._original,
+                          );
+                        } else {
+                          const rawValue =
+                            row._original[col.key] || row[col.key];
+                          // Use safeString helper to ensure we don't render objects
+                          const safeString = (value, fallback = "-") => {
+                            if (!value) return fallback;
+                            if (typeof value === "string") return value;
+                            if (typeof value === "number") return String(value);
+                            if (typeof value === "object") {
+                              return (
+                                value.value ||
+                                value.name ||
+                                value.description ||
+                                value.text ||
+                                fallback
+                              );
+                            }
+                            return String(value);
+                          };
+                          cellValue = safeString(rawValue);
+                        }
+
+                        // Final safety check - if cellValue is still an object, stringify it
+                        if (
+                          cellValue &&
+                          typeof cellValue === "object" &&
+                          !React.isValidElement(cellValue)
+                        ) {
+                          console.error(
+                            "Column render returned an object:",
+                            col.key,
+                            cellValue,
+                          );
+                          cellValue = JSON.stringify(cellValue);
+                        }
+                      } catch (err) {
+                        console.error("Error rendering column:", col.key, err);
+                        cellValue = "-";
+                      }
+                      return <TableCell key={col.key}>{cellValue}</TableCell>;
+                    })
                   ) : (
                     /* Default column rendering */
                     <>
@@ -477,14 +570,62 @@ function SampleGrid({
                       <TableCell>{row.sampleType}</TableCell>
                       {showPatient && <TableCell>{row.patientName}</TableCell>}
                       <TableCell>{row.collectionDate}</TableCell>
-                      <TableCell>{getStatusTag(row.status)}</TableCell>
-                      {additionalColumns.map((col) => (
-                        <TableCell key={col.key}>
-                          {col.render
-                            ? col.render(row._original)
-                            : row._original[col.key]}
-                        </TableCell>
-                      ))}
+                      <TableCell>
+                        {getStatusTag(row.status || row.pageStatus)}
+                      </TableCell>
+                      {additionalColumns.map((col) => {
+                        let cellValue;
+                        try {
+                          if (col.render) {
+                            cellValue = col.render(
+                              row._original[col.key],
+                              row._original,
+                            );
+                          } else {
+                            const rawValue = row._original[col.key];
+                            // Use safeString helper to ensure we don't render objects
+                            const safeString = (value, fallback = "-") => {
+                              if (!value) return fallback;
+                              if (typeof value === "string") return value;
+                              if (typeof value === "number")
+                                return String(value);
+                              if (typeof value === "object") {
+                                return (
+                                  value.value ||
+                                  value.name ||
+                                  value.description ||
+                                  value.text ||
+                                  fallback
+                                );
+                              }
+                              return String(value);
+                            };
+                            cellValue = safeString(rawValue);
+                          }
+
+                          // Final safety check - if cellValue is still an object, stringify it
+                          if (
+                            cellValue &&
+                            typeof cellValue === "object" &&
+                            !React.isValidElement(cellValue)
+                          ) {
+                            console.error(
+                              "Additional column render returned an object:",
+                              col.key,
+                              cellValue,
+                            );
+                            cellValue = JSON.stringify(cellValue);
+                          }
+                        } catch (err) {
+                          console.error(
+                            "Error rendering additional column:",
+                            col.key,
+                            err,
+                          );
+                          cellValue = "-";
+                        }
+                        return <TableCell key={col.key}>{cellValue}</TableCell>;
+                      })}
                     </>
                   )}
                   <TableCell>

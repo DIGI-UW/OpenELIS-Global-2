@@ -247,14 +247,25 @@ public class NotebookSampleEntryController extends BaseRestController {
         java.util.Set<String> includedSampleIds = new java.util.HashSet<>();
         List<Map<String, Object>> sampleMaps = new java.util.ArrayList<>();
 
+        LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
+                "Loading samples for pageId=" + pageId + ", found " + pageSamples.size() + " NotebookPageSample records");
+
         // First pass: build sample maps from page samples
         for (org.openelisglobal.notebook.valueholder.NotebookPageSample nps : pageSamples) {
+            LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
+                    "Processing NPS: id=" + nps.getId() + ", sampleItemId=" + nps.getSampleItemId()
+                            + ", data=" + (nps.getData() != null ? nps.getData().toString() : "null"));
             org.openelisglobal.sampleitem.valueholder.SampleItem sampleItem = sampleItemService
                     .get(nps.getSampleItemId());
             if (sampleItem != null) {
                 Map<String, Object> sampleMap = buildSampleMap(sampleItem, nps);
                 sampleMaps.add(sampleMap);
                 includedSampleIds.add(sampleItem.getId());
+                LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
+                        "Added sample: sampleItem.id=" + sampleItem.getId() + ", data in map=" + sampleMap.get("data"));
+            } else {
+                LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
+                        "SampleItem not found for sampleItemId=" + nps.getSampleItemId());
             }
         }
 
@@ -371,11 +382,14 @@ public class NotebookSampleEntryController extends BaseRestController {
         sampleMap.put("sortOrder", sampleItem.getSortOrder());
 
         if (nps != null) {
-            sampleMap.put("pageStatus", nps.getStatus() != null ? nps.getStatus().name() : "PENDING");
+            String status = nps.getStatus() != null ? nps.getStatus().name() : "PENDING";
+            sampleMap.put("pageStatus", status);
+            sampleMap.put("status", status); // For SampleGrid status column display
             sampleMap.put("pageSampleId", nps.getId());
             sampleMap.put("data", nps.getData());
         } else {
             sampleMap.put("pageStatus", "PENDING");
+            sampleMap.put("status", "PENDING"); // For SampleGrid status column display
             sampleMap.put("pageSampleId", null);
             sampleMap.put("data", null);
         }
