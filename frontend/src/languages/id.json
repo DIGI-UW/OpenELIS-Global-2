@@ -1949,7 +1949,7 @@
   "genericSample.order.title": "Penerimaan Sampel",
   "genericSample.edit.title": "Edit Sampel",
   "genericSample.order.generateLabNo": "Membuat Nomor Lab",
-  "genericSample.order.labNo.placeholder": "Klik \"Membuat Nomor Lab\" untuk membuat",
+  "genericSample.order.labNo.placeholder": "Klik untuk \"Membuat Nomor Lab\"",
   "genericSample.order.error.labNoRequired": "Mohon membuat Nomor Lab sebelum menyimpan.",
   "genericSample.order.success.details": "Rincian Sampel",
   "genericSample.field.project": "Proyek",
