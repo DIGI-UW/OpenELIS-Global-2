@@ -62,8 +62,8 @@ Rationale for Changes:
 Templates Requiring Updates:
   ⚠️ .specify/templates/plan-template.md - Add Milestone Plan section
   ⚠️ .specify/templates/tasks-template.md - Restructure to milestone-based phases
-  ⚠️ .specify/commands/speckit.tasks.md - Generate per-milestone task groups
-  ⚠️ .specify/commands/speckit.implement.md - Auto-create branches per milestone
+  ⚠️ .specify/core/commands/speckit.tasks.md - Generate per-milestone task groups (via OE extension)
+  ⚠️ .specify/core/commands/speckit.implement.md - Enforce milestone scope (via OE extension)
 
 Follow-up TODOs:
   - Update plan-template.md with Milestone Plan section
