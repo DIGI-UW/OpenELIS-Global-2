@@ -59,7 +59,22 @@ public class DateValidationProvider extends BaseValidationProvider {
         return CustomDateValidator.getInstance().getDate(date);
     }
 
-    public String validateDate(Date date, String relative) {
-        return CustomDateValidator.getInstance().validateDate(date, DateRelation.valueOf(relative.toUpperCase()));
+   public String validateDate(Date date, String relative) {
+
+    if (date == null || relative == null) {
+        return INVALID;
     }
+
+    try {
+        DateRelation relation =
+                DateRelation.valueOf(relative.trim().toUpperCase());
+
+        return CustomDateValidator.getInstance()
+                .validateDate(date, relation);
+
+    } catch (IllegalArgumentException e) {
+        return INVALID;
+    }
+}
+
 }

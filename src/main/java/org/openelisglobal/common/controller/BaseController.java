@@ -281,25 +281,40 @@ public abstract class BaseController extends ControllerUtills implements IAction
     }
 
     // move flash attributes into request
-    protected void addFlashMsgsToRequest(HttpServletRequest request) {
-        Map<String, ?> inputFlashMap = RequestContextUtils.getInputFlashMap(request);
-        if (inputFlashMap != null) {
-            Boolean success = (Boolean) inputFlashMap.get(FWD_SUCCESS);
+  protected void addFlashMsgsToRequest(HttpServletRequest request) {
+    Map<String, ?> inputFlashMap = RequestContextUtils.getInputFlashMap(request);
+
+    if (inputFlashMap != null) {
+
+        Boolean success = (Boolean) inputFlashMap.get(FWD_SUCCESS);
+        if (success != null) {
             request.setAttribute(FWD_SUCCESS, success);
+        }
 
-            String successMessage = (String) inputFlashMap.get(Constants.SUCCESS_MSG);
+        String successMessage = (String) inputFlashMap.get(Constants.SUCCESS_MSG);
+        if (successMessage != null) {
             request.setAttribute(Constants.SUCCESS_MSG, successMessage);
+        }
 
-            Errors errors = (Errors) inputFlashMap.get(Constants.REQUEST_ERRORS);
-            request.setAttribute(Constants.SUCCESS_MSG, errors);
+        Errors errors = (Errors) inputFlashMap.get(Constants.REQUEST_ERRORS);
+        if (errors != null) {
+            request.setAttribute(Constants.REQUEST_ERRORS, errors);
+        }
 
-            List<String> messages = (List<String>) inputFlashMap.get(Constants.REQUEST_MESSAGES);
+        List<String> messages =
+                (List<String>) inputFlashMap.get(Constants.REQUEST_MESSAGES);
+        if (messages != null) {
             request.setAttribute(Constants.REQUEST_MESSAGES, messages);
+        }
 
-            List<String> warnings = (List<String>) inputFlashMap.get(Constants.REQUEST_WARNINGS);
-            request.setAttribute(Constants.SUCCESS_MSG, warnings);
+        List<String> warnings =
+                (List<String>) inputFlashMap.get(Constants.REQUEST_WARNINGS);
+        if (warnings != null) {
+            request.setAttribute(Constants.REQUEST_WARNINGS, warnings);
         }
     }
+}
+
 
     // re-initialize form object in the request
     protected <T extends BaseForm> T resetFormSessionObject(String objectName, T form) {

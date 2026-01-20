@@ -89,6 +89,10 @@ public class NonConformityRecordNumberValidationProvider extends BaseValidationP
         }
 
         private boolean validFormat() {
+             if (recordNumber == null) {
+                     return false;
+             }
+                       
             createFormatPattern();
             Pattern p = Pattern.compile(format);
             return p.matcher(recordNumber).matches();
