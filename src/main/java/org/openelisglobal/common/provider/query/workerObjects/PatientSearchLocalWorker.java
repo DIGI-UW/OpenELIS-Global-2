@@ -55,7 +55,7 @@ public class PatientSearchLocalWorker extends PatientSearchWorker {
         // N.B. results do not have the referrinngPatientId information but it is not
         // displayed so for now it will be left as null
         List<PatientSearchResults> results = searchResultsService.getSearchResults(lastName, firstName, STNumber,
-                subjectNumber, nationalID, nationalID, patientID, guid, dateOfBirth, gender);
+                subjectNumber, nationalID, nationalID, patientID, guid, dateOfBirth, gender, null);
         if (!GenericValidator.isBlankOrNull(nationalID)) {
             List<PatientSearchResults> observationResults = getObservationsByReferringPatientId(nationalID);
             results.addAll(observationResults);
@@ -92,7 +92,7 @@ public class PatientSearchLocalWorker extends PatientSearchWorker {
         // N.B. results do not have the referrinngPatientId information but it is not
         // displayed so for now it will be left as null
         List<PatientSearchResults> results = searchResultsService.getSearchResults(lastName, firstName, STNumber,
-                subjectNumber, nationalID, nationalID, patientID, guid, dateOfBirth, gender);
+                subjectNumber, nationalID, nationalID, patientID, guid, dateOfBirth, gender, null);
         if (!GenericValidator.isBlankOrNull(nationalID)) {
             List<PatientSearchResults> observationResults = getObservationsByReferringPatientId(nationalID);
             results.addAll(observationResults);

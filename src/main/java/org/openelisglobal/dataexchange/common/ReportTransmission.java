@@ -124,6 +124,45 @@ public class ReportTransmission {
         }
     }
 
+    public void sendRawReport(String contents, String url, boolean sendAsychronously,
+            ITransmissionResponseHandler responseHandler, HTTP_TYPE httpType,
+            String headerName, String headerValue) {
+        try {
+            IExternalSender sender;
+            switch (httpType) {
+            case GET:
+                sender = SpringContext.getBean(HttpGetSender.class);
+                break;
+            case POST:
+                sender = SpringContext.getBean(HttpPostSender.class);
+                sender.setMessage(contents);
+                break;
+            default:
+                sender = SpringContext.getBean(HttpPostSender.class);
+                break;
+            }
+
+            sender.setURI(url);
+            if (sender instanceof HttpSender && headerName != null && headerValue != null) {
+                HttpSender httpSender = (HttpSender) sender;
+                httpSender.setHeader(headerName, headerValue);
+                httpSender.setSendAsJson(true);
+            }
+
+            if (sendAsychronously) {
+                IAsyncExternalSender asynchSender = SpringContext.getBean(IAsyncExternalSender.class);
+                asynchSender.sendMessage(sender, responseHandler, contents);
+            } else {
+                sender.sendMessage();
+                if (responseHandler != null) {
+                    responseHandler.handleResponse(sender.getSendResponse(), sender.getErrors(), contents);
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+    }
+
     private String getCastorMappingName(String mapping) {
         InputStream propertyStream = null;
 

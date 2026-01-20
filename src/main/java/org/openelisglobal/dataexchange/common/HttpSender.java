@@ -10,6 +10,9 @@ public abstract class HttpSender implements IExternalSender {
     protected int returnStatus = HttpStatus.SC_CREATED;
     String serviceTargetName = "";
     List<String> errors;
+    protected String headerName;
+    protected String headerValue;
+    protected boolean sendAsJson = false;
 
     public abstract boolean sendMessage();
 
@@ -26,6 +29,15 @@ public abstract class HttpSender implements IExternalSender {
     @Override
     public void setURI(String url) {
         this.url = url;
+    }
+
+    public void setHeader(String name, String value) {
+        this.headerName = name;
+        this.headerValue = value;
+    }
+
+    public void setSendAsJson(boolean sendAsJson) {
+        this.sendAsJson = sendAsJson;
     }
 
     @Override

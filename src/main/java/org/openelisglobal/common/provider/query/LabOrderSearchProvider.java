@@ -139,34 +139,31 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     .getExternalOrderStatusForID(eOrder.getStatusId());
 
             IGenericClient localFhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
+            // Resolve the ServiceRequest associated with this external order number using
+            // the local FHIR store abstraction. This method already encapsulates
+            // identifier-based and remote-system-based lookups, so it is safe for
+            // both legacy and Task-based orders.
+            Optional<ServiceRequest> optionalServiceRequest =
+                    fhirPersistanceService.getServiceRequestByReferingId(orderNumber);
 
-            for (String remotePath : fhirConfig.getRemoteStorePaths()) {
+            if (optionalServiceRequest.isPresent()) {
+                serviceRequest = optionalServiceRequest.get();
+
+                // Load any associated Specimen resources from the local FHIR store using the
+                // resolved ServiceRequest id, including specimens via the standard
+                // INCLUDE_SPECIMEN mechanism.
                 Bundle srBundle = (Bundle) localFhirClient.search().forResource(ServiceRequest.class)
-                        .where(ServiceRequest.RES_ID.exactly().code(orderNumber))
+                        .where(ServiceRequest.RES_ID.exactly().code(serviceRequest.getIdElement().getIdPart()))
                         .include(ServiceRequest.INCLUDE_SPECIMEN).execute();
                 for (BundleEntryComponent bundleComponent : srBundle.getEntry()) {
-                    if (bundleComponent.hasResource()
-                            && ResourceType.ServiceRequest.equals(bundleComponent.getResource().getResourceType())) {
-                        serviceRequest = (ServiceRequest) bundleComponent.getResource();
-                    }
                     if (bundleComponent.hasResource()
                             && ResourceType.Specimen.equals(bundleComponent.getResource().getResourceType())) {
                         specimen = (Specimen) bundleComponent.getResource();
                     }
                 }
-                srBundle = (Bundle) localFhirClient.search().forResource(ServiceRequest.class)
-                        .where(ServiceRequest.IDENTIFIER.exactly().systemAndIdentifier(remotePath, orderNumber))
-                        .include(ServiceRequest.INCLUDE_SPECIMEN).execute();
-                for (BundleEntryComponent bundleComponent : srBundle.getEntry()) {
-                    if (bundleComponent.hasResource()
-                            && ResourceType.ServiceRequest.equals(bundleComponent.getResource().getResourceType())) {
-                        serviceRequest = (ServiceRequest) bundleComponent.getResource();
-                    }
-                    if (bundleComponent.hasResource()
-                            && ResourceType.Specimen.equals(bundleComponent.getResource().getResourceType())) {
-                        specimen = (Specimen) bundleComponent.getResource();
-                    }
-                }
+            } else {
+                LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
+                        "no matching serviceRequest found in local FHIR store for external order " + orderNumber);
             }
             if (serviceRequest != null) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
@@ -194,7 +191,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             // .where(Task.BASED_ON.hasAnyOfIds(serviceRequest.getId()))//
             // .returnBundle(Bundle.class)//
             // .execute().getEntryFirstRep().getResource();
-            task = fhirPersistanceService.getTaskBasedOnServiceRequest(orderNumber).orElseThrow();
+            task = fhirPersistanceService.getTaskBasedOnServiceRequest(orderNumber).orElse(null);
 
             if (task != null) {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
@@ -280,7 +277,21 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
 
         StringBuilder xml = new StringBuilder();
 
-        String result = createSearchResultXML(orderNumber, xml);
+        String result = VALID;
+
+        // If we could not resolve the core FHIR resources required to safely build
+        // the order XML, return a controlled NOT_FOUND result instead of throwing
+        // and causing a 500 for the caller.
+        if (serviceRequest == null || patient == null || task == null) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
+                    "missing FHIR resources for external order " + orderNumber + ": serviceRequest="
+                            + (serviceRequest != null) + ", patient=" + (patient != null) + ", task="
+                            + (task != null));
+            result = NOT_FOUND;
+            xml.append("empty");
+        } else {
+            result = createSearchResultXML(orderNumber, xml);
+        }
 
         if (!result.equals(VALID)) {
             if (result.equals(NOT_FOUND)) {
@@ -399,22 +410,39 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                     requesterValuesMap.put(PROVIDER_FAX, contact.getValue());
                 }
             }
-            Provider provider = providerService
-                    .getProviderByFhirId(UUID.fromString(requesterPerson.getIdElement().getIdPart()));
-            if (provider != null) {
-                requesterValuesMap.put(PROVIDER_ID, provider.getId());
-                requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+            String requesterFhirId = requesterPerson.getIdElement() != null
+                    ? requesterPerson.getIdElement().getIdPart()
+                    : null;
+            if (!GenericValidator.isBlankOrNull(requesterFhirId)) {
+                try {
+                    Provider provider = providerService.getProviderByFhirId(UUID.fromString(requesterFhirId));
+                    if (provider != null) {
+                        requesterValuesMap.put(PROVIDER_ID, provider.getId());
+                        requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+                    }
+                } catch (IllegalArgumentException e) {
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "addRequester",
+                            "invalid requester FHIR UUID: " + requesterFhirId);
+                }
             }
             requesterValuesMap.put(PROVIDER_LAST_NAME, requesterPerson.getNameFirstRep().getFamily());
             requesterValuesMap.put(PROVIDER_FIRST_NAME, requesterPerson.getNameFirstRep().getGivenAsSingleString());
         } else {
-            Provider provider = providerService
-                    .getProviderByFhirId(UUID.fromString(task.getOwner().getReferenceElement().getIdPart()));
-            if (provider != null) {
-                requesterValuesMap.put(PROVIDER_ID, provider.getId());
-                requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+            if (task != null && task.hasOwner() && task.getOwner().getReferenceElement() != null) {
+                String ownerIdPart = task.getOwner().getReferenceElement().getIdPart();
+                if (!GenericValidator.isBlankOrNull(ownerIdPart)) {
+                    try {
+                        Provider provider = providerService.getProviderByFhirId(UUID.fromString(ownerIdPart));
+                        if (provider != null) {
+                            requesterValuesMap.put(PROVIDER_ID, provider.getId());
+                            requesterValuesMap.put(PROVIDER_PERSON_ID, provider.getPerson().getId());
+                        }
+                    } catch (IllegalArgumentException e) {
+                        LogEvent.logDebug(this.getClass().getSimpleName(), "addRequester",
+                                "invalid task owner FHIR UUID: " + ownerIdPart);
+                    }
+                }
             }
-
         }
         xml.append("<requester>");
         XMLUtil.appendKeyValue(PROVIDER_ID, requesterValuesMap.get(PROVIDER_ID), xml);

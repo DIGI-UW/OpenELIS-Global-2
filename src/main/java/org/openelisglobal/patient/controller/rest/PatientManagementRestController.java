@@ -96,6 +96,90 @@ public class PatientManagementRestController extends BaseRestController {
         }
     }
 
+    @PostMapping(value = "CredentialPatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> saveCredentialPatient(HttpServletRequest request,
+            @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
+            BindingResult bindingResult) throws Exception {
+
+        if (StringUtils.isNotBlank(patientInfo.getPatientPK())) {
+            patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
+        } else if (StringUtils.isNotBlank(patientInfo.getGuid())) {
+            Patient existingByGuid = patientService.getPatientForGuid(patientInfo.getGuid());
+            if (existingByGuid != null) {
+                patientInfo.setPatientPK(existingByGuid.getId());
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
+            } else {
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.ADD);
+            }
+        } else {
+            patientInfo.setPatientUpdateStatus(PatientUpdateStatus.ADD);
+        }
+        Patient patient = new Patient();
+
+        if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.NO_ACTION) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("status", "ERROR", "message", "No action specified for patient"));
+        }
+        try {
+            preparePatientData(bindingResult, request, patientInfo, patient);
+            if (bindingResult.hasErrors()) {
+                try {
+                    throw new BindException(bindingResult);
+                } catch (BindException e) {
+                    LogEvent.logError(e);
+                }
+                java.util.Map<String, Object> body = new java.util.HashMap<>();
+                java.util.List<java.util.Map<String, String>> errorList = new java.util.ArrayList<>();
+                bindingResult.getFieldErrors().forEach(error -> {
+                    errorList.add(java.util.Map.of(
+                            "field", error.getField(),
+                            "code", error.getCode() == null ? "" : error.getCode(),
+                            "message", error.getDefaultMessage() == null ? "" : error.getDefaultMessage()));
+                });
+                body.put("status", "ERROR");
+                body.put("errors", errorList);
+                return ResponseEntity.badRequest().body(body);
+            }
+
+            patientService.persistPatientData(patientInfo, patient, getSysUserId(request), true);
+            fhirTransformService.transformPersistPatient(patientInfo,
+                    (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
+            photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("status",
+                    patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD ? "CREATED" : "UPDATED");
+            body.put("patientId", patient.getId());
+            body.put("guid", patientInfo.getGuid());
+            body.put("fhirUuid", patient.getFhirUuid() != null ? patient.getFhirUuid().toString() : null);
+            return ResponseEntity.ok(body);
+        } catch (LIMSRuntimeException e) {
+
+            if (e.getCause() instanceof StaleObjectStateException) {
+                LogEvent.logDebug(e);
+                request.setAttribute(ALLOW_EDITS_KEY, "false");
+                return ResponseEntity.status(409).body(
+                        Map.of("status", "ERROR", "message", "Stale object state while saving patient"));
+            } else {
+                LogEvent.logDebug(e);
+                request.setAttribute(ALLOW_EDITS_KEY, "false");
+                return ResponseEntity.status(500).body(
+                        Map.of("status", "ERROR", "message", "Unexpected error while saving patient"));
+            }
+
+        } catch (FhirTransformationException | FhirPersistanceException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("status", "ERROR", "message", "FHIR transformation/persistence error"));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "status", "ERROR",
+                    "message", "Unexpected server error",
+                    "exception", e.getClass().getSimpleName()));
+        }
+    }
+
     @GetMapping("patient-photos/{id}/{isThumbnail}")
     public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id, @PathVariable boolean isThumbnail)
             throws LIMSRuntimeException {
@@ -139,7 +223,9 @@ public class PatientManagementRestController extends BaseRestController {
         for (PatientIdentity identity : patientInfo.getPatientIdentities()) {
             identity.setSysUserId(getSysUserId(request));
         }
-        patientInfo.getPatientContact().setSysUserId(getSysUserId(request));
+        if (patientInfo.getPatientContact() != null) {
+            patientInfo.getPatientContact().setSysUserId(getSysUserId(request));
+        }
     }
 
     private void initMembers(Patient patient) {

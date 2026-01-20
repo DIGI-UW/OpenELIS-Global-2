@@ -61,7 +61,7 @@ public class SubjectNumberValidationProvider extends BaseValidationProvider {
         if (!(GenericValidator.isBlankOrNull(STNumber) && GenericValidator.isBlankOrNull(subjectNumber)
                 && GenericValidator.isBlankOrNull(nationalId))) {
             List<PatientSearchResults> results = searchResultsService.getSearchResultsExact(null, null, STNumber,
-                    subjectNumber, nationalId, null, null, null, null, null);
+                    subjectNumber, nationalId, null, null, null, null, null, null);
 
             boolean allowDuplicateSubjectNumber = ConfigurationProperties.getInstance()
                     .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_DUPLICATE_SUBJECT_NUMBERS, "true");

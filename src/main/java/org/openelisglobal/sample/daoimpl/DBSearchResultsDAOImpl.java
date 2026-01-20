@@ -46,7 +46,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
     @Transactional
     public List<PatientSearchResults> getSearchResultsByGUID(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException {
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException {
 
         List queryResults;
 
@@ -62,10 +62,11 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             boolean queryGuid = !GenericValidator.isBlankOrNull(guid);
             boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
             boolean queryGender = !GenericValidator.isBlankOrNull(gender);
+            // phoneNumber is currently ignored in GUID-only search
 
             String sql = buildQueryString(queryLastName, queryFirstName, querySTNumber, querySubjectNumber,
                     queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
-                    queryGender);
+                    queryGender, false);
 
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createNativeQuery(sql);
 
@@ -81,9 +82,11 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
 
             Object[] line = (Object[]) resultLine;
 
-            results.add(new PatientSearchResults((BigDecimal) line[0], (String) line[1], (String) line[2],
-                    (String) line[3], (String) line[4], (String) line[5], (String) line[6], (String) line[7],
-                    (String) line[8], (String) line[9], null));
+            PatientSearchResults psr = new PatientSearchResults((BigDecimal) line[0], (String) line[1],
+                    (String) line[2], (String) line[3], (String) line[4], (String) line[5], (String) line[6],
+                    (String) line[7], (String) line[8], (String) line[9], null);
+            psr.setContactPhone((String) line[10]);
+            results.add(psr);
         }
 
         return results;
@@ -94,7 +97,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
     @Transactional
     public List<PatientSearchResults> getSearchResults(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException {
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException {
 
         List queryResults;
 
@@ -110,10 +113,11 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             boolean queryGuid = !GenericValidator.isBlankOrNull(guid);
             boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
             boolean queryGender = !GenericValidator.isBlankOrNull(gender);
+            boolean queryPhone = !GenericValidator.isBlankOrNull(phoneNumber);
 
             String sql = buildQueryString(queryLastName, queryFirstName, querySTNumber, querySubjectNumber,
                     queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
-                    queryGender);
+                    queryGender, queryPhone);
 
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createNativeQuery(sql);
 
@@ -135,6 +139,9 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             String dobFormated = '%' + getFormatedDOB(dateOfBirth) + '%';
             dateOfBirth = '%' + dateOfBirth + '%';
             // gender = '%' + gender + '%';
+            if (queryPhone) {
+                phoneNumber = '%' + phoneNumber + '%';
+            }
 
             if (queryFirstName) {
                 query.setParameter(FIRST_NAME_PARAM, firstName);
@@ -167,6 +174,9 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             if (queryGender) {
                 query.setParameter(GENDER, gender);
             }
+            if (queryPhone) {
+                query.setParameter(PHONE_NUMBER_PARAM, phoneNumber);
+            }
             LogEvent.logTrace(this.getClass().getSimpleName(), "getSearchResults",
                     "SearchResultsDAOImp:getSearchResults:query:guid: " + guid);
             LogEvent.logTrace(this.getClass().getSimpleName(), "getSearchResults",
@@ -184,9 +194,11 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
 
             Object[] line = (Object[]) resultLine;
 
-            results.add(new PatientSearchResults((BigDecimal) line[0], (String) line[1], (String) line[2],
-                    (String) line[3], (String) line[4], (String) line[5], (String) line[6], (String) line[7],
-                    (String) line[8], (String) line[9], null));
+            PatientSearchResults psr = new PatientSearchResults((BigDecimal) line[0], (String) line[1],
+                    (String) line[2], (String) line[3], (String) line[4], (String) line[5], (String) line[6],
+                    (String) line[7], (String) line[8], (String) line[9], null);
+            psr.setContactPhone((String) line[10]);
+            results.add(psr);
         }
 
         return results;
@@ -197,7 +209,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
     @Transactional
     public List<PatientSearchResults> getSearchResultsExact(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException {
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException {
 
         List queryResults;
 
@@ -216,7 +228,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
 
             String sql = buildQueryString(queryLastName, queryFirstName, querySTNumber, querySubjectNumber,
                     queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
-                    queryGender);
+                    queryGender, false);
 
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createNativeQuery(sql);
 
@@ -299,12 +311,13 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
      */
     private String buildQueryString(boolean lastName, boolean firstName, boolean STNumber, boolean subjectNumber,
             boolean nationalID, boolean externalID, boolean anyID, boolean patientID, boolean guid, boolean dateOfBirth,
-            boolean gender) {
+            boolean gender, boolean phoneNumber) {
 
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("select p.id, pr.first_name, pr.last_name, p.gender, p.entered_birth_date, p.national_id,"
                 + " p.external_id, pi.identity_data as st, piSN.identity_data as subject,"
-                + " piGUID.identity_data as guid from patient p join person pr on p.person_id = pr.id" + " ");
+                + " piGUID.identity_data as guid, pr.primary_phone from patient p join person pr on p.person_id = pr.id"
+                + " ");
         queryBuilder.append("left join patient_identity  pi on pi.patient_id = p.id and pi.identity_type_id = :");
         queryBuilder.append(ID_TYPE_FOR_ST);
         queryBuilder.append(" ");
@@ -334,6 +347,12 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
         if (externalID) {
             queryBuilder.append(" p.external_id ilike :");
             queryBuilder.append(EXTERNAL_ID_PARAM);
+            queryBuilder.append(" or");
+        }
+
+        if (phoneNumber) {
+            queryBuilder.append(" pr.primary_phone ilike :");
+            queryBuilder.append(PHONE_NUMBER_PARAM);
             queryBuilder.append(" or");
         }
 

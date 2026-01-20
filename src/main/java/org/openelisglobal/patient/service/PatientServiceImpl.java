@@ -608,6 +608,13 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Transactional
     public void persistPatientData(PatientManagementInfo patientInfo, Patient patient, String sysUserId)
             throws LIMSRuntimeException {
+        persistPatientData(patientInfo, patient, sysUserId, false);
+    }
+
+    @Override
+    @Transactional
+    public void persistPatientData(PatientManagementInfo patientInfo, Patient patient, String sysUserId,
+            boolean respectClientGuidOnAdd) throws LIMSRuntimeException {
         if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD) {
             personService.insert(patient.getPerson());
         } else if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE) {
@@ -616,9 +623,17 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         patient.setPerson(patient.getPerson());
 
         if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD) {
-            UUID uuid = UUID.randomUUID();
-            // patientInfo.setFhirUuid(uuid);
-            patientInfo.setGuid(uuid.toString());
+            UUID uuid;
+            if (respectClientGuidOnAdd && !GenericValidator.isBlankOrNull(patientInfo.getGuid())) {
+                try {
+                    uuid = UUID.fromString(patientInfo.getGuid());
+                } catch (IllegalArgumentException e) {
+                    uuid = UUID.randomUUID();
+                }
+            } else {
+                uuid = UUID.randomUUID();
+                patientInfo.setGuid(uuid.toString());
+            }
             patient.setFhirUuid(uuid);
             insert(patient);
         } else if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE) {
@@ -631,6 +646,11 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     }
 
     private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (patientInfo.getPatientContact() == null || patientInfo.getPatientContact().getPerson() == null) {
+            // no contact information provided; nothing to persist
+            return;
+        }
+
         if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
             PatientContact contact = patientInfo.getPatientContact();
             Person contactPerson = patientInfo.getPatientContact().getPerson();

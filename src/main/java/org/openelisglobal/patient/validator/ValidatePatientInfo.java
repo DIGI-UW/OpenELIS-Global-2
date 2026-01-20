@@ -29,13 +29,13 @@ public class ValidatePatientInfo {
                     : patientInfo.getNationalId();
 
             List<PatientSearchResults> results = SpringContext.getBean(SearchResultsService.class).getSearchResults(
-                    null, null, newSTNumber, newSubjectNumber, newNationalId, null, null, null, null, null);
+                    null, null, newSTNumber, newSubjectNumber, newNationalId, null, null, null, null, null, null);
 
             PatientSearchResults existingResult = null;
 
             if (!GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
                 existingResult = SpringContext.getBean(SearchResultsService.class).getSearchResults(null, null, null,
-                        null, null, null, patientInfo.getPatientPK(), null, null, null).get(0);
+                        null, null, null, patientInfo.getPatientPK(), null, null, null, null).get(0);
             }
 
             if (!results.isEmpty()) {

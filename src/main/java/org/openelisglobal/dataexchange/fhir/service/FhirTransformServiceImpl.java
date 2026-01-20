@@ -147,6 +147,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
     @Autowired
+    private ResultMiddlewareSyncService resultMiddlewareSyncService;
+    @Autowired
     private DictionaryService dictionaryService;
     @Autowired
     private LocalizationService localizationService;
@@ -1175,6 +1177,30 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+
+        try {
+            Bundle outboundBundle = new Bundle();
+            outboundBundle.setType(Bundle.BundleType.COLLECTION);
+
+            for (Resource resource : fhirOperations.createResources.values()) {
+                outboundBundle.addEntry().setResource(resource);
+            }
+            for (Resource resource : fhirOperations.updateResources.values()) {
+                outboundBundle.addEntry().setResource(resource);
+            }
+
+            if (outboundBundle.hasEntry()) {
+                resultMiddlewareSyncService.sendValidatedResultsBundle(outboundBundle);
+            } else {
+                LogEvent.logDebug(this.getClass().getSimpleName(), "transformPersistResultValidationFhirObjects",
+                        "No resources in FhirOperations for middleware sync, skipping outbound bundle");
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "transformPersistResultValidationFhirObjects",
+                    "Error while preparing or sending validated results bundle to middleware: " + e.getMessage());
+            LogEvent.logError(this.getClass().getSimpleName(), "transformPersistResultValidationFhirObjects",
+                    "Full error: " + e);
+        }
     }
 
     private void addToOperations(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator, Resource resource) {

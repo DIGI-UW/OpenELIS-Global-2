@@ -56,3 +56,4 @@ volume/odoo/*
 .cursor/
 **/*checksum*.properties
 **/*checksums*.properties
+OpenELIS-Global-2.code-workspace

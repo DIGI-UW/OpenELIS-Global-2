@@ -31,6 +31,8 @@ public interface FhirPersistanceService {
 
     Optional<Patient> getPatientByUuid(String guid);
 
+    Optional<Patient> getPatientByGuid(String guid);
+
     Optional<ServiceRequest> getServiceRequestByAnalysisUuid(String uuid);
 
     Optional<Specimen> getSpecimenBySampleItemUuid(String uuid);

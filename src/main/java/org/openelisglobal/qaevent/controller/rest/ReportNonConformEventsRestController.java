@@ -67,7 +67,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
                 searchResults = sample != null ? List.of(sample) : List.of();
             } else {
                 List<PatientSearchResults> results = searchResultsService.getSearchResults(lastName, firstName,
-                        STNumber, STNumber, STNumber, "", "", "", "", "");
+                        STNumber, STNumber, STNumber, "", "", "", "", "", null);
                 searchResults = results.stream()
                         .flatMap(patientSearchResults -> sampleService
                                 .getSamplesForPatient(patientSearchResults.getPatientID()).stream())

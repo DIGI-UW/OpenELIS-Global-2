@@ -60,7 +60,12 @@ public class OdooTestProductService {
             product.put("sale_ok", true);
             product.put("purchase_ok", false);
 
-            // Derive list_price from the ELIS test price when available, otherwise default to 0.0
+            if (test.getLoinc() != null && !test.getLoinc().trim().isEmpty()) {
+                product.put("loinc_code", test.getLoinc());
+            }
+
+            // Derive list_price from the ELIS test price when available, otherwise default
+            // to 0.0
             Double listPrice = 0.0;
             java.math.BigDecimal testPrice = test.getPrice();
             if (testPrice != null) {
@@ -149,7 +154,7 @@ public class OdooTestProductService {
 
         String categoryName = null;
         // Prefer the configured test section name as the category label in Odoo,
-        
+
         if (testSection.getTestSectionName() != null && !testSection.getTestSectionName().trim().isEmpty()) {
             categoryName = testSection.getTestSectionName().trim();
         } else if (testSection.getDescription() != null && !testSection.getDescription().trim().isEmpty()) {

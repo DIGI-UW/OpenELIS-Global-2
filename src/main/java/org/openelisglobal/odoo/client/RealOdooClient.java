@@ -19,26 +19,46 @@ public class RealOdooClient implements OdooConnection {
             log.info("Successfully connected to Odoo at startup.");
         } catch (Exception e) {
             available = false;
-            log.error("Failed to connect to Odoo at startup: {}", e.getMessage(), e);
+            log.error("Failed to connect to Odoo at startup: {}. Will retry on next operation.", e.getMessage());
         }
     }
 
     @Override
     public boolean isAvailable() {
+        checkConnection();
         return available;
+    }
+
+    private synchronized void checkConnection() {
+        if (!available) {
+            try {
+                log.info("Attempting to reconnect to Odoo...");
+                odooClient.init();
+                available = true;
+                log.info("Successfully re-connected to Odoo!");
+            } catch (Exception e) {
+                log.warn("Re-connection to Odoo failed: {}", e.getMessage());
+            }
+        }
     }
 
     @Override
     public Integer create(String model, List<Map<String, Object>> dataParams) {
-        if (!available)
-            throw new IllegalStateException("Odoo is not available");
+        checkConnection();
+        if (!available) {
+            log.warn("Odoo is not available. Skipping create operation for model: {}", model);
+            return null;
+        }
         return odooClient.create(model, dataParams);
     }
 
     @Override
     public Object[] searchAndRead(String model, List<Object> criteria, List<String> fields) {
-        if (!available)
-            throw new IllegalStateException("Odoo is not available");
+        checkConnection();
+        if (!available) {
+            log.warn("Odoo is not available. Skipping searchAndRead operation for model: {}", model);
+            return new Object[0];
+        }
         return odooClient.searchAndRead(model, criteria, fields);
     }
 }

@@ -88,7 +88,7 @@ public class PatientSearchLocalAndExternalWorker extends PatientSearchWorker {
 
         List<PatientSearchResults> localResults = new ArrayList<>();
         localResults = searchResultsService.getSearchResults(lastName, firstName, STNumber, subjectNumber, nationalID,
-                guid, patientID, guid, "", "");
+                guid, patientID, guid, "", "", null);
         localResults.forEach(e -> e.setDataSourceName(MessageUtil.getMessage("patient.local.source")));
         allResults.addAll(localResults);
 
@@ -181,7 +181,7 @@ public class PatientSearchLocalAndExternalWorker extends PatientSearchWorker {
 
         List<PatientSearchResults> localResults = new ArrayList<>();
         localResults = searchResultsService.getSearchResults(lastName, firstName, STNumber, subjectNumber, nationalID,
-                guid, patientID, guid, "", "");
+                guid, patientID, guid, "", "", null);
         localResults.forEach(e -> e.setDataSourceName(MessageUtil.getMessage("patient.local.source")));
         allResults.addAll(localResults);
 

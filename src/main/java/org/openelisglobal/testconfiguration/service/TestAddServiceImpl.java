@@ -63,9 +63,6 @@ public class TestAddServiceImpl implements TestAddService {
             set.test.setLocalizedReportingName(reportingNameLocalization);
             testService.insert(set.test);
 
-            // Publish event so that integrations (e.g. Odoo) can react asynchronously
-            eventPublisher.publishEvent(new TestCreatedEvent(this, set.test));
-
             TestSection testSection = set.test.getTestSection();
             if ("N".equals(testSection.getIsActive())) {
                 testSection.setIsActive("Y");
@@ -113,6 +110,10 @@ public class TestAddServiceImpl implements TestAddService {
                 resultLimit.setTestId(set.test.getId());
                 resultLimitService.insert(resultLimit);
             }
+
+            // Publish event AFTER all related data is inserted (including result_limits)
+            // This ensures integrations (Odoo, FHIR) can access complete test data
+            eventPublisher.publishEvent(new TestCreatedEvent(this, set.test));
         }
     }
 }

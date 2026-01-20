@@ -24,16 +24,8 @@ public class OdooConnectionConfig {
     @Bean
     @ConditionalOnProperty(property = "org.openelisglobal.odoo.enabled", havingValue = "true")
     public OdooConnection realOdooConnection(OdooClient odooClient) {
-        log.info("Odoo integration is ENABLED!");
-        try {
-            odooClient.init();
-            log.info("Successfully connected to Odoo.");
-            return new RealOdooClient(odooClient);
-        } catch (Exception e) {
-            log.error("Failed to connect to Odoo at startup: {}", e.getMessage());
-            log.warn("Falling back to NoOpOdooClient. Odoo operations will be skipped.");
-            return new NoOpOdooClient();
-        }
+        log.info("Odoo integration is ENABLED! Delegating connection management to RealOdooClient.");
+        return new RealOdooClient(odooClient);
     }
 
     /**

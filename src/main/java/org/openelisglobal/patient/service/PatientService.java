@@ -35,6 +35,9 @@ public interface PatientService extends BaseObjectService<Patient, String> {
 
     void persistPatientData(PatientManagementInfo patientInfo, Patient patient, String sysUserId);
 
+    void persistPatientData(PatientManagementInfo patientInfo, Patient patient, String sysUserId,
+            boolean respectClientGuidOnAdd);
+
     String getGUID(Patient patient);
 
     String getNationalId(Patient patient);

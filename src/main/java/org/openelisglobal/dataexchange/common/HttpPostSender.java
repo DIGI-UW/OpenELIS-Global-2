@@ -46,7 +46,12 @@ public class HttpPostSender extends HttpSender {
         }
 
         HttpPost httpPost = new HttpPost(url);
-        httpPost.setEntity(new StringEntity(message, ContentType.TEXT_PLAIN));
+        ContentType contentType = sendAsJson ? ContentType.APPLICATION_JSON : ContentType.TEXT_PLAIN;
+        httpPost.setEntity(new StringEntity(message, contentType));
+
+        if (!GenericValidator.isBlankOrNull(headerName) && !GenericValidator.isBlankOrNull(headerValue)) {
+            httpPost.setHeader(headerName, headerValue);
+        }
         try {
             CloseableHttpResponse response = httpClient.execute(httpPost);
             returnStatus = response.getStatusLine().getStatusCode();

@@ -54,7 +54,7 @@ public class NCESampleSearchProvider extends BaseQueryProvider {
             }
         } else {
             List<PatientSearchResults> results = searchResultsService.getSearchResults(lastName, firstName, STNumber,
-                    subjectNumber, nationalID, nationalID, patientID, guid, "", "");
+                    subjectNumber, nationalID, nationalID, patientID, guid, "", "", null);
 
             for (PatientSearchResults patientSearchResults : results) {
                 List<Sample> sampleList = sampleService.getSamplesForPatient(patientSearchResults.getPatientID());

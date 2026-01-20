@@ -9,6 +9,7 @@ export const fetchPatientData = async (query, callback) => {
     dateOfBirth: query,
     nationalID: query,
     subjectNumber: query,
+    phoneNumber: query,
   };
 
   const createEndpoint = (param, value) =>
@@ -154,6 +155,7 @@ export const useAutocomplete = (props) => {
 
   return {
     textValue,
+    setTextValue,
     activeSuggestion,
     filteredSuggestions,
     showSuggestions,

@@ -48,8 +48,8 @@ services:
             - db.openelis.org
             - certs
         ports:
-            - "8080:8080"
-            - "8443:8443"
+            - "8080:8080"   # moved to avoid conflict with Nidan openmrs-backend (8080)
+            - "8443:8443"   # high port to avoid 443/8443 collisions
         restart: always
         networks:
           default:
@@ -86,8 +86,8 @@ services:
             - db.openelis.org
             - certs
         ports:
-            - "8081:8080"
-            - "8444:8443"
+            - "8081:8080"   # moved to avoid conflict with Nidan CIS (8081)
+            - "8444:8443"   # high port to avoid 8444 collisions
         networks:
             - default
         restart: always
@@ -130,8 +130,8 @@ services:
         container_name: openelisglobal-proxy
        # platform: linux/amd64
         ports:
-            - 80:80
-            - 443:443
+            - 80:80   # avoid conflict with Nidan gateway (80)
+            - 443:443  # avoid conflict with Nidan gateway (443)
         volumes:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/

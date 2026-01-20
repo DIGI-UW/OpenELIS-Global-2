@@ -19,17 +19,17 @@ public class DBSearchResultsServiceImpl implements SearchResultsService {
     @Transactional
     public List<PatientSearchResults> getSearchResults(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) {
+            String dateOfBirth, String gender, String phoneNumber) {
         return searchResultsDAO.getSearchResults(lastName, firstName, STNumber, subjectNumber, nationalID, externalID,
-                patientID, guid, dateOfBirth, gender);
+                patientID, guid, dateOfBirth, gender, phoneNumber);
     }
 
     @Override
     @Transactional
     public List<PatientSearchResults> getSearchResultsExact(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) {
+            String dateOfBirth, String gender, String phoneNumber) {
         return searchResultsDAO.getSearchResultsExact(lastName, firstName, STNumber, subjectNumber, nationalID,
-                externalID, patientID, guid, dateOfBirth, gender);
+                externalID, patientID, guid, dateOfBirth, gender, phoneNumber);
     }
 }

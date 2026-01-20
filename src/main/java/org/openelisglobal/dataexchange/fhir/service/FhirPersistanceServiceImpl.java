@@ -208,6 +208,20 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     }
 
     @Override
+    public Optional<Patient> getPatientByGuid(String guid) {
+        Bundle bundle = localFhirClient.search() //
+                .forResource(Patient.class) //
+                .returnBundle(Bundle.class) //
+                .where(Patient.IDENTIFIER.exactly()
+                        .systemAndIdentifier(fhirConfig.getOeFhirSystem() + "/pat_guid", guid)) //
+                .execute();
+        if (bundle.hasEntry()) {
+            return Optional.of((Patient) bundle.getEntryFirstRep().getResource());
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public Optional<ServiceRequest> getServiceRequestByAnalysisUuid(String uuid) {
         Bundle bundle = localFhirClient.search() //
                 .forResource(ServiceRequest.class) //

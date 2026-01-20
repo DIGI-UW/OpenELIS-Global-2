@@ -156,10 +156,10 @@ public class TestModifyServiceImpl implements TestModifyService {
             }
         }
 
-        // Publish event so integrations (e.g. Odoo) can react to test updates
+        // Publish event so integrations (e.g. Odoo, FHIR) can react to test updates
         Test updatedTest = testService.get(testAddParams.testId);
         if (updatedTest != null) {
-            eventPublisher.publishEvent(new TestCreatedEvent(this, updatedTest));
+            eventPublisher.publishEvent(new TestCreatedEvent(this, updatedTest, true)); // isUpdate=true
         }
     }
 

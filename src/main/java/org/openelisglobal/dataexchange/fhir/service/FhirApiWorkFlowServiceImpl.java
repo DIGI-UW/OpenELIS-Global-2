@@ -40,6 +40,7 @@ import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.form.TaskOrderProcessingSummaryForm;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.dataexchange.fhir.service.TaskWorker.TaskResult;
 import org.openelisglobal.dataexchange.order.action.DBOrderExistanceChecker;
@@ -125,6 +126,81 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             default:
             }
         }
+    }
+
+    @Override
+    public TaskOrderProcessingSummaryForm processIncomingOrderBundle(Bundle bundle) {
+        if (bundle == null || !bundle.hasEntry()) {
+            return new TaskOrderProcessingSummaryForm();
+        }
+
+        TaskOrderProcessingSummaryForm summary = new TaskOrderProcessingSummaryForm();
+
+        for (BundleEntryComponent entry : bundle.getEntry()) {
+            if (!entry.hasResource()
+                    || !ResourceType.Task.equals(entry.getResource().getResourceType())) {
+                continue;
+            }
+
+            Task task = (Task) entry.getResource();
+            if (task.getStatus() != null && !TaskStatus.REQUESTED.equals(task.getStatus())) {
+                continue;
+            }
+
+            OriginalReferralObjects localObjects = buildOriginalReferralObjectsFromBundle(bundle, task);
+            if (localObjects == null || localObjects.task == null || localObjects.serviceRequests == null
+                    || localObjects.serviceRequests.isEmpty()) {
+                continue;
+            }
+
+            Patient patient = localObjects.patient;
+            if (patient == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "processIncomingOrderBundle",
+                        "no patient found for Task " + localObjects.task.getId());
+            }
+
+            boolean taskOrderAcceptedFlag = false;
+            TaskResult taskResult = null;
+            for (ServiceRequest serviceRequest : localObjects.serviceRequests) {
+                TaskWorker worker = new TaskWorker(task,
+                        fhirContext.newJsonParser().encodeResourceToString(task), serviceRequest, patient);
+
+                worker.setInterpreter(SpringContext.getBean(TaskInterpreter.class));
+                worker.setExistanceChecker(SpringContext.getBean(DBOrderExistanceChecker.class));
+                worker.setPersister(SpringContext.getBean(IOrderPersister.class));
+
+                taskResult = worker.handleOrderRequest();
+                if (taskResult == TaskResult.OK) {
+                    taskOrderAcceptedFlag = true;
+                }
+
+                String orderNumber = null;
+                if (serviceRequest.hasIdentifier() && !serviceRequest.getIdentifier().isEmpty()) {
+                    orderNumber = serviceRequest.getIdentifierFirstRep().getValue();
+                }
+
+                TaskOrderProcessingSummaryForm.OrderStatus orderStatus = new TaskOrderProcessingSummaryForm.OrderStatus();
+                orderStatus.setOrderNumber(orderNumber);
+                if (taskResult == TaskResult.OK) {
+                    orderStatus.setStatus("OK");
+                } else if (taskResult == TaskResult.DUPLICATE_ORDER) {
+                    orderStatus.setStatus("DUPLICATE");
+                } else if (taskResult != null) {
+                    orderStatus.setStatus(taskResult.name());
+                } else {
+                    orderStatus.setStatus("UNKNOWN");
+                }
+                summary.getOrders().add(orderStatus);
+            }
+
+            if (localObjects.task.getStatus() == null || TaskStatus.REQUESTED.equals(localObjects.task.getStatus())) {
+                TaskStatus taskStatus = taskOrderAcceptedFlag ? TaskStatus.ACCEPTED : TaskStatus.REJECTED;
+                localObjects.task.setStatus(taskStatus);
+                IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirStorePath);
+                localFhirClient.update().resource(localObjects.task).execute();
+            }
+        }
+        return summary;
     }
 
     private void beginTaskCheckIfAcceptedPath(String remoteStorePath) throws FhirLocalPersistingException {
@@ -519,6 +595,113 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                 .execute();
 
         return (Task) outcome.getResource();
+    }
+
+    private OriginalReferralObjects buildOriginalReferralObjectsFromBundle(Bundle bundle, Task task) {
+        FhirOperations fhirOperations = new FhirOperations();
+        OriginalReferralObjects objects = new OriginalReferralObjects();
+
+        objects.task = task;
+        if (task.getIdElement() != null && task.getIdElement().getIdPart() != null) {
+            fhirOperations.updateResources.put(task.getIdElement().getIdPart(), task);
+        }
+
+        objects.serviceRequests = new ArrayList<>();
+        for (Reference basedOnRef : task.getBasedOn()) {
+            String idPart = basedOnRef.getReferenceElement().getIdPart();
+            if (GenericValidator.isBlankOrNull(idPart)) {
+                continue;
+            }
+            ServiceRequest serviceRequest = findServiceRequestInBundle(bundle, idPart);
+            if (serviceRequest != null) {
+                objects.serviceRequests.add(serviceRequest);
+                if (serviceRequest.getIdElement() != null && serviceRequest.getIdElement().getIdPart() != null) {
+                    fhirOperations.updateResources.put(serviceRequest.getIdElement().getIdPart(), serviceRequest);
+                }
+            }
+        }
+
+        Patient patient = null;
+        if (task.getFor() != null && task.getFor().getReferenceElement().getIdPart() != null) {
+            patient = findPatientInBundle(bundle, task.getFor().getReferenceElement().getIdPart());
+        }
+        if (patient == null) {
+            for (ServiceRequest serviceRequest : objects.serviceRequests) {
+                if (serviceRequest.getSubject() != null
+                        && serviceRequest.getSubject().getReferenceElement().getIdPart() != null) {
+                    patient = findPatientInBundle(bundle,
+                            serviceRequest.getSubject().getReferenceElement().getIdPart());
+                    if (patient != null) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If a patient is present in the incoming bundle, prefer reusing an existing
+        // canonical Patient from the local FHIR store (matched by pat_uuid)
+        // over upserting the thinner representation from the order bundle.
+        if (patient != null && patient.getIdElement() != null && patient.getIdElement().getIdPart() != null) {
+            String guid = patient.getIdElement().getIdPart();
+
+            Optional<Patient> existingPatient = fhirPersistanceService.getPatientByGuid(guid);
+            if (existingPatient.isPresent()) {
+                // Reuse existing patient; do not overwrite it with the incoming bundle version.
+                LogEvent.logDebug(this.getClass().getSimpleName(), "buildOriginalReferralObjectsFromBundle",
+                        "Reusing existing Patient from local FHIR store for guid=" + guid);
+                objects.patient = existingPatient.get();
+            } else {
+                // No existing patient with this GUID; fall back to creating/updating from bundle.
+                LogEvent.logDebug(this.getClass().getSimpleName(), "buildOriginalReferralObjectsFromBundle",
+                        "No existing Patient found for guid=" + guid
+                                + ", upserting incoming Patient from order bundle");
+                objects.patient = patient;
+                fhirOperations.updateResources.put(patient.getIdElement().getIdPart(), patient);
+            }
+        } else {
+            objects.patient = patient;
+        }
+
+        if (objects.patient != null) {
+            Reference patientRef = fhirTransformService.createReferenceFor(objects.patient);
+            objects.task.setFor(patientRef);
+            for (ServiceRequest serviceRequest : objects.serviceRequests) {
+                serviceRequest.setSubject(patientRef);
+            }
+        }
+
+        if (!fhirOperations.updateResources.isEmpty()) {
+            try {
+                fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+            } catch (FhirLocalPersistingException e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "buildOriginalReferralObjectsFromBundle",
+                        "could not persist incoming FHIR bundle to local store");
+                LogEvent.logError(e);
+            }
+        }
+
+        return objects;
+    }
+
+    private ServiceRequest findServiceRequestInBundle(Bundle bundle, String idPart) {
+        for (BundleEntryComponent entry : bundle.getEntry()) {
+            if (entry.hasResource()
+                    && ResourceType.ServiceRequest.equals(entry.getResource().getResourceType())
+                    && idPart.equals(entry.getResource().getIdElement().getIdPart())) {
+                return (ServiceRequest) entry.getResource();
+            }
+        }
+        return null;
+    }
+
+    private Patient findPatientInBundle(Bundle bundle, String idPart) {
+        for (BundleEntryComponent entry : bundle.getEntry()) {
+            if (entry.hasResource() && ResourceType.Patient.equals(entry.getResource().getResourceType())
+                    && idPart.equals(entry.getResource().getIdElement().getIdPart())) {
+                return (Patient) entry.getResource();
+            }
+        }
+        return null;
     }
 
     private OriginalReferralObjects saveRemoteTaskAsLocalTask(IGenericClient sourceFhirClient, Task remoteTask,

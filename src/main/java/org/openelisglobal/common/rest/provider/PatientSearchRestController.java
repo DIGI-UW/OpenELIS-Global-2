@@ -163,9 +163,9 @@ public class PatientSearchRestController extends BaseRestController {
             @RequestParam(required = false) String subjectNumber, @RequestParam(required = false) String nationalID,
             @RequestParam(required = false) String externalID, @RequestParam(required = false) String patientID,
             @RequestParam(required = false) String guid, @RequestParam(required = false) String dateOfBirth,
-            @RequestParam(required = false) String gender) {
+            @RequestParam(required = false) String gender, @RequestParam(required = false) String phoneNumber) {
         return searchResultsService.getSearchResults(lastName, firstName, STNumber, subjectNumber, nationalID,
-                externalID, patientID, guid, dateOfBirth, gender);
+                externalID, patientID, guid, dateOfBirth, gender, phoneNumber);
     }
 
     private List<PatientSearchResults> searchPatientInClientRegistry(String lastName, String firstName, String STNumber,
@@ -343,7 +343,7 @@ public class PatientSearchRestController extends BaseRestController {
     private boolean isPatientDuplicate(PatientSearchResults externalPatient) {
         List<PatientSearchResults> localResults = searchResultsService.getSearchResults(externalPatient.getLastName(),
                 externalPatient.getFirstName(), null, null, externalPatient.getNationalId(), null, null, null, null,
-                null);
+                null, null);
         for (PatientSearchResults localPatient : localResults) {
             if (isMatchingPatient(localPatient, externalPatient)) {
                 return true;

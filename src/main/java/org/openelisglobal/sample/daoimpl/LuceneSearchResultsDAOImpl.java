@@ -29,7 +29,7 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
     @Transactional
     public List<PatientSearchResults> getSearchResults(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException {
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException {
 
         SearchSession searchSession = Search.session(entityManager);
 
@@ -105,7 +105,7 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
     @Transactional
     public List<PatientSearchResults> getSearchResultsByGUID(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException {
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException {
 
         List<PatientSearchResults> patientSearchResultsList = new ArrayList<>();
         return patientSearchResultsList;
@@ -115,7 +115,7 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
     @Transactional
     public List<PatientSearchResults> getSearchResultsExact(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException {
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException {
 
         SearchSession searchSession = Search.session(entityManager);
 

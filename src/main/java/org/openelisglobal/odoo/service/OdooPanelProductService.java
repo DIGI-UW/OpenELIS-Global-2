@@ -56,7 +56,12 @@ public class OdooPanelProductService {
             product.put("sale_ok", true);
             product.put("purchase_ok", false);
 
-            // Derive list_price from the ELIS panel price when available, otherwise default to 0.0
+            if (panel.getLoinc() != null && !panel.getLoinc().trim().isEmpty()) {
+                product.put("loinc_code", panel.getLoinc());
+            }
+
+            // Derive list_price from the ELIS panel price when available, otherwise default
+            // to 0.0
             Double listPrice = 0.0;
             java.math.BigDecimal panelPrice = panel.getPrice();
             if (panelPrice != null) {

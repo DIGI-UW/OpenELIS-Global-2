@@ -17,6 +17,7 @@ public interface SearchResultsDAO {
     String DATE_OF_BIRTH = "dateOfBirth";
     String DATE_OF_BIRTH_FORMATED = "dateOfBirthFormatted";
     String GENDER = "gender";
+    String PHONE_NUMBER_PARAM = "phoneNumber";
 
     String ID_TYPE_FOR_ST = "stNumberId";
     String ID_TYPE_FOR_SUBJECT_NUMBER = "subjectNumberId";
@@ -24,13 +25,13 @@ public interface SearchResultsDAO {
 
     public List<PatientSearchResults> getSearchResults(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException;
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException;
 
     List<PatientSearchResults> getSearchResultsByGUID(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException;
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException;
 
     List<PatientSearchResults> getSearchResultsExact(String lastName, String firstName, String STNumber,
             String subjectNumber, String nationalID, String externalID, String patientID, String guid,
-            String dateOfBirth, String gender) throws LIMSRuntimeException;
+            String dateOfBirth, String gender, String phoneNumber) throws LIMSRuntimeException;
 }
