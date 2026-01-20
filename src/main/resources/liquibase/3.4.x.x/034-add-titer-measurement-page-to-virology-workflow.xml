@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="add-titer-measurement-page-to-virology-template" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Titer Measurement page (Page 11) to Virology template</comment>
+
+        <sql>
+            INSERT INTO clinlims.notebook_page (
+                id, title, instructions, content, page_order, completed, page_type, notebook_id, last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Titer Measurement',
+                'Quantify viral load using various assay methods. Record titer values (TCID50, PFU/ml, FFU/ml, HA Units, qPCR copies/ml) with dilution factors and calculation methods.',
+                'Titer Measurement - Quantify viral load with full traceability',
+                11,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title = 'Virology and Vaccine Unit'
+            AND n.is_template = true
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id AND np.page_order = 11
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.notebook_page
+                WHERE title = 'Titer Measurement' AND page_order = 11
+                AND notebook_id IN (
+                    SELECT id FROM clinlims.notebook
+                    WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-titer-measurement-page-to-existing-virology-notebooks" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Titer Measurement page (Page 11) to existing Virology notebook instances</comment>
+
+        <sql>
+            INSERT INTO clinlims.notebook_page (
+                id, title, instructions, content, page_order, completed, page_type, notebook_id, last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Titer Measurement',
+                'Quantify viral load using various assay methods. Record titer values (TCID50, PFU/ml, FFU/ml, HA Units, qPCR copies/ml) with dilution factors and calculation methods.',
+                'Titer Measurement - Quantify viral load with full traceability',
+                11,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title LIKE '%Virology%' AND n.is_template = false
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id AND np.page_order = 11
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.notebook_page
+                WHERE title = 'Titer Measurement' AND page_order = 11
+                AND notebook_id IN (
+                    SELECT id FROM clinlims.notebook
+                    WHERE title LIKE '%Virology%' AND is_template = false
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

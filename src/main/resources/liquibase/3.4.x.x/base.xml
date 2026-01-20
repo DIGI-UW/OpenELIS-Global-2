@@ -82,10 +82,18 @@
     <include file="liquibase/3.4.x.x/025-virology-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/026-virology-culture-workflow.xml"/>
     <include file="liquibase/3.4.x.x/027-vaccine-development-schema.xml"/>
-    <include file="liquibase/3.4.x.x/044-seed-virology-inventory.xml"/>
+    <include file="liquibase/3.4.x.x/028-add-virus-culture-to-existing-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/029-add-dark-room-imaging-to-existing-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/030-add-formulation-to-existing-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/031-add-feeding-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/032-add-packaging-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/033-add-virus-isolation-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/034-add-titer-measurement-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/044-bioanalytical-workflow-pages.xml"/>
     <include file="liquibase/3.4.x.x/045-bioanalytical-notebook-template.xml"/>
     <include file="liquibase/3.4.x.x/046-bioanalytical-supporting-tables.xml"/>
     <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/035-add-genome-sequencing-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/036-add-seed-virus-production-page-to-virology-workflow.xml"/>
 
 </databaseChangeLog>

@@ -24,6 +24,17 @@ import ImmunologyArchivingPage from "../pages/immunology/ImmunologyArchivingPage
 import ImmunologyDataAnalysisPage from "../pages/immunology/ImmunologyDataAnalysisPage";
 import VirologySampleReceptionPage from "../pages/virology/VirologySampleReceptionPage";
 import VirologyMediaPreparationPage from "../pages/virology/VirologyMediaPreparationPage";
+import VirologyCellCulturePage from "../pages/virology/VirologyCellCulturePage";
+import VirologyQualityControlPage from "../pages/virology/VirologyQualityControlPage";
+import VirologyVirusCulturePage from "../pages/virology/VirologyVirusCulturePage";
+import VirologyDarkRoomImagingPage from "../pages/virology/VirologyDarkRoomImagingPage";
+import VirologyFormulationPage from "../pages/virology/VirologyFormulationPage";
+import VirologyFeedingPage from "../pages/virology/VirologyFeedingPage";
+import VirologyPackagingPage from "../pages/virology/VirologyPackagingPage";
+import VirologyVirusIsolationPage from "../pages/virology/VirologyVirusIsolationPage";
+import VirologyTiterMeasurementPage from "../pages/virology/VirologyTiterMeasurementPage";
+import VirologyGenomeSequencingPage from "../pages/virology/VirologyGenomeSequencingPage";
+import VirologySeedVirusProductionPage from "../pages/virology/VirologySeedVirusProductionPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -328,7 +339,138 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
-              templateInstruments={notebook?.analyzers}
+            />
+          );
+        case 3:
+          // Page 3: Cell Culture - Grow host cells
+          // Track cell line, passage number, growth conditions (temperature, CO₂, humidity)
+          return (
+            <VirologyCellCulturePage
+              key={`virology-cell-culture-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 4:
+          // Page 4: Quality Control - Validate cell viability and sterility
+          // Log QC results (viability %, sterility pass/fail)
+          return (
+            <VirologyQualityControlPage
+              key={`virology-quality-control-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 5:
+          // Page 5: Virus Culture - Inoculate cells with virus
+          // Record virus strain, culture conditions (temp, CO₂, duration)
+          return (
+            <VirologyVirusCulturePage
+              key={`virology-virus-culture-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 6:
+          // Page 6: Dark Room Imaging - Imaging or fluorescence analysis
+          // Capture image data, CPE observations, fluorescence intensity
+          return (
+            <VirologyDarkRoomImagingPage
+              key={`virology-dark-room-imaging-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 7:
+          // Page 7: Formulation - Prepare viral product
+          // Document formulation details (stabilizers, preservatives, concentrations)
+          return (
+            <VirologyFormulationPage
+              key={`virology-formulation-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 8:
+          // Page 8: Feeding - Culture maintenance and feeding schedule
+          // Log feeding schedule and reagents used from inventory with full traceability
+          return (
+            <VirologyFeedingPage
+              key={`virology-feeding-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 9:
+          // Page 9: Packaging - Final product packaging
+          // Track batch ID, vial type, fill volume, labeling information
+          return (
+            <VirologyPackagingPage
+              key={`virology-packaging-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 10:
+          // Page 10: Virus Isolation - Isolate virus from culture
+          // Link to culture batch ID, record isolation method and virus strain
+          return (
+            <VirologyVirusIsolationPage
+              key={`virology-virus-isolation-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 11:
+          // Page 11: Titer Measurement - Quantify viral load
+          // Record titer values (TCID50, PFU/ml, etc.) with assay methods
+          return (
+            <VirologyTiterMeasurementPage
+              key={`virology-titer-measurement-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 12:
+          // Page 12: Genome Sequencing - Viral genome analysis
+          // Store sequence data (FASTA files, GenBank accession)
+          return (
+            <VirologyGenomeSequencingPage
+              key={`virology-genome-sequencing-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 13:
+          // Page 13: Seed Virus Production - Select strain for vaccine
+          // Document selection criteria and seed virus batch ID
+          return (
+            <VirologySeedVirusProductionPage
+              key={`virology-seed-virus-production-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
             />
           );
         default:

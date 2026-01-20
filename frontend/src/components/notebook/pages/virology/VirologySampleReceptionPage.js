@@ -7,7 +7,7 @@ import React, {
   useContext,
 } from "react";
 import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
-import { Upload, Checkmark, ArrowRight } from "@carbon/react/icons";
+import { Upload, Checkmark } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -59,9 +59,6 @@ function VirologySampleReceptionPage({
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
-  const [selectedCompletedSampleIds, setSelectedCompletedSampleIds] = useState(
-    [],
-  );
   const [loading, setLoading] = useState(true);
 
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -204,7 +201,7 @@ function VirologySampleReceptionPage({
               {
                 id: "notebook.page.virology.success.verified",
                 defaultMessage:
-                  "Marked {count} sample(s) as Verified. They will proceed to the next workflow stage.",
+                  "Marked {count} sample(s) as Verified. They can now proceed to Media Preparation.",
               },
               { count: selectedSampleIds.length },
             ),
@@ -239,121 +236,6 @@ function VirologySampleReceptionPage({
     notify,
   ]);
 
-  // Progress verified samples to Media Preparation (Page 2)
-  const progressToVirusCulture = useCallback(() => {
-    const verifiedSamples = samples.filter(
-      (s) =>
-        selectedCompletedSampleIds.includes(s.id) && s.status === "COMPLETED",
-    );
-
-    if (verifiedSamples.length === 0) {
-      notify({
-        kind: NotificationKinds.warning,
-        title: intl.formatMessage({
-          id: "notification.title",
-          defaultMessage: "Notification",
-        }),
-        subtitle: intl.formatMessage({
-          id: "notebook.page.virology.error.noVerifiedSelection",
-          defaultMessage:
-            "Please select verified samples to progress to Media Preparation.",
-        }),
-      });
-      return;
-    }
-
-    // Validate that all selected samples have complete reception metadata
-    const incompleteMetadata = verifiedSamples.filter(
-      (s) => !s.receptionDateTime || !s.source || !s.testType,
-    );
-
-    if (incompleteMetadata.length > 0) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notification.error",
-          defaultMessage: "Error",
-        }),
-        subtitle: intl.formatMessage({
-          id: "notebook.page.virology.error.incompleteMetadata",
-          defaultMessage:
-            "Some selected samples have incomplete reception metadata. Please verify all required fields are completed.",
-        }),
-      });
-      return;
-    }
-
-    if (!hasRealPageId) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notification.error",
-          defaultMessage: "Error",
-        }),
-        subtitle: intl.formatMessage({
-          id: "notebook.page.virology.error.noPage",
-          defaultMessage:
-            "Cannot progress samples: Page not properly initialized.",
-        }),
-      });
-      return;
-    }
-
-    // Progress samples to next page (Media Preparation)
-    postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples/progress`,
-      JSON.stringify({
-        sampleIds: verifiedSamples.map((s) => parseInt(s.id)),
-      }),
-      (status) => {
-        if (status === 200) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({
-              id: "notification.title",
-              defaultMessage: "Success",
-            }),
-            subtitle: intl.formatMessage(
-              {
-                id: "notebook.page.virology.success.progressed",
-                defaultMessage:
-                  "Successfully progressed {count} sample(s) to Media Preparation page. Samples are now ready for media preparation.",
-              },
-              { count: verifiedSamples.length },
-            ),
-          });
-          setSelectedCompletedSampleIds([]);
-          loadPageSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
-          }
-        } else {
-          notify({
-            kind: NotificationKinds.error,
-            title: intl.formatMessage({
-              id: "notification.error",
-              defaultMessage: "Error",
-            }),
-            subtitle: intl.formatMessage({
-              id: "notebook.page.virology.error.progression",
-              defaultMessage:
-                "Failed to progress samples to Media Preparation page. Please try again.",
-            }),
-          });
-        }
-      },
-    );
-  }, [
-    selectedCompletedSampleIds,
-    samples,
-    hasRealPageId,
-    pageData?.id,
-    intl,
-    loadPageSamples,
-    onProgressUpdate,
-    notify,
-  ]);
-
   // Split samples into pending/in-progress and completed
   const pendingSamples = useMemo(
     () =>
@@ -379,7 +261,15 @@ function VirologySampleReceptionPage({
         id: "notebook.sample.source",
         defaultMessage: "Source",
       }),
-      render: (value, sample) => value || sample?.source || "-",
+      render: (value, sample) => {
+        const source = value || sample?.source;
+        if (!source) return "-";
+        if (typeof source === "string") return source;
+        if (typeof source === "object") {
+          return source.value || source.name || source.description || "-";
+        }
+        return String(source);
+      },
     },
     {
       key: "testType",
@@ -390,15 +280,30 @@ function VirologySampleReceptionPage({
       render: (value, sample) => {
         const testType = value || sample?.testType;
         if (!testType) return "-";
+
+        // Handle testType as string or object - ensure it's always a string
+        let testTypeStr;
+        if (typeof testType === "string") {
+          testTypeStr = testType;
+        } else if (typeof testType === "object") {
+          testTypeStr =
+            testType.value ||
+            testType.name ||
+            testType.description ||
+            JSON.stringify(testType);
+        } else {
+          testTypeStr = String(testType);
+        }
+
         const tagType =
-          testType.toLowerCase() === "viral"
+          testTypeStr.toLowerCase() === "viral"
             ? "purple"
-            : testType.toLowerCase() === "bacterial"
+            : testTypeStr.toLowerCase() === "bacterial"
               ? "teal"
               : "gray";
         return (
           <Tag type={tagType} size="sm">
-            {testType}
+            {testTypeStr}
           </Tag>
         );
       },
@@ -409,8 +314,15 @@ function VirologySampleReceptionPage({
         id: "notebook.sample.project",
         defaultMessage: "Project/Study",
       }),
-      render: (value, sample) =>
-        value || sample?.projectStudyAssociation || "-",
+      render: (value, sample) => {
+        const project = value || sample?.projectStudyAssociation;
+        if (!project) return "-";
+        if (typeof project === "string") return project;
+        if (typeof project === "object") {
+          return project.value || project.name || project.description || "-";
+        }
+        return String(project);
+      },
     },
     {
       key: "batchId",
@@ -418,7 +330,16 @@ function VirologySampleReceptionPage({
         id: "notebook.sample.batchId",
         defaultMessage: "Batch ID",
       }),
-      render: (value, sample) => value || sample?.batchId || "-",
+      render: (value, sample) => {
+        const batchId = value || sample?.batchId;
+        if (!batchId) return "-";
+        if (typeof batchId === "string") return batchId;
+        if (typeof batchId === "number") return String(batchId);
+        if (typeof batchId === "object") {
+          return batchId.value || batchId.name || batchId.id || "-";
+        }
+        return String(batchId);
+      },
     },
     {
       key: "manifestVerificationStatus",
@@ -429,15 +350,26 @@ function VirologySampleReceptionPage({
       render: (value, sample) => {
         const status = value || sample?.manifestVerificationStatus;
         if (!status) return "-";
+
+        // Ensure status is a string
+        let statusStr;
+        if (typeof status === "string") {
+          statusStr = status;
+        } else if (typeof status === "object") {
+          statusStr = status.value || status.name || status.description || "-";
+        } else {
+          statusStr = String(status);
+        }
+
         const tagType =
-          status === "Verified"
+          statusStr === "Verified"
             ? "green"
-            : status === "Pending"
+            : statusStr === "Pending"
               ? "gray"
               : "red";
         return (
           <Tag type={tagType} size="sm">
-            {status}
+            {statusStr}
           </Tag>
         );
       },
@@ -605,40 +537,13 @@ function VirologySampleReceptionPage({
             <SampleGrid
               gridId="completed-samples"
               samples={completedSamples}
-              selectedIds={selectedCompletedSampleIds}
-              onSelectionChange={setSelectedCompletedSampleIds}
-              showSelection={true}
+              selectedIds={[]}
+              showSelection={false}
               loading={loading}
               additionalColumns={getAdditionalColumns(intl)}
             />
           )}
         </div>
-
-        {/* Progression Actions for Completed Samples */}
-        {selectedCompletedSampleIds.length > 0 && (
-          <div
-            className="progression-actions-bar"
-            style={{
-              marginTop: "1rem",
-              padding: "1rem",
-              backgroundColor: "#f4f4f4",
-              borderRadius: "4px",
-            }}
-          >
-            <Button
-              kind="primary"
-              size="sm"
-              renderIcon={ArrowRight}
-              onClick={progressToVirusCulture}
-            >
-              <FormattedMessage
-                id="notebook.page.virology.progressToMediaPreparation"
-                defaultMessage="Progress to Media Preparation ({count})"
-                values={{ count: selectedCompletedSampleIds.length }}
-              />
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Global Empty state - only show when no samples at all */}
