@@ -48,7 +48,7 @@ volume/odoo/*
 .specify/temp/
 
 # AI Agent command directories (populated by .specify/scripts/bash/install-commands.sh)
-# These are generated from .specify/commands/ and should not be tracked
+# These are compiled from .specify/core/commands/ and .specify/oe/commands/ and should not be tracked
 .cursor/commands/
 .claude/commands/
 

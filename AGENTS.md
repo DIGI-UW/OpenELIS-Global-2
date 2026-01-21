@@ -557,6 +557,7 @@ commands compile correctly and contain valid paths.
 - `/speckit.analyze` - Cross-artifact consistency analysis
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
+- `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
 
 **Standard Workflow:**
 

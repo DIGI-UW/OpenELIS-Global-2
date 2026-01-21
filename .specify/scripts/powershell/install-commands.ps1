@@ -78,6 +78,7 @@ function Install-Commands {
     param([string]$Name, [string]$Dir)
     Write-Host "-> Installing to $Name..."
     New-Item -ItemType Directory -Path $Dir -Force | Out-Null
+    $count = 0
     foreach ($file in $cmdFiles) {
         $baseName = $file.Name
         $coreContent = Get-Content -LiteralPath $file.FullName -Raw
@@ -125,8 +126,9 @@ function Install-Commands {
 
         $dest = Join-Path $Dir $baseName
         Set-Content -LiteralPath $dest -Value $mergedContent
+        $count++
     }
-    Write-Host "  OK Installed $cmdCount command(s) to $Dir"
+    Write-Host "  ✓ Installed $count command(s) to $Dir"
 }
 
 switch ($Target) {
