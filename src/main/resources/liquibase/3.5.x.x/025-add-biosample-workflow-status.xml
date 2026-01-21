@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Add workflow_status column to bio_sample table for tracking sample
+        progression through the biorepository lifecycle.
+
+        Values: REGISTERED, PENDING_STORAGE, STORED, IN_USE, DISPOSED
+    -->
+
+    <changeSet id="025-add-biosample-workflow-status-column" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="bio_sample" schemaName="clinlims" columnName="workflow_status"/>
+            </not>
+        </preConditions>
+        <comment>Add workflow_status column to bio_sample for lifecycle tracking</comment>
+        <addColumn tableName="bio_sample" schemaName="clinlims">
+            <column name="workflow_status" type="VARCHAR(20)" defaultValue="REGISTERED">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Update existing samples to have REGISTERED status -->
+    <changeSet id="025-set-default-workflow-status" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="bio_sample" schemaName="clinlims" columnName="workflow_status"/>
+        </preConditions>
+        <comment>Set default workflow status for existing samples</comment>
+        <update tableName="bio_sample" schemaName="clinlims">
+            <column name="workflow_status" value="REGISTERED"/>
+            <where>workflow_status IS NULL</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

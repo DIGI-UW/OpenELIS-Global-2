@@ -1,0 +1,16 @@
+externalId,sampleType,projectId,collectionDate,biosafetyLevel,originLab,principalInvestigator,consentId,ethicsApprovalRef,mtaReference,preservationMedium,arrivalCondition,notes
+BIO-2026-001,Serum,PROJ-MALARIA-001,2026-01-15,BSL_2,AHRI Clinical Lab,Dr. Sarah Johnson,CONSENT-2026-001,ETH-2025-042,MTA-EXT-001,EDTA,Good,Blood sample from malaria study participant
+BIO-2026-002,Plasma,PROJ-MALARIA-001,2026-01-15,BSL_2,AHRI Clinical Lab,Dr. Sarah Johnson,CONSENT-2026-002,ETH-2025-042,,Heparin,Good,
+BIO-2026-003,Whole Blood,PROJ-MALARIA-001,2026-01-15,BSL_2,AHRI Clinical Lab,Dr. Sarah Johnson,CONSENT-2026-003,ETH-2025-042,,EDTA,Good,
+BIO-2026-004,DNA,PROJ-GENOMICS-001,2026-01-14,BSL_1,Molecular Biology Lab,Dr. Michael Chen,,ETH-2024-108,,Cryoprotectant,Good,Extracted from PBMCs
+BIO-2026-005,RNA,PROJ-GENOMICS-001,2026-01-14,BSL_1,Molecular Biology Lab,Dr. Michael Chen,,ETH-2024-108,,RNAlater,Good,RNA extraction from tissue biopsy
+BIO-2026-006,Bacterial Isolate,PROJ-AMR-001,2026-01-13,BSL_2,Microbiology Reference Lab,Dr. Amina Bekele,,ETH-2025-015,,Glycerol Stock,Good,E. coli isolate - AMR surveillance
+BIO-2026-007,Bacterial Isolate,PROJ-AMR-001,2026-01-13,BSL_2,Microbiology Reference Lab,Dr. Amina Bekele,,ETH-2025-015,,Glycerol Stock,Good,K. pneumoniae isolate - MDR
+BIO-2026-008,Viral Culture,PROJ-RESP-001,2026-01-12,BSL_3,Virology Lab,Dr. James Oduya,,ETH-2025-033,MTA-CDC-2025,VTM,Good,Influenza A isolate - requires BSL-3
+BIO-2026-009,FFPE Block,PROJ-PATHOLOGY-001,2026-01-10,BSL_1,Pathology Department,Dr. Grace Mwangi,CONSENT-2026-009,ETH-2023-077,,Formalin Fixed,Good,Tissue block for histopathology
+BIO-2026-010,Fresh Frozen,PROJ-PATHOLOGY-001,2026-01-10,BSL_1,Pathology Department,Dr. Grace Mwangi,CONSENT-2026-010,ETH-2023-077,,Snap Frozen,Good,Tumor tissue - needs -80C storage
+BIO-2026-011,PBMCs,PROJ-IMMUNO-001,2026-01-09,BSL_2,Immunology Lab,Dr. Peter Kimani,CONSENT-2026-011,ETH-2025-055,,DMSO/FBS,Good,PBMCs for T-cell studies
+BIO-2026-012,Cell Line,PROJ-CELLBANK-001,2026-01-08,BSL_1,Cell Culture Facility,Dr. Rebecca Wanjiru,,,MTA-ATCC-2024,DMSO/FBS,Good,HeLa cell line passage 15
+BIO-2026-013,Urine,PROJ-KIDNEY-001,2026-01-16,BSL_1,Nephrology Clinic,Dr. David Otieno,CONSENT-2026-013,ETH-2025-061,,None,Good,24hr urine collection
+BIO-2026-014,CSF,PROJ-NEURO-001,2026-01-16,BSL_2,Neurology Ward,Dr. Elizabeth Njeri,CONSENT-2026-014,ETH-2025-070,,None,Good,CSF sample - meningitis investigation
+BIO-2026-015,Respiratory Swab,PROJ-RESP-001,2026-01-16,BSL_2,Respiratory Clinic,Dr. James Oduya,CONSENT-2026-015,ETH-2025-033,,VTM,Good,Nasopharyngeal swab

@@ -67,6 +67,21 @@
         <class>org.openelisglobal.notebook.valueholder.AnalyzerResultImport</class>
         <class>org.openelisglobal.notebook.valueholder.SampleRouting</class>
         <class>org.openelisglobal.notebook.valueholder.WorkflowPageTemplate</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryTemperatureLog</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryRoomEnvironmentLog</class>
+
+        <!-- Biorepository entities -->
+        <class>org.openelisglobal.biorepository.valueholder.Shipment</class>
+        <class>org.openelisglobal.biorepository.valueholder.BioSample</class>
+        <class>org.openelisglobal.biorepository.valueholder.DocumentationVerification</class>
+        <class>org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleTransferRequest</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleTransferItem</class>
+        <class>org.openelisglobal.biorepository.valueholder.RetentionPolicy</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleRetrievalItem</class>
+        <class>org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog</class>
+        <class>org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"

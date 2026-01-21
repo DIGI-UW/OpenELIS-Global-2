@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- Make collection_date nullable in bio_sample table -->
+    <!-- Per SRS: Receipt date is required, collection date is optional -->
+    <!-- ======================================================== -->
+
+    <changeSet id="make-biosample-collection-date-nullable" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <columnExists tableName="bio_sample" columnName="collection_date" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Make collection_date nullable in bio_sample table (SRS: receipt date is required, collection date is optional)</comment>
+
+        <dropNotNullConstraint
+            schemaName="clinlims"
+            tableName="bio_sample"
+            columnName="collection_date"
+            columnDataType="TIMESTAMP"/>
+
+        <rollback>
+            <addNotNullConstraint
+                schemaName="clinlims"
+                tableName="bio_sample"
+                columnName="collection_date"
+                columnDataType="TIMESTAMP"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

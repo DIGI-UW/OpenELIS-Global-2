@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BIOREPOSITORY RETENTION POLICY TABLE -->
+    <!-- Stores retention policy configurations per project/sample type -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-retention-policy-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="biorepository_retention_policy_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for biorepository_retention_policy table</comment>
+        <createSequence sequenceName="biorepository_retention_policy_seq"
+                        schemaName="clinlims"
+                        startValue="1"
+                        incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-retention-policy-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="biorepository_retention_policy" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create biorepository_retention_policy table for sample retention configurations</comment>
+
+        <createTable tableName="biorepository_retention_policy" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="policy_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="project_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_type_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_type_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="period_value" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="period_unit" type="VARCHAR(10)" defaultValue="YEARS">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create indexes for efficient lookup -->
+    <changeSet id="create-retention-policy-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_retention_policy" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create indexes for retention policy lookup</comment>
+
+        <createIndex indexName="idx_retention_policy_project"
+                     tableName="biorepository_retention_policy"
+                     schemaName="clinlims">
+            <column name="project_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retention_policy_sample_type"
+                     tableName="biorepository_retention_policy"
+                     schemaName="clinlims">
+            <column name="sample_type_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retention_policy_active"
+                     tableName="biorepository_retention_policy"
+                     schemaName="clinlims">
+            <column name="is_active"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add unique constraint to prevent duplicate policies -->
+    <changeSet id="add-retention-policy-unique-constraint" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_retention_policy" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add unique constraint for project/sample_type combination</comment>
+
+        <!-- A project can only have one active policy -->
+        <sql>
+            CREATE UNIQUE INDEX idx_retention_policy_unique_project
+            ON clinlims.biorepository_retention_policy (project_id)
+            WHERE project_id IS NOT NULL AND is_active = true;
+        </sql>
+
+        <!-- A sample type can only have one active policy (when no project specified) -->
+        <sql>
+            CREATE UNIQUE INDEX idx_retention_policy_unique_sample_type
+            ON clinlims.biorepository_retention_policy (sample_type_id)
+            WHERE sample_type_id IS NOT NULL AND project_id IS NULL AND is_active = true;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

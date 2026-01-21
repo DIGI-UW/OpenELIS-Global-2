@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- REFACTOR BIO_SAMPLE TO LINK TO SAMPLE_ITEM -->
+    <!-- BioSample now extends SampleItem instead of duplicating -->
+    <!-- core sample data. Only biorepository-specific fields -->
+    <!-- remain in bio_sample. -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- STEP 1: Drop obsolete indexes from bio_sample -->
+    <!-- ======================================================== -->
+
+    <changeSet id="drop-biosample-obsolete-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Drop indexes on columns that will be removed</comment>
+
+        <sql>
+            DROP INDEX IF EXISTS clinlims.idx_biosample_barcode;
+            DROP INDEX IF EXISTS clinlims.idx_biosample_external_id;
+            DROP INDEX IF EXISTS clinlims.idx_biosample_fhir_uuid;
+            DROP INDEX IF EXISTS clinlims.idx_biosample_status;
+            DROP INDEX IF EXISTS clinlims.idx_biosample_project;
+            DROP INDEX IF EXISTS clinlims.idx_biosample_collection_date;
+            DROP INDEX IF EXISTS clinlims.idx_biosample_doc_status;
+        </sql>
+
+        <rollback>
+            <createIndex indexName="idx_biosample_barcode" tableName="bio_sample" schemaName="clinlims" unique="true">
+                <column name="barcode"/>
+            </createIndex>
+            <createIndex indexName="idx_biosample_external_id" tableName="bio_sample" schemaName="clinlims">
+                <column name="external_id"/>
+            </createIndex>
+            <createIndex indexName="idx_biosample_fhir_uuid" tableName="bio_sample" schemaName="clinlims" unique="true">
+                <column name="fhir_uuid"/>
+            </createIndex>
+            <createIndex indexName="idx_biosample_status" tableName="bio_sample" schemaName="clinlims">
+                <column name="status"/>
+            </createIndex>
+            <createIndex indexName="idx_biosample_project" tableName="bio_sample" schemaName="clinlims">
+                <column name="project_id"/>
+            </createIndex>
+            <createIndex indexName="idx_biosample_collection_date" tableName="bio_sample" schemaName="clinlims">
+                <column name="collection_date"/>
+            </createIndex>
+            <createIndex indexName="idx_biosample_doc_status" tableName="bio_sample" schemaName="clinlims">
+                <column name="documentation_status"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 2: Drop obsolete check constraints from bio_sample -->
+    <!-- ======================================================== -->
+
+    <changeSet id="drop-biosample-obsolete-check-constraints" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Drop check constraints on columns that will be removed</comment>
+
+        <sql>
+            ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS chk_biosample_status;
+            ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS chk_biosample_doc_status;
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.bio_sample
+                ADD CONSTRAINT chk_biosample_status
+                CHECK (status IN ('REGISTERED', 'PENDING_STORAGE', 'STORED', 'QUARANTINE', 'CHECKED_OUT', 'DISPOSED', 'ARCHIVED'));
+
+                ALTER TABLE clinlims.bio_sample
+                ADD CONSTRAINT chk_biosample_doc_status
+                CHECK (documentation_status IN ('PENDING', 'VERIFIED', 'QUARANTINE'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 3: Drop obsolete foreign keys from bio_sample -->
+    <!-- ======================================================== -->
+
+    <changeSet id="drop-biosample-obsolete-fks" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Drop foreign keys on columns that will be removed</comment>
+
+        <sql>
+            ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS fk_biosample_sample_type;
+            ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS fk_biosample_project;
+            ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS fk_biosample_parent;
+            ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS fk_biosample_notebook_entry;
+        </sql>
+
+        <rollback>
+            <addForeignKeyConstraint
+                constraintName="fk_biosample_sample_type"
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                baseColumnNames="sample_type_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="type_of_sample"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"/>
+            <addForeignKeyConstraint
+                constraintName="fk_biosample_project"
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                baseColumnNames="project_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="project"
+                referencedColumnNames="id"
+                onDelete="SET NULL"/>
+            <addForeignKeyConstraint
+                constraintName="fk_biosample_parent"
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                baseColumnNames="parent_sample_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="bio_sample"
+                referencedColumnNames="id"
+                onDelete="SET NULL"/>
+            <addForeignKeyConstraint
+                constraintName="fk_biosample_notebook_entry"
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                baseColumnNames="notebook_entry_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="notebook_entry"
+                referencedColumnNames="id"
+                onDelete="SET NULL"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 4: Add sample_item_id column to bio_sample -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-biosample-sample-item-id" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="bio_sample" schemaName="clinlims" columnName="sample_item_id"/>
+            </not>
+        </preConditions>
+        <comment>Add sample_item_id column linking BioSample to core SampleItem</comment>
+
+        <addColumn tableName="bio_sample" schemaName="clinlims">
+            <column name="sample_item_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="sample_item_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 5: Add FK constraint for sample_item_id -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-biosample-fk-sample-item" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <tableExists tableName="sample_item" schemaName="clinlims"/>
+            <columnExists tableName="bio_sample" schemaName="clinlims" columnName="sample_item_id"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_biosample_sample_item" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from bio_sample.sample_item_id to sample_item</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_biosample_sample_item"
+            baseTableSchemaName="clinlims"
+            baseTableName="bio_sample"
+            baseColumnNames="sample_item_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                constraintName="fk_biosample_sample_item"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 6: Add index for sample_item_id -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-biosample-sample-item-index" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <columnExists tableName="bio_sample" schemaName="clinlims" columnName="sample_item_id"/>
+            <not>
+                <indexExists indexName="idx_biosample_sample_item" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add index for sample_item_id lookup</comment>
+
+        <createIndex indexName="idx_biosample_sample_item" tableName="bio_sample" schemaName="clinlims">
+            <column name="sample_item_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_biosample_sample_item" tableName="bio_sample" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 7: Drop obsolete columns from bio_sample -->
+    <!-- Core sample data now comes from Sample/SampleItem -->
+    <!-- ======================================================== -->
+
+    <changeSet id="drop-biosample-obsolete-columns" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Drop columns now handled by Sample/SampleItem entities</comment>
+
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="fhir_uuid"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="barcode"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="external_id"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="sample_type_id"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="classification"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="collection_date"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="collection_time"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="receipt_date"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="project_id"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="origin_lab"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="initial_volume"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="current_volume"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="volume_unit"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="parent_sample_id"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="documentation_status"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="status"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="quarantine_reason"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="last_verified_date"/>
+        <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="notebook_entry_id"/>
+
+        <rollback>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="fhir_uuid" type="UUID"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="barcode" type="VARCHAR(50)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="external_id" type="VARCHAR(100)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="sample_type_id" type="NUMERIC(10,0)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="classification" type="VARCHAR(50)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="collection_date" type="TIMESTAMP"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="collection_time" type="TIME"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="receipt_date" type="TIMESTAMP"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="project_id" type="NUMERIC(10,0)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="origin_lab" type="VARCHAR(255)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="initial_volume" type="DECIMAL(10,2)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="current_volume" type="DECIMAL(10,2)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="volume_unit" type="VARCHAR(20)" defaultValue="mL"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="parent_sample_id" type="NUMERIC(10,0)"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="documentation_status" type="VARCHAR(20)" defaultValue="PENDING"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="status" type="VARCHAR(20)" defaultValue="REGISTERED"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="quarantine_reason" type="TEXT"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="last_verified_date" type="TIMESTAMP"/>
+            </addColumn>
+            <addColumn tableName="bio_sample" schemaName="clinlims">
+                <column name="notebook_entry_id" type="INTEGER"/>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 8: Add documentation_status column to shipment -->
+    <!-- Documentation verification is now at shipment level -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-shipment-documentation-status" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="shipment" schemaName="clinlims" columnName="documentation_status"/>
+            </not>
+        </preConditions>
+        <comment>Add documentation_status to track shipment-level verification</comment>
+
+        <addColumn tableName="shipment" schemaName="clinlims">
+            <column name="documentation_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="shipment" schemaName="clinlims" columnName="documentation_status"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-shipment-doc-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <columnExists tableName="shipment" schemaName="clinlims" columnName="documentation_status"/>
+        </preConditions>
+        <comment>Add check constraint for documentation_status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.shipment
+            ADD CONSTRAINT chk_shipment_doc_status
+            CHECK (documentation_status IN ('PENDING', 'VERIFIED', 'QUARANTINE'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.shipment DROP CONSTRAINT IF EXISTS chk_shipment_doc_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-shipment-doc-status-index" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <columnExists tableName="shipment" schemaName="clinlims" columnName="documentation_status"/>
+            <not>
+                <indexExists indexName="idx_shipment_doc_status" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add index for documentation_status filtering</comment>
+
+        <createIndex indexName="idx_shipment_doc_status" tableName="shipment" schemaName="clinlims">
+            <column name="documentation_status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_shipment_doc_status" tableName="shipment" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- STEP 9: Update documentation_verification to link to shipment -->
+    <!-- Documentation verification is now per-shipment, not per-sample -->
+    <!-- ======================================================== -->
+
+    <changeSet id="drop-doc-verification-biosample-constraint" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Drop unique constraint and FK on bio_sample_id</comment>
+
+        <sql>
+            ALTER TABLE clinlims.documentation_verification
+            DROP CONSTRAINT IF EXISTS uq_doc_verification_biosample;
+            ALTER TABLE clinlims.documentation_verification
+            DROP CONSTRAINT IF EXISTS fk_doc_verification_biosample;
+            DROP INDEX IF EXISTS clinlims.idx_doc_verification_biosample;
+        </sql>
+
+        <rollback>
+            <addUniqueConstraint
+                constraintName="uq_doc_verification_biosample"
+                schemaName="clinlims"
+                tableName="documentation_verification"
+                columnNames="bio_sample_id"/>
+            <addForeignKeyConstraint
+                constraintName="fk_doc_verification_biosample"
+                baseTableSchemaName="clinlims"
+                baseTableName="documentation_verification"
+                baseColumnNames="bio_sample_id"
+                referencedTableSchemaName="clinlims"
+                referencedTableName="bio_sample"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+            <createIndex indexName="idx_doc_verification_biosample" tableName="documentation_verification" schemaName="clinlims">
+                <column name="bio_sample_id"/>
+            </createIndex>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-doc-verification-shipment-id" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="documentation_verification" schemaName="clinlims" columnName="shipment_id"/>
+            </not>
+        </preConditions>
+        <comment>Add shipment_id column to documentation_verification</comment>
+
+        <addColumn tableName="documentation_verification" schemaName="clinlims">
+            <column name="shipment_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="documentation_verification" schemaName="clinlims" columnName="shipment_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="drop-doc-verification-biosample-id" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <columnExists tableName="documentation_verification" schemaName="clinlims" columnName="bio_sample_id"/>
+        </preConditions>
+        <comment>Drop bio_sample_id column as verification is now per-shipment</comment>
+
+        <dropColumn tableName="documentation_verification" schemaName="clinlims" columnName="bio_sample_id"/>
+
+        <rollback>
+            <addColumn tableName="documentation_verification" schemaName="clinlims">
+                <column name="bio_sample_id" type="NUMERIC(10,0)">
+                    <constraints nullable="false"/>
+                </column>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-doc-verification-fk-shipment" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <columnExists tableName="documentation_verification" schemaName="clinlims" columnName="shipment_id"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_doc_verification_shipment" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from documentation_verification.shipment_id to shipment</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_doc_verification_shipment"
+            baseTableSchemaName="clinlims"
+            baseTableName="documentation_verification"
+            baseColumnNames="shipment_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="shipment"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="documentation_verification"
+                constraintName="fk_doc_verification_shipment"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-doc-verification-unique-shipment" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <columnExists tableName="documentation_verification" schemaName="clinlims" columnName="shipment_id"/>
+            <not>
+                <indexExists indexName="uq_doc_verification_shipment" schemaName="clinlims" tableName="documentation_verification"/>
+            </not>
+        </preConditions>
+        <comment>Add unique constraint for one verification per shipment</comment>
+
+        <addUniqueConstraint
+            constraintName="uq_doc_verification_shipment"
+            schemaName="clinlims"
+            tableName="documentation_verification"
+            columnNames="shipment_id"/>
+
+        <rollback>
+            <dropUniqueConstraint
+                constraintName="uq_doc_verification_shipment"
+                schemaName="clinlims"
+                tableName="documentation_verification"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-doc-verification-shipment-index" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <columnExists tableName="documentation_verification" schemaName="clinlims" columnName="shipment_id"/>
+            <not>
+                <indexExists indexName="idx_doc_verification_shipment" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add index for shipment_id lookup</comment>
+
+        <createIndex indexName="idx_doc_verification_shipment" tableName="documentation_verification" schemaName="clinlims">
+            <column name="shipment_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_doc_verification_shipment" tableName="documentation_verification" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

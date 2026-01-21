@@ -1,0 +1,21 @@
+externalId,sampleType,projectId,collectionDate,biosafetyLevel,originLab,principalInvestigator,consentId,ethicsApprovalRef,mtaReference,preservationMedium,arrivalCondition,notes
+BIO-2026-001,Serum,PROJ-TB-2026,2026-01-05,BSL_2,AHRI Main Lab,Dr. Sarah Alemayehu,CONS-2026-001,ETH-AHRI-2026-001,,EDTA,Good,Baseline sample from TB study cohort
+BIO-2026-002,Plasma,PROJ-TB-2026,2026-01-05,BSL_2,AHRI Main Lab,Dr. Sarah Alemayehu,CONS-2026-002,ETH-AHRI-2026-001,,Heparin,Good,Follow-up sample week 4
+BIO-2026-003,Whole Blood,PROJ-TB-2026,2026-01-06,BSL_2,AHRI Main Lab,Dr. Sarah Alemayehu,CONS-2026-003,ETH-AHRI-2026-001,,EDTA,Good,Paired sample for genomic analysis
+BIO-2026-004,DNA,PROJ-GEN-2026,2026-01-04,BSL_1,AHRI Molecular Lab,Dr. Kidist Bobosha,CONS-2026-004,ETH-AHRI-2026-002,,TE Buffer,Good,Extracted from whole blood sample
+BIO-2026-005,RNA,PROJ-GEN-2026,2026-01-04,BSL_1,AHRI Molecular Lab,Dr. Kidist Bobosha,CONS-2026-005,ETH-AHRI-2026-002,,RNAlater,Good,Gene expression study
+BIO-2026-006,PBMCs,PROJ-IMM-2026,2026-01-03,BSL_2,AHRI Immunology Lab,Dr. Rawleigh Howe,CONS-2026-006,ETH-AHRI-2026-003,,DMSO/FBS,Good,Cryopreserved for T-cell assays
+BIO-2026-007,Cell Line,PROJ-IMM-2026,2026-01-02,BSL_2,AHRI Immunology Lab,Dr. Rawleigh Howe,,,MTA-EMORY-2026-001,DMSO/FBS,Good,Immortalized B-cell line from collaborator
+BIO-2026-008,Bacterial Isolate,PROJ-MDR-2026,2026-01-07,BSL_3,AHRI BSL-3 Lab,Dr. Alemseged Abdissa,,,MTA-CDC-2026-001,Glycerol Stock,Good,MDR-TB isolate for susceptibility testing
+BIO-2026-009,Biopsy,PROJ-PATH-2026,2026-01-06,BSL_2,AHRI Pathology Lab,Dr. Taye Tolera,CONS-2026-009,ETH-AHRI-2026-004,,Formalin,Good,Lymph node biopsy
+BIO-2026-010,FFPE Block,PROJ-PATH-2026,2026-01-01,BSL_2,AHRI Pathology Lab,Dr. Taye Tolera,CONS-2026-010,ETH-AHRI-2026-004,,Paraffin,Good,Archived tissue block from 2025
+BIO-2026-011,Respiratory Swab,PROJ-RESP-2026,2026-01-08,BSL_2,AHRI Clinical Lab,Dr. Nega Berhe,CONS-2026-011,ETH-AHRI-2026-005,,VTM,Good,Nasopharyngeal swab for respiratory panel
+BIO-2026-012,Urine,PROJ-TB-2026,2026-01-08,BSL_2,AHRI Main Lab,Dr. Sarah Alemayehu,CONS-2026-012,ETH-AHRI-2026-001,,None,Good,Morning void for LAM testing
+BIO-2026-013,CSF,PROJ-NEURO-2026,2026-01-07,BSL_2,Black Lion Hospital,Dr. Yohannes Mengistu,CONS-2026-013,ETH-BLH-2026-001,,None,Good,Lumbar puncture sample
+BIO-2026-014,Stool,PROJ-GI-2026,2026-01-09,BSL_2,AHRI Clinical Lab,Dr. Nega Berhe,CONS-2026-014,ETH-AHRI-2026-006,,Cary-Blair,Good,Enteric pathogen study
+BIO-2026-015,Saliva,PROJ-ORAL-2026,2026-01-09,BSL_1,AHRI Dental Clinic,Dr. Fasil Kenea,CONS-2026-015,ETH-AHRI-2026-007,,DNA Shield,Good,Oral microbiome study
+BIO-2026-016,Buffy Coat,PROJ-TB-2026,2026-01-05,BSL_2,AHRI Main Lab,Dr. Sarah Alemayehu,CONS-2026-016,ETH-AHRI-2026-001,,None,Good,Isolated from whole blood for DNA extraction
+BIO-2026-017,Fresh Frozen,PROJ-PATH-2026,2026-01-08,BSL_2,AHRI Pathology Lab,Dr. Taye Tolera,CONS-2026-017,ETH-AHRI-2026-004,,OCT Medium,Good,Snap frozen tissue for protein analysis
+BIO-2026-018,Viral Culture,PROJ-VIR-2026,2026-01-02,BSL_3,AHRI BSL-3 Lab,Dr. Alemseged Abdissa,,,MTA-NIH-2026-001,Cell Culture Medium,Good,Influenza isolate for sequencing
+BIO-2026-019,Fluid,PROJ-PATH-2026,2026-01-06,BSL_2,AHRI Pathology Lab,Dr. Taye Tolera,CONS-2026-019,ETH-AHRI-2026-004,,None,Good,Pleural fluid aspiration
+BIO-2026-020,Environmental,PROJ-ENV-2026,2026-01-09,BSL_1,AHRI Environmental Lab,Dr. Girmay Medhin,,ETH-AHRI-2026-008,,Sterile Container,Good,Soil sample from leprosy endemic area

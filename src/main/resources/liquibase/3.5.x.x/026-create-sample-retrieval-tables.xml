@@ -1,0 +1,822 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- SAMPLE RETRIEVAL REQUEST TABLE -->
+    <!-- Tracks sample retrieval requests from researchers/labs -->
+    <!-- Supports workflow: DRAFT -> PENDING_APPROVAL -> APPROVED -> IN_PROGRESS -> COMPLETED -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-sample-retrieval-request-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="sample_retrieval_request_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for sample_retrieval_request table</comment>
+        <createSequence sequenceName="sample_retrieval_request_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="sample_retrieval_request_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-sample-retrieval-request-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sample_retrieval_request table for researcher sample requests from biorepository</comment>
+
+        <createTable tableName="sample_retrieval_request" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="request_number" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="request_purpose" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="ethics_approval_ref" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(30)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority_level" type="VARCHAR(20)" defaultValue="NORMAL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="required_by_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="destination_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="destination_details" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="requested_by_user_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requested_timestamp" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approved_by_user_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="approved_timestamp" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="approval_notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="rejection_reason" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="work_order_number" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="sample_retrieval_request" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-request-fk-requested-by" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_retrieval_request_requested_by" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from sample_retrieval_request.requested_by_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_request_requested_by"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_request"
+            baseColumnNames="requested_by_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_request"
+                constraintName="fk_retrieval_request_requested_by"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-request-fk-approved-by" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_retrieval_request_approved_by" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from sample_retrieval_request.approved_by_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_request_approved_by"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_request"
+            baseColumnNames="approved_by_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_request"
+                constraintName="fk_retrieval_request_approved_by"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-request-fk-project" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <tableExists tableName="project" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_retrieval_request_project" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from sample_retrieval_request.project_id to project</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_request_project"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_request"
+            baseColumnNames="project_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="project"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_request"
+                constraintName="fk_retrieval_request_project"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-request-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_retrieval_request_status" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for sample_retrieval_request table</comment>
+
+        <createIndex indexName="idx_retrieval_request_status" tableName="sample_retrieval_request" schemaName="clinlims">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retrieval_request_requested_by" tableName="sample_retrieval_request" schemaName="clinlims">
+            <column name="requested_by_user_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retrieval_request_requested_timestamp" tableName="sample_retrieval_request" schemaName="clinlims">
+            <column name="requested_timestamp"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retrieval_request_project" tableName="sample_retrieval_request" schemaName="clinlims">
+            <column name="project_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_retrieval_request_status" tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <dropIndex indexName="idx_retrieval_request_requested_by" tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <dropIndex indexName="idx_retrieval_request_requested_timestamp" tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <dropIndex indexName="idx_retrieval_request_project" tableName="sample_retrieval_request" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-request-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for request status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.sample_retrieval_request
+            ADD CONSTRAINT chk_retrieval_request_status
+            CHECK (status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'PARTIALLY_COMPLETED', 'COMPLETED', 'REJECTED', 'CANCELLED'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_retrieval_request DROP CONSTRAINT IF EXISTS chk_retrieval_request_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-request-priority-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for priority level values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.sample_retrieval_request
+            ADD CONSTRAINT chk_retrieval_request_priority
+            CHECK (priority_level IN ('NORMAL', 'URGENT', 'CRITICAL'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_retrieval_request DROP CONSTRAINT IF EXISTS chk_retrieval_request_priority;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-request-destination-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for destination type values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.sample_retrieval_request
+            ADD CONSTRAINT chk_retrieval_request_destination
+            CHECK (destination_type IN ('INTERNAL_LAB', 'EXTERNAL_LAB', 'ANALYSIS_RETURN'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_retrieval_request DROP CONSTRAINT IF EXISTS chk_retrieval_request_destination;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- SAMPLE RETRIEVAL ITEM TABLE -->
+    <!-- Individual samples within a retrieval request -->
+    <!-- Links to BioSample records in the biorepository -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-sample-retrieval-item-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="sample_retrieval_item_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for sample_retrieval_item table</comment>
+        <createSequence sequenceName="sample_retrieval_item_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="sample_retrieval_item_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-sample-retrieval-item-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sample_retrieval_item table for individual samples in a retrieval request</comment>
+
+        <createTable tableName="sample_retrieval_item" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="retrieval_request_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bio_sample_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity_requested" type="NUMERIC(10,4)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="unit_of_measure" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="item_status" type="VARCHAR(30)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="retrieved_by_user_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="retrieved_timestamp" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="condition_at_release" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="condition_notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="return_expected" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expected_return_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="returned_timestamp" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="returned_by_user_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="returned_condition" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="return_notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="sample_retrieval_item" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-item-fk-request" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_retrieval_item_request" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from sample_retrieval_item.retrieval_request_id to sample_retrieval_request</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_item_request"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_item"
+            baseColumnNames="retrieval_request_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample_retrieval_request"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_item"
+                constraintName="fk_retrieval_item_request"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-item-fk-bio-sample" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_retrieval_item_bio_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from sample_retrieval_item.bio_sample_id to bio_sample</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_item_bio_sample"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_item"
+            baseColumnNames="bio_sample_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="bio_sample"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_item"
+                constraintName="fk_retrieval_item_bio_sample"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-item-fk-retrieved-by" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_retrieval_item_retrieved_by" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from sample_retrieval_item.retrieved_by_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_item_retrieved_by"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_item"
+            baseColumnNames="retrieved_by_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_item"
+                constraintName="fk_retrieval_item_retrieved_by"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-item-fk-returned-by" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_retrieval_item_returned_by" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from sample_retrieval_item.returned_by_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_item_returned_by"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_item"
+            baseColumnNames="returned_by_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_item"
+                constraintName="fk_retrieval_item_returned_by"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-item-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_retrieval_item_request" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for sample_retrieval_item table</comment>
+
+        <createIndex indexName="idx_retrieval_item_request" tableName="sample_retrieval_item" schemaName="clinlims">
+            <column name="retrieval_request_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retrieval_item_bio_sample" tableName="sample_retrieval_item" schemaName="clinlims">
+            <column name="bio_sample_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_retrieval_item_status" tableName="sample_retrieval_item" schemaName="clinlims">
+            <column name="item_status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_retrieval_item_request" tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <dropIndex indexName="idx_retrieval_item_bio_sample" tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <dropIndex indexName="idx_retrieval_item_status" tableName="sample_retrieval_item" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-item-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for item status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.sample_retrieval_item
+            ADD CONSTRAINT chk_retrieval_item_status
+            CHECK (item_status IN ('PENDING', 'RETRIEVED', 'IN_ANALYSIS', 'RETURNED', 'PARTIALLY_USED', 'CONSUMED', 'UNAVAILABLE'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_retrieval_item DROP CONSTRAINT IF EXISTS chk_retrieval_item_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-retrieval-item-unique-pending" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_item" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_retrieval_item_unique_pending" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add unique constraint to prevent duplicate pending retrievals for same biosample</comment>
+
+        <!-- Partial unique index: only one pending retrieval per bio_sample -->
+        <sql>
+            CREATE UNIQUE INDEX idx_retrieval_item_unique_pending
+            ON clinlims.sample_retrieval_item (bio_sample_id)
+            WHERE item_status IN ('PENDING', 'RETRIEVED', 'IN_ANALYSIS');
+        </sql>
+
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS clinlims.idx_retrieval_item_unique_pending;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CHAIN OF CUSTODY LOG TABLE -->
+    <!-- Immutable audit trail for all custody changes -->
+    <!-- Records who, when, where for every sample movement -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-chain-of-custody-log-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="chain_of_custody_log_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for chain_of_custody_log table</comment>
+        <createSequence sequenceName="chain_of_custody_log_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="chain_of_custody_log_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-chain-of-custody-log-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create chain_of_custody_log table for immutable audit trail of sample custody changes</comment>
+
+        <createTable tableName="chain_of_custody_log" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transfer_in_request_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="retrieval_request_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="custody_action" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_location" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="to_location" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="from_custodian_user_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="to_custodian_user_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="action_timestamp" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="storage_coordinates" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="temperature" type="NUMERIC(5,2)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="chain_of_custody_log" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-custody-log-fk-transfer-in-request" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <tableExists tableName="sample_transfer_request" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_custody_log_transfer_in_request" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from chain_of_custody_log.transfer_in_request_id to sample_transfer_request (inbound)</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_custody_log_transfer_in_request"
+            baseTableSchemaName="clinlims"
+            baseTableName="chain_of_custody_log"
+            baseColumnNames="transfer_in_request_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample_transfer_request"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="chain_of_custody_log"
+                constraintName="fk_custody_log_transfer_in_request"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-custody-log-fk-retrieval-request" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_custody_log_retrieval_request" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from chain_of_custody_log.retrieval_request_id to sample_retrieval_request (outbound)</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_custody_log_retrieval_request"
+            baseTableSchemaName="clinlims"
+            baseTableName="chain_of_custody_log"
+            baseColumnNames="retrieval_request_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample_retrieval_request"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="chain_of_custody_log"
+                constraintName="fk_custody_log_retrieval_request"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-custody-log-fk-sample-item" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <tableExists tableName="sample_item" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_custody_log_sample_item" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from chain_of_custody_log.sample_item_id to sample_item</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_custody_log_sample_item"
+            baseTableSchemaName="clinlims"
+            baseTableName="chain_of_custody_log"
+            baseColumnNames="sample_item_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="chain_of_custody_log"
+                constraintName="fk_custody_log_sample_item"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-custody-log-fk-from-custodian" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_custody_log_from_custodian" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from chain_of_custody_log.from_custodian_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_custody_log_from_custodian"
+            baseTableSchemaName="clinlims"
+            baseTableName="chain_of_custody_log"
+            baseColumnNames="from_custodian_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="chain_of_custody_log"
+                constraintName="fk_custody_log_from_custodian"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-custody-log-fk-to-custodian" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_custody_log_to_custodian" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from chain_of_custody_log.to_custodian_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_custody_log_to_custodian"
+            baseTableSchemaName="clinlims"
+            baseTableName="chain_of_custody_log"
+            baseColumnNames="to_custodian_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="chain_of_custody_log"
+                constraintName="fk_custody_log_to_custodian"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-custody-log-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_custody_log_sample_item" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for chain_of_custody_log table</comment>
+
+        <createIndex indexName="idx_custody_log_sample_item" tableName="chain_of_custody_log" schemaName="clinlims">
+            <column name="sample_item_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_custody_log_transfer_in_request" tableName="chain_of_custody_log" schemaName="clinlims">
+            <column name="transfer_in_request_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_custody_log_retrieval_request" tableName="chain_of_custody_log" schemaName="clinlims">
+            <column name="retrieval_request_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_custody_log_action_timestamp" tableName="chain_of_custody_log" schemaName="clinlims">
+            <column name="action_timestamp"/>
+        </createIndex>
+
+        <createIndex indexName="idx_custody_log_custody_action" tableName="chain_of_custody_log" schemaName="clinlims">
+            <column name="custody_action"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_custody_log_sample_item" tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <dropIndex indexName="idx_custody_log_transfer_in_request" tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <dropIndex indexName="idx_custody_log_retrieval_request" tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <dropIndex indexName="idx_custody_log_action_timestamp" tableName="chain_of_custody_log" schemaName="clinlims"/>
+            <dropIndex indexName="idx_custody_log_custody_action" tableName="chain_of_custody_log" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-custody-log-action-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="chain_of_custody_log" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for custody action values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.chain_of_custody_log
+            ADD CONSTRAINT chk_custody_log_action
+            CHECK (custody_action IN (
+                'CHECKOUT_REQUESTED', 'CHECKOUT_APPROVED', 'CHECKOUT_RETRIEVED', 'CHECKOUT_RELEASED',
+                'TRANSFER_INITIATED', 'TRANSFER_IN_TRANSIT', 'TRANSFER_RECEIVED',
+                'RETURN_INITIATED', 'RETURN_RECEIVED', 'RETURN_INSPECTED', 'RETURN_STORED'
+            ));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.chain_of_custody_log DROP CONSTRAINT IF EXISTS chk_custody_log_action;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -202,20 +202,16 @@ export const postToOpenElisServerJsonResponse = (
   callback,
   extraParams,
 ) => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": localStorage.getItem("CSRF"),
-      },
-      body: payLoad,
+  const fetchPromise = fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
     },
-  )
+    body: payLoad,
+  })
     .then((response) => {
       // Check if response is ok (status 200-299)
       if (!response.ok) {
@@ -224,6 +220,7 @@ export const postToOpenElisServerJsonResponse = (
           // Include status code in error response for better error handling
           return {
             ...errorJson,
+            error: errorJson.error || errorJson.message || response.statusText,
             status: response.status,
             statusCode: response.status,
             statusText: response.statusText,
@@ -234,20 +231,30 @@ export const postToOpenElisServerJsonResponse = (
       return response.json();
     })
     .then((json) => {
-      callback(json, extraParams);
+      // If callback is provided, call it (for backward compatibility)
+      if (callback && typeof callback === "function") {
+        callback(json, extraParams);
+      }
+      // Return json for Promise-based usage (await)
+      return json;
     })
     .catch((error) => {
       console.error("postToOpenElisServerJsonResponse error:", error);
-      // Pass error to callback so calling code can handle it
-      callback(
-        {
-          error: error.message || "Network error",
-          message: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
+      const errorResponse = {
+        error: error.message || "Network error",
+        message: error.message || "Network error",
+        status: 0,
+      };
+      // If callback is provided, call it (for backward compatibility)
+      if (callback && typeof callback === "function") {
+        callback(errorResponse, extraParams);
+      }
+      // Return error for Promise-based usage
+      return errorResponse;
     });
+
+  // Return the promise so it can be awaited
+  return fetchPromise;
 };
 
 //provides Synchronous calls to the api
@@ -355,6 +362,56 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     .catch((error) => {
       console.error(error);
     });
+};
+
+export const putToOpenElisServerJsonResponse = (
+  endPoint,
+  payLoad,
+  callback,
+  extraParams,
+) => {
+  const fetchPromise = fetch(config.serverBaseUrl + endPoint, {
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: payLoad,
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then((errorJson) => {
+          return {
+            ...errorJson,
+            status: response.status,
+            statusCode: response.status,
+            statusText: response.statusText,
+          };
+        });
+      }
+      return response.json();
+    })
+    .then((json) => {
+      if (callback) {
+        callback(json, extraParams);
+      }
+      return json;
+    })
+    .catch((error) => {
+      console.error("putToOpenElisServerJsonResponse error:", error);
+      const errorResponse = {
+        error: error.message || "Network error",
+        message: error.message || "Network error",
+        status: 0,
+      };
+      if (callback) {
+        callback(errorResponse, extraParams);
+      }
+      return errorResponse;
+    });
+
+  return fetchPromise;
 };
 
 export const deleteFromOpenElisServer = (endPoint, callback) => {

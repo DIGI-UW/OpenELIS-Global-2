@@ -1,0 +1,643 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BIOREPOSITORY LABORATORY NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with 7 workflow pages -->
+    <!-- for the Biorepository Laboratory workflow -->
+    <!-- ISO 20387:2018 compliant sample lifecycle management -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-biorepository-notebook-template" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Biorepository Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Biorepository Laboratory"/>
+            <column name="objective" value="Manage biological specimen lifecycle from intake through disposal with ISO 20387:2018 compliance"/>
+            <column name="protocol" value="AHRI Biorepository Standard Operating Procedures"/>
+            <column name="content" value="Biorepository Laboratory notebook template with 7 predefined workflow pages for sample intake and registration, storage assignment, environmental monitoring, sample request and retrieval, QC inspection, retention and disposal, and reporting and audit."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Biorepository Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE INTAKE & REGISTRATION -->
+    <!-- Purpose: Receive shipments, register samples, verify documentation, generate barcodes -->
+    <!-- Sub-stages: 1a-Shipment Reception, 1b-Sample Registration, 1c-Documentation Verification, 1d-Barcode Generation -->
+    <!-- Who uses it: Reception staff / Lab technicians -->
+    <!-- ======================================================== -->
+    <changeSet id="create-biorepository-page-1-sample-intake" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Biorepository Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Intake and Registration page for Biorepository Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Intake &amp; Registration"/>
+            <column name="instructions" value="Stage 1: Receive shipments, register samples (single or bulk manifest), verify documentation, and generate barcodes. Sub-stages: (1a) Shipment Reception - record delivery reference, sender, packaging condition, transport temperature, capture photo if damaged; (1b) Sample Registration - enter samples individually or import via CSV manifest with validation; (1c) Documentation Verification - 7-point checklist (sample identifiers, project linkage, ethics approval, informed consent, MTA, biosafety classification, packaging integrity); (1d) Barcode Generation - DataMatrix 2D barcodes with printable labels."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Intake &amp; Registration&quot;,
+  &quot;subStages&quot;: [
+    {&quot;id&quot;: &quot;1a&quot;, &quot;name&quot;: &quot;Shipment Reception&quot;},
+    {&quot;id&quot;: &quot;1b&quot;, &quot;name&quot;: &quot;Sample Registration&quot;},
+    {&quot;id&quot;: &quot;1c&quot;, &quot;name&quot;: &quot;Documentation Verification&quot;},
+    {&quot;id&quot;: &quot;1d&quot;, &quot;name&quot;: &quot;Barcode Generation&quot;}
+  ],
+  &quot;dataPoints&quot;: {
+    &quot;shipmentReception&quot;: {
+      &quot;deliveryReference&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Delivery Reference/Tracking Number&quot;, &quot;required&quot;: true},
+      &quot;senderName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sender Name&quot;, &quot;required&quot;: true},
+      &quot;senderOrganization&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sender Organization&quot;, &quot;required&quot;: true},
+      &quot;receptionTimestamp&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Reception Date/Time&quot;, &quot;required&quot;: true},
+      &quot;packagingCondition&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Packaging Condition&quot;, &quot;options&quot;: [&quot;Intact&quot;, &quot;Damaged&quot;], &quot;required&quot;: true},
+      &quot;packagingConditionNotes&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Damage Description&quot;, &quot;conditionalOn&quot;: &quot;packagingCondition == Damaged&quot;},
+      &quot;packagingPhoto&quot;: {&quot;type&quot;: &quot;file&quot;, &quot;label&quot;: &quot;Packaging Photo&quot;, &quot;accept&quot;: &quot;image/*&quot;, &quot;conditionalOn&quot;: &quot;packagingCondition == Damaged&quot;},
+      &quot;transportTemperature&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Transport Temperature (C)&quot;},
+      &quot;expectedSampleCount&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Expected Sample Count&quot;}
+    },
+    &quot;sampleRegistration&quot;: {
+      &quot;registrationMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Registration Method&quot;, &quot;options&quot;: [&quot;Single Entry&quot;, &quot;Manifest Import&quot;], &quot;required&quot;: true},
+      &quot;externalId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;External/Donor ID&quot;, &quot;required&quot;: true},
+      &quot;sampleType&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Sample Type&quot;, &quot;source&quot;: &quot;type_of_sample&quot;, &quot;required&quot;: true},
+      &quot;projectId&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Project&quot;, &quot;source&quot;: &quot;project&quot;, &quot;required&quot;: true},
+      &quot;collectionDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Collection Date&quot;, &quot;required&quot;: true},
+      &quot;collectionTime&quot;: {&quot;type&quot;: &quot;time&quot;, &quot;label&quot;: &quot;Collection Time&quot;},
+      &quot;initialVolume&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Initial Volume (mL)&quot;},
+      &quot;biosafetyLevel&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Biosafety Level&quot;, &quot;options&quot;: [&quot;BSL-1&quot;, &quot;BSL-2&quot;, &quot;BSL-3&quot;, &quot;BSL-4&quot;], &quot;required&quot;: true},
+      &quot;specialHandling&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Special Handling Instructions&quot;}
+    },
+    &quot;manifestImport&quot;: {
+      &quot;manifestFile&quot;: {&quot;type&quot;: &quot;file&quot;, &quot;label&quot;: &quot;Manifest CSV File&quot;, &quot;accept&quot;: &quot;.csv&quot;},
+      &quot;columnMapping&quot;: {&quot;type&quot;: &quot;mapping&quot;, &quot;label&quot;: &quot;Column Mapping&quot;}
+    },
+    &quot;documentationVerification&quot;: {
+      &quot;checkSampleIdentifiers&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Sample Identifiers Match Manifest&quot;, &quot;autoVerify&quot;: true},
+      &quot;checkProjectLinkage&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Project Linkage Valid&quot;, &quot;autoVerify&quot;: true},
+      &quot;checkEthicsApproval&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Ethics Approval on File&quot;, &quot;manual&quot;: true},
+      &quot;checkConsentRecord&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Informed Consent Record&quot;, &quot;allowNA&quot;: true, &quot;naRequiresJustification&quot;: true},
+      &quot;checkMtaDocumented&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Material Transfer Agreement&quot;, &quot;allowNA&quot;: true, &quot;naRequiresJustification&quot;: true},
+      &quot;checkBiosafetyMatch&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Biosafety Classification Matches&quot;, &quot;manual&quot;: true},
+      &quot;checkPackagingIntegrity&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Packaging Integrity Verified&quot;, &quot;manual&quot;: true}
+    },
+    &quot;barcodeGeneration&quot;: {
+      &quot;barcodeFormat&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Barcode Format&quot;, &quot;options&quot;: [&quot;DataMatrix&quot;, &quot;QR Code&quot;, &quot;Code 128&quot;], &quot;default&quot;: &quot;DataMatrix&quot;},
+      &quot;labelSize&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Label Size&quot;, &quot;options&quot;: [&quot;Small (0.5 inch)&quot;, &quot;Medium (1 inch)&quot;, &quot;Large (2 inch)&quot;]},
+      &quot;printQuantity&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Print Quantity&quot;, &quot;default&quot;: 1}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate unique biorepository barcode&quot;, &quot;Create shipment record&quot;, &quot;Link samples to shipment&quot;, &quot;Auto-verify documentation checks&quot;, &quot;Set status: Registered - Pending Storage&quot;],
+  &quot;nextPage&quot;: &quot;Storage Assignment&quot;
+}"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: STORAGE ASSIGNMENT -->
+    <!-- Purpose: Assign samples to hierarchical storage locations -->
+    <!-- Who uses it: Lab technicians / Store managers -->
+    <!-- ======================================================== -->
+    <changeSet id="create-biorepository-page-2-storage-assignment" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Biorepository Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Storage Assignment page for Biorepository Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Storage Assignment"/>
+            <column name="instructions" value="Assign samples to hierarchical storage locations. Select storage hierarchy: Room &gt; Device (Freezer/Refrigerator/Cabinet) &gt; Rack &gt; Box &gt; Position. System validates biosafety zone compatibility. Scan barcode for verification. Record storage timestamp and assigned by. Confirm placement with barcode scan."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Storage Assignment&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;locationSelection&quot;: {
+      &quot;storageRoom&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Storage Room&quot;, &quot;source&quot;: &quot;storage_room&quot;, &quot;required&quot;: true},
+      &quot;storageDevice&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Storage Device&quot;, &quot;source&quot;: &quot;storage_device&quot;, &quot;required&quot;: true, &quot;filteredBy&quot;: &quot;storageRoom&quot;},
+      &quot;rack&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Rack&quot;, &quot;source&quot;: &quot;storage_rack&quot;, &quot;filteredBy&quot;: &quot;storageDevice&quot;},
+      &quot;box&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Box&quot;, &quot;source&quot;: &quot;storage_box&quot;, &quot;filteredBy&quot;: &quot;rack&quot;},
+      &quot;position&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Position&quot;, &quot;placeholder&quot;: &quot;e.g., A1, B3&quot;}
+    },
+    &quot;validation&quot;: {
+      &quot;biosafetyZoneCheck&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Biosafety Zone Compatible&quot;, &quot;autoVerify&quot;: true},
+      &quot;temperatureRangeCheck&quot;: {&quot;type&quot;: &quot;verification&quot;, &quot;label&quot;: &quot;Temperature Range Suitable&quot;, &quot;autoVerify&quot;: true}
+    },
+    &quot;confirmation&quot;: {
+      &quot;barcodeScan&quot;: {&quot;type&quot;: &quot;barcode&quot;, &quot;label&quot;: &quot;Scan Barcode to Confirm&quot;, &quot;required&quot;: true},
+      &quot;storageTimestamp&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Storage Date/Time&quot;, &quot;required&quot;: true},
+      &quot;assignedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Assigned By&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Validate biosafety zone compatibility&quot;, &quot;Check temperature range suitability&quot;, &quot;Record storage location&quot;, &quot;Update sample status: Stored&quot;],
+  &quot;nextPage&quot;: &quot;Ongoing Storage and Monitoring&quot;
+}"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: ENVIRONMENTAL MONITORING -->
+    <!-- Purpose: Record temperature readings and manage excursions -->
+    <!-- Who uses it: Lab technicians / Quality officers -->
+    <!-- ======================================================== -->
+    <changeSet id="create-biorepository-page-3-environmental-monitoring" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Biorepository Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Ongoing Storage and Monitoring page for Biorepository Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Ongoing Storage and Monitoring"/>
+            <column name="instructions" value="Record temperature readings for storage devices. System flags excursions based on device-specific thresholds. Acknowledge excursions with corrective action notes. View dashboard of devices overdue for readings. Log maintenance events (calibration, repairs, defrost cycles)."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Ongoing Storage and Monitoring&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;temperatureReading&quot;: {
+      &quot;storageDevice&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Storage Device&quot;, &quot;source&quot;: &quot;storage_device&quot;, &quot;required&quot;: true},
+      &quot;temperature&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Temperature (C)&quot;, &quot;required&quot;: true},
+      &quot;readingTimestamp&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Reading Date/Time&quot;, &quot;required&quot;: true},
+      &quot;entryMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Entry Method&quot;, &quot;options&quot;: [&quot;Manual&quot;, &quot;Sensor&quot;], &quot;required&quot;: true},
+      &quot;recordedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Recorded By&quot;, &quot;required&quot;: true}
+    },
+    &quot;excursionManagement&quot;: {
+      &quot;excursionType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Excursion Type&quot;, &quot;options&quot;: [&quot;Warning&quot;, &quot;Critical&quot;]},
+      &quot;acknowledgedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Acknowledged By&quot;},
+      &quot;acknowledgementTimestamp&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Acknowledgement Time&quot;},
+      &quot;correctiveAction&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Corrective Action Notes&quot;}
+    },
+    &quot;maintenanceLog&quot;: {
+      &quot;maintenanceType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Maintenance Type&quot;, &quot;options&quot;: [&quot;Calibration&quot;, &quot;Repair&quot;, &quot;Defrost Cycle&quot;, &quot;Preventive Maintenance&quot;, &quot;Other&quot;]},
+      &quot;maintenanceDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Maintenance Date&quot;},
+      &quot;performedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Performed By&quot;},
+      &quot;maintenanceNotes&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Maintenance Notes&quot;},
+      &quot;nextDueDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Next Due Date&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Detect temperature excursions&quot;, &quot;Flag overdue devices&quot;, &quot;Generate excursion alerts&quot;, &quot;Track maintenance schedule&quot;],
+  &quot;nextPage&quot;: &quot;Sample Request &amp; Retrieval&quot;
+}"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: SAMPLE REQUEST & RETRIEVAL -->
+    <!-- Purpose: Process sample requests and manage retrieval workflow -->
+    <!-- Who uses it: Researchers / Lab technicians / Supervisors -->
+    <!-- ======================================================== -->
+    <changeSet id="create-biorepository-page-4-sample-request" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Biorepository Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Request and Retrieval page for Biorepository Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Request &amp; Retrieval"/>
+            <column name="instructions" value="Process sample requests from researchers. Request workflow: Submit request with purpose and quantity needed. Supervisor approval/rejection with comments. Generate work orders for approved requests. Document retrieval with timestamp and staff signature. Update sample status: Checked Out or Partially Aliquoted."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Request &amp; Retrieval&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;requestSubmission&quot;: {
+      &quot;sampleBarcode&quot;: {&quot;type&quot;: &quot;barcode&quot;, &quot;label&quot;: &quot;Sample Barcode&quot;, &quot;required&quot;: true},
+      &quot;requestorName&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Requestor Name&quot;, &quot;required&quot;: true},
+      &quot;requestorProject&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Project&quot;, &quot;source&quot;: &quot;project&quot;, &quot;required&quot;: true},
+      &quot;purpose&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Purpose of Request&quot;, &quot;required&quot;: true},
+      &quot;quantityNeeded&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Quantity Needed (mL or units)&quot;, &quot;required&quot;: true},
+      &quot;requestDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Request Date&quot;, &quot;required&quot;: true},
+      &quot;neededByDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Needed By Date&quot;}
+    },
+    &quot;approval&quot;: {
+      &quot;approvalStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Approval Status&quot;, &quot;options&quot;: [&quot;Pending&quot;, &quot;Approved&quot;, &quot;Rejected&quot;]},
+      &quot;approvedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Approved/Rejected By&quot;},
+      &quot;approvalDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Approval Date&quot;},
+      &quot;approvalComments&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Approval Comments&quot;}
+    },
+    &quot;retrieval&quot;: {
+      &quot;retrievalTimestamp&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Retrieval Date/Time&quot;},
+      &quot;retrievedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Retrieved By&quot;},
+      &quot;actualQuantityRetrieved&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Actual Quantity Retrieved&quot;},
+      &quot;recipientSignature&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Recipient Signature&quot;},
+      &quot;chainOfCustody&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Chain of Custody Notes&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Create request record&quot;, &quot;Notify supervisor for approval&quot;, &quot;Generate work order&quot;, &quot;Update sample quantity&quot;, &quot;Update sample status: Checked Out or Partially Aliquoted&quot;],
+  &quot;nextPage&quot;: &quot;QC Inspection&quot;
+}"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: QC INSPECTION -->
+    <!-- Purpose: Execute scheduled quality control inspections -->
+    <!-- Who uses it: Quality officers / Lab technicians -->
+    <!-- ======================================================== -->
+    <changeSet id="create-biorepository-page-5-qc-inspection" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Biorepository Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create QC Inspection page for Biorepository Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="QC Inspection"/>
+            <column name="instructions" value="Execute scheduled quality control inspections. Verify sample presence at recorded location. Check physical condition (container integrity, volume, appearance). Record discrepancies and corrective actions. Update sample status if quarantine required."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;QC Inspection&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;inspectionSchedule&quot;: {
+      &quot;inspectionType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Inspection Type&quot;, &quot;options&quot;: [&quot;Scheduled&quot;, &quot;Random&quot;, &quot;Post-Incident&quot;, &quot;Pre-Shipment&quot;], &quot;required&quot;: true},
+      &quot;inspectionDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Inspection Date&quot;, &quot;required&quot;: true},
+      &quot;inspectedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Inspected By&quot;, &quot;required&quot;: true}
+    },
+    &quot;sampleVerification&quot;: {
+      &quot;sampleBarcode&quot;: {&quot;type&quot;: &quot;barcode&quot;, &quot;label&quot;: &quot;Sample Barcode&quot;, &quot;required&quot;: true},
+      &quot;locationVerified&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Sample Present at Recorded Location&quot;, &quot;required&quot;: true},
+      &quot;containerIntegrity&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Container Integrity&quot;, &quot;options&quot;: [&quot;Intact&quot;, &quot;Cracked&quot;, &quot;Leaking&quot;, &quot;Cap Missing/Loose&quot;], &quot;required&quot;: true},
+      &quot;volumeCheck&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Volume Status&quot;, &quot;options&quot;: [&quot;As Expected&quot;, &quot;Below Expected&quot;, &quot;Empty&quot;]},
+      &quot;appearanceCheck&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Appearance&quot;, &quot;options&quot;: [&quot;Normal&quot;, &quot;Hemolyzed&quot;, &quot;Lipemic&quot;, &quot;Turbid&quot;, &quot;Precipitate&quot;, &quot;Other&quot;]},
+      &quot;labelCondition&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Label Condition&quot;, &quot;options&quot;: [&quot;Intact&quot;, &quot;Faded&quot;, &quot;Damaged&quot;, &quot;Missing&quot;]}
+    },
+    &quot;discrepancy&quot;: {
+      &quot;discrepancyFound&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Discrepancy Found&quot;},
+      &quot;discrepancyType&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Discrepancy Type&quot;, &quot;options&quot;: [&quot;Location Mismatch&quot;, &quot;Container Damage&quot;, &quot;Volume Discrepancy&quot;, &quot;Label Issue&quot;, &quot;Quality Degradation&quot;], &quot;conditionalOn&quot;: &quot;discrepancyFound == true&quot;},
+      &quot;discrepancyNotes&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Discrepancy Notes&quot;, &quot;conditionalOn&quot;: &quot;discrepancyFound == true&quot;},
+      &quot;correctiveAction&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Corrective Action Taken&quot;, &quot;conditionalOn&quot;: &quot;discrepancyFound == true&quot;},
+      &quot;quarantineRequired&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Quarantine Required&quot;, &quot;conditionalOn&quot;: &quot;discrepancyFound == true&quot;}
+    },
+    &quot;outcome&quot;: {
+      &quot;inspectionOutcome&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Inspection Outcome&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Conditional Pass&quot;, &quot;Fail - Quarantine&quot;, &quot;Fail - Disposal Required&quot;], &quot;required&quot;: true},
+      &quot;supervisorReview&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Supervisor Review&quot;},
+      &quot;supervisorReviewDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Supervisor Review Date&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Record inspection results&quot;, &quot;Flag discrepancies&quot;, &quot;Update sample status if quarantined&quot;, &quot;Generate inspection report&quot;],
+  &quot;nextPage&quot;: &quot;Retention &amp; Disposal&quot;
+}"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: RETENTION & DISPOSAL -->
+    <!-- Purpose: Manage sample retention policies and disposal workflow -->
+    <!-- Who uses it: Lab managers / Quality officers / Supervisors -->
+    <!-- ======================================================== -->
+    <changeSet id="create-biorepository-page-6-retention-disposal" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Biorepository Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Retention and Disposal page for Biorepository Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Retention &amp; Disposal"/>
+            <column name="instructions" value="Manage sample retention policies and disposal workflow. Review samples approaching retention expiry. Obtain dual authorization for disposal (requestor + supervisor). Select disposal method (autoclaving, incineration, chemical treatment). Generate disposal certificates. Update sample status: Disposed. Archive disposal records."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Retention &amp; Disposal&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;retentionReview&quot;: {
+      &quot;sampleBarcode&quot;: {&quot;type&quot;: &quot;barcode&quot;, &quot;label&quot;: &quot;Sample Barcode&quot;, &quot;required&quot;: true},
+      &quot;retentionPolicy&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Retention Policy&quot;, &quot;source&quot;: &quot;retention_policy&quot;},
+      &quot;retentionExpiryDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Retention Expiry Date&quot;},
+      &quot;extensionRequested&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Extension Requested&quot;},
+      &quot;extensionJustification&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Extension Justification&quot;, &quot;conditionalOn&quot;: &quot;extensionRequested == true&quot;},
+      &quot;newExpiryDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;New Expiry Date&quot;, &quot;conditionalOn&quot;: &quot;extensionRequested == true&quot;}
+    },
+    &quot;disposalAuthorization&quot;: {
+      &quot;disposalReason&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Disposal Reason&quot;, &quot;options&quot;: [&quot;Retention period expired&quot;, &quot;Sample depleted&quot;, &quot;Quality degradation&quot;, &quot;Project completion&quot;, &quot;Donor/Ethics withdrawal&quot;, &quot;Other&quot;], &quot;required&quot;: true},
+      &quot;requestedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Disposal Requested By&quot;, &quot;required&quot;: true},
+      &quot;requestDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Request Date&quot;, &quot;required&quot;: true},
+      &quot;firstAuthorization&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;First Authorization (Requestor)&quot;, &quot;required&quot;: true},
+      &quot;firstAuthDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;First Authorization Date&quot;, &quot;required&quot;: true},
+      &quot;secondAuthorization&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Second Authorization (Supervisor)&quot;, &quot;required&quot;: true},
+      &quot;secondAuthDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Second Authorization Date&quot;, &quot;required&quot;: true}
+    },
+    &quot;disposalExecution&quot;: {
+      &quot;disposalMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Disposal Method&quot;, &quot;options&quot;: [&quot;Autoclaving&quot;, &quot;Incineration&quot;, &quot;Chemical Treatment&quot;], &quot;required&quot;: true},
+      &quot;disposalDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Disposal Date&quot;, &quot;required&quot;: true},
+      &quot;disposedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Disposed By&quot;, &quot;required&quot;: true},
+      &quot;witnessSignature&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Witness Signature&quot;, &quot;required&quot;: true},
+      &quot;disposalNotes&quot;: {&quot;type&quot;: &quot;textarea&quot;, &quot;label&quot;: &quot;Disposal Notes&quot;}
+    },
+    &quot;certificateGeneration&quot;: {
+      &quot;certificateNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Certificate Number&quot;, &quot;generated&quot;: true},
+      &quot;certificateDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Certificate Date&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Flag samples approaching retention expiry&quot;, &quot;Validate dual authorization&quot;, &quot;Generate disposal certificate&quot;, &quot;Update sample status: Disposed&quot;, &quot;Archive disposal records&quot;],
+  &quot;nextPage&quot;: &quot;Reporting &amp; Audit&quot;
+}"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: REPORTING & AUDIT -->
+    <!-- Purpose: Generate reports and review audit trail -->
+    <!-- Who uses it: Lab managers / Quality officers / Auditors -->
+    <!-- ======================================================== -->
+    <changeSet id="create-biorepository-page-7-reporting-audit" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Biorepository Laboratory' AND n.is_template = true AND np.page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reporting and Audit page for Biorepository Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reporting &amp; Audit"/>
+            <column name="instructions" value="Generate reports and review audit trail. Available reports: Inventory summary, Temperature excursion log, Sample transaction history, Disposal certificates, Storage utilization, Project sample counts. Review complete audit trail for any sample. Export reports in CSV, PDF, or FHIR format. Generate ISO 20387 compliance documentation."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Reporting &amp; Audit&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;reportGeneration&quot;: {
+      &quot;reportType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Report Type&quot;, &quot;options&quot;: [&quot;Inventory Summary&quot;, &quot;Temperature Excursion Log&quot;, &quot;Sample Transaction History&quot;, &quot;Disposal Certificates&quot;, &quot;Storage Utilization&quot;, &quot;Project Sample Counts&quot;, &quot;Retention Expiry Report&quot;, &quot;QC Inspection Summary&quot;], &quot;required&quot;: true},
+      &quot;dateRangeStart&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date Range Start&quot;},
+      &quot;dateRangeEnd&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date Range End&quot;},
+      &quot;projectFilter&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Filter by Project&quot;, &quot;source&quot;: &quot;project&quot;},
+      &quot;statusFilter&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Filter by Status&quot;, &quot;options&quot;: [&quot;Active&quot;, &quot;Quarantine&quot;, &quot;Checked Out&quot;, &quot;Disposed&quot;]},
+      &quot;exportFormat&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Export Format&quot;, &quot;options&quot;: [&quot;CSV&quot;, &quot;PDF&quot;, &quot;FHIR Bundle&quot;]}
+    },
+    &quot;auditTrail&quot;: {
+      &quot;sampleBarcode&quot;: {&quot;type&quot;: &quot;barcode&quot;, &quot;label&quot;: &quot;Sample Barcode for Audit&quot;},
+      &quot;auditDateRange&quot;: {&quot;type&quot;: &quot;dateRange&quot;, &quot;label&quot;: &quot;Audit Date Range&quot;},
+      &quot;actionTypeFilter&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Filter by Action Type&quot;, &quot;options&quot;: [&quot;Registration&quot;, &quot;Storage&quot;, &quot;Retrieval&quot;, &quot;QC Inspection&quot;, &quot;Status Change&quot;, &quot;Disposal&quot;]}
+    },
+    &quot;complianceDocumentation&quot;: {
+      &quot;complianceType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Compliance Documentation Type&quot;, &quot;options&quot;: [&quot;ISO 20387:2018 Checklist&quot;, &quot;Annual Review Report&quot;, &quot;Accreditation Evidence Pack&quot;]},
+      &quot;generatedDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Generated Date&quot;},
+      &quot;generatedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Generated By&quot;}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate selected reports&quot;, &quot;Retrieve audit trail&quot;, &quot;Export in selected format&quot;, &quot;Generate compliance documentation&quot;]
+}"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- BIOREPOSITORY WORKFLOW PAGE TEMPLATES -->
+    <!-- ======================================================== -->
+
+    <!-- Sync the workflow_page_template sequence to be beyond max existing ID -->
+    <changeSet id="sync-workflow-page-template-seq" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sequenceExists sequenceName="workflow_page_template_seq" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Sync workflow_page_template_seq to be beyond max existing ID</comment>
+        <sql>
+            SELECT setval('clinlims.workflow_page_template_seq', GREATEST(COALESCE((SELECT MAX(id) FROM clinlims.workflow_page_template), 0) + 1, 400));
+        </sql>
+    </changeSet>
+
+    <changeSet id="insert-biorepository-workflow-page-templates" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'BIOREPOSITORY'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert predefined Biorepository workflow page templates</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Sample Intake &amp; Registration"/>
+            <column name="display_key" value="workflow.page.biorepository.sampleIntake"/>
+            <column name="description" value="Receive shipments, register samples (single or bulk), verify documentation, generate barcodes"/>
+            <column name="default_instructions" value="Stage 1 workflow with 4 sub-stages: Shipment Reception, Sample Registration, Documentation Verification, and Barcode Generation."/>
+            <column name="default_content" value="Sample Intake and Registration - Bulk data entry for incoming biorepository samples"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BIOREPOSITORY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Storage Assignment"/>
+            <column name="display_key" value="workflow.page.biorepository.storageAssignment"/>
+            <column name="description" value="Assign samples to hierarchical storage locations with biosafety validation"/>
+            <column name="default_instructions" value="Select storage hierarchy, validate biosafety zone compatibility, scan barcode for confirmation."/>
+            <column name="default_content" value="Storage Assignment - Hierarchical location assignment with validation"/>
+            <column name="page_type" value="STORAGE_ASSIGNMENT"/>
+            <column name="display_order" value="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BIOREPOSITORY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Ongoing Storage and Monitoring"/>
+            <column name="display_key" value="workflow.page.biorepository.environmentalMonitoring"/>
+            <column name="description" value="Record temperature readings, manage excursions, log maintenance events"/>
+            <column name="default_instructions" value="Enter temperature readings, acknowledge excursions, track maintenance schedules."/>
+            <column name="default_content" value="Ongoing Storage and Monitoring - Temperature tracking and excursion management"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BIOREPOSITORY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Sample Request &amp; Retrieval"/>
+            <column name="display_key" value="workflow.page.biorepository.sampleRequest"/>
+            <column name="description" value="Process sample requests, manage approvals, document retrieval"/>
+            <column name="default_instructions" value="Submit requests, obtain approvals, generate work orders, document retrieval with chain of custody."/>
+            <column name="default_content" value="Sample Request and Retrieval - Request workflow and retrieval documentation"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BIOREPOSITORY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="QC Inspection"/>
+            <column name="display_key" value="workflow.page.biorepository.qcInspection"/>
+            <column name="description" value="Execute scheduled QC inspections, verify sample presence and condition"/>
+            <column name="default_instructions" value="Verify location, check physical condition, record discrepancies, update status if quarantine required."/>
+            <column name="default_content" value="QC Inspection - Scheduled quality control verification"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BIOREPOSITORY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Retention &amp; Disposal"/>
+            <column name="display_key" value="workflow.page.biorepository.retentionDisposal"/>
+            <column name="description" value="Manage retention policies, obtain dual authorization, document disposal"/>
+            <column name="default_instructions" value="Review expiring samples, obtain dual authorization, execute disposal, generate certificates."/>
+            <column name="default_content" value="Retention and Disposal - Sample lifecycle closure"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="display_order" value="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BIOREPOSITORY"/>
+        </insert>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueSequenceNext="workflow_page_template_seq"/>
+            <column name="name" value="Reporting &amp; Audit"/>
+            <column name="display_key" value="workflow.page.biorepository.reportingAudit"/>
+            <column name="description" value="Generate reports, review audit trail, export compliance documentation"/>
+            <column name="default_instructions" value="Generate inventory, excursion, and transaction reports. Review audit trail and export in CSV, PDF, or FHIR format."/>
+            <column name="default_content" value="Reporting and Audit - Reports and compliance documentation"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BIOREPOSITORY"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'BIOREPOSITORY'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
