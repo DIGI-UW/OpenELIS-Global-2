@@ -33,12 +33,12 @@
             <column name="description" type="TEXT"/>
             <column name="category" type="VARCHAR(100)"/>
 
-            <!-- Report Definition (JSON stored as TEXT) -->
-            <column name="definition_json" type="TEXT">
+            <!-- Report Definition (JSON stored as JSONB for better PostgreSQL support) -->
+            <column name="definition_json" type="JSONB">
                 <constraints nullable="false"/>
             </column>
 
-            <!-- Audit Fields -->
+            <!-- Audit Fields (Source of Truth) -->
             <column name="created_by" type="VARCHAR(50)"/>
             <column name="created_date" type="TIMESTAMP"/>
             <column name="last_modified" type="TIMESTAMP"/>
@@ -47,10 +47,6 @@
             <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
-
-            <!-- Standard BaseObject fields -->
-            <column name="sys_user_id" type="VARCHAR(50)"/>
-            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()"/>
         </createTable>
 
         <!-- Create indexes for common queries -->
@@ -62,6 +58,9 @@
         </createIndex>
         <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_is_active">
             <column name="is_active"/>
+        </createIndex>
+        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_last_modified">
+            <column name="last_modified"/>
         </createIndex>
 
         <rollback>

@@ -138,13 +138,12 @@ public class ReportDefinition extends BaseObject<String> {
             return false;
         }
         ReportDefinition that = (ReportDefinition) o;
-        return Objects.equals(id, that.id) && Objects.equals(name, that.name) && Objects.equals(category, that.category)
-                && Objects.equals(isActive, that.isActive);
+        return Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, category, isActive);
+        return Objects.hash(id);
     }
 
     @Override
