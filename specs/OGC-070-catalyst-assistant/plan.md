@@ -40,16 +40,15 @@ protocol + MCP for tools).
 - Backend (Java): HTTP client (Apache HttpClient or OkHttp) for A2A agent
   communication, Jackson for JSON, Hibernate 6.x, Jakarta EE 9
 - A2A Agents (Python): a2a-sdk 0.3.22+ (with http-server extra), FastAPI,
-  uvicorn, OpenAI SDK, Google Generative AI SDK, Ollama SDK, httpx (for LM
-  Studio)
+  uvicorn, Google Generative AI SDK, httpx (for LM Studio OpenAI-compatible API)
 - MCP Server (Python): mcp SDK, langchain, chromadb (for RAG embeddings),
   psycopg2-binary (PostgreSQL schema extraction)
 - Frontend: React 17, @carbon/react v1.15, @carbon/ai-chat v1.0, React Intl
 
 **LLM Providers (MVP)**:
 
-- **Cloud**: OpenAI (GPT-4o), Google Gemini (gemini-1.5-pro)
-- **Local**: Ollama (SQLCoder-7B), LM Studio (OpenAI-compatible API)
+- **Cloud**: Google Gemini (gemini-1.5-pro)
+- **Local**: LM Studio (OpenAI-compatible API) - supports llama 3.x, gemma 2, and other models
 
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only for Catalyst
 queries)  
@@ -129,7 +128,7 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 - Single `SQLGenAgent` only (no Router, no Schema, no MCP)
 - Hardcoded schema context (3-5 sample tables as string, not RAG)
-- ONE provider only (Ollama with SQLCoder-7B - local first)
+- ONE provider only (LM Studio with llama/gemma model - local first)
 - No security (no PHI detection, no confirmation tokens)
 - Minimal Agent Card for discovery
 - Python script entry point
@@ -138,7 +137,7 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ```
 projects/catalyst/catalyst-agents/
-├── pyproject.toml                         # Minimal deps: a2a-sdk, ollama
+├── pyproject.toml                         # Minimal deps: a2a-sdk, httpx
 ├── src/
 │   ├── __init__.py
 │   ├── main.py                            # FastAPI entry point
@@ -167,11 +166,9 @@ curl -X POST http://localhost:8000/task \
 
 **Scope**:
 
-- Add OpenAI provider to SQLGenAgent
-- Add Gemini provider to SQLGenAgent
-- Add LM Studio provider to SQLGenAgent
-- Config-driven provider selection (`agents_config.yaml`)
-- No code changes to switch providers
+- Add Gemini provider to SQLGenAgent (cloud)
+- LM Studio already implemented in M0.0 (local)
+- Config-driven switching between cloud and local providers
 
 **Files to Modify/Create**:
 
@@ -183,17 +180,17 @@ projects/catalyst/catalyst-agents/
 │   └── config/
 │       └── agents_config.yaml             # Provider configuration
 ├── tests/
-│   └── test_provider_switching.py         # Verify all 4 providers
+│   └── test_provider_switching.py         # Verify both providers
 ```
 
 **Verification**:
 
 ```bash
-# Test with Ollama (local)
-CATALYST_LLM_PROVIDER=ollama pytest tests/test_provider_switching.py
+# Test with LM Studio (local)
+CATALYST_LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
 
-# Test with OpenAI (cloud)
-CATALYST_LLM_PROVIDER=openai pytest tests/test_provider_switching.py
+# Test with Gemini (cloud)
+CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 ```
 
 ---
@@ -535,7 +532,7 @@ frontend/cypress/e2e/
 # Configuration
 volume/properties/catalyst.properties    # Java backend config (agent URL, guardrails)
 projects/catalyst/catalyst-agents/src/config/agents_config.yaml  # Agent runtime config (LLM provider, MCP URL)
-projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack (agents + MCP + Ollama)
+projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack (agents + MCP)
 ```
 
 **Structure Decision**: Multi-agent architecture - Python A2A agent runtime
@@ -634,8 +631,7 @@ SQL execution + audit, React frontend for chat UI.
 **SQL Generation + LLM Provider Switching** (SQLGenAgent - Python):
 
 - SQLGenAgent owns text-to-SQL generation using configured LLM provider
-- Supports 4 providers: OpenAI (GPT-4o), Google Gemini (gemini-1.5-pro), Ollama
-  (SQLCoder-7B), LM Studio (OpenAI-compatible)
+- Supports 2 providers: Google Gemini (gemini-1.5-pro), LM Studio (OpenAI-compatible with llama/gemma models)
 - Provider selection configured via agent runtime config (YAML/properties)
 - PHI detection and cloud provider blocking logic lives in RouterAgent
   (delegates to SQLGenAgent only if safe)
@@ -714,23 +710,17 @@ catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
 ```yaml
 # LLM Provider Selection (SQLGenAgent)
 llm:
-  provider: ollama # Options: openai, gemini, ollama, lmstudio
-
-  # Cloud providers
-  openai:
-    model: gpt-4o
-    api_key: ${OPENAI_API_KEY}
+  provider: lmstudio # Options: gemini, lmstudio
+  
+  # Cloud provider
   gemini:
     model: gemini-1.5-pro
     api_key: ${GOOGLE_API_KEY}
-
-  # Local providers
-  ollama:
-    base_url: http://ollama:11434
-    model: sqlcoder:7b
+  
+  # Local provider
   lmstudio:
     base_url: http://host.docker.internal:1234/v1
-    model: local-model
+    model: local-model  # llama 3.x, gemma 2, or other OpenAI-compatible
 
 # MCP Server (SchemaAgent)
 mcp:
@@ -746,9 +736,9 @@ identifiers/PHI in the _question text_.
 
 - RouterAgent detects likely PHI/identifiers in user query
 - If PHI detected **and** configured provider is externally-hosted
-  (OpenAI/Gemini), RouterAgent **MUST NOT** delegate to SQLGenAgent with that
+  (Gemini), RouterAgent **MUST NOT** delegate to SQLGenAgent with that
   provider
-- RouterAgent attempts to route to on-premises provider (Ollama or LM Studio) if
+- RouterAgent attempts to route to on-premises provider (LM Studio) if
   configured and healthy
 - If no on-premises provider available, RouterAgent returns error to Java
   backend, which blocks request with user-facing message
@@ -876,10 +866,8 @@ delegating to SchemaAgent or SQLGenAgent.
 ### External References
 
 - [A2A Python SDK](https://pypi.org/project/a2a-sdk/)
-- [OpenAI Python SDK](https://github.com/openai/openai-python)
 - [Google Generative AI Python SDK](https://github.com/google/generative-ai-python)
 - [Carbon AI Chat](https://chat.carbondesignsystem.com/)
-- [SQLCoder on Ollama](https://ollama.com/library/sqlcoder:7b)
 - [MCP Documentation](https://modelcontextprotocol.io/) (MVP - Python SDK)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
 - [MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk)

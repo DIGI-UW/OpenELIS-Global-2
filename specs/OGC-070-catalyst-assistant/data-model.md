@@ -42,7 +42,7 @@ CREATE TABLE catalyst_query (
 
     -- Provider info (FR-019)
     provider_type VARCHAR(50),                    -- external, on-premises
-    provider_id VARCHAR(50),                      -- ollama, openai, gemini, lmstudio
+    provider_id VARCHAR(50),                      -- gemini, lmstudio (MVP providers)
     llm_model VARCHAR(100),                       -- sqlcoder:7b, gpt-4o, gemini-1.5-pro, etc.
 
     -- PHI gating (FR-018, FR-019) - Added in M4
@@ -99,7 +99,7 @@ public class CatalystQuery extends BaseObject<String> {
     private String providerType;  // external, on-premises
 
     @Column(name = "provider_id", length = 50)
-    private String providerId;  // ollama, openai, gemini, lmstudio
+    private String providerId;  // gemini, lmstudio
 
     @Column(name = "llm_model", length = 100)
     private String llmModel;
@@ -146,7 +146,7 @@ public enum ExecutionStatus {
 | sys_user_id        | INTEGER      | User who submitted query                            | Yes                            |
 | lastupdated        | TIMESTAMP    | Last modification time                              | Yes                            |
 | provider_type      | VARCHAR(50)  | Provider type (external/on-premises)                | No (FR-019)                    |
-| provider_id        | VARCHAR(50)  | Provider identifier (ollama/openai/gemini/lmstudio) | No (FR-019)                    |
+| provider_id        | VARCHAR(50)  | Provider identifier (gemini, lmstudio) | No (FR-019)                    |
 | llm_model          | VARCHAR(100) | Model name                                          | No                             |
 | phi_gated          | BOOLEAN      | Whether PHI detection triggered gating              | No (FR-019)                    |
 | tables_used        | TEXT         | Comma-separated table names (NOT raw DDL)           | No (FR-019)                    |

@@ -24,12 +24,12 @@ integration + SQL execution) → React Frontend (Carbon chat UI)
 - [ ] Node.js 16+ installed
 - [ ] Docker with compose v2
 - [ ] Either:
-  - **Cloud API Key**: OpenAI or Google Gemini API key for fast iteration, OR
-  - **Local Setup**: Ollama or LM Studio for privacy-preserving deployment
+  - **Cloud API Key**: Google Gemini API key for fast iteration, OR
+  - **Local Setup**: LM Studio for privacy-preserving deployment
 
 ## Quick Start Options
 
-### Option A: Cloud API (Fastest - No GPU Required)
+### Option A: Cloud API with Gemini (Fastest - No GPU Required)
 
 ```bash
 # 1. Start A2A agents + MCP server + OpenELIS
@@ -38,14 +38,12 @@ docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 # 2. Configure LLM provider in agent config
 # Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
 #   llm:
-#     provider: openai  # or gemini, ollama, lmstudio
-#     openai:
-#       api_key: ${OPENAI_API_KEY}
+#     provider: gemini  # or lmstudio
+#     gemini:
+#       api_key: ${GOOGLE_API_KEY}
 # Set environment variable:
-export OPENAI_API_KEY=sk-your-key-here
-# OR for Gemini:
-# export GOOGLE_API_KEY=your-google-api-key
-# (Update agents_config.yaml provider to "gemini")
+export GOOGLE_API_KEY=your-google-api-key
+# (Update agents_config.yaml provider to "gemini" for cloud, or "lmstudio" for local)
 
 # 3. Build backend with Catalyst
 mvn clean install -DskipTests -Dmaven.test.skip=true
@@ -67,25 +65,25 @@ curl -k -X POST https://localhost/rest/catalyst/query \
   -d '{"queryId": "...", "confirmationToken": "...", "execute": true}'
 ```
 
-### Option B: Local LLM with Ollama (Privacy-First)
+### Option B: Local LLM with LM Studio (Privacy-First)
 
 ```bash
-# 1. Start A2A agents + MCP server + Ollama
+# 1. Start A2A agents + MCP server
 docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 
-# 2. Pull SQLCoder model (~4GB download, first time only)
-docker exec -it catalyst-ollama ollama pull sqlcoder:7b
+# 2. Start LM Studio on host machine (download from https://lmstudio.ai/)
+# Load a model (llama 3.x, gemma 2, or other OpenAI-compatible model)
 
-# 3. Verify model is ready
-curl http://localhost:11434/api/tags
+# 3. Verify LM Studio API is accessible
+curl http://localhost:1234/v1/models
 
 # 4. Configure agent runtime for local LLM
 # Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
 #   llm:
-#     provider: ollama
-#     ollama:
-#       base_url: http://ollama:11434
-#       model: sqlcoder:7b
+#     provider: lmstudio
+#     lmstudio:
+#       base_url: http://host.docker.internal:1234/v1
+#       model: local-model  # Match the model name in LM Studio
 
 # 5. Restart agent runtime to load config
 docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml restart catalyst-agents
@@ -105,7 +103,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 
 ```bash
 # 1. Download and start LM Studio from https://lmstudio.ai/
-# 2. Load a model (e.g., SQLCoder or Mistral)
+# 2. Load a model (e.g., llama 3.x, gemma 2, or other OpenAI-compatible model)
 # 3. Start the local server (default: http://localhost:1234)
 
 # 4. Start A2A agents + MCP server
@@ -175,29 +173,19 @@ docker exec catalyst-mcp python -m src.rag.init_embeddings
 Edit `projects/catalyst/catalyst-agents/src/config/agents_config.yaml`:
 
 ```yaml
-# LLM Provider Selection (openai, gemini, ollama, lmstudio)
+# LLM Provider Selection (gemini, lmstudio)
 llm:
-  provider: ollama # Change to openai, gemini, or lmstudio as needed
-
-  # Cloud: OpenAI
-  openai:
-    model: gpt-4o
-    api_key: ${OPENAI_API_KEY} # Set environment variable
+  provider: lmstudio # Options: gemini, lmstudio
 
   # Cloud: Google Gemini
   gemini:
     model: gemini-1.5-pro
     api_key: ${GOOGLE_API_KEY} # Set environment variable
 
-  # Local: Ollama
-  ollama:
-    base_url: http://ollama:11434
-    model: sqlcoder:7b
-
   # Local: LM Studio (OpenAI-compatible)
   lmstudio:
     base_url: http://host.docker.internal:1234/v1
-    model: local-model
+    model: local-model  # llama 3.x, gemma 2, or other OpenAI-compatible model
 
 # MCP Server (SchemaAgent uses this)
 mcp:
@@ -372,13 +360,6 @@ docker logs catalyst-mcp
 # Check agent runtime logs for LLM errors
 docker logs catalyst-agents | grep -i "llm\|provider\|error"
 
-# For Ollama
-curl http://localhost:11434/api/tags
-
-# For OpenAI (check API key and agent config)
-curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"
-# Verify agents_config.yaml has correct provider and api_key
-
 # For Gemini (check API key and agent config)
 curl "https://generativelanguage.googleapis.com/v1/models?key=$GOOGLE_API_KEY"
 # Verify agents_config.yaml has correct provider and api_key
@@ -422,7 +403,7 @@ services:
       - DATABASE_URL=postgresql://clinlims:clinlims@oe-postgres:5432/clinlims
     depends_on:
       - catalyst-mcp
-      - ollama # If using Ollama provider
+      # Note: LM Studio runs on host machine, not in Docker
     volumes:
       - ./projects/catalyst/catalyst-agents/src/config:/app/config
 
@@ -435,19 +416,8 @@ services:
     depends_on:
       - oe-postgres
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+  # Note: LM Studio runs on host machine, not in Docker
+  # No Docker service needed for LM Studio
 ```
 
 ---

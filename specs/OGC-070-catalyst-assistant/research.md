@@ -62,11 +62,8 @@ Spring MVC architecture.
 
 | Provider                | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                     |
 | ----------------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------- |
-| GPT-4o (OpenAI)         | 500-1000ms | $0.01-0.03/query | Data leaves network | 72%          | Fast development iteration   |
 | Gemini 1.5 Pro (Google) | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration   |
-| SQLCoder-7B (Ollama)    | 100-300ms  | Hardware only    | Fully air-gapped    | 70%+         | Privacy-sensitive production |
-| LM Studio (Local)       | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production |
-| Llama 3.2 3B (Ollama)   | 100-200ms  | Hardware only    | Fully air-gapped    | 65%          | Fallback/explanation         |
+| LM Studio (Local)       | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production with llama 3.x, gemma 2, or other models |
 
 **Note**: Performance/cost figures are estimates based on typical usage
 patterns. Actual values may vary by deployment, model version, and query
@@ -74,8 +71,8 @@ complexity.
 
 **Recommended Strategy**:
 
-- **Development**: Cloud APIs (OpenAI/Gemini) for rapid iteration
-- **Production**: SQLCoder-7B via Ollama or LM Studio for privacy compliance
+- **Development**: Gemini (Cloud) for rapid iteration
+- **Production**: LM Studio (Local) with llama/gemma models for privacy compliance
 - **Provider Switching**: Configured in agent runtime (`agents_config.yaml`),
   not Java backend
 
@@ -86,9 +83,7 @@ complexity.
 [project]
 dependencies = [
     "a2a-sdk[http-server]>=0.3.22",  # A2A protocol + FastAPI/uvicorn
-    "openai>=1.0.0",  # OpenAI provider (for GPT-4o)
     "google-generativeai>=0.3.0",  # Gemini provider
-    "ollama>=0.1.0",  # Ollama provider (local)
     "httpx>=0.25.0",  # HTTP client for OpenAI-compatible APIs (LM Studio)
 ]
 ```
@@ -99,56 +94,39 @@ Java backend. Java backend only needs HTTP client for A2A agent communication.
 **References**:
 
 - [A2A Python SDK](https://pypi.org/project/a2a-sdk/)
-- [OpenAI Python SDK](https://github.com/openai/openai-python)
 - [Google Generative AI Python SDK](https://github.com/google/generative-ai-python)
-- [Ollama Python SDK](https://github.com/ollama/ollama-python)
-- [Ollama Documentation](https://ollama.com/)
+- [LM Studio](https://lmstudio.ai/) (OpenAI-compatible local inference)
 
 ---
 
 ## 3. Local LLM Infrastructure
 
-### Decision: Ollama with Docker Compose for Development
+### Decision: LM Studio for Local Development
 
-**Rationale**: Ollama provides easy model management and Docker integration. GPU
-support via NVIDIA Container Toolkit.
+**Rationale**: LM Studio provides easy model management via GUI, supports OpenAI-compatible API, and works well with llama/gemma-based models. Runs on host machine (not Docker), simplifying GPU access.
 
 **Setup**:
 
-```yaml
-# catalyst-dev.docker-compose.yml
-services:
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-```
+1. Download LM Studio from https://lmstudio.ai/
+2. Load a model (llama 3.x, gemma 2, or other OpenAI-compatible model)
+3. Start local server (default: http://localhost:1234/v1)
+4. Configure agent runtime to use `http://host.docker.internal:1234/v1` as base_url
 
 **Model Selection**:
 
-- **SQLCoder-7B** (defog/sqlcoder-7b-2): Best for SQL generation, ~6GB VRAM with
-  Q4 quantization
-- **Llama 3.2 3B**: Lightweight fallback for reasoning/explanation
+- **Llama 3.x** (8B, 70B): Good SQL generation with quantization
+- **Gemma 2** (2B, 9B, 27B): Google's efficient models, good for SQL tasks
+- Other OpenAI-compatible models as needed
 
 **Alternatives Considered**:
 
-- LM Studio: Better UI for model management, but less Docker-friendly
+- Ollama: Docker-friendly but less flexible model management
 - vLLM: Higher performance but more complex setup
 - llama.cpp: Lowest level, most flexible, but requires more configuration
 
 **References**:
 
-- [SQLCoder on Ollama](https://ollama.com/library/sqlcoder:7b)
-- [LM Studio](https://lmstudio.ai/)
+- [LM Studio](https://lmstudio.ai/) (OpenAI-compatible local inference)
 
 ---
 
@@ -428,7 +406,7 @@ Healthcare AI research platform with OpenMRS integration.
 | Which chat component? | @carbon/ai-chat                   | Carbon compliance, official IBM support                      |
 | MCP in MVP?           | Yes (Python server)               | Validate standards early, support full schema via RAG        |
 | A2A in MVP?           | Yes (3-agent team)                | Validate multi-agent patterns early, med-agent-hub reference |
-| Which LLM providers?  | OpenAI, Gemini, Ollama, LM Studio | Cloud + local coverage, OpenAI-compatible API for LM Studio  |
+| Which LLM providers?  | Gemini, LM Studio | Cloud + local coverage, OpenAI-compatible API for LM Studio  |
 | Schema handling?      | RAG via ChromaDB                  | Full clinical schema too large for context window            |
 | SQL validation?       | Multi-layer guardrails            | Defense in depth for security                                |
 

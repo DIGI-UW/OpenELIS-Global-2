@@ -30,7 +30,7 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-skeleton-poc`  
 **Goal**: Prove A2A + LLM works with ZERO complexity  
-**Verification**: Agent returns SQL from single provider (Ollama)
+**Verification**: Agent returns SQL from single provider (LM Studio)
 
 ### M0.0.1: Branch Setup & Project Structure
 
@@ -40,7 +40,7 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
       `projects/catalyst/catalyst-agents/` with pyproject.toml
 - [ ] T002a [M0.0] Add a2a-sdk dependency to
       `projects/catalyst/catalyst-agents/pyproject.toml` (version 0.3.22+)
-- [ ] T002b [M0.0] Add FastAPI, uvicorn, and ollama dependencies to
+- [ ] T002b [M0.0] Add FastAPI, uvicorn, and httpx dependencies to
       `projects/catalyst/catalyst-agents/pyproject.toml` for agent runtime
 - [ ] T003 [P] [M0.0] Create `projects/catalyst/catalyst-agents/src/__init__.py`
 - [ ] T004 [P] [M0.0] Create
@@ -59,8 +59,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 ### M0.0.3: SQLGenAgent Implementation
 
 - [ ] T014 [M0.0] Implement SQLGenAgent in
-      `projects/catalyst/catalyst-agents/src/agents/sqlgen_agent.py` with Ollama
-      provider only and hardcoded schema context (3-5 sample tables as string)
+      `projects/catalyst/catalyst-agents/src/agents/sqlgen_agent.py` with LM Studio
+      provider only (OpenAI-compatible API) and hardcoded schema context (3-5 sample tables as string)
 
 ### M0.0.4: Agent Server & Discovery
 
@@ -78,32 +78,31 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 ---
 
-## Milestone 0.1: Provider Switching (Estimate: 1 day)
+## Milestone 0.1: Provider Switching (Estimate: 0.5 days)
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-provider-switching`  
 **Goal**: Prove same agent works with local AND cloud providers  
-**Verification**: All 4 providers (Ollama, OpenAI, Gemini, LM Studio) generate
-SQL
+**Verification**: Both providers (LM Studio, Gemini) generate SQL
 
 ### M0.1.1: Provider Switching Tests (TDD - MANDATORY)
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [ ] T010a [P] [M0.1] Write pytest test for SQLGenAgent provider switching
-      (OpenAI/Gemini/Ollama/LM Studio) in
+      (Gemini/LM Studio) in
       `projects/catalyst/catalyst-agents/tests/test_sqlgen_agent.py` (FR-007)
 
 ### M0.1.2: Provider Implementation
 
 - [ ] T014a [M0.1] Implement provider switching in SQLGenAgent supporting
-      OpenAI, Gemini, Ollama, LM Studio in
+      Gemini, LM Studio in
       `projects/catalyst/catalyst-agents/src/agents/sqlgen_agent.py`
 - [ ] T014b [M0.1] Add provider configuration loading from
       `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` in
       SQLGenAgent
 - [ ] T018 [M0.1] Create agent configuration in
-      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with all
-      4 providers
+      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with both
+      providers (Gemini, LM Studio)
 
 ### M0.1.3: Verification & PR
 
@@ -644,7 +643,7 @@ Task T064: "Create CatalystQueryResponse"
 ### Constitution Checkpoints (MANDATORY)
 
 - **After M0.0**: SQLGenAgent test MUST pass, agent returns SQL
-- **After M0.1**: Provider switching tests MUST pass, all 4 providers work
+- **After M0.1**: Provider switching tests MUST pass, both providers (Gemini + LM Studio) work
 - **After M0.2**: Multi-agent tests MUST pass, RouterAgent delegates correctly
 - **After M1**: MCP tests MUST pass, MCP tools callable
 - **After M2**: ORM test + unit tests MUST pass (>80% coverage)
