@@ -51,16 +51,9 @@ let breadcrumbs = [
 ];
 
 function TestNotificationConfigMenu() {
-  const {
-    notificationVisible,
-    setNotificationVisible,
-    addNotification,
-    clearNotifications,
-  } = useContext(NotificationContext);
-  useEffect(() => {
-    setNotificationVisible(false);
-  }, []);
-
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+    
   const intl = useIntl();
 
   const componentMounted = useRef(false);
@@ -133,7 +126,6 @@ function TestNotificationConfigMenu() {
   }, [testNamesList]);
 
   const handleEditButtonClick = (id) => {
-    setNotificationVisible(false);
     window.location.assign(
       `/MasterListsPage/testNotificationConfig?testId=${id}`,
     );

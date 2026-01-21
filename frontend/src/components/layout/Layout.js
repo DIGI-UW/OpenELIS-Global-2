@@ -20,7 +20,7 @@ export default function Layout(props) {
   const location = useLocation();
 
   const addNotification = (notificationBody) => {
-    // setNotifications([...notifications, notificationBody]);
+    
 
     const exists = notifications.some(
       (n) =>
