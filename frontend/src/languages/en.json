@@ -1766,6 +1766,7 @@
   "storage.assign.button": "Assign Location",
   "storage.move.button": "Move Sample",
   "storage.barcode.scan.placeholder": "Scan barcode or enter manually",
+  "storage.location.search.placeholder": "Search for location...",
   "storage.error.position.occupied": "Position is already occupied",
   "storage.error.location.inactive": "Cannot assign to inactive location",
   "storage.success.assigned": "Sample assigned to storage location successfully",

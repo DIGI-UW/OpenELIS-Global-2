@@ -1766,6 +1766,7 @@
   "storage.assign.button": "Attribuer un chemin ",
   "storage.move.button": "Supprimer un échantillon",
   "storage.barcode.scan.placeholder": "Scannez le code-barres ou saisissez manuellement.",
+  "storage.location.search.placeholder": "Rechercher un emplacement...",
   "storage.error.position.occupied": "Le poste est déjà occupé",
   "storage.error.location.inactive": "Impossible d'affecter à un emplacement inactif",
   "storage.success.assigned": "Échantillon affecté avec succès à l'emplacement de stockage",
