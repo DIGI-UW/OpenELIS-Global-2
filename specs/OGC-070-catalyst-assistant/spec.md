@@ -23,6 +23,10 @@
   initial overhead.
 - Q: Language for MCP Server? → A: Python (Official SDK) to leverage rich AI/RAG
   ecosystem and rapid tooling.
+- Q: Should MVP architecture be designed for agent extraction? → A: MVP should
+  prototype a **simple multi-agent team** based on med-agent-hub patterns and
+  A2A spec: Router Agent + specialist agents (Schema, SQLGen). Single-agent
+  fallback for simpler deployments/dev/testing.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -41,9 +45,9 @@ against the OpenELIS schema.
 **Independent Test**: Can be fully tested by sending a natural language query
 through the chat interface and verifying that:
 
-1. The system generates a proposed query (including a SQL preview)
-2. The user can confirm execution
-3. The query executes successfully against the OpenELIS database
+1. The system generates a proposed query (including a SQL preview) and returns a confirmation token
+2. The user reviews the SQL and confirms execution (using the confirmation token)
+3. The query executes successfully against the OpenELIS database only after confirmation validation
 4. Results are returned and displayed to the user
 
 This delivers immediate value: users can answer data questions without SQL
@@ -54,8 +58,9 @@ knowledge.
 1. **Given** a user is logged into OpenELIS Global with appropriate permissions,
    **When** they submit "How many samples were entered today?" in the Catalyst
    sidebar, **Then** the system displays a proposed query (including a SQL
-   preview) and a clear action to run it, **And When** the user runs it,
-   **Then** the system displays a table showing the count of samples entered on
+   preview) and a confirmation token, **And When** the user confirms execution
+   (using the confirmation token), **Then** the system validates the token matches
+   the generated SQL and displays a table showing the count of samples entered on
    the current date.
 
 2. **Given** a user submits a query about test results, **When** they submit
@@ -251,11 +256,21 @@ This delivers enhanced usability and workflow integration.
   Required providers for MVP: OpenAI (Cloud), Google Gemini (Cloud), Ollama
   (Local), and LM Studio (Local via OpenAI-compatible API).
 
+- **FR-020**: System MUST implement a simple multi-agent team using A2A
+  (Agent2Agent) protocol patterns based on med-agent-hub concepts:
+  - (a) **Router Agent**: Orchestrates query flow, delegates to specialists
+  - (b) **Schema Agent**: RAG-based schema retrieval via MCP tools
+  - (c) **SQL Generator Agent**: Text-to-SQL generation using configured LLM
+  - (d) Each agent MUST have an Agent Card for discovery per A2A specification
+  - (e) System MUST support single-agent fallback mode for simpler deployments
+
 - **FR-018**: System MUST detect likely PHI/identifiers in user-submitted
   questions. If the configured AI provider is externally-hosted, the system MUST
   NOT send the question to that provider. The system must either (a) route the
   request to an on-premises provider (if configured and healthy) or (b) block
   the request and prompt the user to remove PHI and retry.
+  
+  **Note**: FR-018 is implemented in M4 (Integration + Security milestone), not in MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before adding security complexity.
 
 - **FR-008**: System MUST validate generated SQL before execution to prevent
   access to blocked tables (e.g., sys_user, login_user, user_role).
@@ -290,7 +305,11 @@ This delivers enhanced usability and workflow integration.
   tables, aggregations (COUNT, SUM, AVG), and date filtering.
 
 - **FR-016**: System MUST present the proposed query (including a SQL preview)
-  to the user for review before execution.
+  to the user for review before execution. Execution MUST require a server-validated
+  confirmation token that matches the generated SQL to prevent accidental or
+  unauthorized execution without user review.
+  
+  **Note**: FR-016 is implemented in M4 (Integration + Security milestone), not in MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before adding security complexity.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -342,6 +361,15 @@ principles for this feature:_
 - **CatalystQuery**: Represents a user's natural language query submission.
   Contains: query text, user ID, timestamp, generated SQL (after processing),
   execution status, result row count.
+
+- **CatalystAgentCards**: A2A-compliant agent descriptors for discovery. MVP
+  includes three agents, each with its own Agent Card:
+  - **RouterAgent**: Orchestrates query flow, delegates to specialists
+  - **SchemaAgent**: RAG-based schema retrieval via MCP tools
+  - **SQLGenAgent**: Text-to-SQL generation using configured LLM
+  Each card contains: agent name, description, supported skills, input/output
+  schemas, authentication requirements, endpoint URL. Router card published at
+  `/.well-known/agent.json` per A2A specification.
 
 - **CatalystReport**: (Future Phase 3) Represents a saved query result set.
   Contains: report name, query text, SQL used, result data snapshot, created
@@ -439,7 +467,9 @@ principles for this feature:_
 
 - Report storage, scheduling, and sharing (Phase 3)
 - Dashboard widgets and visualizations (Phase 3)
-- Multi-agent orchestration using A2A protocol (Phase 2)
+- **Complex multi-agent orchestration** (Phase 2) - MVP implements a simple
+  3-agent team (Router, Schema, SQLGen); advanced orchestration patterns,
+  external agent federation, and dynamic agent discovery deferred
 - PDF or Excel export formats (Phase 3)
 - Wizard mode for query building (Phase 3)
 - Row-level RBAC integration with OpenELIS user permissions (Phase 2) - MVP uses

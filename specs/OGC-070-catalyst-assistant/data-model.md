@@ -21,10 +21,10 @@ debugging.
 
 ```sql
 -- Table: catalyst_query
--- Purpose: Audit log for all Catalyst-generated queries
+-- Purpose: Audit log for all Catalyst-generated queries (FR-010, FR-019)
+-- Note: fhir_uuid omitted for MVP (internal audit entity, not exposed via FHIR)
 CREATE TABLE catalyst_query (
     id VARCHAR(36) PRIMARY KEY,
-    fhir_uuid UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
 
     -- Query content
     user_query TEXT NOT NULL,                    -- Natural language question
@@ -40,9 +40,19 @@ CREATE TABLE catalyst_query (
     sys_user_id INTEGER NOT NULL REFERENCES sys_user(id),
     lastupdated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
-    -- Provider info
-    llm_provider VARCHAR(50),                    -- ollama, openai, anthropic
-    llm_model VARCHAR(100)                       -- sqlcoder:7b, gpt-4o, etc.
+    -- Provider info (FR-019)
+    provider_type VARCHAR(50),                    -- external, on-premises
+    provider_id VARCHAR(50),                      -- ollama, openai, gemini, lmstudio
+    llm_model VARCHAR(100),                       -- sqlcoder:7b, gpt-4o, gemini-1.5-pro, etc.
+    
+    -- PHI gating (FR-018, FR-019) - Added in M4
+    phi_gated BOOLEAN DEFAULT FALSE,              -- Whether PHI detection triggered provider gating
+    
+    -- Schema context metadata (FR-019)
+    tables_used TEXT,                             -- Comma-separated list of table names provided as schema context (NOT raw DDL)
+    
+    -- Review-before-execute (FR-016) - Added in M4
+    confirmation_token VARCHAR(255),              -- Token computed from generated SQL for execution confirmation
 );
 
 -- Index for user query history
@@ -65,9 +75,6 @@ public class CatalystQuery extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id;
 
-    @Column(name = "fhir_uuid", nullable = false, unique = true)
-    private UUID fhirUuid;
-
     @Column(name = "user_query", nullable = false, columnDefinition = "TEXT")
     private String userQuery;
 
@@ -87,20 +94,29 @@ public class CatalystQuery extends BaseObject<String> {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
-    @Column(name = "llm_provider", length = 50)
-    private String llmProvider;
+    // Provider info (FR-019)
+    @Column(name = "provider_type", length = 50)
+    private String providerType;  // external, on-premises
+
+    @Column(name = "provider_id", length = 50)
+    private String providerId;  // ollama, openai, gemini, lmstudio
 
     @Column(name = "llm_model", length = 100)
     private String llmModel;
 
-    // BaseObject fields: sysUserId, lastUpdated inherited
+    // PHI gating (FR-018, FR-019) - Added in M4
+    @Column(name = "phi_gated")
+    private Boolean phiGated;
 
-    @PrePersist
-    public void prePersist() {
-        if (fhirUuid == null) {
-            fhirUuid = UUID.randomUUID();
-        }
-    }
+    // Schema context metadata (FR-019)
+    @Column(name = "tables_used", columnDefinition = "TEXT")
+    private String tablesUsed;  // Comma-separated table names (NOT raw DDL)
+
+    // Review-before-execute (FR-016) - Added in M4
+    @Column(name = "confirmation_token", length = 255)
+    private String confirmationToken;
+
+    // BaseObject fields: sysUserId, lastUpdated inherited
 }
 ```
 
@@ -121,7 +137,6 @@ public enum ExecutionStatus {
 | Field             | Type         | Description                        | Required                       |
 | ----------------- | ------------ | ---------------------------------- | ------------------------------ |
 | id                | VARCHAR(36)  | UUID primary key                   | Yes                            |
-| fhir_uuid         | UUID         | FHIR resource identifier           | Yes                            |
 | user_query        | TEXT         | Original natural language question | Yes                            |
 | generated_sql     | TEXT         | LLM-generated SQL statement        | No (null if generation failed) |
 | execution_status  | VARCHAR(50)  | Current status (enum)              | Yes                            |
@@ -130,8 +145,12 @@ public enum ExecutionStatus {
 | error_message     | TEXT         | Error details                      | No                             |
 | sys_user_id       | INTEGER      | User who submitted query           | Yes                            |
 | lastupdated       | TIMESTAMP    | Last modification time             | Yes                            |
-| llm_provider      | VARCHAR(50)  | Provider used                      | No                             |
+| provider_type     | VARCHAR(50)  | Provider type (external/on-premises) | No (FR-019)                  |
+| provider_id       | VARCHAR(50)  | Provider identifier (ollama/openai/gemini/lmstudio) | No (FR-019) |
 | llm_model         | VARCHAR(100) | Model name                         | No                             |
+| phi_gated         | BOOLEAN      | Whether PHI detection triggered gating | No (FR-019)                |
+| tables_used       | TEXT         | Comma-separated table names (NOT raw DDL) | No (FR-019)            |
+| confirmation_token| VARCHAR(255) | Token for execution confirmation   | No (FR-016)                    |
 
 ---
 
@@ -240,15 +259,18 @@ erDiagram
 
     CATALYST_QUERY {
         string id PK
-        uuid fhir_uuid UK
         text user_query
         text generated_sql
         string execution_status
         int row_count
         int execution_time_ms
         text error_message
-        string llm_provider
+        string provider_type
+        string provider_id
         string llm_model
+        boolean phi_gated
+        text tables_used
+        string confirmation_token
         int sys_user_id FK
         timestamp lastupdated
     }
@@ -287,14 +309,11 @@ erDiagram
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
 
     <changeSet id="catalyst-001-create-audit-table" author="catalyst-team">
-        <comment>Create catalyst_query table for audit logging</comment>
+        <comment>Create catalyst_query table for audit logging (M2 - without security fields phi_gated and confirmation_token, added in M4)</comment>
 
         <createTable tableName="catalyst_query">
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="fhir_uuid" type="UUID" defaultValueComputed="gen_random_uuid()">
-                <constraints nullable="false" unique="true"/>
             </column>
             <column name="user_query" type="TEXT">
                 <constraints nullable="false"/>
@@ -306,8 +325,11 @@ erDiagram
             <column name="row_count" type="INTEGER"/>
             <column name="execution_time_ms" type="INTEGER"/>
             <column name="error_message" type="TEXT"/>
-            <column name="llm_provider" type="VARCHAR(50)"/>
+            <column name="provider_type" type="VARCHAR(50)"/>
+            <column name="provider_id" type="VARCHAR(50)"/>
             <column name="llm_model" type="VARCHAR(100)"/>
+            <!-- Note: phi_gated and confirmation_token added in M4 via catalyst-002-add-security-fields.xml -->
+            <column name="tables_used" type="TEXT"/>
             <column name="sys_user_id" type="INTEGER">
                 <constraints nullable="false" foreignKeyName="fk_catalyst_query_user"
                     referencedTableName="sys_user" referencedColumnNames="id"/>
@@ -390,8 +412,10 @@ public interface CatalystQueryService {
     // Create audit record when query submitted
     CatalystQuery createQuery(String userQuery, Integer userId);
 
-    // Update with generated SQL
-    void updateWithGeneratedSql(String queryId, String sql, String provider, String model);
+    // Update with generated SQL and audit metadata (FR-019)
+    // Note: phiGated and confirmationToken parameters added in M4 (M2 version has only providerType, providerId, model, tablesUsed)
+    void updateWithGeneratedSql(String queryId, String sql, String providerType, String providerId, 
+                                 String model, boolean phiGated, List<String> tablesUsed, String confirmationToken);
 
     // Update with execution result
     void updateWithResult(String queryId, int rowCount, int executionTimeMs);

@@ -12,12 +12,19 @@ a read-only database connection, and displays results. **The core privacy
 constraint is that the LLM receives only schema metadata, never patient data.**
 
 **Primary Goal**: Rapid MVP prototype (2-3 sprints) that validates the
-chat→SQL→results flow with standards-based architecture (MCP for schema
-retrieval).
+chat→SQL→results flow with **standards-based multi-agent architecture** (A2A
+protocol + MCP for tools).
 
-**Key Architectural Decision**: MVP will pilot a **standalone Python MCP
-server** for schema retrieval to validate standards-based architecture early
-(per clarification session 2026-01-20).
+**Key Architectural Decisions**:
+
+1. **A2A Multi-Agent Team (MVP)**: Simple 3-agent team based on med-agent-hub
+   patterns - Router Agent (orchestration), Schema Agent (RAG via MCP), SQL
+   Generator Agent (text-to-SQL). Single-agent fallback mode for simpler
+   deployments.
+2. **MCP for Tools**: Standalone Python MCP server for schema retrieval,
+   callable by Schema Agent via MCP protocol.
+3. **Standards-First**: Validate A2A + MCP architecture early to enable future
+   scaling without refactoring.
 
 ## Technical Context
 
@@ -30,9 +37,9 @@ server** for schema retrieval to validate standards-based architecture early
 
 **Primary Dependencies**:
 
-- Backend (Java): LangChain4j 1.10.0 (core, ollama, open-ai, google-ai-gemini
-  modules), MCP Java SDK 0.8.0, Hibernate 6.x, Jakarta EE 9
-- MCP Server (Python): mcp SDK, langchain, chromadb (for RAG embeddings)
+- Backend (Java): HTTP client (Apache HttpClient or OkHttp) for A2A agent communication, Jackson for JSON, Hibernate 6.x, Jakarta EE 9
+- A2A Agents (Python): a2a-sdk 0.3.22+ (with http-server extra), FastAPI, uvicorn, OpenAI SDK, Google Generative AI SDK, Ollama SDK, httpx (for LM Studio)
+- MCP Server (Python): mcp SDK, langchain, chromadb (for RAG embeddings), psycopg2-binary (PostgreSQL schema extraction)
 - Frontend: React 17, @carbon/react v1.15, @carbon/ai-chat v1.0, React Intl
 
 **LLM Providers (MVP)**:
@@ -46,8 +53,8 @@ queries)
 Testing Library (frontend), Cypress 12.17 (E2E)  
 **Target Platform**: Docker containers deployed via existing OpenELIS
 infrastructure  
-**Project Type**: Multi-service application (Java backend + Python MCP server +
-React frontend)  
+**Project Type**: Multi-agent application (A2A agents in Python + Java backend
+for OpenELIS integration + Python MCP server + React frontend)  
 **Performance Goals**: Query response <10s for <1000 rows, SQL generation
 success >80%  
 **Constraints**: LLM never receives patient data, read-only database access,
@@ -95,21 +102,137 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ### Milestone Table
 
-| ID     | Branch Suffix    | Scope                                      | User Stories            | Verification                       | Depends On |
-| ------ | ---------------- | ------------------------------------------ | ----------------------- | ---------------------------------- | ---------- |
-| M0     | m0-mcp-server    | Python MCP server for schema RAG retrieval | US1 (partial), US2      | MCP tools callable, pytest passes  | -          |
-| [P] M1 | m1-backend-core  | LLM config, MCP client, query service      | US1 (partial), US2, US3 | Unit tests pass, ORM test passes   | -          |
-| [P] M2 | m2-frontend-chat | Carbon chat sidebar, i18n, basic UI        | US1 (partial)           | Jest tests pass, renders correctly | -          |
-| M3     | m3-integration   | REST controller, SQL execution, E2E test   | US1, US4                | Integration + E2E tests pass       | M0, M1, M2 |
+| ID     | Branch Suffix      | Scope                                          | User Stories            | Verification                           | Depends On    |
+| ------ | ------------------ | ---------------------------------------------- | ----------------------- | -------------------------------------- | ------------- |
+| M0     | m0-a2a-agents      | A2A agent infrastructure + 3-agent team        | US1 (partial), US2      | Agent Cards valid, agents communicate  | -             |
+| [P] M1 | m1-mcp-server      | Python MCP server for schema RAG retrieval     | US1 (partial), US2      | MCP tools callable, pytest passes      | -             |
+| [P] M2 | m2-backend-core    | Java OpenELIS integration, SQL execution       | US1 (partial), US2, US3 | Unit tests pass, ORM test passes       | -             |
+| [P] M3 | m3-frontend-chat   | Carbon chat sidebar, i18n, basic UI            | US1 (partial)           | Jest tests pass, renders correctly     | -             |
+| M4     | m4-integration     | Wire agents + backend + frontend, E2E test     | US1, US4                | Integration + E2E tests pass           | M0, M1, M2, M3|
 
 **Legend**:
 
-- **[P]**: Parallel milestone - M0, M1, M2 can be developed simultaneously
-- **Sequential** (no prefix): M3 requires M0 + M1 + M2 to complete
+- **[P]**: Parallel milestone - M0, M1, M2, M3 can be developed simultaneously
+- **Sequential** (no prefix): M4 requires all parallel milestones to complete
 
 ### Milestone Details
 
-#### M0: MCP Schema Server (Estimate: 3-4 days) [PARALLEL]
+#### M0.0: Skeleton POC (Estimate: 1-2 days)
+
+**Goal**: Prove A2A + LLM works with ZERO complexity
+
+**Scope**:
+
+- Single `SQLGenAgent` only (no Router, no Schema, no MCP)
+- Hardcoded schema context (3-5 sample tables as string, not RAG)
+- ONE provider only (Ollama with SQLCoder-7B - local first)
+- No security (no PHI detection, no confirmation tokens)
+- Minimal Agent Card for discovery
+- Python script entry point
+
+**Files to Create**:
+
+```
+projects/catalyst/catalyst-agents/
+├── pyproject.toml                         # Minimal deps: a2a-sdk, ollama
+├── src/
+│   ├── __init__.py
+│   ├── main.py                            # FastAPI entry point
+│   └── agents/
+│       ├── __init__.py
+│       └── sqlgen_agent.py                # Single agent, hardcoded schema
+├── tests/
+│   └── test_sqlgen_agent.py               # Basic TDD test
+└── .well-known/
+    └── agent.json                         # Minimal Agent Card
+```
+
+**Verification**:
+
+```bash
+curl -X POST http://localhost:8000/task \
+  -d '{"query": "How many samples today?"}' \
+  → returns {"sql": "SELECT COUNT(*) FROM sample WHERE ..."}
+```
+
+---
+
+#### M0.1: Provider Switching (Estimate: 1 day)
+
+**Goal**: Prove same agent works with local AND cloud providers
+
+**Scope**:
+
+- Add OpenAI provider to SQLGenAgent
+- Add Gemini provider to SQLGenAgent
+- Add LM Studio provider to SQLGenAgent
+- Config-driven provider selection (`agents_config.yaml`)
+- No code changes to switch providers
+
+**Files to Modify/Create**:
+
+```
+projects/catalyst/catalyst-agents/
+├── src/
+│   ├── agents/
+│   │   └── sqlgen_agent.py                # Add provider abstraction
+│   └── config/
+│       └── agents_config.yaml             # Provider configuration
+├── tests/
+│   └── test_provider_switching.py         # Verify all 4 providers
+```
+
+**Verification**:
+
+```bash
+# Test with Ollama (local)
+CATALYST_LLM_PROVIDER=ollama pytest tests/test_provider_switching.py
+
+# Test with OpenAI (cloud)
+CATALYST_LLM_PROVIDER=openai pytest tests/test_provider_switching.py
+```
+
+---
+
+#### M0.2: Multi-Agent Team (Estimate: 2-3 days)
+
+**Goal**: Prove Router → SchemaAgent → SQLGenAgent orchestration
+
+**Scope**:
+
+- Add RouterAgent (orchestration logic)
+- Add SchemaAgent (still hardcoded schema, no MCP yet)
+- Agent Cards for all 3 agents
+- Single-agent fallback mode
+- NO PHI detection (defer to M4)
+- NO confirmation tokens (defer to M4)
+
+**Files to Create**:
+
+```
+projects/catalyst/catalyst-agents/
+├── src/
+│   ├── agents/
+│   │   ├── router_agent.py                # Orchestration (no PHI detection)
+│   │   └── schema_agent.py                # Hardcoded schema (no MCP)
+│   └── agent_cards/
+│       ├── router.json
+│       ├── schema.json
+│       └── sqlgen.json
+├── tests/
+│   ├── test_router_agent.py
+│   └── test_schema_agent.py
+```
+
+**Verification**:
+
+- pytest: All agent tests pass
+- RouterAgent delegates correctly to SchemaAgent and SQLGenAgent
+- Single-agent fallback mode works when `mode=single`
+
+---
+
+#### M1: MCP Schema Server (Estimate: 3-4 days) [PARALLEL]
 
 **Scope**:
 
@@ -117,6 +240,7 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 - RAG-based schema filtering using embeddings (ChromaDB)
 - MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
 - Docker container for deployment alongside OpenELIS
+- Called by SchemaAgent via MCP protocol
 
 **Files to Create**:
 
@@ -144,42 +268,39 @@ projects/catalyst/catalyst-mcp/
 │   └── test_retriever.py
 └── config/
     └── mcp_config.yaml                    # Server configuration
-
-projects/catalyst/catalyst-dev.docker-compose.yml  # Add MCP server service
 ```
 
 **Verification**:
 
 - pytest: All MCP tool tests pass
-- Manual: MCP server responds to tool calls via Streamable HTTP (SSE optional
-  for streaming)
-- Integration: Java backend can call MCP tools
+- Manual: MCP server responds to tool calls via Streamable HTTP
+- Integration: SchemaAgent can call MCP tools
 
 ---
 
-#### M1: Backend Core (Estimate: 4-5 days) [PARALLEL]
+#### M2: Backend Core (Estimate: 4-5 days) [PARALLEL]
 
 **Scope**:
 
-- MCP client integration (connect to Python MCP server)
-- LLM provider abstraction (LangChain4j with OpenAI/Gemini/Ollama/LM Studio)
-- CatalystQueryService with text-to-SQL prompt construction
+- Java OpenELIS integration layer (REST API, SQL execution, audit)
+- A2A client to call RouterAgent (or direct single-agent mode)
 - Privacy guardrails (blocked tables, schema-only context)
-- CatalystQuery valueholder + DAO for audit logging (provider type/id, PHI
-  gating flag, schema tables used; do not persist raw schema context)
+- CatalystQuery valueholder + DAO for audit logging (without security fields)
+- SQL execution against read-only database connection
+- **Note**: Security features (PHI detection, confirmation tokens) deferred to M4
 
 **Files to Create**:
 
 ```
 src/main/java/org/openelisglobal/catalyst/
 ├── config/
-│   ├── CatalystLLMConfig.java             # LangChain4j provider switching
-│   └── CatalystMCPConfig.java             # MCP client configuration
-├── mcp/
-│   ├── MCPSchemaClient.java               # MCP client for schema tools
-│   └── MCPSchemaClientImpl.java
+│   ├── CatalystAgentConfig.java           # A2A agent client configuration
+│   └── CatalystDatabaseConfig.java        # Read-only connection config
+├── agent/
+│   ├── A2AAgentClient.java                # Client to call A2A agents
+│   └── A2AAgentClientImpl.java
 ├── service/
-│   ├── CatalystQueryService.java          # Text-to-SQL generation
+│   ├── CatalystQueryService.java          # Orchestrates agent calls + SQL exec
 │   └── CatalystQueryServiceImpl.java
 ├── valueholder/CatalystQuery.java         # Audit entity
 ├── dao/
@@ -188,16 +309,18 @@ src/main/java/org/openelisglobal/catalyst/
 └── guardrails/SQLGuardrails.java          # Blocked tables, validation
 
 src/main/resources/liquibase/catalyst/     # Audit table changeset
-volume/properties/catalyst.properties      # Provider + MCP configuration
+volume/properties/catalyst.properties      # Agent + database configuration
 ```
 
 **Verification**:
 
-- Unit tests: CatalystQueryServiceTest (mocked MCP + LLM), SQLGuardrailsTest
+- Unit tests: CatalystQueryServiceTest (mocked agent), SQLGuardrailsTest
 - ORM validation test: HibernateMappingValidationTest (CatalystQuery entity)
-- Integration: MCP client successfully calls Python server
+- Integration: Java backend calls RouterAgent successfully
 
-#### M2: Frontend Chat (Estimate: 3-4 days) [PARALLEL]
+---
+
+#### M3: Frontend Chat (Estimate: 3-4 days) [PARALLEL]
 
 **Scope**:
 
@@ -226,14 +349,23 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 - Jest tests: CatalystSidebar.test.jsx, ChatInterface.test.jsx
 - Manual: Component renders, i18n works for en/fr
 
-#### M3: Integration (Estimate: 3-4 days)
+---
+
+#### M4: Integration + Security (Estimate: 3-4 days)
 
 **Scope**:
 
+- Wire all components: Frontend → Java backend → A2A agents → MCP server
 - CatalystRestController with /rest/catalyst/query endpoint
-- SQL execution against read-only database connection
+- Agent Card discovery endpoint (/.well-known/agent.json proxy)
 - Response formatting (table, JSON, CSV export)
-- Full E2E test proving chat→SQL→results flow
+- Full E2E test proving chat→agents→SQL→results flow
+- Single-agent fallback mode toggle
+- **Security features** (deferred from M0/M2):
+  - PHI detection in RouterAgent (FR-018)
+  - Provider routing for PHI-flagged queries
+  - Confirmation token generation and validation (FR-016)
+  - Add security fields to CatalystQuery entity (phi_gated, confirmation_token)
 
 **Files to Create**:
 
@@ -244,49 +376,59 @@ src/main/java/org/openelisglobal/catalyst/
 └── form/CatalystQueryResponse.java
 
 frontend/cypress/e2e/catalyst.cy.js        # E2E test
+
+projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack compose
 ```
 
 **Verification**:
 
 - Controller integration test: POST /rest/catalyst/query returns valid response
-- E2E test: User types query → sees SQL preview → confirms → sees results
+- E2E test: User types query → Router delegates → SQL generated → results shown
+- Fallback test: Single-agent mode works when multi-agent disabled
 
 ### Milestone Dependency Graph
 
 ```mermaid
-graph LR
-    M0[M0: MCP Server] --> M3[M3: Integration]
-    M1[M1: Backend Core] --> M3
-    M2[M2: Frontend Chat] --> M3
+graph TD
+    M00["M0.0: Skeleton POC<br/>1-2 days"] --> M01["M0.1: Provider Switching<br/>1 day"]
+    M01 --> M02["M0.2: Multi-Agent Team<br/>2-3 days"]
+    M02 --> M1["M1: MCP Server<br/>3-4 days"]
+    M02 --> M2["M2: Backend Core<br/>4-5 days"]
+    M02 --> M3["M3: Frontend Chat<br/>3-4 days"]
+    M1 --> M4["M4: Integration + Security<br/>3-4 days"]
+    M2 --> M4
+    M3 --> M4
 
-    style M0 fill:#e1f5fe
-    style M1 fill:#e1f5fe
-    style M2 fill:#e1f5fe
-
-    subgraph "Parallel Development"
-        M0
+    subgraph parallel ["Parallel Development"]
         M1
         M2
+        M3
     end
 ```
 
 ### PR Strategy
 
 - **Spec PR**: `spec/OGC-070-catalyst-assistant` → `develop` (this spec + plan)
-- **M0 PR**: `feat/OGC-070-catalyst-assistant-m0-mcp-server` → `develop`
-- **M1 PR**: `feat/OGC-070-catalyst-assistant-m1-backend-core` → `develop`
-- **M2 PR**: `feat/OGC-070-catalyst-assistant-m2-frontend-chat` → `develop`
-- **M3 PR**: `feat/OGC-070-catalyst-assistant-m3-integration` → `develop`
+- **M0.0 PR**: `feat/OGC-070-catalyst-assistant-m0-skeleton-poc` → `develop`
+- **M0.1 PR**: `feat/OGC-070-catalyst-assistant-m0-provider-switching` → `develop`
+- **M0.2 PR**: `feat/OGC-070-catalyst-assistant-m0-multi-agent` → `develop`
+- **M1 PR**: `feat/OGC-070-catalyst-assistant-m1-mcp-server` → `develop`
+- **M2 PR**: `feat/OGC-070-catalyst-assistant-m2-backend-core` → `develop`
+- **M3 PR**: `feat/OGC-070-catalyst-assistant-m3-frontend-chat` → `develop`
+- **M4 PR**: `feat/OGC-070-catalyst-assistant-m4-integration-security` → `develop`
 
-**Estimated Total**: ~13-17 days (2-3 sprints) for working MVP with MCP
-architecture
+**Estimated Total**: ~14-16 days (3 sprints) for working MVP with A2A + MCP architecture
 
 ### Future Phases (Post-MVP)
 
-| Phase   | Scope                                         | Prerequisite     |
-| ------- | --------------------------------------------- | ---------------- |
-| Phase 2 | A2A Agent orchestration, multi-agent refactor | MVP validated    |
-| Phase 3 | Report storage, scheduling, dashboards        | Phase 2 complete |
+| Phase   | Scope                                                      | Prerequisite     |
+| ------- | ---------------------------------------------------------- | ---------------- |
+| Phase 2 | Advanced multi-agent orchestration, external agent federation | MVP validated    |
+| Phase 3 | Report storage, scheduling, dashboards                     | Phase 2 complete |
+
+**Note**: Basic A2A multi-agent team (Router + Schema + SQLGen) is now in MVP
+scope. Phase 2 extends to more complex orchestration patterns, dynamic agent
+discovery, and external agent collaboration.
 
 ## Project Structure
 
@@ -321,6 +463,22 @@ specs/OGC-070-catalyst-assistant/
 ### Source Code (repository root)
 
 ```text
+# A2A Agent Team (Python - A2A SDK)
+projects/catalyst/catalyst-agents/
+├── pyproject.toml
+├── Dockerfile
+├── src/
+│   ├── main.py                  # Agent server entry point
+│   ├── agents/                  # Agent implementations
+│   │   ├── router_agent.py      # RouterAgent
+│   │   ├── schema_agent.py      # SchemaAgent
+│   │   └── sqlgen_agent.py      # SQLGenAgent
+│   ├── agent_cards/             # A2A Agent Cards
+│   └── config/
+├── tests/                       # pytest tests
+└── .well-known/
+    └── agent.json               # RouterAgent discovery
+
 # MCP Schema Server (Python - Standalone)
 projects/catalyst/catalyst-mcp/
 ├── pyproject.toml
@@ -336,8 +494,8 @@ projects/catalyst/catalyst-mcp/
 
 # Backend (Java - Traditional Spring MVC)
 src/main/java/org/openelisglobal/catalyst/
-├── config/              # LLM + MCP configuration
-├── mcp/                 # MCP client for schema tools
+├── config/              # Agent + database configuration
+├── agent/               # A2A agent client
 ├── controller/          # REST endpoints
 ├── dao/                 # Data access
 ├── form/                # Request/response DTOs
@@ -367,13 +525,15 @@ frontend/cypress/e2e/
 └── catalyst.cy.js       # E2E test
 
 # Configuration
-volume/properties/catalyst.properties    # LLM + MCP settings
-projects/catalyst/catalyst-dev.docker-compose.yml  # MCP server + Ollama
+volume/properties/catalyst.properties    # Java backend config (agent URL, guardrails)
+projects/catalyst/catalyst-agents/src/config/agents_config.yaml  # Agent runtime config (LLM provider, MCP URL)
+projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack (agents + MCP + Ollama)
 ```
 
-**Structure Decision**: Multi-service architecture - Python MCP server for
-schema retrieval (standards-based), Java backend for orchestration + SQL
-execution, React frontend for chat UI.
+**Structure Decision**: Multi-agent architecture - Python A2A agent runtime
+(RouterAgent, SchemaAgent, SQLGenAgent) for AI orchestration, Python MCP server
+for schema retrieval (standards-based), Java backend for OpenELIS integration +
+SQL execution + audit, React frontend for chat UI.
 
 ## Testing Strategy
 
@@ -388,45 +548,51 @@ execution, React frontend for chat UI.
 
 ### Test Types
 
+- [x] **A2A Agent Tests**: Python (pytest)
+
+  - `test_router_agent.py` - Test orchestration logic
+  - `test_schema_agent.py` - Test MCP tool delegation
+  - `test_sqlgen_agent.py` - Test SQL generation
+  - **SDD Checkpoint**: After M0, all agent tests MUST pass
+
 - [x] **MCP Server Tests**: Python (pytest)
 
   - `test_schema_tools.py` - Test MCP tool implementations
   - `test_retriever.py` - Test RAG embedding search
-  - **SDD Checkpoint**: After M0, all pytest tests MUST pass
+  - **SDD Checkpoint**: After M1, all MCP tests MUST pass
 
 - [x] **Unit Tests**: Service layer (JUnit 4 + Mockito)
 
-  - `CatalystQueryServiceTest` - Mock MCP + LLM responses, test prompt
-    construction
-  - `MCPSchemaClientTest` - Mock MCP server, test client calls
+  - `CatalystQueryServiceTest` - Mock agent responses, test orchestration
+  - `A2AAgentClientTest` - Mock agent server, test client calls
   - `SQLGuardrailsTest` - Test blocked table detection, SQL validation
   - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
-  - **SDD Checkpoint**: After M1, all unit tests MUST pass
+  - **SDD Checkpoint**: After M2, all unit tests MUST pass
 
 - [x] **ORM Validation Tests**: Entity mapping (Constitution V.4)
 
   - `HibernateMappingValidationTest` - Validate CatalystQuery entity mappings
   - MUST execute in <5 seconds, MUST NOT require database
-  - **SDD Checkpoint**: After M1, ORM test MUST pass
+  - **SDD Checkpoint**: After M2, ORM test MUST pass
 
 - [x] **Controller Tests**: REST endpoints (BaseWebContextSensitiveTest)
 
   - `CatalystRestControllerTest` - Test /rest/catalyst/query endpoint
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
-  - **SDD Checkpoint**: After M3, integration tests MUST pass
+  - **SDD Checkpoint**: After M4, integration tests MUST pass
 
 - [x] **Frontend Unit Tests**: React components (Jest + RTL)
 
   - `CatalystSidebar.test.jsx` - Component rendering, i18n
   - `ChatInterface.test.jsx` - Message display
   - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
-  - **SDD Checkpoint**: After M2, Jest tests MUST pass
+  - **SDD Checkpoint**: After M3, Jest tests MUST pass
 
 - [x] **E2E Tests**: Critical workflow (Cypress)
-  - `catalyst.cy.js` - Full chat→SQL→results flow
+  - `catalyst.cy.js` - Full chat→agents→SQL→results flow
   - Run individually during development (Constitution V.5)
   - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
-  - **SDD Checkpoint**: After M3, E2E test MUST pass
+  - **SDD Checkpoint**: After M4, E2E test MUST pass
 
 ### Test Data Management
 
@@ -446,92 +612,48 @@ execution, React frontend for chat UI.
 
 ### Checkpoint Validations
 
-- [x] **After M0 (MCP Server)**: pytest tests MUST pass, MCP tools callable
-- [x] **After M1 (Backend Core)**: ORM validation + unit tests MUST pass
-- [x] **After M2 (Frontend Chat)**: Jest tests MUST pass
-- [x] **After M3 (Integration)**: Controller integration tests + E2E test MUST
-      pass
+- [x] **After M0 (A2A Agents)**: Agent tests MUST pass, Agent Cards valid
+- [x] **After M1 (MCP Server)**: pytest tests MUST pass, MCP tools callable
+- [x] **After M2 (Backend Core)**: ORM validation + unit tests MUST pass
+- [x] **After M3 (Frontend Chat)**: Jest tests MUST pass
+- [x] **After M4 (Integration)**: Controller integration tests + E2E test MUST
+      pass, multi-agent flow verified
 
-## LLM Integration Approach
+## Agent Responsibilities & Integration
 
-### Provider Abstraction (4 Providers)
+### Agent-Owned Responsibilities
 
-```java
-// CatalystLLMConfig.java - Provider switching via configuration
-@Configuration
-public class CatalystLLMConfig {
+**SQL Generation + LLM Provider Switching** (SQLGenAgent - Python):
 
-    @Value("${catalyst.llm.provider:ollama}")
-    private String provider;
+- SQLGenAgent owns text-to-SQL generation using configured LLM provider
+- Supports 4 providers: OpenAI (GPT-4o), Google Gemini (gemini-1.5-pro), Ollama (SQLCoder-7B), LM Studio (OpenAI-compatible)
+- Provider selection configured via agent runtime config (YAML/properties)
+- PHI detection and cloud provider blocking logic lives in RouterAgent (delegates to SQLGenAgent only if safe)
 
-    @Bean
-    public ChatLanguageModel chatLanguageModel() {
-        return switch (provider) {
-            case "openai" -> OpenAiChatModel.builder()
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .modelName("gpt-4o")
-                .build();
-            case "gemini" -> GoogleAiGeminiChatModel.builder()
-                .apiKey(System.getenv("GOOGLE_API_KEY"))
-                .modelName("gemini-1.5-pro")
-                .build();
-            case "ollama" -> OllamaChatModel.builder()
-                .baseUrl(ollamaBaseUrl)
-                .modelName("sqlcoder:7b")
-                .build();
-            case "lmstudio" -> OpenAiChatModel.builder()
-                .baseUrl(lmStudioBaseUrl)  // OpenAI-compatible API
-                .apiKey("not-needed")
-                .modelName("local-model")
-                .build();
-            default -> throw new IllegalStateException("Unknown provider: " + provider);
-        };
-    }
-}
-```
+**Schema Retrieval via MCP** (SchemaAgent - Python):
 
-### MCP-Based Schema Retrieval
+- SchemaAgent calls MCP server tools for RAG-based schema retrieval
+- MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
+- MCP transport: Streamable HTTP (SSE optional for streaming)
+- Reference: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
 
-**Transport note**: Use MCP **Streamable HTTP** transport (SSE optional for
-streaming). See
-`https://modelcontextprotocol.io/specification/2025-11-25/basic/transports`.
+**Orchestration** (RouterAgent - Python):
 
-```java
-// MCPSchemaClient.java - Get relevant schema via MCP tools
-public interface MCPSchemaClient {
-    // Call MCP server's get_relevant_tables tool
-    List<String> getRelevantTables(String userQuery);
+- RouterAgent orchestrates query flow: delegates to SchemaAgent for schema, then SQLGenAgent for SQL generation
+- Performs PHI detection on user query before delegation
+- Returns generated SQL to Java backend (no execution in agent layer)
 
-    // Call MCP server's get_table_ddl tool
-    String getTableDDL(String tableName);
+### Java Backend Responsibilities
 
-    // Call MCP server's get_relationships tool
-    List<Relationship> getRelationships(List<String> tableNames);
-}
+**OpenELIS Integration** (CatalystRestController + CatalystQueryService):
 
-// CatalystQueryServiceImpl.java - Uses MCP for schema context
-public String generateSQL(String userQuery) {
-    // 1. Get relevant tables via RAG (MCP tool)
-    List<String> relevantTables = mcpClient.getRelevantTables(userQuery);
+- Receives HTTP requests from frontend
+- Calls RouterAgent via A2A protocol (HTTP client to agent runtime)
+- Executes generated SQL against read-only database connection
+- Persists audit records (CatalystQuery entity) with FR-019 metadata
+- Validates confirmation token before execution (review-before-execute enforcement)
 
-    // 2. Get DDL for relevant tables only (MCP tool)
-    String schemaContext = relevantTables.stream()
-        .map(mcpClient::getTableDDL)
-        .collect(Collectors.joining("\n"));
-
-    // 3. Construct prompt with filtered schema
-    String prompt = """
-        ### Task: Generate SQL for PostgreSQL database
-        ### Schema:
-        %s
-        ### Question: %s
-        ### SQL:
-        """.formatted(schemaContext, userQuery);
-
-    // LLM receives ONLY relevant schema + question, never patient data
-    return chatModel.generate(prompt);
-}
-```
+**No Direct LLM/MCP Access**: Java backend does NOT directly call LLM providers or MCP server. All AI operations happen in the agent runtime.
 
 ### Python MCP Server Tools
 
@@ -559,29 +681,45 @@ def get_relationships(table_names: list[str]) -> list[dict]:
 
 ### Configuration
 
+**Java Backend** (`volume/properties/catalyst.properties`):
+
 ```properties
-# volume/properties/catalyst.properties
+# A2A Agent Runtime
+catalyst.agents.mode=multi    # Options: multi, single
+catalyst.agents.url=http://catalyst-agents:8000
 
-# LLM Provider (openai, gemini, ollama, lmstudio)
-catalyst.llm.provider=ollama
-
-# Cloud providers
-catalyst.llm.openai.model=gpt-4o
-catalyst.llm.gemini.model=gemini-1.5-pro
-
-# Local providers
-catalyst.llm.ollama.base-url=http://ollama:11434
-catalyst.llm.ollama.model=sqlcoder:7b
-catalyst.llm.lmstudio.base-url=http://host.docker.internal:1234/v1
-catalyst.llm.lmstudio.model=local-model
-
-# MCP Server
-catalyst.mcp.server-url=http://catalyst-mcp:8000/mcp
-
-# Guardrails
+# Guardrails (enforced in Java backend)
 catalyst.guardrails.max-rows=10000
 catalyst.guardrails.query-timeout=30s
 catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
+```
+
+**Agent Runtime** (`projects/catalyst/catalyst-agents/src/config/agents_config.yaml`):
+
+```yaml
+# LLM Provider Selection (SQLGenAgent)
+llm:
+  provider: ollama  # Options: openai, gemini, ollama, lmstudio
+  
+  # Cloud providers
+  openai:
+    model: gpt-4o
+    api_key: ${OPENAI_API_KEY}
+  gemini:
+    model: gemini-1.5-pro
+    api_key: ${GOOGLE_API_KEY}
+  
+  # Local providers
+  ollama:
+    base_url: http://ollama:11434
+    model: sqlcoder:7b
+  lmstudio:
+    base_url: http://host.docker.internal:1234/v1
+    model: local-model
+
+# MCP Server (SchemaAgent)
+mcp:
+  server_url: http://catalyst-mcp:8000/mcp
 ```
 
 ### PHI-Aware Provider Gating (MVP Safety)
@@ -591,16 +729,114 @@ identifiers/PHI in the _question text_.
 
 **Rule (MVP)**:
 
-- If the user question is flagged as likely containing PHI/identifiers **and**
-  the configured provider is externally-hosted, the request **MUST NOT** be sent
-  to that provider.
-- The system should attempt to route the request to an on-premises provider
-  (Ollama or LM Studio) if configured and healthy.
-- If no on-premises provider is available, the request is blocked with a
-  user-facing message instructing the user to remove PHI and retry.
+- RouterAgent detects likely PHI/identifiers in user query
+- If PHI detected **and** configured provider is externally-hosted (OpenAI/Gemini), RouterAgent **MUST NOT** delegate to SQLGenAgent with that provider
+- RouterAgent attempts to route to on-premises provider (Ollama or LM Studio) if configured and healthy
+- If no on-premises provider available, RouterAgent returns error to Java backend, which blocks request with user-facing message
 
 **Reference**: This is required to make US2/FR-004 testable in real workflows
 where users paste patient identifiers into questions.
+
+## A2A Multi-Agent Architecture
+
+**Reference**: [A2A Protocol](https://google.github.io/A2A/),
+[med-agent-hub](https://github.com/pmanko/med-agent-hub)
+
+### Agent Team Overview
+
+MVP implements a simple 3-agent team based on med-agent-hub patterns:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     OpenELIS Frontend                           │
+│                    (CatalystSidebar.jsx)                        │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ HTTP
+┌────────────────────────────▼────────────────────────────────────┐
+│                   Java Backend (OpenELIS)                       │
+│               CatalystRestController + Service                  │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ A2A Task Request
+┌────────────────────────────▼────────────────────────────────────┐
+│                      RouterAgent                                │
+│           (Orchestrates query flow, delegates)                  │
+│                 /.well-known/agent.json                         │
+└───────────┬─────────────────────────────────┬───────────────────┘
+            │ A2A                             │ A2A
+┌───────────▼───────────┐         ┌───────────▼───────────┐
+│     SchemaAgent       │         │     SQLGenAgent       │
+│  (RAG schema lookup)  │         │   (Text-to-SQL LLM)   │
+└───────────┬───────────┘         └───────────────────────┘
+            │ MCP
+┌───────────▼───────────┐
+│    MCP Schema Server  │
+│  (ChromaDB + Postgres)│
+└───────────────────────┘
+```
+
+### Agent Responsibilities
+
+| Agent | Skill | Input | Output |
+|-------|-------|-------|--------|
+| **RouterAgent** | `orchestrate_query` | Natural language query | Final SQL + results |
+| **SchemaAgent** | `retrieve_schema` | Query text | Relevant table DDL |
+| **SQLGenAgent** | `generate_sql` | Query + schema context | Valid SQL statement |
+
+### Agent Card Structure (A2A Specification)
+
+**Required Fields** (per A2A spec v0.3.0+):
+
+- `protocolVersions`: Array of supported A2A protocol versions (e.g., `["0.3.0"]`)
+- `name`: Human-readable agent name
+- `description`: Agent purpose
+- `url`: Base URL for A2A service
+- `version`: Agent implementation version (not protocol version)
+- `capabilities`: Feature flags (streaming, pushNotifications, etc.)
+- `defaultInputModes`: Supported input MIME types (e.g., `["text/plain", "application/json"]`)
+- `defaultOutputModes`: Supported output MIME types
+- `skills`: Array of AgentSkill objects (at least one required)
+
+**Example RouterAgent Card**:
+
+```json
+{
+  "protocolVersions": ["0.3.0"],
+  "name": "CatalystRouterAgent",
+  "description": "Orchestrates text-to-SQL query flow for OpenELIS lab data",
+  "url": "http://catalyst-agents:8000",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["text/plain", "application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "orchestrate_query",
+      "name": "Orchestrate Query",
+      "description": "Convert natural language to SQL and return results",
+      "tags": ["text-to-sql", "lab-data", "query"]
+    }
+  ]
+}
+```
+
+**Discovery Path**: RouterAgent publishes Agent Card at `/.well-known/agent.json` (or `/.well-known/agent-card.json` per A2A SDK 0.3.x default).
+
+### Single-Agent Fallback Mode
+
+For simpler deployments, Catalyst supports single-agent mode where all logic
+runs in one agent (no inter-agent communication):
+
+```properties
+# volume/properties/catalyst.properties
+catalyst.agents.mode=multi    # Options: multi, single
+catalyst.agents.url=http://catalyst-agents:8000
+```
+
+When `mode=single`, the RouterAgent performs all tasks internally without
+delegating to SchemaAgent or SQLGenAgent.
 
 ## References
 
@@ -616,7 +852,9 @@ where users paste patient identifiers into questions.
 
 ### External References
 
-- [LangChain4j Documentation](https://docs.langchain4j.dev/)
+- [A2A Python SDK](https://pypi.org/project/a2a-sdk/)
+- [OpenAI Python SDK](https://github.com/openai/openai-python)
+- [Google Generative AI Python SDK](https://github.com/google/generative-ai-python)
 - [Carbon AI Chat](https://chat.carbondesignsystem.com/)
 - [SQLCoder on Ollama](https://ollama.com/library/sqlcoder:7b)
 - [MCP Documentation](https://modelcontextprotocol.io/) (MVP - Python SDK)
@@ -625,4 +863,6 @@ where users paste patient identifiers into questions.
 - [ChromaDB](https://www.trychroma.com/) (RAG vector store)
 - [Google Gemini API](https://ai.google.dev/)
 - [LM Studio](https://lmstudio.ai/) (OpenAI-compatible local inference)
-- [A2A Protocol](https://google.github.io/A2A/) (Phase 2)
+- [A2A Protocol](https://google.github.io/A2A/) (MVP - multi-agent architecture)
+- [A2A Python SDK](https://github.com/a2aproject/a2a-samples) (agent implementation)
+- [med-agent-hub](https://github.com/pmanko/med-agent-hub) (reference patterns)
