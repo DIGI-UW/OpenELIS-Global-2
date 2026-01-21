@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
+import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
@@ -16,8 +17,23 @@ export default function Layout(props) {
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
+  const location = useLocation();
+
   const addNotification = (notificationBody) => {
-    setNotifications([...notifications, notificationBody]);
+    // setNotifications([...notifications, notificationBody]);
+
+    const exists = notifications.some(
+      (n) =>
+        n.title === notificationBody.title &&
+        n.message === notificationBody.message &&
+        n.kind === notificationBody.kind,
+    );
+    if (!exists) {
+      setNotifications((prevNotifications) => [
+        ...prevNotifications,
+        notificationBody,
+      ]);
+    }
   };
 
   const removeNotification = (index) => {
@@ -44,6 +60,9 @@ export default function Layout(props) {
     }
     setResetConfig(false);
   }, [userSessionDetails.authenticated, resetConfig]);
+  useEffect(() => {
+    setNotifications([]);
+  }, [location]);
 
   return (
     <ConfigurationContext.Provider

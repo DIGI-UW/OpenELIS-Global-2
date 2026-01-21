@@ -427,6 +427,8 @@ button {
   overflow: visible !important;
   min-width: 40px !important;
   display: inline-flex !important;
+  white-space: normal !important;
+  word-break: break-word;
 }
 
 .custom-sidenav-button {

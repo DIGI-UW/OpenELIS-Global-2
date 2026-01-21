@@ -25,7 +25,7 @@ describe("Batch Test Reassignment and Canelation", function () {
     });
 
     it("Cancel Changes", () => {
-      batchTestPage.clickCancel();
+      batchTestPage.clickCancel();Batch Test 
     });
   });
 

@@ -44,6 +44,22 @@ myActionForm = document.forms["<%= (String)request.getAttribute(IActionConstants
 
 
 </script>
+<script>
+window.addEventListener('beforeunload',function(){
+	var errorContainer = document.querySelectorAll('center h1');
+	errorContainer.forEach(function(container){
+		container.innerHTML = '';
+	});
+});
+document.addEventListener('visibilitychange',function(){
+	if (document.hidden){
+		var errorContainers = document.querySelectorAll('center h1');
+		errorContainers.forEach(function(container){
+			container.innerHTML = '';
+		});
+	}
+});
+</script>
 <c:if test="${not empty requestScope[Constants.REQUEST_ERRORS].globalErrors}">
 <center><h1>
 <c:forEach items="${requestScope[Constants.REQUEST_ERRORS].globalErrors}" var="error">

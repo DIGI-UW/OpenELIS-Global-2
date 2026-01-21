@@ -24,6 +24,7 @@ export const AlertDialog = () => {
                 notificationBody.kind !== NotificationKinds.error ? 2000 : 3000
               }
               onClose={(event) => {
+                removeNotification(index);
                 return false;
               }}
               onCloseButtonClick={(event) => {
