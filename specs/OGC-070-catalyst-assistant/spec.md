@@ -440,8 +440,8 @@ principles for this feature:_
   PHI gating status, tables used) without storing PHI values or raw schema
   dumps.
 
-- **SC-004**: System blocks all attempts to query restricted tables
-  (sys_user, login_user, user_role) with clear error messages.
+- **SC-004**: System blocks all attempts to query restricted tables (sys_user,
+  login_user, user_role) with clear error messages.
 
 - **SC-005**: Zero instances of patient data or PHI appearing in LLM API
   requests (verified via audit logs of all LLM prompts).
@@ -456,8 +456,8 @@ principles for this feature:_
 - **SC-008**: Users can export query results in CSV or JSON format.
 
 - **SC-009**: MVP delivers a working prototype that can answer multiple types of
-  laboratory data questions (sample counts, test result queries, turnaround
-  time analysis, date range filtering, aggregation queries) as demonstrated in
+  laboratory data questions (sample counts, test result queries, turnaround time
+  analysis, date range filtering, aggregation queries) as demonstrated in
   end-to-end tests.
 
 **Note**: Performance metrics, SQL accuracy thresholds, and evaluation

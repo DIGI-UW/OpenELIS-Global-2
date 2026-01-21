@@ -38,8 +38,9 @@ protocol + MCP for tools).
 
 **Primary Dependencies**:
 
-- Backend (Java): HTTP client (Apache HttpClient or OkHttp) for OpenAI-compatible
-  API calls to Catalyst Gateway, Jackson for JSON, Hibernate 6.x, Jakarta EE 9
+- Backend (Java): HTTP client (Apache HttpClient or OkHttp) for
+  OpenAI-compatible API calls to Catalyst Gateway, Jackson for JSON, Hibernate
+  6.x, Jakarta EE 9
 - A2A Agents (Python): a2a-sdk 0.3.22+ (with http-server extra), FastAPI,
   uvicorn, Google Generative AI SDK, httpx (for LM Studio OpenAI-compatible API)
 - MCP Server (Python): mcp SDK, langchain, chromadb (for RAG embeddings),
@@ -49,8 +50,8 @@ protocol + MCP for tools).
 **LLM Providers (MVP)**:
 
 - **Cloud**: Google Gemini (latest available)
-- **Local**: LM Studio (exposes an OpenAI-compatible HTTP API for locally
-  hosted models)
+- **Local**: LM Studio (exposes an OpenAI-compatible HTTP API for locally hosted
+  models)
 
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only for Catalyst
 queries)  
@@ -130,8 +131,8 @@ works end-to-end
 
 **Scope**:
 
-- **Catalyst Gateway** (skeleton): Exposes OpenAI-compatible `/v1/chat/completions`
-  endpoint, bridges to RouterAgent via A2A
+- **Catalyst Gateway** (skeleton): Exposes OpenAI-compatible
+  `/v1/chat/completions` endpoint, bridges to RouterAgent via A2A
 - RouterAgent (simple pass-through delegation, like med-agent-hub)
 - CatalystAgent (single "everything" agent combining schema + SQL generation)
 - MCP skeleton (1 hardcoded tool: `get_schema` returning 3-5 tables as string)
@@ -418,7 +419,8 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 
 **Scope**:
 
-- Wire all components: Frontend → Java backend → Catalyst Gateway → A2A agents → MCP server
+- Wire all components: Frontend → Java backend → Catalyst Gateway → A2A agents →
+  MCP server
 - CatalystRestController with /rest/catalyst/query endpoint
 - Agent Card discovery endpoint (/.well-known/agent.json proxy)
 - Response formatting (table, JSON, CSV export)
@@ -647,7 +649,8 @@ SQL execution + audit, React frontend for chat UI.
 - [x] **Unit Tests**: Service layer (JUnit 4 + Mockito)
 
   - `CatalystQueryServiceTest` - Mock agent responses, test orchestration
-  - `CatalystGatewayClientTest` - Mock gateway server, test OpenAI-compatible API calls
+  - `CatalystGatewayClientTest` - Mock gateway server, test OpenAI-compatible
+    API calls
   - `SQLGuardrailsTest` - Test blocked table detection, SQL validation
   - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
   - **SDD Checkpoint**: After M2, all unit tests MUST pass
@@ -706,9 +709,11 @@ SQL execution + audit, React frontend for chat UI.
 
 ### Protocol Layering
 
-The Catalyst system uses three distinct protocols, each serving a specific purpose:
+The Catalyst system uses three distinct protocols, each serving a specific
+purpose:
 
 1. **OpenELIS Backend → AI System**: **OpenAI-compatible Chat Completions API**
+
    - OpenELIS Java backend calls a **Catalyst Gateway** service using the
      standard OpenAI-compatible `/v1/chat/completions` endpoint
    - This provides a stable, industry-standard interface for non-agent clients
@@ -718,7 +723,9 @@ The Catalyst system uses three distinct protocols, each serving a specific purpo
      OpenELIS's integration surface stable and provider-swappable.
 
 2. **Agent Team Internal Communication**: **A2A Protocol**
-   - The Catalyst Gateway bridges OpenAI-compatible requests to the A2A RouterAgent
+
+   - The Catalyst Gateway bridges OpenAI-compatible requests to the A2A
+     RouterAgent
    - RouterAgent coordinates with SchemaAgent and SQLGenAgent via A2A protocol
    - A2A handles agent discovery (Agent Cards), task delegation, and message
      lifecycle
@@ -983,8 +990,8 @@ default).
 ### Single-Agent Fallback Mode
 
 For simpler deployments, Catalyst supports single-agent mode where all logic
-runs in one agent (no inter-agent communication). The Gateway handles routing
-to either the multi-agent team or a single CatalystAgent based on configuration.
+runs in one agent (no inter-agent communication). The Gateway handles routing to
+either the multi-agent team or a single CatalystAgent based on configuration.
 
 ```properties
 # volume/properties/catalyst.properties
@@ -992,9 +999,9 @@ catalyst.gateway.url=http://catalyst-gateway:8000
 ```
 
 The Gateway configuration (in `projects/catalyst/catalyst-gateway/src/config/`)
-determines whether to route to the multi-agent team (RouterAgent) or directly
-to a single CatalystAgent. When in single-agent mode, the CatalystAgent
-performs all tasks internally without delegating to SchemaAgent or SQLGenAgent.
+determines whether to route to the multi-agent team (RouterAgent) or directly to
+a single CatalystAgent. When in single-agent mode, the CatalystAgent performs
+all tasks internally without delegating to SchemaAgent or SQLGenAgent.
 
 ## References
 
