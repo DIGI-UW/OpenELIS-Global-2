@@ -140,9 +140,9 @@ schema retrieval - skeleton)
 - [x] T015 [M0.0] Create RouterAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/router.json` per A2A
       spec
-- [x] T016 [M0.0] Create discovery endpoint at
-      `projects/catalyst/catalyst-agents/.well-known/agent.json` pointing to
-      RouterAgent
+- [x] T016 [M0.0] RouterAgent discovery endpoint automatically served by A2A SDK
+      at `/.well-known/agent-card.json` (no static file needed - A2A SDK serves
+      from AgentCard object)
 
 ### M0.0.8: Integration Test (TDD - MANDATORY)
 
