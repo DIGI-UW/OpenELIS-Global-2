@@ -22,8 +22,9 @@ protocol + MCP for tools).
    patterns - Router Agent (orchestration), Schema Agent (RAG via MCP), SQL
    Generator Agent (text-to-SQL). Single-agent fallback mode for simpler
    deployments.
-2. **MCP for Tools**: Standalone Python MCP server for schema retrieval,
-   callable by Schema Agent via MCP protocol.
+2. **MCP for Tools**: Standalone Python MCP server for schema retrieval and SQL
+   pre-validation (validate_sql), callable by Schema Agent and SQLGen Agent via
+   MCP protocol.
 3. **Standards-First**: Validate A2A + MCP architecture early to enable future
    scaling without refactoring.
 
@@ -54,8 +55,8 @@ protocol + MCP for tools).
   models)
 
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only connection for
-Catalyst SQL query execution; audit logging writes to `catalyst_query` table
-via separate write connection)  
+Catalyst SQL query execution; audit logging writes to `catalyst_query` table via
+separate write connection)  
 **Testing**: JUnit 4 + Mockito (backend), pytest (MCP server), Jest + React
 Testing Library (frontend), Cypress 12.17 (E2E)  
 **Target Platform**: Docker containers deployed via existing OpenELIS
@@ -116,12 +117,14 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 | [P] M1 | m1-rag-schema    | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | MCP tools with real schema work    | M0             |
 | [P] M2 | m2-backend-core  | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests pass, ORM test passes   | M0             |
 | [P] M3 | m3-frontend-chat | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly | -              |
-| M4     | m4-integration   | Wire agents + backend + frontend, security, E2E | US1, US4                | Integration + E2E tests pass       | M0, M1, M2, M3 |
+| M4     | m4-integration   | Wire agents + backend + frontend, basic E2E     | US1, US4                | Integration + basic E2E test pass  | M0, M1, M2, M3 |
+| M5     | m5-security      | Security features (PHI detection, RBAC, tokens) | US2                     | Security unit + integration tests  | M4             |
 
 **Legend**:
 
 - **[P]**: Parallel milestone
-- **Sequential** (no prefix): M4 requires all parallel milestones to complete
+- **Sequential** (no prefix): M4 requires all parallel milestones (M1, M2, M3)
+  to complete; M5 requires M4 to complete
 
 ### Milestone Details
 
@@ -263,8 +266,8 @@ CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 - SQLGenAgent receives schema context from SchemaAgent
 - Agent Cards for all 3 agents
 - Single-agent fallback mode (CatalystAgent still works)
-- NO PHI detection (defer to M4)
-- NO confirmation tokens (defer to M4)
+- NO PHI detection (defer to M5)
+- NO confirmation tokens (defer to M5)
 
 **Files to Create/Modify**:
 
@@ -299,8 +302,10 @@ projects/catalyst/catalyst-agents/src/agent_cards/
 
 - Replace hardcoded `get_schema` MCP tool with real PostgreSQL schema extraction
 - Add ChromaDB for embedding-based schema retrieval
-- Add MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
+- Add MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`,
+  `validate_sql`
 - SchemaAgent calls real MCP tools via Streamable HTTP
+- SQLGenAgent calls `validate_sql` for agent-side pre-validation
 - Docker container for MCP server
 - **2026 Best Practices**:
   - MCP Streamable HTTP conformance test (protocol version header + session
@@ -317,7 +322,8 @@ projects/catalyst/catalyst-mcp/
 ├── src/
 │   ├── tools/
 │   │   ├── schema_tools.py           # Modified: real PostgreSQL extraction
-│   │   └── relationship_tools.py     # New: get_relationships
+│   │   ├── relationship_tools.py     # New: get_relationships
+│   │   └── validation_tools.py       # New: validate_sql
 │   ├── rag/
 │   │   ├── __init__.py
 │   │   ├── retriever.py              # ChromaDB retriever
@@ -328,15 +334,17 @@ projects/catalyst/catalyst-mcp/
 ├── Dockerfile                        # MCP server container
 └── tests/
     ├── test_rag_retrieval.py         # New: RAG tests
-    └── test_schema_extraction.py     # New: PostgreSQL tests
+    ├── test_schema_extraction.py     # New: PostgreSQL tests
+    └── test_validation_tools.py       # New: validate_sql tests
 ```
 
 **Verification**:
 
-- pytest: All MCP tool tests pass with real schema
+- pytest: All MCP tool tests pass with real schema (including validate_sql)
 - MCP server responds to tool calls via Streamable HTTP (with protocol version
   header + session ID)
 - SchemaAgent retrieves relevant tables based on query semantics
+- SQLGenAgent pre-validates SQL via MCP validate_sql before submitting
 - Evaluation harness exists with golden query set defined (metric thresholds
   deferred to future phase)
 
@@ -352,7 +360,7 @@ projects/catalyst/catalyst-mcp/
 - CatalystQuery valueholder + DAO for audit logging (without security fields)
 - SQL execution against read-only database connection
 - **Note**: Security features (PHI detection, confirmation tokens) deferred to
-  M4
+  M5
 
 **Files to Create**:
 
@@ -416,7 +424,7 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 
 ---
 
-#### M4: Integration + Security (Estimate: 3-4 days)
+#### M4: Integration (Estimate: 2-3 days)
 
 **Scope**:
 
@@ -425,21 +433,60 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 - CatalystRestController with /rest/catalyst/query endpoint
 - Agent Card discovery endpoint (/.well-known/agent.json proxy)
 - Response formatting (table, JSON, CSV export)
-- Full E2E test proving chat→agents→SQL→results flow
+- Basic E2E test proving chat→agents→SQL→results flow (without security
+  features)
 - Single-agent fallback mode toggle
-- **Security features** (deferred from M0/M2):
-  - **Role-based endpoint access control (FR-021)**: Restrict
-    `/rest/catalyst/query` to users with `Global Administrator` or `Reports`
-    roles using `UserRoleService.userInRole()`. Return 403 Forbidden for
-    unauthorized users.
-  - PHI detection in RouterAgent (FR-018)
-  - Provider routing for PHI-flagged queries
-  - Confirmation token generation and validation (FR-016)
-  - Add security fields to CatalystQuery entity (phi_gated, confirmation_token)
-  - **Security Testing Note**: PHI detection should have independent unit
-    tests before E2E integration tests to validate detection logic in isolation
+- **Note**: Security features (PHI detection, RBAC, confirmation tokens)
+  deferred to M5 to allow independent testing
 
-**Files to Create**:
+---
+
+#### M5: Security Features (Estimate: 2-3 days)
+
+**Goal**: Implement and thoroughly test security features with independent unit
+tests before integration
+
+**Scope**:
+
+- **Role-based endpoint access control (FR-021)**: Restrict
+  `/rest/catalyst/query` to users with `Global Administrator` or `Reports` roles
+  using `UserRoleService.userInRole()`. Return 403 Forbidden for unauthorized
+  users.
+- **PHI detection in RouterAgent (FR-018)**: Detect likely PHI/identifiers in
+  user queries
+- **Provider routing for PHI-flagged queries**: Route to local provider or block
+  if PHI detected and cloud provider configured
+- **Confirmation token generation and validation (FR-016)**: Generate and
+  validate confirmation tokens for SQL execution
+- **Add security fields to CatalystQuery entity**: `phi_gated`,
+  `confirmation_token` fields
+- **Security Testing**: Independent unit tests for PHI detection logic, RBAC
+  enforcement, and token validation before E2E integration tests
+
+**Files to Create/Modify (M5)**:
+
+```
+src/main/java/org/openelisglobal/catalyst/
+├── controller/CatalystRestController.java          # Modified: Add RBAC check
+├── service/CatalystQueryService.java                # Modified: Add confirmation token validation
+├── guardrails/PHIDetector.java                      # New: PHI detection logic
+└── valueholder/CatalystQuery.java                   # Modified: Add phi_gated, confirmation_token fields
+
+projects/catalyst/catalyst-agents/src/agents/
+└── router_executor.py                               # Modified: Add PHI detection + provider routing
+
+src/test/java/org/openelisglobal/catalyst/
+├── guardrails/PHIDetectorTest.java                  # New: Unit tests for PHI detection
+├── controller/CatalystRestControllerSecurityTest.java  # New: RBAC enforcement tests
+└── service/CatalystQueryServiceSecurityTest.java    # New: Token validation tests
+
+frontend/cypress/e2e/catalyst-security.cy.js         # New: E2E test with security features
+
+src/main/resources/liquibase/catalyst/
+└── catalyst-002-add-security-fields.xml            # New: Add security fields to audit table
+```
+
+**Files to Create (M4)**:
 
 ```
 src/main/java/org/openelisglobal/catalyst/
@@ -447,16 +494,30 @@ src/main/java/org/openelisglobal/catalyst/
 ├── form/CatalystQueryForm.java
 └── form/CatalystQueryResponse.java
 
-frontend/cypress/e2e/catalyst.cy.js        # E2E test
+frontend/cypress/e2e/catalyst.cy.js        # Basic E2E test (without security)
 
 projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack compose
 ```
 
-**Verification**:
+**Verification (M4)**:
 
 - Controller integration test: POST /rest/catalyst/query returns valid response
-- E2E test: User types query → Router delegates → SQL generated → results shown
+- Basic E2E test: User types query → Router delegates → SQL generated → results
+  shown (without security features)
 - Fallback test: Single-agent mode works when multi-agent disabled
+
+---
+
+**Verification (M5)**:
+
+- **Unit tests**: PHI detection logic tested in isolation (RouterAgent unit
+  tests)
+- **Unit tests**: RBAC enforcement tested independently (Controller unit tests)
+- **Unit tests**: Confirmation token generation/validation tested independently
+- **Integration tests**: Security features work together (PHI detection →
+  provider routing, RBAC → endpoint access)
+- **E2E test**: Full security flow (unauthorized user blocked, PHI detected →
+  local provider, confirmation token required for execution)
 
 ### Milestone Dependency Graph
 
@@ -467,9 +528,10 @@ graph TD
     M02 --> M1["M1: RAG-based Schema<br/>3-4 days"]
     M02 --> M2["M2: Backend Core<br/>4-5 days"]
     M02 --> M3["M3: Frontend Chat<br/>3-4 days"]
-    M1 --> M4["M4: Integration + Security<br/>3-4 days"]
+    M1 --> M4["M4: Integration<br/>2-3 days"]
     M2 --> M4
     M3 --> M4
+    M4 --> M5["M5: Security Features<br/>2-3 days"]
 
     subgraph parallel ["Parallel Development"]
         M1
@@ -489,40 +551,41 @@ graph TD
 - **M1 PR**: `feat/OGC-070-catalyst-assistant-m1-rag-schema` → `develop`
 - **M2 PR**: `feat/OGC-070-catalyst-assistant-m2-backend-core` → `develop`
 - **M3 PR**: `feat/OGC-070-catalyst-assistant-m3-frontend-chat` → `develop`
-- **M4 PR**: `feat/OGC-070-catalyst-assistant-m4-integration-security` →
-  `develop`
+- **M4 PR**: `feat/OGC-070-catalyst-assistant-m4-integration` → `develop`
+- **M5 PR**: `feat/OGC-070-catalyst-assistant-m5-security` → `develop`
 
-**Estimated Total**: ~14-16 days (3 sprints) for working MVP with A2A + MCP
-architecture
+**Estimated Total**: ~16-19 days (3-4 sprints) for working MVP with A2A + MCP
+architecture (includes security milestone)
 
 ### Future Phases (Post-MVP)
 
-| Phase   | Scope                                                         | Prerequisite     |
-| ------- | ------------------------------------------------------------- | ---------------- |
-| Phase 2 | Row-level RBAC integration, per-user data filtering          | MVP validated    |
-| Phase 3 | Report storage, scheduling, dashboards                        | MVP validated    |
+| Phase   | Scope                                               | Prerequisite  |
+| ------- | --------------------------------------------------- | ------------- |
+| Phase 2 | Row-level RBAC integration, per-user data filtering | MVP validated |
+| Phase 3 | Report storage, scheduling, dashboards              | MVP validated |
 
 **Independent Future Work** (can proceed in parallel with Phase 2/3):
 
-- **Advanced Multi-Agent Orchestration**: Dynamic agent discovery, external agent
-  federation, more sophisticated routing patterns. This work is independent of
-  Phase 2 row-level RBAC and can proceed in parallel if resources allow.
+- **Advanced Multi-Agent Orchestration**: Dynamic agent discovery, external
+  agent federation, more sophisticated routing patterns. This work is
+  independent of Phase 2 row-level RBAC and can proceed in parallel if resources
+  allow.
 - **Performance Evaluation & Optimization**: Establish evaluation harness with
   golden query sets, measure SQL generation accuracy, response time benchmarks,
   and optimize based on real-world usage patterns.
 - **Multi-Language Query Support**: Extend natural language query understanding
-  to all OpenELIS-supported languages (fr, ar, es, hi, pt, sw), building on
-  the English-first MVP foundation.
+  to all OpenELIS-supported languages (fr, ar, es, hi, pt, sw), building on the
+  English-first MVP foundation.
 - **Advanced Schema RAG**: Enhancements beyond MCP-based schema filtering (e.g.,
-  fine-tuned embeddings, query-specific context optimization, relationship
-  graph traversal).
+  fine-tuned embeddings, query-specific context optimization, relationship graph
+  traversal).
 - **Query Refinement & Suggestions**: Natural language query refinement
   suggestions, multi-step analytical query support, query history learning.
 
 **Note**: Basic A2A multi-agent team (Router + Schema + SQLGen) is now in MVP
 scope. Advanced orchestration patterns, dynamic agent discovery, and external
-agent collaboration are independent future enhancements that don't require
-Phase 2 completion.
+agent collaboration are independent future enhancements that don't require Phase
+2 completion.
 
 ## Project Structure
 
@@ -686,7 +749,8 @@ SQL execution + audit, React frontend for chat UI.
 
   - `CatalystRestControllerTest` - Test /rest/catalyst/query endpoint
   - Template: `.specify/templates/testing/WebMvcTestController.java.template`
-  - **SDD Checkpoint**: After M4, integration tests MUST pass
+  - **SDD Checkpoint**: After M4, basic integration tests MUST pass
+  - **SDD Checkpoint**: After M5, security integration tests MUST pass
 
 - [x] **Frontend Unit Tests**: React components (Jest + RTL)
 
@@ -699,7 +763,8 @@ SQL execution + audit, React frontend for chat UI.
   - `catalyst.cy.js` - Full chat→agents→SQL→results flow
   - Run individually during development (Constitution V.5)
   - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
-  - **SDD Checkpoint**: After M4, E2E test MUST pass
+  - **SDD Checkpoint**: After M4, basic E2E test MUST pass (without security)
+  - **SDD Checkpoint**: After M5, full E2E test with security features MUST pass
 
 ### Test Data Management
 
@@ -723,8 +788,10 @@ SQL execution + audit, React frontend for chat UI.
 - [x] **After M1 (MCP Server)**: pytest tests MUST pass, MCP tools callable
 - [x] **After M2 (Backend Core)**: ORM validation + unit tests MUST pass
 - [x] **After M3 (Frontend Chat)**: Jest tests MUST pass
-- [x] **After M4 (Integration)**: Controller integration tests + E2E test MUST
-      pass, multi-agent flow verified
+- [x] **After M4 (Integration)**: Controller integration tests + basic E2E test
+      MUST pass, multi-agent flow verified (without security features)
+- [x] **After M5 (Security)**: Security unit tests + security integration
+      tests + full E2E test with security features MUST pass
 
 ## Protocol Boundaries & Communication Architecture
 
@@ -755,13 +822,16 @@ purpose:
 
 3. **All LLM/Agent Interactions with OpenELIS Data**: **MCP Protocol**
    - Agents (SchemaAgent, SQLGenAgent) call **OpenELIS MCP Server** tools to
-     access schema metadata
-   - MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
+     access schema metadata and validate SQL
+   - MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`,
+     `validate_sql`
    - **Agents never call OpenELIS directly** - MCP is the single entrypoint for
      all AI access to OpenELIS data
    - **Rationale**: MCP is explicitly designed as the tool boundary where LLMs
      (via host/client) access external systems. This ensures privacy (schema
-     only, no patient data) and provides a clean abstraction layer.
+     only, no patient data) and provides a clean abstraction layer. The
+     `validate_sql` tool enables agent-side pre-validation before submitting SQL
+     to the backend.
 
 ### Architecture Flow
 
@@ -792,10 +862,17 @@ React UI → Java Backend (REST) → Catalyst Gateway (OpenAI-compat) → Router
 - Reference:
   https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
 
+**SQL Generation with Pre-Validation** (SQLGenAgent - Python):
+
+- SQLGenAgent generates SQL using LLM with schema context from SchemaAgent
+- SQLGenAgent calls MCP `validate_sql` tool before submitting SQL to backend
+- Pre-validation reduces invalid submissions and enables agent iteration
+- MCP transport: Streamable HTTP
+
 **Orchestration** (RouterAgent - Python):
 
 - RouterAgent orchestrates query flow: delegates to SchemaAgent for schema, then
-  SQLGenAgent for SQL generation
+  SQLGenAgent for SQL generation (with pre-validation)
 - Performs PHI detection on user query before delegation
 - Returns generated SQL to Java backend (no execution in agent layer)
 
@@ -806,7 +883,11 @@ React UI → Java Backend (REST) → Catalyst Gateway (OpenAI-compat) → Router
 - Receives HTTP requests from frontend
 - Calls **Catalyst Gateway** via OpenAI-compatible Chat Completions API
   (`POST /v1/chat/completions`)
-- Executes generated SQL against read-only database connection
+- Validates generated SQL via `SQLGuardrails` (defense-in-depth, re-validates
+  agent pre-validation)
+- Sets status: SUBMITTED → VALIDATED (or REJECTED if validation fails)
+- Generates confirmation token for validated SQL
+- Executes SQL against read-only database connection (after user confirmation)
 - Persists audit records (CatalystQuery entity) with FR-019 metadata
 - Validates confirmation token before execution (review-before-execute
   enforcement)
@@ -837,6 +918,28 @@ def get_table_ddl(table_name: str) -> str:
 def get_relationships(table_names: list[str]) -> list[dict]:
     """Get foreign key relationships between specified tables."""
     return schema_extractor.get_fk_relationships(table_names)
+
+@tool
+def validate_sql(sql: str, user_query: str) -> dict:
+    """
+    Validate SQL before submission (agent-side pre-validation).
+
+    Checks:
+    - SQL syntax validity
+    - Blocked table access (sys_user, login_user, user_role)
+    - Estimated row count via EXPLAIN (warn if >10k)
+
+    Returns:
+        {
+            "valid": bool,
+            "blockedTables": list[str],  # Empty if none
+            "estimatedRows": int,
+            "syntaxError": str | None,
+            "warnings": list[str]
+        }
+    """
+    # Full validation logic (mirrors Java SQLGuardrails)
+    return validator.validate(sql, user_query)
 ```
 
 ### Configuration
@@ -956,11 +1059,11 @@ MVP implements a simple 3-agent team based on med-agent-hub patterns:
 
 ### Agent Responsibilities
 
-| Agent           | Skill               | Input                  | Output              |
-| --------------- | ------------------- | ---------------------- | ------------------- |
-| **RouterAgent** | `orchestrate_query` | Natural language query | Final SQL + results |
-| **SchemaAgent** | `retrieve_schema`   | Query text             | Relevant table DDL  |
-| **SQLGenAgent** | `generate_sql`      | Query + schema context | Valid SQL statement |
+| Agent           | Skill               | Input                  | Output              | Validation           |
+| --------------- | ------------------- | ---------------------- | ------------------- | -------------------- |
+| **RouterAgent** | `orchestrate_query` | Natural language query | Final SQL + results | PHI detection        |
+| **SchemaAgent** | `retrieve_schema`   | Query text             | Relevant table DDL  | N/A                  |
+| **SQLGenAgent** | `generate_sql`      | Query + schema context | Valid SQL statement | Pre-validate via MCP |
 
 ### Agent Card Structure (A2A Specification)
 

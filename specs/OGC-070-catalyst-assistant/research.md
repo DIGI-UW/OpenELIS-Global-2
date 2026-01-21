@@ -298,6 +298,8 @@ delegates to SchemaAgent.
 - `get_relevant_tables(query: str) -> list[str]` - RAG-based table retrieval
 - `get_table_ddl(table_name: str) -> str` - DDL extraction
 - `get_relationships(table_names: list[str]) -> list[dict]` - FK relationships
+- `validate_sql(sql: str, user_query: str) -> dict` - Agent-side SQL validation
+  (syntax, blocked tables, row estimation)
 
 **References**:
 
@@ -306,6 +308,28 @@ delegates to SchemaAgent.
 - [MCP Transport: Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
 - [MCP Python SDK Documentation](https://modelcontextprotocol.io/docs/python)
+
+### Defense-in-Depth Validation Strategy
+
+**Why Two Validation Layers?**
+
+1. **Agent-Side (MCP `validate_sql`)**: Reduces invalid submissions, faster
+   feedback loop for agents
+2. **Backend-Side (Java `SQLGuardrails`)**: Trusted boundary enforcement,
+   ultimate privacy guarantee
+
+**MCP `validate_sql` Tool:**
+
+- Syntax check via SQL parser
+- Blocked table detection (configurable list)
+- Row estimation via EXPLAIN ANALYZE
+- Returns structured validation result for agent iteration
+
+**Java `SQLGuardrails` Class:**
+
+- Re-validates all checks (never trust agent output)
+- Enforces confirmation token requirement
+- Final gatekeeper before database access
 
 ### 2026 Implementation Note: Streamable HTTP Protocol Version Header
 
@@ -317,7 +341,7 @@ handling (`MCP-Session-Id`). For Catalyst, best practice is to:
 - Add a minimal conformance test that:
   - initializes a client session
   - lists tools
-  - calls the MVP tool (`get_schema`) and later `get_relevant_tables`
+  - calls the MVP tools (`get_relevant_tables`, `validate_sql`)
 
 ### A2A Protocol (Agent2Agent) - MVP ✅
 

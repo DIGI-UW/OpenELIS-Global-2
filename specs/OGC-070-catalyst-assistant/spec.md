@@ -70,11 +70,12 @@ knowledge.
 
 1. **Given** a user is logged into OpenELIS Global with appropriate permissions,
    **When** they submit "How many samples were entered today?" in the Catalyst
-   sidebar, **Then** the system displays a proposed query (including a SQL
-   preview) and a confirmation token, **And When** the user confirms execution
-   (using the confirmation token), **Then** the system validates the token
-   matches the generated SQL and displays a table showing the count of samples
-   entered on the current date.
+   sidebar, **Then** the system generates SQL, validates it (status: VALIDATED),
+   and displays a proposed query (including a SQL preview) with a confirmation
+   token, **And When** the user confirms execution (using the confirmation
+   token), **Then** the system validates the token (status: ACCEPTED), executes
+   the query, and displays a table showing the count of samples entered on the
+   current date (status: EXECUTED).
 
 2. **Given** a user submits a query about test results, **When** they submit
    "Show all HIV test results from last week", **Then** the system proposes a
@@ -292,9 +293,9 @@ This delivers enhanced usability and workflow integration.
   request to an on-premises provider (if configured and healthy) or (b) block
   the request and prompt the user to remove PHI and retry.
 
-  **Note**: FR-018 is implemented in M4 (Integration + Security milestone), not
-  in MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation
-  before adding security complexity.
+  **Note**: FR-018 is implemented in M5 (Security Features milestone), not in
+  MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
+  adding security complexity.
 
 - **FR-008**: System MUST validate generated SQL before execution to prevent
   access to blocked tables (e.g., sys_user, login_user, user_role).
@@ -339,14 +340,14 @@ This delivers enhanced usability and workflow integration.
 - **FR-015**: System MUST support queries that require JOINs across multiple
   tables, aggregations (COUNT, SUM, AVG), and date filtering.
 
-- **FR-016**: System MUST present the proposed query (including a SQL preview)
-  to the user for review before execution. Execution MUST require a
-  server-validated confirmation token that matches the generated SQL to prevent
-  accidental or unauthorized execution without user review.
+- **FR-016**: System MUST present SQL to user for review after VALIDATED state.
+  Execution requires user confirmation (ACCEPTED state) via server-validated
+  token matching the generated SQL. Workflow: SUBMITTED → VALIDATED → ACCEPTED →
+  EXECUTED.
 
-  **Note**: FR-016 is implemented in M4 (Integration + Security milestone), not
-  in MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation
-  before adding security complexity.
+  **Note**: FR-016 is implemented in M5 (Security Features milestone), not in
+  MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
+  adding security complexity.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 

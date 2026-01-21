@@ -31,7 +31,7 @@ CREATE TABLE catalyst_query (
     generated_sql TEXT,                          -- LLM-generated SQL (null if failed)
 
     -- Execution details
-    execution_status VARCHAR(50) NOT NULL,       -- PENDING, EXECUTED, FAILED, BLOCKED
+    execution_status VARCHAR(50) NOT NULL,       -- SUBMITTED, VALIDATED, REJECTED, ACCEPTED, EXECUTED, FAILED
     row_count INTEGER,                           -- Number of rows returned (null if not executed)
     execution_time_ms INTEGER,                   -- Query execution time in milliseconds
     error_message TEXT,                          -- Error details if failed
@@ -124,13 +124,28 @@ public class CatalystQuery extends BaseObject<String> {
 
 ```java
 public enum ExecutionStatus {
-    PENDING,    // Query received, SQL not yet generated
-    GENERATED,  // SQL generated, awaiting user confirmation
+    SUBMITTED,  // Agent generated SQL and submitted to system
+    VALIDATED,  // Passed guardrails validation, ready for user review
+    REJECTED,   // Failed validation (blocked table, too many rows, syntax error)
+    ACCEPTED,   // User confirmed execution (token validated)
     EXECUTED,   // SQL executed successfully
-    FAILED,     // Execution failed (syntax error, timeout, etc.)
-    BLOCKED     // Rejected by guardrails (blocked table, too many rows)
+    FAILED      // Execution failed (timeout, runtime error)
 }
 ```
+
+### State Transitions
+
+1. **Agent Work** (No persisted state): Agent calls MCP tools
+   (get_relevant_tables, get_table_ddl, validate_sql), generates SQL
+2. **SUBMITTED**: Agent submits SQL to Java backend
+3. **VALIDATED**: SQL passes `SQLGuardrails.validate()`, `confirmationToken`
+   generated
+4. **REJECTED**: SQL fails validation (blocked table, excessive rows, syntax
+   error)
+5. **ACCEPTED**: User submits `queryId` + `confirmationToken`, backend validates
+   token
+6. **EXECUTED**: Backend executes SQL against read-only connection
+7. **FAILED**: Execution fails (timeout, runtime error)
 
 ### Field Descriptions
 
@@ -375,11 +390,16 @@ erDiagram
 
 ### Entity Lifecycle
 
-1. **PENDING**: Created when user submits query (before LLM call)
-2. **GENERATED**: Updated after LLM returns SQL (awaiting user confirmation)
-3. **EXECUTED**: Updated after successful query execution
-4. **FAILED**: Updated if execution fails
-5. **BLOCKED**: Updated if guardrails reject query
+1. **Agent Work** (No persisted state): Agent calls MCP tools, generates SQL,
+   pre-validates via MCP `validate_sql`
+2. **SUBMITTED**: Agent submits SQL to Java backend (entity created)
+3. **VALIDATED**: SQL passes `SQLGuardrails.validate()`, `confirmationToken`
+   generated
+4. **REJECTED**: SQL fails validation (blocked table, excessive rows, syntax
+   error)
+5. **ACCEPTED**: User confirms execution (token validated by backend)
+6. **EXECUTED**: Query executed successfully
+7. **FAILED**: Execution fails (timeout, runtime error)
 
 ---
 

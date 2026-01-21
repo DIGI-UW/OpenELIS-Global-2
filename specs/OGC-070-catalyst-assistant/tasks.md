@@ -22,8 +22,11 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
   ChromaDB ops)
 - **M2 (Backend Core)**: 23 tasks (reduced - security deferred)
 - **M3 (Frontend Chat)**: 19 tasks (reduced - token handling deferred)
-- **M4 (Integration + Security)**: 37 tasks (includes role-based access control)
-- **Total**: 127 tasks (sequentially renumbered, no duplicates)
+- **M4 (Integration)**: ~20 tasks (wiring, controller, export, basic E2E without
+  security)
+- **M5 (Security Features)**: ~17 tasks (RBAC, PHI detection, confirmation
+  tokens, security tests)
+- **Total**: 164 tasks (sequentially renumbered, no duplicates)
 
 ---
 
@@ -32,8 +35,6 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-foundation-poc`  
 **Goal**: Prove A2A Router → Agent → MCP tool flow works end-to-end  
 **Verification**: Router → CatalystAgent → MCP → LLM → SQL flow complete  
-**FR Coverage**: FR-020 (A2A multi-agent architecture - partial), FR-003 (MCP
-schema retrieval - skeleton)  
 **FR Coverage**: FR-020 (A2A multi-agent architecture - partial), FR-003 (MCP
 schema retrieval - skeleton)
 
@@ -180,7 +181,6 @@ schema retrieval - skeleton)
 **Goal**: Split CatalystAgent into specialized SchemaAgent + SQLGenAgent  
 **Verification**: Router → SchemaAgent → SQLGenAgent flow works, CatalystAgent
 fallback works  
-**FR Coverage**: FR-020 (A2A multi-agent architecture - complete 3-agent team)  
 **FR Coverage**: FR-020 (A2A multi-agent architecture - complete 3-agent team)
 
 ### M0.2.1: SchemaAgent Test (TDD - MANDATORY)
@@ -343,25 +343,40 @@ support via accurate schema metadata)
       `projects/catalyst/catalyst-agents/tests/test_execution_accuracy.py`
       (golden queries → generated SQL → actual results vs expected results)
 
-### M1.7: ChromaDB Operational Guardrails
+### M1.7: MCP Validation Tool
 
-- [ ] T053e [M1] Pin ChromaDB version in
+- [ ] T053f [M1] Implement `validate_sql` tool in
+      `projects/catalyst/catalyst-mcp/src/tools/validation_tools.py`
+  - Syntax validation via sqlparse or similar
+  - Blocked table detection (configurable list from DB)
+  - Row estimation via EXPLAIN ANALYZE on safe queries
+  - Return structured validation result
+- [ ] T053g [M1] Write pytest for `validate_sql` in
+      `projects/catalyst/catalyst-mcp/tests/test_validation_tools.py`
+  - Test valid SQL passes
+  - Test blocked table detection
+  - Test excessive row estimation warning
+  - Test syntax error detection
+
+### M1.8: ChromaDB Operational Guardrails
+
+- [ ] T053h [M1] Pin ChromaDB version in
       `projects/catalyst/catalyst-mcp/pyproject.toml` (e.g., chromadb==0.4.22)
-- [ ] T053f [M1] Configure persistence volume for ChromaDB in
+- [ ] T053i [M1] Configure persistence volume for ChromaDB in
       `projects/catalyst/catalyst-dev.docker-compose.yml` (mount
       `/app/chroma_data`)
-- [ ] T053g [M1] Document index rebuild procedure in
+- [ ] T053j [M1] Document index rebuild procedure in
       `projects/catalyst/catalyst-mcp/README.md` (schema change → re-embed →
       rebuild index)
 
-### M1.8: Deployment
+### M1.9: Deployment
 
 - [ ] T054 [M1] Create Dockerfile.mcp in `projects/catalyst/Dockerfile.mcp` for
       containerized MCP server deployment
 - [ ] T055 [M1] Update `projects/catalyst/catalyst-dev.docker-compose.yml` to
       add MCP server as separate container (if not already present)
 
-### M1.9: Verification & PR
+### M1.10: Verification & PR
 
 - [ ] T056 [M1] Run pytest to verify all M1 tests pass, verify MCP tools return
       real schema from PostgreSQL, verify SchemaAgent retrieves relevant tables
@@ -389,13 +404,14 @@ endpoint access) deferred to M4
 
 - [ ] T057 [M2] Create milestone branch
       `feat/OGC-070-catalyst-assistant-m2-backend-core` from `develop`
-- [ ] T057a [M2] Add HTTP client dependency to `pom.xml` for A2A agent
-      communication (e.g., Apache HttpClient or OkHttp)
+- [ ] T057a [M2] Add HTTP client dependency to `pom.xml` for Catalyst Gateway
+      communication (OpenAI-compatible Chat Completions API, e.g., Apache
+      HttpClient or OkHttp)
 - [ ] T057b [M2] Add JSON processing dependency to `pom.xml` if not already
       present (Jackson)
 - [ ] T058 [M2] Create package structure
       `src/main/java/org/openelisglobal/catalyst/` with subpackages (config,
-      agent, service, dao, valueholder, guardrails, form)
+      gateway, service, dao, valueholder, guardrails, form)
 
 ### M2.2: Backend Tests (TDD - MANDATORY)
 
@@ -410,9 +426,9 @@ endpoint access) deferred to M4
 - [ ] T060a [P] [M2] Write JUnit test for audit metadata capture (providerType,
       providerId, tablesUsed) in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
-      (FR-019 - without phiGated, deferred to M4)
-- [ ] T061 [P] [M2] Write JUnit test for A2AAgentClient in
-      `src/test/java/org/openelisglobal/catalyst/agent/A2AAgentClientTest.java`
+      (FR-019 - without phiGated, deferred to M5)
+- [ ] T061 [P] [M2] Write JUnit test for CatalystGatewayClient in
+      `src/test/java/org/openelisglobal/catalyst/gateway/CatalystGatewayClientTest.java`
 - [ ] T062 [P] [M2] Write JUnit test for SQLGuardrails in
       `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java`
       (blocked tables only, NO PHI detection - deferred to M4)
@@ -429,7 +445,7 @@ endpoint access) deferred to M4
       `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
       extending BaseObject with JPA annotations (user_id, query_text,
       generated_sql, provider_type, provider_id, tables_used, timestamp)
-      (FR-019 - without phi_gated and confirmation_token, deferred to M4)
+      (FR-019 - without phi_gated and confirmation_token, deferred to M5)
 
 ### M2.4: DAO Layer
 
@@ -451,26 +467,27 @@ endpoint access) deferred to M4
       (FR-009)
 - [ ] T068 [M2] Implement SQL guardrails in
       `src/main/java/org/openelisglobal/catalyst/guardrails/SQLGuardrails.java`
-      (blocked tables, SQL validation - NO PHI detection, deferred to M4)
+      (blocked tables, SQL validation - NO PHI detection, deferred to M5)
 
-### M2.6: A2A Agent Client
+### M2.6: Catalyst Gateway Client
 
-- [ ] T069 [M2] Create A2AAgentClient interface in
-      `src/main/java/org/openelisglobal/catalyst/agent/A2AAgentClient.java`
-- [ ] T070 [M2] Implement A2AAgentClientImpl in
-      `src/main/java/org/openelisglobal/catalyst/agent/A2AAgentClientImpl.java`
-      with HTTP client to call RouterAgent
+- [ ] T069 [M2] Create CatalystGatewayClient interface in
+      `src/main/java/org/openelisglobal/catalyst/gateway/CatalystGatewayClient.java`
+- [ ] T070 [M2] Implement CatalystGatewayClientImpl in
+      `src/main/java/org/openelisglobal/catalyst/gateway/CatalystGatewayClientImpl.java`
+      with HTTP client to call Catalyst Gateway via OpenAI-compatible Chat
+      Completions API (`POST /v1/chat/completions`)
 
 ### M2.7: Configuration
 
-- [ ] T071 [M2] Create CatalystAgentConfig in
-      `src/main/java/org/openelisglobal/catalyst/config/CatalystAgentConfig.java`
-      with @Configuration for A2A agent URL and mode (multi/single)
+- [ ] T071 [M2] Create CatalystGatewayConfig in
+      `src/main/java/org/openelisglobal/catalyst/config/CatalystGatewayConfig.java`
+      with @Configuration for Gateway URL (OpenAI-compatible endpoint)
 - [ ] T072 [M2] Create CatalystDatabaseConfig in
       `src/main/java/org/openelisglobal/catalyst/config/CatalystDatabaseConfig.java`
       for read-only connection
 - [ ] T073 [M2] Create Catalyst properties file in
-      `volume/properties/catalyst.properties` with agent URL, mode, guardrails
+      `volume/properties/catalyst.properties` with gateway URL, guardrails
       config
 
 ### M2.8: Database Schema
@@ -478,7 +495,7 @@ endpoint access) deferred to M4
 - [ ] T074 [M2] Create Liquibase changeset in
       `src/main/resources/liquibase/catalyst/catalyst-001-create-audit-table.xml`
       for CatalystQuery table without security fields (phi_gated,
-      confirmation_token added in M4) (Constitution VI)
+      confirmation_token added in M5) (Constitution VI)
 
 ### M2.9: Forms (DTOs)
 
@@ -589,29 +606,24 @@ translations
 
 ---
 
-## Milestone 4: Integration + Security (Estimate: 3-4 days) [SEQUENTIAL - depends on M0.2, M1, M2, M3]
+## Milestone 4: Integration (Estimate: 2-3 days) [SEQUENTIAL - depends on M0.2, M1, M2, M3]
 
-**Branch**: `feat/OGC-070-catalyst-assistant-m4-integration-security`  
-**Goal**: Wire all components, implement REST controller, add security features
-(role-based endpoint access, PHI detection, confirmation tokens), create E2E
-test  
-**Verification**: Controller integration tests pass (including role check), E2E
-test passes (chat→agents→SQL→results), security features work (FR-021, FR-016,
-FR-018)  
-**FR Coverage**: FR-004 (schema-only context verified end-to-end), FR-010 (audit
-logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
-(confirmation token workflow), FR-018 (PHI detection + provider routing), FR-019
-(audit metadata capture), FR-021 (role-based endpoint access control)  
-**FR Coverage**: FR-004 (schema-only context verified end-to-end), FR-010 (audit
-logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
-(confirmation token workflow), FR-018 (PHI detection + provider routing), FR-019
-(audit metadata capture), FR-021 (role-based endpoint access control)
+**Branch**: `feat/OGC-070-catalyst-assistant-m4-integration`  
+**Goal**: Wire all components, implement REST controller, export endpoints,
+basic E2E test (without security features)  
+**Verification**: Controller integration tests pass, basic E2E test passes
+(chat→agents→SQL→results), multi-agent flow verified  
+**FR Coverage**: FR-001 (chat interface - integration), FR-004 (schema-only
+context verified end-to-end), FR-010 (audit logging - basic), FR-012 (CSV/JSON
+export)  
+**Note**: Security features (PHI detection, RBAC, confirmation tokens) deferred
+to M5 to allow independent testing
 
 ### M4.1: Branch Setup & REST Controller
 
 - [ ] T102 [M4] Create milestone branch
-      `feat/OGC-070-catalyst-assistant-m4-integration-security` from `develop`
-      (merge M0.2, M1, M2, M3 first)
+      `feat/OGC-070-catalyst-assistant-m4-integration` from `develop` (merge
+      M0.2, M1, M2, M3 first)
 - [ ] T103 [M4] Implement CatalystRestController in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
       with @RestController and /rest/catalyst/query endpoint
@@ -638,7 +650,7 @@ logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
 - [ ] T106 [M4] Wire frontend CatalystSidebar to backend REST endpoint with
       fetch/axios in `frontend/src/components/catalyst/CatalystSidebar.jsx`
 - [ ] T106a [M4] Implement basic query handling in frontend (confirmation token
-      handling deferred to M4.6)
+      handling deferred to M5)
 - [ ] T107 [M4] Configure full stack Docker Compose in
       `projects/catalyst/catalyst-dev.docker-compose.yml` (agents + MCP +
       OpenELIS + frontend)
@@ -657,70 +669,7 @@ logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
       (GET /export/{queryId}?format=json per contract)
 
-### M4.5: Role-Based Endpoint Access Control (FR-021)
-
-> **NOTE: Write tests FIRST, ensure they FAIL before implementation**
-
-- [ ] T111a [P] [M4] Write integration test for role-based access control in
-      `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerTest.java`:
-      test that users with `Global Administrator` role can access endpoint, test
-      that users with `Reports` role can access endpoint, test that users
-      without these roles receive 403 Forbidden
-- [ ] T111b [M4] Implement role check in CatalystRestController: inject
-      `UserRoleService`, check
-      `userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)` or
-      `userInRole(sysUserId, Constants.ROLE_REPORTS)` before processing request.
-      Return 403 Forbidden if user lacks required roles. (Pattern: see
-      `PatientMergeRestController` and `StorageLocationRestController`)
-- [ ] T111c [M4] Write Cypress E2E test in `frontend/cypress/e2e/catalyst.cy.js`
-      verifying that non-privileged users cannot access Catalyst (shows access
-      denied message)
-- [ ] T111d [M4] Add user-friendly "Access Denied" UI message in
-      `frontend/src/components/catalyst/CatalystSidebar.jsx` when backend
-      returns 403 (i18n key: `catalyst.error.accessDenied`)
-
-### M4.6: Security Features (Deferred from M0/M2)
-
-- [ ] T102a [M4] Add PHI detection to RouterAgent in
-      `projects/catalyst/catalyst-agents/src/agents/router_agent.py` (FR-018)
-- [ ] T102b [M4] Add provider routing for PHI-flagged queries in RouterAgent: if
-      PHI detected and provider is external, route to local provider if healthy,
-      else block
-- [ ] T102c [M4] Add confirmation_token column to CatalystQuery entity in
-      `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
-      (FR-016)
-- [ ] T102d [M4] Add phi_gated column to CatalystQuery entity in
-      `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
-      (FR-019)
-- [ ] T102e [M4] Create Liquibase changeset to add confirmation_token and
-      phi_gated columns to catalyst_query table in
-      `src/main/resources/liquibase/catalyst/catalyst-002-add-security-fields.xml`
-- [ ] T102f [M4] Implement confirmation token generation in
-      `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
-      (compute hash from generated SQL) (FR-016)
-- [ ] T102g [M4] Implement confirmation token validation in
-      `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
-      (validate token matches SQL before execution) (FR-016)
-- [ ] T102h [M4] Update audit metadata capture to include phiGated in
-      `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
-      (FR-019)
-- [ ] T102i [M4] Write pytest test for RouterAgent PHI detection and provider
-      routing in `projects/catalyst/catalyst-agents/tests/test_router_agent.py`
-      (FR-018)
-- [ ] T102j [M4] Write unit test for confirmation token validation in
-      `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
-      (test token mismatch rejection)
-- [ ] T102k [M4] Write unit test for PHI gating in
-      `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
-- [ ] T102l [M4] Implement confirmation token handling in frontend: store token
-      from generation response, include in execution request in
-      `frontend/src/components/catalyst/CatalystSidebar.jsx`
-- [ ] T102m [M4] Write E2E test for PHI blocking in
-      `frontend/cypress/e2e/catalyst.cy.js` (FR-018)
-- [ ] T102n [M4] Write E2E test for confirmation flow in
-      `frontend/cypress/e2e/catalyst.cy.js` (FR-016)
-
-### M4.7: Verification & PR
+### M4.5: Verification & PR
 
 - [ ] T112 [M4] Run controller integration tests with Maven (MUST pass)
 - [ ] T113 [M4] Run Cypress E2E test individually with
@@ -728,12 +677,122 @@ logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
 - [ ] T114 [M4] Verify multi-agent flow works (Router delegates to Schema +
       SQLGen)
 - [ ] T115 [M4] Verify single-agent fallback mode works when configured
-- [ ] T116 [M4] Verify security features work (PHI detection, confirmation
-      tokens)
-- [ ] T116a [M4] Verify role-based access control works (privileged users can
+- [ ] T117 [M4] Create PR `feat/OGC-070-catalyst-assistant-m4-integration` →
+      `develop`
+
+---
+
+## Milestone 5: Security Features (Estimate: 2-3 days) [SEQUENTIAL - depends on M4]
+
+**Branch**: `feat/OGC-070-catalyst-assistant-m5-security`  
+**Goal**: Implement and thoroughly test security features with independent unit
+tests before integration  
+**Verification**: Security unit tests pass, security integration tests pass,
+full E2E test with security features passes  
+**FR Coverage**: FR-016 (confirmation token workflow), FR-018 (PHI detection +
+provider routing), FR-019 (audit metadata capture - security fields), FR-021
+(role-based endpoint access control)
+
+### M5.1: Branch Setup
+
+- [ ] T118 [M5] Create milestone branch
+      `feat/OGC-070-catalyst-assistant-m5-security` from `develop` (after M4
+      merged)
+
+### M5.2: Security Unit Tests (TDD - MANDATORY)
+
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+
+- [ ] T111a [P] [M5] Write integration test for role-based access control in
+      `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerSecurityTest.java`:
+      test that users with `Global Administrator` role can access endpoint, test
+      that users with `Reports` role can access endpoint, test that users
+      without these roles receive 403 Forbidden
+- [ ] T102i [P] [M5] Write pytest test for RouterAgent PHI detection and
+      provider routing in
+      `projects/catalyst/catalyst-agents/tests/test_router_agent.py` (FR-018)
+- [ ] T102j [P] [M5] Write unit test for confirmation token validation in
+      `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceSecurityTest.java`
+      (test token mismatch rejection)
+- [ ] T102k [P] [M5] Write unit test for PHI gating in
+      `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceSecurityTest.java`
+
+### M5.3: Role-Based Endpoint Access Control (FR-021)
+
+- [ ] T111b [M5] Implement role check in CatalystRestController: inject
+      `UserRoleService`, check
+      `userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)` or
+      `userInRole(sysUserId, Constants.ROLE_REPORTS)` before processing request.
+      Return 403 Forbidden if user lacks required roles. (Pattern: see
+      `PatientMergeRestController` and `StorageLocationRestController`)
+- [ ] T111c [M5] Write Cypress E2E test in
+      `frontend/cypress/e2e/catalyst-security.cy.js` verifying that
+      non-privileged users cannot access Catalyst (shows access denied message)
+- [ ] T111d [M5] Add user-friendly "Access Denied" UI message in
+      `frontend/src/components/catalyst/CatalystSidebar.jsx` when backend
+      returns 403 (i18n key: `catalyst.error.accessDenied`)
+
+### M5.4: PHI Detection & Provider Routing (FR-018)
+
+- [ ] T102a [M5] Add PHI detection to RouterAgent in
+      `projects/catalyst/catalyst-agents/src/agents/router_executor.py` (FR-018)
+- [ ] T102b [M5] Add provider routing for PHI-flagged queries in RouterAgent: if
+      PHI detected and provider is external, route to local provider if healthy,
+      else block
+
+### M5.5: Confirmation Token Workflow (FR-016)
+
+- [ ] T102c [M5] Add confirmation_token column to CatalystQuery entity in
+      `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
+      (FR-016)
+- [ ] T102e [M5] Create Liquibase changeset to add confirmation_token and
+      phi_gated columns to catalyst_query table in
+      `src/main/resources/liquibase/catalyst/catalyst-002-add-security-fields.xml`
+- [ ] T102f [M5] Implement confirmation token generation in
+      `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
+      (compute hash from generated SQL) (FR-016)
+- [ ] T102g [M5] Implement confirmation token validation in
+      `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
+      (validate token matches SQL before execution) (FR-016)
+- [ ] T102l [M5] Implement confirmation token handling in frontend: store token
+      from generation response, include in execution request in
+      `frontend/src/components/catalyst/CatalystSidebar.jsx`
+- [ ] T102n [M5] Write E2E test for confirmation flow in
+      `frontend/cypress/e2e/catalyst-security.cy.js` (FR-016)
+
+### M5.6: Audit Metadata - Security Fields (FR-019)
+
+- [ ] T102d [M5] Add phi_gated column to CatalystQuery entity in
+      `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
+      (FR-019)
+- [ ] T102h [M5] Update audit metadata capture to include phiGated in
+      `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
+      (FR-019)
+
+### M5.7: Security Integration & E2E Tests
+
+- [ ] T102m [M5] Write E2E test for PHI blocking in
+      `frontend/cypress/e2e/catalyst-security.cy.js` (FR-018)
+- [ ] T119 [M5] Write security integration test in
+      `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerSecurityTest.java`
+      verifying security features work together (PHI detection → provider
+      routing, RBAC → endpoint access)
+
+### M5.8: Verification & PR
+
+- [ ] T120 [M5] Run security unit tests (MUST pass independently)
+- [ ] T121 [M5] Run security integration tests (MUST pass)
+- [ ] T122 [M5] Run Cypress E2E test with security features individually with
+      `npm run cy:run -- --spec "cypress/e2e/catalyst-security.cy.js"`
+      (Constitution V.5)
+- [ ] T123 [M5] Verify role-based access control works (privileged users can
       access, non-privileged users get 403)
-- [ ] T117 [M4] Create PR
-      `feat/OGC-070-catalyst-assistant-m4-integration-security` → `develop`
+- [ ] T124 [M5] Verify PHI detection routes to local provider or blocks
+      appropriately
+- [ ] T125 [M5] Verify confirmation token workflow (generation, validation,
+      execution)
+- [ ] T126 [M5] Create PR `feat/OGC-070-catalyst-assistant-m5-security` →
+      `develop`
 
 ---
 
@@ -748,7 +807,8 @@ graph TD
     M02 --> M1["M1: RAG-based Schema"]
     M02 --> M2["M2: Backend Core"]
     M02 --> M3["M3: Frontend Chat"]
-    M1 --> M4["M4: Integration + Security"]
+    M1 --> M4["M4: Integration"]
+    M4 --> M5["M5: Security Features"]
     M2 --> M4
     M3 --> M4
 
@@ -763,6 +823,7 @@ graph TD
 - **M1, M2, M3**: Can be developed in parallel after M0.2 (marked [P] in
   milestone table)
 - **M4**: MUST wait for M0.2, M1, M2, M3 to complete (sequential)
+- **M5**: MUST wait for M4 to complete (sequential)
 
 ### Within Each Milestone
 
@@ -784,14 +845,14 @@ graph TD
 
 ```bash
 # Launch all tests together (TDD):
-Task T047: "Write ORM validation test for CatalystQuery entity"
-Task T048: "Write JUnit test for CatalystQueryService"
-Task T049: "Write JUnit test for A2AAgentClient"
-Task T050: "Write JUnit test for SQLGuardrails"
+# Example: Write ORM validation test for CatalystQuery entity
+# Example: Write JUnit test for CatalystQueryService
+# Example: Write JUnit test for CatalystGatewayClient
+# Example: Write JUnit test for SQLGuardrails
 
 # Launch all form DTOs together:
-Task T063: "Create CatalystQueryForm"
-Task T064: "Create CatalystQueryResponse"
+# Example: Create CatalystQueryForm
+# Example: Create CatalystQueryResponse
 ```
 
 ---
@@ -804,7 +865,7 @@ Task T064: "Create CatalystQueryResponse"
    Specialization)
 2. **Week 2**: M1 (RAG-based Schema) + M2 (Backend Core) + M3 (Frontend Chat) in
    parallel
-3. **Week 3**: M4 (Integration + Security) + Testing + Bug fixes
+3. **Week 3**: M4 (Integration) + M5 (Security Features) + Testing + Bug fixes
 4. **Deploy MVP**: Full chat→agents→SQL→results flow validated with security
    features
 
@@ -818,8 +879,9 @@ Task T064: "Create CatalystQueryResponse"
 - **After M1**: MCP tests MUST pass, MCP tools callable
 - **After M2**: ORM test + unit tests MUST pass (>80% coverage)
 - **After M3**: Jest tests MUST pass (>70% coverage)
-- **After M4**: E2E test MUST pass, security features validated (Constitution
-  V.5)
+- **After M4**: Basic E2E test MUST pass (without security features)
+- **After M5**: Security unit tests + security integration tests + full E2E test
+  with security features MUST pass (Constitution V.5)
 
 ### Pre-Commit Checklist (MANDATORY)
 

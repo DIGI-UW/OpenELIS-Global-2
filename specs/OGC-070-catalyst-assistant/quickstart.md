@@ -64,8 +64,8 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 # Response includes queryId, confirmationToken, and generated SQL for review
 
 # 6. Execute with confirmation (Stage B)
-# Note: execute defaults to true, but explicit confirmation via queryId + token
-# is required. Setting execute: false allows dry-run testing without execution.
+# Note: execute defaults to false (safer default). Setting execute: true with
+# queryId + confirmationToken validates token and executes the query.
 curl -k -X POST https://localhost/rest/catalyst/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
@@ -204,9 +204,9 @@ mcp:
 Edit `volume/properties/catalyst.properties`:
 
 ```properties
-# A2A Agent Runtime
-catalyst.agents.mode=multi  # Options: multi, single
-catalyst.agents.url=http://catalyst-agents:8000
+# Catalyst Gateway (OpenAI-compatible entrypoint)
+catalyst.gateway.url=http://catalyst-gateway:8000
+catalyst.gateway.api-key=not-required-for-mvp  # Gateway may require auth in future
 
 # Guardrails (enforced in Java backend)
 catalyst.guardrails.max-rows=10000
@@ -242,16 +242,18 @@ curl -k -X POST https://localhost/rest/catalyst/query \
     "execute": false
   }'
 
-# Expected response (Stage A):
+# Expected response (Stage A: SQL generated and validated):
 # {
 #   "queryId": "550e8400-e29b-41d4-a716-446655440000",
-#   "status": "GENERATED",
+#   "status": "VALIDATED",  # Changed from GENERATED
+#   "userQuery": "How many samples were entered today?",
 #   "generatedSql": "SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE",
 #   "estimatedRows": 150,
-#   "confirmationToken": "abc123def456..."
+#   "confirmationToken": "abc123def456...",
+#   "results": null
 # }
 
-# Execute with confirmation (Stage B):
+# Stage B: Execute with confirmation
 curl -k -X POST https://localhost/rest/catalyst/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
@@ -260,6 +262,18 @@ curl -k -X POST https://localhost/rest/catalyst/query \
     "confirmationToken": "abc123def456...",
     "execute": true
   }'
+
+# Expected response (Stage B: accepted and executed):
+# {
+#   "queryId": "550e8400-e29b-41d4-a716-446655440000",
+#   "status": "EXECUTED",  # VALIDATED → ACCEPTED → EXECUTED
+#   "userQuery": "How many samples were entered today?",
+#   "generatedSql": "SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE",
+#   "estimatedRows": 150,
+#   "actualRows": 147,
+#   "executionTimeMs": 45,
+#   "results": { "columns": ["count"], "rows": [[147]] }
+# }
 ```
 
 ### Step 6: Run Tests
