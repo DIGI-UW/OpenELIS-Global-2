@@ -106,13 +106,13 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ### Milestone Table
 
-| ID     | Branch Suffix    | Scope                                      | User Stories            | Verification                          | Depends On     |
-| ------ | ---------------- | ------------------------------------------ | ----------------------- | ------------------------------------- | -------------- |
-| M0     | m0-a2a-agents    | A2A agent infrastructure + 3-agent team    | US1 (partial), US2      | Agent Cards valid, agents communicate | -              |
-| [P] M1 | m1-mcp-server    | Python MCP server for schema RAG retrieval | US1 (partial), US2      | MCP tools callable, pytest passes     | -              |
-| [P] M2 | m2-backend-core  | Java OpenELIS integration, SQL execution   | US1 (partial), US2, US3 | Unit tests pass, ORM test passes      | -              |
-| [P] M3 | m3-frontend-chat | Carbon chat sidebar, i18n, basic UI        | US1 (partial)           | Jest tests pass, renders correctly    | -              |
-| M4     | m4-integration   | Wire agents + backend + frontend, E2E test | US1, US4                | Integration + E2E tests pass          | M0, M1, M2, M3 |
+| ID     | Branch Suffix    | Scope                                              | User Stories            | Verification                          | Depends On     |
+| ------ | ---------------- | -------------------------------------------------- | ----------------------- | ------------------------------------- | -------------- |
+| M0     | m0-foundation    | A2A Router + CatalystAgent + MCP skeleton          | US1 (partial), US2      | Router → Agent → MCP flow works       | -              |
+| [P] M1 | m1-rag-schema    | ChromaDB RAG-based schema retrieval                | US1 (partial), US2      | MCP tools with real schema work       | M0             |
+| [P] M2 | m2-backend-core  | Java OpenELIS integration, SQL execution           | US1 (partial), US2, US3 | Unit tests pass, ORM test passes      | M0             |
+| [P] M3 | m3-frontend-chat | Carbon chat sidebar, i18n, basic UI                | US1 (partial)           | Jest tests pass, renders correctly    | -              |
+| M4     | m4-integration   | Wire agents + backend + frontend, security, E2E    | US1, US4                | Integration + E2E tests pass          | M0, M1, M2, M3 |
 
 **Legend**:
 
@@ -121,42 +121,62 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ### Milestone Details
 
-#### M0.0: Skeleton POC (Estimate: 1-2 days)
+#### M0.0: Foundation POC (Estimate: 2-3 days)
 
-**Goal**: Prove A2A + LLM works with ZERO complexity
+**Goal**: Prove A2A Router → Agent → MCP tool flow works end-to-end
 
 **Scope**:
 
-- Single `SQLGenAgent` only (no Router, no Schema, no MCP)
-- Hardcoded schema context (3-5 sample tables as string, not RAG)
-- ONE provider only (LM Studio with llama/gemma model - local first)
-- No security (no PHI detection, no confirmation tokens)
-- Minimal Agent Card for discovery
-- Python script entry point
+- RouterAgent (simple pass-through delegation, like med-agent-hub)
+- CatalystAgent (single "everything" agent combining schema + SQL generation)
+- MCP skeleton (1 hardcoded tool: `get_schema` returning 3-5 tables as string)
+- Agent Cards for Router + CatalystAgent per A2A specification
+- Single LLM provider (LM Studio)
+- med-agent-hub-style project structure under `projects/catalyst/`
 
 **Files to Create**:
 
 ```
-projects/catalyst/catalyst-agents/
-├── pyproject.toml                         # Minimal deps: a2a-sdk, httpx
-├── src/
+projects/catalyst/
+├── pyproject.toml                    # a2a-sdk, mcp, httpx, google-generativeai
+├── server/
 │   ├── __init__.py
-│   ├── main.py                            # FastAPI entry point
-│   └── agents/
-│       ├── __init__.py
-│       └── sqlgen_agent.py                # Single agent, hardcoded schema
+│   ├── config.py                     # LLM + endpoint configuration
+│   ├── llm_clients.py                # LLM provider abstraction
+│   ├── sdk_agents/
+│   │   ├── __init__.py
+│   │   ├── router_executor.py        # Simple delegation logic
+│   │   ├── router_server.py          # FastAPI + A2A SDK server
+│   │   ├── catalyst_executor.py      # Schema retrieval + SQL generation
+│   │   └── catalyst_server.py        # FastAPI + A2A SDK server
+│   ├── mcp/
+│   │   ├── __init__.py
+│   │   └── schema_tools.py           # Hardcoded get_schema tool (3-5 tables)
+│   └── agent_cards/
+│       ├── router.json               # RouterAgent card
+│       └── catalyst.json             # CatalystAgent card
 ├── tests/
-│   └── test_sqlgen_agent.py               # Basic TDD test
+│   ├── test_router.py
+│   ├── test_catalyst_agent.py
+│   └── test_mcp_tools.py
 └── .well-known/
-    └── agent.json                         # Minimal Agent Card
+    └── agent.json                    # Points to RouterAgent for discovery
 ```
 
 **Verification**:
 
 ```bash
-curl -X POST http://localhost:8000/task \
+# Start agent servers
+python -m server.sdk_agents.router_server &
+python -m server.sdk_agents.catalyst_server &
+
+# Test end-to-end flow
+curl -X POST http://localhost:9100/task \
   -d '{"query": "How many samples today?"}' \
-  → returns {"sql": "SELECT COUNT(*) FROM sample WHERE ..."}
+  → Router delegates to CatalystAgent
+  → CatalystAgent calls MCP get_schema
+  → CatalystAgent generates SQL via LLM
+  → Returns {"sql": "SELECT COUNT(*) FROM sample WHERE ..."}
 ```
 
 ---
@@ -196,87 +216,84 @@ CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 
 ---
 
-#### M0.2: Multi-Agent Team (Estimate: 2-3 days)
+#### M0.2: Agent Specialization (Estimate: 2 days)
 
-**Goal**: Prove Router → SchemaAgent → SQLGenAgent orchestration
+**Goal**: Split CatalystAgent into specialized SchemaAgent + SQLGenAgent
 
 **Scope**:
 
-- Add RouterAgent (orchestration logic)
-- Add SchemaAgent (still hardcoded schema, no MCP yet)
+- Split CatalystAgent into SchemaAgent + SQLGenAgent
+- RouterAgent delegates: query → SchemaAgent → SQLGenAgent → response
+- SchemaAgent calls MCP `get_schema` tool (still hardcoded)
+- SQLGenAgent receives schema context from SchemaAgent
 - Agent Cards for all 3 agents
-- Single-agent fallback mode
+- Single-agent fallback mode (CatalystAgent still works)
 - NO PHI detection (defer to M4)
 - NO confirmation tokens (defer to M4)
 
-**Files to Create**:
+**Files to Create/Modify**:
 
 ```
-projects/catalyst/catalyst-agents/
-├── src/
-│   ├── agents/
-│   │   ├── router_agent.py                # Orchestration (no PHI detection)
-│   │   └── schema_agent.py                # Hardcoded schema (no MCP)
-│   └── agent_cards/
-│       ├── router.json
-│       ├── schema.json
-│       └── sqlgen.json
-├── tests/
-│   ├── test_router_agent.py
-│   └── test_schema_agent.py
+projects/catalyst/server/sdk_agents/
+├── schema_executor.py                # New: schema retrieval
+├── schema_server.py                  # New: FastAPI + A2A SDK
+├── sqlgen_executor.py                # New: SQL generation only
+├── sqlgen_server.py                  # New: FastAPI + A2A SDK
+├── router_executor.py                # Modified: orchestrate 2 agents
+└── catalyst_executor.py              # Kept for single-agent fallback
+
+projects/catalyst/server/agent_cards/
+├── router.json                       # Updated: knows about schema + sqlgen
+├── schema.json                       # New
+└── sqlgen.json                       # New
 ```
 
 **Verification**:
 
 - pytest: All agent tests pass
-- RouterAgent delegates correctly to SchemaAgent and SQLGenAgent
+- RouterAgent delegates correctly: SchemaAgent → SQLGenAgent
 - Single-agent fallback mode works when `mode=single`
 
 ---
 
-#### M1: MCP Schema Server (Estimate: 3-4 days) [PARALLEL]
+#### M1: RAG-based Schema (Estimate: 3-4 days) [PARALLEL]
+
+**Goal**: Replace hardcoded schema with ChromaDB RAG-based retrieval
 
 **Scope**:
 
-- Python MCP server exposing schema retrieval tools
-- RAG-based schema filtering using embeddings (ChromaDB)
-- MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
-- Docker container for deployment alongside OpenELIS
-- Called by SchemaAgent via MCP protocol
+- Replace hardcoded `get_schema` MCP tool with real PostgreSQL schema extraction
+- Add ChromaDB for embedding-based schema retrieval
+- Add MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
+- SchemaAgent calls real MCP tools via Streamable HTTP
+- Docker container for MCP server
 
-**Files to Create**:
+**Files to Create/Modify**:
 
 ```
-projects/catalyst/catalyst-mcp/
-├── pyproject.toml                         # Python dependencies
-├── Dockerfile                             # Container build
-├── src/
+projects/catalyst/server/mcp/
+├── schema_tools.py                   # Modified: real PostgreSQL extraction
+├── relationship_tools.py             # New: get_relationships
+├── rag/
 │   ├── __init__.py
-│   ├── server.py                          # MCP server entry point
-│   ├── tools/
-│   │   ├── __init__.py
-│   │   ├── schema_tools.py                # get_relevant_tables, get_table_ddl
-│   │   └── relationship_tools.py          # get_relationships
-│   ├── rag/
-│   │   ├── __init__.py
-│   │   ├── embeddings.py                  # Schema embedding generation
-│   │   └── retriever.py                   # ChromaDB vector search
-│   └── db/
-│       ├── __init__.py
-│       └── schema_extractor.py            # PostgreSQL schema extraction
-├── tests/
-│   ├── __init__.py
-│   ├── test_schema_tools.py
-│   └── test_retriever.py
-└── config/
-    └── mcp_config.yaml                    # Server configuration
+│   ├── retriever.py                  # ChromaDB retriever
+│   └── embeddings.py                 # Embedding generation
+└── db/
+    ├── __init__.py
+    └── schema_extractor.py           # PostgreSQL introspection
+
+projects/catalyst/
+├── Dockerfile.mcp                    # New: MCP server container
+└── tests/
+    ├── test_rag_retrieval.py         # New: RAG tests
+    └── test_schema_extraction.py     # New: PostgreSQL tests
 ```
 
 **Verification**:
 
-- pytest: All MCP tool tests pass
-- Manual: MCP server responds to tool calls via Streamable HTTP
-- Integration: SchemaAgent can call MCP tools
+- pytest: All MCP tool tests pass with real schema
+- MCP server responds to tool calls via Streamable HTTP
+- SchemaAgent retrieves relevant tables based on query semantics
 
 ---
 
@@ -393,9 +410,9 @@ projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack compose
 
 ```mermaid
 graph TD
-    M00["M0.0: Skeleton POC<br/>1-2 days"] --> M01["M0.1: Provider Switching<br/>1 day"]
-    M01 --> M02["M0.2: Multi-Agent Team<br/>2-3 days"]
-    M02 --> M1["M1: MCP Server<br/>3-4 days"]
+    M00["M0.0: Foundation POC<br/>2-3 days"] --> M01["M0.1: Provider Switching<br/>0.5 days"]
+    M01 --> M02["M0.2: Agent Specialization<br/>2 days"]
+    M02 --> M1["M1: RAG-based Schema<br/>3-4 days"]
     M02 --> M2["M2: Backend Core<br/>4-5 days"]
     M02 --> M3["M3: Frontend Chat<br/>3-4 days"]
     M1 --> M4["M4: Integration + Security<br/>3-4 days"]
@@ -412,11 +429,11 @@ graph TD
 ### PR Strategy
 
 - **Spec PR**: `spec/OGC-070-catalyst-assistant` → `develop` (this spec + plan)
-- **M0.0 PR**: `feat/OGC-070-catalyst-assistant-m0-skeleton-poc` → `develop`
+- **M0.0 PR**: `feat/OGC-070-catalyst-assistant-m0-foundation-poc` → `develop`
 - **M0.1 PR**: `feat/OGC-070-catalyst-assistant-m0-provider-switching` →
   `develop`
-- **M0.2 PR**: `feat/OGC-070-catalyst-assistant-m0-multi-agent` → `develop`
-- **M1 PR**: `feat/OGC-070-catalyst-assistant-m1-mcp-server` → `develop`
+- **M0.2 PR**: `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
+- **M1 PR**: `feat/OGC-070-catalyst-assistant-m1-rag-schema` → `develop`
 - **M2 PR**: `feat/OGC-070-catalyst-assistant-m2-backend-core` → `develop`
 - **M3 PR**: `feat/OGC-070-catalyst-assistant-m3-frontend-chat` → `develop`
 - **M4 PR**: `feat/OGC-070-catalyst-assistant-m4-integration-security` →

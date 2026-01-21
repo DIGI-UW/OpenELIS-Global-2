@@ -15,67 +15,104 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 ## Total Task Count
 
-- **M0.0 (Skeleton POC)**: 8 tasks
-- **M0.1 (Provider Switching)**: 6 tasks
-- **M0.2 (Multi-Agent)**: 16 tasks
-- **M1 (MCP Server)**: 23 tasks (unchanged)
+- **M0.0 (Foundation POC)**: 18 tasks (Router + CatalystAgent + MCP skeleton)
+- **M0.1 (Provider Switching)**: 4 tasks
+- **M0.2 (Agent Specialization)**: 14 tasks (split CatalystAgent)
+- **M1 (RAG-based Schema)**: 18 tasks (RAG + real MCP tools)
 - **M2 (Backend Core)**: 28 tasks (reduced - security deferred)
 - **M3 (Frontend Chat)**: 22 tasks (reduced - token handling deferred)
 - **M4 (Integration + Security)**: 27 tasks (increased - security added)
-- **Total**: 130 tasks (unchanged, just redistributed)
+- **Total**: 131 tasks (adjusted for proper architecture foundation)
 
 ---
 
-## Milestone 0.0: Skeleton POC (Estimate: 1-2 days)
+## Milestone 0.0: Foundation POC (Estimate: 2-3 days)
 
-**Branch**: `feat/OGC-070-catalyst-assistant-m0-skeleton-poc`  
-**Goal**: Prove A2A + LLM works with ZERO complexity  
-**Verification**: Agent returns SQL from single provider (LM Studio)
+**Branch**: `feat/OGC-070-catalyst-assistant-m0-foundation-poc`  
+**Goal**: Prove A2A Router → Agent → MCP tool flow works end-to-end  
+**Verification**: Router → CatalystAgent → MCP → LLM → SQL flow complete
 
-### M0.0.1: Branch Setup & Project Structure
+### M0.0.1: Branch Setup & Project Structure (med-agent-hub style)
 
 - [ ] T001 [M0.0] Create milestone branch
-      `feat/OGC-070-catalyst-assistant-m0-skeleton-poc` from `develop`
-- [ ] T002 [M0.0] Create project directory structure
-      `projects/catalyst/catalyst-agents/` with pyproject.toml
-- [ ] T002a [M0.0] Add a2a-sdk dependency to
-      `projects/catalyst/catalyst-agents/pyproject.toml` (version 0.3.22+)
-- [ ] T002b [M0.0] Add FastAPI, uvicorn, and httpx dependencies to
-      `projects/catalyst/catalyst-agents/pyproject.toml` for agent runtime
-- [ ] T003 [P] [M0.0] Create `projects/catalyst/catalyst-agents/src/__init__.py`
-- [ ] T004 [P] [M0.0] Create
-      `projects/catalyst/catalyst-agents/src/agents/__init__.py`
-- [ ] T005 [P] [M0.0] Create
-      `projects/catalyst/catalyst-agents/tests/__init__.py`
+      `feat/OGC-070-catalyst-assistant-m0-foundation-poc` from `develop`
+- [ ] T002 [M0.0] Create project directory structure `projects/catalyst/` with
+      med-agent-hub-style layout (server/, tests/, .well-known/)
+- [ ] T002a [M0.0] Create `projects/catalyst/pyproject.toml` with dependencies:
+      a2a-sdk[http-server] >=0.3.22, mcp, httpx, google-generativeai
+- [ ] T003 [P] [M0.0] Create `projects/catalyst/server/__init__.py`
+- [ ] T003a [P] [M0.0] Create `projects/catalyst/server/sdk_agents/__init__.py`
+- [ ] T003b [P] [M0.0] Create `projects/catalyst/server/mcp/__init__.py`
+- [ ] T003c [P] [M0.0] Create `projects/catalyst/server/agent_cards/` directory
+- [ ] T003d [P] [M0.0] Create `projects/catalyst/tests/__init__.py`
 
-### M0.0.2: SQLGenAgent Test (TDD - MANDATORY)
+### M0.0.2: MCP Skeleton Test (TDD - MANDATORY)
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T010 [P] [M0.0] Write pytest test for SQLGenAgent SQL generation with
-      hardcoded schema in
-      `projects/catalyst/catalyst-agents/tests/test_sqlgen_agent.py`
+- [ ] T004 [P] [M0.0] Write pytest test for hardcoded MCP `get_schema` tool in
+      `projects/catalyst/tests/test_mcp_tools.py`
 
-### M0.0.3: SQLGenAgent Implementation
+### M0.0.3: MCP Skeleton Implementation
 
-- [ ] T014 [M0.0] Implement SQLGenAgent in
-      `projects/catalyst/catalyst-agents/src/agents/sqlgen_agent.py` with LM
-      Studio provider only (OpenAI-compatible API) and hardcoded schema context
-      (3-5 sample tables as string)
+- [ ] T005 [M0.0] Implement hardcoded MCP `get_schema` tool in
+      `projects/catalyst/server/mcp/schema_tools.py` (returns 3-5 tables as
+      string: sample, test, analysis, patient, organization)
 
-### M0.0.4: Agent Server & Discovery
+### M0.0.4: CatalystAgent Test (TDD - MANDATORY)
 
-- [ ] T019 [M0.0] Implement agent server entry point in
-      `projects/catalyst/catalyst-agents/src/main.py` with FastAPI + uvicorn
-- [ ] T020 [M0.0] Create minimal Agent Card at
-      `projects/catalyst/catalyst-agents/.well-known/agent.json` for SQLGenAgent
-      discovery
+> **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-### M0.0.5: Verification & PR
+- [ ] T006 [P] [M0.0] Write pytest test for CatalystAgent (schema + SQL
+      generation) in `projects/catalyst/tests/test_catalyst_agent.py`
 
-- [ ] T023 [M0.0] Run pytest to verify M0.0 test passes, verify curl returns
-      SQL, create PR `feat/OGC-070-catalyst-assistant-m0-skeleton-poc` →
-      `develop`
+### M0.0.5: CatalystAgent Implementation
+
+- [ ] T007 [M0.0] Implement `projects/catalyst/server/llm_clients.py` with LM
+      Studio provider support (OpenAI-compatible API)
+- [ ] T008 [M0.0] Implement `projects/catalyst/server/config.py` for LLM
+      configuration loading
+- [ ] T009 [M0.0] Implement CatalystAgent executor in
+      `projects/catalyst/server/sdk_agents/catalyst_executor.py` (calls MCP
+      get_schema, then generates SQL via LLM)
+- [ ] T010 [M0.0] Implement CatalystAgent server in
+      `projects/catalyst/server/sdk_agents/catalyst_server.py` with FastAPI + A2A
+      SDK
+- [ ] T011 [M0.0] Create CatalystAgent card at
+      `projects/catalyst/server/agent_cards/catalyst.json` per A2A spec
+
+### M0.0.6: RouterAgent Test (TDD - MANDATORY)
+
+> **NOTE: Write this test FIRST, ensure it FAILS before implementation**
+
+- [ ] T012 [P] [M0.0] Write pytest test for RouterAgent delegation in
+      `projects/catalyst/tests/test_router.py`
+
+### M0.0.7: RouterAgent Implementation
+
+- [ ] T013 [M0.0] Implement RouterAgent executor in
+      `projects/catalyst/server/sdk_agents/router_executor.py` (simple
+      pass-through delegation to CatalystAgent)
+- [ ] T014 [M0.0] Implement RouterAgent server in
+      `projects/catalyst/server/sdk_agents/router_server.py` with FastAPI + A2A
+      SDK
+- [ ] T015 [M0.0] Create RouterAgent card at
+      `projects/catalyst/server/agent_cards/router.json` per A2A spec
+- [ ] T016 [M0.0] Create discovery endpoint at
+      `projects/catalyst/.well-known/agent.json` pointing to RouterAgent
+
+### M0.0.8: Integration Test (TDD - MANDATORY)
+
+> **NOTE: Write this test FIRST, ensure it FAILS before implementation**
+
+- [ ] T017 [P] [M0.0] Write pytest integration test for full Router →
+      CatalystAgent → MCP flow in `projects/catalyst/tests/test_integration.py`
+
+### M0.0.9: Verification & PR
+
+- [ ] T018 [M0.0] Run pytest to verify all M0.0 tests pass, verify curl to
+      Router returns SQL, create PR
+      `feat/OGC-070-catalyst-assistant-m0-foundation-poc` → `develop`
 
 ---
 
@@ -89,133 +126,170 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010a [P] [M0.1] Write pytest test for SQLGenAgent provider switching
-      (Gemini/LM Studio) in
-      `projects/catalyst/catalyst-agents/tests/test_sqlgen_agent.py` (FR-007)
+- [ ] T019 [P] [M0.1] Write pytest test for CatalystAgent provider switching
+      (Gemini/LM Studio) in `projects/catalyst/tests/test_catalyst_agent.py`
+      (FR-007)
 
 ### M0.1.2: Provider Implementation
 
-- [ ] T014a [M0.1] Implement provider switching in SQLGenAgent supporting
-      Gemini, LM Studio in
-      `projects/catalyst/catalyst-agents/src/agents/sqlgen_agent.py`
-- [ ] T014b [M0.1] Add provider configuration loading from
-      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` in
-      SQLGenAgent
-- [ ] T018 [M0.1] Create agent configuration in
-      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with
-      both providers (Gemini, LM Studio)
+- [ ] T020 [M0.1] Add Gemini provider support to
+      `projects/catalyst/server/llm_clients.py`
+- [ ] T021 [M0.1] Update CatalystAgent executor in
+      `projects/catalyst/server/sdk_agents/catalyst_executor.py` to use
+      provider-agnostic LLM client
+- [ ] T022 [M0.1] Create agent configuration in
+      `projects/catalyst/server/config/agents_config.yaml` with both providers
+      (Gemini, LM Studio)
 
 ### M0.1.3: Verification & PR
 
-- [ ] T023a [M0.1] Run pytest to verify all provider tests pass, test with each
-      provider, create PR
+- [ ] T023 [M0.1] Run pytest to verify all provider tests pass, test with each
+      provider (LM Studio and Gemini), create PR
       `feat/OGC-070-catalyst-assistant-m0-provider-switching` → `develop`
 
 ---
 
-## Milestone 0.2: Multi-Agent Team (Estimate: 2-3 days)
+## Milestone 0.2: Agent Specialization (Estimate: 2 days)
 
-**Branch**: `feat/OGC-070-catalyst-assistant-m0-multi-agent`  
-**Goal**: Prove Router → SchemaAgent → SQLGenAgent orchestration  
-**Verification**: RouterAgent delegates correctly, single-agent fallback works
+**Branch**: `feat/OGC-070-catalyst-assistant-m0-agent-specialization`  
+**Goal**: Split CatalystAgent into specialized SchemaAgent + SQLGenAgent  
+**Verification**: Router → SchemaAgent → SQLGenAgent flow works, CatalystAgent fallback works
 
-### M0.2.1: Branch Setup & Additional Structure
+### M0.2.1: SchemaAgent Test (TDD - MANDATORY)
 
-- [ ] T005a [P] [M0.2] Create
-      `projects/catalyst/catalyst-agents/src/agent_cards/` directory
-- [ ] T006 [P] [M0.2] Create `projects/catalyst/catalyst-agents/src/config/`
-      directory (if not already created)
+> **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-### M0.2.2: Multi-Agent Tests (TDD - MANDATORY)
+- [ ] T019 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP get_schema)
+      in `projects/catalyst/tests/test_schema_agent.py`
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+### M0.2.2: SchemaAgent Implementation
 
-- [ ] T008 [P] [M0.2] Write pytest test for RouterAgent orchestration logic in
-      `projects/catalyst/catalyst-agents/tests/test_router_agent.py`
-- [ ] T009 [P] [M0.2] Write pytest test for SchemaAgent with hardcoded schema
-      (no MCP yet) in
-      `projects/catalyst/catalyst-agents/tests/test_schema_agent.py`
-- [ ] T011 [P] [M0.2] Write pytest test for Agent Card validation in
-      `projects/catalyst/catalyst-agents/tests/test_agent_cards.py`
+- [ ] T020 [M0.2] Implement SchemaAgent executor in
+      `projects/catalyst/server/sdk_agents/schema_executor.py` (calls MCP
+      get_schema, returns schema context)
+- [ ] T021 [M0.2] Implement SchemaAgent server in
+      `projects/catalyst/server/sdk_agents/schema_server.py` with FastAPI + A2A
+      SDK
+- [ ] T022 [M0.2] Create SchemaAgent card at
+      `projects/catalyst/server/agent_cards/schema.json` per A2A spec
 
-### M0.2.3: Multi-Agent Implementation
+### M0.2.3: SQLGenAgent Test (TDD - MANDATORY)
 
-- [ ] T012 [M0.2] Implement RouterAgent in
-      `projects/catalyst/catalyst-agents/src/agents/router_agent.py` with A2A
-      task delegation (NO PHI detection - deferred to M4)
-- [ ] T013 [M0.2] Implement SchemaAgent in
-      `projects/catalyst/catalyst-agents/src/agents/schema_agent.py` with
-      hardcoded schema (NO MCP yet - MCP in M1)
-- [ ] T015 [M0.2] Create RouterAgent Card in
-      `projects/catalyst/catalyst-agents/src/agent_cards/router.json` per A2A
-      spec
-- [ ] T016 [P] [M0.2] Create SchemaAgent Card in
-      `projects/catalyst/catalyst-agents/src/agent_cards/schema.json` per A2A
-      spec
-- [ ] T017 [P] [M0.2] Create SQLGenAgent Card in
-      `projects/catalyst/catalyst-agents/src/agent_cards/sqlgen.json` per A2A
-      spec
-- [ ] T021 [M0.2] Create Dockerfile for agent runtime in
-      `projects/catalyst/catalyst-agents/Dockerfile`
-- [ ] T022 [M0.2] Add agent service to
-      `projects/catalyst/catalyst-dev.docker-compose.yml`
+> **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-### M0.2.4: Verification & PR
+- [ ] T023 [P] [M0.2] Write pytest test for SQLGenAgent (receives schema
+      context) in `projects/catalyst/tests/test_sqlgen_agent.py`
 
-- [ ] T023b [M0.2] Run pytest to verify all M0.2 tests pass, verify RouterAgent
-      delegates correctly, verify single-agent fallback mode, create PR
-      `feat/OGC-070-catalyst-assistant-m0-multi-agent` → `develop`
+### M0.2.4: SQLGenAgent Implementation
+
+- [ ] T024 [M0.2] Implement SQLGenAgent executor in
+      `projects/catalyst/server/sdk_agents/sqlgen_executor.py` (receives schema
+      from SchemaAgent, generates SQL via LLM)
+- [ ] T025 [M0.2] Implement SQLGenAgent server in
+      `projects/catalyst/server/sdk_agents/sqlgen_server.py` with FastAPI + A2A
+      SDK
+- [ ] T026 [M0.2] Create SQLGenAgent card at
+      `projects/catalyst/server/agent_cards/sqlgen.json` per A2A spec
+
+### M0.2.5: RouterAgent Update
+
+- [ ] T027 [M0.2] Update RouterAgent executor in
+      `projects/catalyst/server/sdk_agents/router_executor.py` to orchestrate:
+      query → SchemaAgent → SQLGenAgent → response
+- [ ] T028 [M0.2] Update RouterAgent card at
+      `projects/catalyst/server/agent_cards/router.json` to reference SchemaAgent
+      + SQLGenAgent
+
+### M0.2.6: Integration Test
+
+> **NOTE: Write this test FIRST, ensure it FAILS before implementation**
+
+- [ ] T029 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
+      SQLGenAgent flow in `projects/catalyst/tests/test_multi_agent_flow.py`
+
+### M0.2.7: Single-Agent Fallback
+
+- [ ] T030 [M0.2] Add single-agent fallback mode to RouterAgent (direct to
+      CatalystAgent when `mode=single`)
+- [ ] T031 [P] [M0.2] Write pytest test for single-agent fallback in
+      `projects/catalyst/tests/test_fallback_mode.py`
+
+### M0.2.8: Verification & PR
+
+- [ ] T032 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
+      flow works, verify fallback mode works, create PR
+      `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
 
 ---
 
-## Milestone 1: MCP Schema Server (Estimate: 3-4 days) [PARALLEL]
+## Milestone 1: RAG-based Schema (Estimate: 3-4 days) [PARALLEL]
 
-**Branch**: `feat/OGC-070-catalyst-assistant-m1-mcp-server`  
-**Goal**: Implement Python MCP server for schema RAG retrieval with ChromaDB
-embeddings  
-**Verification**: MCP tools callable via Streamable HTTP, pytest tests pass  
-**Depends On**: M0.2 (SchemaAgent needs to call MCP)
+**Branch**: `feat/OGC-070-catalyst-assistant-m1-rag-schema`  
+**Goal**: Replace hardcoded schema with ChromaDB RAG-based retrieval  
+**Verification**: MCP tools return real schema, RAG retrieval works  
+**Depends On**: M0 (MCP skeleton and SchemaAgent exist)
 
-### M1.1: Branch Setup & Project Structure
+### M1.1: Branch Setup
 
 - [ ] T024 [M1] Create milestone branch
-      `feat/OGC-070-catalyst-assistant-m1-mcp-server` from `develop`
-- [ ] T025 [M1] Create project directory structure
-      `projects/catalyst/catalyst-mcp/` with pyproject.toml
-- [ ] T025a [M1] Add mcp SDK dependency to
-      `projects/catalyst/catalyst-mcp/pyproject.toml`
-- [ ] T025b [M1] Add chromadb and langchain dependencies to
-      `projects/catalyst/catalyst-mcp/pyproject.toml` for RAG
-- [ ] T026 [P] [M1] Create `projects/catalyst/catalyst-mcp/src/__init__.py`
-- [ ] T027 [P] [M1] Create
-      `projects/catalyst/catalyst-mcp/src/tools/__init__.py`
-- [ ] T028 [P] [M1] Create `projects/catalyst/catalyst-mcp/src/rag/__init__.py`
-- [ ] T029 [P] [M1] Create `projects/catalyst/catalyst-mcp/src/db/__init__.py`
-- [ ] T030 [P] [M1] Create `projects/catalyst/catalyst-mcp/tests/__init__.py`
+      `feat/OGC-070-catalyst-assistant-m1-rag-schema` from `develop` (after M0.2
+      merged)
 
-### M1.2: MCP Server Tests (TDD - MANDATORY)
+### M1.2: RAG Retrieval Tests (TDD - MANDATORY)
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T031 [P] [M1] Write pytest test for `get_relevant_tables` MCP tool in
-      `projects/catalyst/catalyst-mcp/tests/test_schema_tools.py`
-- [ ] T032 [P] [M1] Write pytest test for `get_table_ddl` MCP tool in
-      `projects/catalyst/catalyst-mcp/tests/test_schema_tools.py`
-- [ ] T033 [P] [M1] Write pytest test for `get_relationships` MCP tool in
-      `projects/catalyst/catalyst-mcp/tests/test_relationship_tools.py`
 - [ ] T034 [P] [M1] Write pytest test for RAG retriever in
-      `projects/catalyst/catalyst-mcp/tests/test_retriever.py`
+      `projects/catalyst/tests/test_rag_retrieval.py`
+- [ ] T035 [P] [M1] Write pytest test for PostgreSQL schema extraction in
+      `projects/catalyst/tests/test_schema_extraction.py`
+- [ ] T036 [P] [M1] Write pytest test for `get_relevant_tables` with RAG in
+      `projects/catalyst/tests/test_mcp_tools.py` (update existing test)
+- [ ] T037 [P] [M1] Write pytest test for `get_table_ddl` in
+      `projects/catalyst/tests/test_mcp_tools.py`
+- [ ] T038 [P] [M1] Write pytest test for `get_relationships` in
+      `projects/catalyst/tests/test_mcp_tools.py`
 
-### M1.3: MCP Tools Implementation
+### M1.3: PostgreSQL Schema Extraction
 
-- [ ] T035 [M1] Implement MCP schema tools in
-      `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py`
-      (`get_relevant_tables`, `get_table_ddl`)
-- [ ] T036 [M1] Implement MCP relationship tools in
-      `projects/catalyst/catalyst-mcp/src/tools/relationship_tools.py`
-      (`get_relationships`)
-- [ ] T037 [M1] Implement PostgreSQL schema extractor in
-      `projects/catalyst/catalyst-mcp/src/db/schema_extractor.py`
+- [ ] T039 [M1] Add chromadb and langchain dependencies to
+      `projects/catalyst/pyproject.toml` for RAG
+- [ ] T040 [M1] Create `projects/catalyst/server/mcp/db/__init__.py`
+- [ ] T041 [M1] Implement PostgreSQL schema extractor in
+      `projects/catalyst/server/mcp/db/schema_extractor.py` (extract table DDL,
+      columns, relationships)
+
+### M1.4: RAG Implementation
+
+- [ ] T042 [M1] Create `projects/catalyst/server/mcp/rag/__init__.py`
+- [ ] T043 [M1] Implement embeddings in
+      `projects/catalyst/server/mcp/rag/embeddings.py`
+- [ ] T044 [M1] Implement ChromaDB retriever in
+      `projects/catalyst/server/mcp/rag/retriever.py` (embedding generation +
+      similarity search)
+
+### M1.5: MCP Tools Enhancement
+
+- [ ] T045 [M1] Update `projects/catalyst/server/mcp/schema_tools.py` to use
+      RAG-based retrieval (replace hardcoded get_schema with get_relevant_tables)
+- [ ] T046 [M1] Implement `get_table_ddl` MCP tool in schema_tools.py using
+      schema extractor
+- [ ] T047 [M1] Create `projects/catalyst/server/mcp/relationship_tools.py`
+- [ ] T048 [M1] Implement `get_relationships` MCP tool in relationship_tools.py
+
+### M1.6: Deployment
+
+- [ ] T049 [M1] Create Dockerfile.mcp in `projects/catalyst/Dockerfile.mcp` for
+      containerized MCP server deployment
+- [ ] T050 [M1] Update `projects/catalyst/catalyst-dev.docker-compose.yml` to
+      add MCP server as separate container (if not already present)
+
+### M1.7: Verification & PR
+
+- [ ] T051 [M1] Run pytest to verify all M1 tests pass, verify MCP tools return
+      real schema from PostgreSQL, verify SchemaAgent retrieves relevant tables
+      based on query semantics, create PR
+      `feat/OGC-070-catalyst-assistant-m1-rag-schema` → `develop`
 
 ### M1.4: RAG Implementation
 
@@ -225,22 +299,19 @@ embeddings
       `projects/catalyst/catalyst-mcp/src/rag/retriever.py` for RAG-based table
       filtering
 
-### M1.5: MCP Server & Deployment
+### M1.6: Deployment
 
-- [ ] T040 [M1] Implement MCP server entry point in
-      `projects/catalyst/catalyst-mcp/src/server.py` with Streamable HTTP
-      transport
-- [ ] T041 [M1] Create MCP server configuration in
-      `projects/catalyst/catalyst-mcp/config/mcp_config.yaml`
-- [ ] T042 [M1] Create Dockerfile for MCP server in
-      `projects/catalyst/catalyst-mcp/Dockerfile`
-- [ ] T043 [M1] Add MCP service to
-      `projects/catalyst/catalyst-dev.docker-compose.yml`
+- [ ] T049 [M1] Create Dockerfile.mcp in `projects/catalyst/Dockerfile.mcp` for
+      containerized MCP server deployment
+- [ ] T050 [M1] Update `projects/catalyst/catalyst-dev.docker-compose.yml` to
+      add MCP server as separate container (if not already present)
 
-### M1.6: Verification & PR
+### M1.7: Verification & PR
 
-- [ ] T044 [M1] Run pytest to verify all M1 tests pass, create PR
-      `feat/OGC-070-catalyst-assistant-m1-mcp-server` → `develop`
+- [ ] T051 [M1] Run pytest to verify all M1 tests pass, verify MCP tools return
+      real schema from PostgreSQL, verify SchemaAgent retrieves relevant tables
+      based on query semantics, create PR
+      `feat/OGC-070-catalyst-assistant-m1-rag-schema` → `develop`
 
 ---
 
@@ -251,7 +322,7 @@ embeddings
 audit logging (no security features)  
 **Verification**: Unit tests pass, ORM test passes, A2A client calls
 RouterAgent  
-**Depends On**: M0.2 (needs RouterAgent to call)  
+**Depends On**: M0 (needs RouterAgent to call)  
 **Note**: Security features (PHI detection, confirmation tokens) deferred to M4
 
 ### M2.1: Branch Setup & Package Structure
@@ -576,9 +647,9 @@ translations
 
 ```mermaid
 graph TD
-    M00["M0.0: Skeleton POC"] --> M01["M0.1: Provider Switching"]
-    M01 --> M02["M0.2: Multi-Agent Team"]
-    M02 --> M1["M1: MCP Server"]
+    M00["M0.0: Foundation POC"] --> M01["M0.1: Provider Switching"]
+    M01 --> M02["M0.2: Agent Specialization"]
+    M02 --> M1["M1: RAG-based Schema"]
     M02 --> M2["M2: Backend Core"]
     M02 --> M3["M3: Frontend Chat"]
     M1 --> M4["M4: Integration + Security"]
@@ -592,7 +663,7 @@ graph TD
     end
 ```
 
-- **M0.0 → M0.1 → M0.2**: Sequential (foundational validation)
+- **M0.0 → M0.1 → M0.2**: Sequential (foundational architecture validation)
 - **M1, M2, M3**: Can be developed in parallel after M0.2 (marked [P] in
   milestone table)
 - **M4**: MUST wait for M0.2, M1, M2, M3 to complete (sequential)
@@ -633,9 +704,9 @@ Task T064: "Create CatalystQueryResponse"
 
 ### MVP Delivery (All Milestones)
 
-1. **Week 1**: M0.0 (Skeleton POC) → M0.1 (Provider Switching) → M0.2
-   (Multi-Agent)
-2. **Week 2**: M1 (MCP Server) + M2 (Backend Core) + M3 (Frontend Chat) in
+1. **Week 1**: M0.0 (Foundation POC) → M0.1 (Provider Switching) → M0.2
+   (Agent Specialization)
+2. **Week 2**: M1 (RAG-based Schema) + M2 (Backend Core) + M3 (Frontend Chat) in
    parallel
 3. **Week 3**: M4 (Integration + Security) + Testing + Bug fixes
 4. **Deploy MVP**: Full chat→agents→SQL→results flow validated with security
@@ -643,10 +714,11 @@ Task T064: "Create CatalystQueryResponse"
 
 ### Constitution Checkpoints (MANDATORY)
 
-- **After M0.0**: SQLGenAgent test MUST pass, agent returns SQL
+- **After M0.0**: Router → CatalystAgent → MCP flow MUST work end-to-end
 - **After M0.1**: Provider switching tests MUST pass, both providers (Gemini +
   LM Studio) work
-- **After M0.2**: Multi-agent tests MUST pass, RouterAgent delegates correctly
+- **After M0.2**: Router → SchemaAgent → SQLGenAgent flow MUST work, single-agent
+  fallback works
 - **After M1**: MCP tests MUST pass, MCP tools callable
 - **After M2**: ORM test + unit tests MUST pass (>80% coverage)
 - **After M3**: Jest tests MUST pass (>70% coverage)

@@ -267,6 +267,10 @@ This delivers enhanced usability and workflow integration.
   - (c) **SQL Generator Agent**: Text-to-SQL generation using configured LLM
   - (d) Each agent MUST have an Agent Card for discovery per A2A specification
   - (e) System MUST support single-agent fallback mode for simpler deployments
+  
+  **Note**: M0.0 validates the core A2A + MCP architecture with Router + 
+  single CatalystAgent + MCP skeleton. M0.2 splits CatalystAgent into 
+  SchemaAgent + SQLGenAgent. Full 3-agent team validated by end of M0.2.
 
 - **FR-018**: System MUST detect likely PHI/identifiers in user-submitted
   questions. If the configured AI provider is externally-hosted, the system MUST
