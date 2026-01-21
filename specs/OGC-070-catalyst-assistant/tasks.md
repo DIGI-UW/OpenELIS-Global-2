@@ -41,59 +41,59 @@ schema retrieval - skeleton)
 
 ### M0.0.1: Branch Setup & Project Structure (med-agent-hub style)
 
-- [X] T001 [M0.0] Create milestone branch
+- [x] T001 [M0.0] Create milestone branch
       `feat/OGC-070-catalyst-assistant-m0-foundation-poc` from `develop`
-- [X] T002 [M0.0] Create project directory structure
+- [x] T002 [M0.0] Create project directory structure
       `projects/catalyst/catalyst-agents/` with med-agent-hub-style layout
       (src/, tests/, .well-known/)
-- [X] T002a [M0.0] Create `projects/catalyst/catalyst-agents/pyproject.toml`
+- [x] T002a [M0.0] Create `projects/catalyst/catalyst-agents/pyproject.toml`
       with dependencies: a2a-sdk[http-server] >=0.3.22, mcp, httpx,
       google-generativeai
-- [X] T002b [M0.0] Add `projects/catalyst/.python-version` for Python 3.11+
+- [x] T002b [M0.0] Add `projects/catalyst/.python-version` for Python 3.11+
       (aligns with version manager guidance from similar agent repos)
-- [X] T003 [P] [M0.0] Create `projects/catalyst/catalyst-agents/src/__init__.py`
-- [X] T003a [P] [M0.0] Create
+- [x] T003 [P] [M0.0] Create `projects/catalyst/catalyst-agents/src/__init__.py`
+- [x] T003a [P] [M0.0] Create
       `projects/catalyst/catalyst-agents/src/agents/__init__.py`
-- [X] T003b [P] [M0.0] Create `projects/catalyst/catalyst-mcp/src/__init__.py`
+- [x] T003b [P] [M0.0] Create `projects/catalyst/catalyst-mcp/src/__init__.py`
       (separate MCP server)
-- [X] T003c [P] [M0.0] Create
+- [x] T003c [P] [M0.0] Create
       `projects/catalyst/catalyst-agents/src/agent_cards/` directory
-- [X] T003d [P] [M0.0] Create
+- [x] T003d [P] [M0.0] Create
       `projects/catalyst/catalyst-agents/tests/__init__.py`
 
 ### M0.0.1a: Catalyst Gateway Skeleton (OpenAI-compatible entrypoint)
 
-- [X] T003e [P] [M0.0] Create project directory structure
+- [x] T003e [P] [M0.0] Create project directory structure
       `projects/catalyst/catalyst-gateway/` with src/, tests/
-- [X] T003f [P] [M0.0] Create
+- [x] T003f [P] [M0.0] Create
       `projects/catalyst/catalyst-gateway/pyproject.toml` with dependencies:
       fastapi, uvicorn, httpx, a2a-sdk (client only)
-- [X] T003g [P] [M0.0] Create
+- [x] T003g [P] [M0.0] Create
       `projects/catalyst/catalyst-gateway/src/__init__.py`
-- [X] T003h [P] [M0.0] Create
+- [x] T003h [P] [M0.0] Create
       `projects/catalyst/catalyst-gateway/src/gateway.py` skeleton with
       `/v1/chat/completions` endpoint (OpenAI-compatible)
-- [X] T003i [P] [M0.0] Create
+- [x] T003i [P] [M0.0] Create
       `projects/catalyst/catalyst-gateway/src/a2a_client.py` skeleton for A2A
       client to call RouterAgent
-- [X] T003j [P] [M0.0] Create `projects/catalyst/catalyst-gateway/src/config.py`
+- [x] T003j [P] [M0.0] Create `projects/catalyst/catalyst-gateway/src/config.py`
       for Gateway configuration
-- [X] T003k [P] [M0.0] Create
+- [x] T003k [P] [M0.0] Create
       `projects/catalyst/catalyst-gateway/tests/test_gateway.py` skeleton for
       Gateway tests (TDD - MANDATORY, write test FIRST)
-- [X] T003l [P] [M0.0] Create `projects/catalyst/catalyst-gateway/Dockerfile`
+- [x] T003l [P] [M0.0] Create `projects/catalyst/catalyst-gateway/Dockerfile`
       for containerized Gateway deployment
 
 ### M0.0.2: MCP Skeleton Test (TDD - MANDATORY)
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [X] T004 [P] [M0.0] Write pytest test for hardcoded MCP `get_schema` tool in
+- [x] T004 [P] [M0.0] Write pytest test for hardcoded MCP `get_schema` tool in
       `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
 
 ### M0.0.3: MCP Skeleton Implementation
 
-- [X] T005 [M0.0] Implement hardcoded MCP `get_schema` tool in
+- [x] T005 [M0.0] Implement hardcoded MCP `get_schema` tool in
       `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py` (returns 3-5
       tables as string: sample, test, analysis, patient, organization)
 
@@ -101,24 +101,24 @@ schema retrieval - skeleton)
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [X] T006 [P] [M0.0] Write pytest test for CatalystAgent (schema + SQL
+- [x] T006 [P] [M0.0] Write pytest test for CatalystAgent (schema + SQL
       generation) in
       `projects/catalyst/catalyst-agents/tests/test_catalyst_agent.py`
 
 ### M0.0.5: CatalystAgent Implementation
 
-- [X] T007 [M0.0] Implement
+- [x] T007 [M0.0] Implement
       `projects/catalyst/catalyst-agents/src/llm_clients.py` with LM Studio
       provider support (OpenAI-compatible API)
-- [X] T008 [M0.0] Implement `projects/catalyst/catalyst-agents/src/config.py`
+- [x] T008 [M0.0] Implement `projects/catalyst/catalyst-agents/src/config.py`
       for LLM configuration loading
-- [X] T009 [M0.0] Implement CatalystAgent executor in
+- [x] T009 [M0.0] Implement CatalystAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/catalyst_executor.py` (calls
       MCP get_schema, then generates SQL via LLM)
-- [X] T010 [M0.0] Implement CatalystAgent server in
+- [x] T010 [M0.0] Implement CatalystAgent server in
       `projects/catalyst/catalyst-agents/src/agents/catalyst_server.py` with
       FastAPI + A2A SDK
-- [X] T011 [M0.0] Create CatalystAgent card at
+- [x] T011 [M0.0] Create CatalystAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/catalyst.json` per A2A
       spec
 
@@ -126,21 +126,21 @@ schema retrieval - skeleton)
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [X] T012 [P] [M0.0] Write pytest test for RouterAgent delegation in
+- [x] T012 [P] [M0.0] Write pytest test for RouterAgent delegation in
       `projects/catalyst/catalyst-agents/tests/test_router.py`
 
 ### M0.0.7: RouterAgent Implementation
 
-- [X] T013 [M0.0] Implement RouterAgent executor in
+- [x] T013 [M0.0] Implement RouterAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/router_executor.py` (simple
       pass-through delegation to CatalystAgent)
-- [X] T014 [M0.0] Implement RouterAgent server in
+- [x] T014 [M0.0] Implement RouterAgent server in
       `projects/catalyst/catalyst-agents/src/agents/router_server.py` with
       FastAPI + A2A SDK
-- [X] T015 [M0.0] Create RouterAgent card at
+- [x] T015 [M0.0] Create RouterAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/router.json` per A2A
       spec
-- [X] T016 [M0.0] Create discovery endpoint at
+- [x] T016 [M0.0] Create discovery endpoint at
       `projects/catalyst/catalyst-agents/.well-known/agent.json` pointing to
       RouterAgent
 
@@ -148,19 +148,19 @@ schema retrieval - skeleton)
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [X] T017 [P] [M0.0] Write pytest integration test for full Router →
+- [x] T017 [P] [M0.0] Write pytest integration test for full Router →
       CatalystAgent → MCP flow in
       `projects/catalyst/catalyst-agents/tests/test_integration.py`
 
 ### M0.0.9: Verification & PR
 
-- [X] T018 [M0.0] Run pytest to verify all M0.0 tests pass, verify curl to
+- [x] T018 [M0.0] Run pytest to verify all M0.0 tests pass, verify curl to
       Router returns SQL, create PR
       `feat/OGC-070-catalyst-assistant-m0-foundation-poc` → `develop`
-      
-      **Status**: All M0.0 tests pass (6/6 tests: gateway, mcp, catalyst agent, router, integration). 
-      Integration tests validate full Gateway → RouterAgent → CatalystAgent → MCP flow.
-      Ready for PR creation (manual step).
+      **Status**: All M0.0 tests pass (6/6 tests: gateway, mcp, catalyst agent,
+      router, integration). Integration tests validate full Gateway →
+      RouterAgent → CatalystAgent → MCP flow. Ready for PR creation (manual
+      step).
 
 ---
 

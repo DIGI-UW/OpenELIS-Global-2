@@ -18,15 +18,15 @@ OpenELIS integration points remain in:
 
 ### Version managers (project setup)
 
-This project follows the same setup patterns used in similar multi-service
-agent repos (e.g., med-agent-hub and omrs-ai-playground): keep tool versions
-explicit and local to the repo.
+This project follows the same setup patterns used in similar multi-service agent
+repos (e.g., med-agent-hub and omrs-ai-playground): keep tool versions explicit
+and local to the repo.
 
 - Java tooling: use the repo root `.sdkmanrc` and run `sdk env` (Java 21).
 - Node tooling: use `frontend/.nvmrc` and run `nvm use` if you work on the
   frontend milestone.
-- Python tooling: use `projects/catalyst/.python-version` with pyenv/asdf (Python
-  3.11+).
+- Python tooling: use `projects/catalyst/.python-version` with pyenv/asdf
+  (Python 3.11+).
 
 **Note**: This folder is created to keep Catalyst work scoped to a small surface
 area.
