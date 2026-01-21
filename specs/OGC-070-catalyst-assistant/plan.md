@@ -8,8 +8,9 @@
 
 Catalyst enables lab managers to query OpenELIS data using natural language. The
 system converts plain-language questions into SQL queries, executes them against
-a read-only database connection, and displays results. **The core privacy
-constraint is that the LLM receives only schema metadata, never patient data.**
+a read-only database connection, and displays results. **To ensure privacy, any
+cloud LLM calls receive only schema metadata, and never any patient, clinical,
+PHI data.**
 
 **Primary Goal**: Rapid MVP prototype (2-3 sprints) that validates the
 chat→SQL→results flow with **standards-based multi-agent architecture** (A2A
@@ -37,8 +38,8 @@ protocol + MCP for tools).
 
 **Primary Dependencies**:
 
-- Backend (Java): HTTP client (Apache HttpClient or OkHttp) for A2A agent
-  communication, Jackson for JSON, Hibernate 6.x, Jakarta EE 9
+- Backend (Java): HTTP client (Apache HttpClient or OkHttp) for OpenAI-compatible
+  API calls to Catalyst Gateway, Jackson for JSON, Hibernate 6.x, Jakarta EE 9
 - A2A Agents (Python): a2a-sdk 0.3.22+ (with http-server extra), FastAPI,
   uvicorn, Google Generative AI SDK, httpx (for LM Studio OpenAI-compatible API)
 - MCP Server (Python): mcp SDK, langchain, chromadb (for RAG embeddings),
@@ -48,8 +49,8 @@ protocol + MCP for tools).
 **LLM Providers (MVP)**:
 
 - **Cloud**: Google Gemini (latest available)
-- **Local**: LM Studio (OpenAI-compatible API) - supports OpenAI-compatible
-  models
+- **Local**: LM Studio (exposes an OpenAI-compatible HTTP API for locally
+  hosted models)
 
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only for Catalyst
 queries)  
@@ -59,8 +60,6 @@ Testing Library (frontend), Cypress 12.17 (E2E)
 infrastructure  
 **Project Type**: Multi-agent application (A2A agents in Python + Java backend
 for OpenELIS integration + Python MCP server + React frontend)  
-**Performance Goals**: Query response <10s for <1000 rows, SQL generation
-success >80%  
 **Constraints**: LLM never receives patient data, read-only database access,
 <10k row limit  
 **Scale/Scope**: Single-user MVP, production will support concurrent OpenELIS
@@ -119,17 +118,20 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 **Legend**:
 
-- **[P]**: Parallel milestone - M0, M1, M2, M3 can be developed simultaneously
+- **[P]**: Parallel milestone
 - **Sequential** (no prefix): M4 requires all parallel milestones to complete
 
 ### Milestone Details
 
 #### M0.0: Foundation POC (Estimate: 2-3 days)
 
-**Goal**: Prove A2A Router → Agent → MCP tool flow works end-to-end
+**Goal**: Prove OpenAI-compatible Gateway → A2A Router → Agent → MCP tool flow
+works end-to-end
 
 **Scope**:
 
+- **Catalyst Gateway** (skeleton): Exposes OpenAI-compatible `/v1/chat/completions`
+  endpoint, bridges to RouterAgent via A2A
 - RouterAgent (simple pass-through delegation, like med-agent-hub)
 - CatalystAgent (single "everything" agent combining schema + SQL generation)
 - MCP skeleton (1 hardcoded tool: `get_schema` returning 3-5 tables as string)
@@ -140,6 +142,17 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 **Files to Create**:
 
 ```
+projects/catalyst/catalyst-gateway/
+├── pyproject.toml                    # FastAPI, httpx, a2a-sdk (client)
+├── src/
+│   ├── __init__.py
+│   ├── gateway.py                    # OpenAI-compatible /v1/chat/completions endpoint
+│   ├── a2a_client.py                  # A2A client to call RouterAgent
+│   └── config.py                     # Gateway configuration
+├── tests/
+│   └── test_gateway.py
+└── Dockerfile
+
 projects/catalyst/catalyst-agents/
 ├── pyproject.toml                    # a2a-sdk, mcp, httpx, google-generativeai
 ├── src/
@@ -177,18 +190,22 @@ projects/catalyst/catalyst-mcp/
 **Verification**:
 
 ```bash
-# Start agent servers
-cd projects/catalyst/catalyst-agents
+# Start services
+cd projects/catalyst/catalyst-gateway
+python -m src.gateway &
+cd ../catalyst-agents
 python -m src.agents.router_server &
 python -m src.agents.catalyst_server &
 
-# Test end-to-end flow
-curl -X POST http://localhost:9100/task \
-  -d '{"query": "How many samples today?"}' \
-  → Router delegates to CatalystAgent
+# Test end-to-end flow via OpenAI-compatible API
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "catalyst", "messages": [{"role": "user", "content": "How many samples today?"}]}' \
+  → Gateway bridges to RouterAgent (A2A)
+  → Router delegates to CatalystAgent (A2A)
   → CatalystAgent calls MCP get_schema
   → CatalystAgent generates SQL via LLM
-  → Returns {"sql": "SELECT COUNT(*) FROM sample WHERE ..."}
+  → Returns OpenAI-compatible response with SQL
 ```
 
 ---
@@ -318,8 +335,8 @@ projects/catalyst/catalyst-mcp/
 - MCP server responds to tool calls via Streamable HTTP (with protocol version
   header + session ID)
 - SchemaAgent retrieves relevant tables based on query semantics
-- Evaluation harness: Recall@K ≥70% for relevant tables, execution accuracy ≥75%
-  for golden query set
+- Evaluation harness exists with golden query set defined (metric thresholds
+  deferred to future phase)
 
 ---
 
@@ -328,7 +345,7 @@ projects/catalyst/catalyst-mcp/
 **Scope**:
 
 - Java OpenELIS integration layer (REST API, SQL execution, audit)
-- A2A client to call RouterAgent (or direct single-agent mode)
+- OpenAI-compatible HTTP client to call Catalyst Gateway
 - Privacy guardrails (blocked tables, schema-only context)
 - CatalystQuery valueholder + DAO for audit logging (without security fields)
 - SQL execution against read-only database connection
@@ -340,11 +357,11 @@ projects/catalyst/catalyst-mcp/
 ```
 src/main/java/org/openelisglobal/catalyst/
 ├── config/
-│   ├── CatalystAgentConfig.java           # A2A agent client configuration
+│   ├── CatalystGatewayConfig.java         # Gateway client configuration
 │   └── CatalystDatabaseConfig.java        # Read-only connection config
-├── agent/
-│   ├── A2AAgentClient.java                # Client to call A2A agents
-│   └── A2AAgentClientImpl.java
+├── gateway/
+│   ├── CatalystGatewayClient.java          # OpenAI-compatible API client
+│   └── CatalystGatewayClientImpl.java
 ├── service/
 │   ├── CatalystQueryService.java          # Orchestrates agent calls + SQL exec
 │   └── CatalystQueryServiceImpl.java
@@ -401,7 +418,7 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 
 **Scope**:
 
-- Wire all components: Frontend → Java backend → A2A agents → MCP server
+- Wire all components: Frontend → Java backend → Catalyst Gateway → A2A agents → MCP server
 - CatalystRestController with /rest/catalyst/query endpoint
 - Agent Card discovery endpoint (/.well-known/agent.json proxy)
 - Response formatting (table, JSON, CSV export)
@@ -517,6 +534,17 @@ specs/OGC-070-catalyst-assistant/
 ### Source Code (repository root)
 
 ```text
+# Catalyst Gateway (Python - OpenAI-compatible entrypoint)
+projects/catalyst/catalyst-gateway/
+├── pyproject.toml
+├── Dockerfile
+├── src/
+│   ├── gateway.py                    # OpenAI-compatible /v1/chat/completions
+│   ├── a2a_client.py                  # A2A client to RouterAgent
+│   └── config.py
+├── tests/
+└── README.md
+
 # A2A Agent Team (Python - A2A SDK)
 projects/catalyst/catalyst-agents/
 ├── pyproject.toml
@@ -548,8 +576,8 @@ projects/catalyst/catalyst-mcp/
 
 # Backend (Java - Traditional Spring MVC)
 src/main/java/org/openelisglobal/catalyst/
-├── config/              # Agent + database configuration
-├── agent/               # A2A agent client
+├── config/              # Gateway + database configuration
+├── gateway/              # OpenAI-compatible API client
 ├── controller/          # REST endpoints
 ├── dao/                 # Data access
 ├── form/                # Request/response DTOs
@@ -579,9 +607,10 @@ frontend/cypress/e2e/
 └── catalyst.cy.js       # E2E test
 
 # Configuration
-volume/properties/catalyst.properties    # Java backend config (agent URL, guardrails)
+volume/properties/catalyst.properties    # Java backend config (gateway URL, guardrails)
+projects/catalyst/catalyst-gateway/src/config/gateway_config.yaml  # Gateway config (A2A RouterAgent URL, mode)
 projects/catalyst/catalyst-agents/src/config/agents_config.yaml  # Agent runtime config (LLM provider, MCP URL)
-projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack (agents + MCP)
+projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack (gateway + agents + MCP)
 ```
 
 **Structure Decision**: Multi-agent architecture - Python A2A agent runtime
@@ -618,7 +647,7 @@ SQL execution + audit, React frontend for chat UI.
 - [x] **Unit Tests**: Service layer (JUnit 4 + Mockito)
 
   - `CatalystQueryServiceTest` - Mock agent responses, test orchestration
-  - `A2AAgentClientTest` - Mock agent server, test client calls
+  - `CatalystGatewayClientTest` - Mock gateway server, test OpenAI-compatible API calls
   - `SQLGuardrailsTest` - Test blocked table detection, SQL validation
   - Template: `.specify/templates/testing/JUnit4ServiceTest.java.template`
   - **SDD Checkpoint**: After M2, all unit tests MUST pass
@@ -673,6 +702,48 @@ SQL execution + audit, React frontend for chat UI.
 - [x] **After M4 (Integration)**: Controller integration tests + E2E test MUST
       pass, multi-agent flow verified
 
+## Protocol Boundaries & Communication Architecture
+
+### Protocol Layering
+
+The Catalyst system uses three distinct protocols, each serving a specific purpose:
+
+1. **OpenELIS Backend → AI System**: **OpenAI-compatible Chat Completions API**
+   - OpenELIS Java backend calls a **Catalyst Gateway** service using the
+     standard OpenAI-compatible `/v1/chat/completions` endpoint
+   - This provides a stable, industry-standard interface for non-agent clients
+   - Both MVP providers (Gemini, LM Studio) support this format
+   - **Rationale**: OpenELIS is not an AI agent and should not need to implement
+     agent discovery/identity semantics. Using OpenAI-compatible API keeps
+     OpenELIS's integration surface stable and provider-swappable.
+
+2. **Agent Team Internal Communication**: **A2A Protocol**
+   - The Catalyst Gateway bridges OpenAI-compatible requests to the A2A RouterAgent
+   - RouterAgent coordinates with SchemaAgent and SQLGenAgent via A2A protocol
+   - A2A handles agent discovery (Agent Cards), task delegation, and message
+     lifecycle
+   - **Rationale**: A2A is designed for agent-to-agent coordination; the agent
+     team is where standards-based multi-agent architecture belongs.
+
+3. **All LLM/Agent Interactions with OpenELIS Data**: **MCP Protocol**
+   - Agents (SchemaAgent, SQLGenAgent) call **OpenELIS MCP Server** tools to
+     access schema metadata
+   - MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
+   - **Agents never call OpenELIS directly** - MCP is the single entrypoint for
+     all AI access to OpenELIS data
+   - **Rationale**: MCP is explicitly designed as the tool boundary where LLMs
+     (via host/client) access external systems. This ensures privacy (schema
+     only, no patient data) and provides a clean abstraction layer.
+
+### Architecture Flow
+
+```
+React UI → Java Backend (REST) → Catalyst Gateway (OpenAI-compat) → RouterAgent (A2A)
+                                                                         ↓
+                                                              SchemaAgent (A2A) → MCP Server (tools)
+                                                              SQLGenAgent (A2A) → MCP Server (tools)
+```
+
 ## Agent Responsibilities & Integration
 
 ### Agent-Owned Responsibilities
@@ -705,14 +776,16 @@ SQL execution + audit, React frontend for chat UI.
 **OpenELIS Integration** (CatalystRestController + CatalystQueryService):
 
 - Receives HTTP requests from frontend
-- Calls RouterAgent via A2A protocol (HTTP client to agent runtime)
+- Calls **Catalyst Gateway** via OpenAI-compatible Chat Completions API
+  (`POST /v1/chat/completions`)
 - Executes generated SQL against read-only database connection
 - Persists audit records (CatalystQuery entity) with FR-019 metadata
 - Validates confirmation token before execution (review-before-execute
   enforcement)
 
-**No Direct LLM/MCP Access**: Java backend does NOT directly call LLM providers
-or MCP server. All AI operations happen in the agent runtime.
+**No Direct LLM/MCP/A2A Access**: Java backend does NOT directly call LLM
+providers, MCP server, or A2A agents. All AI operations happen via the Catalyst
+Gateway, which bridges to the A2A agent team internally.
 
 ### Python MCP Server Tools
 
@@ -743,9 +816,9 @@ def get_relationships(table_names: list[str]) -> list[dict]:
 **Java Backend** (`volume/properties/catalyst.properties`):
 
 ```properties
-# A2A Agent Runtime
-catalyst.agents.mode=multi    # Options: multi, single
-catalyst.agents.url=http://catalyst-agents:8000
+# Catalyst Gateway (OpenAI-compatible entrypoint)
+catalyst.gateway.url=http://catalyst-gateway:8000
+catalyst.gateway.api-key=not-required-for-mvp  # Gateway may require auth in future
 
 # Guardrails (enforced in Java backend)
 catalyst.guardrails.max-rows=10000
@@ -910,16 +983,18 @@ default).
 ### Single-Agent Fallback Mode
 
 For simpler deployments, Catalyst supports single-agent mode where all logic
-runs in one agent (no inter-agent communication):
+runs in one agent (no inter-agent communication). The Gateway handles routing
+to either the multi-agent team or a single CatalystAgent based on configuration.
 
 ```properties
 # volume/properties/catalyst.properties
-catalyst.agents.mode=multi    # Options: multi, single
-catalyst.agents.url=http://catalyst-agents:8000
+catalyst.gateway.url=http://catalyst-gateway:8000
 ```
 
-When `mode=single`, the RouterAgent performs all tasks internally without
-delegating to SchemaAgent or SQLGenAgent.
+The Gateway configuration (in `projects/catalyst/catalyst-gateway/src/config/`)
+determines whether to route to the multi-agent team (RouterAgent) or directly
+to a single CatalystAgent. When in single-agent mode, the CatalystAgent
+performs all tasks internally without delegating to SchemaAgent or SQLGenAgent.
 
 ## References
 

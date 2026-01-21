@@ -227,8 +227,12 @@ This delivers enhanced usability and workflow integration.
 
 - What happens when a user submits a query in a language other than English?
 
-  - System should attempt to process the query, but may have reduced accuracy
-    for non-English languages depending on the LLM model used.
+  - **MVP Scope**: The MVP supports English natural language questions only.
+    Queries in other languages may not be processed correctly.
+  - **Long-term Target**: The system is designed to natively support any
+    language that OpenELIS supports (en, fr, ar, es, hi, pt, sw), consistent
+    with Constitution Principle VII (Internationalization First). This will be
+    implemented in a future phase.
 
 - What happens when the LLM service (cloud or local) is unavailable?
 
@@ -421,48 +425,45 @@ principles for this feature:_
 
 ## Success Criteria _(mandatory)_
 
-### Measurable Outcomes
+### Functional MVP Success Criteria
 
-- **SC-001**: Users can submit a natural language query and receive results in
-  under 10 seconds for queries returning less than 1,000 rows (measured from
-  query submission to results display).
+- **SC-001**: Users can submit a natural language query in English, review the
+  generated SQL, and (after confirmation) execute it successfully via the UI to
+  receive results.
 
-- **SC-002**: System generates syntactically valid SQL for 80% of user queries
-  on the first attempt (measured by successful SQL execution without syntax
-  errors).
+- **SC-002**: System supports switching between cloud (Gemini) and local (LM
+  Studio) LLM providers without code changes, with the same workflow functioning
+  for both provider types.
 
-- **SC-003**: Generated SQL queries produce accurate results (match expected
-  data) for 75% of test queries covering common laboratory data questions
-  (samples, tests, results, turnaround times).
+- **SC-003**: Audit records exist for all query generation and execution
+  operations, containing required metadata (provider type, provider identifier,
+  PHI gating status, tables used) without storing PHI values or raw schema
+  dumps.
 
-- **SC-004**: System successfully processes queries requiring JOINs across 2-4
-  tables for 70% of multi-table queries.
+- **SC-004**: System blocks all attempts to query restricted tables
+  (sys_user, login_user, user_role) with clear error messages.
 
 - **SC-005**: Zero instances of patient data or PHI appearing in LLM API
-  requests (measured via audit logs of all LLM prompts).
+  requests (verified via audit logs of all LLM prompts).
 
-- **SC-011**: 100% of questions flagged as containing PHI/identifiers are
+- **SC-006**: 100% of questions flagged as containing PHI/identifiers are
   prevented from being sent to externally-hosted AI providers (verified via
   audit logs).
 
-- **SC-006**: System supports switching between cloud and local LLM providers
-  without code changes (verified by successful query execution with both
-  provider types).
+- **SC-007**: System provides helpful error messages that guide users to
+  rephrase queries when SQL generation fails.
 
-- **SC-007**: Users can export query results in CSV or JSON format, with exports
-  completing in under 5 seconds for results up to 10,000 rows.
+- **SC-008**: Users can export query results in CSV or JSON format.
 
-- **SC-008**: System blocks 100% of attempts to query restricted tables
-  (sys_user, login_user, user_role) with clear error messages.
+- **SC-009**: MVP delivers a working prototype that can answer multiple types of
+  laboratory data questions (sample counts, test result queries, turnaround
+  time analysis, date range filtering, aggregation queries) as demonstrated in
+  end-to-end tests.
 
-- **SC-009**: System provides helpful error messages that guide users to
-  rephrase queries when SQL generation fails, resulting in successful query
-  completion for 60% of initially failed queries after user rephrasing.
-
-- **SC-010**: MVP delivers a working prototype that can answer at least 5
-  different types of laboratory data questions (sample counts, test result
-  queries, turnaround time analysis, date range filtering, aggregation queries)
-  as demonstrated in end-to-end tests.
+**Note**: Performance metrics, SQL accuracy thresholds, and evaluation
+benchmarks (e.g., response time targets, SQL generation success rates, query
+accuracy percentages) are deferred to future phases. MVP focuses on functional
+validation that the core workflow operates correctly.
 
 ## Assumptions & Constraints
 
@@ -479,8 +480,12 @@ principles for this feature:_
   based on results.
 - The MVP focuses on read-only queries - no data modification capabilities are
   needed.
-- English language queries will be the primary use case, with support for other
-  languages as a future enhancement.
+- **MVP Language Support**: The MVP supports English natural language questions
+  only. The long-term target is to natively support any language that OpenELIS
+  supports (en, fr, ar, es, hi, pt, sw), consistent with Constitution Principle
+  VII (Internationalization First). Note that UI strings must still be
+  internationalized (en + fr minimum) via React Intl, even though query
+  understanding is English-first in the MVP.
 
 ### Constraints
 
