@@ -753,7 +753,29 @@ catalyst.guardrails.query-timeout=30s
 catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
 ```
 
-**Agent Runtime**
+**Agent Runtime Dependency Pinning (Security)**:
+
+For production deployments, Python dependencies in `pyproject.toml` MUST use
+exact version pinning (not `>=`) for security-sensitive packages that have
+access to database credentials and LLM API keys:
+
+```toml
+[project]
+dependencies = [
+    "a2a-sdk[http-server]==0.3.22",       # Exact version (security)
+    "google-generativeai==0.8.3",         # Exact version (security)
+    "httpx==0.27.0",                      # Exact version (security)
+    "mcp==1.1.2",                         # Exact version (security)
+    "chromadb==0.4.22",                   # Exact version (security)
+    "langchain==0.1.16",                  # Exact version (security)
+]
+```
+
+Upgrades to these dependencies MUST be explicit, reviewed changes with
+compatibility testing. For development, `>=` may be acceptable, but production
+builds MUST pin versions.
+
+**Agent Runtime Configuration**
 (`projects/catalyst/catalyst-agents/src/config/agents_config.yaml`):
 
 ```yaml

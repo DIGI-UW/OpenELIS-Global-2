@@ -15,15 +15,15 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 ## Total Task Count
 
-- **M0.0 (Foundation POC)**: 18 tasks (Router + CatalystAgent + MCP skeleton)
+- **M0.0 (Foundation POC)**: 14 tasks (Router + CatalystAgent + MCP skeleton)
 - **M0.1 (Provider Switching)**: 4 tasks
-- **M0.2 (Agent Specialization)**: 14 tasks (split CatalystAgent)
-- **M1 (RAG-based Schema)**: 28 tasks (RAG + MCP tools + evaluation harness +
+- **M0.2 (Agent Specialization)**: 10 tasks (split CatalystAgent)
+- **M1 (RAG-based Schema)**: 20 tasks (RAG + MCP tools + evaluation harness +
   ChromaDB ops)
-- **M2 (Backend Core)**: 28 tasks (reduced - security deferred)
-- **M3 (Frontend Chat)**: 22 tasks (reduced - token handling deferred)
-- **M4 (Integration + Security)**: 31 tasks (includes role-based access control)
-- **Total**: 145 tasks (includes evaluation harness + 2026 best practices)
+- **M2 (Backend Core)**: 23 tasks (reduced - security deferred)
+- **M3 (Frontend Chat)**: 19 tasks (reduced - token handling deferred)
+- **M4 (Integration + Security)**: 37 tasks (includes role-based access control)
+- **Total**: 127 tasks (sequentially renumbered, no duplicates)
 
 ---
 
@@ -32,6 +32,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-foundation-poc`  
 **Goal**: Prove A2A Router → Agent → MCP tool flow works end-to-end  
 **Verification**: Router → CatalystAgent → MCP → LLM → SQL flow complete  
+**FR Coverage**: FR-020 (A2A multi-agent architecture - partial), FR-003 (MCP
+schema retrieval - skeleton)  
 **FR Coverage**: FR-020 (A2A multi-agent architecture - partial), FR-003 (MCP
 schema retrieval - skeleton)
 
@@ -178,24 +180,25 @@ schema retrieval - skeleton)
 **Goal**: Split CatalystAgent into specialized SchemaAgent + SQLGenAgent  
 **Verification**: Router → SchemaAgent → SQLGenAgent flow works, CatalystAgent
 fallback works  
+**FR Coverage**: FR-020 (A2A multi-agent architecture - complete 3-agent team)  
 **FR Coverage**: FR-020 (A2A multi-agent architecture - complete 3-agent team)
 
 ### M0.2.1: SchemaAgent Test (TDD - MANDATORY)
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T019 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP get_schema)
+- [ ] T024 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP get_schema)
       in `projects/catalyst/catalyst-agents/tests/test_schema_agent.py`
 
 ### M0.2.2: SchemaAgent Implementation
 
-- [ ] T020 [M0.2] Implement SchemaAgent executor in
+- [ ] T025 [M0.2] Implement SchemaAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/schema_executor.py` (calls
       MCP get_schema, returns schema context)
-- [ ] T021 [M0.2] Implement SchemaAgent server in
+- [ ] T026 [M0.2] Implement SchemaAgent server in
       `projects/catalyst/catalyst-agents/src/agents/schema_server.py` with
       FastAPI + A2A SDK
-- [ ] T022 [M0.2] Create SchemaAgent card at
+- [ ] T027 [M0.2] Create SchemaAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/schema.json` per A2A
       spec
 
@@ -203,27 +206,27 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T023 [P] [M0.2] Write pytest test for SQLGenAgent (receives schema
+- [ ] T028 [P] [M0.2] Write pytest test for SQLGenAgent (receives schema
       context) in `projects/catalyst/catalyst-agents/tests/test_sqlgen_agent.py`
 
 ### M0.2.4: SQLGenAgent Implementation
 
-- [ ] T024 [M0.2] Implement SQLGenAgent executor in
+- [ ] T029 [M0.2] Implement SQLGenAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/sqlgen_executor.py`
       (receives schema from SchemaAgent, generates SQL via LLM)
-- [ ] T025 [M0.2] Implement SQLGenAgent server in
+- [ ] T030 [M0.2] Implement SQLGenAgent server in
       `projects/catalyst/catalyst-agents/src/agents/sqlgen_server.py` with
       FastAPI + A2A SDK
-- [ ] T026 [M0.2] Create SQLGenAgent card at
+- [ ] T031 [M0.2] Create SQLGenAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/sqlgen.json` per A2A
       spec
 
 ### M0.2.5: RouterAgent Update
 
-- [ ] T027 [M0.2] Update RouterAgent executor in
+- [ ] T032 [M0.2] Update RouterAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/router_executor.py` to
       orchestrate: query → SchemaAgent → SQLGenAgent → response
-- [ ] T028 [M0.2] Update RouterAgent card at
+- [ ] T033 [M0.2] Update RouterAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/router.json` to
       reference SchemaAgent + SQLGenAgent
 
@@ -231,20 +234,20 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T029 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
+- [ ] T034 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
       SQLGenAgent flow in
       `projects/catalyst/catalyst-agents/tests/test_multi_agent_flow.py`
 
 ### M0.2.7: Single-Agent Fallback
 
-- [ ] T030 [M0.2] Add single-agent fallback mode to RouterAgent (direct to
+- [ ] T035 [M0.2] Add single-agent fallback mode to RouterAgent (direct to
       CatalystAgent when `mode=single`)
-- [ ] T031 [P] [M0.2] Write pytest test for single-agent fallback in
+- [ ] T036 [P] [M0.2] Write pytest test for single-agent fallback in
       `projects/catalyst/catalyst-agents/tests/test_fallback_mode.py`
 
 ### M0.2.8: Verification & PR
 
-- [ ] T032 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
+- [ ] T037 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
       flow works, verify fallback mode works, create PR
       `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
 
@@ -272,7 +275,7 @@ support via accurate schema metadata)
 
 ### M1.1: Branch Setup
 
-- [ ] T024 [M1] Create milestone branch
+- [ ] T038 [M1] Create milestone branch
       `feat/OGC-070-catalyst-assistant-m1-rag-schema` from `develop` (after M0.2
       merged)
 
@@ -280,87 +283,87 @@ support via accurate schema metadata)
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T034 [P] [M1] Write pytest test for RAG retriever in
+- [ ] T039 [P] [M1] Write pytest test for RAG retriever in
       `projects/catalyst/catalyst-agents/tests/test_rag_retrieval.py`
-- [ ] T035 [P] [M1] Write pytest test for PostgreSQL schema extraction in
+- [ ] T040 [P] [M1] Write pytest test for PostgreSQL schema extraction in
       `projects/catalyst/catalyst-agents/tests/test_schema_extraction.py`
-- [ ] T036 [P] [M1] Write pytest test for `get_relevant_tables` with RAG in
+- [ ] T041 [P] [M1] Write pytest test for `get_relevant_tables` with RAG in
       `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py` (update
       existing test)
-- [ ] T037 [P] [M1] Write pytest test for `get_table_ddl` in
+- [ ] T042 [P] [M1] Write pytest test for `get_table_ddl` in
       `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py`
-- [ ] T038 [P] [M1] Write pytest test for `get_relationships` in
+- [ ] T043 [P] [M1] Write pytest test for `get_relationships` in
       `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py`
 
 ### M1.3: PostgreSQL Schema Extraction
 
-- [ ] T039 [M1] Add chromadb and langchain dependencies to
+- [ ] T044 [M1] Add chromadb and langchain dependencies to
       `projects/catalyst/catalyst-mcp/pyproject.toml` for RAG
-- [ ] T040 [M1] Create `projects/catalyst/catalyst-mcp/src/tools/db/__init__.py`
-- [ ] T041 [M1] Implement PostgreSQL schema extractor in
+- [ ] T045 [M1] Create `projects/catalyst/catalyst-mcp/src/tools/db/__init__.py`
+- [ ] T046 [M1] Implement PostgreSQL schema extractor in
       `projects/catalyst/catalyst-mcp/src/tools/db/schema_extractor.py` (extract
       table DDL, columns, relationships)
 
 ### M1.4: RAG Implementation
 
-- [ ] T042 [M1] Create
+- [ ] T047 [M1] Create
       `projects/catalyst/catalyst-mcp/src/tools/rag/__init__.py`
-- [ ] T043 [M1] Implement embeddings in
+- [ ] T048 [M1] Implement embeddings in
       `projects/catalyst/catalyst-mcp/src/tools/rag/embeddings.py`
-- [ ] T044 [M1] Implement ChromaDB retriever in
+- [ ] T049 [M1] Implement ChromaDB retriever in
       `projects/catalyst/catalyst-mcp/src/tools/rag/retriever.py` (embedding
       generation + similarity search)
 
 ### M1.5: MCP Tools Enhancement
 
-- [ ] T045 [M1] Update
+- [ ] T050 [M1] Update
       `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py` to use
       RAG-based retrieval (replace hardcoded get_schema with
       get_relevant_tables)
-- [ ] T046 [M1] Implement `get_table_ddl` MCP tool in schema_tools.py using
+- [ ] T051 [M1] Implement `get_table_ddl` MCP tool in schema_tools.py using
       schema extractor
-- [ ] T047 [M1] Create
+- [ ] T052 [M1] Create
       `projects/catalyst/catalyst-mcp/src/tools/relationship_tools.py`
-- [ ] T048 [M1] Implement `get_relationships` MCP tool in relationship_tools.py
-- [ ] T048a [M1] Add MCP Streamable HTTP conformance test in
+- [ ] T053 [M1] Implement `get_relationships` MCP tool in relationship_tools.py
+- [ ] T053a [M1] Add MCP Streamable HTTP conformance test in
       `projects/catalyst/catalyst-mcp/tests/test_mcp_protocol.py` (verify
       `MCP-Protocol-Version` header, session ID handling, tool listing, tool
       invocation)
 
 ### M1.6: Evaluation Harness (2026 Best Practice)
 
-- [ ] T048b [P] [M1] Create golden query dataset in
+- [ ] T053b [P] [M1] Create golden query dataset in
       `projects/catalyst/catalyst-mcp/tests/fixtures/golden_queries.json` (25-50
       NL questions → expected results for "top 5" query types: counts, joins,
       aggregations, date filters, turnaround times)
-- [ ] T048c [M1] Implement schema retrieval evaluation in
+- [ ] T053c [M1] Implement schema retrieval evaluation in
       `projects/catalyst/catalyst-mcp/tests/test_retrieval_metrics.py` (Recall@K
       for relevant tables given NL query)
-- [ ] T048d [M1] Implement SQL execution accuracy test in
+- [ ] T053d [M1] Implement SQL execution accuracy test in
       `projects/catalyst/catalyst-agents/tests/test_execution_accuracy.py`
       (golden queries → generated SQL → actual results vs expected results)
 
 ### M1.7: ChromaDB Operational Guardrails
 
-- [ ] T048e [M1] Pin ChromaDB version in
+- [ ] T053e [M1] Pin ChromaDB version in
       `projects/catalyst/catalyst-mcp/pyproject.toml` (e.g., chromadb==0.4.22)
-- [ ] T048f [M1] Configure persistence volume for ChromaDB in
+- [ ] T053f [M1] Configure persistence volume for ChromaDB in
       `projects/catalyst/catalyst-dev.docker-compose.yml` (mount
       `/app/chroma_data`)
-- [ ] T048g [M1] Document index rebuild procedure in
+- [ ] T053g [M1] Document index rebuild procedure in
       `projects/catalyst/catalyst-mcp/README.md` (schema change → re-embed →
       rebuild index)
 
 ### M1.8: Deployment
 
-- [ ] T049 [M1] Create Dockerfile.mcp in `projects/catalyst/Dockerfile.mcp` for
+- [ ] T054 [M1] Create Dockerfile.mcp in `projects/catalyst/Dockerfile.mcp` for
       containerized MCP server deployment
-- [ ] T050 [M1] Update `projects/catalyst/catalyst-dev.docker-compose.yml` to
+- [ ] T055 [M1] Update `projects/catalyst/catalyst-dev.docker-compose.yml` to
       add MCP server as separate container (if not already present)
 
 ### M1.9: Verification & PR
 
-- [ ] T051 [M1] Run pytest to verify all M1 tests pass, verify MCP tools return
+- [ ] T056 [M1] Run pytest to verify all M1 tests pass, verify MCP tools return
       real schema from PostgreSQL, verify SchemaAgent retrieves relevant tables
       based on query semantics, verify evaluation harness tests pass, create PR
       `feat/OGC-070-catalyst-assistant-m1-rag-schema` → `develop`
@@ -384,13 +387,13 @@ endpoint access) deferred to M4
 
 ### M2.1: Branch Setup & Package Structure
 
-- [ ] T045 [M2] Create milestone branch
+- [ ] T057 [M2] Create milestone branch
       `feat/OGC-070-catalyst-assistant-m2-backend-core` from `develop`
-- [ ] T045a [M2] Add HTTP client dependency to `pom.xml` for A2A agent
+- [ ] T057a [M2] Add HTTP client dependency to `pom.xml` for A2A agent
       communication (e.g., Apache HttpClient or OkHttp)
-- [ ] T045b [M2] Add JSON processing dependency to `pom.xml` if not already
+- [ ] T057b [M2] Add JSON processing dependency to `pom.xml` if not already
       present (Jackson)
-- [ ] T046 [M2] Create package structure
+- [ ] T058 [M2] Create package structure
       `src/main/java/org/openelisglobal/catalyst/` with subpackages (config,
       agent, service, dao, valueholder, guardrails, form)
 
@@ -398,31 +401,31 @@ endpoint access) deferred to M4
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T047 [P] [M2] Write ORM validation test for CatalystQuery entity in
+- [ ] T059 [P] [M2] Write ORM validation test for CatalystQuery entity in
       `src/test/java/org/openelisglobal/catalyst/HibernateMappingValidationTest.java`
       (Constitution V.4)
-- [ ] T048 [P] [M2] Write JUnit test for CatalystQueryService in
+- [ ] T060 [P] [M2] Write JUnit test for CatalystQueryService in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
       with mocked A2A client
-- [ ] T048a [P] [M2] Write JUnit test for audit metadata capture (providerType,
+- [ ] T060a [P] [M2] Write JUnit test for audit metadata capture (providerType,
       providerId, tablesUsed) in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
       (FR-019 - without phiGated, deferred to M4)
-- [ ] T049 [P] [M2] Write JUnit test for A2AAgentClient in
+- [ ] T061 [P] [M2] Write JUnit test for A2AAgentClient in
       `src/test/java/org/openelisglobal/catalyst/agent/A2AAgentClientTest.java`
-- [ ] T050 [P] [M2] Write JUnit test for SQLGuardrails in
+- [ ] T062 [P] [M2] Write JUnit test for SQLGuardrails in
       `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java`
       (blocked tables only, NO PHI detection - deferred to M4)
-- [ ] T050a [P] [M2] Write JUnit test for row estimation (EXPLAIN-based) in
+- [ ] T062a [P] [M2] Write JUnit test for row estimation (EXPLAIN-based) in
       `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java`
       (FR-009)
-- [ ] T050b [P] [M2] Write JUnit test for >10k row warning/truncation logic in
+- [ ] T062b [P] [M2] Write JUnit test for >10k row warning/truncation logic in
       `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java`
       (FR-009)
 
 ### M2.3: Entity Layer (Valueholder)
 
-- [ ] T051 [M2] Create CatalystQuery valueholder in
+- [ ] T063 [M2] Create CatalystQuery valueholder in
       `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
       extending BaseObject with JPA annotations (user_id, query_text,
       generated_sql, provider_type, provider_id, tables_used, timestamp)
@@ -430,71 +433,71 @@ endpoint access) deferred to M4
 
 ### M2.4: DAO Layer
 
-- [ ] T052 [M2] Create CatalystQueryDAO interface in
+- [ ] T064 [M2] Create CatalystQueryDAO interface in
       `src/main/java/org/openelisglobal/catalyst/dao/CatalystQueryDAO.java`
-- [ ] T053 [M2] Implement CatalystQueryDAOImpl in
+- [ ] T065 [M2] Implement CatalystQueryDAOImpl in
       `src/main/java/org/openelisglobal/catalyst/dao/CatalystQueryDAOImpl.java`
       extending BaseDAOImpl with @Component
 
 ### M2.5: Service Layer
 
-- [ ] T054 [M2] Create CatalystQueryService interface in
+- [ ] T066 [M2] Create CatalystQueryService interface in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryService.java`
-- [ ] T055 [M2] Implement CatalystQueryServiceImpl in
+- [ ] T067 [M2] Implement CatalystQueryServiceImpl in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       with @Service and @Transactional
-- [ ] T055a [M2] Implement row estimation using EXPLAIN in
+- [ ] T067a [M2] Implement row estimation using EXPLAIN in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       (FR-009)
-- [ ] T056 [M2] Implement SQL guardrails in
+- [ ] T068 [M2] Implement SQL guardrails in
       `src/main/java/org/openelisglobal/catalyst/guardrails/SQLGuardrails.java`
       (blocked tables, SQL validation - NO PHI detection, deferred to M4)
 
 ### M2.6: A2A Agent Client
 
-- [ ] T057 [M2] Create A2AAgentClient interface in
+- [ ] T069 [M2] Create A2AAgentClient interface in
       `src/main/java/org/openelisglobal/catalyst/agent/A2AAgentClient.java`
-- [ ] T058 [M2] Implement A2AAgentClientImpl in
+- [ ] T070 [M2] Implement A2AAgentClientImpl in
       `src/main/java/org/openelisglobal/catalyst/agent/A2AAgentClientImpl.java`
       with HTTP client to call RouterAgent
 
 ### M2.7: Configuration
 
-- [ ] T059 [M2] Create CatalystAgentConfig in
+- [ ] T071 [M2] Create CatalystAgentConfig in
       `src/main/java/org/openelisglobal/catalyst/config/CatalystAgentConfig.java`
       with @Configuration for A2A agent URL and mode (multi/single)
-- [ ] T060 [M2] Create CatalystDatabaseConfig in
+- [ ] T072 [M2] Create CatalystDatabaseConfig in
       `src/main/java/org/openelisglobal/catalyst/config/CatalystDatabaseConfig.java`
       for read-only connection
-- [ ] T061 [M2] Create Catalyst properties file in
+- [ ] T073 [M2] Create Catalyst properties file in
       `volume/properties/catalyst.properties` with agent URL, mode, guardrails
       config
 
 ### M2.8: Database Schema
 
-- [ ] T062 [M2] Create Liquibase changeset in
+- [ ] T074 [M2] Create Liquibase changeset in
       `src/main/resources/liquibase/catalyst/catalyst-001-create-audit-table.xml`
       for CatalystQuery table without security fields (phi_gated,
       confirmation_token added in M4) (Constitution VI)
 
 ### M2.9: Forms (DTOs)
 
-- [ ] T063 [P] [M2] Create CatalystQueryForm in
+- [ ] T075 [P] [M2] Create CatalystQueryForm in
       `src/main/java/org/openelisglobal/catalyst/form/CatalystQueryForm.java`
       for request mapping
-- [ ] T064 [P] [M2] Create CatalystQueryResponse in
+- [ ] T076 [P] [M2] Create CatalystQueryResponse in
       `src/main/java/org/openelisglobal/catalyst/form/CatalystQueryResponse.java`
       for response mapping
 
 ### M2.10: Verification & PR
 
-- [ ] T065 [M2] Run ORM validation test (MUST pass in <5s, no database)
-- [ ] T066 [M2] Run unit tests with Maven (MUST pass, >80% coverage target)
-- [ ] T067 [M2] Format code with `mvn spotless:apply` (MANDATORY before commit)
-- [ ] T068 [M2] Build backend with
+- [ ] T077 [M2] Run ORM validation test (MUST pass in <5s, no database)
+- [ ] T078 [M2] Run unit tests with Maven (MUST pass, >80% coverage target)
+- [ ] T079 [M2] Format code with `mvn spotless:apply` (MANDATORY before commit)
+- [ ] T080 [M2] Build backend with
       `mvn clean install -DskipTests -Dmaven.test.skip=true`
-- [ ] T069 [M2] Verify A2A client can call RouterAgent (integration check)
-- [ ] T070 [M2] Create PR `feat/OGC-070-catalyst-assistant-m2-backend-core` →
+- [ ] T081 [M2] Verify A2A client can call RouterAgent (integration check)
+- [ ] T082 [M2] Create PR `feat/OGC-070-catalyst-assistant-m2-backend-core` →
       `develop`
 
 ---
@@ -505,81 +508,83 @@ endpoint access) deferred to M4
 **Goal**: Implement Carbon chat sidebar with i18n, query input, results
 display  
 **Verification**: Jest tests pass, component renders correctly with en/fr
-translations
+translations  
+**FR Coverage**: FR-001 (chat interface), FR-006 (table result display), FR-011
+(error handling - frontend), FR-014 (example queries)
 
 ### M3.1: Branch Setup & Component Structure
 
-- [ ] T071 [M3] Create milestone branch
+- [ ] T083 [M3] Create milestone branch
       `feat/OGC-070-catalyst-assistant-m3-frontend-chat` from `develop`
-- [ ] T071a [M3] Add @carbon/ai-chat dependency to `frontend/package.json`
+- [ ] T083a [M3] Add @carbon/ai-chat dependency to `frontend/package.json`
       (version 1.0+)
-- [ ] T072 [M3] Create component directory `frontend/src/components/catalyst/`
+- [ ] T084 [M3] Create component directory `frontend/src/components/catalyst/`
       with index.js
 
 ### M3.2: Frontend Tests (TDD - MANDATORY)
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T073 [P] [M3] Write Jest test for CatalystSidebar in
+- [ ] T085 [P] [M3] Write Jest test for CatalystSidebar in
       `frontend/src/components/catalyst/__tests__/CatalystSidebar.test.jsx`
       (render, i18n)
-- [ ] T074 [P] [M3] Write Jest test for ChatInterface in
+- [ ] T086 [P] [M3] Write Jest test for ChatInterface in
       `frontend/src/components/catalyst/__tests__/ChatInterface.test.jsx`
       (message display)
-- [ ] T075 [P] [M3] Write Jest test for QueryInput in
+- [ ] T087 [P] [M3] Write Jest test for QueryInput in
       `frontend/src/components/catalyst/__tests__/QueryInput.test.jsx` (user
       input)
-- [ ] T076 [P] [M3] Write Jest test for ResultsDisplay in
+- [ ] T088 [P] [M3] Write Jest test for ResultsDisplay in
       `frontend/src/components/catalyst/__tests__/ResultsDisplay.test.jsx`
       (table rendering)
 
 ### M3.3: Component Implementation
 
-- [ ] T077 [M3] Implement CatalystSidebar in
+- [ ] T089 [M3] Implement CatalystSidebar in
       `frontend/src/components/catalyst/CatalystSidebar.jsx` using
       @carbon/ai-chat
-- [ ] T078 [M3] Implement ChatInterface in
+- [ ] T090 [M3] Implement ChatInterface in
       `frontend/src/components/catalyst/ChatInterface.jsx` with message list and
       Carbon components
-- [ ] T079 [M3] Implement QueryInput in
+- [ ] T091 [M3] Implement QueryInput in
       `frontend/src/components/catalyst/QueryInput.jsx` with Carbon TextInput
       and Button
-- [ ] T080 [M3] Implement ResultsDisplay in
+- [ ] T092 [M3] Implement ResultsDisplay in
       `frontend/src/components/catalyst/ResultsDisplay.jsx` with Carbon
       DataTable
-- [ ] T080a [M3] Implement >10k row warning UI in
+- [ ] T092a [M3] Implement >10k row warning UI in
       `frontend/src/components/catalyst/ResultsDisplay.jsx` (FR-009)
-- [ ] T081 [M3] Implement SQLPreview in
+- [ ] T093 [M3] Implement SQLPreview in
       `frontend/src/components/catalyst/SQLPreview.jsx` with Carbon CodeSnippet
-- [ ] T081a [M3] Implement example prompts display in
+- [ ] T093a [M3] Implement example prompts display in
       `frontend/src/components/catalyst/CatalystSidebar.jsx` with Carbon
       components (FR-014)
-- [ ] T081b [M3] Add example prompts i18n keys to
+- [ ] T093b [M3] Add example prompts i18n keys to
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
       (FR-014)
 
 ### M3.4: Internationalization (Constitution VII - MANDATORY)
 
-- [ ] T082 [M3] Add Catalyst keys to `frontend/src/languages/en.json`
+- [ ] T094 [M3] Add Catalyst keys to `frontend/src/languages/en.json`
       (catalyst.sidebar.title, catalyst.query.placeholder,
       catalyst.button.submit, catalyst.results.title, catalyst.sql.preview,
       etc.)
-- [ ] T083 [M3] Add Catalyst keys to `frontend/src/languages/fr.json` with
+- [ ] T095 [M3] Add Catalyst keys to `frontend/src/languages/fr.json` with
       French translations (Constitution VII - minimum en + fr)
 
 ### M3.5: Component Exports
 
-- [ ] T084 [M3] Export components from
+- [ ] T096 [M3] Export components from
       `frontend/src/components/catalyst/index.js`
 
 ### M3.6: Verification & PR
 
-- [ ] T085 [M3] Run Jest tests with `npm test` (MUST pass, >70% coverage target)
-- [ ] T086 [M3] Format code with `npm run format` (MANDATORY before commit)
-- [ ] T087 [M3] Verify components render correctly with `npm start` (manual
+- [ ] T097 [M3] Run Jest tests with `npm test` (MUST pass, >70% coverage target)
+- [ ] T098 [M3] Format code with `npm run format` (MANDATORY before commit)
+- [ ] T099 [M3] Verify components render correctly with `npm start` (manual
       check)
-- [ ] T088 [M3] Verify i18n works for en/fr by switching language in browser
-- [ ] T089 [M3] Create PR `feat/OGC-070-catalyst-assistant-m3-frontend-chat` →
+- [ ] T100 [M3] Verify i18n works for en/fr by switching language in browser
+- [ ] T101 [M3] Create PR `feat/OGC-070-catalyst-assistant-m3-frontend-chat` →
       `develop`
 
 ---
@@ -596,14 +601,18 @@ FR-018)
 **FR Coverage**: FR-004 (schema-only context verified end-to-end), FR-010 (audit
 logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
 (confirmation token workflow), FR-018 (PHI detection + provider routing), FR-019
+(audit metadata capture), FR-021 (role-based endpoint access control)  
+**FR Coverage**: FR-004 (schema-only context verified end-to-end), FR-010 (audit
+logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
+(confirmation token workflow), FR-018 (PHI detection + provider routing), FR-019
 (audit metadata capture), FR-021 (role-based endpoint access control)
 
 ### M4.1: Branch Setup & REST Controller
 
-- [ ] T090 [M4] Create milestone branch
+- [ ] T102 [M4] Create milestone branch
       `feat/OGC-070-catalyst-assistant-m4-integration-security` from `develop`
       (merge M0.2, M1, M2, M3 first)
-- [ ] T091 [M4] Implement CatalystRestController in
+- [ ] T103 [M4] Implement CatalystRestController in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
       with @RestController and /rest/catalyst/query endpoint
 
@@ -611,40 +620,40 @@ logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T092 [P] [M4] Write controller integration test for /rest/catalyst/query
+- [ ] T104 [P] [M4] Write controller integration test for /rest/catalyst/query
       in
       `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerTest.java`
       extending BaseWebContextSensitiveTest
-- [ ] T093 [M4] Write Cypress E2E test in `frontend/cypress/e2e/catalyst.cy.js`
+- [ ] T105 [M4] Write Cypress E2E test in `frontend/cypress/e2e/catalyst.cy.js`
       proving full chat→agents→SQL→confirmation→results flow (Constitution V.5)
-- [ ] T093a [M4] Write Cypress E2E test for JOIN queries in
+- [ ] T105a [M4] Write Cypress E2E test for JOIN queries in
       `frontend/cypress/e2e/catalyst.cy.js` (FR-015)
-- [ ] T093b [M4] Write Cypress E2E test for aggregation queries in
+- [ ] T105b [M4] Write Cypress E2E test for aggregation queries in
       `frontend/cypress/e2e/catalyst.cy.js` (FR-015)
-- [ ] T093c [M4] Write Cypress E2E test for date filtering queries in
+- [ ] T105c [M4] Write Cypress E2E test for date filtering queries in
       `frontend/cypress/e2e/catalyst.cy.js` (FR-015)
 
 ### M4.3: Full Stack Integration
 
-- [ ] T094 [M4] Wire frontend CatalystSidebar to backend REST endpoint with
+- [ ] T106 [M4] Wire frontend CatalystSidebar to backend REST endpoint with
       fetch/axios in `frontend/src/components/catalyst/CatalystSidebar.jsx`
-- [ ] T094a [M4] Implement basic query handling in frontend (confirmation token
+- [ ] T106a [M4] Implement basic query handling in frontend (confirmation token
       handling deferred to M4.6)
-- [ ] T095 [M4] Configure full stack Docker Compose in
+- [ ] T107 [M4] Configure full stack Docker Compose in
       `projects/catalyst/catalyst-dev.docker-compose.yml` (agents + MCP +
       OpenELIS + frontend)
-- [ ] T096 [M4] Add Agent Card discovery endpoint proxy at
+- [ ] T108 [M4] Add Agent Card discovery endpoint proxy at
       `/.well-known/agent.json` in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
 
 ### M4.4: Response Formatting & Export
 
-- [ ] T097 [M4] Implement table response formatting in
+- [ ] T109 [M4] Implement table response formatting in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
-- [ ] T098 [M4] Implement CSV export endpoint in
+- [ ] T110 [M4] Implement CSV export endpoint in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
       (GET /export/{queryId}?format=csv per contract)
-- [ ] T099 [M4] Implement JSON export endpoint in
+- [ ] T111 [M4] Implement JSON export endpoint in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
       (GET /export/{queryId}?format=json per contract)
 
@@ -652,78 +661,78 @@ logging complete with security metadata), FR-012 (CSV/JSON export), FR-016
 
 > **NOTE: Write tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T099a [P] [M4] Write integration test for role-based access control in
+- [ ] T111a [P] [M4] Write integration test for role-based access control in
       `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerTest.java`:
       test that users with `Global Administrator` role can access endpoint, test
       that users with `Reports` role can access endpoint, test that users
       without these roles receive 403 Forbidden
-- [ ] T099b [M4] Implement role check in CatalystRestController: inject
+- [ ] T111b [M4] Implement role check in CatalystRestController: inject
       `UserRoleService`, check
       `userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)` or
       `userInRole(sysUserId, Constants.ROLE_REPORTS)` before processing request.
       Return 403 Forbidden if user lacks required roles. (Pattern: see
       `PatientMergeRestController` and `StorageLocationRestController`)
-- [ ] T099c [M4] Write Cypress E2E test in `frontend/cypress/e2e/catalyst.cy.js`
+- [ ] T111c [M4] Write Cypress E2E test in `frontend/cypress/e2e/catalyst.cy.js`
       verifying that non-privileged users cannot access Catalyst (shows access
       denied message)
-- [ ] T099d [M4] Add user-friendly "Access Denied" UI message in
+- [ ] T111d [M4] Add user-friendly "Access Denied" UI message in
       `frontend/src/components/catalyst/CatalystSidebar.jsx` when backend
       returns 403 (i18n key: `catalyst.error.accessDenied`)
 
 ### M4.6: Security Features (Deferred from M0/M2)
 
-- [ ] T090a [M4] Add PHI detection to RouterAgent in
+- [ ] T102a [M4] Add PHI detection to RouterAgent in
       `projects/catalyst/catalyst-agents/src/agents/router_agent.py` (FR-018)
-- [ ] T090b [M4] Add provider routing for PHI-flagged queries in RouterAgent: if
+- [ ] T102b [M4] Add provider routing for PHI-flagged queries in RouterAgent: if
       PHI detected and provider is external, route to local provider if healthy,
       else block
-- [ ] T090c [M4] Add confirmation_token column to CatalystQuery entity in
+- [ ] T102c [M4] Add confirmation_token column to CatalystQuery entity in
       `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
       (FR-016)
-- [ ] T090d [M4] Add phi_gated column to CatalystQuery entity in
+- [ ] T102d [M4] Add phi_gated column to CatalystQuery entity in
       `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java`
       (FR-019)
-- [ ] T090e [M4] Create Liquibase changeset to add confirmation_token and
+- [ ] T102e [M4] Create Liquibase changeset to add confirmation_token and
       phi_gated columns to catalyst_query table in
       `src/main/resources/liquibase/catalyst/catalyst-002-add-security-fields.xml`
-- [ ] T090f [M4] Implement confirmation token generation in
+- [ ] T102f [M4] Implement confirmation token generation in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       (compute hash from generated SQL) (FR-016)
-- [ ] T090g [M4] Implement confirmation token validation in
+- [ ] T102g [M4] Implement confirmation token validation in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       (validate token matches SQL before execution) (FR-016)
-- [ ] T090h [M4] Update audit metadata capture to include phiGated in
+- [ ] T102h [M4] Update audit metadata capture to include phiGated in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       (FR-019)
-- [ ] T090i [M4] Write pytest test for RouterAgent PHI detection and provider
+- [ ] T102i [M4] Write pytest test for RouterAgent PHI detection and provider
       routing in `projects/catalyst/catalyst-agents/tests/test_router_agent.py`
       (FR-018)
-- [ ] T090j [M4] Write unit test for confirmation token validation in
+- [ ] T102j [M4] Write unit test for confirmation token validation in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
       (test token mismatch rejection)
-- [ ] T090k [M4] Write unit test for PHI gating in
+- [ ] T102k [M4] Write unit test for PHI gating in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
-- [ ] T090l [M4] Implement confirmation token handling in frontend: store token
+- [ ] T102l [M4] Implement confirmation token handling in frontend: store token
       from generation response, include in execution request in
       `frontend/src/components/catalyst/CatalystSidebar.jsx`
-- [ ] T090m [M4] Write E2E test for PHI blocking in
+- [ ] T102m [M4] Write E2E test for PHI blocking in
       `frontend/cypress/e2e/catalyst.cy.js` (FR-018)
-- [ ] T090n [M4] Write E2E test for confirmation flow in
+- [ ] T102n [M4] Write E2E test for confirmation flow in
       `frontend/cypress/e2e/catalyst.cy.js` (FR-016)
 
 ### M4.7: Verification & PR
 
-- [ ] T100 [M4] Run controller integration tests with Maven (MUST pass)
-- [ ] T101 [M4] Run Cypress E2E test individually with
+- [ ] T112 [M4] Run controller integration tests with Maven (MUST pass)
+- [ ] T113 [M4] Run Cypress E2E test individually with
       `npm run cy:run -- --spec "cypress/e2e/catalyst.cy.js"` (Constitution V.5)
-- [ ] T102 [M4] Verify multi-agent flow works (Router delegates to Schema +
+- [ ] T114 [M4] Verify multi-agent flow works (Router delegates to Schema +
       SQLGen)
-- [ ] T103 [M4] Verify single-agent fallback mode works when configured
-- [ ] T104 [M4] Verify security features work (PHI detection, confirmation
+- [ ] T115 [M4] Verify single-agent fallback mode works when configured
+- [ ] T116 [M4] Verify security features work (PHI detection, confirmation
       tokens)
-- [ ] T104a [M4] Verify role-based access control works (privileged users can
+- [ ] T116a [M4] Verify role-based access control works (privileged users can
       access, non-privileged users get 403)
-- [ ] T105 [M4] Create PR
+- [ ] T117 [M4] Create PR
       `feat/OGC-070-catalyst-assistant-m4-integration-security` → `develop`
 
 ---
