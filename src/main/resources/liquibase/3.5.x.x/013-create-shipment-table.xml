@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- SHIPMENT TABLE -->
+    <!-- Tracks incoming sample deliveries to the biorepository -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-shipment-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="shipment_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for shipment table</comment>
+        <createSequence sequenceName="shipment_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="shipment_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-shipment-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="shipment" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create shipment table for incoming biorepository deliveries</comment>
+
+        <createTable tableName="shipment" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="delivery_reference" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sender_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sender_organization" type="VARCHAR(255)"/>
+            <column name="receiver_user_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reception_timestamp" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="packaging_condition" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="packaging_condition_notes" type="TEXT"/>
+            <column name="packaging_photo_path" type="VARCHAR(500)"/>
+            <column name="transport_temperature" type="DECIMAL(5,2)"/>
+            <column name="expected_sample_count" type="INT"/>
+            <column name="actual_sample_count" type="INT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="RECEIVED"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="shipment" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-shipment-fk-receiver" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_shipment_receiver_user" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from shipment.receiver_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_shipment_receiver_user"
+            baseTableSchemaName="clinlims"
+            baseTableName="shipment"
+            baseColumnNames="receiver_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="shipment"
+                constraintName="fk_shipment_receiver_user"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-shipment-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_shipment_reception_timestamp" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for shipment table</comment>
+
+        <createIndex indexName="idx_shipment_reception_timestamp" tableName="shipment" schemaName="clinlims">
+            <column name="reception_timestamp"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipment_status" tableName="shipment" schemaName="clinlims">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_shipment_delivery_ref" tableName="shipment" schemaName="clinlims">
+            <column name="delivery_reference"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_shipment_reception_timestamp" tableName="shipment" schemaName="clinlims"/>
+            <dropIndex indexName="idx_shipment_status" tableName="shipment" schemaName="clinlims"/>
+            <dropIndex indexName="idx_shipment_delivery_ref" tableName="shipment" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-shipment-packaging-condition-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for packaging_condition values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.shipment
+            ADD CONSTRAINT chk_shipment_packaging_condition
+            CHECK (packaging_condition IN ('INTACT', 'DAMAGED'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.shipment DROP CONSTRAINT IF EXISTS chk_shipment_packaging_condition;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-shipment-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.shipment
+            ADD CONSTRAINT chk_shipment_status
+            CHECK (status IN ('RECEIVED', 'PROCESSING', 'COMPLETED'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.shipment DROP CONSTRAINT IF EXISTS chk_shipment_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

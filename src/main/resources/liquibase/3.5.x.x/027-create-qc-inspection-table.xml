@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BIOREPOSITORY QC INSPECTION TABLE -->
+    <!-- Stores QC inspection records for stored biorepository samples -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-biorepository-qc-inspection-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="biorepository_qc_inspection_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for biorepository_qc_inspection table</comment>
+        <createSequence sequenceName="biorepository_qc_inspection_seq"
+                        schemaName="clinlims"
+                        startValue="1"
+                        incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-biorepository-qc-inspection-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create biorepository_qc_inspection table for QC inspection records</comment>
+
+        <createTable tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Foreign key to biosample -->
+            <column name="biosample_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Inspection metadata -->
+            <column name="inspector_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="inspection_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- QC Checklist items (5 boolean fields) -->
+            <column name="sample_present" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label_integrity" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="container_integrity" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="volume_appearance_acceptable" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="correct_position" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- QC Result -->
+            <column name="qc_result" type="VARCHAR(30)" defaultValue="VERIFIED">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Discrepancy details (optional, for failed QC) -->
+            <column name="discrepancy_type" type="VARCHAR(30)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="corrective_action" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="remarks" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+
+            <!-- Audit fields -->
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign key constraint to biosample -->
+    <changeSet id="add-qc-inspection-biosample-fk" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <tableExists tableName="biosample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add foreign key constraint from qc_inspection to biosample</comment>
+
+        <addForeignKeyConstraint constraintName="fk_qc_inspection_biosample"
+                                 baseTableName="biorepository_qc_inspection"
+                                 baseTableSchemaName="clinlims"
+                                 baseColumnNames="biosample_id"
+                                 referencedTableName="biosample"
+                                 referencedTableSchemaName="clinlims"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Create indexes for efficient lookup -->
+    <changeSet id="create-qc-inspection-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create indexes for QC inspection queries</comment>
+
+        <!-- Index on biosample_id for history lookup -->
+        <createIndex indexName="idx_qc_inspection_biosample"
+                     tableName="biorepository_qc_inspection"
+                     schemaName="clinlims">
+            <column name="biosample_id"/>
+        </createIndex>
+
+        <!-- Index on inspection_date for date range queries -->
+        <createIndex indexName="idx_qc_inspection_date"
+                     tableName="biorepository_qc_inspection"
+                     schemaName="clinlims">
+            <column name="inspection_date"/>
+        </createIndex>
+
+        <!-- Index on qc_result for stats -->
+        <createIndex indexName="idx_qc_inspection_result"
+                     tableName="biorepository_qc_inspection"
+                     schemaName="clinlims">
+            <column name="qc_result"/>
+        </createIndex>
+
+        <!-- Index on inspector_name for inspector queries -->
+        <createIndex indexName="idx_qc_inspection_inspector"
+                     tableName="biorepository_qc_inspection"
+                     schemaName="clinlims">
+            <column name="inspector_name"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add check constraint for qc_result enum -->
+    <changeSet id="add-qc-inspection-result-constraint" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for qc_result enum values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            ADD CONSTRAINT check_qc_result
+            CHECK (qc_result IN ('VERIFIED', 'DISCREPANCY_FOUND'));
+        </sql>
+    </changeSet>
+
+    <!-- Add check constraint for discrepancy_type enum -->
+    <changeSet id="add-qc-inspection-discrepancy-constraint" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for discrepancy_type enum values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            ADD CONSTRAINT check_discrepancy_type
+            CHECK (discrepancy_type IS NULL OR discrepancy_type IN ('MISSING_SAMPLE', 'DAMAGED_LABEL', 'MISPLACED_ITEM', 'CONTAINER_DAMAGE', 'VOLUME_DISCREPANCY', 'OTHER'));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -459,6 +459,57 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 }
             }
             break;
+        case "box":
+            StorageBox box = (StorageBox) storageLocationService.get(assignment.getLocationId(), StorageBox.class);
+            if (box != null) {
+                rack = box.getParentRack();
+                if (rack != null) {
+                    shelf = rack.getParentShelf();
+                    if (shelf != null) {
+                        device = shelf.getParentDevice();
+                        if (device != null) {
+                            room = device.getParentRoom();
+                        }
+                    }
+                }
+                StringBuilder pathBuilder = new StringBuilder();
+                if (room != null) {
+                    pathBuilder.append(room.getName());
+                }
+                if (device != null) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(device.getName());
+                }
+                if (shelf != null) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(shelf.getLabel());
+                }
+                if (rack != null) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(rack.getLabel());
+                }
+                if (box != null) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(box.getLabel());
+                }
+                if (assignment.getPositionCoordinate() != null
+                        && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(assignment.getPositionCoordinate());
+                }
+                hierarchicalPath = pathBuilder.length() > 0 ? pathBuilder.toString() : null;
+            }
+            break;
         }
 
         return hierarchicalPath;

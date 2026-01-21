@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- REORDER BIOREPOSITORY NOTEBOOK PAGES -->
+    <!-- New order: -->
+    <!--   1. Sample Intake & Registration -->
+    <!--   2. Storage Assignment -->
+    <!--   3. Ongoing Storage and Monitoring -->
+    <!--   4. Retention & Disposal (was 6) -->
+    <!--   5. Sample Request & Retrieval (was 4) -->
+    <!--   6. QC Inspection (was 5) -->
+    <!--   7. Reporting & Audit -->
+    <!-- ======================================================== -->
+
+    <changeSet id="reorder-biorepository-notebook-pages" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Reorder biorepository notebook pages: Retention &amp; Disposal to page 4, Sample Request to page 5, QC Inspection to page 6</comment>
+
+        <!-- Step 1: Use temporary page_order values to avoid unique constraint violations -->
+        <!-- Move page 4 (Sample Request) to temp 104 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="104"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 4</where>
+        </update>
+
+        <!-- Move page 5 (QC Inspection) to temp 105 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="105"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 5</where>
+        </update>
+
+        <!-- Move page 6 (Retention & Disposal) to temp 106 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="106"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 6</where>
+        </update>
+
+        <!-- Step 2: Assign final page_order values -->
+        <!-- Retention & Disposal (was 6, temp 106) -> page 4 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="4"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 106</where>
+        </update>
+
+        <!-- Sample Request & Retrieval (was 4, temp 104) -> page 5 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="5"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 104</where>
+        </update>
+
+        <!-- QC Inspection (was 5, temp 105) -> page 6 -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="6"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 105</where>
+        </update>
+
+        <rollback>
+            <!-- Reverse the changes -->
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="104"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 5</where>
+            </update>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="105"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 6</where>
+            </update>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="106"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 4</where>
+            </update>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="4"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 104</where>
+            </update>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="5"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 105</where>
+            </update>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="page_order" value="6"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 106</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- Update the nextPage references in the content JSON -->
+    <changeSet id="update-biorepository-nextpage-references" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Update nextPage references in biorepository notebook pages content</comment>
+
+        <!-- Page 3 (Ongoing Storage and Monitoring): nextPage was "Sample Request &amp; Retrieval", now "Retention &amp; Disposal" -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" valueComputed="REPLACE(content, '&quot;nextPage&quot;: &quot;Sample Request &amp; Retrieval&quot;', '&quot;nextPage&quot;: &quot;Retention &amp; Disposal&quot;')"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 3</where>
+        </update>
+
+        <!-- Page 4 (Retention & Disposal): nextPage was "Reporting &amp; Audit", now "Sample Request &amp; Retrieval" -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" valueComputed="REPLACE(content, '&quot;nextPage&quot;: &quot;Reporting &amp; Audit&quot;', '&quot;nextPage&quot;: &quot;Sample Request &amp; Retrieval&quot;')"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 4</where>
+        </update>
+
+        <!-- Page 5 (Sample Request & Retrieval): nextPage was "QC Inspection", stays the same -->
+        <!-- No change needed -->
+
+        <!-- Page 6 (QC Inspection): nextPage was "Retention &amp; Disposal", now "Reporting &amp; Audit" -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" valueComputed="REPLACE(content, '&quot;nextPage&quot;: &quot;Retention &amp; Disposal&quot;', '&quot;nextPage&quot;: &quot;Reporting &amp; Audit&quot;')"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Biorepository Laboratory' AND is_template = true) AND page_order = 6</where>
+        </update>
+    </changeSet>
+
+    <!-- Reorder workflow_page_template display_order for BIOREPOSITORY category -->
+    <changeSet id="reorder-biorepository-workflow-templates" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'BIOREPOSITORY' AND name = 'Retention &amp; Disposal'
+            </sqlCheck>
+        </preConditions>
+        <comment>Reorder biorepository workflow page templates to match new page order</comment>
+
+        <!-- Use temporary values first -->
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="104"/>
+            <where>workflow_category = 'BIOREPOSITORY' AND name = 'Sample Request &amp; Retrieval'</where>
+        </update>
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="105"/>
+            <where>workflow_category = 'BIOREPOSITORY' AND name = 'QC Inspection'</where>
+        </update>
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="106"/>
+            <where>workflow_category = 'BIOREPOSITORY' AND name = 'Retention &amp; Disposal'</where>
+        </update>
+
+        <!-- Assign final values -->
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="4"/>
+            <where>workflow_category = 'BIOREPOSITORY' AND display_order = 106</where>
+        </update>
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="5"/>
+            <where>workflow_category = 'BIOREPOSITORY' AND display_order = 104</where>
+        </update>
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="6"/>
+            <where>workflow_category = 'BIOREPOSITORY' AND display_order = 105</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

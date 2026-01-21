@@ -25,4 +25,49 @@
     <include file="liquibase/3.5.x.x/010-order-sample-link.xml"/>
     <include file="liquibase/3.5.x.x/011-add-last-updated-to-order-sample-link.xml"/>
 
+    <!-- ======================================================== -->
+    <!-- Biorepository Laboratory Module -->
+    <!-- ISO 20387:2018 compliant sample lifecycle management -->
+    <!-- ======================================================== -->
+
+    <!-- M0: Notebook Template -->
+    <include file="liquibase/3.5.x.x/012-biorepository-notebook-template.xml"/>
+    <!-- M1: Database Schema + Core Entities -->
+    <include file="liquibase/3.5.x.x/013-create-shipment-table.xml"/>
+    <include file="liquibase/3.5.x.x/014-create-biosample-table.xml"/>
+    <include file="liquibase/3.5.x.x/015-create-documentation-verification-table.xml"/>
+    <!-- Schema fixes -->
+    <include file="liquibase/3.5.x.x/016-fix-lastupdated-columns.xml"/>
+    <include file="liquibase/3.5.x.x/017-make-collection-date-nullable.xml"/>
+
+    <!-- M2: Configuration tables -->
+    <include file="liquibase/3.5.x.x/018-create-biorepository-approved-sample-types.xml"/>
+
+    <!-- M3: Schema refactoring - BioSample links to SampleItem -->
+    <include file="liquibase/3.5.x.x/019-refactor-biosample-to-sampleitem-link.xml"/>
+
+    <!-- M4: Internal sample transfer queue -->
+    <include file="liquibase/3.5.x.x/020-create-sample-transfer-tables.xml"/>
+
+    <!-- M5: BioSample origin and project fields -->
+    <include file="liquibase/3.5.x.x/021-add-biosample-origin-project.xml"/>
+
+    <!-- M6: Room environment monitoring for biorepository -->
+    <include file="liquibase/3.5.x.x/022-create-room-environment-log-table.xml"/>
+
+    <!-- M7: Reorder biorepository notebook pages -->
+    <include file="liquibase/3.5.x.x/023-reorder-biorepository-pages.xml"/>
+
+    <!-- M8: Retention policy configuration -->
+    <include file="liquibase/3.5.x.x/024-create-retention-policy-table.xml"/>
+
+    <!-- M9: Workflow status tracking for biorepository samples -->
+    <include file="liquibase/3.5.x.x/025-add-biosample-workflow-status.xml"/>
+
+    <!-- M10: Sample request and retrieval workflow -->
+    <include file="liquibase/3.5.x.x/026-create-sample-retrieval-tables.xml"/>
+
+    <!-- M11: QC inspection for stored samples -->
+    <include file="liquibase/3.5.x.x/027-create-qc-inspection-table.xml"/>
+
 </databaseChangeLog>

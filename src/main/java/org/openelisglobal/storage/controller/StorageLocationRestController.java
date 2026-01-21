@@ -395,8 +395,11 @@ public class StorageLocationRestController extends BaseRestController {
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
                 Boolean activeStatus = status != null && !status.isEmpty() ? ("active".equalsIgnoreCase(status) ? true
                         : "inactive".equalsIgnoreCase(status) ? false : null) : null;
-                java.math.BigDecimal temperatureValue = temperatureSetting != null ? new java.math.BigDecimal(temperatureSetting) : null;
-                response = storageDashboardService.filterDevicesForAPI(deviceType, roomIdInt, activeStatus, temperatureValue);
+                java.math.BigDecimal temperatureValue = temperatureSetting != null
+                        ? new java.math.BigDecimal(temperatureSetting)
+                        : null;
+                response = storageDashboardService.filterDevicesForAPI(deviceType, roomIdInt, activeStatus,
+                        temperatureValue);
             } else {
                 // No filters - return all devices
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
