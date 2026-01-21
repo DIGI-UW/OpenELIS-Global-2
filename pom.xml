@@ -822,6 +822,7 @@
                             <excludes>
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -855,6 +856,7 @@
                             <excludes>
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -879,6 +881,7 @@
                             <excludes>
                                 <exclude>**/target/**</exclude>
                                 <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/astm-http-bridge/**</exclude>
                                 <exclude>tools/astm-mock-server/**</exclude>

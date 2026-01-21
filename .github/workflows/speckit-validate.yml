@@ -1,0 +1,59 @@
+name: SpecKit Validation
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - '.specify/**'
+      - '.cursor/**'
+      - '.claude/**'
+  push:
+    branches: [develop]
+    paths:
+      - '.specify/**'
+  workflow_dispatch:
+
+jobs:
+  validate-speckit-commands:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile SpecKit commands
+        run: ./.specify/scripts/bash/install-commands.sh -y all
+
+      - name: Verify all commands exist
+        run: |
+          EXPECTED_COMMANDS="speckit.analyze speckit.checklist speckit.clarify speckit.constitution speckit.implement speckit.plan speckit.specify speckit.tasks speckit.taskstoissues"
+          for cmd in $EXPECTED_COMMANDS; do
+            if [ ! -f ".cursor/commands/${cmd}.md" ]; then
+              echo "ERROR: Missing .cursor/commands/${cmd}.md"
+              exit 1
+            fi
+            if [ ! -f ".claude/commands/${cmd}.md" ]; then
+              echo "ERROR: Missing .claude/commands/${cmd}.md"
+              exit 1
+            fi
+          done
+          echo "✓ All 9 commands compiled for both agents"
+
+      - name: Verify no invalid path patterns
+        run: |
+          # Check for paths that indicate double-rewrite bugs
+          if grep -r '/.specify/' .cursor/commands/ .claude/commands/ 2>/dev/null; then
+            echo "ERROR: Found invalid '/.specify/' paths in compiled commands"
+            exit 1
+          fi
+          if grep -r '.specify/.specify/' .cursor/commands/ .claude/commands/ 2>/dev/null; then
+            echo "ERROR: Found invalid '.specify/.specify/' paths in compiled commands"
+            exit 1
+          fi
+          echo "✓ All paths correctly rewritten"
+
+      - name: Summary
+        run: |
+          echo "## SpecKit Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commands compiled:** 9" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target agents:** Cursor, Claude Code" >> $GITHUB_STEP_SUMMARY
+          echo "- **Path validation:** Passed" >> $GITHUB_STEP_SUMMARY

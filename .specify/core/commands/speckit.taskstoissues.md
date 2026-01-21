@@ -4,12 +4,9 @@ description:
   the feature based on available design artifacts.
 tools: ["github/github-mcp-server/issue_write"]
 scripts:
-  sh:
-    .specify/scripts/bash/check-prerequisites.sh --json --require-tasks
-    --include-tasks
+  sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
   ps:
-    .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks
-    -IncludeTasks
+    scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
 ---
 
 ## User Input

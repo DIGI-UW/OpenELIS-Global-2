@@ -508,7 +508,9 @@ every stage.
 **Setup (Required for AI Agents):**
 
 Before using SpecKit commands, install them to your AI agent's command
-directory:
+directory. This is the **single entry point** for SpecKit setup:
+
+**Bash (Linux/macOS):**
 
 ```bash
 # Install commands for all supported AI agents (Cursor + Claude Code)
@@ -517,10 +519,31 @@ directory:
 # Or install for specific agent only
 ./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
 ./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+
+# Skip confirmation prompt (for automation/CI)
+./.specify/scripts/bash/install-commands.sh -y all
 ```
 
-This copies command definitions from `.specify/commands/` to agent-specific
+**PowerShell (Windows):**
+
+```powershell
+# Install commands for all supported AI agents
+.\.specify\scripts\powershell\install-commands.ps1
+
+# Or install for specific agent only
+.\.specify\scripts\powershell\install-commands.ps1 -Target cursor
+.\.specify\scripts\powershell\install-commands.ps1 -Target claude
+
+# Skip confirmation prompt
+.\.specify\scripts\powershell\install-commands.ps1 -Yes -Target all
+```
+
+This compiles command definitions from `.specify/core/commands/` (upstream
+SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
 directories (`.cursor/commands/`, `.claude/commands/`).
+
+**CI Validation:** The CI pipeline automatically validates that all 9 SpecKit
+commands compile correctly and contain valid paths.
 
 **Available Commands:**
 
@@ -534,6 +557,7 @@ directories (`.cursor/commands/`, `.claude/commands/`).
 - `/speckit.analyze` - Cross-artifact consistency analysis
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
+- `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
 
 **Standard Workflow:**
 

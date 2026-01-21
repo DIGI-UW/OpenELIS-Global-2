@@ -194,15 +194,14 @@ This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
 Spec-Driven Development (SDD). AI coding agents can use slash commands to create
 specifications, plans, and tasks.
 
-**Setup SpecKit Commands:**
+**Setup SpecKit Commands (single entry point):**
 
 ```bash
-# Install commands for all supported AI agents (Cursor + Claude Code)
+# Bash (Linux/macOS) - Install for all AI agents
 ./.specify/scripts/bash/install-commands.sh
 
-# Or install for specific agent only
-./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
-./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+# PowerShell (Windows) - Install for all AI agents
+.\.specify\scripts\powershell\install-commands.ps1
 ```
 
 **Available Commands** (after installation):
@@ -215,7 +214,8 @@ specifications, plans, and tasks.
 
 **Reference Documentation:**
 
-- **AGENTS.md** - Comprehensive guide for AI coding agents
+- **AGENTS.md** - Comprehensive guide for AI coding agents (includes full setup
+  options)
 - **Constitution**: `.specify/memory/constitution.md` - Governance principles
 - **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
 
