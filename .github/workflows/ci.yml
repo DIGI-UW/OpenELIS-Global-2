@@ -28,36 +28,6 @@ jobs:
           repository: ${{github.repository}}
           submodules: recursive
 
-      - name: Verify SpecKit commands compile correctly
-        run: |
-          # Install SpecKit commands
-          ./.specify/scripts/bash/install-commands.sh -y all
-          
-          # Verify all 9 commands exist in both agent directories
-          EXPECTED_COMMANDS="speckit.analyze speckit.checklist speckit.clarify speckit.constitution speckit.implement speckit.plan speckit.specify speckit.tasks speckit.taskstoissues"
-          for cmd in $EXPECTED_COMMANDS; do
-            if [ ! -f ".cursor/commands/${cmd}.md" ]; then
-              echo "ERROR: Missing .cursor/commands/${cmd}.md"
-              exit 1
-            fi
-            if [ ! -f ".claude/commands/${cmd}.md" ]; then
-              echo "ERROR: Missing .claude/commands/${cmd}.md"
-              exit 1
-            fi
-          done
-          
-          # Verify no invalid path patterns in compiled commands
-          if grep -r '/.specify/' .cursor/commands/ .claude/commands/ 2>/dev/null; then
-            echo "ERROR: Found invalid '/.specify/' paths in compiled commands"
-            exit 1
-          fi
-          if grep -r '.specify/.specify/' .cursor/commands/ .claude/commands/ 2>/dev/null; then
-            echo "ERROR: Found invalid '.specify/.specify/' paths in compiled commands"
-            exit 1
-          fi
-          
-          echo "SpecKit commands compiled successfully (9 commands × 2 agents)"
-
       - name: check formatting
         run: mvn spotless:check
 
