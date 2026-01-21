@@ -382,8 +382,12 @@ production.
 
 **How:**
 
-- Schema migrations in `src/main/resources/liquibase/{module}/`
-- Changesets with unique IDs: `{module}-{sequence}-{description}`
+- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
+  `3.3.x.x/`)
+- Changesets with unique IDs: `{sequence}-{description}` (e.g.,
+  `023-storage-device-connectivity`)
+- All changesets MUST be placed inside versioned folders - NO module-specific
+  folders outside version directories
 - Use Liquibase XML format (NOT raw SQL unless necessary)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume

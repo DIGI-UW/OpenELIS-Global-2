@@ -23,7 +23,7 @@
 | Service        | `src/main/java/org/openelisglobal/storage/service/StorageLocationServiceImpl.java`       |
 | Controller     | `src/main/java/org/openelisglobal/storage/controller/StorageLocationRestController.java` |
 | FHIR Transform | `src/main/java/org/openelisglobal/storage/fhir/StorageLocationFhirTransform.java`        |
-| Liquibase      | `src/main/resources/liquibase/storage/storage-device-connectivity.xml`                   |
+| Liquibase      | `src/main/resources/liquibase/3.3.x.x/023-storage-device-connectivity.xml`               |
 | Frontend Modal | `frontend/src/components/storage/StorageLocationModal.jsx`                               |
 | E2E Tests      | `frontend/cypress/e2e/storageLocationCrud.cy.js`                                         |
 
@@ -70,7 +70,7 @@ git checkout -b feat/OGC-68-storage-location-crud/m1-backend
 
 ```bash
 # 1. Add Liquibase changeset
-# Create: src/main/resources/liquibase/storage/storage-device-connectivity.xml
+# Create: src/main/resources/liquibase/3.3.x.x/023-storage-device-connectivity.xml
 
 # 2. Update StorageDevice entity
 # Edit: src/main/java/org/openelisglobal/storage/valueholder/StorageDevice.java

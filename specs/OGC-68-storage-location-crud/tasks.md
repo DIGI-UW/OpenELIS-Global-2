@@ -73,7 +73,7 @@ dependencies between them).
 ### M1.3 - Database Schema [US2]
 
 - [ ] T009 [US2] Create Liquibase changeset for device connectivity columns in
-      `src/main/resources/liquibase/storage/storage-device-connectivity.xml`
+      `src/main/resources/liquibase/3.3.x.x/023-storage-device-connectivity.xml`
 - [ ] T010 [US2] Add changeset include to main Liquibase changelog in
       `src/main/resources/liquibase/liquibase-changelog.xml`
 
