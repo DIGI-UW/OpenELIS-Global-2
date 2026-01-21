@@ -37,9 +37,13 @@ protocol + MCP for tools).
 
 **Primary Dependencies**:
 
-- Backend (Java): HTTP client (Apache HttpClient or OkHttp) for A2A agent communication, Jackson for JSON, Hibernate 6.x, Jakarta EE 9
-- A2A Agents (Python): a2a-sdk 0.3.22+ (with http-server extra), FastAPI, uvicorn, OpenAI SDK, Google Generative AI SDK, Ollama SDK, httpx (for LM Studio)
-- MCP Server (Python): mcp SDK, langchain, chromadb (for RAG embeddings), psycopg2-binary (PostgreSQL schema extraction)
+- Backend (Java): HTTP client (Apache HttpClient or OkHttp) for A2A agent
+  communication, Jackson for JSON, Hibernate 6.x, Jakarta EE 9
+- A2A Agents (Python): a2a-sdk 0.3.22+ (with http-server extra), FastAPI,
+  uvicorn, OpenAI SDK, Google Generative AI SDK, Ollama SDK, httpx (for LM
+  Studio)
+- MCP Server (Python): mcp SDK, langchain, chromadb (for RAG embeddings),
+  psycopg2-binary (PostgreSQL schema extraction)
 - Frontend: React 17, @carbon/react v1.15, @carbon/ai-chat v1.0, React Intl
 
 **LLM Providers (MVP)**:
@@ -102,13 +106,13 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ### Milestone Table
 
-| ID     | Branch Suffix      | Scope                                          | User Stories            | Verification                           | Depends On    |
-| ------ | ------------------ | ---------------------------------------------- | ----------------------- | -------------------------------------- | ------------- |
-| M0     | m0-a2a-agents      | A2A agent infrastructure + 3-agent team        | US1 (partial), US2      | Agent Cards valid, agents communicate  | -             |
-| [P] M1 | m1-mcp-server      | Python MCP server for schema RAG retrieval     | US1 (partial), US2      | MCP tools callable, pytest passes      | -             |
-| [P] M2 | m2-backend-core    | Java OpenELIS integration, SQL execution       | US1 (partial), US2, US3 | Unit tests pass, ORM test passes       | -             |
-| [P] M3 | m3-frontend-chat   | Carbon chat sidebar, i18n, basic UI            | US1 (partial)           | Jest tests pass, renders correctly     | -             |
-| M4     | m4-integration     | Wire agents + backend + frontend, E2E test     | US1, US4                | Integration + E2E tests pass           | M0, M1, M2, M3|
+| ID     | Branch Suffix    | Scope                                      | User Stories            | Verification                          | Depends On     |
+| ------ | ---------------- | ------------------------------------------ | ----------------------- | ------------------------------------- | -------------- |
+| M0     | m0-a2a-agents    | A2A agent infrastructure + 3-agent team    | US1 (partial), US2      | Agent Cards valid, agents communicate | -              |
+| [P] M1 | m1-mcp-server    | Python MCP server for schema RAG retrieval | US1 (partial), US2      | MCP tools callable, pytest passes     | -              |
+| [P] M2 | m2-backend-core  | Java OpenELIS integration, SQL execution   | US1 (partial), US2, US3 | Unit tests pass, ORM test passes      | -              |
+| [P] M3 | m3-frontend-chat | Carbon chat sidebar, i18n, basic UI        | US1 (partial)           | Jest tests pass, renders correctly    | -              |
+| M4     | m4-integration   | Wire agents + backend + frontend, E2E test | US1, US4                | Integration + E2E tests pass          | M0, M1, M2, M3 |
 
 **Legend**:
 
@@ -287,7 +291,8 @@ projects/catalyst/catalyst-mcp/
 - Privacy guardrails (blocked tables, schema-only context)
 - CatalystQuery valueholder + DAO for audit logging (without security fields)
 - SQL execution against read-only database connection
-- **Note**: Security features (PHI detection, confirmation tokens) deferred to M4
+- **Note**: Security features (PHI detection, confirmation tokens) deferred to
+  M4
 
 **Files to Create**:
 
@@ -410,21 +415,24 @@ graph TD
 
 - **Spec PR**: `spec/OGC-070-catalyst-assistant` → `develop` (this spec + plan)
 - **M0.0 PR**: `feat/OGC-070-catalyst-assistant-m0-skeleton-poc` → `develop`
-- **M0.1 PR**: `feat/OGC-070-catalyst-assistant-m0-provider-switching` → `develop`
+- **M0.1 PR**: `feat/OGC-070-catalyst-assistant-m0-provider-switching` →
+  `develop`
 - **M0.2 PR**: `feat/OGC-070-catalyst-assistant-m0-multi-agent` → `develop`
 - **M1 PR**: `feat/OGC-070-catalyst-assistant-m1-mcp-server` → `develop`
 - **M2 PR**: `feat/OGC-070-catalyst-assistant-m2-backend-core` → `develop`
 - **M3 PR**: `feat/OGC-070-catalyst-assistant-m3-frontend-chat` → `develop`
-- **M4 PR**: `feat/OGC-070-catalyst-assistant-m4-integration-security` → `develop`
+- **M4 PR**: `feat/OGC-070-catalyst-assistant-m4-integration-security` →
+  `develop`
 
-**Estimated Total**: ~14-16 days (3 sprints) for working MVP with A2A + MCP architecture
+**Estimated Total**: ~14-16 days (3 sprints) for working MVP with A2A + MCP
+architecture
 
 ### Future Phases (Post-MVP)
 
-| Phase   | Scope                                                      | Prerequisite     |
-| ------- | ---------------------------------------------------------- | ---------------- |
+| Phase   | Scope                                                         | Prerequisite     |
+| ------- | ------------------------------------------------------------- | ---------------- |
 | Phase 2 | Advanced multi-agent orchestration, external agent federation | MVP validated    |
-| Phase 3 | Report storage, scheduling, dashboards                     | Phase 2 complete |
+| Phase 3 | Report storage, scheduling, dashboards                        | Phase 2 complete |
 
 **Note**: Basic A2A multi-agent team (Router + Schema + SQLGen) is now in MVP
 scope. Phase 2 extends to more complex orchestration patterns, dynamic agent
@@ -626,20 +634,24 @@ SQL execution + audit, React frontend for chat UI.
 **SQL Generation + LLM Provider Switching** (SQLGenAgent - Python):
 
 - SQLGenAgent owns text-to-SQL generation using configured LLM provider
-- Supports 4 providers: OpenAI (GPT-4o), Google Gemini (gemini-1.5-pro), Ollama (SQLCoder-7B), LM Studio (OpenAI-compatible)
+- Supports 4 providers: OpenAI (GPT-4o), Google Gemini (gemini-1.5-pro), Ollama
+  (SQLCoder-7B), LM Studio (OpenAI-compatible)
 - Provider selection configured via agent runtime config (YAML/properties)
-- PHI detection and cloud provider blocking logic lives in RouterAgent (delegates to SQLGenAgent only if safe)
+- PHI detection and cloud provider blocking logic lives in RouterAgent
+  (delegates to SQLGenAgent only if safe)
 
 **Schema Retrieval via MCP** (SchemaAgent - Python):
 
 - SchemaAgent calls MCP server tools for RAG-based schema retrieval
 - MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
 - MCP transport: Streamable HTTP (SSE optional for streaming)
-- Reference: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+- Reference:
+  https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
 
 **Orchestration** (RouterAgent - Python):
 
-- RouterAgent orchestrates query flow: delegates to SchemaAgent for schema, then SQLGenAgent for SQL generation
+- RouterAgent orchestrates query flow: delegates to SchemaAgent for schema, then
+  SQLGenAgent for SQL generation
 - Performs PHI detection on user query before delegation
 - Returns generated SQL to Java backend (no execution in agent layer)
 
@@ -651,9 +663,11 @@ SQL execution + audit, React frontend for chat UI.
 - Calls RouterAgent via A2A protocol (HTTP client to agent runtime)
 - Executes generated SQL against read-only database connection
 - Persists audit records (CatalystQuery entity) with FR-019 metadata
-- Validates confirmation token before execution (review-before-execute enforcement)
+- Validates confirmation token before execution (review-before-execute
+  enforcement)
 
-**No Direct LLM/MCP Access**: Java backend does NOT directly call LLM providers or MCP server. All AI operations happen in the agent runtime.
+**No Direct LLM/MCP Access**: Java backend does NOT directly call LLM providers
+or MCP server. All AI operations happen in the agent runtime.
 
 ### Python MCP Server Tools
 
@@ -694,13 +708,14 @@ catalyst.guardrails.query-timeout=30s
 catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
 ```
 
-**Agent Runtime** (`projects/catalyst/catalyst-agents/src/config/agents_config.yaml`):
+**Agent Runtime**
+(`projects/catalyst/catalyst-agents/src/config/agents_config.yaml`):
 
 ```yaml
 # LLM Provider Selection (SQLGenAgent)
 llm:
-  provider: ollama  # Options: openai, gemini, ollama, lmstudio
-  
+  provider: ollama # Options: openai, gemini, ollama, lmstudio
+
   # Cloud providers
   openai:
     model: gpt-4o
@@ -708,7 +723,7 @@ llm:
   gemini:
     model: gemini-1.5-pro
     api_key: ${GOOGLE_API_KEY}
-  
+
   # Local providers
   ollama:
     base_url: http://ollama:11434
@@ -730,9 +745,13 @@ identifiers/PHI in the _question text_.
 **Rule (MVP)**:
 
 - RouterAgent detects likely PHI/identifiers in user query
-- If PHI detected **and** configured provider is externally-hosted (OpenAI/Gemini), RouterAgent **MUST NOT** delegate to SQLGenAgent with that provider
-- RouterAgent attempts to route to on-premises provider (Ollama or LM Studio) if configured and healthy
-- If no on-premises provider available, RouterAgent returns error to Java backend, which blocks request with user-facing message
+- If PHI detected **and** configured provider is externally-hosted
+  (OpenAI/Gemini), RouterAgent **MUST NOT** delegate to SQLGenAgent with that
+  provider
+- RouterAgent attempts to route to on-premises provider (Ollama or LM Studio) if
+  configured and healthy
+- If no on-premises provider available, RouterAgent returns error to Java
+  backend, which blocks request with user-facing message
 
 **Reference**: This is required to make US2/FR-004 testable in real workflows
 where users paste patient identifiers into questions.
@@ -776,23 +795,25 @@ MVP implements a simple 3-agent team based on med-agent-hub patterns:
 
 ### Agent Responsibilities
 
-| Agent | Skill | Input | Output |
-|-------|-------|-------|--------|
+| Agent           | Skill               | Input                  | Output              |
+| --------------- | ------------------- | ---------------------- | ------------------- |
 | **RouterAgent** | `orchestrate_query` | Natural language query | Final SQL + results |
-| **SchemaAgent** | `retrieve_schema` | Query text | Relevant table DDL |
-| **SQLGenAgent** | `generate_sql` | Query + schema context | Valid SQL statement |
+| **SchemaAgent** | `retrieve_schema`   | Query text             | Relevant table DDL  |
+| **SQLGenAgent** | `generate_sql`      | Query + schema context | Valid SQL statement |
 
 ### Agent Card Structure (A2A Specification)
 
 **Required Fields** (per A2A spec v0.3.0+):
 
-- `protocolVersions`: Array of supported A2A protocol versions (e.g., `["0.3.0"]`)
+- `protocolVersions`: Array of supported A2A protocol versions (e.g.,
+  `["0.3.0"]`)
 - `name`: Human-readable agent name
 - `description`: Agent purpose
 - `url`: Base URL for A2A service
 - `version`: Agent implementation version (not protocol version)
 - `capabilities`: Feature flags (streaming, pushNotifications, etc.)
-- `defaultInputModes`: Supported input MIME types (e.g., `["text/plain", "application/json"]`)
+- `defaultInputModes`: Supported input MIME types (e.g.,
+  `["text/plain", "application/json"]`)
 - `defaultOutputModes`: Supported output MIME types
 - `skills`: Array of AgentSkill objects (at least one required)
 
@@ -822,7 +843,9 @@ MVP implements a simple 3-agent team based on med-agent-hub patterns:
 }
 ```
 
-**Discovery Path**: RouterAgent publishes Agent Card at `/.well-known/agent.json` (or `/.well-known/agent-card.json` per A2A SDK 0.3.x default).
+**Discovery Path**: RouterAgent publishes Agent Card at
+`/.well-known/agent.json` (or `/.well-known/agent-card.json` per A2A SDK 0.3.x
+default).
 
 ### Single-Agent Fallback Mode
 
@@ -864,5 +887,6 @@ delegating to SchemaAgent or SQLGenAgent.
 - [Google Gemini API](https://ai.google.dev/)
 - [LM Studio](https://lmstudio.ai/) (OpenAI-compatible local inference)
 - [A2A Protocol](https://google.github.io/A2A/) (MVP - multi-agent architecture)
-- [A2A Python SDK](https://github.com/a2aproject/a2a-samples) (agent implementation)
+- [A2A Python SDK](https://github.com/a2aproject/a2a-samples) (agent
+  implementation)
 - [med-agent-hub](https://github.com/pmanko/med-agent-hub) (reference patterns)

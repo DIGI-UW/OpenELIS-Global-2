@@ -44,13 +44,13 @@ CREATE TABLE catalyst_query (
     provider_type VARCHAR(50),                    -- external, on-premises
     provider_id VARCHAR(50),                      -- ollama, openai, gemini, lmstudio
     llm_model VARCHAR(100),                       -- sqlcoder:7b, gpt-4o, gemini-1.5-pro, etc.
-    
+
     -- PHI gating (FR-018, FR-019) - Added in M4
     phi_gated BOOLEAN DEFAULT FALSE,              -- Whether PHI detection triggered provider gating
-    
+
     -- Schema context metadata (FR-019)
     tables_used TEXT,                             -- Comma-separated list of table names provided as schema context (NOT raw DDL)
-    
+
     -- Review-before-execute (FR-016) - Added in M4
     confirmation_token VARCHAR(255),              -- Token computed from generated SQL for execution confirmation
 );
@@ -134,23 +134,23 @@ public enum ExecutionStatus {
 
 ### Field Descriptions
 
-| Field             | Type         | Description                        | Required                       |
-| ----------------- | ------------ | ---------------------------------- | ------------------------------ |
-| id                | VARCHAR(36)  | UUID primary key                   | Yes                            |
-| user_query        | TEXT         | Original natural language question | Yes                            |
-| generated_sql     | TEXT         | LLM-generated SQL statement        | No (null if generation failed) |
-| execution_status  | VARCHAR(50)  | Current status (enum)              | Yes                            |
-| row_count         | INTEGER      | Rows returned                      | No (null if not executed)      |
-| execution_time_ms | INTEGER      | Execution duration                 | No                             |
-| error_message     | TEXT         | Error details                      | No                             |
-| sys_user_id       | INTEGER      | User who submitted query           | Yes                            |
-| lastupdated       | TIMESTAMP    | Last modification time             | Yes                            |
-| provider_type     | VARCHAR(50)  | Provider type (external/on-premises) | No (FR-019)                  |
-| provider_id       | VARCHAR(50)  | Provider identifier (ollama/openai/gemini/lmstudio) | No (FR-019) |
-| llm_model         | VARCHAR(100) | Model name                         | No                             |
-| phi_gated         | BOOLEAN      | Whether PHI detection triggered gating | No (FR-019)                |
-| tables_used       | TEXT         | Comma-separated table names (NOT raw DDL) | No (FR-019)            |
-| confirmation_token| VARCHAR(255) | Token for execution confirmation   | No (FR-016)                    |
+| Field              | Type         | Description                                         | Required                       |
+| ------------------ | ------------ | --------------------------------------------------- | ------------------------------ |
+| id                 | VARCHAR(36)  | UUID primary key                                    | Yes                            |
+| user_query         | TEXT         | Original natural language question                  | Yes                            |
+| generated_sql      | TEXT         | LLM-generated SQL statement                         | No (null if generation failed) |
+| execution_status   | VARCHAR(50)  | Current status (enum)                               | Yes                            |
+| row_count          | INTEGER      | Rows returned                                       | No (null if not executed)      |
+| execution_time_ms  | INTEGER      | Execution duration                                  | No                             |
+| error_message      | TEXT         | Error details                                       | No                             |
+| sys_user_id        | INTEGER      | User who submitted query                            | Yes                            |
+| lastupdated        | TIMESTAMP    | Last modification time                              | Yes                            |
+| provider_type      | VARCHAR(50)  | Provider type (external/on-premises)                | No (FR-019)                    |
+| provider_id        | VARCHAR(50)  | Provider identifier (ollama/openai/gemini/lmstudio) | No (FR-019)                    |
+| llm_model          | VARCHAR(100) | Model name                                          | No                             |
+| phi_gated          | BOOLEAN      | Whether PHI detection triggered gating              | No (FR-019)                    |
+| tables_used        | TEXT         | Comma-separated table names (NOT raw DDL)           | No (FR-019)                    |
+| confirmation_token | VARCHAR(255) | Token for execution confirmation                    | No (FR-016)                    |
 
 ---
 
@@ -414,7 +414,7 @@ public interface CatalystQueryService {
 
     // Update with generated SQL and audit metadata (FR-019)
     // Note: phiGated and confirmationToken parameters added in M4 (M2 version has only providerType, providerId, model, tablesUsed)
-    void updateWithGeneratedSql(String queryId, String sql, String providerType, String providerId, 
+    void updateWithGeneratedSql(String queryId, String sql, String providerType, String providerId,
                                  String model, boolean phiGated, List<String> tablesUsed, String confirmationToken);
 
     // Update with execution result

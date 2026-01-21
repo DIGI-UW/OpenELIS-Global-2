@@ -11,9 +11,9 @@ chat-to-SQL assistant for OpenELIS Global with A2A multi-agent architecture and
 MCP-based schema retrieval. By the end, you'll be able to ask natural language
 questions and get SQL results.
 
-**Architecture**: Python A2A Agent Runtime (RouterAgent, SchemaAgent, SQLGenAgent)
-→ Python MCP Server (schema RAG) → Java Backend (OpenELIS integration + SQL execution)
-→ React Frontend (Carbon chat UI)
+**Architecture**: Python A2A Agent Runtime (RouterAgent, SchemaAgent,
+SQLGenAgent) → Python MCP Server (schema RAG) → Java Backend (OpenELIS
+integration + SQL execution) → React Frontend (Carbon chat UI)
 
 ## Prerequisites
 
@@ -133,7 +133,8 @@ docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.ope
 
 ### Step 1: Start the A2A Agent Runtime and MCP Schema Server
 
-The agent runtime orchestrates query flow; the MCP server provides RAG-based schema retrieval:
+The agent runtime orchestrates query flow; the MCP server provides RAG-based
+schema retrieval:
 
 ```bash
 # Start agents + MCP server via Docker (recommended)
@@ -176,23 +177,23 @@ Edit `projects/catalyst/catalyst-agents/src/config/agents_config.yaml`:
 ```yaml
 # LLM Provider Selection (openai, gemini, ollama, lmstudio)
 llm:
-  provider: ollama  # Change to openai, gemini, or lmstudio as needed
-  
+  provider: ollama # Change to openai, gemini, or lmstudio as needed
+
   # Cloud: OpenAI
   openai:
     model: gpt-4o
-    api_key: ${OPENAI_API_KEY}  # Set environment variable
-  
+    api_key: ${OPENAI_API_KEY} # Set environment variable
+
   # Cloud: Google Gemini
   gemini:
     model: gemini-1.5-pro
-    api_key: ${GOOGLE_API_KEY}  # Set environment variable
-  
+    api_key: ${GOOGLE_API_KEY} # Set environment variable
+
   # Local: Ollama
   ollama:
     base_url: http://ollama:11434
     model: sqlcoder:7b
-  
+
   # Local: LM Studio (OpenAI-compatible)
   lmstudio:
     base_url: http://host.docker.internal:1234/v1
@@ -416,19 +417,19 @@ services:
   catalyst-agents:
     build: ./projects/catalyst/catalyst-agents
     ports:
-      - "8000:8000"  # A2A agent runtime
+      - "8000:8000" # A2A agent runtime
     environment:
       - DATABASE_URL=postgresql://clinlims:clinlims@oe-postgres:5432/clinlims
     depends_on:
       - catalyst-mcp
-      - ollama  # If using Ollama provider
+      - ollama # If using Ollama provider
     volumes:
       - ./projects/catalyst/catalyst-agents/src/config:/app/config
 
   catalyst-mcp:
     build: ./projects/catalyst/catalyst-mcp
     ports:
-      - "8001:8000"  # MCP server (different port to avoid conflict)
+      - "8001:8000" # MCP server (different port to avoid conflict)
     environment:
       - DATABASE_URL=postgresql://clinlims:clinlims@oe-postgres:5432/clinlims
     depends_on:
