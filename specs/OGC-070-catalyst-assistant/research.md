@@ -63,7 +63,7 @@ Spring MVC architecture.
 | Provider                | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                     |
 | ----------------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------- |
 | Gemini 1.5 Pro (Google) | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration   |
-| LM Studio (Local)       | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production with llama 3.x, gemma 2, or other models |
+| LM Studio (Local)       | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production with OpenAI-compatible models |
 
 **Note**: Performance/cost figures are estimates based on typical usage
 patterns. Actual values may vary by deployment, model version, and query
@@ -103,20 +103,19 @@ Java backend. Java backend only needs HTTP client for A2A agent communication.
 
 ### Decision: LM Studio for Local Development
 
-**Rationale**: LM Studio provides easy model management via GUI, supports OpenAI-compatible API, and works well with llama/gemma-based models. Runs on host machine (not Docker), simplifying GPU access.
+**Rationale**: LM Studio provides easy model management via GUI, supports OpenAI-compatible API, and works well with OpenAI-compatible models. Runs on host machine (not Docker), simplifying GPU access.
 
 **Setup**:
 
 1. Download LM Studio from https://lmstudio.ai/
-2. Load a model (llama 3.x, gemma 2, or other OpenAI-compatible model)
+2. Load a model (use most recent available OpenAI-compatible model)
 3. Start local server (default: http://localhost:1234/v1)
 4. Configure agent runtime to use `http://host.docker.internal:1234/v1` as base_url
 
 **Model Selection**:
 
-- **Llama 3.x** (8B, 70B): Good SQL generation with quantization
-- **Gemma 2** (2B, 9B, 27B): Google's efficient models, good for SQL tasks
-- Other OpenAI-compatible models as needed
+- Use most recent available OpenAI-compatible models
+- Target models suitable for SQL generation tasks
 
 **Alternatives Considered**:
 

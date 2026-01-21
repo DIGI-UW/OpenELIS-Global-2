@@ -72,7 +72,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 
 # 2. Start LM Studio on host machine (download from https://lmstudio.ai/)
-# Load a model (llama 3.x, gemma 2, or other OpenAI-compatible model)
+# Load a model (use most recent available OpenAI-compatible model)
 
 # 3. Verify LM Studio API is accessible
 curl http://localhost:1234/v1/models
@@ -103,7 +103,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 
 ```bash
 # 1. Download and start LM Studio from https://lmstudio.ai/
-# 2. Load a model (e.g., llama 3.x, gemma 2, or other OpenAI-compatible model)
+# 2. Load a model (use most recent available OpenAI-compatible model)
 # 3. Start the local server (default: http://localhost:1234)
 
 # 4. Start A2A agents + MCP server
@@ -179,13 +179,13 @@ llm:
 
   # Cloud: Google Gemini
   gemini:
-    model: gemini-1.5-pro
+    model: latest  # Use most recent available Gemini model
     api_key: ${GOOGLE_API_KEY} # Set environment variable
 
   # Local: LM Studio (OpenAI-compatible)
   lmstudio:
     base_url: http://host.docker.internal:1234/v1
-    model: local-model  # llama 3.x, gemma 2, or other OpenAI-compatible model
+    model: local-model  # Use most recent available OpenAI-compatible model
 
 # MCP Server (SchemaAgent uses this)
 mcp:

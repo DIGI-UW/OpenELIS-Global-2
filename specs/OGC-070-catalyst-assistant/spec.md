@@ -14,7 +14,7 @@
   row-level RBAC deferred to Phase 2.
 - Q: Must the MVP support specific providers like Google Gemini and LM Studio? →
   A: Yes, MVP MUST support Gemini (Cloud) and LM Studio (Local via
-  OpenAI-compatible API with llama/gemma-based models). These 2 providers are
+  OpenAI-compatible API). These 2 providers are
   sufficient for MVP validation.
 - Q: How to handle large schema context for MVP? → A: RAG/MCP-based approach
   required to support full clinical schema (filtering relevant tables via
@@ -258,8 +258,7 @@ This delivers enhanced usability and workflow integration.
 - **FR-007**: System MUST support multiple AI model providers (externally-hosted
   and on-premises) configurable at deployment time without code changes.
   Required providers for MVP: Google Gemini (Cloud), and LM Studio (Local via
-  OpenAI-compatible API supporting llama 3.x, gemma 2, or other OpenAI-compatible
-  models).
+  OpenAI-compatible API supporting OpenAI-compatible models).
 
 - **FR-020**: System MUST implement a simple multi-agent team using A2A
   (Agent2Agent) protocol patterns based on med-agent-hub concepts:

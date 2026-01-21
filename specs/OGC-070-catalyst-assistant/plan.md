@@ -47,8 +47,8 @@ protocol + MCP for tools).
 
 **LLM Providers (MVP)**:
 
-- **Cloud**: Google Gemini (gemini-1.5-pro)
-- **Local**: LM Studio (OpenAI-compatible API) - supports llama 3.x, gemma 2, and other models
+- **Cloud**: Google Gemini (latest available)
+- **Local**: LM Studio (OpenAI-compatible API) - supports OpenAI-compatible models
 
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only for Catalyst
 queries)  
@@ -631,7 +631,7 @@ SQL execution + audit, React frontend for chat UI.
 **SQL Generation + LLM Provider Switching** (SQLGenAgent - Python):
 
 - SQLGenAgent owns text-to-SQL generation using configured LLM provider
-- Supports 2 providers: Google Gemini (gemini-1.5-pro), LM Studio (OpenAI-compatible with llama/gemma models)
+- Supports 2 providers: Google Gemini, LM Studio (OpenAI-compatible API)
 - Provider selection configured via agent runtime config (YAML/properties)
 - PHI detection and cloud provider blocking logic lives in RouterAgent
   (delegates to SQLGenAgent only if safe)
@@ -714,13 +714,13 @@ llm:
   
   # Cloud provider
   gemini:
-    model: gemini-1.5-pro
+    model: latest  # Use most recent available Gemini model
     api_key: ${GOOGLE_API_KEY}
   
   # Local provider
   lmstudio:
     base_url: http://host.docker.internal:1234/v1
-    model: local-model  # llama 3.x, gemma 2, or other OpenAI-compatible
+    model: local-model  # Use most recent available OpenAI-compatible model
 
 # MCP Server (SchemaAgent)
 mcp:

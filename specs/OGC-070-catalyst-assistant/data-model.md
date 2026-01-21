@@ -43,7 +43,7 @@ CREATE TABLE catalyst_query (
     -- Provider info (FR-019)
     provider_type VARCHAR(50),                    -- external, on-premises
     provider_id VARCHAR(50),                      -- gemini, lmstudio (MVP providers)
-    llm_model VARCHAR(100),                       -- sqlcoder:7b, gpt-4o, gemini-1.5-pro, etc.
+    llm_model VARCHAR(100),                       -- Model identifier (provider-specific)
 
     -- PHI gating (FR-018, FR-019) - Added in M4
     phi_gated BOOLEAN DEFAULT FALSE,              -- Whether PHI detection triggered provider gating
