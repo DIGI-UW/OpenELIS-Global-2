@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Migration: Add Page 6 (Dark Room Imaging) to existing Virology notebooks
+
+        This changeset adds the Dark Room Imaging page to Virology notebook instances
+        that were created before this page was added to the template.
+
+        Author: openelis-virology
+        Date: 2026-01-18
+    -->
+
+    <changeSet id="add-dark-room-imaging-page-to-existing-notebooks" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if the Virology template exists -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*)
+                FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit'
+                AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Dark Room Imaging page (Page 6) to existing Virology notebook instances that don't have it</comment>
+
+        <sql>
+            -- Insert Dark Room Imaging page for each Virology notebook that doesn't have page 6
+            INSERT INTO clinlims.notebook_page (
+                id,
+                title,
+                instructions,
+                content,
+                page_order,
+                completed,
+                page_type,
+                notebook_id,
+                last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Dark Room Imaging',
+                'Perform imaging or fluorescence analysis on virus culture samples. Store image data (Image ID), record CPE (Cytopathic Effect) observations, measure fluorescence intensity, and document any relevant observations.',
+                'Dark Room Imaging - Capture image data and fluorescence analysis results',
+                6,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title LIKE '%Virology%'
+            AND n.is_template = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id
+                AND np.page_order = 6
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                -- Remove Dark Room Imaging pages added by this changeset
+                DELETE FROM clinlims.notebook_page
+                WHERE title = 'Dark Room Imaging'
+                AND page_order = 6
+                AND notebook_id IN (
+                    SELECT id
+                    FROM clinlims.notebook
+                    WHERE title LIKE '%Virology%'
+                    AND is_template = false
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

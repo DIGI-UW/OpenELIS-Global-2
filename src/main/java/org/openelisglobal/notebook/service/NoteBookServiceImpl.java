@@ -1289,7 +1289,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check by page order - order 5 is typically the Storage & Inventory page
         // for Pathology and Pharmaceutical workflows (but NOT for Bacteriology,
-        // Immunology, or MNTD)
+        // Immunology, Virology, or MNTD)
         if (page.getOrder() != null && page.getOrder() == 5) {
             // Check notebook type - different workflows use order 5 for different purposes
             NoteBook notebook = page.getNotebook();
@@ -1303,6 +1303,11 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 if (notebookTitle.contains("immunology")) {
                     // In immunology, order 5 is "Plate Setup", not storage
                     // Samples should proceed to "Analyzer Results" (page 6)
+                    return false;
+                }
+                if (notebookTitle.contains("virology") || notebookTitle.contains("vaccine")) {
+                    // In virology, order 5 is "Virus Culture", not storage
+                    // Samples should proceed to "Dark Room Imaging" (page 6)
                     return false;
                 }
                 if (notebookTitle.contains("mntd") || notebookTitle.contains("malaria")

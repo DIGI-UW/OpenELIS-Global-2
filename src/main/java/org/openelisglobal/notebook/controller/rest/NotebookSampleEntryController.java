@@ -281,9 +281,16 @@ public class NotebookSampleEntryController extends BaseRestController {
         java.util.Set<String> includedSampleIds = new java.util.HashSet<>();
         List<Map<String, Object>> sampleMaps = new java.util.ArrayList<>();
 
+        LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
+                "Loading samples for pageId=" + pageId + ", found " + pageSamples.size() + " NotebookPageSample records");
+
         // First pass: build sample maps from page samples
         for (org.openelisglobal.notebook.valueholder.NotebookPageSample nps : pageSamples) {
             String sampleItemId = nps.getSampleItemId();
+
+            LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
+                    "Processing NPS: id=" + nps.getId() + ", sampleItemId=" + sampleItemId
+                            + ", data=" + (nps.getData() != null ? nps.getData().toString() : "null"));
 
             // Check if this is a composite/virtual sample ID (e.g., "123_cassette_0",
             // "123_block_0")
@@ -304,9 +311,13 @@ public class NotebookSampleEntryController extends BaseRestController {
                 Map<String, Object> sampleMap = buildSampleMap(sampleItem, nps);
                 sampleMaps.add(sampleMap);
                 includedSampleIds.add(sampleItem.getId());
+                LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
+                        "Added sample: sampleItem.id=" + sampleItem.getId() + ", data in map=" + sampleMap.get("data"));
             } else {
                 // Handle cases where sampleItemId is numeric but no SampleItem exists
                 // This shouldn't normally happen but handle gracefully
+                LogEvent.logWarn(this.getClass().getName(), "getPageSamples",
+                        "SampleItem not found for sampleItemId=" + nps.getSampleItemId() + ", creating virtual sample");
                 Map<String, Object> virtualSampleMap = buildVirtualSampleMap(sampleItemId, nps);
                 sampleMaps.add(virtualSampleMap);
                 includedSampleIds.add(sampleItemId);
@@ -512,7 +523,9 @@ public class NotebookSampleEntryController extends BaseRestController {
         sampleMap.put("sampleId", sampleItem.getSample() != null ? sampleItem.getSample().getId() : null);
 
         if (nps != null) {
-            sampleMap.put("pageStatus", nps.getStatus() != null ? nps.getStatus().name() : "PENDING");
+            String status = nps.getStatus() != null ? nps.getStatus().name() : "PENDING";
+            sampleMap.put("pageStatus", status);
+            sampleMap.put("status", status); // For SampleGrid status column display
             sampleMap.put("pageSampleId", nps.getId());
             Map<String, Object> npsData = nps.getData();
             sampleMap.put("data", npsData);
@@ -536,6 +549,7 @@ public class NotebookSampleEntryController extends BaseRestController {
             }
         } else {
             sampleMap.put("pageStatus", "PENDING");
+            sampleMap.put("status", "PENDING"); // For SampleGrid status column display
             sampleMap.put("pageSampleId", null);
             sampleMap.put("data", null);
         }

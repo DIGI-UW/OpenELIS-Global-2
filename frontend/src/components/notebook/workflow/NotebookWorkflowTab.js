@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import { Loading, Grid, Column, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -21,6 +22,20 @@ import ImmunologyPostAnalysisPage from "../pages/immunology/ImmunologyPostAnalys
 import ImmunologyResultCompilationPage from "../pages/immunology/ImmunologyResultCompilationPage";
 import ImmunologyArchivingPage from "../pages/immunology/ImmunologyArchivingPage";
 import ImmunologyDataAnalysisPage from "../pages/immunology/ImmunologyDataAnalysisPage";
+import VirologySampleReceptionPage from "../pages/virology/VirologySampleReceptionPage";
+import VirologyMediaPreparationPage from "../pages/virology/VirologyMediaPreparationPage";
+import VirologyCellCulturePage from "../pages/virology/VirologyCellCulturePage";
+import VirologyQualityControlPage from "../pages/virology/VirologyQualityControlPage";
+import VirologyVirusCulturePage from "../pages/virology/VirologyVirusCulturePage";
+import VirologyDarkRoomImagingPage from "../pages/virology/VirologyDarkRoomImagingPage";
+import VirologyFormulationPage from "../pages/virology/VirologyFormulationPage";
+import VirologyFeedingPage from "../pages/virology/VirologyFeedingPage";
+import VirologyPackagingPage from "../pages/virology/VirologyPackagingPage";
+import VirologyVirusIsolationPage from "../pages/virology/VirologyVirusIsolationPage";
+import VirologyTiterMeasurementPage from "../pages/virology/VirologyTiterMeasurementPage";
+import VirologyGenomeSequencingPage from "../pages/virology/VirologyGenomeSequencingPage";
+import VirologySeedVirusProductionPage from "../pages/virology/VirologySeedVirusProductionPage";
+import VirologyTrialsPage from "../pages/virology/VirologyTrialsPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -124,14 +139,14 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       if (componentMounted.current && response) {
         setEntry(response);
         setEntryId(eId);
-        // If entry has a notebook reference, use its pages
+        // If entry has a notebook reference, load full notebook data (includes analyzers)
         if (response.notebook) {
-          setNotebook(response.notebook);
-          // Load pages from template notebook
+          // Load full notebook view to get analyzers and pages
           getFromOpenElisServer(
             `/rest/notebook/view/${response.notebook.id}`,
             (nbResponse) => {
               if (componentMounted.current && nbResponse) {
+                setNotebook(nbResponse); // Full display bean with analyzers
                 setPages(nbResponse.pages || []);
               }
             },
@@ -278,12 +293,208 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     }
   }, [entryId]);
 
-  // Render page-specific content based on page order
+  // Determine the workflow type based on notebook title
+  const workflowType = useMemo(() => {
+    const title = (notebook?.title || entry?.title || "").toLowerCase();
+    if (title.includes("virology") || title.includes("vaccine")) {
+      return "virology";
+    }
+    if (title.includes("immunology")) {
+      return "immunology";
+    }
+    // Default to immunology for backwards compatibility
+    return "immunology";
+  }, [notebook?.title, entry?.title]);
+
+  // Render page-specific content based on page order and workflow type
   // Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive
   const renderPageContent = (page) => {
     const pageOrder = page.order || 1;
     const progress = getProgressForPage(page.id);
 
+    // Virology & Vaccine Unit workflow (2 pages)
+    // Page 1: Sample Intake & Registration
+    // Page 2: Media Preparation & Quality Control
+    if (workflowType === "virology") {
+      switch (pageOrder) {
+        case 1:
+          // Page 1: Sample Intake & Registration
+          // Sample arrival (pre-labeled or labeled), metadata entry, test type assignment
+          return (
+            <VirologySampleReceptionPage
+              key={`virology-intake-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 2:
+          // Page 2: Media Preparation & Quality Control
+          // Ensure full traceability of materials and equipment for media preparation
+          // Captures: media type, reagents (supplier, lot, expiry), equipment, QC parameters
+          return (
+            <VirologyMediaPreparationPage
+              key={`virology-media-prep-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+              templateInstruments={notebook?.analyzers}
+            />
+          );
+        case 3:
+          // Page 3: Cell Culture - Grow host cells
+          // Track cell line, passage number, growth conditions (temperature, CO₂, humidity)
+          return (
+            <VirologyCellCulturePage
+              key={`virology-cell-culture-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 4:
+          // Page 4: Quality Control - Validate cell viability and sterility
+          // Log QC results (viability %, sterility pass/fail)
+          return (
+            <VirologyQualityControlPage
+              key={`virology-quality-control-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 5:
+          // Page 5: Virus Culture - Inoculate cells with virus
+          // Record virus strain, culture conditions (temp, CO₂, duration)
+          return (
+            <VirologyVirusCulturePage
+              key={`virology-virus-culture-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 6:
+          // Page 6: Dark Room Imaging - Imaging or fluorescence analysis
+          // Capture image data, CPE observations, fluorescence intensity
+          return (
+            <VirologyDarkRoomImagingPage
+              key={`virology-dark-room-imaging-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 7:
+          // Page 7: Formulation - Prepare viral product
+          // Document formulation details (stabilizers, preservatives, concentrations)
+          return (
+            <VirologyFormulationPage
+              key={`virology-formulation-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 8:
+          // Page 8: Feeding - Culture maintenance and feeding schedule
+          // Log feeding schedule and reagents used from inventory with full traceability
+          return (
+            <VirologyFeedingPage
+              key={`virology-feeding-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 9:
+          // Page 9: Packaging - Final product packaging
+          // Track batch ID, vial type, fill volume, labeling information
+          return (
+            <VirologyPackagingPage
+              key={`virology-packaging-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 10:
+          // Page 10: Virus Isolation - Isolate virus from culture
+          // Link to culture batch ID, record isolation method and virus strain
+          return (
+            <VirologyVirusIsolationPage
+              key={`virology-virus-isolation-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 11:
+          // Page 11: Titer Measurement - Quantify viral load
+          // Record titer values (TCID50, PFU/ml, etc.) with assay methods
+          return (
+            <VirologyTiterMeasurementPage
+              key={`virology-titer-measurement-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 12:
+          // Page 12: Genome Sequencing - Viral genome analysis
+          // Store sequence data (FASTA files, GenBank accession)
+          return (
+            <VirologyGenomeSequencingPage
+              key={`virology-genome-sequencing-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 13:
+          // Page 13: Seed Virus Production - Select strain for vaccine
+          // Document selection criteria and seed virus batch ID
+          return (
+            <VirologySeedVirusProductionPage
+              key={`virology-seed-virus-production-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 14:
+          // Page 14: Preclinical & Clinical Trials
+          // Preclinical: Animal testing - track trial initiation, species, immunogenicity, safety
+          // Clinical: Human testing - link trial phases (I/II/III), outcomes, regulatory submissions
+          return (
+            <VirologyTrialsPage
+              key={`virology-trials-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        default:
+          // Fall through to default handling for any unexpected pages
+          break;
+      }
+    }
+
+    // Immunology workflow (default)
     switch (pageOrder) {
       case 1:
         // Page 1: Sample Reception - Use enhanced ImmunologySampleReceptionPage

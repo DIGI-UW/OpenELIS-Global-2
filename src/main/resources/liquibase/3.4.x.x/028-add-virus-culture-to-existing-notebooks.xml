@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- ADD VIRUS CULTURE PAGE TO EXISTING VIROLOGY NOTEBOOKS    -->
+    <!-- Adds Page 5 (Virus Culture) to notebook instances that   -->
+    <!-- were created from the Virology template before this page -->
+    <!-- was added to the template                                -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-virus-culture-page-to-existing-notebooks" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if the Virology template exists -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*)
+                FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit'
+                AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Virus Culture page (Page 5) to existing Virology notebook instances that don't have it</comment>
+
+        <sql>
+            -- Insert Virus Culture page for each Virology notebook that doesn't have page 5
+            INSERT INTO clinlims.notebook_page (
+                id,
+                title,
+                instructions,
+                content,
+                page_order,
+                completed,
+                page_type,
+                notebook_id,
+                last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Virus Culture',
+                'Inoculate cells with virus. Record virus strain, culture conditions (temperature, CO₂ percentage, duration), and any observations during the culture period.',
+                'Virus Culture - Virus inoculation and culture condition tracking',
+                5,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                ${now}
+            FROM clinlims.notebook n
+            WHERE n.title LIKE '%Virology%'
+            AND n.is_template = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id
+                AND np.page_order = 5
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                -- Remove Virus Culture pages added by this changeset
+                DELETE FROM clinlims.notebook_page
+                WHERE page_order = 5
+                AND title = 'Virus Culture'
+                AND notebook_id IN (
+                    SELECT id FROM clinlims.notebook
+                    WHERE title LIKE '%Virology%'
+                    AND is_template = false
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

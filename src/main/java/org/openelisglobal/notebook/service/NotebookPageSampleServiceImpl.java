@@ -382,6 +382,11 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional
     public int bulkApplyData(Integer pageId, List<Integer> sampleIds, Map<String, Object> data, String userId) {
         int totalUpdated = 0;
+        LogEvent.logInfo(this.getClass().getName(), "bulkApplyData",
+                "Starting bulkApplyData for pageId=" + pageId + ", sampleIds=" + sampleIds);
+
+        // Get page reference for creating new records if needed
+        NoteBookPage page = null;
 
         // Process in batches
         for (int i = 0; i < sampleIds.size(); i += BATCH_SIZE) {
@@ -389,12 +394,42 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
             List<Integer> batch = sampleIds.subList(i, endIndex);
 
             for (Integer sampleId : batch) {
+                LogEvent.logInfo(this.getClass().getName(), "bulkApplyData",
+                        "Looking up sample: pageId=" + pageId + ", sampleId=" + sampleId);
                 NotebookPageSample nps = getByPageIdAndSampleItemId(pageId, sampleId);
-                if (nps != null) {
+
+                // If sample doesn't exist on this page, create it
+                if (nps == null) {
+                    LogEvent.logInfo(this.getClass().getName(), "bulkApplyData",
+                            "Sample not found on page, creating: pageId=" + pageId + ", sampleId=" + sampleId);
+
+                    // Lazy load page reference
+                    if (page == null) {
+                        page = noteBookService.getPage(pageId);
+                        if (page == null) {
+                            LogEvent.logError(this.getClass().getName(), "bulkApplyData",
+                                    "Page not found: " + pageId);
+                            continue;
+                        }
+                    }
+
+                    // Create new NotebookPageSample record
+                    nps = new NotebookPageSample();
+                    nps.setNotebookPage(page);
+                    nps.setSampleItemId(sampleId.toString());
+                    nps.setStatus(Status.IN_PROGRESS);
+                    nps.setData(new HashMap<>(data));
+                    insert(nps);
+                    totalUpdated++;
+                    LogEvent.logInfo(this.getClass().getName(), "bulkApplyData",
+                            "Created new sample record with data: pageId=" + pageId + ", sampleId=" + sampleId);
+                } else {
+                    LogEvent.logInfo(this.getClass().getName(), "bulkApplyData",
+                            "Found sample record: id=" + nps.getId() + ", sampleItemId=" + nps.getSampleItemId());
                     // Merge new data with existing data
                     Map<String, Object> existingData = nps.getData();
                     if (existingData == null) {
-                        nps.setData(data);
+                        nps.setData(new HashMap<>(data));
                     } else {
                         existingData.putAll(data);
                         nps.setData(existingData);
@@ -411,6 +446,105 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
             }
         }
 
+        LogEvent.logInfo(this.getClass().getName(), "bulkApplyData",
+                "Completed bulkApplyData. Updated " + totalUpdated + " samples");
+        return totalUpdated;
+    }
+
+    @Override
+    @Transactional
+    public int bulkAppendToArray(Integer pageId, List<Integer> sampleIds, String arrayField, Map<String, Object> newEntry, String userId) {
+        int totalUpdated = 0;
+        LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
+                "Starting bulkAppendToArray for pageId=" + pageId + ", sampleIds=" + sampleIds + ", arrayField=" + arrayField);
+
+        // Get page reference for creating new records if needed
+        NoteBookPage page = null;
+
+        // Process in batches
+        for (int i = 0; i < sampleIds.size(); i += BATCH_SIZE) {
+            int endIndex = Math.min(i + BATCH_SIZE, sampleIds.size());
+            List<Integer> batch = sampleIds.subList(i, endIndex);
+
+            for (Integer sampleId : batch) {
+                LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
+                        "Looking up sample: pageId=" + pageId + ", sampleId=" + sampleId);
+                NotebookPageSample nps = getByPageIdAndSampleItemId(pageId, sampleId);
+
+                // If sample doesn't exist on this page, create it
+                if (nps == null) {
+                    LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
+                            "Sample not found on page, creating: pageId=" + pageId + ", sampleId=" + sampleId);
+
+                    // Lazy load page reference
+                    if (page == null) {
+                        page = noteBookService.getPage(pageId);
+                        if (page == null) {
+                            LogEvent.logError(this.getClass().getName(), "bulkAppendToArray",
+                                    "Page not found: " + pageId);
+                            continue;
+                        }
+                    }
+
+                    // Create new NotebookPageSample record with array containing first entry
+                    nps = new NotebookPageSample();
+                    nps.setNotebookPage(page);
+                    nps.setSampleItemId(sampleId.toString());
+                    nps.setStatus(Status.IN_PROGRESS);
+                    
+                    // Initialize data with array field containing first entry
+                    Map<String, Object> data = new HashMap<>();
+                    List<Map<String, Object>> array = new java.util.ArrayList<>();
+                    array.add(newEntry);
+                    data.put(arrayField, array);
+                    nps.setData(data);
+                    
+                    insert(nps);
+                    entityManager.flush();
+                    totalUpdated++;
+                    LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
+                            "Created new sample record with array data: pageId=" + pageId + ", sampleId=" + sampleId);
+                } else {
+                    LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
+                            "Found sample record: id=" + nps.getId() + ", sampleItemId=" + nps.getSampleItemId());
+                    
+                    // Use native SQL to append to JSONB array - Hibernate JSONB type doesn't detect nested changes
+                    try {
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        String newEntryJson = mapper.writeValueAsString(newEntry);
+                        
+                        // Use CAST instead of :: to avoid Hibernate parameter parsing issues
+                        String sql = "UPDATE clinlims.notebook_page_sample " +
+                                    "SET data = CASE " +
+                                    "  WHEN data->'" + arrayField + "' IS NULL THEN jsonb_set(data, '{" + arrayField + "}', CAST(:newArray AS jsonb)) " +
+                                    "  ELSE jsonb_set(data, '{" + arrayField + "}', (data->'" + arrayField + "' || CAST(:newEntry AS jsonb))) " +
+                                    "END, " +
+                                    "status = :status, " +
+                                    "last_updated = CURRENT_TIMESTAMP " +
+                                    "WHERE id = :npsId";
+                        
+                        int updated = entityManager.createNativeQuery(sql)
+                            .setParameter("newArray", "[" + newEntryJson + "]")
+                            .setParameter("newEntry", newEntryJson)
+                            .setParameter("status", nps.getStatus() == Status.PENDING ? "IN_PROGRESS" : nps.getStatus().name())
+                            .setParameter("npsId", nps.getId())
+                            .executeUpdate();
+                        
+                        LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
+                                "Native SQL updated " + updated + " record(s) for npsId=" + nps.getId());
+                        
+                        totalUpdated++;
+                    } catch (Exception e) {
+                        LogEvent.logError(this.getClass().getName(), "bulkAppendToArray",
+                                "Error appending to array with native SQL: " + e.getMessage());
+                        throw new RuntimeException("Failed to append to JSONB array", e);
+                    }
+                }
+            }
+        }
+
+        LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
+                "Completed bulkAppendToArray. Updated " + totalUpdated + " samples");
         return totalUpdated;
     }
 
