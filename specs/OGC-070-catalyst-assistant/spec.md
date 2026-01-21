@@ -7,11 +7,21 @@
 
 ## Clarifications
 
+### Session 2026-01-21
+
+- Q: How do we prevent Catalyst from becoming a high-privilege reporting backdoor
+  that bypasses existing OpenELIS permission and data-partitioning rules? → A:
+  MVP restricts endpoint access to users with privileged roles (`Global
+  Administrator` or `Reports`). These users already have cross-cutting data
+  access in existing OpenELIS workflows. Per-user row-level filtering deferred
+  to Phase 2.
+
 ### Session 2026-01-20
 
 - Q: How does Catalyst enforce RBAC (FR-013) - via per-user DB roles,
   post-filtering, or blocked tables only? → A: Blocked tables only for MVP; full
-  row-level RBAC deferred to Phase 2.
+  row-level RBAC deferred to Phase 2. Endpoint-level access restricted to
+  privileged roles (FR-021).
 - Q: Must the MVP support specific providers like Google Gemini and LM Studio? →
   A: Yes, MVP MUST support Gemini (Cloud) and LM Studio (Local via
   OpenAI-compatible API). These 2 providers are sufficient for MVP validation.
@@ -308,6 +318,17 @@ This delivers enhanced usability and workflow integration.
   sys_user, login_user, user_role). Full row-level RBAC integration with
   OpenELIS permissions is deferred to Phase 2.
 
+- **FR-021**: System MUST restrict access to the Catalyst query endpoint
+  (`/rest/catalyst/query`) to users with privileged roles. For MVP, access is
+  limited to users with `Global Administrator` or `Reports` roles. This ensures
+  Catalyst does not become a backdoor bypassing existing OpenELIS permission and
+  data-partitioning rules. Users without these roles MUST receive a 403 Forbidden
+  response.
+
+  **Note**: This leverages OpenELIS's existing RBAC infrastructure
+  (`UserRoleService.userInRole()`). Per-user row-level filtering within queries
+  is deferred to Phase 2.
+
 - **FR-014**: System MUST provide example queries or prompts to help users
   understand how to phrase their questions effectively.
 
@@ -355,11 +376,14 @@ principles for this feature:_
   (NO code branching). LLM provider selection and guardrail settings must be
   configurable, not hardcoded.
 
-- **CR-007**: Security: MVP authorization is enforced via blocked-table list
-  only (FR-013). Full integration with OpenELIS per-user permissions/row-level
-  controls is deferred to Phase 2. Audit trail (sys_user_id + lastupdated for
-  all queries), input validation (sanitize user queries to prevent injection
-  attacks).
+- **CR-007**: Security: MVP authorization is enforced at two levels:
+  - **Endpoint-level**: Access to `/rest/catalyst/query` restricted to privileged
+    roles (`Global Administrator`, `Reports`) via `UserRoleService` (FR-021)
+  - **Table-level**: Blocked-table list prevents queries to sensitive tables
+    (FR-013)
+  - Per-user row-level filtering is deferred to Phase 2
+  - Audit trail (sys_user_id + lastupdated for all queries), input validation
+    (sanitize user queries to prevent injection attacks).
 
 - **CR-008**: Tests MUST be included (unit + integration + E2E, >70% coverage
   goal). MVP must include at least one E2E test proving the full chat → SQL →
@@ -468,10 +492,12 @@ principles for this feature:_
 - **Schema Constraint**: Catalyst can only query data that exists in the
   OpenELIS database schema. It cannot access external data sources or generate
   data that doesn't exist.
-- **Access Control Constraint (MVP)**: Catalyst authorization is enforced via
-  blocked-table list only (FR-013). It does **not** implement per-user or
-  row-level RBAC for MVP. Full integration with OpenELIS permissions is deferred
-  to Phase 2.
+- **Access Control Constraint (MVP)**: Catalyst authorization is enforced at two
+  levels: (1) **Endpoint-level** - access restricted to users with `Global
+  Administrator` or `Reports` roles (FR-021), and (2) **Table-level** -
+  blocked-table list prevents queries to sensitive tables (FR-013). Per-user
+  row-level RBAC (filtering query results based on user's facility/patient
+  access) is deferred to Phase 2.
 - **Technology Constraint**: Must use Carbon Design System for UI (Constitution
   Principle II), React Intl for internationalization (Principle VII), and follow
   5-layer architecture (Principle IV).
@@ -485,8 +511,9 @@ principles for this feature:_
   external agent federation, and dynamic agent discovery deferred
 - PDF or Excel export formats (Phase 3)
 - Wizard mode for query building (Phase 3)
-- Row-level RBAC integration with OpenELIS user permissions (Phase 2) - MVP uses
-  blocked table list only
+- Row-level RBAC integration with OpenELIS user permissions (Phase 2) - MVP
+  restricts endpoint access to privileged roles and uses blocked table list;
+  per-user/facility data filtering is deferred
 - Natural language query refinement suggestions (future enhancement)
 - Support for complex analytical queries requiring multiple steps (future
   enhancement)

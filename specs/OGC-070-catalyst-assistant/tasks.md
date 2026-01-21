@@ -21,8 +21,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 - **M1 (RAG-based Schema)**: 18 tasks (RAG + real MCP tools)
 - **M2 (Backend Core)**: 28 tasks (reduced - security deferred)
 - **M3 (Frontend Chat)**: 22 tasks (reduced - token handling deferred)
-- **M4 (Integration + Security)**: 27 tasks (increased - security added)
-- **Total**: 131 tasks (adjusted for proper architecture foundation)
+- **M4 (Integration + Security)**: 31 tasks (includes role-based access control)
+- **Total**: 135 tasks (adjusted for proper architecture foundation)
 
 ---
 
@@ -533,9 +533,10 @@ translations
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m4-integration-security`  
 **Goal**: Wire all components, implement REST controller, add security features
-(PHI detection, confirmation tokens), create E2E test  
-**Verification**: Controller integration tests pass, E2E test passes
-(chat→agents→SQL→results), security features work
+(role-based endpoint access, PHI detection, confirmation tokens), create E2E test  
+**Verification**: Controller integration tests pass (including role check), E2E
+test passes (chat→agents→SQL→results), security features work (FR-021, FR-016,
+FR-018)
 
 ### M4.1: Branch Setup & REST Controller
 
@@ -586,6 +587,27 @@ translations
 - [ ] T099 [M4] Implement JSON export endpoint in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
       (GET /export/{queryId}?format=json per contract)
+
+### M4.5: Role-Based Endpoint Access Control (FR-021)
+
+> **NOTE: Write tests FIRST, ensure they FAIL before implementation**
+
+- [ ] T099a [P] [M4] Write integration test for role-based access control in
+      `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerTest.java`:
+      test that users with `Global Administrator` role can access endpoint,
+      test that users with `Reports` role can access endpoint,
+      test that users without these roles receive 403 Forbidden
+- [ ] T099b [M4] Implement role check in CatalystRestController: inject
+      `UserRoleService`, check `userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)`
+      or `userInRole(sysUserId, Constants.ROLE_REPORTS)` before processing request.
+      Return 403 Forbidden if user lacks required roles.
+      (Pattern: see `PatientMergeRestController` and `StorageLocationRestController`)
+- [ ] T099c [M4] Write Cypress E2E test in `frontend/cypress/e2e/catalyst.cy.js`
+      verifying that non-privileged users cannot access Catalyst (shows access
+      denied message)
+- [ ] T099d [M4] Add user-friendly "Access Denied" UI message in
+      `frontend/src/components/catalyst/CatalystSidebar.jsx` when backend returns
+      403 (i18n key: `catalyst.error.accessDenied`)
 
 ### M4.6: Security Features (Deferred from M0/M2)
 
@@ -638,6 +660,8 @@ translations
 - [ ] T103 [M4] Verify single-agent fallback mode works when configured
 - [ ] T104 [M4] Verify security features work (PHI detection, confirmation
       tokens)
+- [ ] T104a [M4] Verify role-based access control works (privileged users can
+      access, non-privileged users get 403)
 - [ ] T105 [M4] Create PR
       `feat/OGC-070-catalyst-assistant-m4-integration-security` → `develop`
 

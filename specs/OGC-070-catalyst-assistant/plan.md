@@ -90,8 +90,11 @@ _GATE: Verified before research. Re-check after design._
 - [x] **Internationalization (VII)**: All UI strings via React Intl (en, fr
       minimum)
 - [x] **Security & Compliance (VIII)**:
-  - RBAC (MVP): Blocked-table list only (no per-user / row-level enforcement in
-    MVP)
+  - RBAC (MVP): Two-level access control:
+    - Endpoint-level: Restrict `/rest/catalyst/query` to privileged roles
+      (`Global Administrator`, `Reports`) via `UserRoleService` (FR-021)
+    - Table-level: Blocked-table list (FR-013)
+    - Per-user row-level filtering deferred to Phase 2
   - Audit: Log all generated queries with user ID + timestamp
   - Validation: Block restricted tables (sys_user, login_user)
 - [x] **Spec-Driven Iteration (IX)**: Milestones defined below, each milestone =
@@ -382,6 +385,9 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 - Full E2E test proving chat→agents→SQL→results flow
 - Single-agent fallback mode toggle
 - **Security features** (deferred from M0/M2):
+  - **Role-based endpoint access control (FR-021)**: Restrict `/rest/catalyst/query`
+    to users with `Global Administrator` or `Reports` roles using
+    `UserRoleService.userInRole()`. Return 403 Forbidden for unauthorized users.
   - PHI detection in RouterAgent (FR-018)
   - Provider routing for PHI-flagged queries
   - Confirmation token generation and validation (FR-016)
