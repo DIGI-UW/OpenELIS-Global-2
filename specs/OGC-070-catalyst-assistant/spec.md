@@ -35,8 +35,8 @@
   ecosystem and rapid tooling.
 - Q: Should MVP architecture be designed for agent extraction? → A: MVP should
   prototype a **simple multi-agent team** based on med-agent-hub patterns and
-  A2A spec: RouterAgent + specialist agents (SchemaAgent, SQLGenAgent). Single-agent
-  fallback for simpler deployments/dev/testing.
+  A2A spec: RouterAgent + specialist agents (SchemaAgent, SQLGenAgent).
+  Single-agent fallback for simpler deployments/dev/testing.
 
 ## User Scenarios & Testing _(mandatory)_
 
