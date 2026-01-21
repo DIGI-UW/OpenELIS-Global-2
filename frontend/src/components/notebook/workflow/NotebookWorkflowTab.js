@@ -139,14 +139,14 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       if (componentMounted.current && response) {
         setEntry(response);
         setEntryId(eId);
-        // If entry has a notebook reference, use its pages
+        // If entry has a notebook reference, load full notebook data (includes analyzers)
         if (response.notebook) {
-          setNotebook(response.notebook);
-          // Load pages from template notebook
+          // Load full notebook view to get analyzers and pages
           getFromOpenElisServer(
             `/rest/notebook/view/${response.notebook.id}`,
             (nbResponse) => {
               if (componentMounted.current && nbResponse) {
+                setNotebook(nbResponse); // Full display bean with analyzers
                 setPages(nbResponse.pages || []);
               }
             },
@@ -340,6 +340,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              templateInstruments={notebook?.analyzers}
             />
           );
         case 3:

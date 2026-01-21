@@ -51,6 +51,7 @@ function VirologyMediaPreparationPage({
   pageData,
   progress,
   onProgressUpdate,
+  templateInstruments,
 }) {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -99,7 +100,6 @@ function VirologyMediaPreparationPage({
     componentMounted.current = true;
     loadPageSamples();
     loadInventory();
-    loadEquipment();
 
     return () => {
       componentMounted.current = false;
@@ -202,22 +202,19 @@ function VirologyMediaPreparationPage({
     );
   }, []);
 
-  const loadEquipment = useCallback(() => {
-    if (!entryId) return;
-
-    getFromOpenElisServer(`/rest/notebook/${entryId}`, (response) => {
-      if (componentMounted.current && response?.analyzers) {
-        const equipment = response.analyzers.map((item) => ({
-          id: item.id,
-          text: item.value || item.name || item.analyzerName || "",
-          name: item.value || item.name || item.analyzerName || "",
-          value: item.value,
-          serialNumber: item.serialNumber || item.modelNumber || "",
-        }));
-        setAvailableEquipment(equipment);
-      }
-    });
-  }, [entryId]);
+  // Load equipment from templateInstruments prop (instruments attached to notebook)
+  useEffect(() => {
+    if (templateInstruments && Array.isArray(templateInstruments)) {
+      const equipment = templateInstruments.map((item) => ({
+        id: item.id,
+        text: item.value || item.name || item.analyzerName || "",
+        name: item.value || item.name || item.analyzerName || "",
+        value: item.value,
+        serialNumber: item.serialNumber || item.modelNumber || "",
+      }));
+      setAvailableEquipment(equipment);
+    }
+  }, [templateInstruments]);
 
   const handleAddReagent = () => {
     setReagentList([
