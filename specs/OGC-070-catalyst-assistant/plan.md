@@ -106,13 +106,13 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ### Milestone Table
 
-| ID     | Branch Suffix    | Scope                                              | User Stories            | Verification                          | Depends On     |
-| ------ | ---------------- | -------------------------------------------------- | ----------------------- | ------------------------------------- | -------------- |
-| M0     | m0-foundation    | A2A Router + CatalystAgent + MCP skeleton          | US1 (partial), US2      | Router → Agent → MCP flow works       | -              |
-| [P] M1 | m1-rag-schema    | ChromaDB RAG-based schema retrieval                | US1 (partial), US2      | MCP tools with real schema work       | M0             |
-| [P] M2 | m2-backend-core  | Java OpenELIS integration, SQL execution           | US1 (partial), US2, US3 | Unit tests pass, ORM test passes      | M0             |
-| [P] M3 | m3-frontend-chat | Carbon chat sidebar, i18n, basic UI                | US1 (partial)           | Jest tests pass, renders correctly    | -              |
-| M4     | m4-integration   | Wire agents + backend + frontend, security, E2E    | US1, US4                | Integration + E2E tests pass          | M0, M1, M2, M3 |
+| ID     | Branch Suffix    | Scope                                           | User Stories            | Verification                       | Depends On     |
+| ------ | ---------------- | ----------------------------------------------- | ----------------------- | ---------------------------------- | -------------- |
+| M0     | m0-foundation    | A2A Router + CatalystAgent + MCP skeleton       | US1 (partial), US2      | Router → Agent → MCP flow works    | -              |
+| [P] M1 | m1-rag-schema    | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | MCP tools with real schema work    | M0             |
+| [P] M2 | m2-backend-core  | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests pass, ORM test passes   | M0             |
+| [P] M3 | m3-frontend-chat | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly | -              |
+| M4     | m4-integration   | Wire agents + backend + frontend, security, E2E | US1, US4                | Integration + E2E tests pass       | M0, M1, M2, M3 |
 
 **Legend**:
 
@@ -432,7 +432,8 @@ graph TD
 - **M0.0 PR**: `feat/OGC-070-catalyst-assistant-m0-foundation-poc` → `develop`
 - **M0.1 PR**: `feat/OGC-070-catalyst-assistant-m0-provider-switching` →
   `develop`
-- **M0.2 PR**: `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
+- **M0.2 PR**: `feat/OGC-070-catalyst-assistant-m0-agent-specialization` →
+  `develop`
 - **M1 PR**: `feat/OGC-070-catalyst-assistant-m1-rag-schema` → `develop`
 - **M2 PR**: `feat/OGC-070-catalyst-assistant-m2-backend-core` → `develop`
 - **M3 PR**: `feat/OGC-070-catalyst-assistant-m3-frontend-chat` → `develop`

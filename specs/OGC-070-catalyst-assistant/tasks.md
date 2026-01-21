@@ -76,8 +76,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
       `projects/catalyst/server/sdk_agents/catalyst_executor.py` (calls MCP
       get_schema, then generates SQL via LLM)
 - [ ] T010 [M0.0] Implement CatalystAgent server in
-      `projects/catalyst/server/sdk_agents/catalyst_server.py` with FastAPI + A2A
-      SDK
+      `projects/catalyst/server/sdk_agents/catalyst_server.py` with FastAPI +
+      A2A SDK
 - [ ] T011 [M0.0] Create CatalystAgent card at
       `projects/catalyst/server/agent_cards/catalyst.json` per A2A spec
 
@@ -153,7 +153,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-agent-specialization`  
 **Goal**: Split CatalystAgent into specialized SchemaAgent + SQLGenAgent  
-**Verification**: Router → SchemaAgent → SQLGenAgent flow works, CatalystAgent fallback works
+**Verification**: Router → SchemaAgent → SQLGenAgent flow works, CatalystAgent
+fallback works
 
 ### M0.2.1: SchemaAgent Test (TDD - MANDATORY)
 
@@ -197,8 +198,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
       `projects/catalyst/server/sdk_agents/router_executor.py` to orchestrate:
       query → SchemaAgent → SQLGenAgent → response
 - [ ] T028 [M0.2] Update RouterAgent card at
-      `projects/catalyst/server/agent_cards/router.json` to reference SchemaAgent
-      + SQLGenAgent
+      `projects/catalyst/server/agent_cards/router.json` to reference
+      SchemaAgent + SQLGenAgent
 
 ### M0.2.6: Integration Test
 
@@ -271,7 +272,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 ### M1.5: MCP Tools Enhancement
 
 - [ ] T045 [M1] Update `projects/catalyst/server/mcp/schema_tools.py` to use
-      RAG-based retrieval (replace hardcoded get_schema with get_relevant_tables)
+      RAG-based retrieval (replace hardcoded get_schema with
+      get_relevant_tables)
 - [ ] T046 [M1] Implement `get_table_ddl` MCP tool in schema_tools.py using
       schema extractor
 - [ ] T047 [M1] Create `projects/catalyst/server/mcp/relationship_tools.py`
@@ -704,8 +706,8 @@ Task T064: "Create CatalystQueryResponse"
 
 ### MVP Delivery (All Milestones)
 
-1. **Week 1**: M0.0 (Foundation POC) → M0.1 (Provider Switching) → M0.2
-   (Agent Specialization)
+1. **Week 1**: M0.0 (Foundation POC) → M0.1 (Provider Switching) → M0.2 (Agent
+   Specialization)
 2. **Week 2**: M1 (RAG-based Schema) + M2 (Backend Core) + M3 (Frontend Chat) in
    parallel
 3. **Week 3**: M4 (Integration + Security) + Testing + Bug fixes
@@ -717,8 +719,8 @@ Task T064: "Create CatalystQueryResponse"
 - **After M0.0**: Router → CatalystAgent → MCP flow MUST work end-to-end
 - **After M0.1**: Provider switching tests MUST pass, both providers (Gemini +
   LM Studio) work
-- **After M0.2**: Router → SchemaAgent → SQLGenAgent flow MUST work, single-agent
-  fallback works
+- **After M0.2**: Router → SchemaAgent → SQLGenAgent flow MUST work,
+  single-agent fallback works
 - **After M1**: MCP tests MUST pass, MCP tools callable
 - **After M2**: ORM test + unit tests MUST pass (>80% coverage)
 - **After M3**: Jest tests MUST pass (>70% coverage)
