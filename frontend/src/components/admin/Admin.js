@@ -63,6 +63,7 @@ import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
+import LabUnitsManagement from "./labUnitManagement/LabUnitsManagement.js";
 import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry.js";
 import TestOrderability from "./testManagementConfigMenu/TestOrderability.js";
 import MethodCreate from "./testManagementConfigMenu/MethodCreate.js";
@@ -88,6 +89,7 @@ import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRename
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
+import LabUnitRoutes from "./labUnitManagement/LabUnitRoutes";
 
 function Admin() {
   const intl = useIntl();
@@ -219,10 +221,16 @@ function Admin() {
             renderIcon={TableOfContents}
           >
             <SideNavMenuItem
-              data-cy="globalMenuMgmnt"
-              onClick={handleNavigation(`${path}/globalMenuManagement`)}
+              data-cy="providerMgmnt"
+              onClick={handleNavigation(`${path}/providerMenu`)}
             >
-              <FormattedMessage id="sidenav.label.admin.menu.global" />
+              <FormattedMessage id="provider.browse.title" />
+            </SideNavMenuItem>
+            <SideNavMenuItem
+              data-cy="labUnitManagement"
+              onClick={handleNavigation(`${path}/labUnitManagement`)}
+            >
+              <FormattedMessage id="labUnit.management.title" />
             </SideNavMenuItem>
             <SideNavMenuItem
               data-cy="billingMenuMgmnt"
@@ -348,6 +356,13 @@ function Admin() {
             onClick={handleNavigation(`${path}/SearchIndexManagement`)}
           >
             <FormattedMessage id="searchindexmanagement.label" />
+          </SideNavLink>
+          <SideNavLink
+            data-cy="labUnitManagement"
+            renderIcon={Catalog}
+            onClick={handleNavigation(`${path}/labUnitManagement`)}
+          >
+            <FormattedMessage id="labunit.management.title" />
           </SideNavLink>
           <SideNavLink
             renderIcon={Catalog}
@@ -575,11 +590,16 @@ function Admin() {
           path={`${path}/DictionaryMenu`}
           component={DictionaryManagement}
         />
+        <Route
+          path={`${path}/labUnitManagement`}
+          component={LabUnitsManagement}
+        />
         <Route path={`${path}/PluginFile`} component={PluginList} />
         <Route
           path={`${path}/SearchIndexManagement`}
           component={SearchIndexManagement}
         />
+        <Route path={`${path}/labUnitManagement`} component={LabUnitRoutes} />
       </Switch>
     </>
   );
