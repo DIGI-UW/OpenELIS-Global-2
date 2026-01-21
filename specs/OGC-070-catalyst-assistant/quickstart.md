@@ -27,7 +27,7 @@ This guide walks you through setting up and running the Catalyst MVP - a chat-to
 
 ```bash
 # 1. Start MCP server + OpenELIS
-docker compose -f catalyst-dev.docker-compose.yml up -d
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 
 # 2. Set your API key (choose one)
 export CATALYST_LLM_PROVIDER=openai
@@ -53,7 +53,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 
 ```bash
 # 1. Start MCP server + Ollama
-docker compose -f catalyst-dev.docker-compose.yml up -d
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 
 # 2. Pull SQLCoder model (~4GB download, first time only)
 docker exec -it catalyst-ollama ollama pull sqlcoder:7b
@@ -83,7 +83,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 # 3. Start the local server (default: http://localhost:1234)
 
 # 4. Start MCP server only
-docker compose -f catalyst-dev.docker-compose.yml up -d catalyst-mcp
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-mcp
 
 # 5. Configure for LM Studio
 export CATALYST_LLM_PROVIDER=lmstudio
@@ -104,12 +104,12 @@ The MCP server provides RAG-based schema retrieval:
 
 ```bash
 # Start just the MCP server for development
-cd catalyst-mcp
+cd projects/catalyst/catalyst-mcp
 python -m pip install -e .
 python -m src.server
 
 # OR via Docker
-docker compose -f catalyst-dev.docker-compose.yml up -d catalyst-mcp
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-mcp
 
 # Verify MCP server is running
 curl http://localhost:8000/health
@@ -153,7 +153,7 @@ catalyst.llm.lmstudio.base-url=http://host.docker.internal:1234/v1
 catalyst.llm.lmstudio.model=local-model
 
 # MCP Server
-catalyst.mcp.server-url=http://catalyst-mcp:8000/sse
+catalyst.mcp.server-url=http://catalyst-mcp:8000/mcp
 
 # Guardrails
 catalyst.guardrails.max-rows=10000
@@ -205,7 +205,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 
 ```bash
 # MCP Server tests (pytest)
-cd catalyst-mcp && pytest
+cd projects/catalyst/catalyst-mcp && pytest
 
 # Backend tests (JUnit)
 mvn test -Dtest=*Catalyst*
@@ -224,7 +224,7 @@ cd frontend && npm run cy:run -- --spec "cypress/e2e/catalyst.cy.js"
 ### MCP Server Changes (Python)
 
 ```bash
-cd catalyst-mcp
+cd projects/catalyst/catalyst-mcp
 
 # 1. Make changes in src/
 
@@ -321,12 +321,12 @@ docker logs oe.openelis.org 2>&1 | grep -i "blocked table"
 
 ## Docker Compose Services
 
-The `catalyst-dev.docker-compose.yml` includes:
+The `projects/catalyst/catalyst-dev.docker-compose.yml` includes:
 
 ```yaml
 services:
   catalyst-mcp:
-    build: ./catalyst-mcp
+    build: ./projects/catalyst/catalyst-mcp
     ports:
       - "8000:8000"
     environment:

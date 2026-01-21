@@ -7,6 +7,10 @@
 **Organization**: Tasks are organized by **Milestone** per Constitution Principle IX.  
 **Testing**: Tests are **MANDATORY** per Constitution Principle V (TDD).
 
+**Repo Scope**:
+- Catalyst supporting services/tooling live under `projects/catalyst/`
+- OpenELIS integration changes are limited to `src/`, `frontend/`, and required config under `volume/`
+
 ## Format: `[ID] [P?] [M?] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -49,12 +53,12 @@ graph LR
 - [ ] T001 Add LangChain4j dependencies to `pom.xml` (langchain4j 1.10.0, langchain4j-ollama, langchain4j-open-ai, langchain4j-google-ai-gemini)
 - [ ] T002 [P] Add MCP Java SDK dependency to `pom.xml` (mcp-java-sdk 0.8.0)
 - [ ] T003 [P] Create Catalyst module directory structure at `src/main/java/org/openelisglobal/catalyst/`
-- [ ] T004 [P] Create MCP server directory structure at `catalyst-mcp/`
+- [ ] T004 [P] Create MCP server directory structure at `projects/catalyst/catalyst-mcp/`
 - [ ] T005 [P] Create Catalyst configuration file at `volume/properties/catalyst.properties`
 - [ ] T006 [P] Create test directory structure at `src/test/java/org/openelisglobal/catalyst/`
 - [ ] T007 [P] Create frontend component directory at `frontend/src/components/catalyst/`
 - [ ] T008 Add Carbon AI Chat dependencies to `frontend/package.json` (@carbon/ai-chat v1.0)
-- [ ] T009 Create `catalyst-dev.docker-compose.yml` with MCP server + Ollama services
+- [ ] T009 Create `projects/catalyst/catalyst-dev.docker-compose.yml` with MCP server + Ollama services
 
 **Checkpoint**: Project structure ready for milestone development
 
@@ -78,46 +82,46 @@ graph LR
 
 > **NOTE**: Write these tests FIRST, ensure they FAIL before implementation
 
-- [ ] T011 [P] [M0] Create pytest test `test_schema_tools.py` at `catalyst-mcp/tests/test_schema_tools.py`
-- [ ] T012 [P] [M0] Create pytest test `test_retriever.py` at `catalyst-mcp/tests/test_retriever.py`
-- [ ] T013 [P] [M0] Create pytest test `test_server.py` at `catalyst-mcp/tests/test_server.py`
+- [ ] T011 [P] [M0] Create pytest test `test_schema_tools.py` at `projects/catalyst/catalyst-mcp/tests/test_schema_tools.py`
+- [ ] T012 [P] [M0] Create pytest test `test_retriever.py` at `projects/catalyst/catalyst-mcp/tests/test_retriever.py`
+- [ ] T013 [P] [M0] Create pytest test `test_server.py` at `projects/catalyst/catalyst-mcp/tests/test_server.py`
 
 ### M0.3 - Project Setup
 
-- [ ] T014 [M0] Create `pyproject.toml` at `catalyst-mcp/pyproject.toml` (mcp, chromadb, langchain, psycopg2-binary)
-- [ ] T015 [M0] Create `Dockerfile` at `catalyst-mcp/Dockerfile`
-- [ ] T016 [M0] Create `mcp_config.yaml` at `catalyst-mcp/config/mcp_config.yaml`
+- [ ] T014 [M0] Create `pyproject.toml` at `projects/catalyst/catalyst-mcp/pyproject.toml` (mcp, chromadb, langchain, psycopg2-binary)
+- [ ] T015 [M0] Create `Dockerfile` at `projects/catalyst/catalyst-mcp/Dockerfile`
+- [ ] T016 [M0] Create `mcp_config.yaml` at `projects/catalyst/catalyst-mcp/config/mcp_config.yaml`
 
 ### M0.4 - Database Schema Extraction
 
-- [ ] T017 [M0] Create `schema_extractor.py` at `catalyst-mcp/src/db/schema_extractor.py` (PostgreSQL information_schema queries)
+- [ ] T017 [M0] Create `schema_extractor.py` at `projects/catalyst/catalyst-mcp/src/db/schema_extractor.py` (PostgreSQL information_schema queries)
 - [ ] T018 [M0] Create `__init__.py` files for all packages
 
 ### M0.5 - RAG Components
 
-- [ ] T019 [M0] Create `embeddings.py` at `catalyst-mcp/src/rag/embeddings.py` (generate embeddings for tables)
-- [ ] T020 [M0] Create `retriever.py` at `catalyst-mcp/src/rag/retriever.py` (ChromaDB vector search)
-- [ ] T021 [M0] Create `init_embeddings.py` at `catalyst-mcp/src/rag/init_embeddings.py` (one-time initialization script)
+- [ ] T019 [M0] Create `embeddings.py` at `projects/catalyst/catalyst-mcp/src/rag/embeddings.py` (generate embeddings for tables)
+- [ ] T020 [M0] Create `retriever.py` at `projects/catalyst/catalyst-mcp/src/rag/retriever.py` (ChromaDB vector search)
+- [ ] T021 [M0] Create `init_embeddings.py` at `projects/catalyst/catalyst-mcp/src/rag/init_embeddings.py` (one-time initialization script)
 
 **Checkpoint**: RAG retriever tests (T012) should PASS
 
 ### M0.6 - MCP Tools
 
-- [ ] T022 [M0] Create `schema_tools.py` at `catalyst-mcp/src/tools/schema_tools.py` (get_relevant_tables, get_table_ddl)
-- [ ] T023 [M0] Create `relationship_tools.py` at `catalyst-mcp/src/tools/relationship_tools.py` (get_relationships)
+- [ ] T022 [M0] Create `schema_tools.py` at `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py` (get_relevant_tables, get_table_ddl)
+- [ ] T023 [M0] Create `relationship_tools.py` at `projects/catalyst/catalyst-mcp/src/tools/relationship_tools.py` (get_relationships)
 
 **Checkpoint**: Schema tools tests (T011) should PASS
 
 ### M0.7 - MCP Server
 
-- [ ] T024 [M0] Create `server.py` at `catalyst-mcp/src/server.py` (MCP entry point with Streamable HTTP transport; SSE optional for streaming)
+- [ ] T024 [M0] Create `server.py` at `projects/catalyst/catalyst-mcp/src/server.py` (MCP entry point with Streamable HTTP transport; SSE optional for streaming)
 
 **Checkpoint**: Server tests (T013) should PASS
 
 ### M0.8 - Verification & PR
 
-- [ ] T025 [M0] Run all pytest tests: `cd catalyst-mcp && pytest`
-- [ ] T026 [M0] Build Docker image: `docker build -t catalyst-mcp ./catalyst-mcp`
+- [ ] T025 [M0] Run all pytest tests: `cd projects/catalyst/catalyst-mcp && pytest`
+- [ ] T026 [M0] Build Docker image: `docker build -t catalyst-mcp ./projects/catalyst/catalyst-mcp`
 - [ ] T027 [M0] Verify MCP server responds to tool calls manually
 - [ ] T028 [M0] Create PR `feat/OGC-070-catalyst-assistant-m0-mcp-server` → `develop`
 

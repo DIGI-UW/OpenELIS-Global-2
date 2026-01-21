@@ -91,7 +91,7 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 **Files to Create**:
 ```
-catalyst-mcp/
+projects/catalyst/catalyst-mcp/
 ├── pyproject.toml                         # Python dependencies
 ├── Dockerfile                             # Container build
 ├── src/
@@ -115,7 +115,7 @@ catalyst-mcp/
 └── config/
     └── mcp_config.yaml                    # Server configuration
 
-catalyst-dev.docker-compose.yml            # Add MCP server service
+projects/catalyst/catalyst-dev.docker-compose.yml  # Add MCP server service
 ```
 
 **Verification**:
@@ -247,6 +247,18 @@ graph LR
 
 ## Project Structure
 
+### Repository Scoping (Tooling Under `projects/`)
+
+To keep Catalyst work scoped and reviewable, **supporting services and tooling** (e.g., the Python MCP server and Catalyst-specific Docker Compose) live under:
+
+- `projects/catalyst/`
+
+Only **required OpenELIS integration changes** should touch:
+
+- Backend: `src/main/java/org/openelisglobal/catalyst/`
+- Frontend: `frontend/src/components/catalyst/`
+- Config: `volume/properties/catalyst.properties`
+
 ### Documentation (this feature)
 
 ```text
@@ -266,7 +278,7 @@ specs/OGC-070-catalyst-assistant/
 
 ```text
 # MCP Schema Server (Python - Standalone)
-catalyst-mcp/
+projects/catalyst/catalyst-mcp/
 ├── pyproject.toml
 ├── Dockerfile
 ├── src/
@@ -312,7 +324,7 @@ frontend/cypress/e2e/
 
 # Configuration
 volume/properties/catalyst.properties    # LLM + MCP settings
-catalyst-dev.docker-compose.yml          # MCP server + Ollama
+projects/catalyst/catalyst-dev.docker-compose.yml  # MCP server + Ollama
 ```
 
 **Structure Decision**: Multi-service architecture - Python MCP server for schema retrieval (standards-based), Java backend for orchestration + SQL execution, React frontend for chat UI.
@@ -467,7 +479,7 @@ public String generateSQL(String userQuery) {
 ### Python MCP Server Tools
 
 ```python
-# catalyst-mcp/src/tools/schema_tools.py
+# projects/catalyst/catalyst-mcp/src/tools/schema_tools.py
 from mcp import tool
 
 @tool
