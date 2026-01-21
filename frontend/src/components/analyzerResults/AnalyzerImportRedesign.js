@@ -45,23 +45,10 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import "./AnalyzerImportRedesign.css";
 
-/**
- * AnalyzerImportRedesign - Production implementation following SPEC
- * 
- * Key Features:
- * - QC-first workflow: QC must pass before patient results can be accepted
- * - QC extraction: Automatically identifies and extracts control samples
- * - Non-conformity handling: Blocks saves when QC fails, marks results
- * - Enhanced results table: Flags, interpretations, delta checks
- * - Expandable row details: History, QA/QC, Method & Reagents
- * - Run settings: Analyzer and reagent lot tracking
- * - QA/QC sidebar: Recent QC history, analyzer status, reagent monitoring
- */
 const AnalyzerImportRedesign = ({ analyzerType }) => {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } = useContext(NotificationContext);
 
-  // Core state - start with loading false, set to true when fetching
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [results, setResults] = useState([]);
@@ -72,34 +59,40 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
   const [expandedRows, setExpandedRows] = useState({});
   const [rowDetailsCache, setRowDetailsCache] = useState({});
 
-  // QC state
   const [qcPanelExpanded, setQcPanelExpanded] = useState(true);
   const [overallQcStatus, setOverallQcStatus] = useState("none");
   const [nonConformityId, setNonConformityId] = useState(null);
 
-  // QA/QC Sidebar state
   const [qcHistory, setQcHistory] = useState([]);
   const [analyzerInfo, setAnalyzerInfo] = useState(null);
   const [reagentStatus, setReagentStatus] = useState([]);
 
-  // Modal state
   const [showReagentModal, setShowReagentModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedReagentLots, setSelectedReagentLots] = useState({});
   const [availableReagentLots, setAvailableReagentLots] = useState({});
+  const [fifoWarnings, setFifoWarnings] = useState({});
 
-  /**
-   * Initial data fetch on component mount
-   */
+  const formatResult = (value, significantDigits) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) {
+      return value;
+    }
+    let digits = parseInt(significantDigits);
+    if (isNaN(digits) || digits < 0) {
+      digits = 2;
+    } else if (digits > 3) {
+      digits = 3;
+    }
+    return numValue.toFixed(digits);
+  };
+
   useEffect(() => {
     if (analyzerType) {
       fetchAnalyzerResults();
     }
   }, [analyzerType]);
 
-  /**
-   * Fetch analyzer results from backend
-   * Endpoint: GET /rest/AnalyzerResults?type={analyzerType}
-   */
   const fetchAnalyzerResults = useCallback(() => {
     setLoading(true);
     getFromOpenElisServer(
@@ -132,32 +125,17 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   }, [analyzerType]);
 
-  /**
-   * Enrich result with computed fields (flags, interpretation, delta check)
-   * Implementation of TODO: Add flag detection, interpretation, and delta check logic
-   */
   const enrichResultWithComputedFields = (result) => {
     const enriched = { ...result };
 
-    // Compute flags based on result value and normal range
     enriched.flags = computeFlags(result);
-
-    // Suggest interpretation based on flags
     enriched.interpretation = suggestInterpretation(result, enriched.flags);
-
-    // QC status from result or default to 'none'
     enriched.qcStatus = result.qcStatus || "none";
-
-    // Patient name from result
     enriched.patientName = result.patientName || "";
 
     return enriched;
   };
 
-  /**
-   * Compute flags for a result
-   * Implementation of TODO: Flag detection logic
-   */
   const computeFlags = (result) => {
     const flags = [];
 
@@ -165,7 +143,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       return flags;
     }
 
-    // Parse normal range (e.g., "4.00 - 10.00")
     const rangeMatch = result.normalRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
     if (!rangeMatch) {
       return flags;
@@ -179,11 +156,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       return flags;
     }
 
-    // Critical thresholds (configurable - using 20% outside normal range)
     const criticalLow = minRange - (maxRange - minRange) * 0.2;
     const criticalHigh = maxRange + (maxRange - minRange) * 0.2;
 
-    // Flag detection
     if (resultValue < criticalLow || resultValue > criticalHigh) {
       flags.push("critical");
     } else if (resultValue < minRange) {
@@ -192,13 +167,11 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       flags.push("above-normal");
     }
 
-    // Check for delta check if previous result exists
     if (result.previousResult && result.previousResult.value) {
       const deltaPercent = calculateDeltaPercent(
         resultValue,
         parseFloat(result.previousResult.value),
       );
-      // Delta check threshold: 50% change
       if (Math.abs(deltaPercent) > 50) {
         flags.push("delta-check");
       }
@@ -207,18 +180,11 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     return flags;
   };
 
-  /**
-   * Calculate percentage change between two values
-   */
   const calculateDeltaPercent = (current, previous) => {
     if (previous === 0) return 0;
     return ((current - previous) / previous) * 100;
   };
 
-  /**
-   * Suggest interpretation based on result and flags
-   * Implementation of TODO: Interpretation suggestion logic
-   */
   const suggestInterpretation = (result, flags) => {
     if (flags.includes("critical")) {
       return {
@@ -257,18 +223,12 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     };
   };
 
-  /**
-   * Evaluate overall QC status from control samples
-   * QC-FIRST RULE: If ANY control fails, ALL patient results are non-conforming
-   * Implementation of TODO: QC evaluation against expected ranges
-   */
   const evaluateQcStatus = (qcSamplesList) => {
     if (!qcSamplesList || qcSamplesList.length === 0) {
       setOverallQcStatus("none");
       return;
     }
 
-    // Evaluate each QC sample against expected range
     const evaluatedQcSamples = qcSamplesList.map((qc) => {
       const qcResult = evaluateQcSample(qc);
       return { ...qc, ...qcResult };
@@ -276,15 +236,12 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
 
     setQcSamples(evaluatedQcSamples);
 
-    // Check if any QC failed
     const anyFailed = evaluatedQcSamples.some((qc) => qc.qcStatus === "fail");
     const allPassed = evaluatedQcSamples.every((qc) => qc.qcStatus === "pass");
 
     if (anyFailed) {
       setOverallQcStatus("fail");
-      // CRITICAL: Mark all patient results as non-conforming
       setResults((prev) => prev.map((r) => ({ ...r, nonConforming: true })));
-      // Create non-conformity record
       createNonConformityRecord(evaluatedQcSamples);
     } else if (allPassed) {
       setOverallQcStatus("pass");
@@ -294,16 +251,11 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     }
   };
 
-  /**
-   * Evaluate a single QC sample against expected range
-   * Implementation of TODO: QC rules engine (basic range check + Westgard 1-2s rule)
-   */
   const evaluateQcSample = (qc) => {
     if (!qc.result || !qc.expectedRange) {
       return { qcStatus: "none" };
     }
 
-    // Parse expected range
     const rangeMatch = qc.expectedRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
     if (!rangeMatch) {
       return { qcStatus: "none" };
@@ -317,7 +269,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       return { qcStatus: "none" };
     }
 
-    // Basic range check (Westgard 1-2s rule: within ±2 SD)
     if (resultValue >= minExpected && resultValue <= maxExpected) {
       return { qcStatus: "pass" };
     } else {
@@ -328,10 +279,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     }
   };
 
-  /**
-   * Create non-conformity record when QC fails
-   * Implementation of TODO: Non-conformity management
-   */
   const createNonConformityRecord = (failedQcSamples) => {
     const ncPayload = {
       date: new Date().toISOString(),
@@ -351,17 +298,12 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Fetch run settings (analyzer and reagent lots)
-   * Endpoint: GET /rest/AnalyzerResults/runSettings?type={analyzerType}
-   */
   const fetchRunSettings = () => {
     getFromOpenElisServer(
       `/rest/AnalyzerResults/runSettings?type=${analyzerType}`,
       (response) => {
         if (response) {
           setRunSettings(response);
-          // Initialize selected reagent lots from FIFO pre-selection
           if (response.reagentLots) {
             const selected = {};
             response.reagentLots.forEach((lot) => {
@@ -374,10 +316,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Fetch available reagent lots for analyzer
-   * Implementation of TODO: Reagent inventory integration
-   */
   const fetchAvailableReagentLots = () => {
     getFromOpenElisServer(
       `/rest/AnalyzerResults/availableReagentLots?type=${analyzerType}`,
@@ -389,10 +327,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Fetch recent QC history
-   * Endpoint: GET /rest/AnalyzerResults/qcHistory?analyzerId={id}
-   */
   const fetchQcHistory = () => {
     getFromOpenElisServer(
       `/rest/AnalyzerResults/qcHistory?type=${analyzerType}`,
@@ -404,10 +338,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Fetch analyzer information
-   * Endpoint: GET /rest/AnalyzerResults/analyzerInfo?type={analyzerType}
-   */
   const fetchAnalyzerInfo = () => {
     getFromOpenElisServer(
       `/rest/AnalyzerResults/analyzerInfo?type=${analyzerType}`,
@@ -419,10 +349,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Fetch reagent status
-   * Endpoint: GET /rest/AnalyzerResults/reagents?type={analyzerType}
-   */
   const fetchReagentStatus = () => {
     getFromOpenElisServer(
       `/rest/AnalyzerResults/reagents?type=${analyzerType}`,
@@ -434,11 +360,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Fetch row details on demand (when row is expanded)
-   * Fetches: History, QA/QC linkage, Method & Reagents
-   * Implementation of TODO: Previous results and delta check retrieval
-   */
   const fetchRowDetails = (resultId, result) => {
     if (rowDetailsCache[resultId]) {
       return;
@@ -448,7 +369,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       `/rest/AnalyzerResults/details?resultId=${resultId}`,
       (response) => {
         if (response) {
-          // Enrich with delta check calculation if history exists
           if (response.history && response.history.length > 0) {
             const currentValue = parseFloat(result.result);
             const previousValue = parseFloat(response.history[0].value);
@@ -469,9 +389,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Handle row expansion
-   */
   const handleRowExpand = (resultId, result, isExpanding) => {
     setExpandedRows((prev) => ({ ...prev, [resultId]: isExpanding }));
     if (isExpanding) {
@@ -479,18 +396,12 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     }
   };
 
-  /**
-   * Handle row selection
-   */
   const toggleSelectRow = (rowId) => {
     setSelectedRows((prev) =>
       prev.includes(rowId) ? prev.filter((id) => id !== rowId) : [...prev, rowId],
     );
   };
 
-  /**
-   * Handle select all
-   */
   const toggleSelectAll = () => {
     if (selectedRows.length === results.length) {
       setSelectedRows([]);
@@ -499,9 +410,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     }
   };
 
-  /**
-   * Select only normal results (no flags, not non-conforming)
-   */
   const selectNormalOnly = () => {
     const normalResults = results.filter(
       (r) => !r.nonConforming && (!r.flags || r.flags.length === 0),
@@ -509,10 +417,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     setSelectedRows(normalResults.map((r) => r.id));
   };
 
-  /**
-   * Handle Save/Accept action
-   * QC-FIRST ENFORCEMENT: Blocked if QC fails
-   */
   const handleSave = () => {
     if (overallQcStatus === "fail") {
       addNotification({
@@ -573,9 +477,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     });
   };
 
-  /**
-   * Handle Retest action
-   */
   const handleRetest = () => {
     if (selectedRows.length === 0) {
       return;
@@ -601,9 +502,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     });
   };
 
-  /**
-   * Handle Ignore action
-   */
   const handleIgnore = () => {
     if (selectedRows.length === 0) {
       return;
@@ -629,24 +527,42 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     });
   };
 
-  /**
-   * Handle refresh
-   */
   const handleRefresh = () => {
     fetchAnalyzerResults();
   };
 
-  /**
-   * Open reagent lot change modal
-   */
   const handleOpenReagentModal = () => {
     fetchAvailableReagentLots();
     setShowReagentModal(true);
   };
 
-  /**
-   * Apply reagent lot changes
-   */
+  const isFifoLot = (reagentId, lotNumber) => {
+    const lots = availableReagentLots[reagentId];
+    if (!lots || lots.length === 0) return true;
+    // First lot in sorted list is FIFO
+    return lots[0].lotNumber === lotNumber;
+  };
+
+  const handleReagentLotChange = (reagentId, lotNumber, checked) => {
+    if (checked) {
+      setSelectedReagentLots((prev) => ({ ...prev, [reagentId]: lotNumber }));
+
+      // Check if non-FIFO lot selected
+      if (!isFifoLot(reagentId, lotNumber)) {
+        setFifoWarnings((prev) => ({
+          ...prev,
+          [reagentId]: `⚠️ Not FIFO - Older lot available (${availableReagentLots[reagentId][0].lotNumber})`,
+        }));
+      } else {
+        setFifoWarnings((prev) => {
+          const updated = { ...prev };
+          delete updated[reagentId];
+          return updated;
+        });
+      }
+    }
+  };
+
   const handleApplyReagentLots = () => {
     if (runSettings) {
       const updatedLots = Object.keys(selectedReagentLots).map((reagentId) => {
@@ -665,9 +581,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     setShowReagentModal(false);
   };
 
-  /**
-   * Filter results based on search
-   */
   const filteredResults = results.filter((r) => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
@@ -678,9 +591,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   });
 
-  /**
-   * Get flag icon component
-   */
   const getFlagIcon = (flag) => {
     switch (flag) {
       case "critical":
@@ -695,9 +605,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     }
   };
 
-  /**
-   * Get interpretation color
-   */
   const getInterpretationColor = (label) => {
     const lower = label?.toLowerCase();
     if (lower?.includes("critical")) return "red";
@@ -706,145 +613,132 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     return "gray";
   };
 
-  /**
-   * Render QC Results Panel
-   */
   const renderQcPanel = () => {
     if (qcSamples.length === 0 && overallQcStatus === "none") {
       return (
-        <div className="qc-panel qc-panel--warning" style={{ marginBottom: "1rem" }}>
+        <div className="modern-card" style={{ marginBottom: "1.5rem" }}>
           <div
-            className="qc-panel__header"
+            className="qc-summary-tile warning"
             onClick={() => setQcPanelExpanded(!qcPanelExpanded)}
+            style={{ cursor: "pointer" }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              {qcPanelExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-              <WarningAlt size={20} />
-              <strong>
-                <FormattedMessage
-                  id="qc.no.samples.detected"
-                  defaultMessage="No QC samples detected in this run"
-                />
-              </strong>
+            <div className="flex-row-center">
+              <WarningAlt size={20} fill="#f1c21b" />
+              <strong>No QC Samples Detected</strong>
             </div>
+            {qcPanelExpanded ? (
+              <ChevronDown size={20} />
+            ) : (
+              <ChevronRight size={20} />
+            )}
           </div>
           {qcPanelExpanded && (
-            <div className="qc-panel__content" style={{ padding: "1rem" }}>
-              <FormattedMessage
-                id="qc.manual.verification.required"
-                defaultMessage="Manual QC verification required before accepting patient results"
-              />
+            <div style={{ padding: "1rem" }}>
+              Manual QC verification required before accepting patient results.
             </div>
           )}
         </div>
       );
     }
 
-    const panelClass = overallQcStatus === "fail" ? "qc-panel--fail" : "qc-panel--pass";
+    const statusClass = overallQcStatus === "fail" ? "fail" : "pass";
+    const icon =
+      overallQcStatus === "fail" ? (
+        <ErrorOutline size={24} fill="#da1e28" />
+      ) : (
+        <CheckmarkOutline size={24} fill="#525252" />
+      );
 
     return (
-      <div className={`qc-panel ${panelClass}`} style={{ marginBottom: "1rem" }}>
+      <div className="modern-card" style={{ marginBottom: "1.5rem" }}>
         <div
-          className="qc-panel__header"
+          className={`qc-summary-tile ${statusClass}`}
           onClick={() => setQcPanelExpanded(!qcPanelExpanded)}
+          style={{ cursor: "pointer" }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {qcPanelExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-            {overallQcStatus === "pass" ? (
-              <CheckmarkOutline size={20} />
-            ) : (
-              <ErrorOutline size={20} />
-            )}
-            <strong>
-              {overallQcStatus === "pass" ? (
-                <FormattedMessage
-                  id="qc.all.passed"
-                  defaultMessage="All {count} controls passed - Patient results can be accepted"
-                  values={{ count: qcSamples.length }}
-                />
-              ) : (
-                <FormattedMessage
-                  id="qc.failure"
-                  defaultMessage="QC FAILURE - Patient results marked as non-conforming"
-                />
-              )}
-            </strong>
+          <div className="flex-row-center">
+            {icon}
+            <div>
+              <h5 style={{ margin: 0, fontSize: "1rem" }}>
+                {overallQcStatus === "pass"
+                  ? "Quality Control Passed"
+                  : "Quality Control FAIL"}
+              </h5>
+              <span className="text-label" style={{ fontSize: "0.8125rem" }}>
+                {qcSamples.length} Controls Evaluated
+              </span>
+            </div>
           </div>
+          {qcPanelExpanded ? (
+            <ChevronDown size={20} />
+          ) : (
+            <ChevronRight size={20} />
+          )}
         </div>
 
         {qcPanelExpanded && (
-          <div
-            className="qc-panel__content"
-            style={{ padding: "1rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}
-          >
-            {qcSamples.map((qc) => (
-              <div
-                key={qc.id}
-                className={`qc-card qc-card--${qc.qcStatus}`}
-                style={{
-                  border: "1px solid #e0e0e0",
-                  borderRadius: "4px",
-                  padding: "1rem",
-                  minWidth: "200px",
-                  flex: "1 1 auto",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  <Tag type={qc.qcStatus === "pass" ? "green" : "red"}>
-                    {qc.qcStatus === "pass" ? "PASS" : "FAIL"}
-                  </Tag>
-                  <span style={{ fontSize: "0.875rem", color: "#525252" }}>
-                    {qc.runTime || qc.completeDate}
-                  </span>
-                </div>
+          <div style={{ 
+            padding: "1rem", 
+            background: "#f4f4f4",
+            overflowX: "auto",
+            overflowY: "hidden"
+          }}>
+            <div style={{
+              display: "flex",
+              gap: "1rem",
+              minWidth: "min-content"
+            }}>
+            {qcSamples.map((qc, idx) => (
+              <div key={qc.id} className={`qc-micro-card ${qc.qcStatus}`} style={{
+                minWidth: "110px",
+                maxWidth: "130px",
+                flex: "0 0 auto"
+              }}>
                 <div style={{ marginBottom: "0.5rem" }}>
-                  <strong>{qc.controlType || "Control"}</strong>
-                  <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                    {qc.accessionNumber}
+                  <div style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center",
+                    marginBottom: "0.25rem"
+                  }}>
+                    <span className="text-label" style={{ fontSize: "0.75rem", fontWeight: "600" }}>
+                      {qc.controlType || `L${idx + 1}`}
+                    </span>
+                    <span style={{
+                      fontSize: "0.65rem",
+                      fontWeight: "600",
+                      color: qc.qcStatus === "pass" ? "#525252" : "#da1e28",
+                      textTransform: "uppercase"
+                    }}>
+                      {qc.qcStatus === "pass" ? "PASS" : "FAIL"}
+                    </span>
                   </div>
                 </div>
-                <div style={{ borderTop: "1px solid #e0e0e0", paddingTop: "0.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <div>
-                      <div style={{ fontSize: "0.75rem", color: "#525252" }}>Result</div>
-                      <strong>
-                        {qc.result} {qc.units}
-                      </strong>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "0.75rem", color: "#525252" }}>Expected</div>
-                      <div>{qc.expectedRange || "N/A"}</div>
-                    </div>
-                  </div>
-                  {qc.failureReason && (
-                    <div
-                      style={{
-                        marginTop: "0.5rem",
-                        color: "#da1e28",
-                        fontSize: "0.875rem",
-                      }}
-                    >
-                      ⚠ {qc.failureReason}
-                    </div>
-                  )}
+                <div className="text-value-lg" style={{ fontSize: "1rem", marginBottom: "0.25rem" }}>
+                  {formatResult(qc.result, qc.significantDigits)}
                 </div>
+                <div className="text-label" style={{ fontSize: "0.75rem" }}>{qc.units}</div>
+               
+                {qc.failureReason && (
+                  <div
+                    style={{
+                      color: "#da1e28",
+                      fontSize: "0.65rem",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {qc.failureReason}
+                  </div>
+                )}
               </div>
             ))}
+            </div>
           </div>
         )}
       </div>
     );
   };
 
-  /**
-   * Render non-conformity alert banner
-   */
   const renderNonConformityAlert = () => {
     if (overallQcStatus !== "fail") return null;
 
@@ -882,9 +776,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Render run settings panel
-   */
   const renderRunSettings = () => {
     if (!runSettings) return null;
 
@@ -1032,65 +923,152 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Render reagent lot change modal
-   */
   const renderReagentModal = () => {
     return (
       <Modal
         open={showReagentModal}
-        onRequestClose={() => setShowReagentModal(false)}
-        modalHeading="Select Reagent Lots for This Run"
+        onRequestClose={() => {
+          setShowReagentModal(false);
+          setFifoWarnings({});
+        }}
+        modalHeading="Select Reagent Lots (FIFO Recommended)"
         primaryButtonText="Apply to All Results"
         secondaryButtonText="Cancel"
         onRequestSubmit={handleApplyReagentLots}
+        size="md"
       >
         <div style={{ padding: "1rem" }}>
+          <InlineNotification
+            kind="info"
+            title="FIFO Protocol"
+            subtitle="First-In-First-Out: Select the oldest lot (received date) to maintain inventory rotation."
+            lowContrast
+            hideCloseButton
+            style={{ marginBottom: "1rem" }}
+          />
+
           {Object.keys(availableReagentLots).map((reagentId) => {
             const lots = availableReagentLots[reagentId];
-            const reagentName = lots[0]?.reagentName || reagentId;
+            const fifoLot = lots[0];
 
             return (
-              <div key={reagentId} style={{ marginBottom: "1.5rem" }}>
-                <h5 style={{ marginBottom: "0.5rem" }}>{reagentName}</h5>
-                {lots.map((lot) => (
-                  <div key={lot.lotNumber} style={{ marginBottom: "0.5rem" }}>
-                    <Checkbox
-                      id={`lot-${reagentId}-${lot.lotNumber}`}
-                      labelText={
-                        <span>
-                          LOT-{lot.lotNumber} | Rcvd: {lot.receivedDate} | Exp:{" "}
-                          {lot.expirationDate}
-                          {lot.fifo && " [FIFO]"}
-                          {lot.isExpiring && " ⚠ Expiring soon"}
-                        </span>
-                      }
-                      checked={selectedReagentLots[reagentId] === lot.lotNumber}
-                      onChange={(checked) => {
-                        if (checked) {
-                          setSelectedReagentLots((prev) => ({
-                            ...prev,
-                            [reagentId]: lot.lotNumber,
-                          }));
-                        }
+              <div
+                key={reagentId}
+                style={{
+                  marginBottom: "1.5rem",
+                  padding: "1rem",
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "4px",
+                }}
+              >
+                <h6 style={{ marginBottom: "0.75rem", fontWeight: "600" }}>
+                  {fifoLot?.reagentName || reagentId}
+                </h6>
+
+                {lots.map((lot, index) => {
+                  const isFifo = index === 0;
+                  const isExpiring = lot.isExpiring;
+                  const isSelected =
+                    selectedReagentLots[reagentId] === lot.lotNumber;
+
+                  return (
+                    <div
+                      key={lot.lotNumber}
+                      style={{
+                        padding: "0.75rem",
+                        marginBottom: "0.5rem",
+                        backgroundColor: isFifo ? "#e5f6ff" : "#ffffff",
+                        border: isFifo
+                          ? "2px solid #0f62fe"
+                          : "1px solid #e0e0e0",
+                        borderRadius: "4px",
+                        position: "relative",
                       }}
-                    />
-                  </div>
-                ))}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                        }}
+                      >
+                        <Checkbox
+                          id={`lot-${reagentId}-${lot.lotNumber}`}
+                          labelText={
+                            <div>
+                              <div style={{ fontWeight: "500" }}>
+                                LOT: {lot.lotNumber}
+                                {isFifo && (
+                                  <Tag
+                                    type="blue"
+                                    size="sm"
+                                    style={{ marginLeft: "0.5rem" }}
+                                  >
+                                    ⚡ FIFO
+                                  </Tag>
+                                )}
+                                {isExpiring && (
+                                  <Tag
+                                    type="red"
+                                    size="sm"
+                                    style={{ marginLeft: "0.5rem" }}
+                                  >
+                                    Expiring Soon
+                                  </Tag>
+                                )}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "#525252",
+                                  marginTop: "0.25rem",
+                                }}
+                              >
+                                Received: {lot.receivedDate} | Expires:{" "}
+                                {lot.expirationDate}
+                              </div>
+                            </div>
+                          }
+                          checked={isSelected}
+                          onChange={(checked) =>
+                            handleReagentLotChange(
+                              reagentId,
+                              lot.lotNumber,
+                              checked,
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {fifoWarnings[reagentId] && (
+                  <InlineNotification
+                    kind="warning"
+                    title="Non-FIFO Selection"
+                    subtitle={fifoWarnings[reagentId]}
+                    lowContrast
+                    hideCloseButton
+                    style={{ marginTop: "0.5rem" }}
+                  />
+                )}
               </div>
             );
           })}
-          <p style={{ fontSize: "0.875rem", color: "#525252", marginTop: "1rem" }}>
-            ℹ Select the lots actually used for this analyzer run.
-          </p>
+
+          {Object.keys(availableReagentLots).length === 0 && (
+            <div
+              style={{ textAlign: "center", padding: "2rem", color: "#525252" }}
+            >
+              No reagent lots available. Please configure inventory.
+            </div>
+          )}
         </div>
       </Modal>
     );
   };
 
-  /**
-   * Render summary stats
-   */
   const renderSummaryStats = () => {
     const pendingCount = results.filter((r) => r.status === "pending").length;
     const flaggedCount = results.filter((r) => r.flags && r.flags.length > 0).length;
@@ -1098,19 +1076,16 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     const nonConformingCount = results.filter((r) => r.nonConforming).length;
 
     return (
-      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+      <>
         <Tag>Total: {results.length}</Tag>
         <Tag type="blue">Pending: {pendingCount}</Tag>
         {flaggedCount > 0 && <Tag type="orange">Flagged: {flaggedCount}</Tag>}
         {criticalCount > 0 && <Tag type="red">Critical: {criticalCount}</Tag>}
         {nonConformingCount > 0 && <Tag type="red">NC: {nonConformingCount}</Tag>}
-      </div>
+      </>
     );
   };
 
-  /**
-   * Render bulk actions bar
-   */
   const renderBulkActions = () => {
     const saveDisabled = overallQcStatus === "fail" || selectedRows.length === 0;
 
@@ -1172,10 +1147,15 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Render expandable row details (tabs)
-   */
   const renderExpandedRow = (row) => {
+    if (!row) {
+      return (
+        <div style={{ padding: "2rem", textAlign: "center", color: "#da1e28" }}>
+          Unable to load row data
+        </div>
+      );
+    }
+
     const details = rowDetailsCache[row.id];
 
     if (!details) {
@@ -1195,7 +1175,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
             <Tab>Method & Reagents</Tab>
           </TabList>
           <TabPanels>
-            {/* History Tab */}
             <TabPanel>
               <div style={{ padding: "1rem" }}>
                 <h5>Previous Results</h5>
@@ -1244,7 +1223,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               </div>
             </TabPanel>
 
-            {/* QA/QC Tab */}
             <TabPanel>
               <div style={{ padding: "1rem" }}>
                 <h5>QC Linkage</h5>
@@ -1272,7 +1250,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               </div>
             </TabPanel>
 
-            {/* Method & Reagents Tab */}
             <TabPanel>
               <div style={{ padding: "1rem" }}>
                 <h5>Analyzer</h5>
@@ -1320,50 +1297,74 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Render QA/QC Sidebar
-   */
   const renderQaSidebar = () => {
     return (
-      <div style={{ padding: "1rem", backgroundColor: "#f4f4f4", height: "100%" }}>
+      <div style={{ 
+        padding: "1rem", 
+        backgroundColor: "#f4f4f4", 
+        height: "100%",
+        maxHeight: "calc(100vh - 120px)",
+        overflowY: "auto",
+        position: "sticky",
+        top: "80px"
+      }}>
         {/* Current Run QC Status */}
         <div style={{ marginBottom: "1.5rem" }}>
-          <h5>
-            Current Run: QC{" "}
-            {overallQcStatus === "pass"
-              ? "Passed"
-              : overallQcStatus === "fail"
-              ? "Failed"
-              : "Pending"}
+          <h5 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "600" }}>
+            Current Run Summary
           </h5>
-          {qcSamples.length > 0 && (
-            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-              {qcSamples.map((qc, idx) => (
-                <div
-                  key={qc.id}
-                  style={{
-                    border: "1px solid #e0e0e0",
-                    borderRadius: "4px",
-                    padding: "0.5rem",
-                    textAlign: "center",
-                    backgroundColor: "#ffffff",
-                    minWidth: "60px",
-                  }}
-                >
-                  <div style={{ fontSize: "0.75rem", color: "#525252" }}>L{idx + 1}</div>
-                  <div style={{ fontSize: "0.875rem" }}>
-                    <strong>{qc.result}</strong>
-                  </div>
-                  <div>{qc.qcStatus === "pass" ? "✓" : "✗"}</div>
-                </div>
-              ))}
+          <div style={{
+            border: "1px solid #e0e0e0",
+            borderRadius: "4px",
+            padding: "0.75rem",
+            backgroundColor: "#ffffff",
+          }}>
+            <div style={{ marginBottom: "0.5rem" }}>
+              <strong style={{ fontSize: "0.875rem" }}>QC Status:</strong>{" "}
+              <span style={{
+                color: overallQcStatus === "pass" ? "#24a148" : overallQcStatus === "fail" ? "#da1e28" : "#525252",
+                fontWeight: "600"
+              }}>
+                {overallQcStatus === "pass"
+                  ? "Passed"
+                  : overallQcStatus === "fail"
+                  ? "Failed"
+                  : "Pending"}
+              </span>
             </div>
-          )}
+            {qcSamples.length > 0 && (
+              <>
+                <div style={{ fontSize: "0.75rem", color: "#525252", marginBottom: "0.25rem" }}>
+                  Passed: {qcSamples.filter(qc => qc.qcStatus === "pass").length} / {qcSamples.length}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#da1e28" }}>
+                  Failed: {qcSamples.filter(qc => qc.qcStatus === "fail").length}
+                </div>
+              </>
+            )}
+            
+            {/* Analyzer Info */}
+            {analyzerInfo && (
+              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #e0e0e0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#525252", marginBottom: "0.25rem" }}>
+                  <strong>Analyzer:</strong> {analyzerInfo.name}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#525252", marginBottom: "0.25rem" }}>
+                  <strong>Status:</strong> {analyzerInfo.status}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#525252" }}>
+                  <strong>Last Calibration:</strong> {analyzerInfo.lastCalibration}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Recent QC History */}
         <div style={{ marginBottom: "1.5rem" }}>
-          <h5>Recent QC History</h5>
+          <h5 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "600" }}>
+            Recent QC History
+          </h5>
           <div style={{ marginTop: "0.5rem" }}>
             {qcHistory.slice(0, 5).map((hist, idx) => (
               <div
@@ -1379,34 +1380,20 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                 <span>
                   {hist.date} {hist.time}
                 </span>
-                <span>{hist.status === "pass" ? "✓ PASS" : "✗ FAIL"}</span>
+                <span>{hist.status === "pass" ? "PASS" : "FAIL"}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Analyzer Info */}
-        {analyzerInfo && (
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h5>Analyzer Info</h5>
-            <div style={{ marginTop: "0.5rem", fontSize: "0.875rem" }}>
-              <div>
-                <strong>Name:</strong> {analyzerInfo.name}
-              </div>
-              <div>
-                <strong>Status:</strong> {analyzerInfo.status}
-              </div>
-              <div>
-                <strong>Last Calibration:</strong> {analyzerInfo.lastCalibration}
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Reagent Status */}
         {reagentStatus.length > 0 && (
           <div>
-            <h5>Reagent Status</h5>
+            <h5 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "600" }}>
+              Reagent Status
+            </h5>
             <div style={{ marginTop: "0.5rem" }}>
               {reagentStatus.map((reagent, idx) => (
                 <div
@@ -1438,9 +1425,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     );
   };
 
-  /**
-   * Main render
-   */
   if (loading) {
     return <Loading description="Loading analyzer results..." />;
   }
@@ -1481,6 +1465,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         defaultMessage: "Interpretation",
       }),
     },
+    { key: "_originalResult", header: "" }, // Hidden column for row expansion
   ];
 
   const rows = filteredResults.map((result) => ({
@@ -1522,7 +1507,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               : "#161616",
           }}
         >
-          {result.result}
+          {formatResult(result.result, result.significantDigits)}
         </strong>{" "}
         {result.units}
       </div>
@@ -1539,7 +1524,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         }
         size="sm"
       >
-        QC {result.qcStatus === "pass" ? "✓" : result.qcStatus === "fail" ? "✗" : "—"}
+        QC {result.qcStatus === "pass" ? "PASS" : result.qcStatus === "fail" ? "FAIL" : "—"}
       </Tag>
     ),
     flags: (
@@ -1560,7 +1545,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
   }));
 
   return (
-    <div style={{ padding: "1rem" }}>
+    <div style={{ padding: "1rem", maxWidth: "100%", overflowX: "hidden" }}>
       <Grid fullWidth>
         <Column lg={13} md={6} sm={4}>
           {/* Header */}
@@ -1584,7 +1569,10 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               <Button kind="ghost" renderIcon={Renew} onClick={handleRefresh}>
                 <FormattedMessage id="button.refresh" defaultMessage="Refresh" />
               </Button>
-              <Button kind="ghost" renderIcon={Settings}>
+              <Button kind="ghost" renderIcon={Settings} onClick={() => {
+                fetchAvailableReagentLots();
+                setShowReagentModal(true);
+              }}>
                 <FormattedMessage id="button.settings" defaultMessage="Settings" />
               </Button>
             </div>
@@ -1604,8 +1592,10 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
             style={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: "flex-start",
               marginBottom: "1rem",
+              gap: "1rem",
+              flexWrap: "wrap",
             }}
           >
             <ExpandableSearch
@@ -1614,8 +1604,11 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               placeholder="Search by lab number, test name, or patient"
               onChange={(e) => setSearchTerm(e.target.value)}
               value={searchTerm}
+              style={{ flexGrow: 1, minWidth: "250px" }}
             />
-            {renderSummaryStats()}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              {renderSummaryStats()}
+            </div>
           </div>
 
           {/* Bulk Actions */}
@@ -1665,10 +1658,11 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                               handleRowExpand(row.id, originalRow, !expandedRows[row.id])
                             }
                           >
-                            {row.cells.map((cell) => {
-                              if (cell.info.header === "_originalResult") return null;
-                              return <TableCell key={cell.id}>{cell.value}</TableCell>;
-                            })}
+                            {row.cells
+                              .filter((cell) => cell.info.header !== "_originalResult")
+                              .map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
                           </TableExpandRow>
                           {expandedRows[row.id] && (
                             <TableExpandedRow colSpan={headers.length + 1}>

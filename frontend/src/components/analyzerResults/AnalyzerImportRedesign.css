@@ -1,5 +1,99 @@
 /* AnalyzerImportRedesign.css - Styles for the redesigned analyzer import UI */
 
+/* Modern Card Container */
+.modern-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* QC Summary Tile */
+.qc-summary-tile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  transition: background-color 0.2s;
+}
+
+.qc-summary-tile:hover {
+  background-color: #f4f4f4;
+}
+
+.qc-summary-tile.pass {
+  background: #f4f4f4;
+  border-bottom: 3px solid #525252;
+}
+
+.qc-summary-tile.fail {
+  background: #ffffff;
+  border-bottom: 3px solid #da1e28;
+}
+
+.qc-summary-tile.warning {
+  background: #fcf4d6;
+  border-bottom: 3px solid #f1c21b;
+}
+
+/* Flex Utilities */
+.flex-row-center {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Text Utilities */
+.text-label {
+  font-size: 0.875rem;
+  color: #525252;
+}
+
+.text-value-lg {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #161616;
+  line-height: 1.2;
+}
+
+/* QC Detail Grid */
+.qc-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #f4f4f4;
+}
+
+/* QC Micro Cards */
+.qc-micro-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 1rem;
+  transition: all 0.2s;
+}
+
+.qc-micro-card:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.qc-micro-card.pass {
+  border-left: 3px solid #525252;
+}
+
+.qc-micro-card.fail {
+  border-left: 3px solid #da1e28;
+  background: #fff9f9;
+}
+
 /* QC Panel Styles */
 .qc-panel {
   border-radius: 4px;
@@ -14,7 +108,7 @@
 
 .qc-panel--fail {
   border: 2px solid #da1e28;
-  background-color: #fff1f1;
+  background-color: #ffffff;
 }
 
 .qc-panel--warning {
@@ -37,13 +131,32 @@
   padding: 1rem;
 }
 
+.qc-panel__content::-webkit-scrollbar {
+  height: 8px;
+}
+
+.qc-panel__content::-webkit-scrollbar-track {
+  background: #f4f4f4;
+  border-radius: 4px;
+}
+
+.qc-panel__content::-webkit-scrollbar-thumb {
+  background: #c6c6c6;
+  border-radius: 4px;
+}
+
+.qc-panel__content::-webkit-scrollbar-thumb:hover {
+  background: #8d8d8d;
+}
+
 /* QC Card Styles */
 .qc-card {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   padding: 1rem;
-  min-width: 200px;
-  flex: 1 1 auto;
+  min-width: 220px;
+  max-width: 280px;
+  flex: 0 0 auto;
   background-color: #ffffff;
 }
 
@@ -61,7 +174,7 @@
   border-radius: 4px;
   padding: 1rem;
   margin-bottom: 1rem;
-  background-color: #f4f4f4;
+  background-color: #ffffff;
 }
 
 /* Non-Conforming Row Styles */
@@ -105,10 +218,32 @@
   padding: 1rem;
   background-color: #f4f4f4;
   height: 100%;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  position: sticky;
+  top: 80px;
+}
+
+.qa-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.qa-sidebar::-webkit-scrollbar-track {
+  background: #e0e0e0;
+  border-radius: 3px;
+}
+
+.qa-sidebar::-webkit-scrollbar-thumb {
+  background: #8d8d8d;
+  border-radius: 3px;
+}
+
+.qa-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #525252;
 }
 
 .qa-sidebar h5 {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: #161616;
@@ -149,7 +284,9 @@
   border-top: 1px solid #e0e0e0;
   border-bottom: 1px solid #e0e0e0;
   margin-bottom: 1rem;
-  background-color: #f4f4f4;
+  background-color: #ffffff;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 /* Responsive adjustments */
@@ -170,4 +307,42 @@
     flex-direction: column;
     gap: 1rem;
   }
+}
+
+/* QC Sidebar Improvements */
+.qc-sidebar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.qc-sidebar-cell {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.5rem;
+  text-align: center;
+  background-color: #ffffff;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.qc-sidebar-cell strong {
+  font-size: 0.875rem;
+  display: block;
+  word-break: break-all;
+}
+
+/* Prevent long numbers from overflowing */
+.result-value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-value-wrap {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }

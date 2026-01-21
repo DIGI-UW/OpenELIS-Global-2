@@ -103,7 +103,7 @@ public class AnalyzerResultsController extends BaseController {
             "resultList*.sampleGroupingNumber", "resultList*.readOnly", "resultList*.testResultType",
             "resultList*.testId", "resultList*.accessionNumber", "resultList*.isAccepted", "resultList*.isRejected",
             "resultList*.isDeleted", "resultList*.result", "resultList*.completeDate", "resultList*.note",
-            "resultList*.reflexSelectionId", };
+            "resultList*.reflexSelectionId", "resultList*.reagentLots", "resultList*.analyzerId", };
 
     private static final boolean IS_RETROCI = ConfigurationProperties.getInstance()
             .isPropertyValueEqual(ConfigurationProperties.Property.configurationName, "CI_GENERAL");
@@ -605,7 +605,8 @@ public class AnalyzerResultsController extends BaseController {
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(result.getTestId());
 
         if (GenericValidator.isBlankOrNull(result.getResult()) || testResults.isEmpty()) {
-            return result.getResult();
+            // Return default significant digits instead of the result value
+            return "2";
         }
 
         TestResult testResult = testResults.get(0);
@@ -681,7 +682,8 @@ public class AnalyzerResultsController extends BaseController {
         String analyzer = null;
         String requestType = request.getParameter("type");
         if (!GenericValidator.isBlankOrNull(requestType)) {
-            analyzer = AnalyzerTestNameCache.getInstance().getDBNameForActionName(requestType);
+            // Convert to lowercase to match the keys in AnalyzerTestNameCache
+            analyzer = AnalyzerTestNameCache.getInstance().getDBNameForActionName(requestType.toLowerCase());
         }
         return analyzer;
     }
@@ -711,36 +713,56 @@ public class AnalyzerResultsController extends BaseController {
 
     @RequestMapping(value = "/rest/AnalyzerResults", method = RequestMethod.POST)
     @ResponseBody
-    public void showRestAnalyzerResultsSave(HttpServletRequest request, @Validated({ Paging.class,
+    public Map<String, Object> showRestAnalyzerResultsSave(HttpServletRequest request, @Validated({ Paging.class,
             AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
 
-        AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
-        paging.updatePagedResults(request, form);
-        List<AnalyzerResultItem> resultItemList = paging.getResults(request);
-
-        List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
-
-        if (actionableResults.isEmpty()) {
-            return;
-        }
-
-        List<SampleGrouping> sampleGroupList = new ArrayList<>();
-
-        resultItemList.removeAll(actionableResults);
-        List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
-        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
-                childlessControls);
-
-        createResultsFromItems(actionableResults, sampleGroupList);
-
+        Map<String, Object> response = new HashMap<>();
+        
         try {
+            List<AnalyzerResultItem> resultItemList = form.getResultList();
+            
+            if (resultItemList == null || resultItemList.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "No results provided");
+                return response;
+            }
+
+            List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
+
+            if (actionableResults.isEmpty()) {
+                response.put("success", true);
+                response.put("message", "No actionable results to process");
+                response.put("count", 0);
+                return response;
+            }
+
+            List<SampleGrouping> sampleGroupList = new ArrayList<>();
+
+            resultItemList.removeAll(actionableResults);
+            List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
+            List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
+                    childlessControls);
+
+            createResultsFromItems(actionableResults, sampleGroupList);
+
             analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
                     getSysUserId(request));
+            
+            response.put("success", true);
+            response.put("message", "Results saved successfully");
+            response.put("count", actionableResults.size());
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
-
+            response.put("success", false);
+            response.put("message", "Error saving results: " + e.getMessage());
+        } catch (Exception e) {
+            LogEvent.logError(e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Unexpected error: " + e.getMessage());
         }
+        
+        return response;
 
     }
 
@@ -1647,7 +1669,7 @@ public class AnalyzerResultsController extends BaseController {
      * Get available reagent lots for analyzer (FIFO ordering)
      * Frontend needs: GET /rest/AnalyzerResults/availableReagentLots?type={type}
      */
-    @RequestMapping(value = "/availableReagentLots", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @RequestMapping(value = "/rest/AnalyzerResults/availableReagentLots", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public Map<String, Object> getAvailableReagentLots(@RequestParam(required = false) String type) {
         Map<String, Object> response = new HashMap<>();
@@ -1678,6 +1700,127 @@ public class AnalyzerResultsController extends BaseController {
 
         reagents.put("CBC_REAGENT_1", cbcReagents);
         response.put("reagents", reagents);
+
+        return response;
+    }
+
+    /**
+     * Get detailed information for a specific analyzer result (on-demand fetch for expandable rows)
+     * Frontend needs: GET /rest/AnalyzerResults/{resultId}/details
+     * 
+     * @param resultId The analyzer result ID
+     * @return AnalyzerResultDetailsDTO with previous results, QC data, reagents, run info
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/{resultId}/details", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.openelisglobal.analyzerresults.bean.AnalyzerResultDetailsDTO getResultDetails(
+            @org.springframework.web.bind.annotation.PathVariable String resultId) {
+        
+        org.openelisglobal.analyzerresults.service.AnalyzerResultDetailsService detailsService = 
+            SpringContext.getBean(org.openelisglobal.analyzerresults.service.AnalyzerResultDetailsService.class);
+        
+        return detailsService.getResultDetails(resultId);
+    }
+
+    /**
+     * Request retest for analyzer results (when QC fails or results need re-analysis)
+     * Frontend needs: POST /rest/AnalyzerResults/retest
+     * 
+     * @param retestRequest Request containing result IDs and reason
+     * @return Response with success status and count
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/retest", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> requestRetest(HttpServletRequest request,
+            @jakarta.validation.Valid @RequestBody org.openelisglobal.analyzerresults.bean.AnalyzerRetestRequest retestRequest,
+            BindingResult bindingResult) {
+        
+        Map<String, Object> response = new HashMap<>();
+
+        if (bindingResult.hasErrors()) {
+            response.put("success", false);
+            response.put("message", "Validation errors");
+            response.put("errors", bindingResult.getAllErrors());
+            return response;
+        }
+
+        try {
+            String sysUserId = getSysUserId(request);
+            retestRequest.setRequestedBy(sysUserId);
+            retestRequest.setRequestedAt(java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+            int processedCount = 0;
+            List<String> resultIds = retestRequest.getResultIds();
+
+            for (String resultId : resultIds) {
+                AnalyzerResults analyzerResult = analyzerResultsService.readAnalyzerResults(resultId);
+                if (analyzerResult != null) {
+                    // Mark for retest by deleting from analyzer_results table
+                    // This will require re-import from analyzer
+                    analyzerResultsService.delete(analyzerResult);
+                    
+                    // Log the retest request
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "requestRetest",
+                            "Analyzer result " + resultId + " marked for retest. Reason: " + retestRequest.getReason());
+                    
+                    processedCount++;
+                }
+            }
+
+            response.put("success", true);
+            response.put("message", "Retest request processed successfully");
+            response.put("count", processedCount);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            response.put("success", false);
+            response.put("message", "Error processing retest request: " + e.getMessage());
+        }
+
+        return response;
+    }
+
+    /**
+     * Ignore (delete) analyzer results without saving
+     * Frontend needs: POST /rest/AnalyzerResults/ignore
+     * 
+     * @param resultIds List of result IDs to ignore
+     * @return Response with success status
+     */
+    @RequestMapping(value = "/rest/AnalyzerResults/ignore", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> ignoreResults(HttpServletRequest request,
+            @RequestBody Map<String, List<String>> requestBody) {
+        
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            List<String> resultIds = requestBody.get("resultIds");
+            if (resultIds == null || resultIds.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "No result IDs provided");
+                return response;
+            }
+
+            int deletedCount = 0;
+            for (String resultId : resultIds) {
+                AnalyzerResults analyzerResult = analyzerResultsService.readAnalyzerResults(resultId);
+                if (analyzerResult != null) {
+                    analyzerResultsService.delete(analyzerResult);
+                    deletedCount++;
+                }
+            }
+
+            response.put("success", true);
+            response.put("message", deletedCount + " result(s) ignored successfully");
+            response.put("count", deletedCount);
+
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            response.put("success", false);
+            response.put("message", "Error ignoring results: " + e.getMessage());
+        }
 
         return response;
     }

@@ -95,15 +95,14 @@ public class AnalyzerResultItem implements Serializable {
     private String selectionTwoValue = "";
     private boolean nonconforming = false;
     private String significantDigits = "";
-
-    // QC-related fields for redesigned UI
-    private String qcStatus = "none"; // "pass", "fail", "none"
+    private String qcStatus = "none";
     private String normalRange = "";
     private List<String> flags = new ArrayList<>();
     private Map<String, Object> interpretation;
     private Map<String, Object> deltaCheck;
     private Map<String, Object> previousResult;
     private String patientName = "";
+    private List<Map<String, Object>> reagentLots = new ArrayList<>();
 
     public String getSignificantDigits() {
         return significantDigits;
@@ -267,7 +266,7 @@ public class AnalyzerResultItem implements Serializable {
     }
 
     public boolean getIsHighlighted() {
-        return isHighlighted && readOnly;
+        return isHighlighted;
     }
 
     public void setLastUpdated(Timestamp lastupdated) {
@@ -406,7 +405,6 @@ public class AnalyzerResultItem implements Serializable {
         this.nonconforming = nonconforming;
     }
 
-    // Getters and setters for QC-related fields
     public String getQcStatus() {
         return qcStatus;
     }
@@ -461,5 +459,13 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setPatientName(String patientName) {
         this.patientName = patientName;
+    }
+
+    public List<Map<String, Object>> getReagentLots() {
+        return reagentLots;
+    }
+
+    public void setReagentLots(List<Map<String, Object>> reagentLots) {
+        this.reagentLots = reagentLots;
     }
 }

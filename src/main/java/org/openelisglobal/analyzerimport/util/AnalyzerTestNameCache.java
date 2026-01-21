@@ -60,8 +60,11 @@ public class AnalyzerTestNameCache {
         requestTODBName.put("evolis", EVOLIS);
         requestTODBName.put("cobas_taqman", COBAS_TAQMAN);
         requestTODBName.put("facscanto", FACSCANTO);
-        requestTODBName.put("cobasDBS", COBAS_DBS);
+        requestTODBName.put("cobasdbs", COBAS_DBS);
         requestTODBName.put("cobasc311", COBAS_C311);
+        // Simplified mappings for URLs like ?type=Cobas, ?type=GeneXpert
+        requestTODBName.put("cobas", COBAS_INTEGRA400_NAME);
+        requestTODBName.put("genexpert", "GeneXpert");
     }
 
     public static AnalyzerTestNameCache getInstance() {

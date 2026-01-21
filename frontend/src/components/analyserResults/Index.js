@@ -3,13 +3,7 @@ import AnalyzerImportRedesign from "../analyzerResults/AnalyzerImportRedesign";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import {
-  Heading,
-  Grid,
-  Column,
-  Section,
-  Loading,
-} from "@carbon/react";
+import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -123,7 +117,7 @@ const Index = () => {
       <div className="orderLegendBody">
         {notificationVisible === true ? <AlertDialog /> : ""}
         {isLoading && <Loading></Loading>}
-        
+
         <AnalyzerImportRedesign analyzerType={type} />
       </div>
     </>
