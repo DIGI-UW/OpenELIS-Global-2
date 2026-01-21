@@ -11,3 +11,4 @@ export { default as VirologyVirusIsolationPage } from "./VirologyVirusIsolationP
 export { default as VirologyTiterMeasurementPage } from "./VirologyTiterMeasurementPage";
 export { default as VirologyGenomeSequencingPage } from "./VirologyGenomeSequencingPage";
 export { default as VirologySeedVirusProductionPage } from "./VirologySeedVirusProductionPage";
+export { default as VirologyTrialsPage } from "./VirologyTrialsPage";

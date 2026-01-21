@@ -95,5 +95,6 @@
     <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles.xml"/>
     <include file="liquibase/3.4.x.x/035-add-genome-sequencing-page-to-virology-workflow.xml"/>
     <include file="liquibase/3.4.x.x/036-add-seed-virus-production-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/048-add-trials-page-to-virology-workflow.xml"/>
 
 </databaseChangeLog>

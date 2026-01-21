@@ -35,6 +35,7 @@ import VirologyVirusIsolationPage from "../pages/virology/VirologyVirusIsolation
 import VirologyTiterMeasurementPage from "../pages/virology/VirologyTiterMeasurementPage";
 import VirologyGenomeSequencingPage from "../pages/virology/VirologyGenomeSequencingPage";
 import VirologySeedVirusProductionPage from "../pages/virology/VirologySeedVirusProductionPage";
+import VirologyTrialsPage from "../pages/virology/VirologyTrialsPage";
 import InitialProcessingPage from "../pages/InitialProcessingPage";
 import AssaysPage from "../pages/AssaysPage";
 import ChildSampleCreationPage from "../pages/ChildSampleCreationPage";
@@ -467,6 +468,19 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
           return (
             <VirologySeedVirusProductionPage
               key={`virology-seed-virus-production-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 14:
+          // Page 14: Preclinical & Clinical Trials
+          // Preclinical: Animal testing - track trial initiation, species, immunogenicity, safety
+          // Clinical: Human testing - link trial phases (I/II/III), outcomes, regulatory submissions
+          return (
+            <VirologyTrialsPage
+              key={`virology-trials-${page.id}`}
               entryId={entryId}
               pageData={page}
               progress={progress}
