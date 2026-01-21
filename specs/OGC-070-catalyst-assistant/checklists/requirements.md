@@ -1,6 +1,7 @@
 # Specification Quality Checklist: Catalyst - LLM-Powered Lab Data Assistant
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
+**Purpose**: Validate specification completeness and quality before proceeding
+to planning  
 **Created**: 2026-01-20  
 **Feature**: [spec.md](../spec.md)  
 **Jira Issue**: [OGC-70](https://uwdigi.atlassian.net/browse/OGC-70)

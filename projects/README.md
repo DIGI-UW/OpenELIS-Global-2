@@ -15,4 +15,3 @@ runtime code.
 ### Current projects
 
 - `projects/catalyst/` - OGC-70 Catalyst (LLM-powered lab data assistant)
-

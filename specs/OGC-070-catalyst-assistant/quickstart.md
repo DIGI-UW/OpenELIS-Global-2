@@ -6,13 +6,17 @@
 
 ## Overview
 
-This guide walks you through setting up and running the Catalyst MVP - a chat-to-SQL assistant for OpenELIS Global with MCP-based schema retrieval. By the end, you'll be able to ask natural language questions and get SQL results.
+This guide walks you through setting up and running the Catalyst MVP - a
+chat-to-SQL assistant for OpenELIS Global with MCP-based schema retrieval. By
+the end, you'll be able to ask natural language questions and get SQL results.
 
-**Architecture**: Python MCP Server (schema RAG) → Java Backend (LLM orchestration) → React Frontend (Carbon chat UI)
+**Architecture**: Python MCP Server (schema RAG) → Java Backend (LLM
+orchestration) → React Frontend (Carbon chat UI)
 
 ## Prerequisites
 
-- [ ] OpenELIS development environment running (`docker compose -f dev.docker-compose.yml up -d`)
+- [ ] OpenELIS development environment running
+      (`docker compose -f dev.docker-compose.yml up -d`)
 - [ ] Java 21 installed (`java -version` shows 21.x.x)
 - [ ] Python 3.11+ installed (`python3 --version`)
 - [ ] Node.js 16+ installed
@@ -140,7 +144,7 @@ catalyst.llm.provider=ollama
 # Cloud: OpenAI
 catalyst.llm.openai.model=gpt-4o
 
-# Cloud: Google Gemini  
+# Cloud: Google Gemini
 catalyst.llm.gemini.model=gemini-1.5-pro
 
 # Local: Ollama
@@ -333,7 +337,7 @@ services:
       - DATABASE_URL=postgresql://clinlims:clinlims@oe-postgres:5432/clinlims
     depends_on:
       - oe-postgres
-      
+
   ollama:
     image: ollama/ollama:latest
     ports:
@@ -353,12 +357,12 @@ services:
 
 ## Example Queries
 
-| Natural Language | Generated SQL |
-|-----------------|---------------|
-| "How many samples were entered today?" | `SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE` |
-| "Show HIV test results from last week" | `SELECT * FROM analysis a JOIN test t ON a.test_id = t.id WHERE t.name LIKE '%HIV%' AND a.started_date >= CURRENT_DATE - INTERVAL '7 days'` |
-| "What's the average turnaround time for malaria tests?" | `SELECT AVG(completed_date - started_date) FROM analysis a JOIN test t ON a.test_id = t.id WHERE t.name LIKE '%malaria%'` |
-| "Count samples by type this month" | `SELECT sample_type, COUNT(*) FROM sample WHERE entered_date >= DATE_TRUNC('month', CURRENT_DATE) GROUP BY sample_type` |
+| Natural Language                                        | Generated SQL                                                                                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| "How many samples were entered today?"                  | `SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE`                                                                             |
+| "Show HIV test results from last week"                  | `SELECT * FROM analysis a JOIN test t ON a.test_id = t.id WHERE t.name LIKE '%HIV%' AND a.started_date >= CURRENT_DATE - INTERVAL '7 days'` |
+| "What's the average turnaround time for malaria tests?" | `SELECT AVG(completed_date - started_date) FROM analysis a JOIN test t ON a.test_id = t.id WHERE t.name LIKE '%malaria%'`                   |
+| "Count samples by type this month"                      | `SELECT sample_type, COUNT(*) FROM sample WHERE entered_date >= DATE_TRUNC('month', CURRENT_DATE) GROUP BY sample_type`                     |
 
 ---
 
@@ -373,8 +377,11 @@ After MVP validation:
 
 - **Spec**: [specs/OGC-070-catalyst-assistant/spec.md](./spec.md)
 - **Plan**: [specs/OGC-070-catalyst-assistant/plan.md](./plan.md)
-- **API Contract**: [specs/OGC-070-catalyst-assistant/contracts/catalyst-api.yaml](./contracts/catalyst-api.yaml)
+- **API Contract**:
+  [specs/OGC-070-catalyst-assistant/contracts/catalyst-api.yaml](./contracts/catalyst-api.yaml)
 - **Jira**: [OGC-70](https://uwdigi.atlassian.net/browse/OGC-70)
-- **MCP Documentation**: [modelcontextprotocol.io](https://modelcontextprotocol.io/)
+- **MCP Documentation**:
+  [modelcontextprotocol.io](https://modelcontextprotocol.io/)
 - **LangChain4j Docs**: [docs.langchain4j.dev](https://docs.langchain4j.dev/)
-- **Carbon AI Chat**: [chat.carbondesignsystem.com](https://chat.carbondesignsystem.com/)
+- **Carbon AI Chat**:
+  [chat.carbondesignsystem.com](https://chat.carbondesignsystem.com/)
