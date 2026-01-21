@@ -110,7 +110,7 @@ graph LR
 
 ### M0.7 - MCP Server
 
-- [ ] T024 [M0] Create `server.py` at `catalyst-mcp/src/server.py` (MCP entry point with SSE transport)
+- [ ] T024 [M0] Create `server.py` at `catalyst-mcp/src/server.py` (MCP entry point with Streamable HTTP transport; SSE optional for streaming)
 
 **Checkpoint**: Server tests (T013) should PASS
 
@@ -145,15 +145,15 @@ graph LR
 
 - [ ] T030 [P] [M1] Create ORM validation test `HibernateMappingValidationTest.java` at `src/test/java/org/openelisglobal/catalyst/HibernateMappingValidationTest.java`
 - [ ] T031 [P] [M1] Create unit test `MCPSchemaClientTest.java` at `src/test/java/org/openelisglobal/catalyst/mcp/MCPSchemaClientTest.java`
-- [ ] T032 [P] [M1] Create unit test `CatalystQueryServiceTest.java` at `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java`
-- [ ] T033 [P] [M1] Create unit test `SQLGuardrailsTest.java` at `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java`
-- [ ] T034 [P] [M1] Create unit test `CatalystQueryDAOTest.java` at `src/test/java/org/openelisglobal/catalyst/dao/CatalystQueryDAOTest.java`
+- [ ] T032 [P] [M1] Create unit test `CatalystQueryServiceTest.java` at `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceTest.java` (prompt construction uses schema-only context; audit metadata captured per FR-019)
+- [ ] T033 [P] [M1] Create unit test `SQLGuardrailsTest.java` at `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java` (MVP authorization: blocked-table list only; no per-user/row-level RBAC enforcement)
+- [ ] T034 [P] [M1] Create unit test `CatalystQueryDAOTest.java` at `src/test/java/org/openelisglobal/catalyst/dao/CatalystQueryDAOTest.java` (persists audit metadata fields per FR-019)
 
 ### M1.3 - Entity Layer (TDD - Green Phase)
 
 - [ ] T035 [M1] Create `ExecutionStatus.java` enum at `src/main/java/org/openelisglobal/catalyst/valueholder/ExecutionStatus.java`
-- [ ] T036 [M1] Create `CatalystQuery.java` entity at `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java` (extends BaseObject, JPA annotations)
-- [ ] T037 [M1] Create Liquibase changeset `catalyst-001-create-audit-table.xml` at `src/main/resources/liquibase/catalyst/catalyst-001-create-audit-table.xml`
+- [ ] T036 [M1] Create `CatalystQuery.java` entity at `src/main/java/org/openelisglobal/catalyst/valueholder/CatalystQuery.java` (extends BaseObject, JPA annotations; includes audit metadata fields per FR-019: provider type/id, PHI gating flag, schema tables used)
+- [ ] T037 [M1] Create Liquibase changeset `catalyst-001-create-audit-table.xml` at `src/main/resources/liquibase/catalyst/catalyst-001-create-audit-table.xml` (include audit metadata columns per FR-019)
 - [ ] T038 [M1] Register Liquibase changeset in master changelog
 
 **Checkpoint**: ORM validation test (T030) should PASS
@@ -168,7 +168,7 @@ graph LR
 ### M1.5 - MCP Client Layer
 
 - [ ] T041 [M1] Create `MCPSchemaClient.java` interface at `src/main/java/org/openelisglobal/catalyst/mcp/MCPSchemaClient.java`
-- [ ] T042 [M1] Create `MCPSchemaClientImpl.java` at `src/main/java/org/openelisglobal/catalyst/mcp/MCPSchemaClientImpl.java` (SSE transport to Python MCP server)
+- [ ] T042 [M1] Create `MCPSchemaClientImpl.java` at `src/main/java/org/openelisglobal/catalyst/mcp/MCPSchemaClientImpl.java` (Streamable HTTP transport to Python MCP server; SSE optional for streaming)
 - [ ] T043 [M1] Create `CatalystMCPConfig.java` at `src/main/java/org/openelisglobal/catalyst/config/CatalystMCPConfig.java`
 
 **Checkpoint**: MCP client test (T031) should PASS
@@ -190,6 +190,13 @@ graph LR
 
 - [ ] T047 [M1] Create `CatalystLLMConfig.java` at `src/main/java/org/openelisglobal/catalyst/config/CatalystLLMConfig.java` (OpenAI, Gemini, Ollama, LM Studio)
 - [ ] T048 [M1] Update `volume/properties/catalyst.properties` with all provider settings
+
+### M1.8b - PHI-Aware Provider Gating (MVP Safety)
+
+- [ ] T108 [P] [M1] Create unit test `PhiDetectionServiceTest.java` at `src/test/java/org/openelisglobal/catalyst/privacy/PhiDetectionServiceTest.java`
+- [ ] T109 [M1] Create `PhiDetectionService.java` and `PhiDetectionServiceImpl.java` at `src/main/java/org/openelisglobal/catalyst/privacy/` (detect likely PHI/identifiers in question text)
+- [ ] T110 [M1] Add provider gating logic to `CatalystQueryServiceImpl.java` (if PHI detected and provider is cloud, do not call cloud; route to local if configured and healthy, else block)
+- [ ] T111 [M1] Update `CatalystQueryServiceTest.java` to assert cloud provider is not called when PHI detected (and that request is routed/blocked as configured)
 
 ### M1.9 - Verification & PR
 
@@ -227,11 +234,13 @@ graph LR
 - [ ] T056 [P] [M2] Create Jest test `QueryInput.test.jsx` at `frontend/src/components/catalyst/__tests__/QueryInput.test.jsx`
 - [ ] T057 [P] [M2] Create Jest test `ResultsDisplay.test.jsx` at `frontend/src/components/catalyst/__tests__/ResultsDisplay.test.jsx`
 - [ ] T058 [P] [M2] Create Jest test `SQLPreview.test.jsx` at `frontend/src/components/catalyst/__tests__/SQLPreview.test.jsx`
+- [ ] T114 [P] [M2] Extend `CatalystSidebar.test.jsx` to assert example prompts render and populate the input when clicked (FR-014)
 
 ### M2.3 - Internationalization
 
 - [ ] T059 [P] [M2] Add `catalyst.*` keys to `frontend/src/languages/en.json` (English translations)
 - [ ] T060 [P] [M2] Add `catalyst.*` keys to `frontend/src/languages/fr.json` (French translations)
+- [ ] T112 [P] [M2] Add localized example prompts for FR-014 (ids + translations) and define how they render in the UI (en/fr minimum)
 
 ### M2.4 - Component Implementation (TDD - Green Phase)
 
@@ -240,6 +249,7 @@ graph LR
 - [ ] T063 [M2] Create `ResultsDisplay.jsx` at `frontend/src/components/catalyst/ResultsDisplay.jsx` (table/JSON display)
 - [ ] T064 [M2] Create `ChatInterface.jsx` at `frontend/src/components/catalyst/ChatInterface.jsx` (message list using @carbon/ai-chat)
 - [ ] T065 [M2] Create `CatalystSidebar.jsx` at `frontend/src/components/catalyst/CatalystSidebar.jsx` (main sidebar container)
+- [ ] T113 [M2] Implement an “Example prompts” UI element in `CatalystSidebar.jsx` that allows clicking an example to populate `QueryInput.jsx` (FR-014)
 - [ ] T066 [M2] Create module exports `index.js` at `frontend/src/components/catalyst/index.js`
 
 **Checkpoint**: All Jest tests (T054-T058) should PASS
@@ -430,11 +440,11 @@ graph LR
 |-------|-----------|------------|----------------|
 | 1 | Setup | 9 | 7 |
 | 2 | M0 - MCP Server | 19 | 6 |
-| 3 | M1 - Backend Core | 24 | 8 |
-| 4 | M2 - Frontend Chat | 21 | 9 |
+| 3 | M1 - Backend Core | 28 | 9 |
+| 4 | M2 - Frontend Chat | 24 | 11 |
 | 5 | M3 - Integration | 29 | 6 |
 | 6 | Polish | 5 | 2 |
-| **Total** | | **107** | **38** |
+| **Total** | | **114** | **41** |
 
 ### Tasks by User Story Coverage
 

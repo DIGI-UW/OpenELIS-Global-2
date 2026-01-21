@@ -55,7 +55,7 @@ _GATE: Verified before research. Re-check after design._
 - [x] **Schema Management (VI)**: Liquibase changesets for audit log table
 - [x] **Internationalization (VII)**: All UI strings via React Intl (en, fr minimum)
 - [x] **Security & Compliance (VIII)**: 
-  - RBAC: Respect existing OpenELIS permissions
+  - RBAC (MVP): Blocked-table list only (no per-user / row-level enforcement in MVP)
   - Audit: Log all generated queries with user ID + timestamp
   - Validation: Block restricted tables (sys_user, login_user)
 - [x] **Spec-Driven Iteration (IX)**: Milestones defined below, each milestone = 1 PR
@@ -120,7 +120,7 @@ catalyst-dev.docker-compose.yml            # Add MCP server service
 
 **Verification**:
 - pytest: All MCP tool tests pass
-- Manual: MCP server responds to tool calls via SSE
+- Manual: MCP server responds to tool calls via Streamable HTTP (SSE optional for streaming)
 - Integration: Java backend can call MCP tools
 
 ---
@@ -132,7 +132,7 @@ catalyst-dev.docker-compose.yml            # Add MCP server service
 - LLM provider abstraction (LangChain4j with OpenAI/Gemini/Ollama/LM Studio)
 - CatalystQueryService with text-to-SQL prompt construction
 - Privacy guardrails (blocked tables, schema-only context)
-- CatalystQuery valueholder + DAO for audit logging
+- CatalystQuery valueholder + DAO for audit logging (provider type/id, PHI gating flag, schema tables used; do not persist raw schema context)
 
 **Files to Create**:
 ```
@@ -425,6 +425,8 @@ public class CatalystLLMConfig {
 
 ### MCP-Based Schema Retrieval
 
+**Transport note**: Use MCP **Streamable HTTP** transport (SSE optional for streaming). See `https://modelcontextprotocol.io/specification/2025-11-25/basic/transports`.
+
 ```java
 // MCPSchemaClient.java - Get relevant schema via MCP tools
 public interface MCPSchemaClient {
@@ -505,13 +507,24 @@ catalyst.llm.lmstudio.base-url=http://host.docker.internal:1234/v1
 catalyst.llm.lmstudio.model=local-model
 
 # MCP Server
-catalyst.mcp.server-url=http://catalyst-mcp:8000/sse
+catalyst.mcp.server-url=http://catalyst-mcp:8000/mcp
 
 # Guardrails
 catalyst.guardrails.max-rows=10000
 catalyst.guardrails.query-timeout=30s
 catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
 ```
+
+### PHI-Aware Provider Gating (MVP Safety)
+
+**Goal**: Preserve the privacy-first constraint even when users include identifiers/PHI in the *question text*.
+
+**Rule (MVP)**:
+- If the user question is flagged as likely containing PHI/identifiers **and** the configured provider is externally-hosted, the request **MUST NOT** be sent to that provider.
+- The system should attempt to route the request to an on-premises provider (Ollama or LM Studio) if configured and healthy.
+- If no on-premises provider is available, the request is blocked with a user-facing message instructing the user to remove PHI and retry.
+
+**Reference**: This is required to make US2/FR-004 testable in real workflows where users paste patient identifiers into questions.
 
 ## References
 

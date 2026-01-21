@@ -29,7 +29,7 @@ This document consolidates research findings for implementing Catalyst, an LLM-p
 - Python MCP server with RAG-based schema retrieval
 - ChromaDB for embedding storage and similarity search
 - MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
-- Java backend calls MCP server via SSE transport
+- Java backend calls MCP server via Streamable HTTP transport (SSE optional for streaming)
 
 **References**:
 - [SQLCoder GitHub](https://github.com/defog-ai/sqlcoder) - State-of-the-art text-to-SQL model

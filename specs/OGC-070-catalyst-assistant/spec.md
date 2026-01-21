@@ -61,6 +61,8 @@ This delivers security assurance and regulatory compliance.
 
 3. **Given** the system executes generated SQL, **When** it connects to the database, **Then** it uses a read-only database connection that cannot modify data.
 
+4. **Given** a user includes identifiers or other PHI in their question (e.g., MRN, patient name, accession number), **When** the configured AI provider is externally-hosted, **Then** the system MUST NOT send the request to that external provider, **And** the user is either routed to a local provider (if configured and available) or prompted to remove PHI from the question and retry.
+
 ---
 
 ### User Story 3 - Cloud and Local LLM Support (Priority: P2)
@@ -148,11 +150,15 @@ This delivers enhanced usability and workflow integration.
 
 - **FR-007**: System MUST support multiple AI model providers (externally-hosted and on-premises) configurable at deployment time without code changes. Required providers for MVP: OpenAI (Cloud), Google Gemini (Cloud), Ollama (Local), and LM Studio (Local via OpenAI-compatible API).
 
+- **FR-018**: System MUST detect likely PHI/identifiers in user-submitted questions. If the configured AI provider is externally-hosted, the system MUST NOT send the question to that provider. The system must either (a) route the request to an on-premises provider (if configured and healthy) or (b) block the request and prompt the user to remove PHI and retry.
+
 - **FR-008**: System MUST validate generated SQL before execution to prevent access to blocked tables (e.g., sys_user, login_user, user_role).
 
 - **FR-009**: System MUST estimate the number of rows a query will return before execution and warn users if the estimate exceeds 10,000 rows.
 
 - **FR-010**: System MUST log all generated SQL queries and their execution results for audit purposes, including user ID and timestamp.
+
+- **FR-019**: Audit records for query generation and execution MUST include enough metadata to verify compliance without storing sensitive context. At minimum, audit MUST capture: selected provider type (externally-hosted vs on-premises), provider identifier, whether PHI/identifier gating triggered (FR-018), and which schema tables were provided as context (by name). Audit records MUST NOT store raw schema dumps/DDL sent to the model and MUST NOT store PHI values.
 
 - **FR-011**: System MUST handle errors gracefully, providing user-friendly error messages without exposing technical implementation details.
 
@@ -165,8 +171,6 @@ This delivers enhanced usability and workflow integration.
 - **FR-015**: System MUST support queries that require JOINs across multiple tables, aggregations (COUNT, SUM, AVG), and date filtering.
 
 - **FR-016**: System MUST present the proposed query (including a SQL preview) to the user for review before execution.
-
-- **FR-017**: System MUST use a standalone Model Context Protocol (MCP) server for schema retrieval to validate standards-based architecture in MVP.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 
@@ -187,7 +191,7 @@ _Derived from `.specify/memory/constitution.md` - include only relevant principl
 
 - **CR-006**: Configuration-driven variation for country-specific requirements (NO code branching). LLM provider selection and guardrail settings must be configurable, not hardcoded.
 
-- **CR-007**: Security: RBAC (respect existing OpenELIS permissions), audit trail (sys_user_id + lastupdated for all queries), input validation (sanitize user queries to prevent injection attacks).
+- **CR-007**: Security: MVP authorization is enforced via blocked-table list only (FR-013). Full integration with OpenELIS per-user permissions/row-level controls is deferred to Phase 2. Audit trail (sys_user_id + lastupdated for all queries), input validation (sanitize user queries to prevent injection attacks).
 
 - **CR-008**: Tests MUST be included (unit + integration + E2E, >70% coverage goal). MVP must include at least one E2E test proving the full chat → SQL → results flow.
 
@@ -214,6 +218,8 @@ _Derived from `.specify/memory/constitution.md` - include only relevant principl
 - **SC-004**: System successfully processes queries requiring JOINs across 2-4 tables for 70% of multi-table queries.
 
 - **SC-005**: Zero instances of patient data or PHI appearing in LLM API requests (measured via audit logs of all LLM prompts).
+ 
+- **SC-011**: 100% of questions flagged as containing PHI/identifiers are prevented from being sent to externally-hosted AI providers (verified via audit logs).
 
 - **SC-006**: System supports switching between cloud and local LLM providers without code changes (verified by successful query execution with both provider types).
 
@@ -230,7 +236,7 @@ _Derived from `.specify/memory/constitution.md` - include only relevant principl
 ### Assumptions
 
 - Users have basic familiarity with natural language querying (similar to search engines or chatbots).
-- The OpenELIS database schema is relatively stable - schema changes will be infrequent enough that a static schema context file is sufficient for MVP.
+- The OpenELIS database schema is relatively stable - schema changes will be infrequent enough that schema metadata embeddings/context can be refreshed on a predictable cadence (e.g., on deploy or nightly) without impacting users.
 - LLM models (cloud or local) are available and accessible when users submit queries.
 - Users understand that Catalyst generates SQL and may need to refine queries based on results.
 - The MVP focuses on read-only queries - no data modification capabilities are needed.
@@ -242,7 +248,7 @@ _Derived from `.specify/memory/constitution.md` - include only relevant principl
 - **Read-Only Constraint**: All database queries must execute with read-only permissions. No INSERT, UPDATE, DELETE, or DDL operations are permitted.
 - **Performance Constraint**: Queries returning more than 10,000 rows may be limited or require additional filtering to prevent system overload.
 - **Schema Constraint**: Catalyst can only query data that exists in the OpenELIS database schema. It cannot access external data sources or generate data that doesn't exist.
-- **Access Control Constraint**: Catalyst respects existing OpenELIS RBAC - users can only access data they have permission to view through standard OpenELIS interfaces.
+- **Access Control Constraint (MVP)**: Catalyst authorization is enforced via blocked-table list only (FR-013). It does **not** implement per-user or row-level RBAC for MVP. Full integration with OpenELIS permissions is deferred to Phase 2.
 - **Technology Constraint**: Must use Carbon Design System for UI (Constitution Principle II), React Intl for internationalization (Principle VII), and follow 5-layer architecture (Principle IV).
 
 ### Out of Scope (MVP)
@@ -255,4 +261,4 @@ _Derived from `.specify/memory/constitution.md` - include only relevant principl
 - Row-level RBAC integration with OpenELIS user permissions (Phase 2) - MVP uses blocked table list only
 - Natural language query refinement suggestions (future enhancement)
 - Support for complex analytical queries requiring multiple steps (future enhancement)
-- Dynamic schema RAG with vector search (Phase 2) - **Removed, now in MVP scope via MCP**
+- Advanced schema RAG improvements beyond MCP-based schema filtering (future enhancement)
