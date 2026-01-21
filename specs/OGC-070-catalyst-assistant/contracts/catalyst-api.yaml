@@ -37,12 +37,16 @@ paths:
         Converts a natural language question into SQL, validates it against 
         guardrails, and optionally executes it against the OpenELIS database.
         
-        **Flow**:
-        1. User submits natural language query
+        **Two-Stage Workflow (Review Before Execute)**:
+        1. User submits natural language query with `execute: false` (or omitted)
         2. System generates SQL using LLM (schema context only, no patient data)
         3. System validates SQL (blocked tables, row estimation)
-        4. Returns proposed SQL for user review
-        5. If `execute: true`, executes SQL and returns results
+        4. Returns proposed SQL with `queryId` and `confirmationToken` for user review
+        5. User confirms execution by resubmitting with `execute: true`, `queryId`, and `confirmationToken`
+        6. System validates token matches last generated SQL, then executes and returns results
+        
+        **Security**: Execution requires both `queryId` and `confirmationToken` to prevent
+        accidental or unauthorized execution without user review.
       operationId: submitQuery
       security:
         - bearerAuth: []
@@ -53,15 +57,16 @@ paths:
             schema:
               $ref: '#/components/schemas/QueryRequest'
             examples:
-              basicQuery:
-                summary: Basic count query
+              generateOnly:
+                summary: Generate SQL only (Stage A)
                 value:
                   query: "How many samples were entered today?"
                   execute: false
-              executeQuery:
-                summary: Query with execution
+              executeWithConfirmation:
+                summary: Execute with confirmation (Stage B)
                 value:
-                  query: "Show all HIV test results from last week"
+                  queryId: "550e8400-e29b-41d4-a716-446655440000"
+                  confirmationToken: "abc123def456..."
                   execute: true
                   maxRows: 1000
       responses:
@@ -83,7 +88,7 @@ paths:
                     executionTimeMs: null
                     results: null
                 executed:
-                  summary: SQL executed
+                  summary: SQL executed (after confirmation)
                   value:
                     queryId: "550e8400-e29b-41d4-a716-446655440001"
                     status: "EXECUTED"
@@ -95,6 +100,17 @@ paths:
                     results:
                       columns: ["count"]
                       rows: [[147]]
+                confirmationRequired:
+                  summary: SQL generated, confirmation required
+                  value:
+                    queryId: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "GENERATED"
+                    userQuery: "How many samples were entered today?"
+                    generatedSql: "SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE"
+                    estimatedRows: 150
+                    confirmationToken: "abc123def456..."
+                    executionTimeMs: null
+                    results: null
         '400':
           description: Invalid request
           content:
@@ -112,6 +128,11 @@ paths:
                   value:
                     error: "BLOCKED"
                     message: "Access to restricted table 'sys_user' is not permitted"
+                invalidConfirmation:
+                  summary: Invalid confirmation token
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Confirmation token does not match generated SQL. Please review and confirm again."
         '401':
           description: Not authenticated
           content:
@@ -135,10 +156,14 @@ paths:
     post:
       tags:
         - Query
-      summary: Execute previously generated SQL
+      summary: Execute previously generated SQL (Alternative endpoint)
       description: |
-        Executes SQL that was previously generated and reviewed by the user.
-        This is the second step in the "review before execute" flow.
+        **Alternative to single-endpoint workflow**: Executes SQL that was previously 
+        generated and reviewed by the user. This endpoint is provided for convenience
+        but the primary workflow uses POST /query with execute=true + confirmationToken.
+        
+        **Note**: For MVP, this endpoint may be deprecated in favor of the single-endpoint
+        confirmation token workflow. Both endpoints require confirmation validation.
       operationId: executeQuery
       security:
         - bearerAuth: []
@@ -274,13 +299,20 @@ components:
       properties:
         query:
           type: string
-          description: Natural language question
+          description: Natural language question (required for Stage A: generation)
           example: "How many samples were entered today?"
           maxLength: 10000
+        queryId:
+          type: string
+          format: uuid
+          description: Query ID from previous generation (required for Stage B: execution)
+        confirmationToken:
+          type: string
+          description: Confirmation token from previous generation (required for Stage B: execution). Token is computed from generated SQL to ensure user reviewed the exact query before execution.
         execute:
           type: boolean
           default: false
-          description: Whether to execute the generated SQL immediately
+          description: Whether to execute the generated SQL. If true, requires both queryId and confirmationToken to match the last generated SQL.
         maxRows:
           type: integer
           default: 10000
@@ -314,9 +346,12 @@ components:
           description: Query execution time in milliseconds
         results:
           $ref: '#/components/schemas/QueryResults'
+        confirmationToken:
+          type: string
+          description: Confirmation token for this generated SQL (returned in Stage A, required in Stage B)
         llmProvider:
           type: string
-          description: LLM provider used (ollama, openai, anthropic)
+          description: LLM provider used (ollama, openai, gemini, lmstudio)
         llmModel:
           type: string
           description: Model name used

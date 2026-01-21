@@ -35,8 +35,8 @@ window. A RAG approach with MCP standards validation was chosen for MVP.
 - Python MCP server with RAG-based schema retrieval
 - ChromaDB for embedding storage and similarity search
 - MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
-- Java backend calls MCP server via Streamable HTTP transport (SSE optional for
-  streaming)
+- **SchemaAgent** (Python A2A agent) calls MCP server via Streamable HTTP transport (SSE optional for streaming)
+- Java backend calls RouterAgent (not MCP directly)
 
 **References**:
 
@@ -62,38 +62,40 @@ Spring MVC architecture.
 | Provider                  | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                     |
 | ------------------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------- |
 | GPT-4o (OpenAI)           | 500-1000ms | $0.01-0.03/query | Data leaves network | 72%          | Fast development iteration   |
-| Claude Sonnet (Anthropic) | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Complex reasoning            |
+| Gemini 1.5 Pro (Google)  | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration   |
 | SQLCoder-7B (Ollama)      | 100-300ms  | Hardware only    | Fully air-gapped    | 70%+         | Privacy-sensitive production |
+| LM Studio (Local)         | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production |
 | Llama 3.2 3B (Ollama)     | 100-200ms  | Hardware only    | Fully air-gapped    | 65%          | Fallback/explanation         |
+
+**Note**: Performance/cost figures are estimates based on typical usage patterns. Actual values may vary by deployment, model version, and query complexity.
 
 **Recommended Strategy**:
 
-- **Development**: Cloud APIs (OpenAI/Anthropic) for rapid iteration
-- **Production**: SQLCoder-7B via Ollama for privacy compliance
+- **Development**: Cloud APIs (OpenAI/Gemini) for rapid iteration
+- **Production**: SQLCoder-7B via Ollama or LM Studio for privacy compliance
+- **Provider Switching**: Configured in agent runtime (`agents_config.yaml`), not Java backend
 
-**Dependencies** (pom.xml):
+**Agent Runtime Dependencies** (Python - `projects/catalyst/catalyst-agents/pyproject.toml`):
 
-```xml
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j</artifactId>
-    <version>1.10.0</version>
-</dependency>
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-ollama</artifactId>
-    <version>1.10.0</version>
-</dependency>
-<dependency>
-    <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-open-ai</artifactId>
-    <version>1.10.0</version>
-</dependency>
+```toml
+[project]
+dependencies = [
+    "a2a-sdk[http-server]>=0.3.22",  # A2A protocol + FastAPI/uvicorn
+    "openai>=1.0.0",  # OpenAI provider (for GPT-4o)
+    "google-generativeai>=0.3.0",  # Gemini provider
+    "ollama>=0.1.0",  # Ollama provider (local)
+    "httpx>=0.25.0",  # HTTP client for OpenAI-compatible APIs (LM Studio)
+]
 ```
+
+**Note**: LLM provider switching is implemented in SQLGenAgent (Python), not Java backend. Java backend only needs HTTP client for A2A agent communication.
 
 **References**:
 
-- [LangChain4j Documentation](https://docs.langchain4j.dev/)
+- [A2A Python SDK](https://pypi.org/project/a2a-sdk/)
+- [OpenAI Python SDK](https://github.com/openai/openai-python)
+- [Google Generative AI Python SDK](https://github.com/google/generative-ai-python)
+- [Ollama Python SDK](https://github.com/ollama/ollama-python)
 - [Ollama Documentation](https://ollama.com/)
 
 ---
@@ -263,27 +265,19 @@ public class SQLGuardrails {
 - Enable RAG-based schema retrieval at scale
 - Prepare for future A2A integration
 
-**MVP Implementation**: Python MCP Server (Official SDK)
+**MVP Implementation**: Python MCP Server (Official SDK) called by SchemaAgent
 
 ```python
-# pyproject.toml
+# pyproject.toml (projects/catalyst/catalyst-mcp/)
 dependencies = [
-    "mcp>=1.0.0",
-    "chromadb>=0.4.0",
-    "langchain>=0.1.0",
-    "psycopg2-binary>=2.9.0",
+    "mcp>=1.0.0",  # Official MCP Python SDK
+    "chromadb>=0.4.0",  # Vector store for RAG embeddings
+    "langchain>=0.1.0",  # Embedding generation utilities
+    "psycopg2-binary>=2.9.0",  # PostgreSQL schema extraction
 ]
 ```
 
-**Java Client**: MCP Java SDK for backend integration
-
-```xml
-<dependency>
-    <groupId>io.modelcontextprotocol</groupId>
-    <artifactId>mcp-java-sdk</artifactId>
-    <version>0.8.0</version>
-</dependency>
-```
+**Agent Integration**: SchemaAgent (Python) calls MCP server via Streamable HTTP transport. Java backend does NOT call MCP directly; it calls RouterAgent, which delegates to SchemaAgent.
 
 **MCP Tools for MVP**:
 
@@ -293,42 +287,53 @@ dependencies = [
 
 **References**:
 
-- [MCP Documentation](https://modelcontextprotocol.io/)
+- [MCP Official Documentation](https://modelcontextprotocol.io/)
+- [MCP Specification](https://modelcontextprotocol.io/specification/)
+- [MCP Transport: Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
-- [MCP Java SDK](https://github.com/modelcontextprotocol/java-sdk)
+- [MCP Python SDK Documentation](https://modelcontextprotocol.io/docs/python)
 
-### A2A Protocol (Agent2Agent) - Phase 2
+### A2A Protocol (Agent2Agent) - MVP ✅
 
 **What**: Google's open protocol for AI agent interoperability, donated to Linux
 Foundation (April 2025).
 
-**Why for Catalyst Phase 2**:
+**Why for Catalyst MVP** (Updated 2026-01-21):
 
-- Enable multi-agent orchestration (Router → SQL Generator → Validator)
-- Support external AI system collaboration
-- Standardized authentication and task delegation
+- Validate standards-based multi-agent architecture early
+- Simple 3-agent team: Router → Schema Agent → SQL Generator
+- Agent Cards for discovery per A2A specification
+- Single-agent fallback mode for simpler deployments
+- Based on med-agent-hub patterns
 
-**Java Implementation**: [a2ajava](https://github.com/vishalmysore/a2ajava)
+**Python Implementation** (MVP): [a2a-sdk](https://pypi.org/project/a2a-sdk/) (PyPI)
 
-```xml
-<dependency>
-    <groupId>io.github.vishalmysore</groupId>
-    <artifactId>a2ajava</artifactId>
-    <version>0.0.9</version>
-</dependency>
+```bash
+pip install a2a-sdk[http-server]  # Includes FastAPI/uvicorn support
 ```
+
+**Version**: 0.3.22+ (stable as of December 2025)
+
+**Java Client** (for backend-to-agent communication): HTTP client (Apache HttpClient or OkHttp) calling A2A agent runtime REST/JSON-RPC endpoints. No direct A2A Java SDK dependency needed for MVP.
 
 **References**:
 
-- [A2A Official Documentation](https://google.github.io/A2A/)
-- [A2A Specification](https://google.github.io/A2A/specification/)
+- [A2A Protocol Official Site](https://a2a-protocol.org/latest/)
+- [A2A Specification](https://a2a-protocol.org/latest/specification/)
+- [A2A Python SDK Documentation](https://a2a-protocol.org/latest/sdk/python/)
+- [A2A Python SDK API Reference](https://a2a-protocol.org/latest/sdk/python/api/)
+- [A2A Agent Card Schema](https://a2a-protocol.org/latest/specification/#agent-card)
 
 ### A2A + MCP Relationship
 
-| Protocol | Layer      | Purpose        | Catalyst Phase         |
-| -------- | ---------- | -------------- | ---------------------- |
-| **MCP**  | Vertical   | Agent-to-Tool  | MVP (schema retrieval) |
-| **A2A**  | Horizontal | Agent-to-Agent | Phase 2 (multi-agent)  |
+| Protocol | Layer      | Purpose        | Catalyst Phase          |
+| -------- | ---------- | -------------- | ----------------------- |
+| **MCP**  | Vertical   | Agent-to-Tool  | MVP (schema retrieval)  |
+| **A2A**  | Horizontal | Agent-to-Agent | MVP (3-agent team)      |
+
+**MVP Architecture**: RouterAgent (Python) orchestrates SchemaAgent (calls MCP tools) and SQLGenAgent (text-to-SQL via LLM). Java backend calls RouterAgent via A2A protocol; agents own all AI operations. Both A2A and MCP protocols validated in MVP.
+
+**Agent Card Discovery**: RouterAgent publishes Agent Card at `/.well-known/agent.json` (or `/.well-known/agent-card.json` per A2A SDK 0.3.x default). Required fields include `protocolVersions`, `name`, `description`, `url`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`.
 
 ---
 
@@ -404,6 +409,7 @@ Healthcare AI research platform with OpenMRS integration.
 | Cloud vs Local?       | Both (configurable)               | Cloud for dev speed, local for production privacy           |
 | Which chat component? | @carbon/ai-chat                   | Carbon compliance, official IBM support                     |
 | MCP in MVP?           | Yes (Python server)               | Validate standards early, support full schema via RAG       |
+| A2A in MVP?           | Yes (3-agent team)                | Validate multi-agent patterns early, med-agent-hub reference|
 | Which LLM providers?  | OpenAI, Gemini, Ollama, LM Studio | Cloud + local coverage, OpenAI-compatible API for LM Studio |
 | Schema handling?      | RAG via ChromaDB                  | Full clinical schema too large for context window           |
 | SQL validation?       | Multi-layer guardrails            | Defense in depth for security                               |
@@ -412,8 +418,8 @@ Healthcare AI research platform with OpenMRS integration.
 
 ## Phase Roadmap
 
-| Phase       | Scope                             | Standards              | Timeline    |
-| ----------- | --------------------------------- | ---------------------- | ----------- |
-| **MVP**     | MCP server + chat + SQL execution | MCP (schema retrieval) | 2-3 sprints |
-| **Phase 2** | Multi-agent refactor              | A2A + MCP (full)       | 2-3 sprints |
-| **Phase 3** | Reports, dashboards               | Full standards         | 4+ sprints  |
+| Phase       | Scope                                      | Standards                   | Timeline    |
+| ----------- | ------------------------------------------ | --------------------------- | ----------- |
+| **MVP**     | A2A agents + MCP server + chat + SQL exec  | A2A + MCP (full)            | 3-4 sprints |
+| **Phase 2** | Advanced orchestration, external federation | A2A extensions              | 2-3 sprints |
+| **Phase 3** | Reports, dashboards                        | Full standards              | 4+ sprints  |

@@ -7,11 +7,13 @@
 ## Overview
 
 This guide walks you through setting up and running the Catalyst MVP - a
-chat-to-SQL assistant for OpenELIS Global with MCP-based schema retrieval. By
-the end, you'll be able to ask natural language questions and get SQL results.
+chat-to-SQL assistant for OpenELIS Global with A2A multi-agent architecture and
+MCP-based schema retrieval. By the end, you'll be able to ask natural language
+questions and get SQL results.
 
-**Architecture**: Python MCP Server (schema RAG) → Java Backend (LLM
-orchestration) → React Frontend (Carbon chat UI)
+**Architecture**: Python A2A Agent Runtime (RouterAgent, SchemaAgent, SQLGenAgent)
+→ Python MCP Server (schema RAG) → Java Backend (OpenELIS integration + SQL execution)
+→ React Frontend (Carbon chat UI)
 
 ## Prerequisites
 
@@ -30,15 +32,20 @@ orchestration) → React Frontend (Carbon chat UI)
 ### Option A: Cloud API (Fastest - No GPU Required)
 
 ```bash
-# 1. Start MCP server + OpenELIS
+# 1. Start A2A agents + MCP server + OpenELIS
 docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 
-# 2. Set your API key (choose one)
-export CATALYST_LLM_PROVIDER=openai
+# 2. Configure LLM provider in agent config
+# Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
+#   llm:
+#     provider: openai  # or gemini, ollama, lmstudio
+#     openai:
+#       api_key: ${OPENAI_API_KEY}
+# Set environment variable:
 export OPENAI_API_KEY=sk-your-key-here
 # OR for Gemini:
-# export CATALYST_LLM_PROVIDER=gemini
 # export GOOGLE_API_KEY=your-google-api-key
+# (Update agents_config.yaml provider to "gemini")
 
 # 3. Build backend with Catalyst
 mvn clean install -DskipTests -Dmaven.test.skip=true
@@ -46,17 +53,24 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 # 4. Restart OpenELIS container
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 
-# 5. Test the endpoint
+# 5. Test the endpoint (Stage A: generate SQL)
 curl -k -X POST https://localhost/rest/catalyst/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
-  -d '{"query": "How many samples are in the database?"}'
+  -d '{"query": "How many samples are in the database?", "execute": false}'
+# Response includes queryId and confirmationToken
+
+# 6. Execute with confirmation (Stage B)
+curl -k -X POST https://localhost/rest/catalyst/query \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
+  -d '{"queryId": "...", "confirmationToken": "...", "execute": true}'
 ```
 
 ### Option B: Local LLM with Ollama (Privacy-First)
 
 ```bash
-# 1. Start MCP server + Ollama
+# 1. Start A2A agents + MCP server + Ollama
 docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 
 # 2. Pull SQLCoder model (~4GB download, first time only)
@@ -65,18 +79,26 @@ docker exec -it catalyst-ollama ollama pull sqlcoder:7b
 # 3. Verify model is ready
 curl http://localhost:11434/api/tags
 
-# 4. Configure for local LLM
-export CATALYST_LLM_PROVIDER=ollama
+# 4. Configure agent runtime for local LLM
+# Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
+#   llm:
+#     provider: ollama
+#     ollama:
+#       base_url: http://ollama:11434
+#       model: sqlcoder:7b
 
-# 5. Build and start OpenELIS
+# 5. Restart agent runtime to load config
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml restart catalyst-agents
+
+# 6. Build and start OpenELIS
 mvn clean install -DskipTests -Dmaven.test.skip=true
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 
-# 6. Test
+# 7. Test (generate SQL first, then execute with confirmation)
 curl -k -X POST https://localhost/rest/catalyst/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
-  -d '{"query": "How many samples are in the database?"}'
+  -d '{"query": "How many samples are in the database?", "execute": false}'
 ```
 
 ### Option C: LM Studio (Local with UI)
@@ -86,14 +108,21 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 # 2. Load a model (e.g., SQLCoder or Mistral)
 # 3. Start the local server (default: http://localhost:1234)
 
-# 4. Start MCP server only
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-mcp
+# 4. Start A2A agents + MCP server
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-agents catalyst-mcp
 
-# 5. Configure for LM Studio
-export CATALYST_LLM_PROVIDER=lmstudio
-export LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1
+# 5. Configure agent runtime for LM Studio
+# Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
+#   llm:
+#     provider: lmstudio
+#     lmstudio:
+#       base_url: http://host.docker.internal:1234/v1
+#       model: local-model
 
-# 6. Build and start OpenELIS
+# 6. Restart agent runtime to load config
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml restart catalyst-agents
+
+# 7. Build and start OpenELIS
 mvn clean install -DskipTests -Dmaven.test.skip=true
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 ```
@@ -102,21 +131,28 @@ docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.ope
 
 ## Step-by-Step Setup
 
-### Step 1: Start the MCP Schema Server
+### Step 1: Start the A2A Agent Runtime and MCP Schema Server
 
-The MCP server provides RAG-based schema retrieval:
+The agent runtime orchestrates query flow; the MCP server provides RAG-based schema retrieval:
 
 ```bash
-# Start just the MCP server for development
+# Start agents + MCP server via Docker (recommended)
+docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-agents catalyst-mcp
+
+# OR for local development:
+# Agent runtime:
+cd projects/catalyst/catalyst-agents
+python -m pip install -e .
+python -m src.main
+
+# MCP server (separate terminal):
 cd projects/catalyst/catalyst-mcp
 python -m pip install -e .
 python -m src.server
 
-# OR via Docker
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-mcp
-
-# Verify MCP server is running
-curl http://localhost:8000/health
+# Verify services are running
+curl http://localhost:8000/.well-known/agent.json  # RouterAgent discovery
+curl http://localhost:8001/health  # MCP server health (if implemented)
 ```
 
 ### Step 2: Initialize Schema Embeddings
@@ -133,33 +169,50 @@ docker exec catalyst-mcp python -m src.rag.init_embeddings
 # 3. Store in ChromaDB for similarity search
 ```
 
-### Step 3: Configure LLM Provider
+### Step 3: Configure LLM Provider (Agent Runtime)
+
+Edit `projects/catalyst/catalyst-agents/src/config/agents_config.yaml`:
+
+```yaml
+# LLM Provider Selection (openai, gemini, ollama, lmstudio)
+llm:
+  provider: ollama  # Change to openai, gemini, or lmstudio as needed
+  
+  # Cloud: OpenAI
+  openai:
+    model: gpt-4o
+    api_key: ${OPENAI_API_KEY}  # Set environment variable
+  
+  # Cloud: Google Gemini
+  gemini:
+    model: gemini-1.5-pro
+    api_key: ${GOOGLE_API_KEY}  # Set environment variable
+  
+  # Local: Ollama
+  ollama:
+    base_url: http://ollama:11434
+    model: sqlcoder:7b
+  
+  # Local: LM Studio (OpenAI-compatible)
+  lmstudio:
+    base_url: http://host.docker.internal:1234/v1
+    model: local-model
+
+# MCP Server (SchemaAgent uses this)
+mcp:
+  server_url: http://catalyst-mcp:8000/mcp
+```
+
+### Step 3b: Configure Java Backend
 
 Edit `volume/properties/catalyst.properties`:
 
 ```properties
-# LLM Provider Selection (openai, gemini, ollama, lmstudio)
-catalyst.llm.provider=ollama
+# A2A Agent Runtime
+catalyst.agents.mode=multi  # Options: multi, single
+catalyst.agents.url=http://catalyst-agents:8000
 
-# Cloud: OpenAI
-catalyst.llm.openai.model=gpt-4o
-
-# Cloud: Google Gemini
-catalyst.llm.gemini.model=gemini-1.5-pro
-
-# Local: Ollama
-catalyst.llm.ollama.base-url=http://ollama:11434
-catalyst.llm.ollama.model=sqlcoder:7b
-catalyst.llm.ollama.timeout=60s
-
-# Local: LM Studio (OpenAI-compatible)
-catalyst.llm.lmstudio.base-url=http://host.docker.internal:1234/v1
-catalyst.llm.lmstudio.model=local-model
-
-# MCP Server
-catalyst.mcp.server-url=http://catalyst-mcp:8000/mcp
-
-# Guardrails
+# Guardrails (enforced in Java backend)
 catalyst.guardrails.max-rows=10000
 catalyst.guardrails.query-timeout=30s
 catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
@@ -184,10 +237,7 @@ docker logs -f oe.openelis.org 2>&1 | grep -i catalyst
 ### Step 5: Verify Installation
 
 ```bash
-# Health check - should return provider + MCP status
-curl -k https://localhost/rest/catalyst/health
-
-# Test query generation (no execution)
+# Test query generation (Stage A: no execution)
 curl -k -X POST https://localhost/rest/catalyst/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
@@ -196,18 +246,32 @@ curl -k -X POST https://localhost/rest/catalyst/query \
     "execute": false
   }'
 
-# Expected response:
+# Expected response (Stage A):
 # {
-#   "queryId": "...",
+#   "queryId": "550e8400-e29b-41d4-a716-446655440000",
 #   "status": "GENERATED",
 #   "generatedSql": "SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE",
-#   "estimatedRows": 150
+#   "estimatedRows": 150,
+#   "confirmationToken": "abc123def456..."
 # }
+
+# Execute with confirmation (Stage B):
+curl -k -X POST https://localhost/rest/catalyst/query \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
+  -d '{
+    "queryId": "550e8400-e29b-41d4-a716-446655440000",
+    "confirmationToken": "abc123def456...",
+    "execute": true
+  }'
 ```
 
 ### Step 6: Run Tests
 
 ```bash
+# A2A Agent tests (pytest)
+cd projects/catalyst/catalyst-agents && pytest
+
 # MCP Server tests (pytest)
 cd projects/catalyst/catalyst-mcp && pytest
 
@@ -275,32 +339,52 @@ npm test -- --testPathPattern=catalyst
 
 ## Troubleshooting
 
+### Agent Runtime Issues
+
+```bash
+# Check agent runtime is running
+curl http://localhost:8000/.well-known/agent.json  # RouterAgent discovery
+
+# Check agent runtime logs
+docker logs catalyst-agents
+
+# Verify agent runtime can call MCP server
+docker logs catalyst-agents | grep -i "mcp\|schema"
+```
+
 ### MCP Server Issues
 
 ```bash
-# Check MCP server is running
-curl http://localhost:8000/health
+# Check MCP server is running (if health endpoint exists)
+curl http://localhost:8001/health
 
 # Check MCP server logs
 docker logs catalyst-mcp
 
-# Test MCP tool directly
-curl -X POST http://localhost:8000/tools/get_relevant_tables \
-  -H "Content-Type: application/json" \
-  -d '{"query": "samples entered today"}'
+# Test MCP tool directly (via MCP protocol, not HTTP)
+# Use MCP client tools or SchemaAgent to test
 ```
 
 ### LLM Connection Failed
 
 ```bash
+# Check agent runtime logs for LLM errors
+docker logs catalyst-agents | grep -i "llm\|provider\|error"
+
 # For Ollama
 curl http://localhost:11434/api/tags
 
-# For OpenAI (check API key)
+# For OpenAI (check API key and agent config)
 curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"
+# Verify agents_config.yaml has correct provider and api_key
 
-# For Gemini (check API key)
+# For Gemini (check API key and agent config)
 curl "https://generativelanguage.googleapis.com/v1/models?key=$GOOGLE_API_KEY"
+# Verify agents_config.yaml has correct provider and api_key
+
+# For LM Studio
+curl http://localhost:1234/v1/models
+# Verify agents_config.yaml has correct base_url
 ```
 
 ### SQL Generation Errors
@@ -329,10 +413,22 @@ The `projects/catalyst/catalyst-dev.docker-compose.yml` includes:
 
 ```yaml
 services:
+  catalyst-agents:
+    build: ./projects/catalyst/catalyst-agents
+    ports:
+      - "8000:8000"  # A2A agent runtime
+    environment:
+      - DATABASE_URL=postgresql://clinlims:clinlims@oe-postgres:5432/clinlims
+    depends_on:
+      - catalyst-mcp
+      - ollama  # If using Ollama provider
+    volumes:
+      - ./projects/catalyst/catalyst-agents/src/config:/app/config
+
   catalyst-mcp:
     build: ./projects/catalyst/catalyst-mcp
     ports:
-      - "8000:8000"
+      - "8001:8000"  # MCP server (different port to avoid conflict)
     environment:
       - DATABASE_URL=postgresql://clinlims:clinlims@oe-postgres:5432/clinlims
     depends_on:
@@ -370,8 +466,8 @@ services:
 
 After MVP validation:
 
-1. **Phase 2**: Add A2A Agent orchestration for multi-agent workflows
-2. **Phase 3**: Add report storage, scheduling, dashboard widgets
+1. **Phase 2**: Advanced multi-agent orchestration, external agent federation
+2. **Phase 3**: Report storage, scheduling, dashboard widgets
 
 ## Resources
 
