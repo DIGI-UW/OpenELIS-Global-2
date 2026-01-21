@@ -47,6 +47,11 @@ public class ReportDefinitionDAOImpl extends BaseDAOImpl<ReportDefinition, Strin
     }
 
     @Override
+    public List<ReportDefinition> getActiveDefinitions() {
+        return getAllActive();
+    }
+
+    @Override
     public List<ReportDefinition> getByCategory(String category) {
         try {
             String hql = "FROM ReportDefinition r WHERE r.category = :category ORDER BY r.name";
@@ -58,6 +63,11 @@ public class ReportDefinitionDAOImpl extends BaseDAOImpl<ReportDefinition, Strin
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in ReportDefinitionDAOImpl getByCategory()", e);
         }
+    }
+
+    @Override
+    public List<ReportDefinition> getDefinitionsByCategory(String category) {
+        return getByCategory(category);
     }
 
     @Override

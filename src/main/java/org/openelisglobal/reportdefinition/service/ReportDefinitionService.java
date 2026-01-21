@@ -11,23 +11,22 @@
  *
  * <p>Copyright (C) CIRG, University of Washington, Seattle WA. All Rights Reserved.
  */
-package org.openelisglobal.reportdefinition.dao;
+package org.openelisglobal.reportdefinition.service;
 
 import java.util.List;
-import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.reportdefinition.valueholder.ReportDefinition;
 
-public interface ReportDefinitionDAO extends BaseDAO<ReportDefinition, String> {
+/**
+ * Service interface for ReportDefinition CRUD operations.
+ *
+ * <p>
+ * Provides business logic for managing user-created ad-hoc report definitions.
+ */
+public interface ReportDefinitionService extends BaseObjectService<ReportDefinition, String> {
 
     /**
      * Get all active report definitions.
-     *
-     * @return list of active report definitions
-     */
-    List<ReportDefinition> getAllActive();
-
-    /**
-     * Get all active report definitions (alias for consistency).
      *
      * @return list of active report definitions
      */
@@ -37,23 +36,7 @@ public interface ReportDefinitionDAO extends BaseDAO<ReportDefinition, String> {
      * Get report definitions by category.
      *
      * @param category report category
-     * @return list of report definitions in the category
-     */
-    List<ReportDefinition> getByCategory(String category);
-
-    /**
-     * Get report definitions by category (alias for service consistency).
-     *
-     * @param category report category
-     * @return list of report definitions in the category
+     * @return list of report definitions matching the category
      */
     List<ReportDefinition> getDefinitionsByCategory(String category);
-
-    /**
-     * Get report definitions by creator.
-     *
-     * @param userId user ID
-     * @return list of report definitions created by the user
-     */
-    List<ReportDefinition> getByCreatedBy(String userId);
 }

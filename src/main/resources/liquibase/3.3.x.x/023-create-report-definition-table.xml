@@ -33,8 +33,8 @@
             <column name="description" type="TEXT"/>
             <column name="category" type="VARCHAR(100)"/>
 
-            <!-- Report Definition (JSON stored as JSONB for better PostgreSQL support) -->
-            <column name="definition_json" type="JSONB">
+            <!-- Report Definition (JSON stored as TEXT for better ORM compatibility) -->
+            <column name="definition_json" type="CLOB">
                 <constraints nullable="false"/>
             </column>
 
