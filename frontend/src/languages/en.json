@@ -6637,6 +6637,7 @@
   "virology.trials.efficacyOutcome": "Efficacy Outcome",
   "virology.trials.regulatorySubmission": "Regulatory Submission ID",
   "virology.trials.regulatoryStatus": "Regulatory Status",
+  "virology.trials.regulatoryStatus": "Regulatory Status",
   "biorepository.notebook.title": "Biorepository Laboratory",
   "biorepository.workflow.tag": "Biorepository",
   "biorepository.workflow.loading": "Loading Biorepository workflow...",
