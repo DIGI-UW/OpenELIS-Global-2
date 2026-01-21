@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "catalyst-agents"
+version = "0.0.1"
+description = "Catalyst A2A agent runtime for OpenELIS Global"
+authors = ["OpenELIS Global Team <team@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+fastapi = "^0.115.2"
+uvicorn = {extras = ["standard"], version = "^0.34.0"}
+httpx = "^0.28.1"
+python-dotenv = "^1.0.1"
+a2a-sdk = {extras = ["http-server"], version = "^0.3.22"}
+mcp = "^1.1.2"
+google-generativeai = "^0.8.3"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.23.8"
+honcho = "^1.1.0"
+setuptools = "^69.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

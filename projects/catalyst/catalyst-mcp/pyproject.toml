@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "catalyst-mcp"
+version = "0.0.1"
+description = "Catalyst MCP server (schema tools)"
+authors = ["OpenELIS Global Team <team@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+fastapi = "^0.115.2"
+uvicorn = {extras = ["standard"], version = "^0.34.0"}
+python-dotenv = "^1.0.1"
+mcp = "^1.1.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+honcho = "^1.1.0"
+setuptools = "^69.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
