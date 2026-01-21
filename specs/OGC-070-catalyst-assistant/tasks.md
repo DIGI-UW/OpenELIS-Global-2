@@ -15,7 +15,7 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 ## Total Task Count
 
-- **M0.0 (Foundation POC)**: 14 tasks (Router + CatalystAgent + MCP skeleton)
+- **M0.0 (Foundation POC)**: 20 tasks (Gateway + Router + CatalystAgent + MCP skeleton)
 - **M0.1 (Provider Switching)**: 4 tasks
 - **M0.2 (Agent Specialization)**: 10 tasks (split CatalystAgent)
 - **M1 (RAG-based Schema)**: 20 tasks (RAG + MCP tools + evaluation harness +
@@ -26,7 +26,7 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
   security)
 - **M5 (Security Features)**: ~17 tasks (RBAC, PHI detection, confirmation
   tokens, security tests)
-- **Total**: 164 tasks (sequentially renumbered, no duplicates)
+- **Total**: 170 tasks (sequentially renumbered, no duplicates)
 
 ---
 
@@ -57,6 +57,20 @@ schema retrieval - skeleton)
       `projects/catalyst/catalyst-agents/src/agent_cards/` directory
 - [ ] T003d [P] [M0.0] Create
       `projects/catalyst/catalyst-agents/tests/__init__.py`
+
+### M0.0.1a: Catalyst Gateway Skeleton (OpenAI-compatible entrypoint)
+
+- [ ] T003e [P] [M0.0] Create project directory structure
+      `projects/catalyst/catalyst-gateway/` with src/, tests/
+- [ ] T003f [P] [M0.0] Create `projects/catalyst/catalyst-gateway/pyproject.toml`
+      with dependencies: fastapi, uvicorn, httpx, a2a-sdk (client only)
+- [ ] T003g [P] [M0.0] Create `projects/catalyst/catalyst-gateway/src/__init__.py`
+- [ ] T003h [P] [M0.0] Create `projects/catalyst/catalyst-gateway/src/gateway.py`
+      skeleton with `/v1/chat/completions` endpoint (OpenAI-compatible)
+- [ ] T003i [P] [M0.0] Create `projects/catalyst/catalyst-gateway/src/a2a_client.py`
+      skeleton for A2A client to call RouterAgent
+- [ ] T003j [P] [M0.0] Create `projects/catalyst/catalyst-gateway/src/config.py`
+      for Gateway configuration
 
 ### M0.0.2: MCP Skeleton Test (TDD - MANDATORY)
 
@@ -513,7 +527,7 @@ endpoint access) deferred to M4
 - [ ] T079 [M2] Format code with `mvn spotless:apply` (MANDATORY before commit)
 - [ ] T080 [M2] Build backend with
       `mvn clean install -DskipTests -Dmaven.test.skip=true`
-- [ ] T081 [M2] Verify A2A client can call RouterAgent (integration check)
+- [ ] T081 [M2] Verify Gateway client can call Catalyst Gateway (integration check)
 - [ ] T082 [M2] Create PR `feat/OGC-070-catalyst-assistant-m2-backend-core` →
       `develop`
 

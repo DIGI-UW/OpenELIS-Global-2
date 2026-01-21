@@ -406,7 +406,7 @@ applicable to healthcare AI:
 
 **TxGemma Agentic-Tx Pattern**:
 
-- Cognitive Orchestrator (Gemini) → Catalyst Router Agent
+- Cognitive Orchestrator (Gemini) → Catalyst RouterAgent
 - Specialist Analyst (TxGemma) → Catalyst SQL Generator Agent
 - Built-in guardrails → Catalyst Validator Agent
 

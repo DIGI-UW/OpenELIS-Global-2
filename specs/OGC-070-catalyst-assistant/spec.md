@@ -35,7 +35,7 @@
   ecosystem and rapid tooling.
 - Q: Should MVP architecture be designed for agent extraction? → A: MVP should
   prototype a **simple multi-agent team** based on med-agent-hub patterns and
-  A2A spec: Router Agent + specialist agents (Schema, SQLGen). Single-agent
+  A2A spec: RouterAgent + specialist agents (SchemaAgent, SQLGenAgent). Single-agent
   fallback for simpler deployments/dev/testing.
 
 ## User Scenarios & Testing _(mandatory)_
@@ -277,7 +277,7 @@ This delivers enhanced usability and workflow integration.
 - **FR-020**: System MUST implement a simple multi-agent team using A2A
   (Agent2Agent) protocol patterns based on med-agent-hub concepts:
 
-  - (a) **Router Agent**: Orchestrates query flow, delegates to specialists
+  - (a) **RouterAgent**: Orchestrates query flow, delegates to specialists
   - (b) **Schema Agent**: RAG-based schema retrieval via MCP tools
   - (c) **SQL Generator Agent**: Text-to-SQL generation using configured LLM
   - (d) Each agent MUST have an Agent Card for discovery per A2A specification

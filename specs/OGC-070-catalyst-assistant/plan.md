@@ -19,7 +19,7 @@ protocol + MCP for tools).
 **Key Architectural Decisions**:
 
 1. **A2A Multi-Agent Team (MVP)**: Simple 3-agent team based on med-agent-hub
-   patterns - Router Agent (orchestration), Schema Agent (RAG via MCP), SQL
+   patterns - RouterAgent (orchestration), SchemaAgent (RAG via MCP), SQL
    Generator Agent (text-to-SQL). Single-agent fallback mode for simpler
    deployments.
 2. **MCP for Tools**: Standalone Python MCP server for schema retrieval and SQL
