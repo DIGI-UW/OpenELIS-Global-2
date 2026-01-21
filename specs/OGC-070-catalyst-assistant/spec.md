@@ -9,12 +9,12 @@
 
 ### Session 2026-01-21
 
-- Q: How do we prevent Catalyst from becoming a high-privilege reporting backdoor
-  that bypasses existing OpenELIS permission and data-partitioning rules? → A:
-  MVP restricts endpoint access to users with privileged roles (`Global
-  Administrator` or `Reports`). These users already have cross-cutting data
-  access in existing OpenELIS workflows. Per-user row-level filtering deferred
-  to Phase 2.
+- Q: How do we prevent Catalyst from becoming a high-privilege reporting
+  backdoor that bypasses existing OpenELIS permission and data-partitioning
+  rules? → A: MVP restricts endpoint access to users with privileged roles
+  (`Global Administrator` or `Reports`). These users already have cross-cutting
+  data access in existing OpenELIS workflows. Per-user row-level filtering
+  deferred to Phase 2.
 
 ### Session 2026-01-20
 
@@ -322,8 +322,8 @@ This delivers enhanced usability and workflow integration.
   (`/rest/catalyst/query`) to users with privileged roles. For MVP, access is
   limited to users with `Global Administrator` or `Reports` roles. This ensures
   Catalyst does not become a backdoor bypassing existing OpenELIS permission and
-  data-partitioning rules. Users without these roles MUST receive a 403 Forbidden
-  response.
+  data-partitioning rules. Users without these roles MUST receive a 403
+  Forbidden response.
 
   **Note**: This leverages OpenELIS's existing RBAC infrastructure
   (`UserRoleService.userInRole()`). Per-user row-level filtering within queries
@@ -377,8 +377,10 @@ principles for this feature:_
   configurable, not hardcoded.
 
 - **CR-007**: Security: MVP authorization is enforced at two levels:
-  - **Endpoint-level**: Access to `/rest/catalyst/query` restricted to privileged
-    roles (`Global Administrator`, `Reports`) via `UserRoleService` (FR-021)
+
+  - **Endpoint-level**: Access to `/rest/catalyst/query` restricted to
+    privileged roles (`Global Administrator`, `Reports`) via `UserRoleService`
+    (FR-021)
   - **Table-level**: Blocked-table list prevents queries to sensitive tables
     (FR-013)
   - Per-user row-level filtering is deferred to Phase 2
@@ -493,8 +495,8 @@ principles for this feature:_
   OpenELIS database schema. It cannot access external data sources or generate
   data that doesn't exist.
 - **Access Control Constraint (MVP)**: Catalyst authorization is enforced at two
-  levels: (1) **Endpoint-level** - access restricted to users with `Global
-  Administrator` or `Reports` roles (FR-021), and (2) **Table-level** -
+  levels: (1) **Endpoint-level** - access restricted to users with
+  `Global Administrator` or `Reports` roles (FR-021), and (2) **Table-level** -
   blocked-table list prevents queries to sensitive tables (FR-013). Per-user
   row-level RBAC (filtering query results based on user's facility/patient
   access) is deferred to Phase 2.

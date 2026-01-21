@@ -385,9 +385,10 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
 - Full E2E test proving chat→agents→SQL→results flow
 - Single-agent fallback mode toggle
 - **Security features** (deferred from M0/M2):
-  - **Role-based endpoint access control (FR-021)**: Restrict `/rest/catalyst/query`
-    to users with `Global Administrator` or `Reports` roles using
-    `UserRoleService.userInRole()`. Return 403 Forbidden for unauthorized users.
+  - **Role-based endpoint access control (FR-021)**: Restrict
+    `/rest/catalyst/query` to users with `Global Administrator` or `Reports`
+    roles using `UserRoleService.userInRole()`. Return 403 Forbidden for
+    unauthorized users.
   - PHI detection in RouterAgent (FR-018)
   - Provider routing for PHI-flagged queries
   - Confirmation token generation and validation (FR-016)

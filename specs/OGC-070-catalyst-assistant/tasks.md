@@ -533,7 +533,8 @@ translations
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m4-integration-security`  
 **Goal**: Wire all components, implement REST controller, add security features
-(role-based endpoint access, PHI detection, confirmation tokens), create E2E test  
+(role-based endpoint access, PHI detection, confirmation tokens), create E2E
+test  
 **Verification**: Controller integration tests pass (including role check), E2E
 test passes (chat→agents→SQL→results), security features work (FR-021, FR-016,
 FR-018)
@@ -594,20 +595,21 @@ FR-018)
 
 - [ ] T099a [P] [M4] Write integration test for role-based access control in
       `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerTest.java`:
-      test that users with `Global Administrator` role can access endpoint,
-      test that users with `Reports` role can access endpoint,
-      test that users without these roles receive 403 Forbidden
+      test that users with `Global Administrator` role can access endpoint, test
+      that users with `Reports` role can access endpoint, test that users
+      without these roles receive 403 Forbidden
 - [ ] T099b [M4] Implement role check in CatalystRestController: inject
-      `UserRoleService`, check `userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)`
-      or `userInRole(sysUserId, Constants.ROLE_REPORTS)` before processing request.
-      Return 403 Forbidden if user lacks required roles.
-      (Pattern: see `PatientMergeRestController` and `StorageLocationRestController`)
+      `UserRoleService`, check
+      `userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)` or
+      `userInRole(sysUserId, Constants.ROLE_REPORTS)` before processing request.
+      Return 403 Forbidden if user lacks required roles. (Pattern: see
+      `PatientMergeRestController` and `StorageLocationRestController`)
 - [ ] T099c [M4] Write Cypress E2E test in `frontend/cypress/e2e/catalyst.cy.js`
       verifying that non-privileged users cannot access Catalyst (shows access
       denied message)
 - [ ] T099d [M4] Add user-friendly "Access Denied" UI message in
-      `frontend/src/components/catalyst/CatalystSidebar.jsx` when backend returns
-      403 (i18n key: `catalyst.error.accessDenied`)
+      `frontend/src/components/catalyst/CatalystSidebar.jsx` when backend
+      returns 403 (i18n key: `catalyst.error.accessDenied`)
 
 ### M4.6: Security Features (Deferred from M0/M2)
 
