@@ -140,38 +140,47 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 **Files to Create**:
 
 ```
-projects/catalyst/
+projects/catalyst/catalyst-agents/
 ├── pyproject.toml                    # a2a-sdk, mcp, httpx, google-generativeai
-├── server/
+├── src/
 │   ├── __init__.py
 │   ├── config.py                     # LLM + endpoint configuration
 │   ├── llm_clients.py                # LLM provider abstraction
-│   ├── sdk_agents/
+│   ├── agents/
 │   │   ├── __init__.py
 │   │   ├── router_executor.py        # Simple delegation logic
 │   │   ├── router_server.py          # FastAPI + A2A SDK server
 │   │   ├── catalyst_executor.py      # Schema retrieval + SQL generation
 │   │   └── catalyst_server.py        # FastAPI + A2A SDK server
-│   ├── mcp/
-│   │   ├── __init__.py
-│   │   └── schema_tools.py           # Hardcoded get_schema tool (3-5 tables)
-│   └── agent_cards/
-│       ├── router.json               # RouterAgent card
-│       └── catalyst.json             # CatalystAgent card
+│   ├── agent_cards/
+│   │   ├── router.json               # RouterAgent card
+│   │   └── catalyst.json             # CatalystAgent card
+│   └── config/
+│       └── agents_config.yaml        # LLM provider configuration
 ├── tests/
 │   ├── test_router.py
 │   ├── test_catalyst_agent.py
-│   └── test_mcp_tools.py
+│   └── test_integration.py
 └── .well-known/
     └── agent.json                    # Points to RouterAgent for discovery
+
+projects/catalyst/catalyst-mcp/
+├── pyproject.toml                    # mcp, chromadb, langchain, psycopg2
+├── src/
+│   ├── __init__.py
+│   └── tools/
+│       └── schema_tools.py           # Hardcoded get_schema tool (3-5 tables)
+└── tests/
+    └── test_mcp_tools.py
 ```
 
 **Verification**:
 
 ```bash
 # Start agent servers
-python -m server.sdk_agents.router_server &
-python -m server.sdk_agents.catalyst_server &
+cd projects/catalyst/catalyst-agents
+python -m src.agents.router_server &
+python -m src.agents.catalyst_server &
 
 # Test end-to-end flow
 curl -X POST http://localhost:9100/task \
@@ -190,21 +199,25 @@ curl -X POST http://localhost:9100/task \
 
 **Scope**:
 
-- Add Gemini provider to SQLGenAgent (cloud)
+- Add Gemini provider to CatalystAgent (cloud)
 - LM Studio already implemented in M0.0 (local)
 - Config-driven switching between cloud and local providers
+- **2026 Best Practices**:
+  - Gemini: use structured outputs/function calling for reliable SQL JSON format
+  - LM Studio: model-dependent tool calling (prefer native tool support models)
 
 **Files to Modify/Create**:
 
 ```
 projects/catalyst/catalyst-agents/
 ├── src/
+│   ├── llm_clients.py                     # Add Gemini provider
 │   ├── agents/
-│   │   └── sqlgen_agent.py                # Add provider abstraction
+│   │   └── catalyst_executor.py           # Update to use provider abstraction
 │   └── config/
 │       └── agents_config.yaml             # Provider configuration
 ├── tests/
-│   └── test_provider_switching.py         # Verify both providers
+│   └── test_catalyst_agent.py             # Verify both providers
 ```
 
 **Verification**:
@@ -237,7 +250,7 @@ CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 **Files to Create/Modify**:
 
 ```
-projects/catalyst/server/sdk_agents/
+projects/catalyst/catalyst-agents/src/agents/
 ├── schema_executor.py                # New: schema retrieval
 ├── schema_server.py                  # New: FastAPI + A2A SDK
 ├── sqlgen_executor.py                # New: SQL generation only
@@ -245,7 +258,7 @@ projects/catalyst/server/sdk_agents/
 ├── router_executor.py                # Modified: orchestrate 2 agents
 └── catalyst_executor.py              # Kept for single-agent fallback
 
-projects/catalyst/server/agent_cards/
+projects/catalyst/catalyst-agents/src/agent_cards/
 ├── router.json                       # Updated: knows about schema + sqlgen
 ├── schema.json                       # New
 └── sqlgen.json                       # New
@@ -270,23 +283,30 @@ projects/catalyst/server/agent_cards/
 - Add MCP tools: `get_relevant_tables`, `get_table_ddl`, `get_relationships`
 - SchemaAgent calls real MCP tools via Streamable HTTP
 - Docker container for MCP server
+- **2026 Best Practices**:
+  - MCP Streamable HTTP conformance test (protocol version header + session
+    handling)
+  - PostgreSQL introspection via `pg_catalog` (authoritative FK/constraint data)
+  - ChromaDB operational guardrails (version pinning, persistence, rebuild
+    procedure)
+  - Evaluation harness (golden queries, Recall@K, execution accuracy)
 
 **Files to Create/Modify**:
 
 ```
-projects/catalyst/server/mcp/
-├── schema_tools.py                   # Modified: real PostgreSQL extraction
-├── relationship_tools.py             # New: get_relationships
-├── rag/
-│   ├── __init__.py
-│   ├── retriever.py                  # ChromaDB retriever
-│   └── embeddings.py                 # Embedding generation
-└── db/
-    ├── __init__.py
-    └── schema_extractor.py           # PostgreSQL introspection
-
-projects/catalyst/
-├── Dockerfile.mcp                    # New: MCP server container
+projects/catalyst/catalyst-mcp/
+├── src/
+│   ├── tools/
+│   │   ├── schema_tools.py           # Modified: real PostgreSQL extraction
+│   │   └── relationship_tools.py     # New: get_relationships
+│   ├── rag/
+│   │   ├── __init__.py
+│   │   ├── retriever.py              # ChromaDB retriever
+│   │   └── embeddings.py             # Embedding generation
+│   └── db/
+│       ├── __init__.py
+│       └── schema_extractor.py       # PostgreSQL introspection
+├── Dockerfile                        # MCP server container
 └── tests/
     ├── test_rag_retrieval.py         # New: RAG tests
     └── test_schema_extraction.py     # New: PostgreSQL tests
@@ -295,8 +315,11 @@ projects/catalyst/
 **Verification**:
 
 - pytest: All MCP tool tests pass with real schema
-- MCP server responds to tool calls via Streamable HTTP
+- MCP server responds to tool calls via Streamable HTTP (with protocol version
+  header + session ID)
 - SchemaAgent retrieves relevant tables based on query semantics
+- Evaluation harness: Recall@K ≥70% for relevant tables, execution accuracy ≥75%
+  for golden query set
 
 ---
 

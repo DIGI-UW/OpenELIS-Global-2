@@ -52,17 +52,20 @@ window. A RAG approach with MCP standards validation was chosen for MVP.
 
 ## 2. LLM Provider Selection
 
-### Decision: LangChain4j Core Modules with Provider Switching
+### Decision: Provider Switching in Python Agents (SDK-native + OpenAI-compatible)
 
-**Rationale**: LangChain4j provides a unified Java API across providers. Using
-core modules (not Spring Boot starters) aligns with OpenELIS's Traditional
-Spring MVC architecture.
+**Rationale**: In the MVP architecture, **SQL generation happens in Python
+agents** (CatalystAgent / SQLGenAgent), not in the Java backend. Provider
+switching should therefore be implemented in the agent runtime using
+provider-native Python SDKs (Gemini) and a small HTTP client wrapper for
+OpenAI-compatible endpoints (LM Studio). The Java backend only needs an HTTP
+client to call the RouterAgent and never calls LLM APIs directly.
 
 **Provider Comparison**:
 
 | Provider                | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                                                   |
 | ----------------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------------------------------------- |
-| Gemini 1.5 Pro (Google) | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration                                 |
+| Gemini (Cloud)          | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration                                 |
 | LM Studio (Local)       | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production with OpenAI-compatible models |
 
 **Note**: Performance/cost figures are estimates based on typical usage
@@ -97,6 +100,8 @@ Java backend. Java backend only needs HTTP client for A2A agent communication.
 - [A2A Python SDK](https://pypi.org/project/a2a-sdk/)
 - [Google Generative AI Python SDK](https://github.com/google/generative-ai-python)
 - [LM Studio](https://lmstudio.ai/) (OpenAI-compatible local inference)
+- [Gemini Structured Output](https://ai.google.dev/gemini-api/docs/structured-output)
+- [Gemini Function Calling](https://ai.google.dev/gemini-api/docs/function-calling)
 
 ---
 
@@ -108,6 +113,13 @@ Java backend. Java backend only needs HTTP client for A2A agent communication.
 OpenAI-compatible API, and works well with OpenAI-compatible models. Runs on
 host machine (not Docker), simplifying GPU access.
 
+### 2026 Update: Tool Calling + OpenAI-Compatible Responses API
+
+Recent LM Studio versions support **tool/function calling** and a more complete
+OpenAI-compatible API surface (including `/v1/responses`). For Catalyst, this
+matters because structured outputs (or tool calling) can improve reliability of
+the “return SQL only” step, but correctness is still **model-dependent**.
+
 **Setup**:
 
 1. Download LM Studio from https://lmstudio.ai/
@@ -115,6 +127,15 @@ host machine (not Docker), simplifying GPU access.
 3. Start local server (default: http://localhost:1234/v1)
 4. Configure agent runtime to use `http://host.docker.internal:1234/v1` as
    base_url
+
+**Operational Caveat (Linux + Docker)**:
+
+`host.docker.internal` is not guaranteed on all Linux/Docker setups. If the
+agent runtime runs inside Docker on Linux, plan to use one of:
+
+- Docker host-gateway mapping (recommended)
+- An explicit host IP on the Docker bridge network
+- Running the local model server in-network (separate container)
 
 **Model Selection**:
 
@@ -130,6 +151,8 @@ host machine (not Docker), simplifying GPU access.
 **References**:
 
 - [LM Studio](https://lmstudio.ai/) (OpenAI-compatible local inference)
+- [LM Studio Tools / Function Calling](https://lmstudio.ai/docs/developer/core/tools)
+- [LM Studio OpenAI-compatible API](https://lmstudio.ai/docs/app/api/endpoints/openai/)
 
 ---
 
@@ -178,7 +201,9 @@ never patient data.
 
 **Implementation**:
 
-1. **Schema Context Generation**: Extract DDL from `information_schema.columns`
+1. **Schema Context Generation**: Extract schema metadata and relationships from
+   PostgreSQL catalogs (prefer `pg_catalog` for authoritative FK/constraint data;
+   `information_schema` is acceptable only for simple column listings)
 2. **Prompt Construction**: Include only schema + user question
 3. **SQL Execution**: Separate step, LLM never sees results
 4. **Read-Only Connection**: Dedicated PostgreSQL user with SELECT-only
@@ -281,6 +306,18 @@ delegates to SchemaAgent.
 - [MCP Transport: Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
 - [MCP Python SDK Documentation](https://modelcontextprotocol.io/docs/python)
+
+### 2026 Implementation Note: Streamable HTTP Protocol Version Header
+
+The Streamable HTTP transport spec (2025-11-25) introduces stricter requirements
+for HTTP requests, including the `MCP-Protocol-Version` header and session ID
+handling (`MCP-Session-Id`). For Catalyst, best practice is to:
+
+- Pin MCP SDK versions in `pyproject.toml`
+- Add a minimal conformance test that:
+  - initializes a client session
+  - lists tools
+  - calls the MVP tool (`get_schema`) and later `get_relevant_tables`
 
 ### A2A Protocol (Agent2Agent) - MVP ✅
 
@@ -404,7 +441,7 @@ Healthcare AI research platform with OpenMRS integration.
 
 | Question              | Decision                 | Rationale                                                    |
 | --------------------- | ------------------------ | ------------------------------------------------------------ |
-| Which LLM framework?  | LangChain4j core modules | Java-native, provider-agnostic, no Spring Boot dependency    |
+| Which LLM framework?  | Provider-native Python SDKs | Agents own LLM calls; Java backend is HTTP client only     |
 | Cloud vs Local?       | Both (configurable)      | Cloud for dev speed, local for production privacy            |
 | Which chat component? | @carbon/ai-chat          | Carbon compliance, official IBM support                      |
 | MCP in MVP?           | Yes (Python server)      | Validate standards early, support full schema via RAG        |
@@ -414,6 +451,73 @@ Healthcare AI research platform with OpenMRS integration.
 | SQL validation?       | Multi-layer guardrails   | Defense in depth for security                                |
 
 ---
+
+## 10. Text-to-SQL RAG Evaluation (2026 Best Practice)
+
+### Why This Matters
+
+For large schemas, **schema retrieval quality dominates SQL generation quality**.
+Without an evaluation harness, it is easy to make changes that improve some
+prompts but regress overall correctness.
+
+### Recommended MVP Evaluation Harness
+
+1. **Golden Query Set**:
+   - 25–50 natural-language questions covering the MVP “top 5” query types
+     (counts, joins, date filters, aggregations, turnaround time).
+2. **Retrieval Metrics** (for schema RAG):
+   - Recall@K for relevant tables (e.g., are all required tables in top K?)
+   - Optional: MRR if you add reranking.
+3. **SQL Metrics**:
+   - Syntax validity rate
+   - Execution accuracy: compare results to expected results on a seeded dataset.
+4. **Error Taxonomy** (to guide iteration):
+   - wrong table/column
+   - missing join / wrong join
+   - wrong filter column/value
+   - wrong aggregation/grouping
+
+**References**:
+
+- [Ragas Text-to-SQL Evaluation Howto](https://docs.ragas.io/en/v0.3.5/howtos/applications/text2sql/)
+- [CSR-RAG (Enterprise Text-to-SQL RAG)](https://arxiv.org/abs/2601.06564)
+
+---
+
+## 11. PostgreSQL Schema Introspection (2026 Best Practice)
+
+### Decision: Prefer `pg_catalog` for authoritative relationships
+
+`information_schema` is convenient and portable, but `pg_catalog` is more
+complete (FK actions, validation state, richer constraint metadata). Since
+OpenELIS is PostgreSQL-first, the MCP schema extraction should primarily use
+`pg_catalog` for relationship/constraint extraction.
+
+**References**:
+
+- [PostgreSQL: `pg_constraint` catalog](https://www.postgresql.org/docs/current/catalog-pg-constraint.html)
+- [PostgreSQL: Information Schema](https://www.postgresql.org/docs/current/information-schema.html)
+
+---
+
+## 12. ChromaDB Operational Considerations (2026)
+
+### Key Risks
+
+- Persistence and storage format changes across versions
+- HNSW parameter tuning tradeoffs (latency vs recall)
+- Need for rebuild/backfill strategy when embeddings change
+
+### Recommended MVP Guardrails
+
+- Pin ChromaDB version in `pyproject.toml`
+- Use an explicit persist directory/volume
+- Document “rebuild embeddings” procedure (extract schema → embed → persist)
+
+**References**:
+
+- [Chroma Persistent Client](https://docs.trychroma.com/docs/run-chroma/persistent-client)
+- [Chroma Performance Tips](https://cookbook.chromadb.dev/running/performance-tips/)
 
 ## Phase Roadmap
 

@@ -152,60 +152,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /query/{queryId}/execute:
-    post:
-      tags:
-        - Query
-      summary: Execute previously generated SQL (Alternative endpoint)
-      description: |
-        **Alternative to single-endpoint workflow**: Executes SQL that was previously 
-        generated and reviewed by the user. This endpoint is provided for convenience
-        but the primary workflow uses POST /query with execute=true + confirmationToken.
-        
-        **Note**: For MVP, this endpoint may be deprecated in favor of the single-endpoint
-        confirmation token workflow. Both endpoints require confirmation validation.
-      operationId: executeQuery
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: queryId
-          in: path
-          required: true
-          description: ID of the previously generated query
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                maxRows:
-                  type: integer
-                  default: 10000
-                  description: Maximum rows to return
-      responses:
-        '200':
-          description: Query executed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QueryResponse'
-        '404':
-          description: Query not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Query already executed or in invalid state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
   /history:
     get:
       tags:
