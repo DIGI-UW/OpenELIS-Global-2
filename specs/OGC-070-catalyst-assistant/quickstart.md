@@ -179,13 +179,13 @@ llm:
 
   # Cloud: Google Gemini
   gemini:
-    model: latest  # Use most recent available Gemini model
+    model: latest # Use most recent available Gemini model
     api_key: ${GOOGLE_API_KEY} # Set environment variable
 
   # Local: LM Studio (OpenAI-compatible)
   lmstudio:
     base_url: http://host.docker.internal:1234/v1
-    model: local-model  # Use most recent available OpenAI-compatible model
+    model: local-model # Use most recent available OpenAI-compatible model
 
 # MCP Server (SchemaAgent uses this)
 mcp:

@@ -14,8 +14,7 @@
   row-level RBAC deferred to Phase 2.
 - Q: Must the MVP support specific providers like Google Gemini and LM Studio? →
   A: Yes, MVP MUST support Gemini (Cloud) and LM Studio (Local via
-  OpenAI-compatible API). These 2 providers are
-  sufficient for MVP validation.
+  OpenAI-compatible API). These 2 providers are sufficient for MVP validation.
 - Q: How to handle large schema context for MVP? → A: RAG/MCP-based approach
   required to support full clinical schema (filtering relevant tables via
   embeddings).

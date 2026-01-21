@@ -134,23 +134,23 @@ public enum ExecutionStatus {
 
 ### Field Descriptions
 
-| Field              | Type         | Description                                         | Required                       |
-| ------------------ | ------------ | --------------------------------------------------- | ------------------------------ |
-| id                 | VARCHAR(36)  | UUID primary key                                    | Yes                            |
-| user_query         | TEXT         | Original natural language question                  | Yes                            |
-| generated_sql      | TEXT         | LLM-generated SQL statement                         | No (null if generation failed) |
-| execution_status   | VARCHAR(50)  | Current status (enum)                               | Yes                            |
-| row_count          | INTEGER      | Rows returned                                       | No (null if not executed)      |
-| execution_time_ms  | INTEGER      | Execution duration                                  | No                             |
-| error_message      | TEXT         | Error details                                       | No                             |
-| sys_user_id        | INTEGER      | User who submitted query                            | Yes                            |
-| lastupdated        | TIMESTAMP    | Last modification time                              | Yes                            |
-| provider_type      | VARCHAR(50)  | Provider type (external/on-premises)                | No (FR-019)                    |
-| provider_id        | VARCHAR(50)  | Provider identifier (gemini, lmstudio) | No (FR-019)                    |
-| llm_model          | VARCHAR(100) | Model name                                          | No                             |
-| phi_gated          | BOOLEAN      | Whether PHI detection triggered gating              | No (FR-019)                    |
-| tables_used        | TEXT         | Comma-separated table names (NOT raw DDL)           | No (FR-019)                    |
-| confirmation_token | VARCHAR(255) | Token for execution confirmation                    | No (FR-016)                    |
+| Field              | Type         | Description                               | Required                       |
+| ------------------ | ------------ | ----------------------------------------- | ------------------------------ |
+| id                 | VARCHAR(36)  | UUID primary key                          | Yes                            |
+| user_query         | TEXT         | Original natural language question        | Yes                            |
+| generated_sql      | TEXT         | LLM-generated SQL statement               | No (null if generation failed) |
+| execution_status   | VARCHAR(50)  | Current status (enum)                     | Yes                            |
+| row_count          | INTEGER      | Rows returned                             | No (null if not executed)      |
+| execution_time_ms  | INTEGER      | Execution duration                        | No                             |
+| error_message      | TEXT         | Error details                             | No                             |
+| sys_user_id        | INTEGER      | User who submitted query                  | Yes                            |
+| lastupdated        | TIMESTAMP    | Last modification time                    | Yes                            |
+| provider_type      | VARCHAR(50)  | Provider type (external/on-premises)      | No (FR-019)                    |
+| provider_id        | VARCHAR(50)  | Provider identifier (gemini, lmstudio)    | No (FR-019)                    |
+| llm_model          | VARCHAR(100) | Model name                                | No                             |
+| phi_gated          | BOOLEAN      | Whether PHI detection triggered gating    | No (FR-019)                    |
+| tables_used        | TEXT         | Comma-separated table names (NOT raw DDL) | No (FR-019)                    |
+| confirmation_token | VARCHAR(255) | Token for execution confirmation          | No (FR-016)                    |
 
 ---
 

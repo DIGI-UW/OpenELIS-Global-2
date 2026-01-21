@@ -59,8 +59,9 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 ### M0.0.3: SQLGenAgent Implementation
 
 - [ ] T014 [M0.0] Implement SQLGenAgent in
-      `projects/catalyst/catalyst-agents/src/agents/sqlgen_agent.py` with LM Studio
-      provider only (OpenAI-compatible API) and hardcoded schema context (3-5 sample tables as string)
+      `projects/catalyst/catalyst-agents/src/agents/sqlgen_agent.py` with LM
+      Studio provider only (OpenAI-compatible API) and hardcoded schema context
+      (3-5 sample tables as string)
 
 ### M0.0.4: Agent Server & Discovery
 
@@ -101,8 +102,8 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
       `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` in
       SQLGenAgent
 - [ ] T018 [M0.1] Create agent configuration in
-      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with both
-      providers (Gemini, LM Studio)
+      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with
+      both providers (Gemini, LM Studio)
 
 ### M0.1.3: Verification & PR
 
@@ -643,7 +644,8 @@ Task T064: "Create CatalystQueryResponse"
 ### Constitution Checkpoints (MANDATORY)
 
 - **After M0.0**: SQLGenAgent test MUST pass, agent returns SQL
-- **After M0.1**: Provider switching tests MUST pass, both providers (Gemini + LM Studio) work
+- **After M0.1**: Provider switching tests MUST pass, both providers (Gemini +
+  LM Studio) work
 - **After M0.2**: Multi-agent tests MUST pass, RouterAgent delegates correctly
 - **After M1**: MCP tests MUST pass, MCP tools callable
 - **After M2**: ORM test + unit tests MUST pass (>80% coverage)

@@ -60,9 +60,9 @@ Spring MVC architecture.
 
 **Provider Comparison**:
 
-| Provider                | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                     |
-| ----------------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------- |
-| Gemini 1.5 Pro (Google) | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration   |
+| Provider                | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                                                   |
+| ----------------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------------------------------------- |
+| Gemini 1.5 Pro (Google) | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration                                 |
 | LM Studio (Local)       | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production with OpenAI-compatible models |
 
 **Note**: Performance/cost figures are estimates based on typical usage
@@ -72,7 +72,8 @@ complexity.
 **Recommended Strategy**:
 
 - **Development**: Gemini (Cloud) for rapid iteration
-- **Production**: LM Studio (Local) with llama/gemma models for privacy compliance
+- **Production**: LM Studio (Local) with llama/gemma models for privacy
+  compliance
 - **Provider Switching**: Configured in agent runtime (`agents_config.yaml`),
   not Java backend
 
@@ -103,14 +104,17 @@ Java backend. Java backend only needs HTTP client for A2A agent communication.
 
 ### Decision: LM Studio for Local Development
 
-**Rationale**: LM Studio provides easy model management via GUI, supports OpenAI-compatible API, and works well with OpenAI-compatible models. Runs on host machine (not Docker), simplifying GPU access.
+**Rationale**: LM Studio provides easy model management via GUI, supports
+OpenAI-compatible API, and works well with OpenAI-compatible models. Runs on
+host machine (not Docker), simplifying GPU access.
 
 **Setup**:
 
 1. Download LM Studio from https://lmstudio.ai/
 2. Load a model (use most recent available OpenAI-compatible model)
 3. Start local server (default: http://localhost:1234/v1)
-4. Configure agent runtime to use `http://host.docker.internal:1234/v1` as base_url
+4. Configure agent runtime to use `http://host.docker.internal:1234/v1` as
+   base_url
 
 **Model Selection**:
 
@@ -398,16 +402,16 @@ Healthcare AI research platform with OpenMRS integration.
 
 ## Open Questions Resolved
 
-| Question              | Decision                          | Rationale                                                    |
-| --------------------- | --------------------------------- | ------------------------------------------------------------ |
-| Which LLM framework?  | LangChain4j core modules          | Java-native, provider-agnostic, no Spring Boot dependency    |
-| Cloud vs Local?       | Both (configurable)               | Cloud for dev speed, local for production privacy            |
-| Which chat component? | @carbon/ai-chat                   | Carbon compliance, official IBM support                      |
-| MCP in MVP?           | Yes (Python server)               | Validate standards early, support full schema via RAG        |
-| A2A in MVP?           | Yes (3-agent team)                | Validate multi-agent patterns early, med-agent-hub reference |
-| Which LLM providers?  | Gemini, LM Studio | Cloud + local coverage, OpenAI-compatible API for LM Studio  |
-| Schema handling?      | RAG via ChromaDB                  | Full clinical schema too large for context window            |
-| SQL validation?       | Multi-layer guardrails            | Defense in depth for security                                |
+| Question              | Decision                 | Rationale                                                    |
+| --------------------- | ------------------------ | ------------------------------------------------------------ |
+| Which LLM framework?  | LangChain4j core modules | Java-native, provider-agnostic, no Spring Boot dependency    |
+| Cloud vs Local?       | Both (configurable)      | Cloud for dev speed, local for production privacy            |
+| Which chat component? | @carbon/ai-chat          | Carbon compliance, official IBM support                      |
+| MCP in MVP?           | Yes (Python server)      | Validate standards early, support full schema via RAG        |
+| A2A in MVP?           | Yes (3-agent team)       | Validate multi-agent patterns early, med-agent-hub reference |
+| Which LLM providers?  | Gemini, LM Studio        | Cloud + local coverage, OpenAI-compatible API for LM Studio  |
+| Schema handling?      | RAG via ChromaDB         | Full clinical schema too large for context window            |
+| SQL validation?       | Multi-layer guardrails   | Defense in depth for security                                |
 
 ---
 

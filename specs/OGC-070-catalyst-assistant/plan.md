@@ -48,7 +48,8 @@ protocol + MCP for tools).
 **LLM Providers (MVP)**:
 
 - **Cloud**: Google Gemini (latest available)
-- **Local**: LM Studio (OpenAI-compatible API) - supports OpenAI-compatible models
+- **Local**: LM Studio (OpenAI-compatible API) - supports OpenAI-compatible
+  models
 
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only for Catalyst
 queries)  
@@ -711,16 +712,16 @@ catalyst.guardrails.blocked-tables=sys_user,login_user,user_role
 # LLM Provider Selection (SQLGenAgent)
 llm:
   provider: lmstudio # Options: gemini, lmstudio
-  
+
   # Cloud provider
   gemini:
-    model: latest  # Use most recent available Gemini model
+    model: latest # Use most recent available Gemini model
     api_key: ${GOOGLE_API_KEY}
-  
+
   # Local provider
   lmstudio:
     base_url: http://host.docker.internal:1234/v1
-    model: local-model  # Use most recent available OpenAI-compatible model
+    model: local-model # Use most recent available OpenAI-compatible model
 
 # MCP Server (SchemaAgent)
 mcp:
@@ -735,9 +736,8 @@ identifiers/PHI in the _question text_.
 **Rule (MVP)**:
 
 - RouterAgent detects likely PHI/identifiers in user query
-- If PHI detected **and** configured provider is externally-hosted
-  (Gemini), RouterAgent **MUST NOT** delegate to SQLGenAgent with that
-  provider
+- If PHI detected **and** configured provider is externally-hosted (Gemini),
+  RouterAgent **MUST NOT** delegate to SQLGenAgent with that provider
 - RouterAgent attempts to route to on-premises provider (LM Studio) if
   configured and healthy
 - If no on-premises provider available, RouterAgent returns error to Java
