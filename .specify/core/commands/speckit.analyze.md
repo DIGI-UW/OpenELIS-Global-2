@@ -2,6 +2,10 @@
 description:
   Perform a non-destructive cross-artifact consistency and quality analysis
   across spec.md, plan.md, and tasks.md after task generation.
+scripts:
+  sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
+  ps:
+    scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
 ---
 
 ## User Input
@@ -25,21 +29,19 @@ successfully produced a complete `tasks.md`.
 analysis report. Offer an optional remediation plan (user must explicitly
 approve before any follow-up editing commands would be invoked manually).
 
-**Constitution Authority**: The project constitution
-(`.specify/memory/constitution.md`) is **non-negotiable** within this analysis
-scope. Constitution conflicts are automatically CRITICAL and require adjustment
-of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring
-of the principle. If a principle itself needs to change, that must occur in a
-separate, explicit constitution update outside `/speckit.analyze`.
+**Constitution Authority**: The project constitution (`/memory/constitution.md`)
+is **non-negotiable** within this analysis scope. Constitution conflicts are
+automatically CRITICAL and require adjustment of the spec, plan, or tasks—not
+dilution, reinterpretation, or silent ignoring of the principle. If a principle
+itself needs to change, that must occur in a separate, explicit constitution
+update outside `/speckit.analyze`.
 
 ## Execution Steps
 
 ### 1. Initialize Analysis Context
 
-Run
-`.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks`
-once from repo root and parse JSON for FEATURE_DIR and AVAILABLE_DOCS. Derive
-absolute paths:
+Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR and
+AVAILABLE_DOCS. Derive absolute paths:
 
 - SPEC = FEATURE_DIR/spec.md
 - PLAN = FEATURE_DIR/plan.md
@@ -79,7 +81,7 @@ Load only the minimal necessary context from each artifact:
 
 **From constitution:**
 
-- Load `.specify/memory/constitution.md` for principle validation
+- Load `/memory/constitution.md` for principle validation
 
 ### 3. Build Semantic Models
 
@@ -139,30 +141,6 @@ in overflow summary.
 - Conflicting requirements (e.g., one requires Next.js while other specifies
   Vue)
 
-#### G. PR Scope Validation (Constitution Principle IX)
-
-**CRITICAL CHECK**: Validate that work is properly scoped for manageable PRs.
-
-- **Milestone Plan Present**: Verify plan.md contains Milestone Plan table
-  (REQUIRED for features >3 days)
-- **User Story to Milestone Mapping**: Each milestone must reference which user
-  stories (P1, P2, etc.) it covers
-- **Milestone Size**: Flag milestones with >30 tasks (likely too large for
-  single PR)
-- **Cross-Milestone Dependencies**: Flag tasks that depend on multiple
-  milestones (integration complexity)
-- **Branch Scope**: If on a milestone branch (feat/.../m{N}-\*), verify all
-  tasks are scoped to that milestone
-- **Parallel Milestone Conflicts**: Flag parallel milestones [P] that modify
-  same files (merge conflict risk)
-
-**Scope Metrics to Report**:
-
-- Tasks per milestone (flag if >30)
-- Files touched per milestone (flag if >20)
-- Estimated PR size (LOC if detectable from task descriptions)
-- User stories covered per milestone (should be 1-3 typically)
-
 ### 5. Severity Assignment
 
 Use this heuristic to prioritize findings:
@@ -206,18 +184,6 @@ Output a Markdown report (no file writes) with the following structure:
 - Duplication Count
 - Critical Issues Count
 
-**PR Scope Summary (Principle IX):**
-
-| Milestone | Tasks | Files | User Stories | Status      |
-| --------- | ----- | ----- | ------------ | ----------- |
-| M1        | 15    | 8     | P1, P2       | ✓ OK        |
-| M2 [P]    | 12    | 6     | P1, P2       | ✓ OK        |
-| M3        | 35    | 22    | All          | ⚠ TOO LARGE |
-
-- Milestones >30 tasks: [list or "None"]
-- Parallel milestones with file conflicts: [list or "None"]
-- Missing Milestone Plan: [Yes/No - CRITICAL if Yes for large features]
-
 ### 7. Provide Next Actions
 
 At end of report, output a concise Next Actions block:
@@ -258,4 +224,4 @@ top N issues?" (Do NOT apply them automatically.)
 
 ## Context
 
-$ARGUMENTS
+{ARGS}
