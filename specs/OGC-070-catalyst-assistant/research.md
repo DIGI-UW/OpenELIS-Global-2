@@ -63,10 +63,10 @@ client to call the RouterAgent and never calls LLM APIs directly.
 
 **Provider Comparison**:
 
-| Provider                | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                                                   |
-| ----------------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------------------------------------- |
-| Gemini (Cloud)          | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration                                 |
-| LM Studio (Local)       | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production with OpenAI-compatible models |
+| Provider          | Latency    | Cost             | Privacy             | SQL Accuracy | Best For                                                   |
+| ----------------- | ---------- | ---------------- | ------------------- | ------------ | ---------------------------------------------------------- |
+| Gemini (Cloud)    | 500-1000ms | $0.01-0.03/query | Data leaves network | 70%          | Fast development iteration                                 |
+| LM Studio (Local) | 100-500ms  | Hardware only    | Fully air-gapped    | 65-70%       | Privacy-sensitive production with OpenAI-compatible models |
 
 **Note**: Performance/cost figures are estimates based on typical usage
 patterns. Actual values may vary by deployment, model version, and query
@@ -202,8 +202,8 @@ never patient data.
 **Implementation**:
 
 1. **Schema Context Generation**: Extract schema metadata and relationships from
-   PostgreSQL catalogs (prefer `pg_catalog` for authoritative FK/constraint data;
-   `information_schema` is acceptable only for simple column listings)
+   PostgreSQL catalogs (prefer `pg_catalog` for authoritative FK/constraint
+   data; `information_schema` is acceptable only for simple column listings)
 2. **Prompt Construction**: Include only schema + user question
 3. **SQL Execution**: Separate step, LLM never sees results
 4. **Read-Only Connection**: Dedicated PostgreSQL user with SELECT-only
@@ -439,16 +439,16 @@ Healthcare AI research platform with OpenMRS integration.
 
 ## Open Questions Resolved
 
-| Question              | Decision                 | Rationale                                                    |
-| --------------------- | ------------------------ | ------------------------------------------------------------ |
-| Which LLM framework?  | Provider-native Python SDKs | Agents own LLM calls; Java backend is HTTP client only     |
-| Cloud vs Local?       | Both (configurable)      | Cloud for dev speed, local for production privacy            |
-| Which chat component? | @carbon/ai-chat          | Carbon compliance, official IBM support                      |
-| MCP in MVP?           | Yes (Python server)      | Validate standards early, support full schema via RAG        |
-| A2A in MVP?           | Yes (3-agent team)       | Validate multi-agent patterns early, med-agent-hub reference |
-| Which LLM providers?  | Gemini, LM Studio        | Cloud + local coverage, OpenAI-compatible API for LM Studio  |
-| Schema handling?      | RAG via ChromaDB         | Full clinical schema too large for context window            |
-| SQL validation?       | Multi-layer guardrails   | Defense in depth for security                                |
+| Question              | Decision                    | Rationale                                                    |
+| --------------------- | --------------------------- | ------------------------------------------------------------ |
+| Which LLM framework?  | Provider-native Python SDKs | Agents own LLM calls; Java backend is HTTP client only       |
+| Cloud vs Local?       | Both (configurable)         | Cloud for dev speed, local for production privacy            |
+| Which chat component? | @carbon/ai-chat             | Carbon compliance, official IBM support                      |
+| MCP in MVP?           | Yes (Python server)         | Validate standards early, support full schema via RAG        |
+| A2A in MVP?           | Yes (3-agent team)          | Validate multi-agent patterns early, med-agent-hub reference |
+| Which LLM providers?  | Gemini, LM Studio           | Cloud + local coverage, OpenAI-compatible API for LM Studio  |
+| Schema handling?      | RAG via ChromaDB            | Full clinical schema too large for context window            |
+| SQL validation?       | Multi-layer guardrails      | Defense in depth for security                                |
 
 ---
 
@@ -456,9 +456,9 @@ Healthcare AI research platform with OpenMRS integration.
 
 ### Why This Matters
 
-For large schemas, **schema retrieval quality dominates SQL generation quality**.
-Without an evaluation harness, it is easy to make changes that improve some
-prompts but regress overall correctness.
+For large schemas, **schema retrieval quality dominates SQL generation
+quality**. Without an evaluation harness, it is easy to make changes that
+improve some prompts but regress overall correctness.
 
 ### Recommended MVP Evaluation Harness
 
@@ -470,7 +470,8 @@ prompts but regress overall correctness.
    - Optional: MRR if you add reranking.
 3. **SQL Metrics**:
    - Syntax validity rate
-   - Execution accuracy: compare results to expected results on a seeded dataset.
+   - Execution accuracy: compare results to expected results on a seeded
+     dataset.
 4. **Error Taxonomy** (to guide iteration):
    - wrong table/column
    - missing join / wrong join

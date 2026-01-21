@@ -40,16 +40,16 @@ schema retrieval - skeleton)
 - [ ] T001 [M0.0] Create milestone branch
       `feat/OGC-070-catalyst-assistant-m0-foundation-poc` from `develop`
 - [ ] T002 [M0.0] Create project directory structure
-      `projects/catalyst/catalyst-agents/` with med-agent-hub-style layout (src/,
-      tests/, .well-known/)
-- [ ] T002a [M0.0] Create `projects/catalyst/catalyst-agents/pyproject.toml` with
-      dependencies: a2a-sdk[http-server] >=0.3.22, mcp, httpx,
+      `projects/catalyst/catalyst-agents/` with med-agent-hub-style layout
+      (src/, tests/, .well-known/)
+- [ ] T002a [M0.0] Create `projects/catalyst/catalyst-agents/pyproject.toml`
+      with dependencies: a2a-sdk[http-server] >=0.3.22, mcp, httpx,
       google-generativeai
 - [ ] T003 [P] [M0.0] Create `projects/catalyst/catalyst-agents/src/__init__.py`
 - [ ] T003a [P] [M0.0] Create
       `projects/catalyst/catalyst-agents/src/agents/__init__.py`
-- [ ] T003b [P] [M0.0] Create
-      `projects/catalyst/catalyst-mcp/src/__init__.py` (separate MCP server)
+- [ ] T003b [P] [M0.0] Create `projects/catalyst/catalyst-mcp/src/__init__.py`
+      (separate MCP server)
 - [ ] T003c [P] [M0.0] Create
       `projects/catalyst/catalyst-agents/src/agent_cards/` directory
 - [ ] T003d [P] [M0.0] Create
@@ -81,8 +81,8 @@ schema retrieval - skeleton)
 - [ ] T007 [M0.0] Implement
       `projects/catalyst/catalyst-agents/src/llm_clients.py` with LM Studio
       provider support (OpenAI-compatible API)
-- [ ] T008 [M0.0] Implement `projects/catalyst/catalyst-agents/src/config.py` for
-      LLM configuration loading
+- [ ] T008 [M0.0] Implement `projects/catalyst/catalyst-agents/src/config.py`
+      for LLM configuration loading
 - [ ] T009 [M0.0] Implement CatalystAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/catalyst_executor.py` (calls
       MCP get_schema, then generates SQL via LLM)
@@ -139,6 +139,7 @@ schema retrieval - skeleton)
 **FR Coverage**: FR-007 (multiple AI provider support)
 
 **2026 Best Practice Notes**:
+
 - **Gemini structured outputs**: Use JSON schema or function calling to enforce
   `{sql, tablesUsed}` structure (reduces hallucination/format errors)
 - **LM Studio tool calling**: Reliability is model-dependent; prioritize models
@@ -160,8 +161,8 @@ schema retrieval - skeleton)
       `projects/catalyst/catalyst-agents/src/agents/catalyst_executor.py` to use
       provider-agnostic LLM client
 - [ ] T022 [M0.1] Create agent configuration in
-      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with both
-      providers (Gemini, LM Studio)
+      `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with
+      both providers (Gemini, LM Studio)
 
 ### M0.1.3: Verification & PR
 
@@ -189,13 +190,14 @@ fallback works
 ### M0.2.2: SchemaAgent Implementation
 
 - [ ] T020 [M0.2] Implement SchemaAgent executor in
-      `projects/catalyst/catalyst-agents/src/agents/schema_executor.py` (calls MCP
-      get_schema, returns schema context)
+      `projects/catalyst/catalyst-agents/src/agents/schema_executor.py` (calls
+      MCP get_schema, returns schema context)
 - [ ] T021 [M0.2] Implement SchemaAgent server in
-      `projects/catalyst/catalyst-agents/src/agents/schema_server.py` with FastAPI + A2A
-      SDK
+      `projects/catalyst/catalyst-agents/src/agents/schema_server.py` with
+      FastAPI + A2A SDK
 - [ ] T022 [M0.2] Create SchemaAgent card at
-      `projects/catalyst/catalyst-agents/src/agent_cards/schema.json` per A2A spec
+      `projects/catalyst/catalyst-agents/src/agent_cards/schema.json` per A2A
+      spec
 
 ### M0.2.3: SQLGenAgent Test (TDD - MANDATORY)
 
@@ -207,29 +209,31 @@ fallback works
 ### M0.2.4: SQLGenAgent Implementation
 
 - [ ] T024 [M0.2] Implement SQLGenAgent executor in
-      `projects/catalyst/catalyst-agents/src/agents/sqlgen_executor.py` (receives schema
-      from SchemaAgent, generates SQL via LLM)
+      `projects/catalyst/catalyst-agents/src/agents/sqlgen_executor.py`
+      (receives schema from SchemaAgent, generates SQL via LLM)
 - [ ] T025 [M0.2] Implement SQLGenAgent server in
-      `projects/catalyst/catalyst-agents/src/agents/sqlgen_server.py` with FastAPI + A2A
-      SDK
+      `projects/catalyst/catalyst-agents/src/agents/sqlgen_server.py` with
+      FastAPI + A2A SDK
 - [ ] T026 [M0.2] Create SQLGenAgent card at
-      `projects/catalyst/catalyst-agents/src/agent_cards/sqlgen.json` per A2A spec
+      `projects/catalyst/catalyst-agents/src/agent_cards/sqlgen.json` per A2A
+      spec
 
 ### M0.2.5: RouterAgent Update
 
 - [ ] T027 [M0.2] Update RouterAgent executor in
-      `projects/catalyst/catalyst-agents/src/agents/router_executor.py` to orchestrate:
-      query → SchemaAgent → SQLGenAgent → response
+      `projects/catalyst/catalyst-agents/src/agents/router_executor.py` to
+      orchestrate: query → SchemaAgent → SQLGenAgent → response
 - [ ] T028 [M0.2] Update RouterAgent card at
-      `projects/catalyst/catalyst-agents/src/agent_cards/router.json` to reference
-      SchemaAgent + SQLGenAgent
+      `projects/catalyst/catalyst-agents/src/agent_cards/router.json` to
+      reference SchemaAgent + SQLGenAgent
 
 ### M0.2.6: Integration Test
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
 - [ ] T029 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
-      SQLGenAgent flow in `projects/catalyst/catalyst-agents/tests/test_multi_agent_flow.py`
+      SQLGenAgent flow in
+      `projects/catalyst/catalyst-agents/tests/test_multi_agent_flow.py`
 
 ### M0.2.7: Single-Agent Fallback
 
@@ -256,8 +260,9 @@ fallback works
 support via accurate schema metadata)
 
 **2026 Best Practice Notes**:
-- **MCP Streamable HTTP**: Requires `MCP-Protocol-Version` header and session
-  ID handling (`MCP-Session-Id`). Pin MCP SDK version and add conformance test.
+
+- **MCP Streamable HTTP**: Requires `MCP-Protocol-Version` header and session ID
+  handling (`MCP-Session-Id`). Pin MCP SDK version and add conformance test.
 - **PostgreSQL introspection**: Use `pg_catalog` (not `information_schema`) for
   authoritative FK/constraint data (actions, validation state, match types).
 - **ChromaDB ops**: Pin version, configure persistence volume, document index
@@ -280,7 +285,8 @@ support via accurate schema metadata)
 - [ ] T035 [P] [M1] Write pytest test for PostgreSQL schema extraction in
       `projects/catalyst/catalyst-agents/tests/test_schema_extraction.py`
 - [ ] T036 [P] [M1] Write pytest test for `get_relevant_tables` with RAG in
-      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py` (update existing test)
+      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py` (update
+      existing test)
 - [ ] T037 [P] [M1] Write pytest test for `get_table_ddl` in
       `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py`
 - [ ] T038 [P] [M1] Write pytest test for `get_relationships` in
@@ -292,26 +298,29 @@ support via accurate schema metadata)
       `projects/catalyst/catalyst-mcp/pyproject.toml` for RAG
 - [ ] T040 [M1] Create `projects/catalyst/catalyst-mcp/src/tools/db/__init__.py`
 - [ ] T041 [M1] Implement PostgreSQL schema extractor in
-      `projects/catalyst/catalyst-mcp/src/tools/db/schema_extractor.py` (extract table DDL,
-      columns, relationships)
+      `projects/catalyst/catalyst-mcp/src/tools/db/schema_extractor.py` (extract
+      table DDL, columns, relationships)
 
 ### M1.4: RAG Implementation
 
-- [ ] T042 [M1] Create `projects/catalyst/catalyst-mcp/src/tools/rag/__init__.py`
+- [ ] T042 [M1] Create
+      `projects/catalyst/catalyst-mcp/src/tools/rag/__init__.py`
 - [ ] T043 [M1] Implement embeddings in
       `projects/catalyst/catalyst-mcp/src/tools/rag/embeddings.py`
 - [ ] T044 [M1] Implement ChromaDB retriever in
-      `projects/catalyst/catalyst-mcp/src/tools/rag/retriever.py` (embedding generation +
-      similarity search)
+      `projects/catalyst/catalyst-mcp/src/tools/rag/retriever.py` (embedding
+      generation + similarity search)
 
 ### M1.5: MCP Tools Enhancement
 
-- [ ] T045 [M1] Update `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py` to use
+- [ ] T045 [M1] Update
+      `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py` to use
       RAG-based retrieval (replace hardcoded get_schema with
       get_relevant_tables)
 - [ ] T046 [M1] Implement `get_table_ddl` MCP tool in schema_tools.py using
       schema extractor
-- [ ] T047 [M1] Create `projects/catalyst/catalyst-mcp/src/tools/relationship_tools.py`
+- [ ] T047 [M1] Create
+      `projects/catalyst/catalyst-mcp/src/tools/relationship_tools.py`
 - [ ] T048 [M1] Implement `get_relationships` MCP tool in relationship_tools.py
 - [ ] T048a [M1] Add MCP Streamable HTTP conformance test in
       `projects/catalyst/catalyst-mcp/tests/test_mcp_protocol.py` (verify
