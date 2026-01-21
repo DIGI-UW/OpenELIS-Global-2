@@ -242,9 +242,8 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         try {
             dictionaryService.insert(dictionary);
             Assert.fail("Expected exception was not thrown for duplicate dictionary entry");
-        } catch (Exception e) {
-            // Expected behavior - duplicate entry should throw exception
-            Assert.assertTrue("Exception should be thrown for duplicate entry", true);
+        } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            // Expected behavior - duplicate entry should throw LIMSRuntimeException
         }
     }
 
@@ -273,14 +272,13 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void testGetById_WithInvalidId_ReturnsNull() {
+    public void testGetById_WithInvalidId_ThrowsObjectNotFoundException() {
         // Test that get() with invalid ID throws ObjectNotFoundException (expected behavior)
         try {
             dictionaryService.get("99999"); // Non-existent ID
             Assert.fail("Expected ObjectNotFoundException for invalid ID");
         } catch (org.hibernate.ObjectNotFoundException e) {
             // Expected: Hibernate throws ObjectNotFoundException for invalid ID
-            Assert.assertTrue("Should throw ObjectNotFoundException for invalid dictionary ID", true);
         }
     }
 
