@@ -257,8 +257,11 @@ components:
           description: Confirmation token from previous generation (required for Stage B: execution). Token is computed from generated SQL to ensure user reviewed the exact query before execution.
         execute:
           type: boolean
-          default: false
-          description: Whether to execute the generated SQL. If true, requires both queryId and confirmationToken to match the last generated SQL.
+          default: true
+          description: |
+            Whether to execute the generated SQL. Defaults to true.
+            Set to false for dry-run testing (returns SQL without execution).
+            When true with queryId and confirmationToken, validates token and executes.
         maxRows:
           type: integer
           default: 10000

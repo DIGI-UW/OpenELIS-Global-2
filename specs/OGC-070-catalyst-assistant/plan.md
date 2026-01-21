@@ -53,8 +53,9 @@ protocol + MCP for tools).
 - **Local**: LM Studio (exposes an OpenAI-compatible HTTP API for locally hosted
   models)
 
-**Storage**: PostgreSQL 14+ (OpenELIS database - read-only for Catalyst
-queries)  
+**Storage**: PostgreSQL 14+ (OpenELIS database - read-only connection for
+Catalyst SQL query execution; audit logging writes to `catalyst_query` table
+via separate write connection)  
 **Testing**: JUnit 4 + Mockito (backend), pytest (MCP server), Jest + React
 Testing Library (frontend), Cypress 12.17 (E2E)  
 **Target Platform**: Docker containers deployed via existing OpenELIS
@@ -435,6 +436,8 @@ frontend/src/languages/fr.json             # Add catalyst.* keys
   - Provider routing for PHI-flagged queries
   - Confirmation token generation and validation (FR-016)
   - Add security fields to CatalystQuery entity (phi_gated, confirmation_token)
+  - **Security Testing Note**: PHI detection should have independent unit
+    tests before E2E integration tests to validate detection logic in isolation
 
 **Files to Create**:
 
@@ -496,12 +499,30 @@ architecture
 
 | Phase   | Scope                                                         | Prerequisite     |
 | ------- | ------------------------------------------------------------- | ---------------- |
-| Phase 2 | Advanced multi-agent orchestration, external agent federation | MVP validated    |
-| Phase 3 | Report storage, scheduling, dashboards                        | Phase 2 complete |
+| Phase 2 | Row-level RBAC integration, per-user data filtering          | MVP validated    |
+| Phase 3 | Report storage, scheduling, dashboards                        | MVP validated    |
+
+**Independent Future Work** (can proceed in parallel with Phase 2/3):
+
+- **Advanced Multi-Agent Orchestration**: Dynamic agent discovery, external agent
+  federation, more sophisticated routing patterns. This work is independent of
+  Phase 2 row-level RBAC and can proceed in parallel if resources allow.
+- **Performance Evaluation & Optimization**: Establish evaluation harness with
+  golden query sets, measure SQL generation accuracy, response time benchmarks,
+  and optimize based on real-world usage patterns.
+- **Multi-Language Query Support**: Extend natural language query understanding
+  to all OpenELIS-supported languages (fr, ar, es, hi, pt, sw), building on
+  the English-first MVP foundation.
+- **Advanced Schema RAG**: Enhancements beyond MCP-based schema filtering (e.g.,
+  fine-tuned embeddings, query-specific context optimization, relationship
+  graph traversal).
+- **Query Refinement & Suggestions**: Natural language query refinement
+  suggestions, multi-step analytical query support, query history learning.
 
 **Note**: Basic A2A multi-agent team (Router + Schema + SQLGen) is now in MVP
-scope. Phase 2 extends to more complex orchestration patterns, dynamic agent
-discovery, and external agent collaboration.
+scope. Advanced orchestration patterns, dynamic agent discovery, and external
+agent collaboration are independent future enhancements that don't require
+Phase 2 completion.
 
 ## Project Structure
 
@@ -985,7 +1006,9 @@ MVP implements a simple 3-agent team based on med-agent-hub patterns:
 
 **Discovery Path**: RouterAgent publishes Agent Card at
 `/.well-known/agent.json` (or `/.well-known/agent-card.json` per A2A SDK 0.3.x
-default).
+default). **Note**: This endpoint should only be exposed internally within the
+Docker network, not publicly, as it's used for agent discovery within the
+Catalyst system.
 
 ### Single-Agent Fallback Mode
 

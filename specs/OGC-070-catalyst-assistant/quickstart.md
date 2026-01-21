@@ -35,15 +35,20 @@ integration + SQL execution) → React Frontend (Carbon chat UI)
 # 1. Start A2A agents + MCP server + OpenELIS
 docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 
-# 2. Configure LLM provider in agent config
+# 2. Configure LLM provider
+# Create projects/catalyst/catalyst.env file:
+cat > projects/catalyst/catalyst.env <<EOF
+GOOGLE_API_KEY=your-google-api-key
+CATALYST_LLM_PROVIDER=gemini  # or lmstudio
+EOF
+
 # Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
 #   llm:
-#     provider: gemini  # or lmstudio
+#     provider: ${CATALYST_LLM_PROVIDER}
 #     gemini:
 #       api_key: ${GOOGLE_API_KEY}
-# Set environment variable:
-export GOOGLE_API_KEY=your-google-api-key
-# (Update agents_config.yaml provider to "gemini" for cloud, or "lmstudio" for local)
+
+# Docker Compose will load catalyst.env automatically
 
 # 3. Build backend with Catalyst
 mvn clean install -DskipTests -Dmaven.test.skip=true
@@ -51,14 +56,16 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 # 4. Restart OpenELIS container
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 
-# 5. Test the endpoint (Stage A: generate SQL)
+# 5. Test the endpoint (Stage A: generate SQL, review before execution)
 curl -k -X POST https://localhost/rest/catalyst/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
   -d '{"query": "How many samples are in the database?", "execute": false}'
-# Response includes queryId and confirmationToken
+# Response includes queryId, confirmationToken, and generated SQL for review
 
 # 6. Execute with confirmation (Stage B)
+# Note: execute defaults to true, but explicit confirmation via queryId + token
+# is required. Setting execute: false allows dry-run testing without execution.
 curl -k -X POST https://localhost/rest/catalyst/query \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
