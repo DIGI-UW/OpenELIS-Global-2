@@ -81,8 +81,12 @@ function Install-Commands {
     foreach ($file in $cmdFiles) {
         $baseName = $file.Name
         $coreContent = Get-Content -LiteralPath $file.FullName -Raw
-        $coreContent = $coreContent.Replace('scripts/','.specify/scripts/')
+        # Path rewrites: upstream paths → project .specify/ paths
+        # Use placeholder to avoid double-rewrite of /templates/ → .specify/templates/ → .specify/.specify/templates/
+        $coreContent = $coreContent.Replace('/templates/','__SPECIFY_TEMPLATES__')
         $coreContent = $coreContent.Replace('templates/','.specify/templates/')
+        $coreContent = $coreContent.Replace('__SPECIFY_TEMPLATES__','.specify/templates/')
+        $coreContent = $coreContent.Replace('scripts/','.specify/scripts/')
         $coreContent = $coreContent.Replace('/memory/','.specify/memory/')
 
         $mergedContent = $coreContent

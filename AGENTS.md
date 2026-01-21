@@ -519,7 +519,8 @@ directory:
 ./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
 ```
 
-This copies command definitions from `.specify/commands/` to agent-specific
+This compiles command definitions from `.specify/core/commands/` (upstream
+SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
 directories (`.cursor/commands/`, `.claude/commands/`).
 
 **Available Commands:**

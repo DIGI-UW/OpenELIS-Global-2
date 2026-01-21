@@ -121,8 +121,12 @@ install_commands() {
 
         local core_content
         core_content=$(<"$f")
-        core_content=${core_content//scripts\//.specify/scripts/}
+        # Path rewrites: upstream paths → project .specify/ paths
+        # Use placeholder to avoid double-rewrite of /templates/ → .specify/templates/ → .specify/.specify/templates/
+        core_content=${core_content//\/templates\//__SPECIFY_TEMPLATES__}
         core_content=${core_content//templates\//.specify/templates/}
+        core_content=${core_content//__SPECIFY_TEMPLATES__/.specify/templates/}
+        core_content=${core_content//scripts\//.specify/scripts/}
         core_content=${core_content//\/memory\//.specify/memory/}
 
         local merged_content="$core_content"
