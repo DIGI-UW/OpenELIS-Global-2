@@ -20,7 +20,9 @@ const AutocompleteMode = ({ onLocationChange }) => {
       <ComboBox
         id="location-search"
         titleText={intl.formatMessage({ id: "storage.location.label" })}
-        placeholder={intl.formatMessage({ id: "storage.location.search.placeholder" })}
+        placeholder={intl.formatMessage({
+          id: "storage.location.search.placeholder",
+        })}
         items={searchResults}
         itemToString={(item) => (item ? item.hierarchicalPath : "")}
         onChange={({ selectedItem }) =>

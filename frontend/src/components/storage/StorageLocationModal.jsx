@@ -469,10 +469,22 @@ const StorageLocationModal = ({
   };
 
   const deviceTypes = [
-    { id: "freezer", label: "Freezer" },
-    { id: "refrigerator", label: "Refrigerator" },
-    { id: "cabinet", label: "Cabinet" },
-    { id: "other", label: "Other" },
+    {
+      id: "freezer",
+      label: intl.formatMessage({ id: "storage.device.type.freezer" }),
+    },
+    {
+      id: "refrigerator",
+      label: intl.formatMessage({ id: "storage.device.type.refrigerator" }),
+    },
+    {
+      id: "cabinet",
+      label: intl.formatMessage({ id: "storage.device.type.cabinet" }),
+    },
+    {
+      id: "other",
+      label: intl.formatMessage({ id: "storage.device.type.other" }),
+    },
   ];
 
   const getModalTitle = () => {

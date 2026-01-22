@@ -50,12 +50,16 @@ const LocationManagementModal = ({
   // Map status codes to human-readable labels
   const getStatusLabel = (status) => {
     const statusMap = {
-      20: "Sample Entered",
-      21: "Entered",
-      active: "Active",
-      disposed: "Disposed",
+      20: intl.formatMessage({ id: "storage.status.sample.entered" }),
+      21: intl.formatMessage({ id: "storage.status.entered" }),
+      active: intl.formatMessage({ id: "storage.status.active" }),
+      disposed: intl.formatMessage({ id: "storage.status.disposed" }),
     };
-    return statusMap[String(status)] || status || "Unknown";
+    return (
+      statusMap[String(status)] ||
+      status ||
+      intl.formatMessage({ id: "storage.status.unknown" })
+    );
   };
 
   const [selectedLocation, setSelectedLocation] = useState(null);

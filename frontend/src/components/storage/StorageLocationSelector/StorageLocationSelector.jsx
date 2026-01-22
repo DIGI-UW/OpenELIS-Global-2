@@ -49,7 +49,10 @@ const StorageLocationSelector = ({
     if (location.hierarchical_path) return location.hierarchical_path;
     // Build from components
     if (location.position?.coordinate) {
-      return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label || ""} > Position ${location.position.coordinate}`;
+      const positionLabel = intl.formatMessage({
+        id: "storage.position.label",
+      });
+      return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label || ""} > ${positionLabel} ${location.position.coordinate}`;
     } else if (location.rack?.label) {
       return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label}`;
     } else if (location.shelf?.label) {
@@ -66,7 +69,10 @@ const StorageLocationSelector = ({
       if (location.device?.name) parts.push(location.device.name);
       if (location.shelf?.label) parts.push(location.shelf.label);
       if (location.rack?.label) parts.push(location.rack.label);
-      parts.push(`Position ${location.positionCoordinate}`);
+      const positionLabel = intl.formatMessage({
+        id: "storage.position.label",
+      });
+      parts.push(`${positionLabel} ${location.positionCoordinate}`);
       return parts.join(" > ");
     }
     return "";

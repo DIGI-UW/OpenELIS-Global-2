@@ -22,7 +22,8 @@ const CompactLocationView = ({
 }) => {
   const intl = useIntl();
 
-  const displayText = locationPath || "Not assigned";
+  const displayText =
+    locationPath || intl.formatMessage({ id: "storage.location.not.assigned" });
 
   return (
     <div className="compact-location-view" data-testid="compact-location-view">
@@ -48,7 +49,7 @@ const CompactLocationView = ({
         onClick={onExpand}
         data-testid="expand-button"
       >
-        Expand
+        <FormattedMessage id="storage.expand.button" />
       </Button>
     </div>
   );
