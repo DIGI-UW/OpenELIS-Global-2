@@ -15,6 +15,20 @@ import {
   Tab,
   TabPanels,
   TabPanel,
+  Select,
+  SelectItem,
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableSelectAll,
+  TableSelectRow,
+  TableBatchActions,
+  TableBatchAction,
 } from "@carbon/react";
 import { Chemistry, SendAlt, Archive, Renew } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -80,6 +94,22 @@ function MedLabSampleRoutingPage({
   const [routeDestination, setRouteDestination] = useState(null);
   const [routing, setRouting] = useState(false);
 
+  // Retrieval request modal state
+  const [retrievalModalOpen, setRetrievalModalOpen] = useState(false);
+  const [selectedRetrievalSamples, setSelectedRetrievalSamples] = useState([]);
+  const [retrievalPurpose, setRetrievalPurpose] = useState("");
+  const [retrievalDestinationDetails, setRetrievalDestinationDetails] =
+    useState("");
+  const [creatingRetrieval, setCreatingRetrieval] = useState(false);
+  const [retrievalModalError, setRetrievalModalError] = useState(null);
+  const [retrievedSamples, setRetrievedSamples] = useState([]);
+  const [loadingRetrieved, setLoadingRetrieved] = useState(false);
+  const [selectedRetrievedSampleIds, setSelectedRetrievedSampleIds] = useState(
+    [],
+  ); // Selected retrieved samples for returning to lab
+  const [returningToLab, setReturningToLab] = useState(false); // Track if bulk return is in progress
+
+  console.log({ retrievedSamples, samples });
   // Destination-specific fields
   const [selectedBox, setSelectedBox] = useState(null);
   const [externalLabName, setExternalLabName] = useState("");
@@ -216,6 +246,59 @@ function MedLabSampleRoutingPage({
     );
   }, [entryId]);
 
+  // Fetch completed retrieval requests from biorepository
+  const loadRetrievedSamples = useCallback(() => {
+    setLoadingRetrieved(true);
+    getFromOpenElisServer(
+      `/rest/biorepository/retrieval/requests?status=COMPLETED`,
+      (response) => {
+        if (componentMounted.current && response && Array.isArray(response)) {
+          if (response.length === 0) {
+            setRetrievedSamples([]);
+            setLoadingRetrieved(false);
+            return;
+          }
+
+          // Fetch each request individually to get items
+          const allRetrievedItems = [];
+          let fetchedCount = 0;
+
+          response.forEach((request) => {
+            getFromOpenElisServer(
+              `/rest/biorepository/retrieval/requests/${request.id}`,
+              (fullRequest) => {
+                if (componentMounted.current) {
+                  fetchedCount++;
+
+                  // Add items from this request
+                  if (fullRequest.items && Array.isArray(fullRequest.items)) {
+                    fullRequest.items.forEach((item) => {
+                      allRetrievedItems.push({
+                        ...item,
+                        requestNumber: fullRequest.requestNumber,
+                        requestPurpose: fullRequest.requestPurpose,
+                        requestedDate: fullRequest.requestedTimestamp,
+                      });
+                    });
+                  }
+
+                  // Once all requests fetched, update state
+                  if (fetchedCount === response.length) {
+                    setRetrievedSamples(allRetrievedItems);
+                    setLoadingRetrieved(false);
+                  }
+                }
+              },
+            );
+          });
+        } else {
+          setRetrievedSamples([]);
+          setLoadingRetrieved(false);
+        }
+      },
+    );
+  }, []);
+
   // Load samples and routing summary
   useEffect(() => {
     console.log(
@@ -227,11 +310,12 @@ function MedLabSampleRoutingPage({
     componentMounted.current = true;
     loadPageSamples();
     loadRoutingSummary();
+    loadRetrievedSamples();
 
     return () => {
       componentMounted.current = false;
     };
-  }, [entryId, loadPageSamples, loadRoutingSummary]);
+  }, [entryId, loadPageSamples, loadRoutingSummary, loadRetrievedSamples]);
 
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
@@ -287,10 +371,75 @@ function MedLabSampleRoutingPage({
       };
     } else if (routeDestination.id === "EXTERNAL_LAB") {
       if (!externalLabName.trim()) {
-        setError("Please enter the external lab name.");
+        setError("Please select a destination laboratory.");
         setRouting(false);
         return;
       }
+
+      // Special handling for Biorepository - create transfer request + update routing status
+      if (externalLabName === "Biorepository") {
+        const transferRequest = {
+          sourceLab: "MEDICAL_LAB",
+          sampleItemIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+          requestNotes: `Transfer from medical lab entry ${entryId}`,
+        };
+
+        // Step 1: Create biorepository transfer request
+        postToOpenElisServerJsonResponse(
+          `/rest/biorepository/transfer`,
+          JSON.stringify(transferRequest),
+          (response) => {
+            if (!componentMounted.current) return;
+
+            if (response && response.id) {
+              // Step 2: Update medical lab routing status
+              const medLabRouteRequest = {
+                sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+                destinationType: "EXTERNAL_LAB",
+                externalLabName: "Biorepository",
+                pageId: pageData?.id,
+              };
+
+              postToOpenElisServerJsonResponse(
+                `/rest/medlab/route-samples`,
+                JSON.stringify(medLabRouteRequest),
+                (routeResponse) => {
+                  if (!componentMounted.current) return;
+                  setRouting(false);
+                  setRouteModalOpen(false);
+
+                  if (routeResponse && routeResponse.success) {
+                    setSuccess(
+                      `Successfully created biorepository transfer request #${response.id} for ${response.itemCount || selectedSampleIds.length} samples. Status: ${response.status}`,
+                    );
+                    setSelectedSampleIds([]);
+                    loadPageSamples();
+                    loadRoutingSummary();
+                    if (onProgressUpdate) {
+                      onProgressUpdate();
+                    }
+                  } else {
+                    setError(
+                      routeResponse?.error ||
+                        "Transfer created but failed to update routing status.",
+                    );
+                  }
+                },
+              );
+            } else {
+              setRouting(false);
+              setRouteModalOpen(false);
+              setError(
+                response?.error ||
+                  "Failed to create biorepository transfer request.",
+              );
+            }
+          },
+        );
+        return; // Exit early - don't use the generic route endpoint
+      }
+
+      // Regular external lab routing
       routeRequest.externalLabName = externalLabName;
       if (shipmentDate) {
         routeRequest.shipmentDate = shipmentDate;
@@ -366,6 +515,168 @@ function MedLabSampleRoutingPage({
     loadRoutingSummary,
     onProgressUpdate,
     storageWellAssignments,
+    entryId,
+  ]);
+
+  // Handle returning retrieved samples to lab for re-routing (bulk operation)
+  const handleReturnToLab = useCallback(() => {
+    if (!notebookId || !pageData?.id || selectedRetrievedSampleIds.length === 0)
+      return;
+
+    setReturningToLab(true);
+    setError(null);
+
+    const unrouteRequest = {
+      sampleIds: selectedRetrievedSampleIds.map((id) => parseInt(id, 10)),
+      pageId: pageData.id,
+    };
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/${notebookId}/samples/unroute`,
+      JSON.stringify(unrouteRequest),
+      (response) => {
+        if (!componentMounted.current) return;
+        setReturningToLab(false);
+
+        if (response && response.success) {
+          setSuccess(
+            `Successfully returned ${response.unroutedCount} sample(s) to routing queue.`,
+          );
+          setSelectedRetrievedSampleIds([]); // Clear selection
+          // Reload both samples and retrieved samples lists
+          loadPageSamples();
+          loadRetrievedSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          setError(response?.error || "Failed to return sample to lab.");
+        }
+      },
+    );
+  }, [
+    notebookId,
+    pageData?.id,
+    selectedRetrievedSampleIds,
+    loadPageSamples,
+    loadRetrievedSamples,
+    onProgressUpdate,
+  ]);
+
+  // Handle retrieval request creation
+  const handleCreateRetrievalRequest = useCallback(() => {
+    if (selectedRetrievalSamples.length === 0) {
+      setRetrievalModalError("Please select at least one sample to retrieve.");
+      return;
+    }
+
+    if (!retrievalPurpose.trim()) {
+      setRetrievalModalError(
+        "Please provide a purpose for the retrieval request.",
+      );
+      return;
+    }
+
+    setCreatingRetrieval(true);
+    setRetrievalModalError(null);
+
+    // Directly fetch BioSamples by sample item ID
+    const bioSampleIds = [];
+    const notFoundSamples = [];
+    let fetchCount = 0;
+
+    selectedRetrievalSamples.forEach((sampleId) => {
+      getFromOpenElisServer(
+        `/rest/biorepository/sample/by-sample-item/${sampleId}`,
+        (bioSample) => {
+          if (!componentMounted.current) return;
+
+          fetchCount++;
+
+          // Collect BioSample ID if found
+          if (bioSample && bioSample.id) {
+            bioSampleIds.push(bioSample.id);
+          } else {
+            notFoundSamples.push(sampleId);
+          }
+
+          // Once all samples checked, create retrieval request
+          if (fetchCount === selectedRetrievalSamples.length) {
+            if (bioSampleIds.length === 0) {
+              setRetrievalModalError(
+                "None of the selected samples are available in the biorepository. Samples must be accepted and stored before retrieval requests can be created.",
+              );
+              setCreatingRetrieval(false);
+              return;
+            }
+
+            // Show warning if some samples weren't found
+            if (notFoundSamples.length > 0) {
+              console.warn(
+                `Warning: ${notFoundSamples.length} of ${selectedRetrievalSamples.length} samples were not found in biorepository. Creating request for ${bioSampleIds.length} available samples.`,
+              );
+            }
+
+            // Create retrieval request
+            const retrievalRequest = {
+              requestPurpose: retrievalPurpose,
+              bioSampleIds: bioSampleIds,
+              destinationType: "ANALYSIS_RETURN",
+              destinationDetails:
+                retrievalDestinationDetails || `Medical Lab - Entry ${entryId}`,
+              priorityLevel: "NORMAL",
+            };
+
+            postToOpenElisServerJsonResponse(
+              `/rest/biorepository/retrieval/requests`,
+              JSON.stringify(retrievalRequest),
+              (createResponse) => {
+                if (!componentMounted.current) return;
+
+                if (createResponse && createResponse.id) {
+                  // Request created in DRAFT status, now submit for approval
+                  postToOpenElisServerJsonResponse(
+                    `/rest/biorepository/retrieval/requests/${createResponse.id}/submit`,
+                    JSON.stringify({}),
+                    (submitResponse) => {
+                      if (!componentMounted.current) return;
+                      setCreatingRetrieval(false);
+
+                      if (submitResponse && submitResponse.status) {
+                        setRetrievalModalOpen(false);
+                        setSuccess(
+                          `Successfully created retrieval request #${createResponse.requestNumber} for ${bioSampleIds.length} samples. Status: ${submitResponse.status}`,
+                        );
+                        setSelectedRetrievalSamples([]);
+                        setRetrievalPurpose("");
+                        setRetrievalDestinationDetails("");
+                        setRetrievalModalError(null);
+                      } else {
+                        setRetrievalModalError(
+                          submitResponse?.error ||
+                            "Failed to submit retrieval request for approval.",
+                        );
+                      }
+                    },
+                  );
+                } else {
+                  setCreatingRetrieval(false);
+                  setRetrievalModalError(
+                    createResponse?.error ||
+                      "Failed to create retrieval request.",
+                  );
+                }
+              },
+            );
+          }
+        },
+      );
+    });
+  }, [
+    selectedRetrievalSamples,
+    retrievalPurpose,
+    retrievalDestinationDetails,
+    entryId,
   ]);
 
   // Auto-populate wells for storage routing (preview before save)
@@ -673,7 +984,7 @@ function MedLabSampleRoutingPage({
         />
       )}
 
-      {/* Tabs for Samples and Box Layout */}
+      {/* Tabs for Samples, Box Layout, and External Lab Transfers */}
       <Tabs>
         <TabList aria-label="Routing tabs">
           <Tab>
@@ -688,14 +999,22 @@ function MedLabSampleRoutingPage({
               defaultMessage="Box Layout"
             />
           </Tab>
+          <Tab>
+            <FormattedMessage
+              id="notebook.routing.tab.externalTransfers"
+              defaultMessage="External Lab Transfers"
+            />
+          </Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
-            {/* Sample Grid */}
+            {/* Sample Grid - Exclude External Lab samples (they have their own tab) */}
             <div className="sample-grid-container">
               <SampleGrid
                 gridId="sample-routing"
-                samples={samples}
+                samples={samples.filter(
+                  (s) => s.destinationType !== "EXTERNAL_LAB",
+                )}
                 selectedIds={selectedSampleIds}
                 onSelectionChange={setSelectedSampleIds}
                 onStatusChange={handleStatusChange}
@@ -763,6 +1082,320 @@ function MedLabSampleRoutingPage({
                   />
                 </div>
               )}
+            </div>
+          </TabPanel>
+          <TabPanel>
+            {/* External Lab Transfers Tab */}
+            <div style={{ marginTop: "1rem" }}>
+              <h5 style={{ marginBottom: "1rem" }}>
+                <FormattedMessage
+                  id="notebook.routing.externalTransfers.title"
+                  defaultMessage="Samples Transferred to External Labs"
+                />
+              </h5>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  color: "#525252",
+                  marginBottom: "1rem",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.routing.externalTransfers.description"
+                  defaultMessage="View samples that have been routed to external laboratories, including biorepository transfers."
+                />
+              </p>
+
+              {/* Retrieval Request Button */}
+              <div style={{ marginBottom: "1rem" }}>
+                <Button
+                  kind="primary"
+                  size="sm"
+                  onClick={() => setRetrievalModalOpen(true)}
+                  disabled={selectedRetrievalSamples.length === 0}
+                >
+                  <FormattedMessage
+                    id="notebook.routing.requestRetrieval"
+                    defaultMessage="Request Retrieval ({count})"
+                    values={{ count: selectedRetrievalSamples.length }}
+                  />
+                </Button>
+              </div>
+              {(() => {
+                const externalLabSamples = samples.filter(
+                  (s) => s.destinationType === "EXTERNAL_LAB",
+                );
+
+                if (externalLabSamples.length === 0) {
+                  return (
+                    <div
+                      style={{
+                        padding: "2rem",
+                        textAlign: "center",
+                        color: "#8d8d8d",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="notebook.routing.externalTransfers.empty"
+                        defaultMessage="No samples have been transferred to external labs yet."
+                      />
+                    </div>
+                  );
+                }
+
+                return (
+                  <SampleGrid
+                    gridId="external-lab-transfers"
+                    samples={externalLabSamples}
+                    selectedIds={selectedRetrievalSamples}
+                    onSelectionChange={setSelectedRetrievalSamples}
+                    showSelection={true}
+                    showPatient={true}
+                    loading={loading}
+                    additionalColumns={[
+                      {
+                        key: "externalLab",
+                        header: "External Lab",
+                        render: (value, sample) => {
+                          // For now, hardcoded to Biorepository (only supported external lab)
+                          return (
+                            <Tag type="purple">
+                              Biorepository (Long-term Storage)
+                            </Tag>
+                          );
+                        },
+                      },
+                      {
+                        key: "transferStatus",
+                        header: "Transfer Status",
+                        render: (value, sample) => {
+                          // For biorepository, we could check transfer status
+                          // For now, show as "Transferred"
+                          return <Tag type="green">Transferred</Tag>;
+                        },
+                      },
+                    ]}
+                  />
+                );
+              })()}
+
+              {/* Retrieved Samples Section */}
+              <div
+                style={{
+                  marginTop: "2rem",
+                  paddingTop: "2rem",
+                  borderTop: "1px solid #e0e0e0",
+                }}
+              >
+                <h5 style={{ marginBottom: "1rem" }}>
+                  <FormattedMessage
+                    id="notebook.routing.retrieved.title"
+                    defaultMessage="Retrieved Samples from Biorepository"
+                  />
+                </h5>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <FormattedMessage
+                    id="notebook.routing.retrieved.description"
+                    defaultMessage="Samples that have been retrieved from biorepository storage. Select samples and click 'Return to Routing Queue' in the batch actions toolbar to make them available for re-routing."
+                  />
+                </p>
+
+                {loadingRetrieved ? (
+                  <div style={{ padding: "2rem", textAlign: "center" }}>
+                    <FormattedMessage
+                      id="notebook.routing.retrieved.loading"
+                      defaultMessage="Loading retrieved samples..."
+                    />
+                  </div>
+                ) : retrievedSamples.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "2rem",
+                      textAlign: "center",
+                      color: "#8d8d8d",
+                    }}
+                  >
+                    <FormattedMessage
+                      id="notebook.routing.retrieved.empty"
+                      defaultMessage="No samples have been retrieved from biorepository yet."
+                    />
+                  </div>
+                ) : (
+                  <DataTable
+                    rows={retrievedSamples
+                      .filter((item) => {
+                        // Filter out samples that have been returned to routing queue
+                        // Only show samples that still have destinationType = "EXTERNAL_LAB"
+                        const sampleId = String(item.sampleItemId || item.id);
+                        const currentSample = samples.find(
+                          (s) => s.id === sampleId,
+                        );
+                        return (
+                          currentSample?.destinationType === "EXTERNAL_LAB"
+                        );
+                      })
+                      .map((item, idx) => ({
+                        id: String(item.sampleItemId || item.id || idx),
+                        barcode: item.externalId || "-",
+                        sampleType: item.sampleType || "-",
+                        requestNumber: item.requestNumber || "-",
+                        purpose: item.requestPurpose || "-",
+                        retrievedDate: item.retrievedTimestamp
+                          ? new Date(
+                              item.retrievedTimestamp,
+                            ).toLocaleDateString()
+                          : item.requestedDate
+                            ? new Date(item.requestedDate).toLocaleDateString()
+                            : "-",
+                        status: item.status || "PENDING",
+                      }))}
+                    headers={[
+                      {
+                        key: "barcode",
+                        header: intl.formatMessage({
+                          id: "notebook.routing.retrieved.externalId",
+                          defaultMessage: "External ID",
+                        }),
+                      },
+                      {
+                        key: "sampleType",
+                        header: intl.formatMessage({
+                          id: "notebook.routing.retrieved.sampleType",
+                          defaultMessage: "Sample Type",
+                        }),
+                      },
+                      {
+                        key: "requestNumber",
+                        header: intl.formatMessage({
+                          id: "notebook.routing.retrieved.requestNumber",
+                          defaultMessage: "Request #",
+                        }),
+                      },
+                      {
+                        key: "purpose",
+                        header: intl.formatMessage({
+                          id: "notebook.routing.retrieved.purpose",
+                          defaultMessage: "Retrieval Purpose",
+                        }),
+                      },
+                      {
+                        key: "retrievedDate",
+                        header: intl.formatMessage({
+                          id: "notebook.routing.retrieved.date",
+                          defaultMessage: "Retrieved Date",
+                        }),
+                      },
+                      {
+                        key: "status",
+                        header: intl.formatMessage({
+                          id: "notebook.routing.retrieved.status",
+                          defaultMessage: "Status",
+                        }),
+                      },
+                    ]}
+                  >
+                    {({
+                      rows,
+                      headers,
+                      getHeaderProps,
+                      getTableProps,
+                      getSelectionProps,
+                      getBatchActionProps,
+                      selectedRows,
+                    }) => {
+                      // Update selected sample IDs when selection changes
+                      const currentSelectedIds = selectedRows.map((row) =>
+                        String(row.id),
+                      );
+                      if (
+                        JSON.stringify(currentSelectedIds) !==
+                        JSON.stringify(selectedRetrievedSampleIds)
+                      ) {
+                        setSelectedRetrievedSampleIds(currentSelectedIds);
+                      }
+
+                      return (
+                        <TableContainer>
+                          <TableBatchActions {...getBatchActionProps()}>
+                            <TableBatchAction
+                              renderIcon={Renew}
+                              iconDescription="Return to Routing Queue"
+                              onClick={handleReturnToLab}
+                              disabled={returningToLab}
+                            >
+                              <FormattedMessage
+                                id="notebook.routing.retrieved.returnToQueue"
+                                defaultMessage="Return to Routing Queue"
+                              />
+                            </TableBatchAction>
+                          </TableBatchActions>
+                          <Table {...getTableProps()} size="md">
+                            <TableHead>
+                              <TableRow>
+                                <TableSelectAll
+                                  {...getSelectionProps()}
+                                  disabled={returningToLab}
+                                />
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    {...getHeaderProps({ header })}
+                                    key={header.key}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {rows.map((row) => (
+                                <TableRow key={row.id}>
+                                  <TableSelectRow
+                                    {...getSelectionProps({ row })}
+                                    disabled={returningToLab}
+                                  />
+                                  {row.cells.map((cell) => {
+                                    if (cell.info.header === "status") {
+                                      const statusColors = {
+                                        PENDING: "gray",
+                                        RETRIEVED: "blue",
+                                        IN_ANALYSIS: "purple",
+                                        RETURNED: "green",
+                                        CONSUMED: "teal",
+                                      };
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          <Tag
+                                            type={
+                                              statusColors[cell.value] || "gray"
+                                            }
+                                          >
+                                            {cell.value}
+                                          </Tag>
+                                        </TableCell>
+                                      );
+                                    }
+                                    return (
+                                      <TableCell key={cell.id}>
+                                        {cell.value}
+                                      </TableCell>
+                                    );
+                                  })}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      );
+                    }}
+                  </DataTable>
+                )}
+              </div>
             </div>
           </TabPanel>
         </TabPanels>
@@ -854,31 +1487,49 @@ function MedLabSampleRoutingPage({
         {/* External Lab Fields */}
         {routeDestination?.id === "EXTERNAL_LAB" && (
           <div>
-            <TextInput
+            {externalLabName === "Biorepository" && (
+              <InlineNotification
+                kind="info"
+                title="Biorepository Transfer"
+                subtitle="Routing to Biorepository will create a transfer request that must be reviewed and accepted by biorepository staff. Samples will be assigned biosafety levels, ethics approval references, and long-term storage locations upon acceptance."
+                hideCloseButton
+                lowContrast
+                style={{ marginBottom: "1rem" }}
+              />
+            )}
+            <Select
               id="external-lab-name"
               labelText={intl.formatMessage({
                 id: "notebook.routing.modal.labName",
-                defaultMessage: "External Lab Name",
+                defaultMessage: "External Lab *",
               })}
               value={externalLabName}
               onChange={(e) => setExternalLabName(e.target.value)}
               style={{ marginBottom: "1rem" }}
-            />
-            <DatePicker
-              datePickerType="single"
-              onChange={([date]) =>
-                setShipmentDate(date?.toISOString().split("T")[0])
-              }
             >
-              <DatePickerInput
-                id="shipment-date"
-                labelText={intl.formatMessage({
-                  id: "notebook.routing.modal.shipmentDate",
-                  defaultMessage: "Shipment Date (Optional)",
-                })}
-                placeholder="mm/dd/yyyy"
+              <SelectItem value="" text="Select destination lab..." />
+              <SelectItem
+                value="Biorepository"
+                text="Biorepository (Long-term Storage)"
               />
-            </DatePicker>
+            </Select>
+            {externalLabName !== "Biorepository" && (
+              <DatePicker
+                datePickerType="single"
+                onChange={([date]) =>
+                  setShipmentDate(date?.toISOString().split("T")[0])
+                }
+              >
+                <DatePickerInput
+                  id="shipment-date"
+                  labelText={intl.formatMessage({
+                    id: "notebook.routing.modal.shipmentDate",
+                    defaultMessage: "Shipment Date (Optional)",
+                  })}
+                  placeholder="mm/dd/yyyy"
+                />
+              </DatePicker>
+            )}
           </div>
         )}
 
@@ -1012,6 +1663,95 @@ function MedLabSampleRoutingPage({
             </p>
           </div>
         )}
+      </Modal>
+
+      {/* Retrieval Request Modal */}
+      <Modal
+        open={retrievalModalOpen}
+        size="md"
+        modalHeading={intl.formatMessage({
+          id: "notebook.routing.retrieval.modal.title",
+          defaultMessage: "Request Sample Retrieval from Biorepository",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "notebook.routing.retrieval.modal.create",
+          defaultMessage: "Create Retrieval Request",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "notebook.routing.modal.cancel",
+          defaultMessage: "Cancel",
+        })}
+        onRequestClose={() => {
+          setRetrievalModalOpen(false);
+          setRetrievalPurpose("");
+          setRetrievalDestinationDetails("");
+          setRetrievalModalError(null);
+        }}
+        onRequestSubmit={handleCreateRetrievalRequest}
+        primaryButtonDisabled={creatingRetrieval || !retrievalPurpose.trim()}
+      >
+        <div style={{ marginBottom: "1rem" }}>
+          <InlineNotification
+            kind="info"
+            title="Biorepository Retrieval Request"
+            subtitle={intl.formatMessage(
+              {
+                id: "notebook.routing.retrieval.modal.info",
+                defaultMessage:
+                  "You are requesting to retrieve {count} sample(s) from the Biorepository. This request will be reviewed and approved by biorepository staff before samples can be released.",
+              },
+              { count: selectedRetrievalSamples.length },
+            )}
+            hideCloseButton
+            lowContrast
+            style={{ marginBottom: "1rem" }}
+          />
+
+          {retrievalModalError && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({
+                id: "notebook.routing.retrieval.modal.error.title",
+                defaultMessage: "Unable to Create Retrieval Request",
+              })}
+              subtitle={retrievalModalError}
+              onCloseButtonClick={() => setRetrievalModalError(null)}
+              lowContrast
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+
+          <TextInput
+            id="retrieval-purpose"
+            labelText={intl.formatMessage({
+              id: "notebook.routing.retrieval.purpose",
+              defaultMessage: "Purpose of Retrieval *",
+            })}
+            placeholder={intl.formatMessage({
+              id: "notebook.routing.retrieval.purposePlaceholder",
+              defaultMessage:
+                "e.g., Additional analysis, re-testing, quality control",
+            })}
+            value={retrievalPurpose}
+            onChange={(e) => setRetrievalPurpose(e.target.value)}
+            style={{ marginBottom: "1rem" }}
+            required
+          />
+
+          <TextInput
+            id="retrieval-destination"
+            labelText={intl.formatMessage({
+              id: "notebook.routing.retrieval.destination",
+              defaultMessage: "Destination Details (Optional)",
+            })}
+            placeholder={intl.formatMessage({
+              id: "notebook.routing.retrieval.destinationPlaceholder",
+              defaultMessage: "Where will samples be used?",
+            })}
+            value={retrievalDestinationDetails}
+            onChange={(e) => setRetrievalDestinationDetails(e.target.value)}
+          />
+        </div>
       </Modal>
     </div>
   );

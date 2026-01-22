@@ -74,6 +74,16 @@ public interface NotebookPageSampleDAO extends BaseDAO<NotebookPageSample, Integ
     int bulkUpdateStatusString(Integer pageId, List<String> sampleIds, Status status);
 
     /**
+     * Clear destinationType from the JSONB data field for multiple samples on a
+     * page. This makes samples available for re-routing.
+     *
+     * @param pageId    the notebook page ID
+     * @param sampleIds list of sample item IDs
+     * @return number of records updated
+     */
+    int clearDestinationType(Integer pageId, List<Integer> sampleIds);
+
+    /**
      * Get paginated samples for a page with optional status filter.
      *
      * @param pageId the notebook page ID

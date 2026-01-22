@@ -508,7 +508,9 @@ function SampleGrid({
       sampleType: safeSampleType,
       sampleCategory: safeString(sample.sampleCategory),
       sourceFacility: safeString(sample.sourceFacility),
-      collectionDate: safeString(sample.collectionDate || sample.collectionDateTime),
+      collectionDate: safeString(
+        sample.collectionDate || sample.collectionDateTime,
+      ),
       receivedDate: safeString(sample.receivedDate || sample.receivedDateTime),
       status: safeString(sample.status, "PENDING"),
       _original: sample,
@@ -634,7 +636,8 @@ function SampleGrid({
                             const safeString = (value, fallback = "-") => {
                               if (!value) return fallback;
                               if (typeof value === "string") return value;
-                              if (typeof value === "number") return String(value);
+                              if (typeof value === "number")
+                                return String(value);
                               if (typeof value === "object") {
                                 return (
                                   value.value ||
@@ -663,7 +666,11 @@ function SampleGrid({
                             cellValue = JSON.stringify(cellValue);
                           }
                         } catch (err) {
-                          console.error("Error rendering column:", col.key, err);
+                          console.error(
+                            "Error rendering column:",
+                            col.key,
+                            err,
+                          );
                           cellValue = "-";
                         }
                         return <TableCell key={col.key}>{cellValue}</TableCell>;
@@ -695,7 +702,9 @@ function SampleGrid({
                       <TableCell>{row.sourceFacility}</TableCell>
                       <TableCell>{formatDate(row.collectionDate)}</TableCell>
                       <TableCell>{formatDate(row.receivedDate)}</TableCell>
-                      <TableCell>{getStatusTag(row.status || row.pageStatus)}</TableCell>
+                      <TableCell>
+                        {getStatusTag(row.status || row.pageStatus)}
+                      </TableCell>
                       {additionalColumns.map((col) => {
                         let cellValue;
                         try {

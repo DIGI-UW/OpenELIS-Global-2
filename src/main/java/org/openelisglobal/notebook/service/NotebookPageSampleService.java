@@ -66,6 +66,17 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId);
 
     /**
+     * Clear destinationType for multiple samples on a page (unroute them).
+     * This makes samples available for re-routing.
+     *
+     * @param pageId    the notebook page ID
+     * @param sampleIds list of sample item IDs
+     * @param userId    the user performing the update
+     * @return number of records updated
+     */
+    int clearDestinationType(Integer pageId, List<Integer> sampleIds, String userId);
+
+    /**
      * Bulk update status for multiple samples on a page using String IDs. Supports
      * composite sample IDs (e.g., "123_cassette_0") used in pathology workflow
      * pages where samples are expanded from parent items.

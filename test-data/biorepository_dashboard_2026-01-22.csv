@@ -1,0 +1,18 @@
+Metric Category,Metric Name,Value
+Storage Capacity,Total Devices,0
+Storage Capacity,Total Samples Stored,2
+Storage Capacity,Pending Storage,0
+Storage Capacity,Average Utilization %,0.0
+Sample Aging,Total Active Samples,2
+Sample Aging,Expiring within 30 days,0
+Sample Aging,Expiring within 60 days,0
+Sample Aging,Expiring within 90 days,0
+Sample Aging,Expired Samples,0
+QC Compliance,Total Inspections,2
+QC Compliance,Passed Inspections,1
+QC Compliance,Failed Inspections,1
+QC Compliance,Compliance Rate %,50.0
+Retrieval Statistics,Total Requests,1
+Retrieval Statistics,Pending Requests,0
+Retrieval Statistics,Rejected Requests,0
+Retrieval Statistics,Completed Requests,1

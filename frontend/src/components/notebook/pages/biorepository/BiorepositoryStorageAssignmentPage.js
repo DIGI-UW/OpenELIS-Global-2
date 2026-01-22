@@ -25,6 +25,7 @@ import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
@@ -742,6 +743,33 @@ function BiorepositoryStorageAssignmentPage({
           response.errors.length > 0;
 
         if (response && (response.success || assignedCount > 0)) {
+          // Update BioSample workflow_status to STORED after successful storage assignment
+          const assignedSampleItemIds = storageSelection.box
+            ? Object.keys(wellAssignments).map((id) => parseInt(id, 10))
+            : selectedSampleIds.map((id) => parseInt(id, 10));
+
+          if (assignedSampleItemIds.length > 0) {
+            putToOpenElisServerJsonResponse(
+              `/rest/biorepository/sample/workflow-status`,
+              JSON.stringify({
+                sampleItemIds: assignedSampleItemIds,
+                workflowStatus: "STORED",
+              }),
+              (workflowResponse) => {
+                if (workflowResponse && workflowResponse.success) {
+                  console.log(
+                    `Updated workflow status to STORED for ${workflowResponse.updatedCount} BioSamples`,
+                  );
+                } else {
+                  console.warn(
+                    "Failed to update BioSample workflow status:",
+                    workflowResponse?.error,
+                  );
+                }
+              },
+            );
+          }
+
           const messageId = isReassignment
             ? "biorepository.storage.reassignSuccess"
             : "biorepository.storage.assignSuccess";

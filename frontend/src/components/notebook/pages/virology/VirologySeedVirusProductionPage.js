@@ -90,8 +90,7 @@ function VirologySeedVirusProductionPage({
               id: String(sample.id || sample.sampleItemId),
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
-              sampleType:
-                sample.sampleType || sample.typeOfSample?.description,
+              sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || sample.status || "PENDING",
               seedVirusBatchId: sample.data?.seedVirusBatchId,
@@ -113,8 +112,7 @@ function VirologySeedVirusProductionPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.error" }),
-        subtitle:
-          "Please provide seed virus batch ID and selection criteria",
+        subtitle: "Please provide seed virus batch ID and selection criteria",
       });
       return;
     }
@@ -267,13 +265,25 @@ function VirologySeedVirusProductionPage({
         key: "seedVirusBatchId",
         header: "Seed Virus Batch ID",
         render: (value) =>
-          value ? <Tag type="magenta" size="sm">{value}</Tag> : "-",
+          value ? (
+            <Tag type="magenta" size="sm">
+              {value}
+            </Tag>
+          ) : (
+            "-"
+          ),
       },
       {
         key: "selectedStrain",
         header: "Selected Strain",
         render: (value) =>
-          value ? <Tag type="purple" size="sm">{value}</Tag> : "-",
+          value ? (
+            <Tag type="purple" size="sm">
+              {value}
+            </Tag>
+          ) : (
+            "-"
+          ),
       },
     ],
     [],

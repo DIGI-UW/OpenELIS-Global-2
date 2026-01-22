@@ -25,7 +25,13 @@ import {
   TabPanel,
   Tile,
 } from "@carbon/react";
-import { Save, Checkmark, Chemistry, Hospital, View } from "@carbon/react/icons";
+import {
+  Save,
+  Checkmark,
+  Chemistry,
+  Hospital,
+  View,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -48,12 +54,7 @@ import "../../workflow/NotebookWorkflow.css";
  * Clinical Trials (Human Testing - External):
  * - Link trial phases (Phase I/II/III), outcomes, regulatory submissions
  */
-function VirologyTrialsPage({
-  entryId,
-  pageData,
-  progress,
-  onProgressUpdate,
-}) {
+function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -131,8 +132,7 @@ function VirologyTrialsPage({
               id: String(sample.id || sample.sampleItemId),
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
-              sampleType:
-                sample.sampleType || sample.typeOfSample?.description,
+              sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || sample.status || "PENDING",
               // Trials history array (allows multiple preclinical AND clinical trials)
@@ -181,7 +181,10 @@ function VirologyTrialsPage({
 
   // Handle preclinical trial submission
   const handleSavePreclinicalTrial = useCallback(() => {
-    if (!preclinicalData.animalSpecies || !preclinicalData.trialInitiationDate) {
+    if (
+      !preclinicalData.animalSpecies ||
+      !preclinicalData.trialInitiationDate
+    ) {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.error" }),
@@ -409,9 +412,14 @@ function VirologyTrialsPage({
 
   // Get trial counts for a sample
   const getTrialCounts = (trialsHistory) => {
-    if (!Array.isArray(trialsHistory)) return { preclinical: 0, clinical: 0, total: 0 };
-    const preclinical = trialsHistory.filter((t) => t.trialType === "PRECLINICAL").length;
-    const clinical = trialsHistory.filter((t) => t.trialType === "CLINICAL").length;
+    if (!Array.isArray(trialsHistory))
+      return { preclinical: 0, clinical: 0, total: 0 };
+    const preclinical = trialsHistory.filter(
+      (t) => t.trialType === "PRECLINICAL",
+    ).length;
+    const clinical = trialsHistory.filter(
+      (t) => t.trialType === "CLINICAL",
+    ).length;
     return { preclinical, clinical, total: preclinical + clinical };
   };
 
@@ -424,13 +432,16 @@ function VirologyTrialsPage({
           defaultMessage: "Trials Logged",
         }),
         render: (value, sample) => {
-          const history = value || sample?.trialsHistory || sample?.data?.trialsHistory;
+          const history =
+            value || sample?.trialsHistory || sample?.data?.trialsHistory;
           if (!Array.isArray(history) || history.length === 0) return "-";
 
           const counts = getTrialCounts(history);
 
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
               {counts.preclinical > 0 && (
                 <Tag type="cyan" size="sm">
                   {counts.preclinical} Preclinical
@@ -475,7 +486,9 @@ function VirologyTrialsPage({
               <span>{lastTrial?.trialInitiationDate || "-"}</span>
               {lastTrial?.trialType && (
                 <Tag
-                  type={lastTrial.trialType === "PRECLINICAL" ? "cyan" : "purple"}
+                  type={
+                    lastTrial.trialType === "PRECLINICAL" ? "cyan" : "purple"
+                  }
                   size="sm"
                   style={{ marginLeft: "0.5rem" }}
                 >
@@ -631,7 +644,10 @@ function VirologyTrialsPage({
               </Tag>
             </h5>
           </div>
-          <Tabs selectedIndex={activeTab} onChange={({ selectedIndex }) => setActiveTab(selectedIndex)}>
+          <Tabs
+            selectedIndex={activeTab}
+            onChange={({ selectedIndex }) => setActiveTab(selectedIndex)}
+          >
             <TabList aria-label="Trial types">
               <Tab>
                 <FormattedMessage
@@ -725,7 +741,9 @@ function VirologyTrialsPage({
         })}
         onRequestSubmit={handleSavePreclinicalTrial}
         primaryButtonDisabled={
-          loading || !preclinicalData.animalSpecies || !preclinicalData.trialInitiationDate
+          loading ||
+          !preclinicalData.animalSpecies ||
+          !preclinicalData.trialInitiationDate
         }
         size="lg"
       >
@@ -738,7 +756,9 @@ function VirologyTrialsPage({
               onChange={(dates) =>
                 setPreclinicalData({
                   ...preclinicalData,
-                  trialInitiationDate: dates[0] ? dates[0].toISOString().split("T")[0] : "",
+                  trialInitiationDate: dates[0]
+                    ? dates[0].toISOString().split("T")[0]
+                    : "",
                 })
               }
             >
@@ -875,9 +895,18 @@ function VirologyTrialsPage({
             >
               <SelectItem value="" text="Select outcome..." />
               <SelectItem value="Well Tolerated" text="Well Tolerated" />
-              <SelectItem value="Minor Adverse Events" text="Minor Adverse Events" />
-              <SelectItem value="Moderate Adverse Events" text="Moderate Adverse Events" />
-              <SelectItem value="Severe Adverse Events" text="Severe Adverse Events" />
+              <SelectItem
+                value="Minor Adverse Events"
+                text="Minor Adverse Events"
+              />
+              <SelectItem
+                value="Moderate Adverse Events"
+                text="Moderate Adverse Events"
+              />
+              <SelectItem
+                value="Severe Adverse Events"
+                text="Severe Adverse Events"
+              />
               <SelectItem value="Pending" text="Pending" />
             </Select>
           </Column>
@@ -956,7 +985,9 @@ function VirologyTrialsPage({
         })}
         onRequestSubmit={handleSaveClinicalTrial}
         primaryButtonDisabled={
-          loading || !clinicalData.trialPhase || !clinicalData.trialInitiationDate
+          loading ||
+          !clinicalData.trialPhase ||
+          !clinicalData.trialInitiationDate
         }
         size="lg"
       >
@@ -983,8 +1014,14 @@ function VirologyTrialsPage({
             >
               <SelectItem value="" text="Select phase..." />
               <SelectItem value="Phase I" text="Phase I - Safety & Dosage" />
-              <SelectItem value="Phase II" text="Phase II - Efficacy & Side Effects" />
-              <SelectItem value="Phase III" text="Phase III - Large Scale Testing" />
+              <SelectItem
+                value="Phase II"
+                text="Phase II - Efficacy & Side Effects"
+              />
+              <SelectItem
+                value="Phase III"
+                text="Phase III - Large Scale Testing"
+              />
               <SelectItem value="Phase IV" text="Phase IV - Post-Marketing" />
             </Select>
           </Column>
@@ -997,7 +1034,9 @@ function VirologyTrialsPage({
               onChange={(dates) =>
                 setClinicalData({
                   ...clinicalData,
-                  trialInitiationDate: dates[0] ? dates[0].toISOString().split("T")[0] : "",
+                  trialInitiationDate: dates[0]
+                    ? dates[0].toISOString().split("T")[0]
+                    : "",
                 })
               }
             >
@@ -1075,10 +1114,22 @@ function VirologyTrialsPage({
               }
             >
               <SelectItem value="" text="Select outcome..." />
-              <SelectItem value="Highly Effective (>90%)" text="Highly Effective (>90%)" />
-              <SelectItem value="Effective (70-90%)" text="Effective (70-90%)" />
-              <SelectItem value="Moderately Effective (50-70%)" text="Moderately Effective (50-70%)" />
-              <SelectItem value="Low Efficacy (<50%)" text="Low Efficacy (<50%)" />
+              <SelectItem
+                value="Highly Effective (>90%)"
+                text="Highly Effective (>90%)"
+              />
+              <SelectItem
+                value="Effective (70-90%)"
+                text="Effective (70-90%)"
+              />
+              <SelectItem
+                value="Moderately Effective (50-70%)"
+                text="Moderately Effective (50-70%)"
+              />
+              <SelectItem
+                value="Low Efficacy (<50%)"
+                text="Low Efficacy (<50%)"
+              />
               <SelectItem value="Pending" text="Pending" />
             </Select>
           </Column>
@@ -1102,9 +1153,18 @@ function VirologyTrialsPage({
             >
               <SelectItem value="" text="Select outcome..." />
               <SelectItem value="Well Tolerated" text="Well Tolerated" />
-              <SelectItem value="Minor Adverse Events" text="Minor Adverse Events" />
-              <SelectItem value="Moderate Adverse Events" text="Moderate Adverse Events" />
-              <SelectItem value="Serious Adverse Events" text="Serious Adverse Events" />
+              <SelectItem
+                value="Minor Adverse Events"
+                text="Minor Adverse Events"
+              />
+              <SelectItem
+                value="Moderate Adverse Events"
+                text="Moderate Adverse Events"
+              />
+              <SelectItem
+                value="Serious Adverse Events"
+                text="Serious Adverse Events"
+              />
               <SelectItem value="Pending" text="Pending" />
             </Select>
           </Column>
@@ -1240,7 +1300,9 @@ function VirologyTrialsPage({
                   type={trial.trialType === "PRECLINICAL" ? "cyan" : "purple"}
                   size="sm"
                 >
-                  {trial.trialType === "PRECLINICAL" ? "Preclinical" : "Clinical"}
+                  {trial.trialType === "PRECLINICAL"
+                    ? "Preclinical"
+                    : "Clinical"}
                 </Tag>
                 <Tag type="blue" size="sm" style={{ marginLeft: "0.5rem" }}>
                   Trial #{selectedSampleHistory.history.length - index}
@@ -1255,7 +1317,8 @@ function VirologyTrialsPage({
               <Grid narrow>
                 <Column lg={8} md={4} sm={4}>
                   <div style={{ marginBottom: "0.5rem" }}>
-                    <strong>Initiation Date:</strong> {trial.trialInitiationDate || "-"}
+                    <strong>Initiation Date:</strong>{" "}
+                    {trial.trialInitiationDate || "-"}
                   </div>
                 </Column>
 
@@ -1263,22 +1326,26 @@ function VirologyTrialsPage({
                   <>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Animal Species:</strong> {trial.animalSpecies || "-"}
+                        <strong>Animal Species:</strong>{" "}
+                        {trial.animalSpecies || "-"}
                       </div>
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Number of Animals:</strong> {trial.numberOfAnimals || "-"}
+                        <strong>Number of Animals:</strong>{" "}
+                        {trial.numberOfAnimals || "-"}
                       </div>
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Study Design:</strong> {trial.studyDesign || "-"}
+                        <strong>Study Design:</strong>{" "}
+                        {trial.studyDesign || "-"}
                       </div>
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Immunogenicity:</strong> {trial.immunogenicityOutcome || "-"}
+                        <strong>Immunogenicity:</strong>{" "}
+                        {trial.immunogenicityOutcome || "-"}
                       </div>
                     </Column>
                   </>
@@ -1291,27 +1358,32 @@ function VirologyTrialsPage({
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Participants:</strong> {trial.numberOfParticipants || "-"}
+                        <strong>Participants:</strong>{" "}
+                        {trial.numberOfParticipants || "-"}
                       </div>
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Primary Endpoint:</strong> {trial.primaryEndpoint || "-"}
+                        <strong>Primary Endpoint:</strong>{" "}
+                        {trial.primaryEndpoint || "-"}
                       </div>
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Efficacy:</strong> {trial.efficacyOutcome || "-"}
+                        <strong>Efficacy:</strong>{" "}
+                        {trial.efficacyOutcome || "-"}
                       </div>
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Regulatory ID:</strong> {trial.regulatorySubmission || "-"}
+                        <strong>Regulatory ID:</strong>{" "}
+                        {trial.regulatorySubmission || "-"}
                       </div>
                     </Column>
                     <Column lg={8} md={4} sm={4}>
                       <div style={{ marginBottom: "0.5rem" }}>
-                        <strong>Regulatory Status:</strong> {trial.regulatoryStatus || "-"}
+                        <strong>Regulatory Status:</strong>{" "}
+                        {trial.regulatoryStatus || "-"}
                       </div>
                     </Column>
                   </>
@@ -1319,7 +1391,8 @@ function VirologyTrialsPage({
 
                 <Column lg={8} md={4} sm={4}>
                   <div style={{ marginBottom: "0.5rem" }}>
-                    <strong>Safety Outcome:</strong> {trial.safetyOutcome || "-"}
+                    <strong>Safety Outcome:</strong>{" "}
+                    {trial.safetyOutcome || "-"}
                   </div>
                 </Column>
 

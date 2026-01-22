@@ -332,4 +332,85 @@ public class NotebookPageSampleServiceTest {
         // Execute - should throw
         service.createPageSamplesForNotebook(notebookId, sampleItemId);
     }
+
+    /**
+     * Test: clearDestinationType removes destinationType from sample data
+     */
+    @Test
+    public void testClearDestinationType_RemovesDestinationFromData() {
+        // Setup
+        Integer pageId = 1;
+        List<Integer> sampleIds = Arrays.asList(1000, 1001, 1002);
+        String userId = "1";
+
+        when(baseObjectDAO.clearDestinationType(pageId, sampleIds)).thenReturn(3);
+
+        // Execute
+        int updated = service.clearDestinationType(pageId, sampleIds, userId);
+
+        // Verify
+        assertEquals(3, updated);
+        verify(baseObjectDAO, times(1)).clearDestinationType(pageId, sampleIds);
+    }
+
+    /**
+     * Test: clearDestinationType handles empty sample list
+     */
+    @Test
+    public void testClearDestinationType_EmptyList_ReturnsZero() {
+        // Setup
+        Integer pageId = 1;
+        List<Integer> sampleIds = new ArrayList<>();
+        String userId = "1";
+
+        when(baseObjectDAO.clearDestinationType(pageId, sampleIds)).thenReturn(0);
+
+        // Execute
+        int updated = service.clearDestinationType(pageId, sampleIds, userId);
+
+        // Verify
+        assertEquals(0, updated);
+        verify(baseObjectDAO, times(1)).clearDestinationType(pageId, sampleIds);
+    }
+
+    /**
+     * Test: clearDestinationType handles partial updates (some samples don't exist)
+     */
+    @Test
+    public void testClearDestinationType_PartialUpdate_ReturnsActualCount() {
+        // Setup
+        Integer pageId = 1;
+        List<Integer> sampleIds = Arrays.asList(1000, 1001, 9999); // 9999 doesn't exist
+        String userId = "1";
+
+        // Only 2 samples actually exist and get updated
+        when(baseObjectDAO.clearDestinationType(pageId, sampleIds)).thenReturn(2);
+
+        // Execute
+        int updated = service.clearDestinationType(pageId, sampleIds, userId);
+
+        // Verify - should return 2 (actual count of updated records)
+        assertEquals(2, updated);
+        verify(baseObjectDAO, times(1)).clearDestinationType(pageId, sampleIds);
+    }
+
+    /**
+     * Test: clearDestinationType with multiple samples processes all
+     */
+    @Test
+    public void testClearDestinationType_Multiplesamples_ProcessesAll() {
+        // Setup
+        Integer pageId = 1;
+        List<Integer> sampleIds = Arrays.asList(1000, 1001, 1002, 1003, 1004);
+        String userId = "1";
+
+        when(baseObjectDAO.clearDestinationType(pageId, sampleIds)).thenReturn(5);
+
+        // Execute
+        int updated = service.clearDestinationType(pageId, sampleIds, userId);
+
+        // Verify
+        assertEquals(5, updated);
+        verify(baseObjectDAO, times(1)).clearDestinationType(pageId, sampleIds);
+    }
 }

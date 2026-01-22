@@ -239,7 +239,7 @@ function PendingApprovalsTab({ onActionComplete }) {
           id: r.id.toString(),
           requestNumber: r.requestNumber || `REQ-${r.id}`,
           requestedBy: r.requestedByName || "Unknown",
-          sampleCount: r.itemCount || (r.items ? r.items.length : 0),
+          sampleCount: r.totalItemCount || (r.items ? r.items.length : 0),
           priority: r.priorityLevel || "NORMAL",
           requestedAt: r.requestedTimestamp
             ? new Date(r.requestedTimestamp).toLocaleDateString()
