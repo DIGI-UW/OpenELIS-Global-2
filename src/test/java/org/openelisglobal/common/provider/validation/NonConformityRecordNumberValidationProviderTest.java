@@ -26,8 +26,8 @@ public class NonConformityRecordNumberValidationProviderTest extends BaseWebCont
     public void recordValidation_shouldStoreRecordNumber() {
         // Test that RecordValidation stores the record number correctly
         String testRecord = "test-record";
-        NonConformityRecordNumberValidationProvider.RecordValidation validator =
-            new NonConformityRecordNumberValidationProvider.RecordValidation(testRecord);
+        NonConformityRecordNumberValidationProvider.RecordValidation validator = new NonConformityRecordNumberValidationProvider.RecordValidation(
+                testRecord);
 
         // We can't directly access the recordNumber field due to encapsulation,
         // but we can verify the object was created successfully
@@ -37,14 +37,16 @@ public class NonConformityRecordNumberValidationProviderTest extends BaseWebCont
     @Test
     public void getDocumentNumberFormat_shouldReturnNonNullFormat() {
         // Test that getDocumentNumberFormat returns a non-null format string
-        // Note: This may fail in integration test environment due to Spring context dependency
+        // Note: This may fail in integration test environment due to Spring context
+        // dependency
         // In full integration tests with proper Spring context, this would work
         try {
             String format = NonConformityRecordNumberValidationProvider.getDocumentNumberFormat();
             assertNotNull("Format should not be null", format);
             assertEquals("Format should contain expected pattern", true, format.startsWith("ddd/LNSP-"));
         } catch (ExceptionInInitializerError e) {
-            // Expected in integration test environment due to Spring context initialization issues
+            // Expected in integration test environment due to Spring context initialization
+            // issues
             // This test documents the dependency rather than testing the logic
             assertNotNull("Exception should be thrown due to Spring context dependency", e);
         }
