@@ -23,7 +23,7 @@ protocol + MCP for tools).
    Generator Agent (text-to-SQL). Single-agent fallback mode for simpler
    deployments.
 2. **MCP for Tools**: Standalone Python MCP server for schema retrieval and SQL
-   pre-validation (validate_sql), callable by Schema Agent and SQLGen Agent via
+   pre-validation (validate_sql), callable by SchemaAgent and SQLGenAgent via
    MCP protocol.
 3. **Standards-First**: Validate A2A + MCP architecture early to enable future
    scaling without refactoring.
@@ -144,7 +144,8 @@ works end-to-end
   `/v1/chat/completions` endpoint, bridges to RouterAgent via A2A
 - RouterAgent (simple pass-through delegation, like med-agent-hub)
 - CatalystAgent (single "everything" agent combining schema + SQL generation)
-- MCP skeleton (1 hardcoded tool: `get_schema` returning 3-5 tables as string)
+- MCP skeleton (2 tools: `get_query_context` + `validate_sql` with table
+  allowlist enforcement, minimal non-PHI default profile)
 - Agent Cards for Router + CatalystAgent per A2A specification
 - Single LLM provider (LM Studio)
 - med-agent-hub-style project structure under `projects/catalyst/`
@@ -213,8 +214,9 @@ curl -X POST http://localhost:8000/v1/chat/completions \
   -d '{"model": "catalyst", "messages": [{"role": "user", "content": "How many samples today?"}]}' \
   → Gateway bridges to RouterAgent (A2A)
   → Router delegates to CatalystAgent (A2A)
-  → CatalystAgent calls MCP get_schema
+  → CatalystAgent calls MCP get_query_context (returns allowlisted schema)
   → CatalystAgent generates SQL via LLM
+  → MCP validate_sql checks SQL against allowlist
   → Returns OpenAI-compatible response with SQL
 ```
 
@@ -267,7 +269,7 @@ CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 
 - Split CatalystAgent into SchemaAgent + SQLGenAgent
 - RouterAgent delegates: query → SchemaAgent → SQLGenAgent → response
-- SchemaAgent calls MCP `get_schema` tool (still hardcoded)
+- SchemaAgent calls MCP `get_query_context` tool (still hardcoded/mocked)
 - SQLGenAgent receives schema context from SchemaAgent
 - Agent Cards for all 3 agents
 - Single-agent fallback mode (CatalystAgent still works)

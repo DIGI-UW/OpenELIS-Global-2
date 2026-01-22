@@ -15,19 +15,20 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 ## Total Task Count
 
-- **M0.0 (Foundation POC)**: 23 tasks (Gateway + Router + CatalystAgent + MCP
-  skeleton)
+- **M0.0 (Foundation POC)**: 24 tasks (Gateway + Router + CatalystAgent + MCP
+  skeleton + FR-004 validation)
 - **M0.1 (Provider Switching)**: 4 tasks
 - **M0.2 (Agent Specialization)**: 10 tasks (split CatalystAgent)
 - **M1 (RAG-based Schema)**: 20 tasks (RAG + MCP tools + evaluation harness +
   ChromaDB ops)
-- **M2 (Backend Core)**: 23 tasks (reduced - security deferred)
+- **M2 (Backend Core)**: 25 tasks (reduced - security deferred, includes
+  @Transactional verification + read-only DB verification)
 - **M3 (Frontend Chat)**: 19 tasks (reduced - token handling deferred)
 - **M4 (Integration)**: ~20 tasks (wiring, controller, export, basic E2E without
   security)
 - **M5 (Security Features)**: ~17 tasks (RBAC, PHI detection, confirmation
   tokens, security tests)
-- **Total**: 173 tasks (sequentially renumbered, no duplicates)
+- **Total**: 175 tasks (sequentially renumbered, no duplicates)
 
 ---
 
@@ -88,14 +89,15 @@ schema retrieval - skeleton)
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [x] T004 [P] [M0.0] Write pytest test for hardcoded MCP `get_schema` tool in
-      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
+- [x] T004 [P] [M0.0] Write pytest test for MCP tools (`get_query_context` +
+      `validate_sql`) in `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
 
 ### M0.0.3: MCP Skeleton Implementation
 
-- [x] T005 [M0.0] Implement hardcoded MCP `get_schema` tool in
-      `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py` (returns 3-5
-      tables as string: sample, test, analysis, patient, organization)
+- [x] T005 [M0.0] Implement MCP tools (`get_query_context` + `validate_sql`) in
+      `projects/catalyst/catalyst-mcp/src/tools/schema_tools.py` with table
+      allowlist enforcement (minimal non-PHI default: test, test_section,
+      dictionary, etc.)
 
 ### M0.0.4: CatalystAgent Test (TDD - MANDATORY)
 
@@ -114,7 +116,7 @@ schema retrieval - skeleton)
       for LLM configuration loading
 - [x] T009 [M0.0] Implement CatalystAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/catalyst_executor.py` (calls
-      MCP get_schema, then generates SQL via LLM)
+      MCP get_query_context, then generates SQL via LLM)
 - [x] T010 [M0.0] Implement CatalystAgent server in
       `projects/catalyst/catalyst-agents/src/agents/catalyst_server.py` with
       FastAPI + A2A SDK
@@ -161,6 +163,11 @@ schema retrieval - skeleton)
       router, integration). Integration tests validate full Gateway →
       RouterAgent → CatalystAgent → MCP flow. Ready for PR creation (manual
       step).
+- [ ] T018a [M0.0] Add validation test to verify FR-004 compliance: LLM prompts
+      contain ONLY schema metadata (from MCP get_query_context) and user query
+      text, with NO patient data or PHI. Test in
+      `projects/catalyst/catalyst-agents/tests/test_catalyst_agent.py` by
+      inspecting audit logs or mock LLM client calls.
 
 ---
 
@@ -217,14 +224,15 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T024 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP get_schema)
-      in `projects/catalyst/catalyst-agents/tests/test_schema_agent.py`
+- [ ] T024 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP
+      get_query_context) in
+      `projects/catalyst/catalyst-agents/tests/test_schema_agent.py`
 
 ### M0.2.2: SchemaAgent Implementation
 
 - [ ] T025 [M0.2] Implement SchemaAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/schema_executor.py` (calls
-      MCP get_schema, returns schema context)
+      MCP get_query_context, returns schema context)
 - [ ] T026 [M0.2] Implement SchemaAgent server in
       `projects/catalyst/catalyst-agents/src/agents/schema_server.py` with
       FastAPI + A2A SDK
@@ -516,6 +524,11 @@ endpoint access) deferred to M4
 - [ ] T072 [M2] Create CatalystDatabaseConfig in
       `src/main/java/org/openelisglobal/catalyst/config/CatalystDatabaseConfig.java`
       for read-only connection
+- [ ] T072a [M2] Add verification test to confirm read-only DB connection
+      configuration (FR-005). Test in
+      `src/test/java/org/openelisglobal/catalyst/config/CatalystDatabaseConfigTest.java`
+      that connection string includes read-only flags or uses read-only user
+      credentials.
 - [ ] T073 [M2] Create Catalyst properties file in
       `volume/properties/catalyst.properties` with gateway URL, guardrails
       config
@@ -545,6 +558,9 @@ endpoint access) deferred to M4
       `mvn clean install -DskipTests -Dmaven.test.skip=true`
 - [ ] T081 [M2] Verify Gateway client can call Catalyst Gateway (integration
       check)
+- [ ] T081a [M2] Verify @Transactional annotations are ONLY in service layer,
+      NOT in any controller classes (Constitution Principle IV). Add note to
+      verify when CatalystRestController is created in M4.
 - [ ] T082 [M2] Create PR `feat/OGC-070-catalyst-assistant-m2-backend-core` →
       `develop`
 
@@ -658,6 +674,10 @@ to M5 to allow independent testing
 - [ ] T103 [M4] Implement CatalystRestController in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
       with @RestController and /rest/catalyst/query endpoint
+- [ ] T103a [M4] Verify CatalystRestController has NO @Transactional annotations
+      (Constitution Principle IV - transaction boundaries in services ONLY). Add
+      verification comment in controller class or test assertion in
+      `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerTest.java`.
 
 ### M4.2: Integration Tests (TDD - MANDATORY)
 
