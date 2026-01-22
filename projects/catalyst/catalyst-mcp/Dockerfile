@@ -10,4 +10,4 @@ RUN poetry install --no-root --only main
 
 COPY src /app/src
 
-CMD ["poetry", "run", "uvicorn", "src.server:app", "--host", "0.0.0.0", "--port", "9102"]
+CMD ["poetry", "run", "python", "-m", "src.server"]
