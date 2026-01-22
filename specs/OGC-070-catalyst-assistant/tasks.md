@@ -90,7 +90,8 @@ schema retrieval - skeleton)
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
 - [x] T004 [P] [M0.0] Write pytest test for MCP tools (`get_query_context` +
-      `validate_sql`) in `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
+      `validate_sql`) in
+      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
 
 ### M0.0.3: MCP Skeleton Implementation
 
@@ -167,9 +168,9 @@ schema retrieval - skeleton)
       contain ONLY schema metadata (from MCP get_query_context) and user query
       text, with NO patient data or PHI. Test in
       `projects/catalyst/catalyst-agents/tests/test_catalyst_agent.py` by
-      inspecting audit logs or mock LLM client calls.
-      **Status**: Test `test_fr004_llm_prompt_contains_only_schema_and_query_no_phi` 
-      validates prompt contains only schema and user query, with no PHI patterns.
+      inspecting audit logs or mock LLM client calls. **Status**: Test
+      `test_fr004_llm_prompt_contains_only_schema_and_query_no_phi` validates
+      prompt contains only schema and user query, with no PHI patterns.
 
 ---
 

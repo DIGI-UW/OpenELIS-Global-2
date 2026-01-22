@@ -279,8 +279,8 @@ This delivers enhanced usability and workflow integration.
 
 - **FR-009**: System MUST estimate the number of rows a query will return before
   execution and warn users if the estimate exceeds 10,000 rows. Estimation
-  method: M0.0-M0.2 uses placeholder (returns 0); M2+ uses PostgreSQL EXPLAIN
-  to estimate row count.
+  method: M0.0-M0.2 uses placeholder (returns 0); M2+ uses PostgreSQL EXPLAIN to
+  estimate row count.
 
 - **FR-010**: System MUST log all generated SQL queries and their execution
   results for audit purposes, including user ID and timestamp.
