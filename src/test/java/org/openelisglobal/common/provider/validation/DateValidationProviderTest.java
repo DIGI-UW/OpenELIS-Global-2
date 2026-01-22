@@ -9,8 +9,10 @@ public class DateValidationProviderTest {
 
     private static final long ONE_DAY_MILLIS = 24 * 60 * 60 * 1000L;
 
-    // Use current time as base and create offsets to ensure dates are definitely in past/future
-    // relative to when the CustomDateValidator runs (which uses current system time)
+    // Use current time as base and create offsets to ensure dates are definitely in
+    // past/future
+    // relative to when the CustomDateValidator runs (which uses current system
+    // time)
     private static final long CURRENT_TIME = System.currentTimeMillis();
     private static final Date PAST_DATE = new Date(CURRENT_TIME - (30 * ONE_DAY_MILLIS)); // 30 days ago
     private static final Date FUTURE_DATE = new Date(CURRENT_TIME + (30 * ONE_DAY_MILLIS)); // 30 days from now
@@ -113,12 +115,10 @@ public class DateValidationProviderTest {
         DateValidationProvider provider = new DateValidationProvider();
 
         // Past date
-        assertEquals("Past date should be valid for ANY relation", "valid",
-                provider.validateDate(PAST_DATE, "ANY"));
+        assertEquals("Past date should be valid for ANY relation", "valid", provider.validateDate(PAST_DATE, "ANY"));
 
         // Today
-        assertEquals("Today should be valid for ANY relation", "valid",
-                provider.validateDate(TODAY_DATE, "ANY"));
+        assertEquals("Today should be valid for ANY relation", "valid", provider.validateDate(TODAY_DATE, "ANY"));
 
         // Future date
         assertEquals("Future date should be valid for ANY relation", "valid",
