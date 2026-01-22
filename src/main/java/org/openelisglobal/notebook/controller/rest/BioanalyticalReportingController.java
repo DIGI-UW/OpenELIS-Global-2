@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.notebook.service.NotebookBulkOperationService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
@@ -30,13 +32,13 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST controller for Bioanalytical reporting, metrics, and external result
  * distribution.
- *
+ * <p>
  * Handles Stage 4 (Reporting & Release) operations: - Generate performance
  * metrics dashboard (throughput, quality, study progress) - Track instrument
  * utilization - Generate external reports (regulatory, LMIS, study sponsors) -
  * Provide QC and analytical success metrics - Support result export to REDCap,
  * LMIS, and regulatory databases
- *
+ * <p>
  * Endpoints: - GET /dashboard - Get complete dashboard metrics - GET
  * /entry/{entryId}/throughput - Get sample throughput metrics - GET
  * /entry/{entryId}/quality-metrics - Get quality metrics - GET
@@ -702,52 +704,19 @@ public class BioanalyticalReportingController extends BaseRestController {
      * Request DTO for bioanalytical REDCap export. Contains sample selection and
      * configuration parameters for CSV export with bioanalytical-specific fields.
      */
+    @Setter
+    @Getter
     public static class BioanalyticalREDCapExportRequest {
         private List<Integer> sampleIds;
         private String projectId;
         private String recordIdField;
         private String eventName;
 
-        // Default constructor
         public BioanalyticalREDCapExportRequest() {
         }
 
-        // Constructor with required parameters
         public BioanalyticalREDCapExportRequest(List<Integer> sampleIds) {
             this.sampleIds = sampleIds;
-        }
-
-        // Getters and Setters
-        public List<Integer> getSampleIds() {
-            return sampleIds;
-        }
-
-        public void setSampleIds(List<Integer> sampleIds) {
-            this.sampleIds = sampleIds;
-        }
-
-        public String getProjectId() {
-            return projectId;
-        }
-
-        public void setProjectId(String projectId) {
-            this.projectId = projectId;
-        }
-
-        public String getRecordIdField() {
-            return recordIdField;
-        }
-
-        public void setRecordIdField(String recordIdField) {
-            this.recordIdField = recordIdField;
-        }
-
-        public String getEventName() {
-            return eventName;
-        }
-
-        public void setEventName(String eventName) {
-            this.eventName = eventName;
         }
     }
 
@@ -755,34 +724,17 @@ public class BioanalyticalReportingController extends BaseRestController {
      * Request DTO for QA approval submission. Contains the analyst's approval
      * decision and optional comments.
      */
+    @Setter
+    @Getter
     public static class QaApprovalRequest {
         private String approvalStatus;
         private String comments;
 
-        // Default constructor
         public QaApprovalRequest() {
         }
 
-        // Constructor with required parameters
         public QaApprovalRequest(String approvalStatus) {
             this.approvalStatus = approvalStatus;
-        }
-
-        // Getters and Setters
-        public String getApprovalStatus() {
-            return approvalStatus;
-        }
-
-        public void setApprovalStatus(String approvalStatus) {
-            this.approvalStatus = approvalStatus;
-        }
-
-        public String getComments() {
-            return comments;
-        }
-
-        public void setComments(String comments) {
-            this.comments = comments;
         }
     }
 
@@ -790,26 +742,18 @@ public class BioanalyticalReportingController extends BaseRestController {
      * Request DTO for QA approval revocation. Contains the reason for revoking a
      * previous approval.
      */
+    @Setter
+    @Getter
     public static class QaRevocationRequest {
         private String reason;
 
-        // Default constructor
         public QaRevocationRequest() {
         }
 
-        // Constructor with reason
         public QaRevocationRequest(String reason) {
             this.reason = reason;
         }
 
-        // Getters and Setters
-        public String getReason() {
-            return reason;
-        }
-
-        public void setReason(String reason) {
-            this.reason = reason;
-        }
     }
 
     /**

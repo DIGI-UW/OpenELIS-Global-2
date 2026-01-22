@@ -3,12 +3,12 @@
 # Add Sample Equipment Records for Testing Equipment Datatable
 echo "🔧 Adding sample equipment records for testing equipment datatable..."
 
-# Generate SQL for 10 diverse equipment items
+# Generate SQL for 21 equipment items (10 general + 11 bioanalytical analyzers)
 cat > sample_equipment.sql << 'EOF'
 -- Sample Equipment Records for Testing Equipment Datatable
 BEGIN TRANSACTION;
 
--- Insert 10 diverse equipment items (CARTRIDGE type for equipment)
+-- Insert 21 equipment items (10 general + 11 bioanalytical analyzers)
 INSERT INTO clinlims.inventory_item (
     id, fhir_uuid, name, description, item_type, category,
     manufacturer, catalog_number, model_number, serial_number, ahri_tag,
@@ -286,6 +286,316 @@ INSERT INTO clinlims.inventory_item (
     'Y',
     NOW(),
     1
+),
+
+-- BIOANALYTICAL ANALYZERS --
+
+-- 1. LC-MS/MS System
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'LC-MS/MS',
+    'Triple Quadrupole LC-MS/MS for bioanalytical testing and pharmacokinetic analysis',
+    'CARTRIDGE',
+    'Bioanalytical - LC-MS/MS',
+    'Agilent Technologies',
+    'G6470B',
+    'LC-MS/MS 6470',
+    'SN-2024-LCMS-001',
+    'AHRI-LCMS-001',
+    'Bioanalytical Laboratory',
+    'Room Temperature, Power Supply 220V',
+    'units',
+    'Y',
+    'Plasma, Serum, Urine, Whole Blood, API samples',
+    'functional',
+    '2023-11-15'::timestamp,
+    '2024-11-01'::timestamp,
+    '2024-12-10'::timestamp,
+    'Bioanalytical Lab - Instrument Bay 1',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 2. HPLC System
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'HPLC',
+    'High Performance Liquid Chromatography for assay and purity testing',
+    'CARTRIDGE',
+    'Bioanalytical - HPLC',
+    'Waters',
+    'WAT054940',
+    'ACQUITY HPLC',
+    'SN-2024-HPLC-001',
+    'AHRI-HPLC-001',
+    'Bioanalytical Laboratory',
+    'Room Temperature, Power Supply 220V',
+    'units',
+    'Y',
+    'API, Tablet, Capsule, Suspension samples',
+    'functional',
+    '2023-09-20'::timestamp,
+    '2024-10-15'::timestamp,
+    '2024-11-28'::timestamp,
+    'Bioanalytical Lab - Instrument Bay 2',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 3. Dissolution Apparatus
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'Dissolution Apparatus',
+    'Dissolution testing apparatus for pharmaceutical dosage forms per USP <711>',
+    'CARTRIDGE',
+    'Bioanalytical - Dissolution',
+    'Agilent Technologies',
+    'VK-770',
+    'USP Apparatus II',
+    'SN-2024-DISS-001',
+    'AHRI-DISS-001',
+    'Pharmaceutical QC Laboratory',
+    'Room Temperature, Temperature Control 37°C',
+    'units',
+    'Y',
+    'Tablets, Capsules, Suspensions',
+    'functional',
+    '2024-02-28'::timestamp,
+    '2024-10-22'::timestamp,
+    '2024-11-30'::timestamp,
+    'Pharma QC Lab - Dissolution Bay',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 4. Disintegration Tester
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'Disintegration Tester',
+    'Automated disintegration testing for tablets and capsules per USP <701>',
+    'CARTRIDGE',
+    'Bioanalytical - Disintegration',
+    'Agilent Technologies',
+    'VK-710',
+    'Disintegration Tester',
+    'SN-2024-DISINT-001',
+    'AHRI-DISINT-001',
+    'Pharmaceutical QC Laboratory',
+    'Room Temperature, Temperature Control 37°C',
+    'units',
+    'N',
+    'Tablets, Capsules, Pellets',
+    'functional',
+    '2024-01-15'::timestamp,
+    '2024-09-30'::timestamp,
+    '2024-11-20'::timestamp,
+    'Pharma QC Lab - Physical Testing Station',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 5. Hardness Tester
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'Hardness Tester',
+    'Digital hardness tester for tablets and capsules measurement in Kiloponds',
+    'CARTRIDGE',
+    'Bioanalytical - Hardness',
+    'Schleuniger',
+    '2E',
+    'Hardness Tester 2E',
+    'SN-2024-HARD-001',
+    'AHRI-HARD-001',
+    'Pharmaceutical QC Laboratory',
+    'Room Temperature',
+    'units',
+    'Y',
+    'Tablets, Capsules, Compacts',
+    'functional',
+    '2023-08-10'::timestamp,
+    '2024-08-25'::timestamp,
+    '2024-10-15'::timestamp,
+    'Pharma QC Lab - Physical Testing Station',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 6. Friability Tester
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'Friability Tester',
+    'Automated friability tester for measuring tablet abrasion resistance per USP <1216>',
+    'CARTRIDGE',
+    'Bioanalytical - Friability',
+    'Erweka',
+    'TA-3',
+    'TA-3 Friability Tester',
+    'SN-2024-FRIA-001',
+    'AHRI-FRIA-001',
+    'Pharmaceutical QC Laboratory',
+    'Room Temperature',
+    'units',
+    'N',
+    'Tablets (6.5 mm or larger)',
+    'functional',
+    '2024-03-05'::timestamp,
+    '2024-09-12'::timestamp,
+    '2024-11-08'::timestamp,
+    'Pharma QC Lab - Physical Testing Station',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 7. Stability Chamber
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'Stability Chamber',
+    'Environmental chamber for stability studies per ICH and USP guidelines',
+    'CARTRIDGE',
+    'Bioanalytical - Environmental',
+    'Binder',
+    'MK-115',
+    'MK 115 Climate Chamber',
+    'SN-2024-STAB-001',
+    'AHRI-STAB-001',
+    'Stability Testing Laboratory',
+    'Controlled Temperature 25°C, Humidity 60%',
+    'units',
+    'Y',
+    'Pharmaceuticals, APIs, Formulations',
+    'functional',
+    '2023-05-20'::timestamp,
+    '2024-06-30'::timestamp,
+    '2024-11-10'::timestamp,
+    'Stability Lab - Chamber Unit 1',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 8. UV-Vis Spectrophotometer
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'UV-Vis Spectrophotometer',
+    'Double-beam UV-Vis spectrophotometer for pharmaceutical assays and purity',
+    'CARTRIDGE',
+    'Bioanalytical - UV-Vis',
+    'PerkinElmer',
+    'N7820001',
+    'Lambda 1050+',
+    'SN-2024-UVVIS-001',
+    'AHRI-UVVIS-001',
+    'Analytical Chemistry Laboratory',
+    'Room Temperature, Power Supply 220V',
+    'units',
+    'Y',
+    'Solution, Powder, Tablet samples',
+    'functional',
+    '2023-12-01'::timestamp,
+    '2024-09-05'::timestamp,
+    '2024-11-15'::timestamp,
+    'Analytical Lab - Instrument Station 2',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 9. FTIR Spectrometer
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'FTIR',
+    'Fourier Transform Infrared spectroscopy for identity testing and purity analysis',
+    'CARTRIDGE',
+    'Bioanalytical - FTIR',
+    'Bruker',
+    'D2-80400',
+    'ALPHA II',
+    'SN-2024-FTIR-001',
+    'AHRI-FTIR-001',
+    'Analytical Chemistry Laboratory',
+    'Room Temperature, Power Supply 220V',
+    'units',
+    'Y',
+    'Powders, Solids, Solutions, Reference standards',
+    'functional',
+    '2023-07-18'::timestamp,
+    '2024-08-20'::timestamp,
+    '2024-10-30'::timestamp,
+    'Analytical Lab - Instrument Station 1',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 10. Laboratory Freezers (-20°C, -80°C)
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'Freezers (-20°C, -80°C)',
+    'Ultra-low temperature freezer for bioanalytical sample storage (-80°C)',
+    'CARTRIDGE',
+    'Bioanalytical - Storage',
+    'Thermo Fisher Scientific',
+    'ULT1390-3-A12',
+    'Revco ULT3000-D80',
+    'SN-2024-FREEZ-001',
+    'AHRI-FREEZ-001',
+    'Bioanalytical Laboratory',
+    'Ultra-Low Temperature -80°C, Power Supply 220V',
+    'units',
+    'Y',
+    'Plasma, Serum, Biological samples',
+    'functional',
+    '2023-10-25'::timestamp,
+    '2024-11-05'::timestamp,
+    '2024-12-01'::timestamp,
+    'Bioanalytical Lab - Sample Storage Room',
+    'Y',
+    NOW(),
+    1
+),
+
+-- 11. Water Purification System
+(
+    nextval('clinlims.inventory_item_seq'),
+    gen_random_uuid(),
+    'Millipore Water Purification',
+    'Laboratory water purification system for HPLC and analytical reagent preparation',
+    'CARTRIDGE',
+    'Bioanalytical - Utilities',
+    'Millipore Sigma',
+    'MQI70001',
+    'Milli-Q IQ 7000',
+    'SN-2024-WATER-001',
+    'AHRI-WATER-001',
+    'Bioanalytical Laboratory',
+    'Room Temperature, Ambient Pressure',
+    'units',
+    'Y',
+    'HPLC solvents, Reagent preparation',
+    'functional',
+    '2023-06-30'::timestamp,
+    '2024-10-10'::timestamp,
+    '2024-11-25'::timestamp,
+    'Bioanalytical Lab - Utilities Room',
+    'Y',
+    NOW(),
+    1
 );
 
 -- Insert equipment lots with realistic data and unified storage location
@@ -340,7 +650,9 @@ FROM clinlims.inventory_item ii
 WHERE ii.item_type = 'CARTRIDGE'
 AND ii.project_name IN ('Central Laboratory', 'Pathology Department', 'Sample Processing Lab',
                         'Molecular Biology Lab', 'Microbiology Department', 'Protein Analysis Lab',
-                        'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab');
+                        'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab',
+                        'Bioanalytical Laboratory', 'Pharmaceutical QC Laboratory',
+                        'Analytical Chemistry Laboratory', 'Stability Testing Laboratory');
 
 -- Insert initial receipt transactions for equipment
 INSERT INTO clinlims.inventory_transaction (
@@ -362,7 +674,9 @@ INNER JOIN clinlims.inventory_item ii ON il.inventory_item_id = ii.id
 WHERE ii.item_type = 'CARTRIDGE'
 AND ii.project_name IN ('Central Laboratory', 'Pathology Department', 'Sample Processing Lab',
                         'Molecular Biology Lab', 'Microbiology Department', 'Protein Analysis Lab',
-                        'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab');
+                        'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab',
+                        'Bioanalytical Laboratory', 'Pharmaceutical QC Laboratory',
+                        'Analytical Chemistry Laboratory', 'Stability Testing Laboratory');
 
 COMMIT TRANSACTION;
 EOF
@@ -383,7 +697,9 @@ FROM clinlims.inventory_item
 WHERE item_type = 'CARTRIDGE'
 AND project_name IN ('Central Laboratory', 'Pathology Department', 'Sample Processing Lab',
                       'Molecular Biology Lab', 'Microbiology Department', 'Protein Analysis Lab',
-                      'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab')
+                      'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab',
+                      'Bioanalytical Laboratory', 'Pharmaceutical QC Laboratory',
+                      'Analytical Chemistry Laboratory', 'Stability Testing Laboratory')
 UNION ALL
 SELECT
     'Equipment Lots' as type,
@@ -393,18 +709,26 @@ INNER JOIN clinlims.inventory_item ii ON il.inventory_item_id = ii.id
 WHERE ii.item_type = 'CARTRIDGE'
 AND ii.project_name IN ('Central Laboratory', 'Pathology Department', 'Sample Processing Lab',
                         'Molecular Biology Lab', 'Microbiology Department', 'Protein Analysis Lab',
-                        'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab');
+                        'Sterilization Unit', 'Chemistry Lab', 'Immunology Lab',
+                        'Bioanalytical Laboratory', 'Pharmaceutical QC Laboratory',
+                        'Analytical Chemistry Laboratory', 'Stability Testing Laboratory');
 "
 
 echo ""
 echo "🎉 Sample Equipment Import Complete!"
-echo "   ✅ 10 diverse equipment items added"
-echo "   ✅ PCR, Microscope, Centrifuge, Spectrophotometer, Incubator"
-echo "   ✅ Biosafety Cabinet, Electrophoresis, Autoclave, Balance, Plate Reader"
+echo "   ✅ 21 equipment items added total"
+echo "   ✅ 10 General Lab Equipment:"
+echo "      PCR, Microscope, Centrifuge, Spectrophotometer, Incubator,"
+echo "      Biosafety Cabinet, Electrophoresis, Autoclave, Balance, Plate Reader"
+echo "   ✅ 11 Bioanalytical Analyzers:"
+echo "      LC-MS/MS, HPLC, Dissolution Apparatus, Disintegration Tester,"
+echo "      Hardness Tester, Friability Tester, Stability Chamber,"
+echo "      UV-Vis Spectrophotometer, FTIR Spectrometer, Freezers, Water Purification"
 echo "   ✅ Each with proper lots and transaction history"
 echo ""
 echo "🔗 Test the equipment datatable at: http://localhost:8080/OpenELIS/inventory"
-echo "🔍 Filter by Equipment type to see the populated equipment table"
+echo "🔍 Filter by 'Bioanalytical' category to see the bioanalytical analyzers"
+echo "🔍 These analyzers can now be selected in Stage 2 Test Assignment"
 
 # Cleanup
 rm -f sample_equipment.sql

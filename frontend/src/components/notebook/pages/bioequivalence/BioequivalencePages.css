@@ -1,6 +1,6 @@
-/* Bioanalytical Workflow Pages */
+/* Bioequivalence Workflow Pages */
 
-.bioanalytical-page {
+.bioequivalence-page {
   padding: 1.5rem;
   background-color: #f4f4f4;
 }
@@ -390,7 +390,7 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .bioanalytical-page {
+  .bioequivalence-page {
     padding: 1rem;
   }
 

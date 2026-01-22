@@ -2705,24 +2705,13 @@ public class NotebookBulkOperationController extends BaseRestController {
             String fileName = file.getOriginalFilename();
             String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1).toUpperCase();
 
-            // Validate file format for specific instruments
-            Map<String, List<String>> allowedFormats = new HashMap<>();
-            allowedFormats.put("1", List.of("MZML", "CDF")); // LC-MS/MS
-            allowedFormats.put("2", List.of("CSV", "PDF")); // HPLC
-            allowedFormats.put("3", List.of("CSV")); // Dissolution Apparatus
-            allowedFormats.put("4", List.of("CSV")); // Disintegration Tester
-            allowedFormats.put("5", List.of("CSV")); // Hardness Tester
-            allowedFormats.put("6", List.of("CSV")); // Friability Tester
-            allowedFormats.put("7", List.of("CSV")); // Stability Chamber
-            allowedFormats.put("8", List.of("CSV", "PDF")); // UV-Vis Spectrophotometer
-            allowedFormats.put("9", List.of("CSV", "PDF")); // FTIR
-            allowedFormats.put("10", List.of("CSV")); // Freezers
-            allowedFormats.put("11", List.of("CSV")); // Millipore Water Purification
+            // Supported file formats for analytical data imports
+            // All formats are universally supported across all instruments for flexibility
+            List<String> supportedFormats = List.of("CSV", "XLSX", "XLS", "PDF", "MZML", "CDF");
 
-            List<String> validFormats = allowedFormats.get(instrumentId);
-            if (validFormats == null || !validFormats.contains(fileExtension)) {
+            if (!supportedFormats.contains(fileExtension)) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", "Invalid file format for instrument. Allowed: " + validFormats);
+                error.put("error", "Invalid file format. Supported formats: CSV, XLSX, XLS, PDF, MZML, CDF");
                 return ResponseEntity.badRequest().body(error);
             }
 

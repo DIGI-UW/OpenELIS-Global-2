@@ -375,6 +375,12 @@ public class BioanalyticalManifestImportServiceImpl implements BioanalyticalMani
         if (row.notes() != null && !row.notes().isBlank()) {
             data.put("notes", row.notes());
         }
+        if (row.subjectId() != null && !row.subjectId().isBlank()) {
+            data.put("subjectId", row.subjectId());
+        }
+        if (row.timepoint() != null && !row.timepoint().isBlank()) {
+            data.put("timepoint", row.timepoint());
+        }
 
         data.put("sampleCategory", "Bioanalytical");
         return data;

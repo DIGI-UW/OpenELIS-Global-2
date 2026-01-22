@@ -34,12 +34,12 @@ import config from "../../../../config.json";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
-import "./BioanalyticalPages.css";
+import "./BioequivalencePages.css";
 
 /**
- * Analytical methods available for bioanalytical testing as per SRS Stage 2 requirements
+ * Analytical methods available for bioequivalence testing as per SRS Stage 2 requirements
  */
 const ANALYTICAL_METHODS = [
   {
@@ -67,7 +67,7 @@ const ANALYTICAL_METHODS = [
     description: "Liquid Chromatography with Tandem Mass Spectrometry",
     applications: [
       "Pharmacokinetic analysis",
-      "Bioanalytical testing",
+      "Bioequivalence testing",
       "Metabolite identification",
     ],
     suitableFor: ["Plasma", "Serum", "Urine", "Whole Blood", "API"],
@@ -184,7 +184,7 @@ const STAFF_ROLES = [
 ];
 
 /**
- * BioanalyticalTestAssignmentPage - Stage 2 of bioanalytical workflow.
+ * BioequivalenceTestAssignmentPage - Stage 2 of bioequivalence workflow.
  *
  * Features:
  * - Sample selection for test assignment
@@ -201,7 +201,7 @@ const STAFF_ROLES = [
  * @param {function} props.onProgressUpdate - Callback after changes
  * @param {Array} props.templateInstruments - Available instruments
  */
-function BioanalyticalTestAssignmentPage({
+function BioequivalenceTestAssignmentPage({
   entryId,
   pageData,
   progress,
@@ -213,7 +213,7 @@ function BioanalyticalTestAssignmentPage({
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
   const { getPagePermissionLevel, canSaveData, hasFullControl } =
-    useBioanalyticalPermissions();
+    useBioequivalencePermissions();
 
   // PAGE 2 allowed roles per test.pdf Section 11
   const allowedRoles = [
@@ -246,7 +246,7 @@ function BioanalyticalTestAssignmentPage({
     return (
       <AccessDeniedMessage
         page="Test Assignment & Preparation"
-        reason="This page requires specific bioanalytical laboratory roles to access."
+        reason="This page requires specific bioequivalence laboratory roles to access."
         requiredRoles={allowedRoles}
       />
     );
@@ -492,11 +492,11 @@ function BioanalyticalTestAssignmentPage({
         notify({
           kind: NotificationKinds.error,
           title: intl.formatMessage({
-            id: "notebook.bioanalytical.testassignment.error",
+            id: "notebook.bioequivalence.testassignment.error",
             defaultMessage: "Error",
           }),
           message: intl.formatMessage({
-            id: "notebook.bioanalytical.testassignment.loadError",
+            id: "notebook.bioequivalence.testassignment.loadError",
             defaultMessage: "Failed to load samples. Please refresh the page.",
           }),
         });
@@ -610,11 +610,11 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.noSamplesSelected",
+          id: "notebook.bioequivalence.testassignment.noSamplesSelected",
           defaultMessage: "Please select at least one sample to assign tests",
         }),
       });
@@ -681,11 +681,11 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.noSamplesSelected",
+          id: "notebook.bioequivalence.testassignment.noSamplesSelected",
           defaultMessage: "Please select at least one sample to assign tests",
         }),
       });
@@ -697,11 +697,11 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.methodRequired",
+          id: "notebook.bioequivalence.testassignment.methodRequired",
           defaultMessage: "Please select an analytical method",
         }),
       });
@@ -712,11 +712,11 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.staffRequired",
+          id: "notebook.bioequivalence.testassignment.staffRequired",
           defaultMessage: "Please assign a staff member",
         }),
       });
@@ -730,11 +730,11 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.preparationRequired",
+          id: "notebook.bioequivalence.testassignment.preparationRequired",
           defaultMessage:
             "Please document the sample preparation method according to the selected analytical method requirements",
         }),
@@ -814,12 +814,12 @@ function BioanalyticalTestAssignmentPage({
         notify({
           kind: NotificationKinds.success,
           title: intl.formatMessage({
-            id: "notebook.bioanalytical.testassignment.success",
+            id: "notebook.bioequivalence.testassignment.success",
             defaultMessage: "Success",
           }),
           message: intl.formatMessage(
             {
-              id: "notebook.bioanalytical.testassignment.successMessage",
+              id: "notebook.bioequivalence.testassignment.successMessage",
               defaultMessage:
                 "Tests assigned to {count} samples using {method}",
             },
@@ -870,12 +870,12 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage(
           {
-            id: "notebook.bioanalytical.testassignment.assignmentError",
+            id: "notebook.bioequivalence.testassignment.assignmentError",
             defaultMessage: "Failed to assign tests: {error}",
           },
           { error: error.message },
@@ -904,11 +904,11 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.noAssignedSamples",
+          id: "notebook.bioequivalence.testassignment.noAssignedSamples",
           defaultMessage:
             "No samples with test assignments to move to the next stage. Please assign tests first.",
         }),
@@ -949,12 +949,12 @@ function BioanalyticalTestAssignmentPage({
         notify({
           kind: NotificationKinds.success,
           title: intl.formatMessage({
-            id: "notebook.bioanalytical.testassignment.completed",
+            id: "notebook.bioequivalence.testassignment.completed",
             defaultMessage: "Success",
           }),
           message: intl.formatMessage(
             {
-              id: "notebook.bioanalytical.testassignment.completeSuccess",
+              id: "notebook.bioequivalence.testassignment.completeSuccess",
               defaultMessage:
                 "Successfully marked {count} samples as complete.",
             },
@@ -989,12 +989,12 @@ function BioanalyticalTestAssignmentPage({
         notify({
           kind: NotificationKinds.success,
           title: intl.formatMessage({
-            id: "notebook.bioanalytical.testassignment.completed",
+            id: "notebook.bioequivalence.testassignment.completed",
             defaultMessage: "Success",
           }),
           message: intl.formatMessage(
             {
-              id: "notebook.bioanalytical.testassignment.completeAndAdvanceSuccess",
+              id: "notebook.bioequivalence.testassignment.completeAndAdvanceSuccess",
               defaultMessage:
                 "Successfully completed {count} samples and advanced to Analytical Execution stage.",
             },
@@ -1006,12 +1006,12 @@ function BioanalyticalTestAssignmentPage({
         notify({
           kind: NotificationKinds.success,
           title: intl.formatMessage({
-            id: "notebook.bioanalytical.testassignment.completed",
+            id: "notebook.bioequivalence.testassignment.completed",
             defaultMessage: "Success",
           }),
           message: intl.formatMessage(
             {
-              id: "notebook.bioanalytical.testassignment.completeSuccess",
+              id: "notebook.bioequivalence.testassignment.completeSuccess",
               defaultMessage:
                 "Successfully marked {count} samples as complete.",
             },
@@ -1033,12 +1033,12 @@ function BioanalyticalTestAssignmentPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.bioanalytical.testassignment.error",
+          id: "notebook.bioequivalence.testassignment.error",
           defaultMessage: "Error",
         }),
         message: intl.formatMessage(
           {
-            id: "notebook.bioanalytical.testassignment.advanceError",
+            id: "notebook.bioequivalence.testassignment.advanceError",
             defaultMessage: "Failed to complete and advance samples: {error}",
           },
           { error: error.message },
@@ -1058,17 +1058,17 @@ function BioanalyticalTestAssignmentPage({
   ]);
 
   return (
-    <div className="bioanalytical-page">
+    <div className="bioequivalence-page">
       <div className="page-instructions">
         <h3>
           <FormattedMessage
-            id="notebook.bioanalytical.testassignment.title"
+            id="notebook.bioequivalence.testassignment.title"
             defaultMessage="Analytical Test Assignment"
           />
         </h3>
         <p>
           <FormattedMessage
-            id="notebook.bioanalytical.testassignment.description"
+            id="notebook.bioequivalence.testassignment.description"
             defaultMessage="Assign analytical tests to received samples, configure QC levels, and select analytical methods. Tests are configured based on sample type and requested analyses."
           />
         </p>
@@ -1079,13 +1079,13 @@ function BioanalyticalTestAssignmentPage({
           <div className="section-header">
             <h4>
               <FormattedMessage
-                id="notebook.bioanalytical.testassignment.selectSamples"
+                id="notebook.bioequivalence.testassignment.selectSamples"
                 defaultMessage="Select Samples for Test Assignment"
               />
             </h4>
             <p>
               <FormattedMessage
-                id="notebook.bioanalytical.testassignment.selectHelp"
+                id="notebook.bioequivalence.testassignment.selectHelp"
                 defaultMessage="Choose samples that need test assignment and configuration."
               />
             </p>
@@ -1106,7 +1106,7 @@ function BioanalyticalTestAssignmentPage({
                   {selectedSamples.size > 0 && (
                     <Button kind="primary" onClick={handleShowAssignmentForm}>
                       <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.configureTests"
+                        id="notebook.bioequivalence.testassignment.configureTests"
                         defaultMessage="Configure Tests for {count} Sample(s)"
                         values={{ count: selectedSamples.size }}
                       />
@@ -1121,7 +1121,7 @@ function BioanalyticalTestAssignmentPage({
                       disabled={isAdvancing}
                     >
                       <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.completeAndAdvance"
+                        id="notebook.bioequivalence.testassignment.completeAndAdvance"
                         defaultMessage="Mark Complete & Move to Next Stage"
                       />
                     </Button>
@@ -1152,25 +1152,25 @@ function BioanalyticalTestAssignmentPage({
                         </TableHeader>
                         <TableHeader>
                           <FormattedMessage
-                            id="notebook.bioanalytical.testassignment.column.sampleId"
+                            id="notebook.bioequivalence.testassignment.column.sampleId"
                             defaultMessage="Sample ID"
                           />
                         </TableHeader>
                         <TableHeader>
                           <FormattedMessage
-                            id="notebook.bioanalytical.testassignment.column.type"
+                            id="notebook.bioequivalence.testassignment.column.type"
                             defaultMessage="Sample Type"
                           />
                         </TableHeader>
                         <TableHeader>
                           <FormattedMessage
-                            id="notebook.bioanalytical.testassignment.column.requestedTests"
+                            id="notebook.bioequivalence.testassignment.column.requestedTests"
                             defaultMessage="Requested Tests"
                           />
                         </TableHeader>
                         <TableHeader>
                           <FormattedMessage
-                            id="notebook.bioanalytical.testassignment.column.assignedTests"
+                            id="notebook.bioequivalence.testassignment.column.assignedTests"
                             defaultMessage="Assigned Tests"
                           />
                         </TableHeader>
@@ -1253,7 +1253,7 @@ function BioanalyticalTestAssignmentPage({
                               ) : (
                                 <span style={{ color: "#a8a8a8" }}>
                                   <FormattedMessage
-                                    id="notebook.bioanalytical.testassignment.notAssigned"
+                                    id="notebook.bioequivalence.testassignment.notAssigned"
                                     defaultMessage="Not assigned"
                                   />
                                 </span>
@@ -1268,7 +1268,7 @@ function BioanalyticalTestAssignmentPage({
                             style={{ textAlign: "center" }}
                           >
                             <FormattedMessage
-                              id="notebook.bioanalytical.testassignment.noSamples"
+                              id="notebook.bioequivalence.testassignment.noSamples"
                               defaultMessage="No samples available for test assignment. Please complete Stage 1 (Sample Reception) first."
                             />
                           </TableCell>
@@ -1288,7 +1288,7 @@ function BioanalyticalTestAssignmentPage({
                     }}
                   >
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.completeNote"
+                      id="notebook.bioequivalence.testassignment.completeNote"
                       defaultMessage="Moves all samples with assigned tests to Analytical Execution (Stage 3)"
                     />
                   </p>
@@ -1308,13 +1308,13 @@ function BioanalyticalTestAssignmentPage({
         }}
         modalHeading={
           <FormattedMessage
-            id="notebook.bioanalytical.testassignment.configurationForm"
+            id="notebook.bioequivalence.testassignment.configurationForm"
             defaultMessage="Test Assignment Configuration"
           />
         }
         primaryButtonText={
           <FormattedMessage
-            id="notebook.bioanalytical.testassignment.assignTests"
+            id="notebook.bioequivalence.testassignment.assignTests"
             defaultMessage="Assign Tests to {count} Sample(s)"
             values={{ count: selectedSamples.size }}
           />
@@ -1408,7 +1408,7 @@ function BioanalyticalTestAssignmentPage({
                   id="analytical-method"
                   labelText={
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.analyticalMethod"
+                      id="notebook.bioequivalence.testassignment.analyticalMethod"
                       defaultMessage="Analytical Method *"
                     />
                   }
@@ -1418,7 +1418,7 @@ function BioanalyticalTestAssignmentPage({
                   }
                   helperText={
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.methodHelp"
+                      id="notebook.bioequivalence.testassignment.methodHelp"
                       defaultMessage="Select the analytical method based on sample type and test requirements"
                     />
                   }
@@ -1439,7 +1439,7 @@ function BioanalyticalTestAssignmentPage({
                   id="assigned-staff"
                   labelText={
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.assignedStaff"
+                      id="notebook.bioequivalence.testassignment.assignedStaff"
                       defaultMessage="Assigned Staff *"
                     />
                   }
@@ -1478,7 +1478,7 @@ function BioanalyticalTestAssignmentPage({
                   id="instrument-id"
                   labelText={
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.instrument"
+                      id="notebook.bioequivalence.testassignment.instrument"
                       defaultMessage="Analyzer / Instrument"
                     />
                   }
@@ -1488,7 +1488,7 @@ function BioanalyticalTestAssignmentPage({
                   }
                   helperText={
                     <FormattedMessage
-                      id="notebook.bioanalytical.testassignment.instrumentHelp"
+                      id="notebook.bioequivalence.testassignment.instrumentHelp"
                       defaultMessage="Select the analyzer/instrument for analysis"
                     />
                   }
@@ -1526,7 +1526,7 @@ function BioanalyticalTestAssignmentPage({
                     id="expected-analysis-date"
                     labelText={
                       <FormattedMessage
-                        id="notebook.bioanalytical.testassignment.expectedDate"
+                        id="notebook.bioequivalence.testassignment.expectedDate"
                         defaultMessage="Expected Analysis Date"
                       />
                     }
@@ -1542,7 +1542,7 @@ function BioanalyticalTestAssignmentPage({
           <FormGroup legendText="">
             <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
               <FormattedMessage
-                id="notebook.bioanalytical.testassignment.qcLevelsTitle"
+                id="notebook.bioequivalence.testassignment.qcLevelsTitle"
                 defaultMessage="QC Levels Configuration"
               />
             </h5>
@@ -1554,7 +1554,7 @@ function BioanalyticalTestAssignmentPage({
               }}
             >
               <FormattedMessage
-                id="notebook.bioanalytical.testassignment.qcLevelInfo"
+                id="notebook.bioequivalence.testassignment.qcLevelInfo"
                 defaultMessage="QC Levels: Low (LLOQ - 2x LLOQ), Medium (30% span), High (near upper limit)"
               />
             </p>
@@ -1657,7 +1657,7 @@ function BioanalyticalTestAssignmentPage({
           <FormGroup legendText="">
             <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
               <FormattedMessage
-                id="notebook.bioanalytical.testassignment.acceptanceCriteriaTitle"
+                id="notebook.bioequivalence.testassignment.acceptanceCriteriaTitle"
                 defaultMessage="Acceptance Criteria"
               />
             </h5>
@@ -1730,7 +1730,7 @@ function BioanalyticalTestAssignmentPage({
           <FormGroup legendText="">
             <h5 style={{ marginBottom: "1rem", color: "#161616" }}>
               <FormattedMessage
-                id="notebook.bioanalytical.testassignment.methodSpecificPreparation"
+                id="notebook.bioequivalence.testassignment.methodSpecificPreparation"
                 defaultMessage="Sample Preparation According to Method Requirements"
               />
             </h5>
@@ -1771,7 +1771,7 @@ function BioanalyticalTestAssignmentPage({
                   }}
                 >
                   <FormattedMessage
-                    id="notebook.bioanalytical.testassignment.methodGuidance"
+                    id="notebook.bioequivalence.testassignment.methodGuidance"
                     defaultMessage="Follow these method-specific preparation steps. Document any deviations or additional procedures below."
                   />
                 </p>
@@ -1782,7 +1782,7 @@ function BioanalyticalTestAssignmentPage({
               id="sample-preparation"
               labelText={
                 <FormattedMessage
-                  id="notebook.bioanalytical.testassignment.preparationDocumentation"
+                  id="notebook.bioequivalence.testassignment.preparationDocumentation"
                   defaultMessage="Preparation Method Documentation *"
                 />
               }
@@ -1798,7 +1798,7 @@ function BioanalyticalTestAssignmentPage({
               }
               helperText={
                 <FormattedMessage
-                  id="notebook.bioanalytical.testassignment.preparationHelp"
+                  id="notebook.bioequivalence.testassignment.preparationHelp"
                   defaultMessage="Document your specific implementation of the method requirements. Include reagent concentrations, equipment settings, time/temperature conditions, etc."
                 />
               }
@@ -1809,7 +1809,7 @@ function BioanalyticalTestAssignmentPage({
               <div style={{ marginTop: "1rem" }}>
                 <h6 style={{ marginBottom: "0.5rem", color: "#161616" }}>
                   <FormattedMessage
-                    id="notebook.bioanalytical.testassignment.methodRequirements"
+                    id="notebook.bioequivalence.testassignment.methodRequirements"
                     defaultMessage="Method Requirements & Considerations:"
                   />
                 </h6>
@@ -1873,7 +1873,7 @@ function BioanalyticalTestAssignmentPage({
               id="assignment-notes"
               labelText={
                 <FormattedMessage
-                  id="notebook.bioanalytical.testassignment.notes"
+                  id="notebook.bioequivalence.testassignment.notes"
                   defaultMessage="Additional Notes"
                 />
               }
@@ -1893,13 +1893,13 @@ function BioanalyticalTestAssignmentPage({
             <div className="section-header">
               <h4>
                 <FormattedMessage
-                  id="notebook.bioanalytical.testassignment.assignmentSummary"
+                  id="notebook.bioequivalence.testassignment.assignmentSummary"
                   defaultMessage="Test Assignment Summary"
                 />
               </h4>
               <p>
                 <FormattedMessage
-                  id="notebook.bioanalytical.testassignment.summaryHelp"
+                  id="notebook.bioequivalence.testassignment.summaryHelp"
                   defaultMessage="Review completed test assignments and their configuration."
                 />
               </p>
@@ -1913,7 +1913,7 @@ function BioanalyticalTestAssignmentPage({
               >
                 <p>
                   <FormattedMessage
-                    id="notebook.bioanalytical.testassignment.totalAssignments"
+                    id="notebook.bioequivalence.testassignment.totalAssignments"
                     defaultMessage="{count} test assignments completed"
                     values={{ count: Object.keys(testAssignments).length }}
                   />
@@ -1927,4 +1927,4 @@ function BioanalyticalTestAssignmentPage({
   );
 }
 
-export default BioanalyticalTestAssignmentPage;
+export default BioequivalenceTestAssignmentPage;

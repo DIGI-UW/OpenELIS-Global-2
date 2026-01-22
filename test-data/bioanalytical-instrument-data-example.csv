@@ -1,0 +1,34 @@
+QC_RESULTS
+QCLevel,QCName,SpikedConcentration,MeasuredValue,LowerAcceptanceCriteria,UpperAcceptanceCriteria,AccuracyPercent,PrecisionPercent,Status
+LQC,Low QC Run 1,1.0,0.99,0.8,1.2,99.0,2.1,PASS
+MQC,Mid QC Run 1,5.0,5.02,4.5,5.5,100.4,1.8,PASS
+HQC,High QC Run 1,10.0,9.95,9.0,11.0,99.5,2.3,PASS
+LQC,Low QC Run 2,1.0,1.01,0.8,1.2,101.0,1.9,PASS
+MQC,Mid QC Run 2,5.0,4.98,4.5,5.5,99.6,2.0,PASS
+HQC,High QC Run 2,10.0,10.05,9.0,11.0,100.5,2.1,PASS
+
+CALIBRATION_CURVE
+CalibrationID,EquationFormat,Equation,Slope,Intercept,RSquared,QualityAssessment,InstrumentName,FileName
+CAL_001,Linear,y = 1.0234x + 0.0156,1.0234,0.0156,0.9971,PASS,HPLC,TEST_HPLC_UV_VIS.csv
+
+QUANTIFICATION_RESULTS
+InstrumentSampleID,SampleName,AccessionNumber,ConcentrationValue,Units,PeakArea,CVPercent,AccuracyPercent,ValidityStatus
+INS_001,Sample 1 - API,2026000004,4.85,ng/mL,2845623,1.9,97.8,VALID
+INS_002,Sample 2 - Plasma,2026000001,5.12,ng/mL,2965432,2.1,102.4,VALID
+INS_003,Sample 3 - Serum,2026000002,4.92,ng/mL,2891654,1.8,98.4,VALID
+INS_004,Sample 4 - Plasma,2026000003,5.45,ng/mL,3152847,2.0,101.2,VALID
+INS_005,Sample 5 - Urine,2026000006,3.78,ng/mL,2187943,2.3,95.4,VALID
+INS_006,Sample 6 - Capsule,2026000007,6.23,ng/mL,3587264,1.7,103.8,VALID
+INS_007,Sample 7 - Plasma,2026000008,5.67,ng/mL,3265891,2.2,100.5,VALID
+INS_008,Sample 8 - Serum,2026000009,4.34,ng/mL,2501234,2.0,96.7,VALID
+INS_009,Sample 9 - Whole Blood,2026000011,5.89,ng/mL,3401567,1.9,104.1,VALID
+INS_010,Sample 10 - Reference Standard,2026000010,7.12,ng/mL,4098765,1.6,99.2,VALID
+INS_011,Sample 11 - Suspension,2026000012,4.56,ng/mL,2634891,2.1,98.9,VALID
+
+INSTRUMENT_DETAILS
+InstrumentID,InstrumentName,SerialNumber,ColumnName,FlowRate,DetectionWavelength,ColumnTemperature,InjectionVolume,EquilibrationTime
+HPLC_01,HPLC System A,SN-2024-001,C18 Phenomenex,1.0,254,25.0,10,5.0
+
+ANALYSIS_SUMMARY
+TotalAnalysesPerformed,QCAnalysesCount,SampleAnalysesCount,SuccessfulAnalyses,FailedAnalyses,AnalysisStartTime,AnalysisEndTime,TotalRunTime
+17,6,11,17,0,09:30:00,12:45:00,195.0

@@ -1,0 +1,230 @@
+/* Bioequivalence Manifest Import Modal Styles */
+
+.manifest-import-container {
+  padding: 1.5rem;
+}
+
+.step-content {
+  min-height: 300px;
+}
+
+.step-content h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #161616;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.step-content h4 {
+  margin: 1.5rem 0 0.5rem;
+  color: #161616;
+  font-size: 0.9375rem;
+}
+
+.step-content p {
+  color: #525252;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0.5rem 0;
+}
+
+/* Modal footer buttons */
+.modal-footer-buttons {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  background-color: #f4f4f4;
+  margin: 0 -1rem -1rem;
+}
+
+/* File uploader customizations */
+.cds--file-drop-container {
+  background-color: #e8f4ff;
+  border: 2px dashed #0f62fe;
+  border-radius: 4px;
+  padding: 2rem;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.cds--file-drop-container:hover {
+  background-color: #d5e8f7;
+}
+
+.cds--file-drop-container .cds--file-drop-container__label {
+  color: #0f62fe;
+  font-weight: 600;
+}
+
+/* Structured list customizations */
+.cds--structured-list {
+  font-size: 0.875rem;
+}
+
+.cds--structured-list-th {
+  background-color: #0f62fe;
+  color: white;
+  font-weight: 600;
+}
+
+.cds--structured-list-td code {
+  background-color: #f4f4f4;
+  padding: 0.125rem 0.25rem;
+  border-radius: 2px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+}
+
+/* Accordion customizations */
+.cds--accordion__title {
+  color: #0f62fe;
+}
+
+.cds--accordion__arrow {
+  fill: #0f62fe;
+}
+
+/* Select field improvements */
+.cds--select-input {
+  border-color: #0f62fe;
+}
+
+.cds--select-input:focus {
+  border-color: #0f62fe;
+  box-shadow: 0 0 0 2px rgba(15, 98, 254, 0.2);
+}
+
+/* Tags in select labels */
+.cds--label .cds--tag {
+  vertical-align: middle;
+}
+
+/* Review table styles */
+.step-content table {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.step-content table th {
+  background-color: #0f62fe;
+  color: white;
+  font-weight: 600;
+  text-align: left;
+}
+
+.step-content table td {
+  font-size: 0.875rem;
+}
+
+.step-content table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.step-content table tbody tr:hover {
+  background-color: #e8f4ff;
+}
+
+/* Loading indicator in buttons */
+.cds--btn .cds--loading {
+  width: 16px;
+  height: 16px;
+}
+
+/* Validation error styles */
+.validation-errors {
+  background-color: #fdd8d8;
+  border-left: 4px solid #da1e28;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.validation-errors h4 {
+  color: #da1e28;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+}
+
+.validation-errors ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.validation-errors li {
+  color: #da1e28;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Import warnings */
+.import-warnings {
+  background-color: #fef5e6;
+  border-left: 4px solid #f1c21b;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.import-warnings h4 {
+  color: #f1c21b;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+}
+
+.import-warnings ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.import-warnings li {
+  color: #f1c21b;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Success message */
+.import-success {
+  display: flex;
+  align-items: center;
+  color: #24a148;
+  font-weight: 600;
+}
+
+.import-success svg {
+  margin-right: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .manifest-import-container {
+    padding: 1rem;
+  }
+
+  .step-content {
+    min-height: 250px;
+  }
+
+  .step-content h3 {
+    font-size: 0.9375rem;
+  }
+
+  .modal-footer-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .step-content table {
+    font-size: 0.75rem;
+  }
+
+  .step-content table th,
+  .step-content table td {
+    padding: 0.25rem;
+  }
+}

@@ -41,12 +41,12 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import { usePermissions } from "../../../../hooks/usePermissions";
-import { useBioanalyticalPermissions } from "../../../../hooks/useBioanalyticalPermissions";
+import { useBioequivalencePermissions } from "../../../../hooks/useBioequivalencePermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import config from "../../../../config.json";
 
 /**
- * Analytical methods available for bioanalytical testing
+ * Analytical methods available for bioequivalence testing
  */
 const ANALYTICAL_METHODS = [
   {
@@ -87,7 +87,7 @@ const ANALYTICAL_METHODS = [
  * - Persistent execution data
  * - Default Carbon Design System styling
  */
-function BioanalyticalAnalyticalExecutionPage({
+function BioequivalenceAnalyticalExecutionPage({
   pageData,
   onProgressUpdate,
   templateInstruments,
@@ -97,7 +97,7 @@ function BioanalyticalAnalyticalExecutionPage({
     useContext(NotificationContext);
   const { hasAnyRole } = usePermissions();
   const { getPagePermissionLevel, hasFullControl, canSaveData } =
-    useBioanalyticalPermissions();
+    useBioequivalencePermissions();
   const isMountedRef = useRef(true);
 
   const allowedRoles = [
@@ -129,7 +129,7 @@ function BioanalyticalAnalyticalExecutionPage({
     return (
       <AccessDeniedMessage
         page="Analytical Test Execution"
-        reason="This page requires specific bioanalytical laboratory roles to access."
+        reason="This page requires specific bioequivalence laboratory roles to access."
         requiredRoles={allowedRoles}
       />
     );
@@ -1231,7 +1231,7 @@ function BioanalyticalAnalyticalExecutionPage({
         <Column lg={16} md={8} sm={4}>
           <h2>
             <FormattedMessage
-              id="notebook.bioanalytical.execution.title"
+              id="notebook.bioequivalence.execution.title"
               defaultMessage="Stage 3: Analytical Test Execution"
             />
           </h2>
@@ -2436,7 +2436,7 @@ function BioanalyticalAnalyticalExecutionPage({
                         return allRequiredMet &&
                           (hasProcessedFiles || totalFiles === 0)
                           ? "✓ Ready for completion - All requirements met"
-                          : "⚠ Complete all required items for bioanalytical execution";
+                          : "⚠ Complete all required items for bioequivalence execution";
                       })()}
                     </strong>
                   </div>
@@ -2477,7 +2477,7 @@ function BioanalyticalAnalyticalExecutionPage({
                         fontStyle: "italic",
                       }}
                     >
-                      📋 Upload raw data files (required for FDA bioanalytical
+                      📋 Upload raw data files (required for FDA bioequivalence
                       compliance)
                     </p>
                   )}
@@ -2521,7 +2521,7 @@ function BioanalyticalAnalyticalExecutionPage({
           handleExecuteTest();
           setIsExecutionModalOpen(false);
         }}
-        size="lg"
+        size="md"
       >
         <Grid>
           <Column lg={8} md={4} sm={4}>
@@ -2802,6 +2802,7 @@ function BioanalyticalAnalyticalExecutionPage({
         open={isDeviationModalOpen}
         onRequestClose={() => setIsDeviationModalOpen(false)}
         onRequestSubmit={handleAddDeviation}
+        size="md"
       >
         <Select
           id="deviation-type"
@@ -2852,4 +2853,4 @@ function BioanalyticalAnalyticalExecutionPage({
   );
 }
 
-export default BioanalyticalAnalyticalExecutionPage;
+export default BioequivalenceAnalyticalExecutionPage;
