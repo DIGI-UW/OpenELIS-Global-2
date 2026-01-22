@@ -3,9 +3,13 @@ description:
   Identify underspecified areas in the current feature spec by asking up to 5
   highly targeted clarification questions and encoding answers back into the
   spec.
+handoffs:
+  - label: Build Technical Plan
+    agent: speckit.plan
+    prompt: Create a plan for the spec. I am building with...
 scripts:
-  sh: .specify/scripts/bash/check-prerequisites.sh --json --paths-only
-  ps: .specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+  sh: scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 ## User Input
@@ -28,8 +32,7 @@ downstream rework risk increases.
 
 Execution steps:
 
-1. Run `.specify/scripts/bash/check-prerequisites.sh --json --paths-only` from
-   repo root **once** (combined `--json --paths-only` mode /
+1. Run `{SCRIPT}` from repo root **once** (combined `--json --paths-only` mode /
    `-Json -PathsOnly`). Parse minimal JSON payload fields:
 
    - `FEATURE_DIR`
@@ -267,4 +270,4 @@ Behavior rules:
 - If quota reached with unresolved high-impact categories remaining, explicitly
   flag them under Deferred with rationale.
 
-Context for prioritization: $ARGUMENTS
+Context for prioritization: {ARGS}
