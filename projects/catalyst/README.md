@@ -60,3 +60,35 @@ cd projects/catalyst
 cd projects/catalyst
 docker compose -f catalyst-dev.docker-compose.yml up -d
 ```
+
+### MCP Database Access Architecture
+
+**Decision**: MCP server provides **allowlisted schema context** to support LLM query generation and validation. MCP does **not** execute user queries.
+
+**Architecture**:
+
+- **MCP Layer (Python)**:
+  - Direct read-only database access for schema introspection (M1+)
+  - Provides `get_query_context()` and `validate_sql()` tools only
+  - Enforces table allowlist boundary (what LLM can reference)
+  - M0.0: Mock responses (no DB connection)
+  - M1+: Direct PostgreSQL connection via `psycopg2-binary` for real schema introspection
+
+- **OE Backend (Java)**:
+  - Executes user-accepted queries (after user reviews generated SQL in chat)
+  - Enforces RBAC, audit trail, transaction management
+  - Returns query results to frontend
+
+**Privacy Boundary**:
+
+- **Table allowlist**: `MCP_ALLOWED_TABLES` environment variable (comma-separated)
+- **Default profile**: Minimal non-PHI tables (terminology, test catalog, statuses)
+- **Enforcement**: Both `get_query_context()` and `validate_sql()` respect allowlist
+- LLM cannot generate SQL referencing non-allowed tables (blocked at validation)
+
+**Security**:
+
+- Read-only database user for MCP (no INSERT/UPDATE/DELETE permissions)
+- Network isolation (MCP server in same Docker network as DB)
+- Connection string via environment variables (not hardcoded)
+- Defense in depth: MCP validates SQL structure; OE backend enforces RBAC at execution time

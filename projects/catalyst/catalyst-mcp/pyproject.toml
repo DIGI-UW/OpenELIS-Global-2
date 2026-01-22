@@ -12,11 +12,13 @@ fastapi = "^0.115.2"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
 python-dotenv = "^1.0.1"
 mcp = "^1.1.2"
+psycopg2-binary = "^2.9.9"  # For M1+ PostgreSQL schema extraction
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 honcho = "^1.1.0"
 setuptools = "^69.0.0"
+pytest-asyncio = "0.23.8"
 
 [build-system]
 requires = ["poetry-core"]
