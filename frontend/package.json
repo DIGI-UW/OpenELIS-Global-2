@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@carbon/charts": "^1.5.2",
+    "@carbon/charts": "^1.27.2",
     "@carbon/charts-react": "^1.5.2",
     "@carbon/icons-react": "^11.17.0",
     "@carbon/react": "^1.15.0",
@@ -25,7 +25,7 @@
     "formik-error-focus": "2.0.0",
     "geopattern": "1.2.3",
     "jsonpath": "^1.1.1",
-    "lodash-es": "^4.17.15",
+    "lodash-es": "^4.17.23",
     "qs": "6.11.0",
     "react": "^17.0.2",
     "react-avatar": "5.0.3",
