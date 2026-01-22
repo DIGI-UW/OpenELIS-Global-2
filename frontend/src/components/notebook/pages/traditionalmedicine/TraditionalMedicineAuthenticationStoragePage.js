@@ -23,7 +23,8 @@ import {
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useMemo as useMemoHook } from "react";
-import NotificationContext, { NotificationKinds } from "../../layout/Layout";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,

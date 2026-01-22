@@ -23,7 +23,7 @@
         <insert tableName="system_role" schemaName="clinlims">
             <column name="id" valueSequenceNext="system_role_seq"/>
             <column name="name" value="Lab Technician"/>
-            <column name="description" value="Performs technical work in Traditional Medicine lab: sample preparation, extraction, analysis, and testing"/>
+            <column name="description" value="Performs technical work: sample prep, extraction, analysis, testing"/>
             <column name="is_grouping_role" value="false"/>
             <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
             <column name="display_key" value="role.tradmed.lab.technician"/>
@@ -65,7 +65,7 @@
         <insert tableName="system_role" schemaName="clinlims">
             <column name="id" valueSequenceNext="system_role_seq"/>
             <column name="name" value="Pharmacognosist"/>
-            <column name="description" value="Authenticates plant specimens and approves product formulations in Traditional Medicine lab"/>
+            <column name="description" value="Authenticates plants and approves formulations"/>
             <column name="is_grouping_role" value="false"/>
             <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
             <column name="display_key" value="role.tradmed.pharmacognosist"/>
@@ -86,7 +86,7 @@
         <insert tableName="system_role" schemaName="clinlims">
             <column name="id" valueSequenceNext="system_role_seq"/>
             <column name="name" value="Lab Manager"/>
-            <column name="description" value="Supervises all Traditional Medicine lab operations and provides final approval for all stages"/>
+            <column name="description" value="Supervises lab operations and provides final approval"/>
             <column name="is_grouping_role" value="false"/>
             <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
             <column name="display_key" value="role.tradmed.lab.manager"/>
@@ -107,7 +107,7 @@
         <insert tableName="system_role" schemaName="clinlims">
             <column name="id" valueSequenceNext="system_role_seq"/>
             <column name="name" value="Principal Investigator"/>
-            <column name="description" value="Oversees Traditional Medicine research projects with view-only access and final approval authority"/>
+            <column name="description" value="Oversees research projects with view-only and approval authority"/>
             <column name="is_grouping_role" value="false"/>
             <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
             <column name="display_key" value="role.tradmed.principal.investigator"/>

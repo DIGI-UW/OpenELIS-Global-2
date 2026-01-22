@@ -17,7 +17,8 @@ import {
   Edit,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import NotificationContext, { NotificationKinds } from "../../layout/Layout";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
