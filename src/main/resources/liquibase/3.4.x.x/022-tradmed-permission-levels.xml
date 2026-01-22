@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- TMMRD WORKFLOW PERMISSION LEVELS                         -->
+    <!-- Adds action-level permissions per TMMRD SRS Section 11   -->
+    <!-- Permission Levels: VIEW, REGISTER, UPDATE, YES, APPROVE, FULL -->
+    <!-- ======================================================== -->
+
+    <!-- CHANGESET 1: Add permission_level column if not exists -->
+    <changeSet id="tradmed-add-permission-level-column" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_page_allowed_roles" columnName="permission_level" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add permission_level column for action-level access control in TMMRD</comment>
+        <addColumn tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" type="VARCHAR(50)" defaultValue="VIEW">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: Sample Arrival, Reception &amp; Registration      -->
+    <!-- ======================================================== -->
+
+    <!-- Lab Technician: Can register/create samples -->
+    <changeSet id="tradmed-page1-lab-technician-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Technician can register/create samples on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="REGISTER"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Technician'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Researcher: Can register/create samples -->
+    <changeSet id="tradmed-page1-researcher-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Researcher can register/create samples on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="REGISTER"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Researcher'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Pharmacognosist: View only on PAGE 1 -->
+    <changeSet id="tradmed-page1-pharmacognosist-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Pharmacognosist has view-only access on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Manager: Full control on PAGE 1 -->
+    <changeSet id="tradmed-page1-lab-manager-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Manager has full control on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Principal Investigator: View only on PAGE 1 -->
+    <changeSet id="tradmed-page1-pi-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <comment>Principal Investigator has view-only access on PAGE 1</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 1 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: Authentication, Storage &amp; Herbarium Placement -->
+    <!-- ======================================================== -->
+
+    <!-- Pharmacognosist: Can authenticate/approve on PAGE 2 -->
+    <changeSet id="tradmed-page2-pharmacognosist-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Pharmacognosist can approve/authenticate on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="APPROVE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Manager: Full control on PAGE 2 -->
+    <changeSet id="tradmed-page2-lab-manager-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Manager has full control on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Principal Investigator: View only on PAGE 2 -->
+    <changeSet id="tradmed-page2-pi-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <comment>Principal Investigator has view-only access on PAGE 2</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 2 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: Sample Preparation (STAGE 4)                     -->
+    <!-- ======================================================== -->
+
+    <!-- Lab Technician: Can perform work (YES) -->
+    <changeSet id="tradmed-page3-lab-technician-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Technician can perform sample preparation on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="YES"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Technician'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Researcher: Can perform work (YES) -->
+    <changeSet id="tradmed-page3-researcher-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Researcher can perform sample preparation on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="YES"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Researcher'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Pharmacognosist: View only on PAGE 3 -->
+    <changeSet id="tradmed-page3-pharmacognosist-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Pharmacognosist has view-only access on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Lab Manager: Full control on PAGE 3 -->
+    <changeSet id="tradmed-page3-lab-manager-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Lab Manager has full control on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Principal Investigator: View only on PAGE 3 -->
+    <changeSet id="tradmed-page3-pi-permission" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <comment>Principal Investigator has view-only access on PAGE 3</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 3 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4-7: Similar pattern for remaining stages            -->
+    <!-- Following the same permission structure per SRS Section 11-->
+    <!-- ======================================================== -->
+
+    <!-- PAGE 4: Extraction (STAGE 5) - Same as Page 3 pattern -->
+    <changeSet id="tradmed-page4-permissions-batch" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+            </sqlCheck>
+        </preConditions>
+        <comment>Set permission levels for PAGE 4 (Extraction) per TMMRD SRS</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="YES"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role IN ('Lab Technician', 'Researcher')
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 4 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 5: Analytical Pathways (STAGE 6) - Researcher/Pharmacognosist can do research, Lab Manager full, PI view -->
+    <changeSet id="tradmed-page5-permissions-batch" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+            </sqlCheck>
+        </preConditions>
+        <comment>Set permission levels for PAGE 5 (Analytical Pathways) per TMMRD SRS</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="YES"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Researcher'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="YES"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 5 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 6: Product Development &amp; Testing (STAGE 7) - Techs/Researchers/Pharmacognosists can do work, Lab Manager full, PI view -->
+    <changeSet id="tradmed-page6-permissions-batch" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+            </sqlCheck>
+        </preConditions>
+        <comment>Set permission levels for PAGE 6 (Product Development &amp; Testing) per TMMRD SRS</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="YES"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role IN ('Lab Technician', 'Researcher')
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="APPROVE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 6 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 7: Formulation (STAGE 8) - Techs/Researchers can do work, Pharmacognosists approve, Lab Manager full, PI view -->
+    <changeSet id="tradmed-page7-permissions-batch" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+            </sqlCheck>
+        </preConditions>
+        <comment>Set permission levels for PAGE 7 (Formulation) per TMMRD SRS</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="YES"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role IN ('Lab Technician', 'Researcher')
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="APPROVE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Pharmacognosist'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="FULL"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="VIEW"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 7 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- PAGE 8: Reporting &amp; Archival - Lab Manager and PI final approval -->
+    <changeSet id="tradmed-page8-permissions-batch" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page_allowed_roles
+                WHERE notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+            </sqlCheck>
+        </preConditions>
+        <comment>Set permission levels for PAGE 8 (Reporting &amp; Archival) per TMMRD SRS</comment>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="APPROVE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Lab Manager'
+            </where>
+        </update>
+        <update tableName="notebook_page_allowed_roles" schemaName="clinlims">
+            <column name="permission_level" value="APPROVE"/>
+            <where>
+                notebook_page_id = (SELECT id FROM clinlims.notebook_page WHERE page_order = 8 AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title LIKE '%Traditional%'))
+                AND role = 'Principal Investigator'
+            </where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

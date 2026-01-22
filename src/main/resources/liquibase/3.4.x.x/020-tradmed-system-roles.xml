@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- TMMRD LAB SYSTEM ROLES                                   -->
+    <!-- Adds 5 new system roles for Traditional Medicine lab     -->
+    <!-- Per TMMRD SRS Section 11: USER ROLES &amp; PERMISSIONS   -->
+    <!-- ======================================================== -->
+
+    <!-- ROLE 1: Lab Technician - Performs technical work (sample prep, extraction, testing) -->
+    <changeSet id="add-tradmed-lab-technician-role" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Lab Technician'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Lab Technician role for TMMRD lab technical operations</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Lab Technician"/>
+            <column name="description" value="Performs technical work in Traditional Medicine lab: sample preparation, extraction, analysis, and testing"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.tradmed.lab.technician"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 2: Researcher - Conducts research and method development -->
+    <changeSet id="add-tradmed-researcher-role" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Researcher'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Researcher role for TMMRD research and method development</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Researcher"/>
+            <column name="description" value="Conducts research and method development in Traditional Medicine lab"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.tradmed.researcher"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 3: Pharmacognosist - Authenticates specimens and approves formulations -->
+    <changeSet id="add-tradmed-pharmacognosist-role" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Pharmacognosist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Pharmacognosist role for TMMRD authentication and formulation approval</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Pharmacognosist"/>
+            <column name="description" value="Authenticates plant specimens and approves product formulations in Traditional Medicine lab"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.tradmed.pharmacognosist"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 4: Lab Manager - Oversees all laboratory operations and gives final approval -->
+    <changeSet id="add-tradmed-lab-manager-role" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Lab Manager'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Lab Manager role for TMMRD laboratory supervision and final approval</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Lab Manager"/>
+            <column name="description" value="Supervises all Traditional Medicine lab operations and provides final approval for all stages"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.tradmed.lab.manager"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- ROLE 5: Principal Investigator - Views progress and gives final study approval -->
+    <changeSet id="add-tradmed-principal-investigator-role" author="openelis-tradmed">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Principal Investigator'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Principal Investigator role for TMMRD research oversight</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="Principal Investigator"/>
+            <column name="description" value="Oversees Traditional Medicine research projects with view-only access and final approval authority"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Lab Unit Roles')"/>
+            <column name="display_key" value="role.tradmed.principal.investigator"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
   Button,
   Tile,
-  InlineNotification,
   Tag,
   Modal,
   Dropdown,
@@ -23,6 +22,8 @@ import {
   WarningAltFilled,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useMemo } from "react";
+import NotificationContext, { NotificationKinds } from "../../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
@@ -61,14 +62,12 @@ function TraditionalMedicineSampleCreationPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
+  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
   const componentMounted = useRef(false);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
 
   const [importModalOpen, setImportModalOpen] = useState(false);
 
@@ -103,6 +102,15 @@ function TraditionalMedicineSampleCreationPage({
     { id: "partial", label: "Partially Confirmed" },
   ];
 
+  // Notification callback
+  const notify = useCallback(
+    ({ kind = NotificationKinds.info, title, message }) => {
+      setNotificationVisible(true);
+      addNotification({ kind, title, message });
+    },
+    [addNotification, setNotificationVisible],
+  );
+
   // Check if page has a real ID
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
@@ -120,8 +128,6 @@ function TraditionalMedicineSampleCreationPage({
     }
 
     setLoading(true);
-    setError(null);
-    setSuccessMessage(null);
 
     getFromOpenElisServer(
       `/rest/notebook/page/${pageData.id}/samples`,
@@ -204,55 +210,58 @@ function TraditionalMedicineSampleCreationPage({
   // Open authentication modal
   const openAuthModal = useCallback(() => {
     if (selectedSampleIds.length === 0) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
           id: "notebook.page.tradmed.error.noSelection",
           defaultMessage: "Please select at least one sample.",
         }),
-      );
+      });
       return;
     }
     resetAuthForm();
     setAuthModalOpen(true);
-  }, [selectedSampleIds, intl, resetAuthForm]);
+  }, [selectedSampleIds, intl, resetAuthForm, notify]);
 
   // Apply authentication to selected samples using dedicated authentication endpoint
   // Per SRS: LMS logs authentication method and result
   // When authentication is "confirmed", backend automatically marks samples as COMPLETED to advance to next stage
   const applyAuthentication = useCallback(() => {
     if (!authMethod) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
           id: "notebook.page.tradmed.error.authMethodRequired",
           defaultMessage: "Please select an authentication method.",
         }),
-      );
+      });
       return;
     }
 
     if (!authResult) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
           id: "notebook.page.tradmed.error.authResultRequired",
           defaultMessage: "Please select an authentication result.",
         }),
-      );
+      });
       return;
     }
 
     if (!hasRealPageId) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
           id: "notebook.page.tradmed.error.noPage",
           defaultMessage:
             "Cannot update samples: Page not properly initialized.",
         }),
-      );
+      });
       return;
     }
 
     setIsApplyingAuth(true);
-    setError(null);
 
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
 
@@ -293,20 +302,24 @@ function TraditionalMedicineSampleCreationPage({
                   { count: response.updatedCount || selectedSampleIds.length },
                 ));
 
-          setSuccessMessage(message);
+          notify({
+            kind: NotificationKinds.success,
+            title: message,
+          });
           setAuthModalOpen(false);
           setSelectedSampleIds([]);
           loadPageSamples();
           if (onProgressUpdate) onProgressUpdate();
         } else {
-          setError(
-            response?.error ||
+          notify({
+            kind: NotificationKinds.error,
+            title: response?.error ||
               intl.formatMessage({
                 id: "notebook.page.tradmed.error.authFailed",
                 defaultMessage:
                   "Failed to apply authentication. Please try again.",
               }),
-          );
+          });
         }
       },
     );
@@ -322,32 +335,32 @@ function TraditionalMedicineSampleCreationPage({
     intl,
     loadPageSamples,
     onProgressUpdate,
+    notify,
   ]);
 
   const markAsRegistered = useCallback(() => {
     if (selectedSampleIds.length === 0) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
           id: "notebook.page.tradmed.error.noSelection",
           defaultMessage: "Please select at least one sample.",
         }),
-      );
+      });
       return;
     }
 
     if (!hasRealPageId) {
-      setError(
-        intl.formatMessage({
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
           id: "notebook.page.tradmed.error.noPage",
           defaultMessage:
             "Cannot update samples: Page not properly initialized.",
         }),
-      );
+      });
       return;
     }
-
-    setError(null);
-    setSuccessMessage(null);
 
     postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
@@ -357,27 +370,29 @@ function TraditionalMedicineSampleCreationPage({
       }),
       (status) => {
         if (status === 200) {
-          setSuccessMessage(
-            intl.formatMessage(
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
               {
                 id: "notebook.page.tradmed.success.registered",
                 defaultMessage: "Marked {count} sample(s) as Registered.",
               },
               { count: selectedSampleIds.length },
             ),
-          );
+          });
           setSelectedSampleIds([]);
           loadPageSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          setError(
-            intl.formatMessage({
+          notify({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({
               id: "notebook.page.tradmed.error.status",
               defaultMessage: "Failed to register samples. Please try again.",
             }),
-          );
+          });
         }
       },
     );
@@ -388,18 +403,25 @@ function TraditionalMedicineSampleCreationPage({
     loadPageSamples,
     onProgressUpdate,
     pageData?.id,
+    notify,
   ]);
 
-  const pendingCount = samples.filter((s) => s.status === "PENDING").length;
-  const completedCount = samples.filter((s) => s.status === "COMPLETED").length;
+  // Split samples: pending (not yet authenticated) vs registered (authenticated and ready for next stage)
+  // Per SRS: Registration/advance to next stage happens after authentication is confirmed
+  const pendingSamples = useMemo(
+    () =>
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
+    [samples],
+  );
+  const registeredSamples = useMemo(
+    () => samples.filter((s) => s.status === "COMPLETED"),
+    [samples],
+  );
 
-  // Authentication counts - now from Page 1 data directly
-  const authenticatedCount = samples.filter(
-    (s) => s.authenticationResult === "confirmed",
-  ).length;
-  const pendingAuthCount = samples.filter(
-    (s) => !s.authenticationMethod && s.status !== "PENDING",
-  ).length;
+  const pendingCount = pendingSamples.length;
+  const completedCount = registeredSamples.length;
 
   // Helper to render authentication status for a sample
   const renderAuthenticationStatus = (sample) => {
@@ -481,8 +503,8 @@ function TraditionalMedicineSampleCreationPage({
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tradmed.pendingRegistration"
-                  defaultMessage="Pending Registration"
+                  id="notebook.page.tradmed.pendingAuth"
+                  defaultMessage="Pending / In Progress"
                 />
               </span>
               <span className="progress-value">{pendingCount}</span>
@@ -490,30 +512,11 @@ function TraditionalMedicineSampleCreationPage({
             <Tile className="progress-tile verified">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tradmed.registered"
-                  defaultMessage="Registered"
-                />
-              </span>
-              <span className="progress-value">{completedCount}</span>
-            </Tile>
-            <Tile className="progress-tile">
-              <span className="progress-label">
-                <Chemistry size={16} style={{ marginRight: "4px" }} />
-                <FormattedMessage
                   id="notebook.page.tradmed.authenticated"
                   defaultMessage="Authenticated"
                 />
               </span>
-              <span className="progress-value">{authenticatedCount}</span>
-            </Tile>
-            <Tile className="progress-tile pending">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="notebook.page.tradmed.pendingAuth"
-                  defaultMessage="Pending Auth"
-                />
-              </span>
-              <span className="progress-value">{pendingAuthCount}</span>
+              <span className="progress-value">{completedCount}</span>
             </Tile>
           </div>
         </Column>
@@ -575,67 +578,148 @@ function TraditionalMedicineSampleCreationPage({
         </Button>
       </div>
 
-      {/* Errors / Success */}
-      {error && (
-        <InlineNotification
-          kind="error"
-          title={error}
-          onCloseButtonClick={() => setError(null)}
-          lowContrast
-        />
-      )}
-      {successMessage && (
-        <InlineNotification
-          kind="success"
-          title={successMessage}
-          onCloseButtonClick={() => setSuccessMessage(null)}
-          lowContrast
-        />
-      )}
 
-      {/* Sample Grid */}
-      <div className="sample-grid-container">
-        <SampleGrid
-          samples={samples}
-          selectedIds={selectedSampleIds}
-          onSelectionChange={setSelectedSampleIds}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          showSelection={true}
-          loading={loading}
-          columns={[
-            // Registration & Labeling - Unique Sample ID
-            { key: "accessionNumber", header: "Accession #" },
-            { key: "externalId", header: "Sample ID" },
-            // Taxonomy - Species identification
-            { key: "localName", header: "Local Name" },
-            { key: "scientificName", header: "Scientific Name" },
-            // Collection metadata - Origin, Collector, Date
-            { key: "originLocation", header: "Origin" },
-            { key: "collectedBy", header: "Collector" },
-            { key: "collectionDate", header: "Collection Date" },
-            // Sample details
-            { key: "plantPart", header: "Plant Part" },
-            { key: "sampleCondition", header: "Condition" },
-            // Registration Status
-            { key: "status", header: "Reg. Status" },
-            // Authentication Status (SRS: LMS logs method and result)
-            {
-              key: "authenticationStatus",
-              header: "Authentication",
-              render: (_value, row) => renderAuthenticationStatus(row),
-            },
-          ]}
-        />
+      {/* Pending / In Progress Samples Section */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.pendingSamples.title"
+              defaultMessage="Pending Authentication"
+            />
+            <Tag type="gray" size="sm" className="count-tag">
+              {pendingCount}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.tradmed.pendingSamples.description"
+              defaultMessage="Samples awaiting authentication verification. Select samples and authenticate them using botanical verification, expert identification, or other methods per SRS requirements."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          {!loading && pendingSamples.length === 0 ? (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.tradmed.pendingSamples.empty"
+                  defaultMessage="No pending samples. Import a manifest to add traditional medicine samples."
+                />
+              </p>
+            </div>
+          ) : (
+            <SampleGrid
+              gridId="pending-samples"
+              samples={pendingSamples}
+              selectedIds={selectedSampleIds}
+              onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
+              loading={loading}
+              columns={[
+                // Registration & Labeling - Unique Sample ID
+                { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
+                // Sample Category
+                { key: "sampleCategory", header: "Category" },
+                // Taxonomy - Species identification
+                { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                // Source & Origin
+                { key: "sourceType", header: "Source Type" },
+                { key: "originLocation", header: "Origin" },
+                { key: "collectedBy", header: "Collector" },
+                { key: "collectionDate", header: "Collection Date" },
+                // Sample details
+                { key: "plantPart", header: "Plant Part" },
+                { key: "sampleCondition", header: "Condition" },
+                // Intended Use
+                { key: "intendedUse", header: "Intended Use" },
+                // Authentication Status (SRS: LMS logs method and result)
+                {
+                  key: "authenticationStatus",
+                  header: "Authentication",
+                  render: (_value, row) => renderAuthenticationStatus(row),
+                },
+              ]}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Empty state */}
+      {/* Registered / Authenticated Samples Section */}
+      <div className="sample-table-section">
+        <div className="table-section-header">
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.registeredSamples.title"
+              defaultMessage="Authenticated & Registered"
+            />
+            <Tag type="green" size="sm" className="count-tag">
+              {completedCount}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.tradmed.registeredSamples.description"
+              defaultMessage="Samples that have been authenticated and are ready to proceed to the next workflow stage (Storage & Herbarium Placement)."
+            />
+          </p>
+        </div>
+        <div className="sample-grid-container">
+          {!loading && registeredSamples.length === 0 ? (
+            <div className="empty-table-state">
+              <p>
+                <FormattedMessage
+                  id="notebook.page.tradmed.registeredSamples.empty"
+                  defaultMessage="No authenticated samples yet. Select pending samples and authenticate them."
+                />
+              </p>
+            </div>
+          ) : (
+            <SampleGrid
+              gridId="registered-samples"
+              samples={registeredSamples}
+              showSelection={false}
+              loading={loading}
+              columns={[
+                // Registration & Labeling - Unique Sample ID
+                { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
+                // Sample Category
+                { key: "sampleCategory", header: "Category" },
+                // Taxonomy - Species identification
+                { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                // Source & Origin
+                { key: "sourceType", header: "Source Type" },
+                { key: "originLocation", header: "Origin" },
+                { key: "collectedBy", header: "Collector" },
+                { key: "collectionDate", header: "Collection Date" },
+                // Sample details
+                { key: "plantPart", header: "Plant Part" },
+                { key: "sampleCondition", header: "Condition" },
+                // Intended Use
+                { key: "intendedUse", header: "Intended Use" },
+                // Authentication Status (SRS: LMS logs method and result)
+                {
+                  key: "authenticationStatus",
+                  header: "Authentication",
+                  render: (_value, row) => renderAuthenticationStatus(row),
+                },
+              ]}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Global Empty state - only show when no samples at all */}
       {!loading && samples.length === 0 && (
-        <div className="empty-state">
+        <div className="empty-state global-empty">
           <p>
             <FormattedMessage
               id="notebook.page.tradmed.empty"
-              defaultMessage="No samples have been added yet. Import a manifest to add traditional medicine samples."
+              defaultMessage="No samples have been added yet. Import a manifest to add traditional medicine samples with complete metadata."
             />
           </p>
         </div>

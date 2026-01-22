@@ -1,0 +1,26 @@
+sample_id,sample_category,source_type,origin_location,collection_site,collection_date,collected_by,local_name,scientific_name,species,plant_part,sample_condition,intended_use,num_of_samples,notes
+TM-LARGE-001,Whole Plant,Plant material,Region A,Site 001,2025-01-01,Collector 1,Local Name 1,Genus species 1,G. species1,Leaf,Fresh,Research,1,Sample 001
+TM-LARGE-002,Plant Part,Plant material,Region B,Site 002,2025-01-02,Collector 2,Local Name 2,Genus species 2,G. species2,Root,Dried,Product development,2,Sample 002
+TM-LARGE-003,Plant Extract,Plant Extract,Region C,Site 003,2025-01-03,Collector 3,Local Name 3,Genus species 3,G. species3,Bark,Preserved,Analytical,1,Sample 003
+TM-LARGE-004,Fractionated Extract,Plant Extract,Region D,Site 004,2025-01-04,Collector 4,Local Name 4,Genus species 4,G. species4,Flower,Fresh,Testing,3,Sample 004
+TM-LARGE-005,Purified Compound,Plant material,Region E,Site 005,2025-01-05,Collector 5,Local Name 5,Genus species 5,G. species5,Seed,Dried,Research,1,Sample 005
+TM-LARGE-006,Whole Plant,Plant material,Region F,Site 006,2025-01-06,Collector 6,Local Name 6,Genus species 6,G. species6,Leaf,Fresh,Product,2,Sample 006
+TM-LARGE-007,Reference Standard,Other source,Region G,Site 007,2025-01-07,Collector 7,Local Name 7,Genus species 7,G. species7,Whole,Preserved,Herbarium,1,Sample 007
+TM-LARGE-008,Formulated Product,Plant material,Region H,Site 008,2025-01-08,Collector 8,Local Name 8,Genus species 8,G. species8,Root,Dried,Development,4,Sample 008
+TM-LARGE-009,Plant Part,Plant material,Region I,Site 009,2025-01-09,Collector 9,Local Name 9,Genus species 9,G. species9,Stem,Fresh,Analysis,1,Sample 009
+TM-LARGE-010,Whole Plant,Plant material,Region J,Site 010,2025-01-10,Collector 10,Local Name 10,Genus species 10,G. species10,Leaf,Dried,Research,2,Sample 010
+TM-LARGE-011,Plant Extract,Plant Extract,Region K,Site 011,2025-01-11,Collector 11,Local Name 11,Genus species 11,G. species11,Bark,Preserved,Product,1,Sample 011
+TM-LARGE-012,Fractionated Extract,Plant Extract,Region L,Site 012,2025-01-12,Collector 12,Local Name 12,Genus species 12,G. species12,Root,Fresh,Testing,3,Sample 012
+TM-LARGE-013,Purified Compound,Plant material,Region M,Site 013,2025-01-13,Collector 13,Local Name 13,Genus species 13,G. species13,Flower,Dried,Research,1,Sample 013
+TM-LARGE-014,Reference Standard,Plant material,Region N,Site 014,2025-01-14,Collector 14,Local Name 14,Genus species 14,G. species14,Seed,Preserved,Herbarium,2,Sample 014
+TM-LARGE-015,Whole Plant,Plant material,Region O,Site 015,2025-01-15,Collector 15,Local Name 15,Genus species 15,G. species15,Leaf,Fresh,Development,1,Sample 015
+TM-LARGE-016,Plant Part,Plant material,Region P,Site 016,2025-01-16,Collector 16,Local Name 16,Genus species 16,G. species16,Root,Dried,Analysis,4,Sample 016
+TM-LARGE-017,Formulated Product,Plant material,Region Q,Site 017,2025-01-17,Collector 17,Local Name 17,Genus species 17,G. species17,Bark,Fresh,Product,1,Sample 017
+TM-LARGE-018,Plant Extract,Plant Extract,Region R,Site 018,2025-01-18,Collector 18,Local Name 18,Genus species 18,G. species18,Flower,Preserved,Testing,2,Sample 018
+TM-LARGE-019,Purified Compound,Plant material,Region S,Site 019,2025-01-19,Collector 19,Local Name 19,Genus species 19,G. species19,Whole,Dried,Research,1,Sample 019
+TM-LARGE-020,Whole Plant,Plant material,Region T,Site 020,2025-01-20,Collector 20,Local Name 20,Genus species 20,G. species20,Leaf,Fresh,Herbarium,3,Sample 020
+TM-LARGE-021,Plant Part,Plant material,Region U,Site 021,2025-01-21,Collector 21,Local Name 21,Genus species 21,G. species21,Root,Dried,Development,1,Sample 021
+TM-LARGE-022,Reference Standard,Plant material,Region V,Site 022,2025-01-22,Collector 22,Local Name 22,Genus species 22,G. species22,Stem,Preserved,Research,2,Sample 022
+TM-LARGE-023,Fractionated Extract,Plant Extract,Region W,Site 023,2025-01-23,Collector 23,Local Name 23,Genus species 23,G. species23,Bark,Fresh,Analysis,1,Sample 023
+TM-LARGE-024,Plant Extract,Plant Extract,Region X,Site 024,2025-01-24,Collector 24,Local Name 24,Genus species 24,G. species24,Flower,Dried,Product,4,Sample 024
+TM-LARGE-025,Whole Plant,Plant material,Region Y,Site 025,2025-01-25,Collector 25,Local Name 25,Genus species 25,G. species25,Seed,Fresh,Testing,1,Sample 025

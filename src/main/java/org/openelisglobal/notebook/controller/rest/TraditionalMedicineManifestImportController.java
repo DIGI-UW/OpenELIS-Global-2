@@ -19,6 +19,7 @@ import org.openelisglobal.notebook.service.TraditionalMedicineManifestImportServ
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,6 +40,23 @@ public class TraditionalMedicineManifestImportController extends BaseRestControl
 
     @Autowired
     private NotebookEntryService notebookEntryService;
+
+    /**
+     * Get valid sample categories for the Traditional Medicine laboratory. Returns
+     * sample categories that align with TMMRD SRS Stage 1 requirements.
+     */
+    @GetMapping(value = "/sample-categories", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getValidSampleCategories() {
+        List<TraditionalMedicineManifestImportService.SampleCategory> categories = traditionalMedicineManifestImportService
+                .getValidSampleCategories();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("sampleCategories", categories);
+        response.put("total", categories.size());
+
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping(value = "/entry/{entryId}/samples/preview-manifest", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody

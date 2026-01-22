@@ -22,10 +22,15 @@ public interface TraditionalMedicineManifestImportService {
             List<String> createdAccessionNumbers) {
     }
 
+    record SampleCategory(String id, String description) {
+    }
+
     ParsedManifest parseManifestCsv(InputStream csvInput, TraditionalMedicineManifestImportForm columnMapping);
 
     List<ParseError> validateSampleData(ParsedManifest manifest);
 
     TraditionalMedicineManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest manifest,
             String sysUserId);
+
+    List<SampleCategory> getValidSampleCategories();
 }

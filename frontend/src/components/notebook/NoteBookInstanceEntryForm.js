@@ -225,6 +225,10 @@ const NoteBookInstanceEntryForm = () => {
   const [showTagModal, setShowTagModal] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [tagError, setTagError] = useState("");
+  const [auditTrailItems, setAuditTrailItems] = useState([]);
+  const [auditTrailLoading, setAuditTrailLoading] = useState(false);
+  const [auditTrailPage, setAuditTrailPage] = useState(1);
+  const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
 
   const openTagModal = () => {
     setNewTag("");

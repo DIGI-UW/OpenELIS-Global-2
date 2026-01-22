@@ -39,6 +39,15 @@ public class TraditionalMedicineManifestImportServiceImpl implements Traditional
 
     private static final String DEFAULT_SAMPLE_TYPE = "Plant Material";
 
+    // SRS-defined sample categories for Traditional Medicine Laboratory
+    private static final List<SampleCategory> VALID_SAMPLE_CATEGORIES = List.of(
+            new SampleCategory("whole_plant", "Whole Plant"), new SampleCategory("plant_part", "Plant Part"),
+            new SampleCategory("plant_extract", "Plant Extract"),
+            new SampleCategory("fractionated_extract", "Fractionated Extract"),
+            new SampleCategory("purified_compound", "Purified Compound"),
+            new SampleCategory("formulated_product", "Formulated Product"),
+            new SampleCategory("reference_standard", "Reference Standard"));
+
     @Autowired
     private TypeOfSampleService typeOfSampleService;
 
@@ -159,14 +168,17 @@ public class TraditionalMedicineManifestImportServiceImpl implements Traditional
     public List<ParseError> validateSampleData(ParsedManifest manifest) {
         List<ParseError> errors = new ArrayList<>();
 
-        // Validate sample categories
-        List<String> validCategories = List.of("Traditional medicine", "Modern medicine", "Hybrid research sample");
+        // Get valid category descriptions
+        List<String> validCategoryDescriptions = VALID_SAMPLE_CATEGORIES.stream().map(SampleCategory::description)
+                .toList();
+
         for (TraditionalMedicineManifestRow row : manifest.rows()) {
+            // Validate sample categories (if provided)
             if (row.sampleCategory() != null && !row.sampleCategory().isBlank()
-                    && !validCategories.contains(row.sampleCategory())) {
+                    && !validCategoryDescriptions.contains(row.sampleCategory())) {
+                String validValues = String.join(", ", validCategoryDescriptions);
                 errors.add(new ParseError(row.rowNumber(), "sample_category",
-                        "Invalid sample category: " + row.sampleCategory()
-                                + ". Must be one of: Traditional medicine, Modern medicine, Hybrid research sample"));
+                        "Invalid sample category: " + row.sampleCategory() + ". Must be one of: " + validValues));
             }
 
             // Validate source types
@@ -348,5 +360,10 @@ public class TraditionalMedicineManifestImportServiceImpl implements Traditional
         }
         String value = values[index];
         return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
+    @Override
+    public List<SampleCategory> getValidSampleCategories() {
+        return new ArrayList<>(VALID_SAMPLE_CATEGORIES);
     }
 }
