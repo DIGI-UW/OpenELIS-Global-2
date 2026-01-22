@@ -111,6 +111,23 @@ public class NotebookPageSampleDAOImpl extends BaseDAOImpl<NotebookPageSample, I
     }
 
     @Override
+    public int clearDestinationType(Integer pageId, List<Integer> sampleIds) {
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return 0;
+        }
+
+        Session session = entityManager.unwrap(Session.class);
+        // Convert Integer IDs to String for sampleItemId comparison
+        List<String> sampleIdStrings = sampleIds.stream().map(String::valueOf).toList();
+
+        // Use native SQL with JSONB operator to remove destinationType key
+        String sql = "UPDATE clinlims.notebook_page_sample SET data = data - 'destinationType' "
+                + "WHERE notebook_page_id = :pageId " + "AND sample_item_id IN (:sampleIds)";
+        return session.createNativeQuery(sql).setParameter("pageId", pageId)
+                .setParameterList("sampleIds", sampleIdStrings).executeUpdate();
+    }
+
+    @Override
     public List<NotebookPageSample> getByPageIdPaginated(Integer pageId, Status status, int offset, int limit) {
         Session session = entityManager.unwrap(Session.class);
         StringBuilder hql = new StringBuilder();

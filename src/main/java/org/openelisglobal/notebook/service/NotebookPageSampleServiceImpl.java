@@ -380,6 +380,20 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
     @Override
     @Transactional
+    public int clearDestinationType(Integer pageId, List<Integer> sampleIds, String userId) {
+        LogEvent.logInfo(this.getClass().getName(), "clearDestinationType",
+                "Clearing destinationType for pageId=" + pageId + ", sampleCount=" + sampleIds.size());
+
+        int updated = baseObjectDAO.clearDestinationType(pageId, sampleIds);
+
+        LogEvent.logInfo(this.getClass().getName(), "clearDestinationType",
+                "Successfully cleared destinationType for " + updated + " samples");
+
+        return updated;
+    }
+
+    @Override
+    @Transactional
     public int bulkApplyData(Integer pageId, List<Integer> sampleIds, Map<String, Object> data, String userId) {
         int totalUpdated = 0;
         LogEvent.logInfo(this.getClass().getName(), "bulkApplyData",

@@ -828,7 +828,7 @@ function SampleCollectionPage({
                         }
                         renderIcon={CheckmarkFilled}
                         onClick={() => {
-                          const ids = selectedRows.map((r) => r.sampleItemId);
+                          const ids = selectedRows.map((r) => r.id);
                           handleBulkMarkCollected(ids);
                         }}
                       >

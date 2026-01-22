@@ -64,7 +64,10 @@ function VirologyVirusIsolationPage({
 
   // Debug logging for selection
   useEffect(() => {
-    console.log("📝 VirologyVirusIsolationPage selectedSampleIds changed:", selectedSampleIds);
+    console.log(
+      "📝 VirologyVirusIsolationPage selectedSampleIds changed:",
+      selectedSampleIds,
+    );
   }, [selectedSampleIds]);
 
   // Form data - simplified to match requirements
@@ -528,10 +531,13 @@ function VirologyVirusIsolationPage({
               samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={(newSelection) => {
-                console.log("🎯 VirologyVirusIsolationPage onSelectionChange callback", {
-                  from: selectedSampleIds,
-                  to: newSelection,
-                });
+                console.log(
+                  "🎯 VirologyVirusIsolationPage onSelectionChange callback",
+                  {
+                    from: selectedSampleIds,
+                    to: newSelection,
+                  },
+                );
                 setSelectedSampleIds(newSelection);
               }}
               showSelection={true}

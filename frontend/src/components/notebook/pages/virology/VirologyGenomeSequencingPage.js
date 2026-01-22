@@ -90,8 +90,7 @@ function VirologyGenomeSequencingPage({
               id: String(sample.id || sample.sampleItemId),
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
-              sampleType:
-                sample.sampleType || sample.typeOfSample?.description,
+              sampleType: sample.sampleType || sample.typeOfSample?.description,
               collectionDate: sample.collectionDate,
               status: sample.pageStatus || sample.status || "PENDING",
               fastaFileReference: sample.data?.fastaFileReference,
@@ -113,7 +112,8 @@ function VirologyGenomeSequencingPage({
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.error" }),
-        subtitle: "Please provide either FASTA file reference or GenBank accession",
+        subtitle:
+          "Please provide either FASTA file reference or GenBank accession",
       });
       return;
     }
@@ -267,7 +267,13 @@ function VirologyGenomeSequencingPage({
         key: "genbankAccession",
         header: "GenBank Accession",
         render: (value) =>
-          value ? <Tag type="cyan" size="sm">{value}</Tag> : "-",
+          value ? (
+            <Tag type="cyan" size="sm">
+              {value}
+            </Tag>
+          ) : (
+            "-"
+          ),
       },
     ],
     [],

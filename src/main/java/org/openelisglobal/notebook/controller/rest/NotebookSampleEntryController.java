@@ -1276,6 +1276,70 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
+     * Unroute samples by clearing their destinationType in NotebookPageSample.
+     * This makes them available for re-routing. SampleRouting records are kept as
+     * historical data. POST /notebook/{id}/samples/unroute
+     *
+     * @param notebookId  the notebook ID
+     * @param request     unroute request with sampleIds and pageId
+     * @param httpRequest for getting user session
+     * @return unroute result
+     */
+    @PostMapping(value = "/{notebookId}/samples/unroute", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<Map<String, Object>> unrouteSamples(@PathVariable("notebookId") Integer notebookId,
+            @RequestBody UnrouteSamplesRequest request, HttpServletRequest httpRequest) {
+
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+        if (notebook == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (request.getPageId() == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Page ID is required");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        if (request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No sample IDs provided");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            // Clear destinationType from NotebookPageSample records
+            int unroutedCount = notebookPageSampleService.clearDestinationType(request.getPageId(),
+                    request.getSampleIds(), sysUserId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("unroutedCount", unroutedCount);
+            result.put("notebookId", notebookId);
+            result.put("pageId", request.getPageId());
+            result.put("success", true);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    /**
      * Get routing summary for a notebook. T085: GET /notebook/{id}/samples/routing
      *
      * @param notebookId the notebook ID
@@ -3342,6 +3406,30 @@ public class NotebookSampleEntryController extends BaseRestController {
 
         public void setStorageNotes(String storageNotes) {
             this.storageNotes = storageNotes;
+        }
+    }
+
+    /**
+     * Request body for unrouting samples (clearing their destinationType).
+     */
+    public static class UnrouteSamplesRequest {
+        private List<Integer> sampleIds;
+        private Integer pageId;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public Integer getPageId() {
+            return pageId;
+        }
+
+        public void setPageId(Integer pageId) {
+            this.pageId = pageId;
         }
     }
 

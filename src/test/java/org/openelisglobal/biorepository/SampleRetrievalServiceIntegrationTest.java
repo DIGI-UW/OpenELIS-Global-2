@@ -292,6 +292,10 @@ public class SampleRetrievalServiceIntegrationTest extends BaseWebContextSensiti
         assertTrue("Should have at least 2 pending", pending.size() >= 2);
         for (SampleRetrievalRequest req : pending) {
             assertEquals(RequestStatus.PENDING_APPROVAL, req.getStatus());
+            // Verify items collection is loaded (bug fix: was returning 0)
+            assertTrue("Request should have at least 1 item", req.getTotalItemCount() > 0);
+            assertNotNull("Items collection should be loaded", req.getItems());
+            assertFalse("Items collection should not be empty", req.getItems().isEmpty());
         }
     }
 
