@@ -1241,8 +1241,6 @@ const NoteBookInstanceEntryForm = () => {
                 ?.toLowerCase()
                 .includes("medical laboratory") &&
               !noteBookData?.title?.toLowerCase().includes("biorepository") && (
-                .includes("medical laboratory") && (
-                .includes("modern medicine") && (
                 <NotebookWorkflowTab notebookId={noteBookData.id} />
               )}
             {/* Use accordion view for templates or when no ID is available */}
