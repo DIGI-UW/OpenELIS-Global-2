@@ -7079,8 +7079,8 @@
   "biorepository.reporting.export.audit.startDate": "Start Date",
   "biorepository.reporting.export.audit.endDate": "End Date",
   "biorepository.reporting.export.audit.reset": "Reset",
-  "biorepository.reporting.export.audit.downloadButton": "Download Audit Trail"
-  "virology.trials.regulatoryStatus": "Regulatory Status"
+  "biorepository.reporting.export.audit.downloadButton": "Download Audit Trail",
+  "virology.trials.regulatoryStatus": "Regulatory Status",
   "yes.option": "Yes",
   "storage.location.label": "Storage Location",
   "storage.room.label": "Room",
