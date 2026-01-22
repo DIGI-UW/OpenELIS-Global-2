@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- ASTM Analyzer Field Mapping Feature (004-astm-analyzer-mapping) -->
+  <include relativeToChangelogFile="true" file="004-001-create-analyzer-configuration-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-002-create-analyzer-field-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-003-create-analyzer-field-mapping-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-004-create-qualitative-result-mapping-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-005-create-unit-mapping-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-006-create-analyzer-error-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-007-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="004-008-create-custom-field-type-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-009-add-menu-items.xml"/>
+  <include relativeToChangelogFile="true" file="004-010-add-query-timeout-config.xml"/>
+  <include relativeToChangelogFile="true" file="004-011-add-version-column-to-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="004-012-add-qc-mapping-incomplete-error-type.xml"/>
+  <include relativeToChangelogFile="true" file="004-013-create-validation-rule-configuration-table.xml"/>
+  <include relativeToChangelogFile="true" file="004-014-add-lifecycle-columns-to-analyzer-configuration.xml"/>
+  <include relativeToChangelogFile="true" file="004-015-add-custom-field-type-id-to-analyzer-field.xml"/>
+  <include relativeToChangelogFile="true" file="004-016-add-analyzer-id-to-field-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="004-017-add-qc-service-unavailable-error-type.xml"/>
+  <include relativeToChangelogFile="true" file="004-018-add-react-analyzers-url-permissions.xml"/>
+
+</databaseChangeLog>

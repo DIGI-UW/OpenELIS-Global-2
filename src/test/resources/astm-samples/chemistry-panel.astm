@@ -1,0 +1,39 @@
+# ASTM LIS2-A2 Sample: Chemistry Panel with Unit Conversion Scenarios
+# Purpose: Test unit mapping and conversion factors (User Story 1, FR-004)
+# Reference: specs/004-astm-analyzer-mapping/spec.md FR-004
+#
+# This sample includes results in various units that may require conversion:
+# - Glucose in mg/dL (US conventional) 
+# - Creatinine in mg/dL (needs conversion to μmol/L for SI)
+# - Liver enzymes in IU/L (international units)
+#
+# Normal ranges included for validation testing
+
+H|\^&|||Beckman^AU5800^V2.1|||||||LIS2-A2|20250115090000
+P|1||PAT-2025-002|Johnson^Mary^L||F|19720820|BLACK|456 Oak Ave^^Metropolis^ST^67890
+O|1|SAMPLE-2025-0002^LAB|CHEM^Comprehensive Metabolic Panel||20250115085500||||||||||||||||||||
+R|1|^^^GLUCOSE^Glucose|98|mg/dL|70-100|N||F|20250115090100
+R|2|^^^CREATININE^Creatinine|0.9|mg/dL|0.6-1.2|N||F|20250115090100
+R|3|^^^UREA^Blood Urea Nitrogen|15|mg/dL|7-20|N||F|20250115090100
+R|4|^^^SODIUM^Sodium|140|mEq/L|136-145|N||F|20250115090100
+R|5|^^^POTASSIUM^Potassium|4.2|mEq/L|3.5-5.0|N||F|20250115090100
+R|6|^^^CHLORIDE^Chloride|102|mEq/L|98-106|N||F|20250115090100
+R|7|^^^CO2^Carbon Dioxide|24|mEq/L|23-29|N||F|20250115090100
+R|8|^^^CALCIUM^Calcium|9.5|mg/dL|8.6-10.2|N||F|20250115090100
+R|9|^^^CHOLESTEROL^Total Cholesterol|185|mg/dL|<200|N||F|20250115090100
+R|10|^^^TRIGLYCERIDES^Triglycerides|120|mg/dL|<150|N||F|20250115090100
+R|11|^^^HDL^HDL Cholesterol|55|mg/dL|>40|N||F|20250115090100
+R|12|^^^LDL^LDL Cholesterol|106|mg/dL|<100|H||F|20250115090100
+R|13|^^^ALT^Alanine Aminotransferase|28|IU/L|7-56|N||F|20250115090100
+R|14|^^^AST^Aspartate Aminotransferase|22|IU/L|10-40|N||F|20250115090100
+R|15|^^^ALP^Alkaline Phosphatase|65|IU/L|44-147|N||F|20250115090100
+R|16|^^^BILIRUBIN^Total Bilirubin|0.8|mg/dL|0.1-1.2|N||F|20250115090100
+L|1|N
+
+
+
+
+
+
+
+
