@@ -6,7 +6,7 @@
      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- Add "Analyzers" parent menu item -->
-    <changeSet author="astm-analyzer-mapping-feature" id="analyzer-009-add-menu-items-parent">
+    <changeSet author="astm-analyzer-mapping-feature" id="036-add-menu-items-parent">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers'
@@ -27,7 +27,7 @@
     </changeSet>
 
     <!-- Add "Analyzers List" sub-menu item -->
-    <changeSet author="astm-analyzer-mapping-feature" id="analyzer-009-add-menu-items-list">
+    <changeSet author="astm-analyzer-mapping-feature" id="036-add-menu-items-list">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_list'
@@ -49,7 +49,7 @@
     </changeSet>
 
     <!-- Add "Error Dashboard" sub-menu item -->
-    <changeSet author="astm-analyzer-mapping-feature" id="analyzer-009-add-menu-items-errors">
+    <changeSet author="astm-analyzer-mapping-feature" id="036-add-menu-items-errors">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_errors'

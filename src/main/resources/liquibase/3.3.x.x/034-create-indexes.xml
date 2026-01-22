@@ -7,7 +7,7 @@
 
     <!-- Indexes for Analyzer Tables -->
     <!-- Performance indexes for analyzer_id lookups, status filtering, error dashboard queries -->
-    <changeSet id="analyzer-007-create-indexes" author="astm-analyzer-mapping-feature">
+    <changeSet id="034-create-indexes" author="astm-analyzer-mapping-feature">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="analyzer_field"/>
             <tableExists tableName="analyzer_field_mapping"/>

@@ -7,7 +7,7 @@
 
     <!-- QualitativeResultMapping Table -->
     <!-- Maps analyzer qualitative values to OpenELIS coded results (many-to-one) -->
-    <changeSet id="analyzer-004-create-qualitative-result-mapping-table" author="astm-analyzer-mapping-feature">
+    <changeSet id="031-create-qualitative-result-mapping-table" author="astm-analyzer-mapping-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="qualitative_result_mapping"/>

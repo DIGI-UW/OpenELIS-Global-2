@@ -7,7 +7,7 @@
 
     <!-- AnalyzerError Table -->
     <!-- Stores failed/unmapped analyzer messages for error dashboard and reprocessing -->
-    <changeSet id="analyzer-006-create-analyzer-error-table" author="astm-analyzer-mapping-feature">
+    <changeSet id="033-create-analyzer-error-table" author="astm-analyzer-mapping-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="analyzer_error"/>

@@ -5,33 +5,34 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- UnitMapping Table -->
-    <!-- Maps analyzer units to OpenELIS canonical units (with optional conversion factors) -->
-    <changeSet id="analyzer-005-create-unit-mapping-table" author="astm-analyzer-mapping-feature">
+    <!-- AnalyzerField Table -->
+    <!-- Represents fields/codes emitted by analyzers (test codes, units, qualitative values) -->
+    <changeSet id="029-create-analyzer-field-table" author="astm-analyzer-mapping-feature">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="unit_mapping"/>
+                <tableExists tableName="analyzer_field"/>
             </not>
         </preConditions>
-        <comment>Creating unit_mapping table for unit mappings with conversion factors</comment>
-        <createTable tableName="unit_mapping">
+        <comment>Creating analyzer_field table to store analyzer fields/codes</comment>
+        <createTable tableName="analyzer_field">
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="analyzer_field_id" type="VARCHAR(36)">
+            <column name="analyzer_id" type="NUMERIC(10,0)">
                 <constraints nullable="false"
-                    foreignKeyName="fk_unit_mapping_analyzer_field"
-                    references="analyzer_field(id)"
+                    foreignKeyName="fk_analyzer_field_analyzer"
+                    references="analyzer(id)"
                     deleteCascade="false"/>
             </column>
-            <column name="analyzer_unit" type="VARCHAR(50)">
+            <column name="field_name" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="openelis_unit" type="VARCHAR(50)">
+            <column name="astm_ref" type="VARCHAR(50)"/>
+            <column name="field_type" type="VARCHAR(20)">
                 <constraints nullable="false"/>
             </column>
-            <column name="conversion_factor" type="DECIMAL(10,6)"/>
-            <column name="reject_if_mismatch" type="BOOLEAN" defaultValueBoolean="false">
+            <column name="unit" type="VARCHAR(50)"/>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
                 <constraints nullable="false"/>
             </column>
             <column name="sys_user_id" type="VARCHAR(36)"/>
@@ -39,11 +40,13 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        <addUniqueConstraint tableName="unit_mapping"
-            columnNames="analyzer_field_id, analyzer_unit"
-            constraintName="uk_unit_mapping_field_unit"/>
+        <sql>
+            ALTER TABLE analyzer_field
+            ADD CONSTRAINT chk_field_type
+            CHECK (field_type IN ('NUMERIC', 'QUALITATIVE', 'CONTROL_TEST', 'MELTING_POINT', 'DATE_TIME', 'TEXT', 'CUSTOM'));
+        </sql>
         <rollback>
-            <dropTable tableName="unit_mapping"/>
+            <dropTable tableName="analyzer_field"/>
         </rollback>
     </changeSet>
 

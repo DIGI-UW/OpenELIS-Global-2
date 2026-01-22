@@ -22,5 +22,6 @@
   <include relativeToChangelogFile="true" file="004-015-add-custom-field-type-id-to-analyzer-field.xml"/>
   <include relativeToChangelogFile="true" file="004-016-add-analyzer-id-to-field-mapping.xml"/>
   <include relativeToChangelogFile="true" file="004-017-add-qc-service-unavailable-error-type.xml"/>
+  <include relativeToChangelogFile="true" file="004-018-add-react-analyzers-url-permissions.xml"/>
 
 </databaseChangeLog>

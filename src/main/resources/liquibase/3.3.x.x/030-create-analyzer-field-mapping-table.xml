@@ -7,7 +7,7 @@
 
     <!-- AnalyzerFieldMapping Table -->
     <!-- Maps analyzer fields to OpenELIS fields (test-level, result-level, metadata) -->
-    <changeSet id="analyzer-003-create-analyzer-field-mapping-table" author="astm-analyzer-mapping-feature">
+    <changeSet id="030-create-analyzer-field-mapping-table" author="astm-analyzer-mapping-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="analyzer_field_mapping"/>

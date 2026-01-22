@@ -7,7 +7,7 @@
 
     <!-- CustomFieldType Table -->
     <!-- Allows system administrators to add custom field types with validation rules -->
-    <changeSet id="analyzer-008-create-custom-field-type-table" author="astm-analyzer-mapping-feature">
+    <changeSet id="035-create-custom-field-type-table" author="astm-analyzer-mapping-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="custom_field_type"/>

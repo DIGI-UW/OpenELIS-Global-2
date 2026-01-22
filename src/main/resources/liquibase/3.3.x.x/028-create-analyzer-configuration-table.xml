@@ -7,7 +7,7 @@
 
     <!-- AnalyzerConfiguration Table -->
     <!-- Extends existing Analyzer entity with connection configuration (IP, Port, Protocol) -->
-    <changeSet id="analyzer-001-create-analyzer-configuration-table" author="astm-analyzer-mapping-feature">
+    <changeSet id="028-create-analyzer-configuration-table" author="astm-analyzer-mapping-feature">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="analyzer_configuration"/>
