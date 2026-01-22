@@ -38,16 +38,17 @@ wait_for_url() {
 
 start_services() {
   # Run honcho from ROOT_DIR so Procfile.dev relative paths work correctly
-  # Find honcho in gateway's poetry virtualenv
-  GATEWAY_VENV=$(cd "${ROOT_DIR}/catalyst-gateway" && poetry env info --path 2>/dev/null || echo "")
+  # Find honcho in gateway's uv virtualenv
+  GATEWAY_VENV="${ROOT_DIR}/catalyst-gateway/.venv"
   if [ -n "${GATEWAY_VENV}" ] && [ -f "${GATEWAY_VENV}/bin/honcho" ]; then
     HONCHO_CMD="${GATEWAY_VENV}/bin/honcho"
+    (cd "${ROOT_DIR}" && ${HONCHO_CMD} -f "${PROCFILE}" start) \
+      >> "${LOG_DIR}/honcho.out" 2>&1 &
   else
-    # Fallback to poetry run
-    HONCHO_CMD="cd ${ROOT_DIR}/catalyst-gateway && poetry run honcho"
+    # Fallback to uv run (must run from ROOT_DIR)
+    (cd "${ROOT_DIR}/catalyst-gateway" && uv run honcho -f "${PROCFILE}" start) \
+      >> "${LOG_DIR}/honcho.out" 2>&1 &
   fi
-  (cd "${ROOT_DIR}" && ${HONCHO_CMD} -f "${PROCFILE}" start) \
-    >> "${LOG_DIR}/honcho.out" 2>&1 &
   HONCHO_PID=$!
 }
 
@@ -60,19 +61,19 @@ cleanup() {
 trap cleanup EXIT
 
 run_gateway_tests() {
-  (cd "${ROOT_DIR}/catalyst-gateway" && poetry run python -m pytest)
+  (cd "${ROOT_DIR}/catalyst-gateway" && uv sync --no-install-project --extra dev >/dev/null 2>&1 && PYTHONPATH="${ROOT_DIR}/catalyst-gateway" uv run pytest)
 }
 
 run_agent_tests() {
-  (cd "${ROOT_DIR}/catalyst-agents" && poetry run python -m pytest)
+  (cd "${ROOT_DIR}/catalyst-agents" && uv sync --no-install-project --extra dev >/dev/null 2>&1 && PYTHONPATH="${ROOT_DIR}/catalyst-agents" uv run pytest)
 }
 
 run_mcp_tests() {
-  (cd "${ROOT_DIR}/catalyst-mcp" && poetry run python -m pytest)
+  (cd "${ROOT_DIR}/catalyst-mcp" && uv sync --no-install-project --extra dev >/dev/null 2>&1 && PYTHONPATH="${ROOT_DIR}/catalyst-mcp" uv run pytest)
 }
 
 run_integration_tests() {
-  (cd "${ROOT_DIR}/catalyst-agents" && poetry run python -m pytest tests/test_integration.py)
+  (cd "${ROOT_DIR}/catalyst-agents" && uv sync --no-install-project --extra dev >/dev/null 2>&1 && PYTHONPATH="${ROOT_DIR}/catalyst-agents" uv run pytest tests/test_integration.py)
 }
 
 run_case() {

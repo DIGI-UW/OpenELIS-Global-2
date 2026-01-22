@@ -2,12 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir poetry==1.8.3
+RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml /app/pyproject.toml
+COPY uv.lock /app/uv.lock
 COPY README.md /app/README.md
-RUN poetry install --no-root --only main
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src /app/src
 
-CMD ["poetry", "run", "uvicorn", "src.gateway:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "src.gateway:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -32,7 +32,6 @@ async def test_router_to_catalyst_to_mcp_flow(monkeypatch):
     monkeypatch.setattr(mcp_client, "get_schema", lambda: "sample\nanalysis")
 
     # Mock LMStudioClient.generate_sql method to return expected SQL
-    original_generate_sql = llm_clients.LMStudioClient.generate_sql
     def mock_generate_sql(self, prompt: str) -> str:
         return "SELECT COUNT(*) FROM sample"
     

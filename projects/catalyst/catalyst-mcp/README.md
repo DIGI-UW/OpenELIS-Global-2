@@ -2,4 +2,4 @@
 
 MCP server hosting schema tools for the Catalyst POC.
 
-Use `poetry install` to set up dependencies.
+Use `uv sync` to set up dependencies.

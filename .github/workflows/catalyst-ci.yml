@@ -33,32 +33,29 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          installer-parallel: true
+          version: "latest"
 
       - name: Load cached venv
-        id: cached-poetry-dependencies
+        id: cached-uv-dependencies
         uses: actions/cache@v4
         with:
           path: projects/catalyst/${{ matrix.project }}/.venv
-          key: venv-${{ runner.os }}-${{ matrix.project }}-${{ hashFiles('projects/catalyst/${{ matrix.project }}/poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ matrix.project }}-${{ hashFiles('projects/catalyst/${{ matrix.project }}/uv.lock') }}
 
       - name: Install dependencies
         working-directory: projects/catalyst/${{ matrix.project }}
         run: |
-          poetry install --no-interaction --no-root
+          uv sync --frozen --no-install-project --extra dev
 
       - name: Run tests
         working-directory: projects/catalyst/${{ matrix.project }}
         env:
           PYTHONPATH: ${{ github.workspace }}/projects/catalyst/${{ matrix.project }}
         run: |
-          poetry run pytest tests/ -v
+          uv run pytest tests/ -v
 
       - name: Upload test results on failure
         if: failure()

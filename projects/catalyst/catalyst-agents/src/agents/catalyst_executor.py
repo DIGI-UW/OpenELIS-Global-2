@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Any
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
@@ -14,7 +14,7 @@ from ..llm_clients import LMStudioClient
 logger = logging.getLogger(__name__)
 
 
-def generate_sql(user_query: str) -> Dict[str, Any]:
+def generate_sql(user_query: str) -> dict[str, Any]:
     schema = mcp_client.get_schema()
     config = load_llm_config()
     client = LMStudioClient(config.lmstudio_base_url, config.lmstudio_model)

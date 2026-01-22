@@ -38,13 +38,13 @@ area.
 cp projects/catalyst/env.recommended projects/catalyst/.env
 
 # 2. Install Python deps (per component)
-cd projects/catalyst/catalyst-gateway && poetry install && cd ../..
-cd projects/catalyst/catalyst-agents && poetry install && cd ../..
-cd projects/catalyst/catalyst-mcp && poetry install && cd ../..
+cd projects/catalyst/catalyst-gateway && uv sync && cd ../..
+cd projects/catalyst/catalyst-agents && uv sync && cd ../..
+cd projects/catalyst/catalyst-mcp && uv sync && cd ../..
 
 # 3. Start services
 cd projects/catalyst
-cd catalyst-gateway && poetry run honcho -f ../Procfile.dev start
+cd catalyst-gateway && uv run honcho -f ../Procfile.dev start
 ```
 
 ### Smoke tests (M0.0)

@@ -12,7 +12,8 @@ from .catalyst_executor import CatalystAgentExecutor
 
 def _load_agent_card() -> AgentCard:
     card_path = Path(__file__).resolve().parent.parent / "agent_cards" / "catalyst.json"
-    data = json.loads(card_path.read_text(encoding="utf-8"))
+    with card_path.open(encoding="utf-8") as f:
+        data = json.load(f)
     skills = data.get("skills", [])
     data["skills"] = [AgentSkill(**skill) for skill in skills]
     return AgentCard(**data)

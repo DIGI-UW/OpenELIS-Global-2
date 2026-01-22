@@ -2,4 +2,4 @@
 
 OpenAI-compatible gateway that forwards chat completions to the RouterAgent.
 
-Use `poetry install` to set up dependencies.
+Use `uv sync` to set up dependencies.
