@@ -723,14 +723,14 @@ replacing it:
 
 ### Existing Plugin Coverage
 
-| Plugin Name      | Repository             | Analyzers Covered                    | Protocol  |
-| ---------------- | ---------------------- | ------------------------------------ | --------- |
-| Mindray          | openelisglobal-plugins | BC-5380, BS-360E, BC2000, BA-88A     | HL7/RS232 |
-| SysmexXN-L       | openelisglobal-plugins | Sysmex XN Series                     | HL7       |
-| GeneXpertHL7     | openelisglobal-plugins | Cepheid GeneXpert                    | HL7       |
-| GeneXpertFile    | openelisglobal-plugins | Cepheid GeneXpert                    | File      |
-| GeneXpert (ASTM) | openelisglobal-plugins | Cepheid GeneXpert                    | ASTM      |
-| QuantStudio3     | openelisglobal-plugins | QuantStudio 7 Flex (adapted)         | File      |
+| Plugin Name      | Repository             | Analyzers Covered                | Protocol  |
+| ---------------- | ---------------------- | -------------------------------- | --------- |
+| Mindray          | openelisglobal-plugins | BC-5380, BS-360E, BC2000, BA-88A | HL7/RS232 |
+| SysmexXN-L       | openelisglobal-plugins | Sysmex XN Series                 | HL7       |
+| GeneXpertHL7     | openelisglobal-plugins | Cepheid GeneXpert                | HL7       |
+| GeneXpertFile    | openelisglobal-plugins | Cepheid GeneXpert                | File      |
+| GeneXpert (ASTM) | openelisglobal-plugins | Cepheid GeneXpert                | ASTM      |
+| QuantStudio3     | openelisglobal-plugins | QuantStudio 7 Flex (adapted)     | File      |
 
 **Analyzers requiring new plugins** (5 total):
 
