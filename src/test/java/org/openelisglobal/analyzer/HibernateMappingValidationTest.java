@@ -21,6 +21,7 @@ import org.openelisglobal.analyzer.valueholder.CustomFieldType;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
+import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This
@@ -48,6 +49,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
         configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
+        configuration.addAnnotatedClass(SerialPortConfiguration.class); // Task Reference: T022, M2
 
         // XML-mapped entities (analyzer data model uses XML-only to match legacy
         // pattern)
@@ -97,6 +99,8 @@ public class HibernateMappingValidationTest {
                 sessionFactory.getMetamodel().entity(CustomFieldType.class));
         assertNotNull("ValidationRuleConfiguration should be registered",
                 sessionFactory.getMetamodel().entity(ValidationRuleConfiguration.class));
+        assertNotNull("SerialPortConfiguration should be registered",
+                sessionFactory.getMetamodel().entity(SerialPortConfiguration.class)); // Task Reference: T022, M2
     }
 
     /**
@@ -107,7 +111,7 @@ public class HibernateMappingValidationTest {
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
         Class<?>[] entities = { AnalyzerConfiguration.class, AnalyzerField.class, AnalyzerFieldMapping.class,
                 QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class, CustomFieldType.class,
-                ValidationRuleConfiguration.class };
+                ValidationRuleConfiguration.class, SerialPortConfiguration.class }; // Task Reference: T022, M2
 
         for (Class<?> entityClass : entities) {
             validateNoGetterConflicts(entityClass);
