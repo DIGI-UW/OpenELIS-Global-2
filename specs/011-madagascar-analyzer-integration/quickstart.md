@@ -1,6 +1,6 @@
-# Quickstart: Madagascar Analyzer Integration (Feature 150)
+# Quickstart: Madagascar Analyzer Integration (Feature 011)
 
-**Feature**: 150-madagascar-analyzer-integration **Purpose**: Developer
+**Feature**: 011-madagascar-analyzer-integration **Purpose**: Developer
 onboarding guide for implementing Madagascar analyzer integration
 **Prerequisite**: Familiarity with Feature 004 (ASTM Analyzer Mapping)
 
@@ -43,7 +43,7 @@ docker compose -f dev.docker-compose.yml up -d
 
 ### 2. Feature 004 Verification
 
-Before starting Feature 150, verify Feature 004 is working:
+Before starting Feature 011, verify Feature 004 is working:
 
 ```bash
 # Access OpenELIS
@@ -494,10 +494,10 @@ System.out.println("Readable: " + Files.isReadable(dir));
 ## Reference Documentation
 
 - **Feature 004 Spec**: `specs/004-astm-analyzer-mapping/spec.md`
-- **Feature 150 Spec**: `specs/150-madagascar-analyzer-integration/spec.md`
-- **Plan**: `specs/150-madagascar-analyzer-integration/plan.md`
-- **Data Model**: `specs/150-madagascar-analyzer-integration/data-model.md`
-- **Research**: `specs/150-madagascar-analyzer-integration/research.md`
+- **Feature 011 Spec**: `specs/011-madagascar-analyzer-integration/spec.md`
+- **Plan**: `specs/011-madagascar-analyzer-integration/plan.md`
+- **Data Model**: `specs/011-madagascar-analyzer-integration/data-model.md`
+- **Research**: `specs/011-madagascar-analyzer-integration/research.md`
 - **Constitution**: `.specify/memory/constitution.md`
 - **Testing Roadmap**: `.specify/guides/testing-roadmap.md`
 

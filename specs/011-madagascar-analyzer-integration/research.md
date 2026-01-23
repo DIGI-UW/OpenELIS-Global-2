@@ -1,6 +1,6 @@
 # Research: Madagascar Analyzer Integration
 
-**Feature**: 150-madagascar-analyzer-integration **Date**: 2026-01-22
+**Feature**: 011-madagascar-analyzer-integration **Date**: 2026-01-22
 **Purpose**: Resolve technical unknowns and document design decisions
 
 ---

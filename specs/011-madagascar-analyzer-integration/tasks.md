@@ -1,7 +1,7 @@
 # Tasks: Madagascar Analyzer Integration
 
-**Feature**: 150-madagascar-analyzer-integration
-**Input**: Design documents from `/specs/150-madagascar-analyzer-integration/`
+**Feature**: 011-madagascar-analyzer-integration
+**Input**: Design documents from `/specs/011-madagascar-analyzer-integration/`
 **Prerequisites**: plan.md (required), spec.md (required), data-model.md, contracts/, research.md, quickstart.md
 **Contract Deadline**: 2026-02-28 (37 days)
 
@@ -61,7 +61,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M1: HL7 v2.x Protocol Adapter (3 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m1-hl7-adapter`
+**Branch**: `feat/011-madagascar-analyzer-integration-m1-hl7-adapter`
 **Goal**: Parse HL7 ORU^R01 results and generate HL7 ORM^O01 orders
 **User Stories**: US-1 (HL7 Analyzer Results Import)
 **Depends On**: None (foundation milestone)
@@ -75,7 +75,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M1
 
-- [ ] T001 [M1] Create branch `feat/150-madagascar-analyzer-integration-m1-hl7-adapter` from `demo/madagascar`
+- [ ] T001 [M1] Create branch `feat/011-madagascar-analyzer-integration-m1-hl7-adapter` from `demo/madagascar`
 - [ ] T002 [M1] Add HAPI HL7 v2 dependency to `pom.xml` (ca.uhn.hapi:hapi-base:2.4, ca.uhn.hapi:hapi-structures-v251:2.4)
 
 ### Tests for M1 (MANDATORY - Write FIRST, ensure they FAIL)
@@ -101,7 +101,7 @@ Phase 5: Validation (Week 5-6)
 
 - [ ] T016 [M1] Verify all unit tests pass (`mvn test -Dtest="*HL7*"`)
 - [ ] T017 [M1] Run Spotless formatting (`mvn spotless:apply`)
-- [ ] T018 [M1] Create PR `feat/150-madagascar-analyzer-integration-m1-hl7-adapter` → `demo/madagascar`
+- [ ] T018 [M1] Create PR `feat/011-madagascar-analyzer-integration-m1-hl7-adapter` → `demo/madagascar`
 
 **Checkpoint**: HL7 parsing and generation unit tests pass with >80% coverage
 
@@ -109,7 +109,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M2: RS232 Serial Communication Adapter (3 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m2-serial-adapter`
+**Branch**: `feat/011-madagascar-analyzer-integration-m2-serial-adapter`
 **Goal**: Serial port configuration and ASTM message reception via RS232
 **User Stories**: US-3 (RS232 Serial Analyzer Connection)
 **Depends On**: None (parallel with M1)
@@ -123,9 +123,9 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M2
 
-- [ ] T019 [M2] Create branch `feat/150-madagascar-analyzer-integration-m2-serial-adapter` from `demo/madagascar`
+- [ ] T019 [M2] Create branch `feat/011-madagascar-analyzer-integration-m2-serial-adapter` from `demo/madagascar`
 - [ ] T020 [M2] Add jSerialComm dependency to `pom.xml` (com.fazecast:jSerialComm:2.10.4)
-- [ ] T021 [M2] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/150-003-create-serial-port-configuration-table.xml`
+- [ ] T021 [M2] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/011-003-create-serial-port-configuration-table.xml`
 
 ### Tests for M2 (MANDATORY - Write FIRST)
 
@@ -158,7 +158,7 @@ Phase 5: Validation (Week 5-6)
 - [ ] T039 [M2] Update dev.docker-compose.yml with device mapping example for `/dev/ttyUSB0`
 - [ ] T040 [M2] Verify all unit tests pass
 - [ ] T041 [M2] Run Spotless formatting (`mvn spotless:apply`) and frontend formatting (`cd frontend && npm run format`)
-- [ ] T042 [M2] Create PR `feat/150-madagascar-analyzer-integration-m2-serial-adapter` → `demo/madagascar`
+- [ ] T042 [M2] Create PR `feat/011-madagascar-analyzer-integration-m2-serial-adapter` → `demo/madagascar`
 
 **Checkpoint**: Serial config entity persists, service can open/close virtual serial ports
 
@@ -166,7 +166,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M3: File-Based Import Adapter (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m3-file-adapter`
+**Branch**: `feat/011-madagascar-analyzer-integration-m3-file-adapter`
 **Goal**: Directory watcher and CSV/TXT file parsing
 **User Stories**: US-4 (File-Based PCR Thermocycler Integration)
 **Depends On**: None (parallel with M1, M2)
@@ -180,9 +180,9 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M3
 
-- [ ] T043 [M3] Create branch `feat/150-madagascar-analyzer-integration-m3-file-adapter` from `demo/madagascar`
+- [ ] T043 [M3] Create branch `feat/011-madagascar-analyzer-integration-m3-file-adapter` from `demo/madagascar`
 - [ ] T044 [M3] Add Apache Commons CSV dependency to `pom.xml` (org.apache.commons:commons-csv:1.10.0) if not present
-- [ ] T045 [M3] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/150-004-create-file-import-configuration-table.xml`
+- [ ] T045 [M3] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/011-004-create-file-import-configuration-table.xml`
 
 ### Tests for M3 (MANDATORY - Write FIRST)
 
@@ -215,7 +215,7 @@ Phase 5: Validation (Week 5-6)
 
 - [ ] T064 [M3] Verify all unit tests pass
 - [ ] T065 [M3] Run Spotless and frontend formatting
-- [ ] T066 [M3] Create PR `feat/150-madagascar-analyzer-integration-m3-file-adapter` → `demo/madagascar`
+- [ ] T066 [M3] Create PR `feat/011-madagascar-analyzer-integration-m3-file-adapter` → `demo/madagascar`
 
 **Checkpoint**: File detection + CSV parsing tests pass, archive/error workflow works
 
@@ -223,7 +223,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M4: Simulator HL7 Support (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m4-simulator-hl7`
+**Branch**: `feat/011-madagascar-analyzer-integration-m4-simulator-hl7`
 **Goal**: Expand astm-mock-server with HL7 message generation
 **User Stories**: US-9 (Analyzer Simulator for Testing)
 **Depends On**: None (parallel with M1-M3)
@@ -236,7 +236,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M4
 
-- [ ] T067 [M4] Create branch `feat/150-madagascar-analyzer-integration-m4-simulator-hl7` from `demo/madagascar`
+- [ ] T067 [M4] Create branch `feat/011-madagascar-analyzer-integration-m4-simulator-hl7` from `demo/madagascar`
 - [ ] T068 [M4] Create `tools/astm-http-bridge/src/hl7/` directory structure
 
 ### Implementation for M4
@@ -256,7 +256,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M4
 
 - [ ] T077 [M4] Verify simulator generates valid HL7 messages
-- [ ] T078 [M4] Create PR `feat/150-madagascar-analyzer-integration-m4-simulator-hl7` → `demo/madagascar`
+- [ ] T078 [M4] Create PR `feat/011-madagascar-analyzer-integration-m4-simulator-hl7` → `demo/madagascar`
 
 **Checkpoint**: Simulator generates HL7 messages that OpenELIS can receive
 
@@ -264,7 +264,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M5: Mindray Plugin Validation (3 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m5-mindray-validation`
+**Branch**: `feat/011-madagascar-analyzer-integration-m5-mindray-validation`
 **Goal**: Validate existing Mindray plugin with 4 analyzers
 **User Stories**: US-1, US-6
 **Depends On**: M1 (HL7), M2 (RS232)
@@ -280,7 +280,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M5
 
-- [ ] T079 [M5] Create branch `feat/150-madagascar-analyzer-integration-m5-mindray-validation` from `demo/madagascar`
+- [ ] T079 [M5] Create branch `feat/011-madagascar-analyzer-integration-m5-mindray-validation` from `demo/madagascar`
 - [ ] T080 [M5] Merge M1 and M2 into branch (or ensure dependencies merged to `demo/madagascar`)
 
 ### Tests for M5 (MANDATORY)
@@ -301,7 +301,7 @@ Phase 5: Validation (Week 5-6)
 
 - [ ] T089 [M5] Verify all integration tests pass
 - [ ] T090 [M5] Run Spotless formatting
-- [ ] T091 [M5] Create PR `feat/150-madagascar-analyzer-integration-m5-mindray-validation` → `demo/madagascar`
+- [ ] T091 [M5] Create PR `feat/011-madagascar-analyzer-integration-m5-mindray-validation` → `demo/madagascar`
 
 **Checkpoint**: 4 Mindray analyzers receive results via appropriate protocols
 
@@ -309,7 +309,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M6: Sysmex Plugin Validation (1 day)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m6-sysmex-validation`
+**Branch**: `feat/011-madagascar-analyzer-integration-m6-sysmex-validation`
 **Goal**: Validate existing SysmexXN-L plugin
 **User Stories**: US-1, US-6
 **Depends On**: M1 (HL7)
@@ -318,7 +318,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M6
 
-- [ ] T092 [M6] Create branch `feat/150-madagascar-analyzer-integration-m6-sysmex-validation` from `demo/madagascar`
+- [ ] T092 [M6] Create branch `feat/011-madagascar-analyzer-integration-m6-sysmex-validation` from `demo/madagascar`
 
 ### Tests for M6 (MANDATORY)
 
@@ -334,7 +334,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M6
 
 - [ ] T098 [M6] Verify integration tests pass
-- [ ] T099 [M6] Create PR `feat/150-madagascar-analyzer-integration-m6-sysmex-validation` → `demo/madagascar`
+- [ ] T099 [M6] Create PR `feat/011-madagascar-analyzer-integration-m6-sysmex-validation` → `demo/madagascar`
 
 **Checkpoint**: Sysmex XN receives results via HL7, override mappings work
 
@@ -342,7 +342,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M7: GeneXpert Plugin Validation (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m7-genexpert-validation`
+**Branch**: `feat/011-madagascar-analyzer-integration-m7-genexpert-validation`
 **Goal**: Validate 3 GeneXpert plugin variants
 **User Stories**: US-6
 **Depends On**: M1 (HL7), M3 (File)
@@ -351,7 +351,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M7
 
-- [ ] T100 [M7] Create branch `feat/150-madagascar-analyzer-integration-m7-genexpert-validation` from `demo/madagascar`
+- [ ] T100 [M7] Create branch `feat/011-madagascar-analyzer-integration-m7-genexpert-validation` from `demo/madagascar`
 
 ### Tests for M7 (MANDATORY)
 
@@ -371,7 +371,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M7
 
 - [ ] T110 [M7] Verify all integration tests pass
-- [ ] T111 [M7] Create PR `feat/150-madagascar-analyzer-integration-m7-genexpert-validation` → `demo/madagascar`
+- [ ] T111 [M7] Create PR `feat/011-madagascar-analyzer-integration-m7-genexpert-validation` → `demo/madagascar`
 
 **Checkpoint**: GeneXpert works via ASTM, HL7, and File
 
@@ -379,7 +379,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M8: QuantStudio Adaptation (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m8-quantstudio-adapt`
+**Branch**: `feat/011-madagascar-analyzer-integration-m8-quantstudio-adapt`
 **Goal**: Adapt QuantStudio3 plugin for QuantStudio 7 Flex
 **User Stories**: US-4, US-6
 **Depends On**: M3 (File)
@@ -388,7 +388,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M8
 
-- [ ] T112 [M8] Create branch `feat/150-madagascar-analyzer-integration-m8-quantstudio-adapt` from `demo/madagascar`
+- [ ] T112 [M8] Create branch `feat/011-madagascar-analyzer-integration-m8-quantstudio-adapt` from `demo/madagascar`
 
 ### Tests for M8 (MANDATORY)
 
@@ -406,7 +406,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M8
 
 - [ ] T120 [M8] Verify all integration tests pass
-- [ ] T121 [M8] Create PR `feat/150-madagascar-analyzer-integration-m8-quantstudio-adapt` → `demo/madagascar`
+- [ ] T121 [M8] Create PR `feat/011-madagascar-analyzer-integration-m8-quantstudio-adapt` → `demo/madagascar`
 
 **Checkpoint**: QuantStudio 7 Flex and QuantStudio 3 both work
 
@@ -414,7 +414,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M9: Horiba Pentra 60 Plugin (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m9-plugin-pentra`
+**Branch**: `feat/011-madagascar-analyzer-integration-m9-plugin-pentra`
 **Goal**: Build new Horiba Pentra 60 plugin
 **User Stories**: US-3
 **Depends On**: M2 (RS232)
@@ -423,7 +423,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M9
 
-- [ ] T122 [M9] Create branch `feat/150-madagascar-analyzer-integration-m9-plugin-pentra` from `demo/madagascar`
+- [ ] T122 [M9] Create branch `feat/011-madagascar-analyzer-integration-m9-plugin-pentra` from `demo/madagascar`
 
 ### Tests for M9 (MANDATORY)
 
@@ -441,7 +441,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M9
 
 - [ ] T130 [M9] Verify unit tests pass
-- [ ] T131 [M9] Create PR `feat/150-madagascar-analyzer-integration-m9-plugin-pentra` → `demo/madagascar`
+- [ ] T131 [M9] Create PR `feat/011-madagascar-analyzer-integration-m9-plugin-pentra` → `demo/madagascar`
 
 **Checkpoint**: Pentra 60 results import via RS232
 
@@ -449,7 +449,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M10: Horiba Micros 60 Plugin (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m10-plugin-micros`
+**Branch**: `feat/011-madagascar-analyzer-integration-m10-plugin-micros`
 **Goal**: Build new Horiba Micros 60 plugin
 **User Stories**: US-3
 **Depends On**: M2 (RS232)
@@ -458,7 +458,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M10
 
-- [ ] T132 [M10] Create branch `feat/150-madagascar-analyzer-integration-m10-plugin-micros` from `demo/madagascar`
+- [ ] T132 [M10] Create branch `feat/011-madagascar-analyzer-integration-m10-plugin-micros` from `demo/madagascar`
 
 ### Tests for M10 (MANDATORY)
 
@@ -476,7 +476,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M10
 
 - [ ] T140 [M10] Verify unit tests pass
-- [ ] T141 [M10] Create PR `feat/150-madagascar-analyzer-integration-m10-plugin-micros` → `demo/madagascar`
+- [ ] T141 [M10] Create PR `feat/011-madagascar-analyzer-integration-m10-plugin-micros` → `demo/madagascar`
 
 **Checkpoint**: Micros 60 results import via RS232
 
@@ -484,7 +484,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M11: Stago STart 4 Plugin (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m11-plugin-stago`
+**Branch**: `feat/011-madagascar-analyzer-integration-m11-plugin-stago`
 **Goal**: Build new Stago STart 4 plugin
 **User Stories**: US-1, US-3
 **Depends On**: M1 (HL7), M2 (RS232)
@@ -493,7 +493,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M11
 
-- [ ] T142 [M11] Create branch `feat/150-madagascar-analyzer-integration-m11-plugin-stago` from `demo/madagascar`
+- [ ] T142 [M11] Create branch `feat/011-madagascar-analyzer-integration-m11-plugin-stago` from `demo/madagascar`
 
 ### Tests for M11 (MANDATORY)
 
@@ -511,7 +511,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M11
 
 - [ ] T150 [M11] Verify unit tests pass
-- [ ] T151 [M11] Create PR `feat/150-madagascar-analyzer-integration-m11-plugin-stago` → `demo/madagascar`
+- [ ] T151 [M11] Create PR `feat/011-madagascar-analyzer-integration-m11-plugin-stago` → `demo/madagascar`
 
 **Checkpoint**: Stago STart 4 works via RS232 or Network
 
@@ -519,7 +519,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M12: Abbott Architect Plugin (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m12-plugin-abbott`
+**Branch**: `feat/011-madagascar-analyzer-integration-m12-plugin-abbott`
 **Goal**: Build new Abbott Architect plugin
 **User Stories**: US-1
 **Depends On**: M1 (HL7)
@@ -528,7 +528,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M12
 
-- [ ] T152 [M12] Create branch `feat/150-madagascar-analyzer-integration-m12-plugin-abbott` from `demo/madagascar`
+- [ ] T152 [M12] Create branch `feat/011-madagascar-analyzer-integration-m12-plugin-abbott` from `demo/madagascar`
 
 ### Tests for M12 (MANDATORY)
 
@@ -546,7 +546,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M12
 
 - [ ] T160 [M12] Verify unit tests pass
-- [ ] T161 [M12] Create PR `feat/150-madagascar-analyzer-integration-m12-plugin-abbott` → `demo/madagascar`
+- [ ] T161 [M12] Create PR `feat/011-madagascar-analyzer-integration-m12-plugin-abbott` → `demo/madagascar`
 
 **Checkpoint**: Abbott Architect results import via HL7
 
@@ -554,7 +554,7 @@ Phase 5: Validation (Week 5-6)
 
 ## [P] M13: Hain FluoroCycler XT Plugin (2 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m13-plugin-fluorocycler`
+**Branch**: `feat/011-madagascar-analyzer-integration-m13-plugin-fluorocycler`
 **Goal**: Build new Hain FluoroCycler XT plugin
 **User Stories**: US-4
 **Depends On**: M3 (File)
@@ -563,7 +563,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M13
 
-- [ ] T162 [M13] Create branch `feat/150-madagascar-analyzer-integration-m13-plugin-fluorocycler` from `demo/madagascar`
+- [ ] T162 [M13] Create branch `feat/011-madagascar-analyzer-integration-m13-plugin-fluorocycler` from `demo/madagascar`
 
 ### Tests for M13 (MANDATORY)
 
@@ -581,7 +581,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M13
 
 - [ ] T170 [M13] Verify unit tests pass
-- [ ] T171 [M13] Create PR `feat/150-madagascar-analyzer-integration-m13-plugin-fluorocycler` → `demo/madagascar`
+- [ ] T171 [M13] Create PR `feat/011-madagascar-analyzer-integration-m13-plugin-fluorocycler` → `demo/madagascar`
 
 **Checkpoint**: FluoroCycler XT CSV import works
 
@@ -589,7 +589,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M14: Order Export Workflow (4 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m14-order-export`
+**Branch**: `feat/011-madagascar-analyzer-integration-m14-order-export`
 **Goal**: Manual order export with status tracking
 **User Stories**: US-2 (Test Order Export to Analyzers)
 **Depends On**: M5-M13 (all analyzers operational)
@@ -604,8 +604,8 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M14
 
-- [ ] T172 [M14] Create branch `feat/150-madagascar-analyzer-integration-m14-order-export` from `demo/madagascar`
-- [ ] T173 [M14] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/150-002-create-order-export-table.xml`
+- [ ] T172 [M14] Create branch `feat/011-madagascar-analyzer-integration-m14-order-export` from `demo/madagascar`
+- [ ] T173 [M14] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/011-002-create-order-export-table.xml`
 
 ### Tests for M14 (MANDATORY)
 
@@ -627,6 +627,8 @@ Phase 5: Validation (Week 5-6)
 - [ ] T186 [M14] Implement retry mechanism with exponential backoff
 - [ ] T187 [M14] Implement result matching (incoming results → exported orders)
 - [ ] T188 [M14] Create OrderExportRestController in `src/main/java/org/openelisglobal/analyzer/controller/OrderExportRestController.java`
+- [ ] T188a [M14] Implement RBAC permission check for order export (LAB_SUPERVISOR role minimum) in OrderExportServiceImpl
+- [ ] T188b [M14] Add audit trail logging for order export actions in OrderExportServiceImpl
 - [ ] T189 [P] [M14] Add i18n keys for order export messages in `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
 
 ### Frontend Implementation for M14
@@ -642,7 +644,7 @@ Phase 5: Validation (Week 5-6)
 
 - [ ] T196 [M14] Verify all unit and integration tests pass
 - [ ] T197 [M14] Run Spotless and frontend formatting
-- [ ] T198 [M14] Create PR `feat/150-madagascar-analyzer-integration-m14-order-export` → `demo/madagascar`
+- [ ] T198 [M14] Create PR `feat/011-madagascar-analyzer-integration-m14-order-export` → `demo/madagascar`
 
 **Checkpoint**: Order export UI works, orders sent to analyzers, status tracked
 
@@ -650,7 +652,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M15: Enhanced Instrument Metadata Form (3 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m15-metadata-form`
+**Branch**: `feat/011-madagascar-analyzer-integration-m15-metadata-form`
 **Goal**: Comprehensive metadata capture and location history
 **User Stories**: US-5 (Comprehensive Instrument Metadata Management)
 **Depends On**: M14 (order export operational)
@@ -664,9 +666,9 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M15
 
-- [ ] T199 [M15] Create branch `feat/150-madagascar-analyzer-integration-m15-metadata-form` from `demo/madagascar`
-- [ ] T200 [M15] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/150-001-create-instrument-metadata-table.xml`
-- [ ] T201 [M15] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/150-005-create-instrument-location-history-table.xml`
+- [ ] T199 [M15] Create branch `feat/011-madagascar-analyzer-integration-m15-metadata-form` from `demo/madagascar`
+- [ ] T200 [M15] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/011-001-create-instrument-metadata-table.xml`
+- [ ] T201 [M15] Create Liquibase changeset `src/main/resources/liquibase/3.8.x.x/011-005-create-instrument-location-history-table.xml`
 
 ### Tests for M15 (MANDATORY)
 
@@ -687,6 +689,8 @@ Phase 5: Validation (Week 5-6)
 - [ ] T213 [M15] Create InstrumentMetadataServiceImpl with relocation logic (close old location, create new)
 - [ ] T214 [M15] Implement calibration due date warning calculation
 - [ ] T215 [M15] Create InstrumentMetadataRestController in `src/main/java/org/openelisglobal/analyzer/controller/InstrumentMetadataRestController.java`
+- [ ] T215a [M15] Implement RBAC permission check for instrument metadata modifications (LAB_SUPERVISOR role minimum)
+- [ ] T215b [M15] Add audit trail logging for instrument metadata changes
 - [ ] T216 [P] [M15] Add i18n keys for metadata form in `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
 
 ### Frontend Implementation for M15
@@ -702,7 +706,7 @@ Phase 5: Validation (Week 5-6)
 
 - [ ] T223 [M15] Verify all tests pass
 - [ ] T224 [M15] Run Spotless and frontend formatting
-- [ ] T225 [M15] Create PR `feat/150-madagascar-analyzer-integration-m15-metadata-form` → `demo/madagascar`
+- [ ] T225 [M15] Create PR `feat/011-madagascar-analyzer-integration-m15-metadata-form` → `demo/madagascar`
 
 **Checkpoint**: Metadata form captures all fields, location history works
 
@@ -710,7 +714,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M16: Complete Multi-Protocol Simulator (3 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m16-simulator-complete`
+**Branch**: `feat/011-madagascar-analyzer-integration-m16-simulator-complete`
 **Goal**: Simulator supports all 12 analyzers + CI/CD integration
 **User Stories**: US-9
 **Depends On**: M4 (HL7 simulator base)
@@ -724,7 +728,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M16
 
-- [ ] T226 [M16] Create branch `feat/150-madagascar-analyzer-integration-m16-simulator-complete` from `demo/madagascar`
+- [ ] T226 [M16] Create branch `feat/011-madagascar-analyzer-integration-m16-simulator-complete` from `demo/madagascar`
 
 ### Implementation for M16
 
@@ -746,7 +750,7 @@ Phase 5: Validation (Week 5-6)
 ### Finalization for M16
 
 - [ ] T238 [M16] Verify simulator works with all protocols
-- [ ] T239 [M16] Create PR `feat/150-madagascar-analyzer-integration-m16-simulator-complete` → `demo/madagascar`
+- [ ] T239 [M16] Create PR `feat/011-madagascar-analyzer-integration-m16-simulator-complete` → `demo/madagascar`
 
 **Checkpoint**: Simulator supports all 12 analyzers for CI/CD testing
 
@@ -754,7 +758,7 @@ Phase 5: Validation (Week 5-6)
 
 ## M17: E2E Validation and Madagascar Lab Testing (5 days)
 
-**Branch**: `feat/150-madagascar-analyzer-integration-m17-e2e-validation`
+**Branch**: `feat/011-madagascar-analyzer-integration-m17-e2e-validation`
 **Goal**: Comprehensive E2E testing and production validation
 **User Stories**: All
 **Depends On**: M14, M15, M16
@@ -769,7 +773,7 @@ Phase 5: Validation (Week 5-6)
 
 ### Setup for M17
 
-- [ ] T240 [M17] Create branch `feat/150-madagascar-analyzer-integration-m17-e2e-validation` from `demo/madagascar`
+- [ ] T240 [M17] Create branch `feat/011-madagascar-analyzer-integration-m17-e2e-validation` from `demo/madagascar`
 
 ### Cypress E2E Tests for M17 (MANDATORY)
 
@@ -798,7 +802,7 @@ Phase 5: Validation (Week 5-6)
 - [ ] T254 [M17] Verify all E2E tests pass
 - [ ] T255 [M17] Verify all 12 analyzers bidirectional
 - [ ] T256 [M17] Run full test suite (`mvn verify && cd frontend && npm run cy:run`)
-- [ ] T257 [M17] Create PR `feat/150-madagascar-analyzer-integration-m17-e2e-validation` → `demo/madagascar`
+- [ ] T257 [M17] Create PR `feat/011-madagascar-analyzer-integration-m17-e2e-validation` → `demo/madagascar`
 - [ ] T258 [M17] After approval, create final PR `demo/madagascar` → `develop` for integration
 
 **Checkpoint**: Contract requirements met - 12 analyzers bidirectional, E2E tests pass
@@ -898,11 +902,11 @@ Phase 5: Validation (Week 5-6)
 | M11 | 10 | 2 | 8 |
 | M12 | 10 | 2 | 8 |
 | M13 | 10 | 2 | 8 |
-| M14 | 27 | 7 | 20 |
-| M15 | 27 | 5 | 22 |
+| M14 | 29 | 7 | 22 |
+| M15 | 29 | 5 | 24 |
 | M16 | 14 | 2 | 12 |
 | M17 | 19 | 7 | 12 |
-| **TOTAL** | **258** | **59** | **199** |
+| **TOTAL** | **262** | **59** | **203** |
 
 ---
 
@@ -918,8 +922,8 @@ Phase 5: Validation (Week 5-6)
 
 ---
 
-**Tasks Generated**: 2026-01-22
-**Total Tasks**: 258
+**Tasks Generated**: 2026-01-22 | **Updated**: 2026-01-23 (added security tasks)
+**Total Tasks**: 262
 **Test Tasks**: 59 (23%)
 **Parallel Milestones**: M1-M4, M9-M13
 **Contract Deadline**: 2026-02-28

@@ -1,6 +1,6 @@
 # Feature Specification: Madagascar Analyzer Integration
 
-**Feature Branch**: `spec/150-madagascar-analyzer-integration` **Created**:
+**Feature Branch**: `spec/011-madagascar-analyzer-integration` **Created**:
 2026-01-22 **Status**: Draft **Contract Deadline**: 2026-02-28 **Scope**: 12
 minimum analyzers with bidirectional communication (results + orders)
 **Extends**: Feature 004-astm-analyzer-mapping
@@ -393,7 +393,8 @@ the simulated messages.
 
 - **FR-002**: System MUST support RS232 serial communication with configurable
   parameters (baud rate: 9600-115200, data bits: 7-8, parity: none/even/odd,
-  stop bits: 1-2, flow control: none/RTS-CTS/XON-XOFF).
+  stop bits: 1-2, flow control: none/RTS-CTS/XON-XOFF; defaults: 9600 baud, 8
+  data bits, no parity, 1 stop bit, no flow control).
 
 - **FR-003**: System MUST support file-based result import from configured
   directories with automatic file detection, parsing, and archival.
@@ -684,7 +685,7 @@ the simulated messages.
 This feature **extends** the 004-astm-analyzer-mapping feature rather than
 replacing it:
 
-| Component              | Feature 004 Status | Feature 150 Action         |
+| Component              | Feature 004 Status | Feature 011 Action         |
 | ---------------------- | ------------------ | -------------------------- |
 | ASTM protocol          | ✅ Complete        | Reuse as-is                |
 | Field mapping engine   | ✅ Complete        | Extend for HL7/File        |
@@ -717,6 +718,27 @@ replacing it:
 | 10  | Mindray BC2000       | HL7        | Ethernet       | ✅ Mindray plugin      | P1       |
 | 11  | Sysmex XN Series     | HL7        | Ethernet       | ✅ SysmexXN-L plugin   | P1       |
 | 12  | Abbott Architect     | HL7/RS232  | RS232/Ethernet | ❌ Build new           | P1       |
+
+---
+
+### Existing Plugin Coverage
+
+| Plugin Name      | Repository             | Analyzers Covered                    | Protocol  |
+| ---------------- | ---------------------- | ------------------------------------ | --------- |
+| Mindray          | openelisglobal-plugins | BC-5380, BS-360E, BC2000, BA-88A     | HL7/RS232 |
+| SysmexXN-L       | openelisglobal-plugins | Sysmex XN Series                     | HL7       |
+| GeneXpertHL7     | openelisglobal-plugins | Cepheid GeneXpert                    | HL7       |
+| GeneXpertFile    | openelisglobal-plugins | Cepheid GeneXpert                    | File      |
+| GeneXpert (ASTM) | openelisglobal-plugins | Cepheid GeneXpert                    | ASTM      |
+| QuantStudio3     | openelisglobal-plugins | QuantStudio 7 Flex (adapted)         | File      |
+
+**Analyzers requiring new plugins** (5 total):
+
+- Horiba Pentra 60 (M9)
+- Horiba Micros 60 (M10)
+- Stago STart 4 (M11)
+- Abbott Architect (M12)
+- Hain FluoroCycler XT (M13)
 
 ---
 

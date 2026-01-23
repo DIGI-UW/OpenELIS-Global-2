@@ -1,6 +1,6 @@
 # Data Model: Madagascar Analyzer Integration
 
-**Feature**: 150-madagascar-analyzer-integration **Date**: 2026-01-22 **Spec
+**Feature**: 011-madagascar-analyzer-integration **Date**: 2026-01-22 **Spec
 Reference**: [spec.md](spec.md)
 
 ---
@@ -34,7 +34,7 @@ the manual relationship management pattern established in Feature 004.
 │          │ 1:1 (manual relationship)                                        │
 │          ▼                                                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                          NEW ENTITIES (Feature 150)                          │
+│                          NEW ENTITIES (Feature 011)                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   ┌──────────────────────┐                                                  │
@@ -592,7 +592,7 @@ All schema changes will be placed in `src/main/resources/liquibase/3.8.x.x/`
 ### Changeset 001: Instrument Metadata Table
 
 ```xml
-<changeSet id="150-001-create-instrument-metadata-table" author="madagascar-integration">
+<changeSet id="011-001-create-instrument-metadata-table" author="madagascar-integration">
     <createTable tableName="instrument_metadata">
         <column name="id" type="VARCHAR(36)">
             <constraints primaryKey="true"/>
@@ -635,7 +635,7 @@ All schema changes will be placed in `src/main/resources/liquibase/3.8.x.x/`
 ### Changeset 002: Order Export Table
 
 ```xml
-<changeSet id="150-002-create-order-export-table" author="madagascar-integration">
+<changeSet id="011-002-create-order-export-table" author="madagascar-integration">
     <createTable tableName="order_export">
         <column name="id" type="VARCHAR(36)">
             <constraints primaryKey="true"/>
@@ -697,7 +697,7 @@ All schema changes will be placed in `src/main/resources/liquibase/3.8.x.x/`
 ### Changeset 003: Serial Port Configuration Table
 
 ```xml
-<changeSet id="150-003-create-serial-port-configuration-table" author="madagascar-integration">
+<changeSet id="011-003-create-serial-port-configuration-table" author="madagascar-integration">
     <createTable tableName="serial_port_configuration">
         <column name="id" type="VARCHAR(36)">
             <constraints primaryKey="true"/>
@@ -739,7 +739,7 @@ All schema changes will be placed in `src/main/resources/liquibase/3.8.x.x/`
 ### Changeset 004: File Import Configuration Table
 
 ```xml
-<changeSet id="150-004-create-file-import-configuration-table" author="madagascar-integration">
+<changeSet id="011-004-create-file-import-configuration-table" author="madagascar-integration">
     <createTable tableName="file_import_configuration">
         <column name="id" type="VARCHAR(36)">
             <constraints primaryKey="true"/>
@@ -782,7 +782,7 @@ All schema changes will be placed in `src/main/resources/liquibase/3.8.x.x/`
 ### Changeset 005: Instrument Location History Table
 
 ```xml
-<changeSet id="150-005-create-instrument-location-history-table" author="madagascar-integration">
+<changeSet id="011-005-create-instrument-location-history-table" author="madagascar-integration">
     <createTable tableName="instrument_location_history">
         <column name="id" type="VARCHAR(36)">
             <constraints primaryKey="true"/>

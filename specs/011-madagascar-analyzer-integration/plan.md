@@ -1,8 +1,8 @@
 # Implementation Plan: Madagascar Analyzer Integration
 
-**Branch**: `feat/150-madagascar-analyzer-integration` | **Date**: 2026-01-22 |
+**Branch**: `feat/011-madagascar-analyzer-integration` | **Date**: 2026-01-22 |
 **Spec**: [spec.md](spec.md) **Input**: Feature specification from
-`/specs/150-madagascar-analyzer-integration/spec.md` **Contract Deadline**:
+`/specs/011-madagascar-analyzer-integration/spec.md` **Contract Deadline**:
 2026-02-28 (37 days from plan creation)
 
 ## Summary
@@ -191,9 +191,9 @@ graph TD
 
 ### PR Strategy
 
-- **Spec PR**: `spec/150-madagascar-analyzer-integration` → `demo/madagascar`
+- **Spec PR**: `spec/011-madagascar-analyzer-integration` → `demo/madagascar`
   (specification documents only) ✅ Created
-- **Milestone PRs**: `feat/150-madagascar-analyzer-integration-m{N}-{desc}` →
+- **Milestone PRs**: `feat/011-madagascar-analyzer-integration-m{N}-{desc}` →
   `demo/madagascar`
 - **Final Integration**: `demo/madagascar` → `develop` (after contract deadline
   validation)
@@ -207,7 +207,7 @@ met.
 ### Documentation (this feature)
 
 ```text
-specs/150-madagascar-analyzer-integration/
+specs/011-madagascar-analyzer-integration/
 ├── spec.md              # Feature specification ✅
 ├── plan.md              # This file ✅
 ├── research.md          # Phase 0 output (protocol research)
