@@ -2441,6 +2441,8 @@
   "storage.cannotDelete.hasChildren": "Cannot delete {entityType} '{name}': contains {count} {childType}(s)",
   "storage.cannotDelete.hasAssignments": "Cannot delete {entityType} '{name}': has {count} assigned sample(s)",
   "storage.error.name.duplicate": "A {entityType} with this name already exists in the selected parent location",
+  "storage.create.room.success": "Room \"{name}\" created successfully",
+  "storage.create.room.error": "Failed to create room: {error}",
   "banner.menu.storage": "Storage",
   "banner.menu.storage.tooltip": "Sample Storage Management",
   "barcode.scanOrType": "Scan barcode or type location",
