@@ -44,4 +44,5 @@
   <!-- Site Branding / White Labeling (001-site-branding) -->
   <include relativeToChangelogFile="true" file="../sitebranding/001-create-site-branding-table.xml"/>
   <include relativeToChangelogFile="true" file="../sitebranding/002-rename-lastupdated-to-last-updated.xml"/>
+  <include relativeToChangelogFile="true" file="../sitebranding/003-extend-color-column-length.xml"/>
 </databaseChangeLog>

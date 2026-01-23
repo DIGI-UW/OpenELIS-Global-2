@@ -38,13 +38,13 @@ public class SiteBranding extends BaseObject<String> {
     @Column(name = "favicon_path", length = 500)
     private String faviconPath;
 
-    @Column(name = "primary_color", length = 7, nullable = false)
+    @Column(name = "primary_color", length = 50, nullable = false)
     private String primaryColor = "#1d4ed8";
 
-    @Column(name = "secondary_color", length = 7, nullable = false)
+    @Column(name = "secondary_color", length = 50, nullable = false)
     private String secondaryColor = "#64748b";
 
-    @Column(name = "accent_color", length = 7, nullable = false)
+    @Column(name = "accent_color", length = 50, nullable = false)
     private String accentColor = "#0891b2";
 
     @Column(name = "color_mode", length = 10, nullable = false)
@@ -139,4 +139,3 @@ public class SiteBranding extends BaseObject<String> {
         this.sysUserId = sysUserId;
     }
 }
-

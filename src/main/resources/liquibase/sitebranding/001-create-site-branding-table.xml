@@ -42,10 +42,9 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
-        
+
         <rollback>
             <dropTable tableName="site_branding"/>
         </rollback>
     </changeSet>
 </databaseChangeLog>
-

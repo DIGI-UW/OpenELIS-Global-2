@@ -1,8 +1,8 @@
 /**
  * Branding Styles Component
- * 
+ *
  * Injects CSS custom properties for branding colors
- * 
+ *
  * Task Reference: T053
  */
 
@@ -24,19 +24,25 @@ function BrandingStyles() {
       // Task Reference: T053 - Inject CSS custom properties for primary color
       // Setting on :root ensures they apply application-wide
       if (branding.primaryColor) {
-        root.style.setProperty('--cds-interactive-01', branding.primaryColor);
-        root.style.setProperty('--site-branding-primary', branding.primaryColor);
+        root.style.setProperty("--cds-interactive-01", branding.primaryColor);
+        root.style.setProperty(
+          "--site-branding-primary",
+          branding.primaryColor,
+        );
       }
 
       // Task Reference: T058 - Inject CSS custom properties for secondary and accent colors
       if (branding.secondaryColor) {
-        root.style.setProperty('--cds-interactive-02', branding.secondaryColor);
-        root.style.setProperty('--site-branding-secondary', branding.secondaryColor);
+        root.style.setProperty("--cds-interactive-02", branding.secondaryColor);
+        root.style.setProperty(
+          "--site-branding-secondary",
+          branding.secondaryColor,
+        );
       }
 
       if (branding.accentColor) {
-        root.style.setProperty('--cds-support-01', branding.accentColor);
-        root.style.setProperty('--site-branding-accent', branding.accentColor);
+        root.style.setProperty("--cds-support-01", branding.accentColor);
+        root.style.setProperty("--site-branding-accent", branding.accentColor);
       }
     };
 
@@ -57,10 +63,10 @@ function BrandingStyles() {
     const handleBrandingUpdate = () => {
       loadBranding();
     };
-    window.addEventListener('branding-updated', handleBrandingUpdate);
-    
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+
     return () => {
-      window.removeEventListener('branding-updated', handleBrandingUpdate);
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
     };
   }, [location.pathname]); // Re-run when route changes to ensure colors persist
 
@@ -69,4 +75,3 @@ function BrandingStyles() {
 }
 
 export default BrandingStyles;
-

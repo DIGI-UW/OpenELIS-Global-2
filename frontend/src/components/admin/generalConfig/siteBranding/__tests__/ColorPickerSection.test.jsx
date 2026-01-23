@@ -1,10 +1,10 @@
 /**
  * Unit tests for ColorPickerSection component
- * 
+ *
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md
  * - Jest Best Practices: .specify/guides/jest-best-practices.md
- * 
+ *
  * Task Reference: T049
  */
 
@@ -29,7 +29,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -40,13 +40,13 @@ describe("ColorPickerSection", () => {
    * Test: Component renders with color picker
    * Task Reference: T049
    */
-  test("renders color picker input and hex input field", () => {
+  test("renders color picker input and color input field", () => {
     renderWithIntl(
       <ColorPickerSection
         label="Primary Color"
         value="#1d4ed8"
         onChange={jest.fn()}
-      />
+      />,
     );
 
     expect(screen.getByLabelText(/primary color/i)).toBeInTheDocument();
@@ -54,10 +54,10 @@ describe("ColorPickerSection", () => {
   });
 
   /**
-   * Test: Color picker updates hex input
+   * Test: Color picker updates color input
    * Task Reference: T049
    */
-  test("updates hex input when color picker changes", async () => {
+  test("updates color input when color picker changes", async () => {
     const user = userEvent.setup();
     const onChange = jest.fn();
 
@@ -66,7 +66,7 @@ describe("ColorPickerSection", () => {
         label="Primary Color"
         value="#1d4ed8"
         onChange={onChange}
-      />
+      />,
     );
 
     const colorInput = screen.getByLabelText(/primary color/i);
@@ -76,10 +76,10 @@ describe("ColorPickerSection", () => {
   });
 
   /**
-   * Test: Hex input updates color picker
+   * Test: Color input updates color picker
    * Task Reference: T049
    */
-  test("updates color picker when hex input changes", async () => {
+  test("updates color picker when color input changes", async () => {
     const user = userEvent.setup();
     const onChange = jest.fn();
 
@@ -88,21 +88,24 @@ describe("ColorPickerSection", () => {
         label="Primary Color"
         value="#1d4ed8"
         onChange={onChange}
-      />
+      />,
     );
 
-    const hexInput = screen.getByDisplayValue("#1d4ed8");
-    await user.clear(hexInput);
-    await user.type(hexInput, "#00ff00");
+    const colorInput = screen.getByDisplayValue("#1d4ed8");
+    await user.clear(colorInput);
+    await user.type(colorInput, "#00ff00");
 
     expect(onChange).toHaveBeenCalled();
   });
 
   /**
-   * Test: Displays validation error for invalid hex color
+   * Test: Accepts CSS named colors
    * Task Reference: T049
+   *
+   * Color validation is now permissive - any CSS color format is accepted.
+   * The color preview square shows whether the color is valid in CSS.
    */
-  test("displays validation error for invalid hex color format", async () => {
+  test("accepts CSS named colors without showing validation error", async () => {
     const user = userEvent.setup();
     const onChange = jest.fn();
 
@@ -111,15 +114,21 @@ describe("ColorPickerSection", () => {
         label="Primary Color"
         value="#1d4ed8"
         onChange={onChange}
-      />
+      />,
     );
 
-    const hexInput = screen.getByDisplayValue("#1d4ed8");
-    await user.clear(hexInput);
-    await user.type(hexInput, "invalid-color");
+    const colorInput = screen.getByDisplayValue("#1d4ed8");
+    await user.clear(colorInput);
+    await user.type(colorInput, "rebeccapurple");
 
+    // Should call onChange with the named color
+    expect(onChange).toHaveBeenCalled();
+
+    // No validation error should be displayed
     await waitFor(() => {
-      expect(screen.getByText(/invalid color format/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/invalid color format/i),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -133,11 +142,12 @@ describe("ColorPickerSection", () => {
         label="Primary Color"
         value="#ff0000"
         onChange={jest.fn()}
-      />
+      />,
     );
 
-    const preview = screen.getByRole("img", { hidden: true }) || 
-                    screen.getByTestId("color-preview");
+    const preview =
+      screen.getByRole("img", { hidden: true }) ||
+      screen.getByTestId("color-preview");
     expect(preview).toBeInTheDocument();
   });
 
@@ -151,7 +161,7 @@ describe("ColorPickerSection", () => {
         label="Secondary Color"
         value="#64748b"
         onChange={jest.fn()}
-      />
+      />,
     );
 
     expect(screen.getByLabelText(/secondary color/i)).toBeInTheDocument();
@@ -168,11 +178,10 @@ describe("ColorPickerSection", () => {
         label="Accent Color"
         value="#0891b2"
         onChange={jest.fn()}
-      />
+      />,
     );
 
     expect(screen.getByLabelText(/accent color/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue("#0891b2")).toBeInTheDocument();
   });
 });
-

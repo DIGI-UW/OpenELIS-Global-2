@@ -1,8 +1,8 @@
 /**
  * Site Branding Configuration Component
- * 
+ *
  * Allows administrators to configure site branding including logos and colors
- * 
+ *
  * Task Reference: T021
  */
 
@@ -17,7 +17,11 @@ import {
   Modal,
   InlineLoading,
 } from "@carbon/react";
-import { getBranding, updateBranding, resetBranding } from "../../../../services/siteBrandingService";
+import {
+  getBranding,
+  updateBranding,
+  resetBranding,
+} from "../../../../services/siteBrandingService";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   AlertDialog,
@@ -46,7 +50,10 @@ function SiteBrandingConfig() {
   const breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
-    { label: "sidenav.label.admin.formEntry.siteInfoconfig", link: "/MasterListsPage#SiteInformationMenu" },
+    {
+      label: "sidenav.label.admin.formEntry.siteInfoconfig",
+      link: "/MasterListsPage#SiteInformationMenu",
+    },
     { label: "site.branding.title", link: "#SiteBrandingMenu" },
   ];
 
@@ -78,7 +85,9 @@ function SiteBrandingConfig() {
         };
         setBranding(defaultBranding);
         setSavedBranding(JSON.parse(JSON.stringify(defaultBranding)));
-        initialBrandingRef.current = JSON.parse(JSON.stringify(defaultBranding));
+        initialBrandingRef.current = JSON.parse(
+          JSON.stringify(defaultBranding),
+        );
         // Apply default colors
         applyBrandingColors(defaultBranding);
       }
@@ -116,11 +125,12 @@ function SiteBrandingConfig() {
         useHeaderLogoForLogin: Boolean(obj.useHeaderLogoForLogin),
       };
     };
-    
+
     const currentFields = compareFields(branding);
     const savedFields = compareFields(savedBranding);
-    const hasChanges = JSON.stringify(currentFields) !== JSON.stringify(savedFields);
-    
+    const hasChanges =
+      JSON.stringify(currentFields) !== JSON.stringify(savedFields);
+
     // Debug logging (remove in production)
     if (hasChanges) {
       console.debug("Unsaved changes detected:", {
@@ -128,7 +138,7 @@ function SiteBrandingConfig() {
         saved: savedFields,
       });
     }
-    
+
     setHasUnsavedChanges(hasChanges);
   }, [branding, savedBranding]);
 
@@ -137,7 +147,9 @@ function SiteBrandingConfig() {
     const handleBeforeUnload = (e) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
-        e.returnValue = intl.formatMessage({ id: "site.branding.unsaved.changes" });
+        e.returnValue = intl.formatMessage({
+          id: "site.branding.unsaved.changes",
+        });
         return e.returnValue;
       }
     };
@@ -156,45 +168,71 @@ function SiteBrandingConfig() {
       console.warn("applyBrandingColors called with null/undefined data");
       return;
     }
-    
+
     const root = document.documentElement;
-    
+
     console.debug("Applying branding colors to DOM:", {
       primary: brandingData.primaryColor,
       secondary: brandingData.secondaryColor,
-      accent: brandingData.accentColor
+      accent: brandingData.accentColor,
     });
-    
+
     if (brandingData.primaryColor) {
-      root.style.setProperty('--cds-interactive-01', brandingData.primaryColor);
-      root.style.setProperty('--site-branding-primary', brandingData.primaryColor);
-      console.debug("Set --cds-interactive-01 and --site-branding-primary to:", brandingData.primaryColor);
+      root.style.setProperty("--cds-interactive-01", brandingData.primaryColor);
+      root.style.setProperty(
+        "--site-branding-primary",
+        brandingData.primaryColor,
+      );
+      console.debug(
+        "Set --cds-interactive-01 and --site-branding-primary to:",
+        brandingData.primaryColor,
+      );
     }
     if (brandingData.secondaryColor) {
-      root.style.setProperty('--cds-interactive-02', brandingData.secondaryColor);
-      root.style.setProperty('--site-branding-secondary', brandingData.secondaryColor);
-      console.debug("Set --cds-interactive-02 and --site-branding-secondary to:", brandingData.secondaryColor);
+      root.style.setProperty(
+        "--cds-interactive-02",
+        brandingData.secondaryColor,
+      );
+      root.style.setProperty(
+        "--site-branding-secondary",
+        brandingData.secondaryColor,
+      );
+      console.debug(
+        "Set --cds-interactive-02 and --site-branding-secondary to:",
+        brandingData.secondaryColor,
+      );
     }
     if (brandingData.accentColor) {
-      root.style.setProperty('--cds-support-01', brandingData.accentColor);
-      root.style.setProperty('--site-branding-accent', brandingData.accentColor);
-      console.debug("Set --cds-support-01 and --site-branding-accent to:", brandingData.accentColor);
+      root.style.setProperty("--cds-support-01", brandingData.accentColor);
+      root.style.setProperty(
+        "--site-branding-accent",
+        brandingData.accentColor,
+      );
+      console.debug(
+        "Set --cds-support-01 and --site-branding-accent to:",
+        brandingData.accentColor,
+      );
     }
-    
+
     // Verify the properties were set
-    const computedPrimary = getComputedStyle(root).getPropertyValue('--cds-interactive-01').trim();
-    console.debug("Verified CSS property --cds-interactive-01 is now:", computedPrimary);
+    const computedPrimary = getComputedStyle(root)
+      .getPropertyValue("--cds-interactive-01")
+      .trim();
+    console.debug(
+      "Verified CSS property --cds-interactive-01 is now:",
+      computedPrimary,
+    );
   };
 
   const updateFavicon = (faviconUrl) => {
     // Remove existing favicon links
     const existingLinks = document.querySelectorAll('link[rel*="icon"]');
-    existingLinks.forEach(link => link.remove());
+    existingLinks.forEach((link) => link.remove());
 
     // Add new favicon link
-    const link = document.createElement('link');
-    link.rel = 'icon';
-    link.type = 'image/x-icon';
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.type = "image/x-icon";
     link.href = `../api${faviconUrl}`;
     document.head.appendChild(link);
   };
@@ -202,56 +240,17 @@ function SiteBrandingConfig() {
   const resetFavicon = () => {
     // Remove existing favicon links
     const existingLinks = document.querySelectorAll('link[rel*="icon"]');
-    existingLinks.forEach(link => link.remove());
+    existingLinks.forEach((link) => link.remove());
 
     // Add default favicon link
-    const link = document.createElement('link');
-    link.rel = 'icon';
-    link.href = '../images/favicon-16x16.png';
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = "../images/favicon-16x16.png";
     document.head.appendChild(link);
   };
 
   const handleSave = () => {
     if (!branding || isSaving) return;
-
-    // Validate colors before sending
-    const hexPattern = /^#[0-9A-Fa-f]{3,6}$/;
-    if (
-      branding.primaryColor &&
-      !hexPattern.test(branding.primaryColor)
-    ) {
-      addNotification(
-        intl.formatMessage({ id: "site.branding.color.format.error" }) +
-          ": " +
-          intl.formatMessage({ id: "site.branding.primary.color" }),
-        NotificationKinds.error,
-      );
-      setNotificationVisible(true);
-      return;
-    }
-    if (
-      branding.secondaryColor &&
-      !hexPattern.test(branding.secondaryColor)
-    ) {
-      addNotification(
-        intl.formatMessage({ id: "site.branding.color.format.error" }) +
-          ": " +
-          intl.formatMessage({ id: "site.branding.secondary.color" }),
-        NotificationKinds.error,
-      );
-      setNotificationVisible(true);
-      return;
-    }
-    if (branding.accentColor && !hexPattern.test(branding.accentColor)) {
-      addNotification(
-        intl.formatMessage({ id: "site.branding.color.format.error" }) +
-          ": " +
-          intl.formatMessage({ id: "site.branding.accent.color" }),
-        NotificationKinds.error,
-      );
-      setNotificationVisible(true);
-      return;
-    }
 
     // Task Reference: T097 - Disable form during save operation
     setIsSaving(true);
@@ -271,59 +270,70 @@ function SiteBrandingConfig() {
     };
 
     // Task Reference: T072 - Call siteBrandingService.updateBranding() with form data
-    updateBranding(
-      dataToSend,
-      (status, errorMessage, responseData) => {
-        setIsSaving(false);
-        if (status === 200 || status === 201) {
-          // Task Reference: T074 - Re-fetch branding config after save to ensure consistency
-          // Always apply colors from the data we sent (immediate feedback)
-          // Then reload from server to get complete state
-          console.debug("Save successful. Applying colors immediately from sent data:", dataToSend);
-          applyBrandingColors(dataToSend);
-          
-          // Use responseData if available and complete, otherwise reload from server
-          if (responseData && responseData.primaryColor && responseData.secondaryColor && responseData.accentColor) {
-            console.debug("Response data is complete:", responseData);
-            setBranding(responseData);
-            setSavedBranding(JSON.parse(JSON.stringify(responseData)));
-            // Apply colors again from server response (in case server normalized values)
-            applyBrandingColors(responseData);
-            // Update favicon if custom favicon exists
-            if (responseData.faviconUrl) {
-              updateFavicon(responseData.faviconUrl);
-            }
-          } else {
-            console.debug("Response data missing or incomplete, reloading from server");
-            // Reload from server to get complete state including logo URLs
-            // loadBranding() will apply colors automatically
-            loadBranding();
+    updateBranding(dataToSend, (status, errorMessage, responseData) => {
+      setIsSaving(false);
+      if (status === 200 || status === 201) {
+        // Task Reference: T074 - Re-fetch branding config after save to ensure consistency
+        // Always apply colors from the data we sent (immediate feedback)
+        // Then reload from server to get complete state
+        console.debug(
+          "Save successful. Applying colors immediately from sent data:",
+          dataToSend,
+        );
+        applyBrandingColors(dataToSend);
+
+        // Use responseData if available and complete, otherwise reload from server
+        if (
+          responseData &&
+          responseData.primaryColor &&
+          responseData.secondaryColor &&
+          responseData.accentColor
+        ) {
+          console.debug("Response data is complete:", responseData);
+          setBranding(responseData);
+          setSavedBranding(JSON.parse(JSON.stringify(responseData)));
+          // Apply colors again from server response (in case server normalized values)
+          applyBrandingColors(responseData);
+          // Update favicon if custom favicon exists
+          if (responseData.faviconUrl) {
+            updateFavicon(responseData.faviconUrl);
           }
-
-          // Dispatch event to notify Header and other components to reload branding
-          window.dispatchEvent(new CustomEvent('branding-updated'));
-
-          addNotification(
-            intl.formatMessage({ id: "site.branding.save.success" }),
-            NotificationKinds.success,
-          );
-          setNotificationVisible(true);
         } else {
-          console.error("Save failed:", { status, errorMessage, dataToSend });
-          const errorText = errorMessage
-            ? `${intl.formatMessage({ id: "site.branding.save.error" })}: ${errorMessage}`
-            : intl.formatMessage({ id: "site.branding.save.error" });
-          addNotification(errorText, NotificationKinds.error);
-          setNotificationVisible(true);
+          console.debug(
+            "Response data missing or incomplete, reloading from server",
+          );
+          // Reload from server to get complete state including logo URLs
+          // loadBranding() will apply colors automatically
+          loadBranding();
         }
-      },
-    );
+
+        // Dispatch event to notify Header and other components to reload branding
+        window.dispatchEvent(new CustomEvent("branding-updated"));
+
+        addNotification(
+          intl.formatMessage({ id: "site.branding.save.success" }),
+          NotificationKinds.success,
+        );
+        setNotificationVisible(true);
+      } else {
+        console.error("Save failed:", { status, errorMessage, dataToSend });
+        const errorText = errorMessage
+          ? `${intl.formatMessage({ id: "site.branding.save.error" })}: ${errorMessage}`
+          : intl.formatMessage({ id: "site.branding.save.error" });
+        addNotification(errorText, NotificationKinds.error);
+        setNotificationVisible(true);
+      }
+    });
   };
 
   const handleCancel = () => {
     if (hasUnsavedChanges) {
       // Show confirmation if there are unsaved changes
-      if (window.confirm(intl.formatMessage({ id: "site.branding.unsaved.changes" }))) {
+      if (
+        window.confirm(
+          intl.formatMessage({ id: "site.branding.unsaved.changes" }),
+        )
+      ) {
         // Discard changes - reload from saved state
         if (savedBranding) {
           setBranding(JSON.parse(JSON.stringify(savedBranding)));
@@ -346,38 +356,54 @@ function SiteBrandingConfig() {
     setShowResetConfirm(false);
     setIsLoading(true);
 
-    resetBranding(
-      (status) => {
-        setIsLoading(false);
-        if (status === 200 || status === 201) {
-          // Reload branding after reset
-          loadBranding();
-          
-          // Reset CSS custom properties to defaults
-          document.documentElement.style.setProperty('--cds-interactive-01', '#1d4ed8');
-          document.documentElement.style.setProperty('--cds-interactive-02', '#64748b');
-          document.documentElement.style.setProperty('--cds-support-01', '#0891b2');
-          document.documentElement.style.setProperty('--site-branding-primary', '#1d4ed8');
-          document.documentElement.style.setProperty('--site-branding-secondary', '#64748b');
-          document.documentElement.style.setProperty('--site-branding-accent', '#0891b2');
-          
-          // Reset favicon
-          resetFavicon();
+    resetBranding((status) => {
+      setIsLoading(false);
+      if (status === 200 || status === 201) {
+        // Reload branding after reset
+        loadBranding();
 
-          addNotification(
-            intl.formatMessage({ id: "site.branding.reset.success" }),
-            NotificationKinds.success
-          );
-          setNotificationVisible(true);
-        } else {
-          addNotification(
-            intl.formatMessage({ id: "site.branding.reset.error" }),
-            NotificationKinds.error
-          );
-          setNotificationVisible(true);
-        }
+        // Reset CSS custom properties to defaults
+        document.documentElement.style.setProperty(
+          "--cds-interactive-01",
+          "#1d4ed8",
+        );
+        document.documentElement.style.setProperty(
+          "--cds-interactive-02",
+          "#64748b",
+        );
+        document.documentElement.style.setProperty(
+          "--cds-support-01",
+          "#0891b2",
+        );
+        document.documentElement.style.setProperty(
+          "--site-branding-primary",
+          "#1d4ed8",
+        );
+        document.documentElement.style.setProperty(
+          "--site-branding-secondary",
+          "#64748b",
+        );
+        document.documentElement.style.setProperty(
+          "--site-branding-accent",
+          "#0891b2",
+        );
+
+        // Reset favicon
+        resetFavicon();
+
+        addNotification(
+          intl.formatMessage({ id: "site.branding.reset.success" }),
+          NotificationKinds.success,
+        );
+        setNotificationVisible(true);
+      } else {
+        addNotification(
+          intl.formatMessage({ id: "site.branding.reset.error" }),
+          NotificationKinds.error,
+        );
+        setNotificationVisible(true);
       }
-    );
+    });
   };
 
   const cancelReset = () => {
@@ -421,13 +447,13 @@ function SiteBrandingConfig() {
               // Logo uploads are saved immediately, so reload from server to sync state
               loadBranding();
               // Dispatch event to notify Header to reload branding
-              window.dispatchEvent(new CustomEvent('branding-updated'));
+              window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onLogoRemoved={() => {
               // Logo removal is saved immediately, so reload from server to sync state
               loadBranding();
               // Dispatch event to notify Header to reload branding
-              window.dispatchEvent(new CustomEvent('branding-updated'));
+              window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
           />
         </Column>
@@ -443,16 +469,19 @@ function SiteBrandingConfig() {
               // Logo uploads are saved immediately, so reload from server to sync state
               loadBranding();
               // Dispatch event to notify Header to reload branding
-              window.dispatchEvent(new CustomEvent('branding-updated'));
+              window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onLogoRemoved={() => {
               // Logo removal is saved immediately, so reload from server to sync state
               loadBranding();
               // Dispatch event to notify Header to reload branding
-              window.dispatchEvent(new CustomEvent('branding-updated'));
+              window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onUseHeaderLogoChange={(useHeader) => {
-              setBranding((prev) => ({ ...prev, useHeaderLogoForLogin: useHeader }));
+              setBranding((prev) => ({
+                ...prev,
+                useHeaderLogoForLogin: useHeader,
+              }));
             }}
           />
         </Column>
@@ -469,7 +498,7 @@ function SiteBrandingConfig() {
               updateFavicon(url);
               loadBranding();
               // Dispatch event to notify Header to reload branding
-              window.dispatchEvent(new CustomEvent('branding-updated'));
+              window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
             onLogoRemoved={() => {
               // Logo removal is saved immediately, so reload from server to sync state
@@ -477,7 +506,7 @@ function SiteBrandingConfig() {
               resetFavicon();
               loadBranding();
               // Dispatch event to notify Header to reload branding
-              window.dispatchEvent(new CustomEvent('branding-updated'));
+              window.dispatchEvent(new CustomEvent("branding-updated"));
             }}
           />
         </Column>
@@ -488,13 +517,21 @@ function SiteBrandingConfig() {
         <Column lg={16} md={8} sm={4}>
           <ColorPickerSection
             label={intl.formatMessage({ id: "site.branding.primary.color" })}
-            description={intl.formatMessage({ id: "site.branding.primary.color.description" })}
+            description={intl.formatMessage({
+              id: "site.branding.primary.color.description",
+            })}
             value={branding?.primaryColor || "#1d4ed8"}
             onChange={(color) => {
               setBranding((prev) => ({ ...prev, primaryColor: color }));
               // Apply color immediately for preview
-              document.documentElement.style.setProperty('--cds-interactive-01', color);
-              document.documentElement.style.setProperty('--site-branding-primary', color);
+              document.documentElement.style.setProperty(
+                "--cds-interactive-01",
+                color,
+              );
+              document.documentElement.style.setProperty(
+                "--site-branding-primary",
+                color,
+              );
             }}
           />
         </Column>
@@ -504,13 +541,21 @@ function SiteBrandingConfig() {
         <Column lg={16} md={8} sm={4}>
           <ColorPickerSection
             label={intl.formatMessage({ id: "site.branding.secondary.color" })}
-            description={intl.formatMessage({ id: "site.branding.secondary.color.description" })}
+            description={intl.formatMessage({
+              id: "site.branding.secondary.color.description",
+            })}
             value={branding?.secondaryColor || "#64748b"}
             onChange={(color) => {
               setBranding((prev) => ({ ...prev, secondaryColor: color }));
               // Apply color immediately for preview
-              document.documentElement.style.setProperty('--cds-interactive-02', color);
-              document.documentElement.style.setProperty('--site-branding-secondary', color);
+              document.documentElement.style.setProperty(
+                "--cds-interactive-02",
+                color,
+              );
+              document.documentElement.style.setProperty(
+                "--site-branding-secondary",
+                color,
+              );
             }}
           />
         </Column>
@@ -520,13 +565,21 @@ function SiteBrandingConfig() {
         <Column lg={16} md={8} sm={4}>
           <ColorPickerSection
             label={intl.formatMessage({ id: "site.branding.accent.color" })}
-            description={intl.formatMessage({ id: "site.branding.accent.color.description" })}
+            description={intl.formatMessage({
+              id: "site.branding.accent.color.description",
+            })}
             value={branding?.accentColor || "#0891b2"}
             onChange={(color) => {
               setBranding((prev) => ({ ...prev, accentColor: color }));
               // Apply color immediately for preview
-              document.documentElement.style.setProperty('--cds-support-01', color);
-              document.documentElement.style.setProperty('--site-branding-accent', color);
+              document.documentElement.style.setProperty(
+                "--cds-support-01",
+                color,
+              );
+              document.documentElement.style.setProperty(
+                "--site-branding-accent",
+                color,
+              );
             }}
           />
         </Column>
@@ -535,32 +588,39 @@ function SiteBrandingConfig() {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={!hasUnsavedChanges || isSaving}
               style={{ marginRight: "1rem" }}
             >
               {isSaving ? (
-                <InlineLoading description={intl.formatMessage({ id: "loading.description" })} />
+                <InlineLoading
+                  description={intl.formatMessage({
+                    id: "loading.description",
+                  })}
+                />
               ) : (
                 <FormattedMessage id="site.branding.save" />
               )}
             </Button>
-            <Button 
+            <Button
               onClick={handleCancel}
               kind="secondary"
               style={{ marginRight: "1rem" }}
             >
               <FormattedMessage id="site.branding.cancel" />
             </Button>
-            <Button 
-              kind="danger" 
-              onClick={handleReset}
-            >
+            <Button kind="danger" onClick={handleReset}>
               <FormattedMessage id="site.branding.reset.to.defaults" />
             </Button>
             {hasUnsavedChanges && (
-              <p style={{ marginTop: "1rem", fontStyle: "italic", color: "#da1e28" }}>
+              <p
+                style={{
+                  marginTop: "1rem",
+                  fontStyle: "italic",
+                  color: "#da1e28",
+                }}
+              >
                 <FormattedMessage id="site.branding.unsaved.changes.warning" />
               </p>
             )}
@@ -571,7 +631,9 @@ function SiteBrandingConfig() {
       {/* Reset Confirmation Modal */}
       <Modal
         open={showResetConfirm}
-        modalHeading={intl.formatMessage({ id: "site.branding.reset.to.defaults" })}
+        modalHeading={intl.formatMessage({
+          id: "site.branding.reset.to.defaults",
+        })}
         primaryButtonText={intl.formatMessage({ id: "label.button.reset" })}
         secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
         onRequestClose={cancelReset}
@@ -585,4 +647,3 @@ function SiteBrandingConfig() {
 }
 
 export default SiteBrandingConfig;
-

@@ -52,12 +52,12 @@ export default function Layout(props) {
     const updateFavicon = (faviconUrl) => {
       // Remove existing favicon links
       const existingLinks = document.querySelectorAll('link[rel*="icon"]');
-      existingLinks.forEach(link => link.remove());
+      existingLinks.forEach((link) => link.remove());
 
       // Add new favicon link
-      const link = document.createElement('link');
-      link.rel = 'icon';
-      link.type = 'image/x-icon';
+      const link = document.createElement("link");
+      link.rel = "icon";
+      link.type = "image/x-icon";
       link.href = `../api${faviconUrl}`;
       document.head.appendChild(link);
     };

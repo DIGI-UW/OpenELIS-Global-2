@@ -1,10 +1,18 @@
 package org.openelisglobal.sitebranding.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.regex.Pattern;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -16,10 +24,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.w3c.dom.Document;
 
 /**
  * Service implementation for SiteBranding entity
- * 
+ *
  * Task Reference: T015
  */
 @Service
@@ -28,7 +37,6 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         implements SiteBrandingService {
 
     private static final Logger logger = LoggerFactory.getLogger(SiteBrandingServiceImpl.class);
-    private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{3,6}$");
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
     private static final String BRANDING_DIR = "/var/lib/openelis-global/branding/";
     private static final String[] ALLOWED_FORMATS = { "png", "svg", "jpg", "jpeg" };
@@ -57,7 +65,8 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                 branding = createDefaultBranding();
                 logger.info("Default branding created: id={}", branding.getId());
             } else {
-                logger.debug("Retrieved branding from database: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                logger.debug(
+                        "Retrieved branding from database: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
                         branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(),
                         branding.getAccentColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
             }
@@ -71,27 +80,15 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
 
     @Override
     public SiteBranding saveBranding(SiteBranding branding) {
-        logger.debug("saveBranding() called with branding id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(),
-                branding.getAccentColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
-        
-        try {
-            // Validate colors before saving
-            if (branding.getPrimaryColor() != null && !validateHexColor(branding.getPrimaryColor())) {
-                logger.error("Invalid primary color format: {}", branding.getPrimaryColor());
-                throw new LIMSRuntimeException("Invalid primary color format: " + branding.getPrimaryColor());
-            }
-            if (branding.getSecondaryColor() != null && !validateHexColor(branding.getSecondaryColor())) {
-                logger.error("Invalid secondary color format: {}", branding.getSecondaryColor());
-                throw new LIMSRuntimeException("Invalid secondary color format: " + branding.getSecondaryColor());
-            }
-            if (branding.getAccentColor() != null && !validateHexColor(branding.getAccentColor())) {
-                logger.error("Invalid accent color format: {}", branding.getAccentColor());
-                throw new LIMSRuntimeException("Invalid accent color format: " + branding.getAccentColor());
-            }
-            logger.debug("Color validation passed");
+        logger.debug(
+                "saveBranding() called with branding id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(), branding.getAccentColor(),
+                branding.getColorMode(), branding.getUseHeaderLogoForLogin());
 
-            // Task Reference: T094 - Ensure sysUserId and lastupdated are set for audit trail
+        try {
+
+            // Task Reference: T094 - Ensure sysUserId and lastupdated are set for audit
+            // trail
             branding.setLastupdatedFields();
             logger.debug("Set lastupdatedFields, sysUserId={}", branding.getSysUserId());
             // sysUserId should be set by controller before calling this method
@@ -107,21 +104,21 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                 branding.setId(id);
                 logger.info("Branding configuration created: id={}, user={}", id, branding.getSysUserId());
                 // Task Reference: T093 - Log branding creation
-                LogEvent.logInfo("SiteBrandingService", "saveBranding", 
-                    "Branding configuration created by user: " + branding.getSysUserId());
+                LogEvent.logInfo("SiteBrandingService", "saveBranding",
+                        "Branding configuration created by user: " + branding.getSysUserId());
                 return branding;
             } else {
                 // Get a fresh managed entity from the database to avoid OptimisticLockException
                 // The entity passed in may be detached with a stale version field
                 SiteBranding existingBranding = siteBrandingDAO.get(branding.getId())
-                    .orElseThrow(() -> new LIMSRuntimeException("Branding not found with id: " + branding.getId()));
-                
+                        .orElseThrow(() -> new LIMSRuntimeException("Branding not found with id: " + branding.getId()));
+
                 logger.debug("Retrieved managed branding entity for update: id={}", existingBranding.getId());
-                
+
                 // Task Reference: T093 - Log color changes for audit trail
                 logger.debug("Comparing existing vs new branding for changes");
                 logColorChanges(existingBranding, branding);
-                
+
                 // Copy changes from detached entity to managed entity
                 if (branding.getPrimaryColor() != null) {
                     existingBranding.setPrimaryColor(branding.getPrimaryColor());
@@ -150,15 +147,15 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                 if (branding.getSysUserId() != null) {
                     existingBranding.setSysUserId(branding.getSysUserId());
                 }
-                
+
                 // Set lastupdated fields on the managed entity
                 existingBranding.setLastupdatedFields();
-                
+
                 logger.debug("Updating existing branding record: id={}", existingBranding.getId());
                 SiteBranding updated = siteBrandingDAO.update(existingBranding);
                 logger.info("Branding configuration updated: id={}, user={}", updated.getId(), updated.getSysUserId());
-                LogEvent.logInfo("SiteBrandingService", "saveBranding", 
-                    "Branding configuration updated by user: " + existingBranding.getSysUserId());
+                LogEvent.logInfo("SiteBrandingService", "saveBranding",
+                        "Branding configuration updated by user: " + existingBranding.getSysUserId());
                 return updated;
             }
         } catch (LIMSRuntimeException e) {
@@ -172,61 +169,56 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
     }
 
     @Override
-    public boolean validateHexColor(String color) {
-        if (color == null || color.trim().isEmpty()) {
-            return false;
-        }
-        return HEX_COLOR_PATTERN.matcher(color.trim()).matches();
+    public boolean validateColor(String color) {
+        return color != null && !color.trim().isEmpty();
     }
 
     /**
-     * Validate all logo paths exist (if not null)
-     * Task Reference: T099
+     * Validate all logo paths exist (if not null) Task Reference: T099
      */
     private void validateLogoPaths(SiteBranding branding) {
         if (branding.getHeaderLogoPath() != null && !Files.exists(Paths.get(branding.getHeaderLogoPath()))) {
-            LogEvent.logWarn("SiteBrandingService", "validateLogoPaths", 
-                "Header logo path does not exist: " + branding.getHeaderLogoPath());
+            LogEvent.logWarn("SiteBrandingService", "validateLogoPaths",
+                    "Header logo path does not exist: " + branding.getHeaderLogoPath());
             // Don't throw exception - just log warning, allow save to proceed
         }
         if (branding.getLoginLogoPath() != null && !Files.exists(Paths.get(branding.getLoginLogoPath()))) {
-            LogEvent.logWarn("SiteBrandingService", "validateLogoPaths", 
-                "Login logo path does not exist: " + branding.getLoginLogoPath());
+            LogEvent.logWarn("SiteBrandingService", "validateLogoPaths",
+                    "Login logo path does not exist: " + branding.getLoginLogoPath());
         }
         if (branding.getFaviconPath() != null && !Files.exists(Paths.get(branding.getFaviconPath()))) {
-            LogEvent.logWarn("SiteBrandingService", "validateLogoPaths", 
-                "Favicon path does not exist: " + branding.getFaviconPath());
+            LogEvent.logWarn("SiteBrandingService", "validateLogoPaths",
+                    "Favicon path does not exist: " + branding.getFaviconPath());
         }
     }
 
     /**
-     * Log color changes for audit trail
-     * Task Reference: T093
+     * Log color changes for audit trail Task Reference: T093
      */
     private void logColorChanges(SiteBranding existing, SiteBranding updated) {
-        if (existing.getPrimaryColor() != null && updated.getPrimaryColor() != null 
-            && !existing.getPrimaryColor().equals(updated.getPrimaryColor())) {
-            LogEvent.logInfo("SiteBrandingService", "saveBranding", 
-                String.format("Primary color changed: %s -> %s by user: %s", 
-                    existing.getPrimaryColor(), updated.getPrimaryColor(), updated.getSysUserId()));
+        if (existing.getPrimaryColor() != null && updated.getPrimaryColor() != null
+                && !existing.getPrimaryColor().equals(updated.getPrimaryColor())) {
+            LogEvent.logInfo("SiteBrandingService", "saveBranding",
+                    String.format("Primary color changed: %s -> %s by user: %s", existing.getPrimaryColor(),
+                            updated.getPrimaryColor(), updated.getSysUserId()));
         }
-        if (existing.getSecondaryColor() != null && updated.getSecondaryColor() != null 
-            && !existing.getSecondaryColor().equals(updated.getSecondaryColor())) {
-            LogEvent.logInfo("SiteBrandingService", "saveBranding", 
-                String.format("Secondary color changed: %s -> %s by user: %s", 
-                    existing.getSecondaryColor(), updated.getSecondaryColor(), updated.getSysUserId()));
+        if (existing.getSecondaryColor() != null && updated.getSecondaryColor() != null
+                && !existing.getSecondaryColor().equals(updated.getSecondaryColor())) {
+            LogEvent.logInfo("SiteBrandingService", "saveBranding",
+                    String.format("Secondary color changed: %s -> %s by user: %s", existing.getSecondaryColor(),
+                            updated.getSecondaryColor(), updated.getSysUserId()));
         }
-        if (existing.getAccentColor() != null && updated.getAccentColor() != null 
-            && !existing.getAccentColor().equals(updated.getAccentColor())) {
-            LogEvent.logInfo("SiteBrandingService", "saveBranding", 
-                String.format("Accent color changed: %s -> %s by user: %s", 
-                    existing.getAccentColor(), updated.getAccentColor(), updated.getSysUserId()));
+        if (existing.getAccentColor() != null && updated.getAccentColor() != null
+                && !existing.getAccentColor().equals(updated.getAccentColor())) {
+            LogEvent.logInfo("SiteBrandingService", "saveBranding",
+                    String.format("Accent color changed: %s -> %s by user: %s", existing.getAccentColor(),
+                            updated.getAccentColor(), updated.getSysUserId()));
         }
     }
 
     /**
      * Create default branding configuration
-     * 
+     *
      * @return SiteBranding entity with default values
      */
     private SiteBranding createDefaultBranding() {
@@ -239,7 +231,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         branding.setLastupdatedFields();
         // Set default sysUserId for initial creation (will be updated on first save)
         branding.setSysUserId("system");
-        
+
         // Insert default record
         String id = siteBrandingDAO.insert(branding);
         branding.setId(id);
@@ -257,20 +249,72 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
             return false;
         }
 
-        // Validate file format
+        // Validate file format by extension
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null) {
             return false;
         }
 
         String extension = getFileExtension(originalFilename).toLowerCase();
-        for (String allowedFormat : ALLOWED_FORMATS) {
-            if (extension.equals(allowedFormat)) {
-                return true;
-            }
+        List<String> allowedList = Arrays.asList(ALLOWED_FORMATS);
+        if (!allowedList.contains(extension)) {
+            return false;
         }
 
-        return false;
+        // Validate actual image content to prevent malicious files with fake extensions
+        try {
+            if (extension.equals("svg")) {
+                return isValidSvgContent(file.getInputStream());
+            } else {
+                return isValidRasterImage(file.getInputStream());
+            }
+        } catch (IOException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "validateLogoFile",
+                    "Error validating image content: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Validates that the input stream contains a valid raster image (PNG, JPG,
+     * JPEG) by checking if ImageIO can find a reader for it.
+     */
+    private boolean isValidRasterImage(InputStream inputStream) throws IOException {
+        ImageInputStream iis = ImageIO.createImageInputStream(inputStream);
+        if (iis == null) {
+            return false;
+        }
+        try {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+            return readers.hasNext();
+        } finally {
+            iis.close();
+        }
+    }
+
+    /**
+     * Validates that the input stream contains a valid SVG file by parsing it as
+     * XML and checking for an svg root element. Also prevents XXE attacks by
+     * disabling external entities.
+     */
+    private boolean isValidSvgContent(InputStream inputStream) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            // Disable external entities to prevent XXE attacks
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
+
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(inputStream);
+            return "svg".equalsIgnoreCase(doc.getDocumentElement().getTagName());
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "isValidSvgContent",
+                    "SVG validation failed: " + e.getMessage());
+            return false;
+        }
     }
 
     @Override
@@ -278,7 +322,8 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
     public String uploadLogo(MultipartFile file, LogoType type) throws IOException {
         // Validate file
         if (!validateLogoFile(file)) {
-            throw new LIMSRuntimeException("Invalid logo file: format must be PNG, SVG, or JPG/JPEG, size must be <= 2MB");
+            throw new LIMSRuntimeException(
+                    "Invalid logo file: format must be PNG, SVG, or JPG/JPEG, size must be <= 2MB");
         }
 
         // Ensure branding directory exists
@@ -333,9 +378,9 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         saveBranding(branding);
 
         // Task Reference: T093 - Log logo upload for audit trail
-        LogEvent.logInfo("SiteBrandingService", "uploadLogo", 
-            String.format("Logo uploaded - Type: %s, File: %s, Size: %d bytes, User: %s", 
-                type.getValue(), file.getOriginalFilename(), file.getSize(), branding.getSysUserId()));
+        LogEvent.logInfo("SiteBrandingService", "uploadLogo",
+                String.format("Logo uploaded - Type: %s, File: %s, Size: %d bytes, User: %s", type.getValue(),
+                        file.getOriginalFilename(), file.getSize(), branding.getSysUserId()));
 
         return fullPath;
     }
@@ -366,14 +411,14 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
      */
     private String getLogoPath(SiteBranding branding, LogoType type) {
         switch (type) {
-            case HEADER:
-                return branding.getHeaderLogoPath();
-            case LOGIN:
-                return branding.getLoginLogoPath();
-            case FAVICON:
-                return branding.getFaviconPath();
-            default:
-                return null;
+        case HEADER:
+            return branding.getHeaderLogoPath();
+        case LOGIN:
+            return branding.getLoginLogoPath();
+        case FAVICON:
+            return branding.getFaviconPath();
+        default:
+            return null;
         }
     }
 
@@ -382,21 +427,20 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
      */
     private void setLogoPath(SiteBranding branding, LogoType type, String path) {
         switch (type) {
-            case HEADER:
-                branding.setHeaderLogoPath(path);
-                break;
-            case LOGIN:
-                branding.setLoginLogoPath(path);
-                break;
-            case FAVICON:
-                branding.setFaviconPath(path);
-                break;
+        case HEADER:
+            branding.setHeaderLogoPath(path);
+            break;
+        case LOGIN:
+            branding.setLoginLogoPath(path);
+            break;
+        case FAVICON:
+            branding.setFaviconPath(path);
+            break;
         }
     }
 
     /**
-     * Remove logo file and update branding configuration
-     * Task Reference: T063
+     * Remove logo file and update branding configuration Task Reference: T063
      */
     @Override
     @Transactional
@@ -427,16 +471,14 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
 
         // Save branding
         saveBranding(branding);
-        
+
         // Task Reference: T093 - Log logo removal for audit trail
-        LogEvent.logInfo("SiteBrandingService", "removeLogo", 
-            String.format("Logo removed - Type: %s, File: %s, User: %s", 
-                type.getValue(), logoPath, branding.getSysUserId()));
+        LogEvent.logInfo("SiteBrandingService", "removeLogo", String.format(
+                "Logo removed - Type: %s, File: %s, User: %s", type.getValue(), logoPath, branding.getSysUserId()));
     }
 
     /**
-     * Reset all branding to default values
-     * Task Reference: T066
+     * Reset all branding to default values Task Reference: T066
      */
     @Override
     @Transactional
@@ -445,11 +487,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         SiteBranding branding = getBranding();
 
         // Delete all logo files
-        String[] logoPaths = {
-            branding.getHeaderLogoPath(),
-            branding.getLoginLogoPath(),
-            branding.getFaviconPath()
-        };
+        String[] logoPaths = { branding.getHeaderLogoPath(), branding.getLoginLogoPath(), branding.getFaviconPath() };
 
         for (String logoPath : logoPaths) {
             if (logoPath != null) {
@@ -477,10 +515,9 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
 
         // Save branding
         saveBranding(branding);
-        
+
         // Task Reference: T093 - Log reset action for audit trail
-        LogEvent.logInfo("SiteBrandingService", "resetToDefaults", 
-            "All branding reset to defaults by user: " + branding.getSysUserId());
+        LogEvent.logInfo("SiteBrandingService", "resetToDefaults",
+                "All branding reset to defaults by user: " + branding.getSysUserId());
     }
 }
-

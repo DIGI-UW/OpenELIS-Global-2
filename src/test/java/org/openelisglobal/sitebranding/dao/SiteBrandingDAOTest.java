@@ -55,8 +55,7 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: getBranding - returns single record or null
-     * Task Reference: T007
+     * Test: getBranding - returns single record or null Task Reference: T007
      */
     @Test
     public void testGetBranding_WhenNoneExists_ReturnsNull() {
@@ -68,8 +67,7 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: getBranding - returns existing branding
-     * Task Reference: T007
+     * Test: getBranding - returns existing branding Task Reference: T007
      */
     @Test
     public void testGetBranding_WhenExists_ReturnsBranding() {
@@ -90,8 +88,7 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: insert - persists new branding
-     * Task Reference: T007
+     * Test: insert - persists new branding Task Reference: T007
      */
     @Test
     public void testInsert_WithValidBranding_PersistsToDatabase() {
@@ -115,8 +112,7 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: update - updates existing branding
-     * Task Reference: T007
+     * Test: update - updates existing branding Task Reference: T007
      */
     @Test
     public void testUpdate_WithExistingBranding_UpdatesDatabase() {
@@ -140,11 +136,10 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
         // Assert: Branding updated
         assertNotNull("Result should not be null", result);
         assertEquals("Primary color should be updated", "#ff0000", result.getPrimaryColor());
-        
+
         // Verify in database
         SiteBranding retrieved = siteBrandingDAO.get(testId).orElse(null);
         assertNotNull("Retrieved branding should not be null", retrieved);
         assertEquals("Primary color should be updated in database", "#ff0000", retrieved.getPrimaryColor());
     }
 }
-

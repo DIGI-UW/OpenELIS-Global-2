@@ -10,15 +10,15 @@ import org.openelisglobal.sitebranding.valueholder.SiteBranding;
  * Task Reference: T014
  */
 public interface SiteBrandingService extends BaseObjectService<SiteBranding, String> {
-    
+
     /**
-     * Get the current branding configuration
-     * Creates a default record if none exists
+     * Get the current branding configuration Creates a default record if none
+     * exists
      * 
      * @return SiteBranding entity with current or default values
      */
     SiteBranding getBranding();
-    
+
     /**
      * Save branding configuration (insert or update)
      * 
@@ -26,15 +26,19 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Str
      * @return Saved SiteBranding entity
      */
     SiteBranding saveBranding(SiteBranding branding);
-    
+
     /**
-     * Validate hex color code format
-     * Valid formats: #RRGGBB or #RGB (case insensitive)
-     * 
-     * @param color Hex color code to validate
-     * @return true if valid, false otherwise
+     * Validate color value format. Accepts any non-empty string since CSS color
+     * formats include hex codes, named colors (e.g., "rebeccapurple"), rgb(),
+     * hsl(), and other formats. CSS will handle invalid colors gracefully by
+     * ignoring them.
+     *
+     * @param color CSS color value to validate
+     * @return true if non-empty, false otherwise
+     * @deprecated Validation is now permissive; this method returns true for any
+     *             non-empty string
      */
-    boolean validateHexColor(String color);
+    boolean validateColor(String color);
 
     /**
      * Validate logo file format and size
@@ -71,11 +75,10 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Str
     void removeLogo(LogoType type) throws IOException;
 
     /**
-     * Reset all branding to default values
-     * Deletes all logo files and resets colors to defaults
+     * Reset all branding to default values Deletes all logo files and resets colors
+     * to defaults
      * 
      * @throws IOException if files cannot be deleted
      */
     void resetToDefaults() throws IOException;
 }
-

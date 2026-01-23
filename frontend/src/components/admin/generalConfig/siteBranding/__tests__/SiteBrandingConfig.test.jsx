@@ -1,19 +1,19 @@
 /**
  * Unit tests for SiteBrandingConfig component
- * 
+ *
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md
  * - Jest Best Practices: .specify/guides/jest-best-practices.md
  * - Template: Jest Component Test
- * 
+ *
  * TDD Workflow (MANDATORY for complex logic):
  * - RED: Write failing test first (defines expected behavior)
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
- * 
+ *
  * SDD Checkpoint: After Phase 3 (Frontend), all unit tests MUST pass
  * Test Coverage Goal: >70% (measured via Jest)
- * 
+ *
  * Task Reference: T019
  */
 
@@ -31,11 +31,7 @@ jest.mock("../../../../components/utils/Utils", () => ({
 import React from "react";
 
 // 2. Testing Library
-import {
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";
@@ -65,7 +61,10 @@ jest.mock("react-router-dom", () => ({
 import SiteBrandingConfig from "../SiteBrandingConfig";
 
 // 8. Utilities
-import { getFromOpenElisServer, postToOpenElisServer } from "../../../../components/utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+} from "../../../../components/utils/Utils";
 
 // 9. Messages/translations
 import messages from "../../../../languages/en.json";
@@ -79,7 +78,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 
@@ -149,7 +148,7 @@ describe("SiteBrandingConfig", () => {
       // Check that color inputs contain the values (implementation dependent)
       expect(getFromOpenElisServer).toHaveBeenCalledWith(
         expect.stringContaining("/rest/site-branding"),
-        expect.any(Function)
+        expect.any(Function),
       );
     });
   });
@@ -298,9 +297,8 @@ describe("SiteBrandingConfig", () => {
 
     // Assert: No API call should be made (cancel doesn't save)
     expect(postToOpenElisServer).not.toHaveBeenCalled();
-    
+
     // Form should be reset to original values
     // This test may need adjustment based on actual component implementation
   });
 });
-

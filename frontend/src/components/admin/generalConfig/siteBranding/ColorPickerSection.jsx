@@ -1,8 +1,9 @@
 /**
  * Color Picker Section Component
- * 
- * Handles color selection with color picker and hex input
- * 
+ *
+ * Handles color selection with color picker and text input.
+ * Accepts any valid CSS color format (hex, named colors, rgb(), hsl(), etc.)
+ *
  * Task Reference: T051
  */
 
@@ -16,46 +17,38 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 
-function ColorPickerSection({ 
-  label, 
+function ColorPickerSection({
+  label,
   description,
-  value, 
+  value,
   onChange,
   helperText,
 }) {
   const intl = useIntl();
-  const [hexValue, setHexValue] = useState(value || "#1d4ed8");
+  const [colorValue, setColorValue] = useState(value || "#1d4ed8");
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    setHexValue(value || "#1d4ed8");
+    setColorValue(value || "#1d4ed8");
   }, [value]);
-
-  const validateHexColor = (hex) => {
-    const hexPattern = /^#[0-9A-Fa-f]{3,6}$/;
-    return hexPattern.test(hex);
-  };
 
   const handleColorPickerChange = (event) => {
     const newColor = event.target.value;
-    setHexValue(newColor);
+    setColorValue(newColor);
     setError(null);
     if (onChange) {
       onChange(newColor);
     }
   };
 
-  const handleHexInputChange = (event) => {
-    const newHex = event.target.value;
-    setHexValue(newHex);
-
-    if (newHex && !validateHexColor(newHex)) {
-      setError(intl.formatMessage({ id: "site.branding.color.format.error" }));
-    } else {
-      setError(null);
-      if (onChange && validateHexColor(newHex)) {
-        onChange(newHex);
-      }
+  const handleColorInputChange = (event) => {
+    // Accept any CSS color format - validation happens via the preview square.
+    // Named colors (e.g., "rebeccapurple"), rgb(), hsl(), etc. are all valid.
+    const newColor = event.target.value;
+    setColorValue(newColor);
+    setError(null);
+    if (onChange && newColor) {
+      onChange(newColor);
     }
   };
 
@@ -75,24 +68,31 @@ function ColorPickerSection({
             />
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              marginTop: "1rem",
+            }}
+          >
             {/* Color Preview */}
             <div
               data-testid="color-preview"
               style={{
                 width: "40px",
                 height: "40px",
-                backgroundColor: hexValue,
+                backgroundColor: colorValue,
                 border: "1px solid #ccc",
                 borderRadius: "4px",
               }}
-              aria-label={`Color preview: ${hexValue}`}
+              aria-label={`Color preview: ${colorValue}`}
             />
 
             {/* HTML5 Color Picker */}
             <input
               type="color"
-              value={hexValue}
+              value={colorValue}
               onChange={handleColorPickerChange}
               style={{
                 width: "60px",
@@ -104,16 +104,25 @@ function ColorPickerSection({
               aria-label={label}
             />
 
-            {/* Hex Input */}
+            {/* Color Input */}
             <TextInput
-              id={`${label.toLowerCase().replace(/\s+/g, "-")}-hex`}
-              labelText={intl.formatMessage({ id: "site.branding.color.hex.label" })}
-              value={hexValue}
-              onChange={handleHexInputChange}
-              placeholder="#RRGGBB"
+              id={`${label.toLowerCase().replace(/\s+/g, "-")}-color`}
+              labelText={intl.formatMessage({
+                id: "site.branding.color.hex.label",
+              })}
+              value={colorValue}
+              onChange={handleColorInputChange}
+              placeholder="#1d4ed8 or blue"
               invalid={!!error}
               invalidText={error}
-              helperText={helperText || intl.formatMessage({ id: "site.branding.colorPicker.helperText", defaultMessage: "Enter a hex color code (e.g., #1d4ed8)" })}
+              helperText={
+                helperText ||
+                intl.formatMessage({
+                  id: "site.branding.colorPicker.helperText",
+                  defaultMessage:
+                    "Enter any CSS color (e.g., #1d4ed8, blue, rgb(29, 78, 216))",
+                })
+              }
               style={{ flex: 1, maxWidth: "200px" }}
             />
           </div>
@@ -124,4 +133,3 @@ function ColorPickerSection({
 }
 
 export default ColorPickerSection;
-

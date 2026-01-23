@@ -16,15 +16,13 @@ import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -69,22 +67,26 @@ public class SiteBrandingRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/site-branding - Get current branding configuration
-     * Returns default values if no custom branding is configured
+     * GET /rest/site-branding - Get current branding configuration Returns default
+     * values if no custom branding is configured.
+     *
+     * No authentication required - branding must be visible to all users including
+     * the login page.
      */
-    @GetMapping(value = {"/", ""})
-    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping(value = { "/", "" })
     public ResponseEntity<SiteBrandingForm> getBranding() {
         logger.debug("GET /rest/site-branding/ - Request received");
         try {
             SiteBranding branding = siteBrandingService.getBranding();
-            logger.debug("Retrieved branding: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                    branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(), 
+            logger.debug(
+                    "Retrieved branding: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                    branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(),
                     branding.getAccentColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
             SiteBrandingForm form = entityToForm(branding);
-            logger.debug("Returning branding form: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}, headerLogoUrl={}, loginLogoUrl={}, faviconUrl={}",
+            logger.debug(
+                    "Returning branding form: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}, headerLogoUrl={}, loginLogoUrl={}, faviconUrl={}",
                     form.getId(), form.getPrimaryColor(), form.getSecondaryColor(), form.getAccentColor(),
-                    form.getColorMode(), form.getUseHeaderLogoForLogin(), form.getHeaderLogoUrl(), 
+                    form.getColorMode(), form.getUseHeaderLogoForLogin(), form.getHeaderLogoUrl(),
                     form.getLoginLogoUrl(), form.getFaviconUrl());
             return ResponseEntity.ok(form);
         } catch (Exception e) {
@@ -96,21 +98,23 @@ public class SiteBrandingRestController extends BaseRestController {
     /**
      * PUT /rest/site-branding - Update branding configuration
      */
-    @PutMapping(value = {"/", ""})
+    @PutMapping(value = { "/", "" })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateBranding(@Valid @RequestBody SiteBrandingForm form, HttpServletRequest request) {
         logger.info("PUT /rest/site-branding/ - Update request received");
-        logger.debug("Incoming form data: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                form.getId(), form.getPrimaryColor(), form.getSecondaryColor(), 
-                form.getAccentColor(), form.getColorMode(), form.getUseHeaderLogoForLogin());
-        
+        logger.debug(
+                "Incoming form data: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                form.getId(), form.getPrimaryColor(), form.getSecondaryColor(), form.getAccentColor(),
+                form.getColorMode(), form.getUseHeaderLogoForLogin());
+
         try {
             // Get existing branding or create new
             SiteBranding branding = siteBrandingService.getBranding();
-            logger.debug("Existing branding before update: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+            logger.debug(
+                    "Existing branding before update: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
                     branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(),
                     branding.getAccentColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
-            
+
             // Update fields from form (only if not null and not empty)
             boolean changed = false;
             if (form.getPrimaryColor() != null && !form.getPrimaryColor().trim().isEmpty()) {
@@ -148,7 +152,8 @@ public class SiteBrandingRestController extends BaseRestController {
             if (form.getUseHeaderLogoForLogin() != null) {
                 Boolean newValue = form.getUseHeaderLogoForLogin();
                 if (!newValue.equals(branding.getUseHeaderLogoForLogin())) {
-                    logger.debug("Updating useHeaderLogoForLogin: {} -> {}", branding.getUseHeaderLogoForLogin(), newValue);
+                    logger.debug("Updating useHeaderLogoForLogin: {} -> {}", branding.getUseHeaderLogoForLogin(),
+                            newValue);
                     branding.setUseHeaderLogoForLogin(newValue);
                     changed = true;
                 }
@@ -168,12 +173,14 @@ public class SiteBrandingRestController extends BaseRestController {
             // Save branding
             logger.debug("Calling siteBrandingService.saveBranding() with branding id={}", branding.getId());
             SiteBranding saved = siteBrandingService.saveBranding(branding);
-            logger.info("Branding saved successfully: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                    saved.getId(), saved.getPrimaryColor(), saved.getSecondaryColor(),
-                    saved.getAccentColor(), saved.getColorMode(), saved.getUseHeaderLogoForLogin());
-            
+            logger.info(
+                    "Branding saved successfully: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                    saved.getId(), saved.getPrimaryColor(), saved.getSecondaryColor(), saved.getAccentColor(),
+                    saved.getColorMode(), saved.getUseHeaderLogoForLogin());
+
             SiteBrandingForm response = entityToForm(saved);
-            logger.debug("Returning response: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+            logger.debug(
+                    "Returning response: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
                     response.getId(), response.getPrimaryColor(), response.getSecondaryColor(),
                     response.getAccentColor(), response.getColorMode(), response.getUseHeaderLogoForLogin());
             return ResponseEntity.ok(response);
@@ -204,30 +211,27 @@ public class SiteBrandingRestController extends BaseRestController {
         form.setSecondaryColor(branding.getSecondaryColor());
         form.setAccentColor(branding.getAccentColor());
         form.setColorMode(branding.getColorMode());
-        
+
         if (branding.getLastupdated() != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
             form.setLastModified(sdf.format(branding.getLastupdated()));
         }
         form.setLastModifiedBy(branding.getSysUserId());
-        
+
         return form;
     }
 
     /**
-     * POST /rest/site-branding/logo/{type} - Upload logo file
-     * Task Reference: T031
+     * POST /rest/site-branding/logo/{type} - Upload logo file Task Reference: T031
      */
     @PostMapping(value = "/logo/{type}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> uploadLogo(
-            @PathVariable String type,
-            @RequestParam("file") MultipartFile file,
+    public ResponseEntity<?> uploadLogo(@PathVariable String type, @RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
         logger.info("POST /rest/site-branding/logo/{} - Logo upload request received", type);
-        logger.debug("File details: name={}, size={} bytes, contentType={}", 
-                file.getOriginalFilename(), file.getSize(), file.getContentType());
-        
+        logger.debug("File details: name={}, size={} bytes, contentType={}", file.getOriginalFilename(), file.getSize(),
+                file.getContentType());
+
         try {
             // Validate logo type
             LogoType logoType;
@@ -243,8 +247,8 @@ public class SiteBrandingRestController extends BaseRestController {
 
             // Validate file
             if (!siteBrandingService.validateLogoFile(file)) {
-                logger.warn("File validation failed: name={}, size={}, contentType={}", 
-                        file.getOriginalFilename(), file.getSize(), file.getContentType());
+                logger.warn("File validation failed: name={}, size={}, contentType={}", file.getOriginalFilename(),
+                        file.getSize(), file.getContentType());
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Invalid file: format must be PNG, SVG, or JPG/JPEG, size must be <= 2MB");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -262,8 +266,8 @@ public class SiteBrandingRestController extends BaseRestController {
             // Upload logo
             logger.debug("Calling siteBrandingService.uploadLogo() for type: {}", logoType);
             String filePath = siteBrandingService.uploadLogo(file, logoType);
-            logger.info("Logo uploaded successfully: type={}, filePath={}, fileName={}, fileSize={}", 
-                    logoType, filePath, file.getOriginalFilename(), file.getSize());
+            logger.info("Logo uploaded successfully: type={}, filePath={}, fileName={}, fileSize={}", logoType,
+                    filePath, file.getOriginalFilename(), file.getSize());
 
             // Return response with logo URL
             Map<String, Object> response = new HashMap<>();
@@ -291,8 +295,7 @@ public class SiteBrandingRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/site-branding/logo/{type} - Serve logo file
-     * Task Reference: T034
+     * GET /rest/site-branding/logo/{type} - Serve logo file Task Reference: T034
      */
     @GetMapping("/logo/{type}")
     public ResponseEntity<Resource> getLogo(@PathVariable String type) {
@@ -323,14 +326,13 @@ public class SiteBrandingRestController extends BaseRestController {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(contentType));
             headers.setContentDispositionFormData("inline", resource.getFilename());
-            headers.setCacheControl("public, max-age=300"); // Cache for 5 minutes (reduced from 1 hour for faster updates)
+            headers.setCacheControl("public, max-age=300"); // Cache for 5 minutes (reduced from 1 hour for faster
+                                                            // updates)
             // Use file modification time for ETag to detect changes
             long lastModified = java.nio.file.Files.getLastModifiedTime(java.nio.file.Paths.get(logoPath)).toMillis();
             headers.setETag("\"" + lastModified + "\""); // ETag based on file modification time
 
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(resource);
+            return ResponseEntity.ok().headers(headers).body(resource);
         } catch (Exception e) {
             logger.error("Error serving logo", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -342,14 +344,14 @@ public class SiteBrandingRestController extends BaseRestController {
      */
     private String getLogoPath(SiteBranding branding, LogoType type) {
         switch (type) {
-            case HEADER:
-                return branding.getHeaderLogoPath();
-            case LOGIN:
-                return branding.getLoginLogoPath();
-            case FAVICON:
-                return branding.getFaviconPath();
-            default:
-                return null;
+        case HEADER:
+            return branding.getHeaderLogoPath();
+        case LOGIN:
+            return branding.getLoginLogoPath();
+        case FAVICON:
+            return branding.getFaviconPath();
+        default:
+            return null;
         }
     }
 
@@ -371,14 +373,14 @@ public class SiteBrandingRestController extends BaseRestController {
     }
 
     /**
-     * DELETE /rest/site-branding/logo/{type} - Remove logo file
-     * Task Reference: T062
+     * DELETE /rest/site-branding/logo/{type} - Remove logo file Task Reference:
+     * T062
      */
     @DeleteMapping("/logo/{type}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> removeLogo(@PathVariable String type, HttpServletRequest request) {
         logger.info("DELETE /rest/site-branding/logo/{} - Logo removal request received", type);
-        
+
         try {
             // Validate logo type
             LogoType logoType;
@@ -398,7 +400,7 @@ public class SiteBrandingRestController extends BaseRestController {
             SiteBranding branding = siteBrandingService.getBranding();
             logger.debug("Current branding before removal: headerLogoPath={}, loginLogoPath={}, faviconPath={}",
                     branding.getHeaderLogoPath(), branding.getLoginLogoPath(), branding.getFaviconPath());
-            
+
             if (sysUserId != null) {
                 branding.setSysUserId(sysUserId);
             }
@@ -432,8 +434,8 @@ public class SiteBrandingRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/site-branding/reset - Reset all branding to defaults
-     * Task Reference: T067
+     * POST /rest/site-branding/reset - Reset all branding to defaults Task
+     * Reference: T067
      */
     @PostMapping("/reset")
     @PreAuthorize("hasRole('ADMIN')")
@@ -471,4 +473,3 @@ public class SiteBrandingRestController extends BaseRestController {
         }
     }
 }
-

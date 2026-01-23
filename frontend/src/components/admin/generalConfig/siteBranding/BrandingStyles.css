@@ -71,8 +71,13 @@ button.cds--btn--secondary:hover {
   color: var(--cds-interactive-02, #64748b) !important;
 }
 
-.cds--side-nav__item:not(.cds--side-nav__item--active) .cds--side-nav__link:hover {
-  background-color: color-mix(in srgb, var(--cds-interactive-02, #64748b) 10%, transparent) !important;
+.cds--side-nav__item:not(.cds--side-nav__item--active)
+  .cds--side-nav__link:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--cds-interactive-02, #64748b) 10%,
+    transparent
+  ) !important;
 }
 
 /* Table borders and dividers */
@@ -152,4 +157,3 @@ button.cds--btn--secondary:hover {
 [style*="--site-branding-accent"] {
   color: var(--site-branding-accent) !important;
 }
-

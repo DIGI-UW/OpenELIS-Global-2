@@ -1,6 +1,5 @@
 package org.openelisglobal.sitebranding.form;
 
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -20,16 +19,13 @@ public class SiteBrandingForm {
 
     private String faviconUrl;
 
-    @Pattern(regexp = "^#[0-9A-Fa-f]{3,6}$", message = "Primary color must be a valid hex color code")
-    @Size(max = 7, message = "Primary color must not exceed 7 characters")
+    @Size(max = 50, message = "Primary color must not exceed 50 characters")
     private String primaryColor;
 
-    @Pattern(regexp = "^#[0-9A-Fa-f]{3,6}$", message = "Secondary color must be a valid hex color code")
-    @Size(max = 7, message = "Secondary color must not exceed 7 characters")
+    @Size(max = 50, message = "Secondary color must not exceed 50 characters")
     private String secondaryColor;
 
-    @Pattern(regexp = "^#[0-9A-Fa-f]{3,6}$", message = "Accent color must be a valid hex color code")
-    @Size(max = 7, message = "Accent color must not exceed 7 characters")
+    @Size(max = 50, message = "Accent color must not exceed 50 characters")
     private String accentColor;
 
     @Size(max = 10, message = "Color mode must not exceed 10 characters")
@@ -129,4 +125,3 @@ public class SiteBrandingForm {
         this.lastModifiedBy = lastModifiedBy;
     }
 }
-
