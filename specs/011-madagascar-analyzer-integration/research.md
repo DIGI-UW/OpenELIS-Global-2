@@ -504,6 +504,213 @@ CREATE TABLE instrument_location_history (
 
 ---
 
+## 11. Analyzer Template Schema (Multi-Protocol Simulator)
+
+### Purpose
+
+The template schema defines a standardized format for analyzer message
+configuration in the multi-protocol simulator (astm-mock-server). Each template
+describes how to generate realistic messages for a specific analyzer type.
+
+### Template Schema Definition
+
+**Location**: `tools/astm-mock-server/templates/schema.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Analyzer Message Template",
+  "type": "object",
+  "required": ["analyzer", "protocol", "identification", "fields"],
+  "properties": {
+    "analyzer": {
+      "type": "object",
+      "description": "Analyzer identification metadata",
+      "required": ["name", "model", "manufacturer"],
+      "properties": {
+        "name": { "type": "string", "description": "Display name" },
+        "model": { "type": "string", "description": "Model number" },
+        "manufacturer": { "type": "string" }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "description": "Communication protocol configuration",
+      "required": ["type", "version", "transport"],
+      "properties": {
+        "type": { "enum": ["ASTM", "HL7", "RS232", "FILE"] },
+        "version": { "type": "string" },
+        "transport": { "enum": ["TCP", "HTTP", "SERIAL", "FILE"] }
+      }
+    },
+    "identification": {
+      "type": "object",
+      "description": "How OpenELIS identifies this analyzer",
+      "properties": {
+        "msh_sender": { "type": "string", "description": "HL7 MSH-3 field" },
+        "astm_header": { "type": "string", "description": "ASTM H-segment pattern" },
+        "ip_pattern": { "type": "string", "description": "IP address/range" },
+        "file_pattern": { "type": "string", "description": "Glob pattern for files" }
+      }
+    },
+    "fields": {
+      "type": "array",
+      "description": "Test fields supported by this analyzer",
+      "items": {
+        "type": "object",
+        "required": ["name", "code", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "code": { "type": "string", "description": "LOINC or analyzer code" },
+          "type": { "enum": ["NUMERIC", "QUALITATIVE", "TEXT"] },
+          "unit": { "type": "string" },
+          "normalRange": { "type": "string" },
+          "possibleValues": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "serial_config": {
+      "type": "object",
+      "description": "RS232 configuration (if protocol.transport=SERIAL)",
+      "properties": {
+        "baud_rate": { "type": "integer", "default": 9600 },
+        "data_bits": { "type": "integer", "default": 8 },
+        "parity": { "enum": ["NONE", "EVEN", "ODD"], "default": "NONE" },
+        "stop_bits": { "type": "number", "default": 1 }
+      }
+    },
+    "file_config": {
+      "type": "object",
+      "description": "File format configuration (if protocol.transport=FILE)",
+      "properties": {
+        "format": { "enum": ["CSV", "TSV", "TXT", "XLS"] },
+        "delimiter": { "type": "string", "default": "," },
+        "has_header": { "type": "boolean", "default": true },
+        "column_mapping": { "type": "object" }
+      }
+    }
+  }
+}
+```
+
+### Example Template: Mindray BC-5380
+
+**Location**: `tools/astm-mock-server/templates/mindray_bc5380.json`
+
+```json
+{
+  "analyzer": {
+    "name": "Mindray BC-5380",
+    "model": "BC-5380",
+    "manufacturer": "Mindray"
+  },
+  "protocol": {
+    "type": "HL7",
+    "version": "2.5",
+    "transport": "TCP"
+  },
+  "identification": {
+    "msh_sender": "MINDRAY",
+    "ip_pattern": "192.168.1.*"
+  },
+  "fields": [
+    { "name": "WBC", "code": "6690-2", "type": "NUMERIC", "unit": "10^3/uL", "normalRange": "4.5-11.0" },
+    { "name": "RBC", "code": "789-8", "type": "NUMERIC", "unit": "10^6/uL", "normalRange": "4.5-5.5" },
+    { "name": "HGB", "code": "718-7", "type": "NUMERIC", "unit": "g/dL", "normalRange": "13.5-17.5" },
+    { "name": "HCT", "code": "4544-3", "type": "NUMERIC", "unit": "%", "normalRange": "40-54" },
+    { "name": "PLT", "code": "777-3", "type": "NUMERIC", "unit": "10^3/uL", "normalRange": "150-400" }
+  ]
+}
+```
+
+### Example Template: Horiba Pentra 60 (RS232)
+
+**Location**: `tools/astm-mock-server/templates/horiba_pentra60.json`
+
+```json
+{
+  "analyzer": {
+    "name": "Horiba Pentra 60",
+    "model": "Pentra 60",
+    "manufacturer": "Horiba ABX"
+  },
+  "protocol": {
+    "type": "ASTM",
+    "version": "LIS2-A2",
+    "transport": "SERIAL"
+  },
+  "identification": {
+    "astm_header": "PENTRA"
+  },
+  "serial_config": {
+    "baud_rate": 9600,
+    "data_bits": 8,
+    "parity": "NONE",
+    "stop_bits": 1
+  },
+  "fields": [
+    { "name": "WBC", "code": "WBC", "type": "NUMERIC", "unit": "10^3/uL", "normalRange": "4.0-10.0" },
+    { "name": "RBC", "code": "RBC", "type": "NUMERIC", "unit": "10^6/uL", "normalRange": "4.0-5.5" },
+    { "name": "HGB", "code": "HGB", "type": "NUMERIC", "unit": "g/dL", "normalRange": "12.0-17.5" }
+  ]
+}
+```
+
+### Example Template: QuantStudio 7 Flex (File-based)
+
+**Location**: `tools/astm-mock-server/templates/quantstudio7.json`
+
+```json
+{
+  "analyzer": {
+    "name": "QuantStudio 7 Flex",
+    "model": "7 Flex",
+    "manufacturer": "Thermo Fisher"
+  },
+  "protocol": {
+    "type": "FILE",
+    "version": "1.0",
+    "transport": "FILE"
+  },
+  "identification": {
+    "file_pattern": "QS7_*.csv"
+  },
+  "file_config": {
+    "format": "CSV",
+    "delimiter": "\t",
+    "has_header": true,
+    "column_mapping": {
+      "sample_id": "Sample Name",
+      "test_code": "Target",
+      "result": "Ct"
+    }
+  },
+  "fields": [
+    { "name": "SARS-CoV-2", "code": "SARS2", "type": "NUMERIC", "unit": "Ct" },
+    { "name": "Internal Control", "code": "IC", "type": "NUMERIC", "unit": "Ct" }
+  ]
+}
+```
+
+### Template File Inventory (12 Analyzers)
+
+| Template File | Analyzer | Protocol | Milestone |
+|---------------|----------|----------|-----------|
+| `mindray_bc5380.json` | Mindray BC-5380/BC2000 | HL7 | M4 |
+| `mindray_bs360e.json` | Mindray BS-360E | HL7 | M4 |
+| `mindray_ba88a.json` | Mindray BA-88A | RS232/ASTM | M4 |
+| `sysmex_xn.json` | Sysmex XN Series | HL7 | M4 |
+| `genexpert.json` | GeneXpert | ASTM | M4 |
+| `abbott_architect_hl7.json` | Abbott Architect | HL7 | M4 |
+| `abbott_architect_serial.json` | Abbott Architect | RS232 | M16 |
+| `stago_start4.json` | Stago STart 4 | ASTM/HL7 | M4 |
+| `horiba_pentra60.json` | Horiba Pentra 60 | RS232/ASTM | M4 |
+| `horiba_micros60.json` | Horiba Micros 60 | RS232/ASTM | M4 |
+| `quantstudio7.json` | QuantStudio 7 Flex | File/CSV | M4 |
+| `hain_fluorocycler.json` | Hain FluoroCycler XT | File/CSV | M4 |
+
+---
+
 ## Summary of Key Decisions
 
 | Area               | Decision                         | Rationale                              |
@@ -513,10 +720,25 @@ CREATE TABLE instrument_location_history (
 | File Watching      | WatchService + Commons CSV       | Native OS support, reliable parsing    |
 | Order Export       | Manual trigger, async processing | Per clarification, deadline scope      |
 | Plugin Integration | Wrapper pattern                  | Backward compatible, non-invasive      |
-| Simulator          | Expand astm-mock-server          | Reuse existing, add protocols          |
+| Simulator          | Expand astm-mock-server (Python) | Multi-protocol support, CI/CD ready    |
 | Location Hierarchy | Reuse Organization/Location      | Per clarification, simpler integration |
+| Template Schema    | JSON-based analyzer templates    | Standardized config for all 12 analyzers |
+
+### Tool Architecture Clarification
+
+**CRITICAL**: Two separate tools exist with different purposes:
+
+| Tool | Purpose | Language |
+|------|---------|----------|
+| **astm-http-bridge** | Production ASTM adapter (between physical analyzers and OpenELIS) | Java |
+| **astm-mock-server** | Testing simulator (simulates analyzers for development/CI) | Python |
+
+Feature 011 expands **astm-mock-server** to support multiple protocols (HL7, RS232,
+File) for comprehensive testing. The production **astm-http-bridge** remains
+unchanged.
 
 ---
 
-**Research Completed**: 2026-01-22 **All NEEDS CLARIFICATION items resolved**:
-Yes (via spec clarification session)
+**Research Completed**: 2026-01-22 | **Updated**: 2026-01-23 (added template schema,
+tool architecture clarification)
+**All NEEDS CLARIFICATION items resolved**: Yes (via spec clarification session)

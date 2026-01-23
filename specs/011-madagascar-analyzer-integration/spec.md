@@ -424,6 +424,23 @@ the simulated messages.
   11. Sysmex XN Series (HL7 over Network)
   12. Abbott Architect (HL7 over RS232/Network)
 
+#### Analyzer/Protocol/Simulator Coverage Matrix
+
+| Analyzer | Protocol | Adapter (M1-M3) | Simulator Template (M4/M16) | Plugin Status |
+|----------|----------|-----------------|----------------------------|---------------|
+| Mindray BC-5380 | HL7 | M1 (HL7Adapter) | `mindray_bc5380.json` | ✅ Existing (Mindray plugin) |
+| Mindray BC2000 | HL7 | M1 (HL7Adapter) | Shares BC-5380 template | ✅ Existing (Mindray plugin) |
+| Mindray BS-360E | HL7 | M1 (HL7Adapter) | `mindray_bs360e.json` | ✅ Existing (Mindray plugin) |
+| Mindray BA-88A | RS232/ASTM | M2 (SerialAdapter) | `mindray_ba88a.json` | ✅ Existing (Mindray plugin) |
+| Sysmex XN Series | HL7 | M1 (HL7Adapter) | `sysmex_xn.json` | ✅ Existing (SysmexXN-L plugin) |
+| GeneXpert | ASTM/HL7/File | Existing + M1 + M3 | `genexpert.json` | ✅ Existing (3 variants) |
+| Abbott Architect | HL7/RS232 | M1 or M2 | `abbott_architect_hl7.json`, `abbott_architect_serial.json` | ❌ Build new (M12) |
+| Stago STart 4 | ASTM/HL7 | M1 or Existing | `stago_start4.json` | ❌ Build new (M11) |
+| Horiba Pentra 60 | RS232/ASTM | M2 (SerialAdapter) | `horiba_pentra60.json` | ❌ Build new (M9) |
+| Horiba Micros 60 | RS232/ASTM | M2 (SerialAdapter) | `horiba_micros60.json` | ❌ Build new (M10) |
+| QuantStudio 7 Flex | File | M3 (FileAdapter) | `quantstudio7.json` | ⚠️ Adapt QuantStudio3 (M8) |
+| Hain FluoroCycler XT | File | M3 (FileAdapter) | `hain_fluorocycler.json` | ❌ Build new (M13) |
+
 - **FR-007**: System MUST integrate with existing analyzer plugins (Mindray,
   SysmexXN-L, GeneXpertHL7, GeneXpertFile, QuantStudio3) to leverage proven
   implementations.

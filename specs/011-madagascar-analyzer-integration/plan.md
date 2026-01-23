@@ -102,7 +102,7 @@ of P1 analyzers**, and **easy wins**. This plan follows a layered approach:
 | **M1**      | m1-hl7-adapter          | HL7 v2.x protocol adapter (parser + generator)             | US-1         | Unit tests: ORU^R01 parsing, ORM^O01 generation; Integration: HL7 message round-trip   | -             | 3         |
 | **[P] M2**  | m2-serial-adapter       | RS232 serial communication adapter                         | US-3         | Unit tests: serial config, connection lifecycle; Integration: virtual serial port test | -             | 3         |
 | **[P] M3**  | m3-file-adapter         | File-based import adapter (directory watcher)              | US-4         | Unit tests: CSV parsing, file detection; Integration: file import round-trip           | -             | 2         |
-| **[P] M4**  | m4-simulator-hl7        | Expand astm-mock-server with HL7 support                   | US-9         | Simulator generates HL7 messages; OpenELIS receives correctly                          | -             | 2         |
+| **[P] M4**  | m4-simulator-multiprotocol | Multi-protocol simulator (HL7, RS232, File)             | US-9         | Simulator supports all protocols; 80%+ analyzer templates; CI/CD integration           | -             | 3         |
 | **M5**      | m5-mindray-validation   | Validate Mindray plugin (BC-5380, BS-360E, BC2000, BA-88A) | US-1, US-6   | 4 Mindray analyzers receive results via HL7/RS232                                      | M1, M2        | 3         |
 | **M6**      | m6-sysmex-validation    | Validate SysmexXN-L plugin                                 | US-1, US-6   | Sysmex XN Series receives results via HL7                                              | M1            | 1         |
 | **M7**      | m7-genexpert-validation | Validate GeneXpert plugins (3 variants)                    | US-6         | GeneXpert results via ASTM/HL7/File                                                    | M1, M3        | 2         |
@@ -114,7 +114,7 @@ of P1 analyzers**, and **easy wins**. This plan follows a layered approach:
 | **[P] M13** | m13-plugin-fluorocycler | Build FluoroCycler XT plugin (File)                        | US-4         | FluoroCycler CSV import works                                                          | M3            | 2         |
 | **M14**     | m14-order-export        | Order export workflow (manual trigger)                     | US-2         | Orders export to analyzers; status tracking works                                      | M5-M13        | 4         |
 | **M15**     | m15-metadata-form       | Enhanced instrument metadata form                          | US-5         | Metadata form captures all fields; location history works                              | M14           | 3         |
-| **M16**     | m16-simulator-complete  | Complete multi-protocol simulator                          | US-9         | Simulator supports all 12 analyzers; CI/CD integration                                 | M4            | 3         |
+| **M16**     | m16-simulator-advanced  | Advanced simulator (QC, errors, stress testing)            | US-9         | QC results, error conditions, concurrent testing; CI/CD scenarios                      | M4            | 2         |
 | **M17**     | m17-e2e-validation      | E2E testing and Madagascar lab validation                  | All          | All 12 analyzers bidirectional; E2E tests pass                                         | M14, M15, M16 | 5         |
 
 **Total Estimated Duration**: 6 weeks (with parallel development on M2/M3/M4 and
@@ -201,6 +201,70 @@ graph TD
 **Parallel Development Note**: Milestones M2, M3, M4 can proceed simultaneously
 with M1. Milestones M9-M13 can proceed in parallel once their dependencies are
 met.
+
+## Tool Architecture (Critical Distinction)
+
+### Production vs Testing Tools
+
+**IMPORTANT**: This feature involves TWO separate tools with different purposes:
+
+| Tool | Location | Language | Purpose | When Used | Who Uses It |
+|------|----------|----------|---------|-----------|-------------|
+| **astm-http-bridge** | `tools/astm-http-bridge/` | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs |
+| **astm-mock-server** | `tools/astm-mock-server/` | Python 3 | **TESTING** simulator | Development/CI | Developers without physical hardware |
+
+### astm-http-bridge (Production Adapter)
+
+```
+Physical Analyzer ←→ [astm-http-bridge] ←→ OpenELIS
+     (ASTM)              (translator)        (HTTP)
+```
+
+**Current capabilities**:
+- Bidirectional ASTM ↔ HTTP translation
+- LIS01-A and E1381-95 protocol support
+- TCP socket listeners for ASTM messages
+- HTTP forwarding to OpenELIS `/api/analyzer/astm`
+- Health monitoring via Spring Boot Actuator
+
+**Feature 011 does NOT modify astm-http-bridge** - it remains the production ASTM adapter.
+
+### astm-mock-server (Testing Simulator)
+
+```
+[astm-mock-server] ──simulates──→ [OpenELIS Analyzer Import]
+     (simulator)                      (receives test data)
+```
+
+**Current capabilities** (pre-Feature 011):
+- ASTM LIS2-A2 protocol simulation only
+- 35 test fields across 4 analyzer types (Hematology, Chemistry, Immunology, Microbiology)
+- Push mode, API mode, and TCP server mode
+- `fields.json` configuration for test templates
+
+**Feature 011 expansion** (M4 + M16):
+- HL7 v2.x protocol simulation
+- RS232 virtual serial port simulation (via socat)
+- File-based result generation (CSV/TXT)
+- Analyzer-specific message templates for all 12 contract analyzers
+- HTTP API mode for CI/CD integration
+
+### Adapter Architecture (OpenELIS Core)
+
+New adapters (M1-M3) extend the existing `AnalyzerReader` hierarchy:
+
+```
+AnalyzerReader (abstract)
+├── AnalyzerLineReader     # Existing: File-based text import
+├── ASTMAnalyzerReader     # Existing: ASTM protocol (Feature 004)
+├── HL7AnalyzerReader      # NEW (M1): HL7 v2.x protocol
+├── SerialAnalyzerReader   # NEW (M2): RS232 serial protocol
+└── FileAnalyzerReader     # NEW (M3): Directory watching + CSV
+```
+
+All adapters output to the same `MappingAwareAnalyzerLineInserter` pipeline.
+
+---
 
 ## Project Structure
 
@@ -319,20 +383,24 @@ src/main/resources/liquibase/3.8.x.x/         # Version TBD
 ├── 004-file-import-configuration-table.xml
 └── 005-instrument-location-history-table.xml
 
-# Multi-Protocol Analyzer Simulator
+# Multi-Protocol Analyzer Simulator (Python)
 tools/astm-mock-server/
-├── src/
-│   ├── hl7/                                  # NEW: HL7 simulation
-│   │   ├── HL7MessageGenerator.java
-│   │   └── HL7Server.java
-│   ├── serial/                               # NEW: Virtual serial port
-│   │   └── VirtualSerialPort.java
-│   └── file/                                 # NEW: File generation
-│       └── CSVResultGenerator.java
-└── configs/
-    ├── mindray-bc5380.json                   # Analyzer-specific templates
-    ├── sysmex-xn.json
-    └── ...
+├── server.py                                 # Main server (existing, refactored)
+├── protocols/                                # NEW: Protocol abstraction layer
+│   ├── __init__.py                           # Package exports
+│   ├── base_handler.py                       # Abstract base class
+│   ├── astm_handler.py                       # Refactored ASTM handling
+│   ├── hl7_handler.py                        # NEW: HL7 v2.x simulation
+│   ├── serial_handler.py                     # NEW: Virtual serial (socat)
+│   └── file_handler.py                       # NEW: CSV/TXT generation
+├── templates/                                # NEW: Analyzer message templates
+│   ├── schema.json                           # Template schema definition
+│   ├── mindray_bc5380.json                   # Analyzer-specific templates
+│   ├── sysmex_xn.json
+│   ├── horiba_pentra60.json
+│   └── ... (12 total analyzer templates)
+├── fields.json                               # Existing: backward compatibility
+└── requirements.txt                          # Add: pyserial, hl7apy
 ```
 
 **Structure Decision**: Web application pattern with extended analyzer module.
@@ -522,22 +590,33 @@ MappingAwareAnalyzerLineInserter wrapper pattern.
 
 ---
 
-### M4: Simulator HL7 Support (2 days)
+### M4: Multi-Protocol Analyzer Simulator (3 days)
 
-**Scope**: Expand astm-mock-server to generate HL7 messages
+**Scope**: Expand astm-mock-server (Python) to support HL7, RS232, and file-based
+protocols, covering 80%+ of 12 contract analyzers
+
+**IMPORTANT**: This expands the Python **astm-mock-server** (testing simulator),
+NOT the Java astm-http-bridge (production adapter).
 
 **Deliverables**:
 
-- `HL7MessageGenerator.java` in simulator
-- `HL7Server.java` - TCP server for HL7 communication
-- Analyzer-specific message templates (Mindray, Sysmex)
+- Protocol abstraction layer (`protocols/base_handler.py`)
+- HL7 handler (`protocols/hl7_handler.py`)
+- RS232/Serial handler (`protocols/serial_handler.py`) with socat integration
+- File handler (`protocols/file_handler.py`)
+- Template schema (`templates/schema.json`)
+- Analyzer templates for 10+ analyzers (Mindray, Sysmex, Horiba, Abbott, etc.)
+- HTTP API endpoints for CI/CD integration
 
 **Acceptance Criteria**:
 
-1. Simulator generates valid HL7 ORU^R01 messages
-2. Messages received and processed correctly by OpenELIS
-3. Configurable analyzer type (template selection)
-4. HTTP API mode for CI/CD integration
+1. Protocol abstraction layer supports ASTM, HL7, RS232, File
+2. Simulator generates valid HL7 ORU^R01 messages
+3. Virtual serial port simulation works (Linux via socat)
+4. File-based result generation (CSV/TXT)
+5. Templates cover 80%+ of 12 contract analyzers
+6. HTTP API mode for CI/CD integration
+7. Backward compatibility with existing ASTM mode
 
 **Dependencies**: None (parallel with M1-M3)
 
@@ -709,27 +788,31 @@ MappingAwareAnalyzerLineInserter wrapper pattern.
 
 ---
 
-### M16: Complete Multi-Protocol Simulator (3 days)
+### M16: Advanced Simulator Features (2 days)
 
-**Scope**: Simulator supports all 12 analyzers + CI/CD integration
+**Scope**: Advanced simulation features for production-ready CI/CD testing
+
+**Note**: M4 established the multi-protocol foundation (HL7, RS232, File handlers
+and analyzer templates). M16 adds advanced features.
 
 **Deliverables**:
 
-- RS232 simulation via virtual serial ports (socat)
-- File generation for all file-based analyzers
-- Message templates for all 12 contract analyzers
-- HTTP API mode with test scenario endpoints
-- Docker integration for CI/CD
+- QC result generation templates
+- Error condition templates (malformed, timeout, duplicate)
+- Concurrent multi-analyzer support (5+ simultaneous)
+- Stress testing capability (1000+ messages)
+- Test scenario orchestration via HTTP API
+- GitHub Actions workflow integration
 
 **Acceptance Criteria**:
 
-1. Simulator supports ASTM, HL7, RS232, File protocols
-2. Templates for all 12 analyzers with realistic data
-3. QC results, patient results, error conditions
-4. CI/CD pipeline can trigger test scenarios via HTTP
-5. Concurrent multi-analyzer simulation works
+1. QC results generate correctly for all analyzer types
+2. Error conditions simulate malformed messages, timeouts, duplicates
+3. 5+ analyzers operate simultaneously without issues
+4. Stress testing with 1000+ messages succeeds
+5. CI/CD pipeline triggers test scenarios via HTTP
 
-**Dependencies**: M4 (HL7 simulator base)
+**Dependencies**: M4 (multi-protocol simulator base)
 
 ---
 
@@ -782,5 +865,7 @@ These will be planned as separate features after contract deadline is met.
 
 ---
 
-**Plan Created**: 2026-01-22 **Plan Author**: Claude Code with /speckit.plan
+**Plan Created**: 2026-01-22 | **Updated**: 2026-01-23 (remediation plan: tool
+architecture clarification, M4 multi-protocol expansion, M16 scope refinement)
+**Plan Author**: Claude Code with /speckit.plan
 **Next Step**: Run `/speckit.tasks` to generate task breakdown by milestone
