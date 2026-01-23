@@ -3,7 +3,7 @@ on:
   push:
     branches: [develop]
   pull_request:
-     branches: [develop, demo/madagascar]
+    # Run CI on PRs to any branch
   workflow_dispatch:
 
 jobs:
