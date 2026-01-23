@@ -11,8 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
@@ -825,38 +823,84 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     }
 
     private String extractMultiSelectJson(String input) {
-        // Pattern matches JSON objects like {"0":"860,1171"} or
-        // {"0":"860","1":"1171",... up to N keys}
-        Pattern pattern = Pattern
-                .compile("\\{\\s*(\"\\d+\"\\s*:\\s*\"[^\"]+\"\\s*(,\\s*\"\\d+\"\\s*:\\s*\"[^\"]+\")*)\\s*\\}");
-        Matcher matcher = pattern.matcher(input);
 
-        String oneKeyJson = null; // fallback if no multi-key JSON is found
+        String bestJson = null;
+        int maxKeyCount = 0;
 
-        while (matcher.find()) {
-            String json = matcher.group();
+        StringBuilder current = new StringBuilder();
+        boolean inObject = false;
+        int braceDepth = 0;
 
-            try {
-                JSONParser parser = new JSONParser();
-                JSONObject obj = (JSONObject) parser.parse(json);
+        for (int i = 0; i < input.length(); i++) {
+            char ch = input.charAt(i);
 
-                int keyCount = obj.size(); // count keys in this JSON
+            if (ch == '{') {
+                inObject = true;
+                braceDepth++;
+                current.setLength(0);
+            }
 
-                if (keyCount > 1) {
-                    // first JSON with more than 1 key
-                    return json;
-                } else if (keyCount == 1 && oneKeyJson == null) {
-                    // store first one-key JSON as fallback
-                    oneKeyJson = json;
+            if (inObject) {
+                current.append(ch);
+            }
+
+            if (ch == '}') {
+                braceDepth--;
+                if (braceDepth == 0) {
+                    inObject = false;
+
+                    String json = current.toString();
+                    int keyCount = countNumericKeys(json);
+
+                    if (keyCount > maxKeyCount) {
+                        maxKeyCount = keyCount;
+                        bestJson = json;
+                    }
                 }
-
-            } catch (ParseException e) {
-                // ignore invalid JSON
-                continue;
             }
         }
 
-        return oneKeyJson; // returns first single-key JSON if no multi-key JSON found
+        return bestJson;
+    }
+
+    private int countNumericKeys(String json) {
+        boolean insideQuotes = false;
+        StringBuilder key = new StringBuilder();
+        int count = 0;
+
+        for (int i = 0; i < json.length(); i++) {
+            char ch = json.charAt(i);
+
+            if (ch == '"') {
+                insideQuotes = !insideQuotes;
+
+                if (!insideQuotes) {
+                    // closing quote
+                    if (i + 1 < json.length() && json.charAt(i + 1) == ':') {
+                        if (isDigits(key.toString())) {
+                            count++;
+                        }
+                    }
+                    key.setLength(0);
+                }
+                continue;
+            }
+
+            if (insideQuotes) {
+                key.append(ch);
+            }
+        }
+        return count;
+    }
+
+    private boolean isDigits(String s) {
+        if (s.isEmpty())
+            return false;
+        for (char c : s.toCharArray()) {
+            if (!Character.isDigit(c))
+                return false;
+        }
+        return true;
     }
 
     private String findLogBookForward(String forward) {

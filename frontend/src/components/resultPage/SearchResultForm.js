@@ -38,7 +38,7 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
-import ResultMultiSelect from "../common/multSelect";
+import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 
 function ResultSearchPage() {
@@ -1188,7 +1188,6 @@ export function SearchResults(props) {
                 dictionaryValues={row.dictionaryResults}
                 value={row.multiSelectResultValues}
                 onChange={(e) => handleChange(e, row.id)}
-                maxLevels={5}
               />
             );
 

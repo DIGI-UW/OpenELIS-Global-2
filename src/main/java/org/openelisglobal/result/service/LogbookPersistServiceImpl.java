@@ -63,13 +63,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             noteService.insert(note);
         }
 
-        Analysis checkAnalysis = null;
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
             resultSet.result.setResultEvent(Event.PRELIMINARY_RESULT);
             resultSet.result.setFhirUuid(UUID.randomUUID());
             String resultId;
-
-            checkAnalysis = resultSet.result.getAnalysis();
 
             // Check if result already exists for this specific Analysis (not Sample+Test)
             // This allows different aliquots (SampleItems) of the same sample to have
