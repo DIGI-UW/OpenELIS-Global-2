@@ -63,7 +63,7 @@ Start up the OpenELIS Update Task in `System Administration` →
 ### Openmrs 3.x
 
 1.  Setup OpenRMS 3.x on top an instance of the Refference Application see
-    [more](https://wiki.openmrs.org/display/projects/3.x+Implementer+Documentation)
+    [more](https://openmrs.atlassian.net/wiki/spaces/projects/pages/26936930/O3+Implementer+Documentation+Set+Up+Configure+Deploy)
 
 2.  Load the Following Modules
     - [FHIR2 module](https://github.com/openmrs/openmrs-module-fhir2) version >=

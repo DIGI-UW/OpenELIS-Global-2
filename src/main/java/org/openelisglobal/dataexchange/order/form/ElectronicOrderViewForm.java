@@ -2,11 +2,13 @@ package org.openelisglobal.dataexchange.order.form;
 
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
+import org.openelisglobal.common.form.IPagingForm;
+import org.openelisglobal.common.paging.PagingBean;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
 import org.openelisglobal.organization.valueholder.Organization;
 
-public class ElectronicOrderViewForm extends BaseForm {
+public class ElectronicOrderViewForm extends BaseForm implements IPagingForm {
 
     public enum SearchType {
         IDENTIFIER, DATE_STATUS
@@ -50,16 +52,10 @@ public class ElectronicOrderViewForm extends BaseForm {
 
     private String qaNote;
 
+    private PagingBean paging;
+
     public ElectronicOrderViewForm() {
         setFormName("ElectronicOrderViewForm");
-    }
-
-    public List<ElectronicOrderDisplayItem> getEOrders() {
-        return eOrders;
-    }
-
-    public void setEOrders(List<ElectronicOrderDisplayItem> eOrders) {
-        this.eOrders = eOrders;
     }
 
     public String getSearchValue() {
@@ -216,5 +212,15 @@ public class ElectronicOrderViewForm extends BaseForm {
 
     public void setQaEventId(String qaEventId) {
         this.qaEventId = qaEventId;
+    }
+
+    @Override
+    public void setPaging(PagingBean paging) {
+        this.paging = paging;
+    }
+
+    @Override
+    public PagingBean getPaging() {
+        return paging;
     }
 }

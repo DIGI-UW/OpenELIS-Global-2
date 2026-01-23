@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <patient_type id="2001" type="Inpatient"
+        description="Patient admitted for overnight stay in the hospital"
+        lastupdated="2025-06-01 10:30:00" />
+    <patient_type id="2002" type="Outpatient"
+        description="Patient who receives care without staying overnight"
+        lastupdated="2025-06-10 15:45:00" />
+    <patient_type id="2003" type="Emergency"
+        description="Patient receiving immediate treatment in emergency department"
+        lastupdated="2025-06-15 08:00:00" />
+
+    <person id="701" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Lisbon" state="Bethany Healthcare"
+        zip_code="256" country="Portugal" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <person id="702" last_name="Hu-ang" first_name="Yang"
+        middle_name="Ying" city="Orion" state="Shang Hai" zip_code="001"
+        country="China" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="yang@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+
+    <!--Patient catagory entries -->
+    <patient id="1001" person_id="701" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="MaKerere College" birth_place="Mulago"
+        entered_birth_date="1992-12-12" lastUpdated="2023-11-01 12:00:02" />
+    <patient id="1002" person_id="702" race="black" gender="F"
+        birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+        national_id="56789" ethnicity="A" external_id="EX123"
+        school_attend="Maryland College" birth_place="Nevada"
+        entered_birth_date="1997-10-09" lastUpdated="2023-11-01 12:00:02" />
+
+    <patient_patient_type id="1"
+        patient_type_id="2001" patient_id="1001"
+        lastupdated="2025-06-01 12:00:00" />
+    <patient_patient_type id="2"
+        patient_type_id="2002" patient_id="1002"
+        lastupdated="2025-06-01 12:00:00" />
+    <patient_patient_type id="3"
+        patient_type_id="2003" patient_id="1002"
+        lastupdated="2025-06-15 14:30:00" />
+</dataset>

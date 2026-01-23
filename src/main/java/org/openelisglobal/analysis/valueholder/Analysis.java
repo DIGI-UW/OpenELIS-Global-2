@@ -84,6 +84,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     private List<Analysis> children;
     private boolean correctedSincePatientReport;
     private ValueHolderInterface method;
+    private ResultFile resultFile;
 
     public Analysis() {
         super();
@@ -509,4 +510,13 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     public void setMethod(Method method) {
         this.method.setValue(method);
     }
+
+    public ResultFile getResultFile() {
+        return resultFile;
+    }
+
+    public void setResultFile(ResultFile resultFile) {
+        this.resultFile = resultFile;
+    }
+
 }

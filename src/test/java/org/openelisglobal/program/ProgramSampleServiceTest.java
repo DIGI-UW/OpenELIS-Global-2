@@ -36,11 +36,9 @@ public class ProgramSampleServiceTest extends BaseWebContextSensitiveTest {
     public void verifyProgramSampleData() {
         List<ProgramSample> programSamples = programSampleService.getAll();
 
-        // Ensure the programSamples list is not null or empty
         assertNotNull("Program samples should not be null", programSamples);
         assertFalse("Program samples should not be empty", programSamples.isEmpty());
 
-        // Check that each ProgramSample has a valid ID and related Program/Sample
         for (ProgramSample programSample : programSamples) {
             assertNotNull("ProgramSample ID should not be null", programSample.getId());
             assertNotNull("Program should not be null for ProgramSample", programSample.getProgram());
@@ -52,11 +50,9 @@ public class ProgramSampleServiceTest extends BaseWebContextSensitiveTest {
     public void verifyProgramData() {
         List<Program> programList = programService.getAll();
 
-        // Ensure the programList is not null or empty
         assertNotNull("Programs should not be null", programList);
         assertFalse("Programs should not be empty", programList.isEmpty());
 
-        // Check that each Program has valid fields
         for (Program program : programList) {
             assertNotNull("Program ID should not be null", program.getId());
             assertNotNull("Program name should not be null", program.getProgramName());
@@ -69,11 +65,9 @@ public class ProgramSampleServiceTest extends BaseWebContextSensitiveTest {
     public void verifySampleData() {
         List<Sample> samples = sampleService.getAll();
 
-        // Ensure the sample list is not null or empty
         assertNotNull("Samples should not be null", samples);
         assertFalse("Samples should not be empty", samples.isEmpty());
 
-        // Check that each Sample has valid fields
         for (Sample sample : samples) {
             assertNotNull("Sample ID should not be null", sample.getId());
             assertNotNull("Accession number should not be null", sample.getAccessionNumber());

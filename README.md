@@ -1,8 +1,23 @@
 # OpenELIS Global 2
 
-This is the OpenELIS rewrite onto Java Spring, and with all new technology and
-features. Please vist our [website](http://www.openelis-global.org/) for more
-information.
+OpenELIS Global is open enterprise-level laboratory information system software
+tailored for public health laboratories. OpenELIS is used at a national scale in
+a variety of settings, from small general hospital labs, all the way up to
+national reference labs, and all sizes in between.
+
+Thousands of users use OpenELIS daily to make their laboratory jobs easier by
+automating work plans, importing results from clinical analyzers, and supporting
+complex workflows like pathology and cytology, reducing turnaround times, and
+increasing result accuracy for better patient care.
+
+OpenELIS Global meets all relevant ISO and SLIPTA requirements for the
+accreditation of labs.
+
+OpenELIS adheres to the strictest of security standards to keep your data safe
+and supports fully featured, standards-based interoperability to make it easy to
+receive lab orders and send results to other systems
+
+Please vist our [website](http://www.openelis-global.org/) for more information.
 
 You can find more information on how to set up OpenELIS at our
 [docs page](http://docs.openelis-global.org/)
@@ -31,7 +46,7 @@ Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
 
 see full
-[installtion instructions](https://docs.openelis-global.org/en/latest/install/)
+[installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
 for Offline Installation
 
 ### For running OpenELIS Global2 in Docker with default Settings out of the Box
@@ -42,11 +57,11 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
-    docker-compose up -d
+    docker compose up -d
 
 #### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
 
-    docker-compose -f build.docker-compose.yml up -d --build
+    docker compose -f build.docker-compose.yml up -d --build
 
 #### Running OpenELIS Global2 with docker compose For Development
 
@@ -74,11 +89,11 @@ speeds up the development process
 
 1.  Build the War file
 
-          mvn clean install -DskipTests
+          mvn clean install -DskipTests -Dmaven.test.skip=true
 
 1.  Start the containers to mount the locally compiled artifacts
 
-        docker-compose -f dev.docker-compose.yml up -d
+        docker compose -f dev.docker-compose.yml up -d
 
     Note : For Reflecting Local changes in the Running Containers ;
 
@@ -88,11 +103,11 @@ speeds up the development process
 
   - Run the maven build again to re-build the War file
 
-         mvn clean install -DskipTests
+         mvn clean install -DskipTests -Dmaven.test.skip=true
 
   - Recreate the Openelis webapp container
 
-        docker-compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+        docker compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
 
 #### The Instances can be accessed at
 
@@ -121,6 +136,119 @@ accessing any of these links, simply follow these steps:
     to properly format the Java code
 
         mvn spotless:apply
+
+#### To ensure your code passes the same checks as the CI pipeline
+
+**Recommended: Use the CI check scripts** (replicates exact CI workflow):
+
+```bash
+# Run backend CI checks (formatting + build + tests)
+./scripts/run-ci-checks.sh
+
+# Run frontend CI checks (formatting + unit tests + E2E tests)
+./scripts/run-frontend-ci-checks.sh
+
+# Run both (full CI simulation)
+./scripts/run-ci-checks.sh && ./scripts/run-frontend-ci-checks.sh
+```
+
+**Options:**
+
+- `--skip-submodules`: Skip submodule build (faster, for quick checks)
+- `--skip-tests`: Skip tests (formatting only)
+- `--skip-e2e`: Skip E2E tests (frontend only)
+
+**Manual commands** (if you prefer to run steps individually):
+
+1.  Run Code Formatting Check (Backend). This command checks code formatting and
+    performs validation similar to the CI
+
+        mvn spotless:check
+
+1.  Run Build Check (Backend). This command builds the project similar to CI
+
+        mvn clean install -Dspotless.check.skip=true
+
+1.  To run Individual Integration Test
+
+         mvn verify -Dit.test=<packageName>.<TestClassName>
+
+    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
+    Flat XML datasets from `src/test/resources/testdata/` via
+    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
+    over inline SQL setup/cleanup to avoid test data pollution.
+
+1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
+
+    > **Note:** Frontend checks will only pass successfully if your development
+    > environment is properly set up and running without issues.
+
+        cd frontend/ # from project directory
+        npm install
+        npm run build
+        npm run cy:run # this will run e2e testing same CI
+
+### AI-Assisted Development (SpecKit)
+
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+Spec-Driven Development (SDD). AI coding agents can use slash commands to create
+specifications, plans, and tasks.
+
+**Setup SpecKit Commands (single entry point):**
+
+```bash
+# Bash (Linux/macOS) - Install for all AI agents
+./.specify/scripts/bash/install-commands.sh
+
+# PowerShell (Windows) - Install for all AI agents
+.\.specify\scripts\powershell\install-commands.ps1
+```
+
+**Available Commands** (after installation):
+
+- `/speckit.specify` - Create feature specification
+- `/speckit.plan` - Generate implementation plan
+- `/speckit.tasks` - Generate task breakdown
+- `/speckit.implement` - Execute implementation
+- `/speckit.analyze` - Validate consistency
+
+**Reference Documentation:**
+
+- **AGENTS.md** - Comprehensive guide for AI coding agents (includes full setup
+  options)
+- **Constitution**: `.specify/memory/constitution.md` - Governance principles
+- **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
+
+### Testing Resources
+
+For comprehensive testing guidance, see:
+
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Complete testing
+  guide for both agents and humans
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates
+- **AGENTS.md**: Testing Strategy section - Overview of testing approach
+- **Test Data Strategy**: `.specify/guides/test-data-strategy.md` - Unified test
+  data management guide
+
+### Test Data Setup
+
+For E2E testing, integration testing, and manual testing, load test fixtures:
+
+```bash
+# Basic usage (loads and verifies automatically)
+./src/test/resources/load-test-fixtures.sh
+
+# Reset database before loading (clean state)
+./src/test/resources/load-test-fixtures.sh --reset
+
+# Load without verification (faster)
+./src/test/resources/load-test-fixtures.sh --no-verify
+```
+
+**Note**: The unified loader script provides dependency checks, verification,
+and reset capabilities. See
+[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
 
 ### Pull request guidelines
 

@@ -1,6 +1,6 @@
 import config from "../../config.json";
 
-export const getFromOpenElisServer = (endPoint, callback) => {
+export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
   fetch(
     config.serverBaseUrl + endPoint,
 
@@ -8,6 +8,7 @@ export const getFromOpenElisServer = (endPoint, callback) => {
       //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "GET",
+      signal: signal,
     },
   )
     .then((response) => {
@@ -25,7 +26,12 @@ export const getFromOpenElisServer = (endPoint, callback) => {
       }
     })
     .catch((error) => {
-      console.error(error);
+      // Don't log AbortError - it's expected when component unmounts
+      if (error.name !== "AbortError") {
+        console.error(error);
+      }
+      // Ensure callback is always called, even on error, to avoid hanging promises
+      callback(undefined);
     });
 };
 
@@ -131,12 +137,37 @@ export const postToOpenElisServerJsonResponse = (
       body: payLoad,
     },
   )
-    .then((response) => response.json())
+    .then((response) => {
+      // Check if response is ok (status 200-299)
+      if (!response.ok) {
+        // For error responses, try to parse JSON error message
+        return response.json().then((errorJson) => {
+          // Include status code in error response for better error handling
+          return {
+            ...errorJson,
+            status: response.status,
+            statusCode: response.status,
+            statusText: response.statusText,
+          };
+        });
+      }
+      // For successful responses, parse JSON normally
+      return response.json();
+    })
     .then((json) => {
       callback(json, extraParams);
     })
     .catch((error) => {
-      console.error(error);
+      console.error("postToOpenElisServerJsonResponse error:", error);
+      // Pass error to callback so calling code can handle it
+      callback(
+        {
+          error: error.message || "Network error",
+          message: error.message || "Network error",
+          status: 0,
+        },
+        extraParams,
+      );
     });
 };
 
@@ -150,6 +181,43 @@ export const getFromOpenElisServerSync = (endPoint, callback) => {
   //     throw "No Login Session";
   // }
   return callback(JSON.parse(request.response));
+};
+
+export const postToOpenElisServerForBlob = (
+  endPoint,
+  payLoad,
+  callback,
+  errorCallback,
+) => {
+  fetch(
+    config.serverBaseUrl + endPoint,
+
+    {
+      //includes the browser sessionId in the Header for Authentication on the backend server
+      credentials: "include",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: payLoad,
+    },
+  )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.blob().then((blob) => ({ blob, response }));
+    })
+    .then(({ blob, response }) => {
+      callback(blob, response);
+    })
+    .catch((error) => {
+      console.error(error);
+      if (errorCallback) {
+        errorCallback(error);
+      }
+    });
 };
 
 export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
@@ -210,8 +278,50 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     });
 };
 
+export const deleteFromOpenElisServer = (endPoint, callback) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    // includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+  })
+    .then((response) => response.status)
+    .then((status) => {
+      callback(status);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
+export const deleteFromOpenElisServerFullResponse = (
+  endPoint,
+  callback,
+  extraParams,
+) => {
+  fetch(config.serverBaseUrl + endPoint, {
+    // includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+  })
+    .then((response) => callback(response, extraParams))
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
 export const hasRole = (userSessionDetails, role) => {
-  return userSessionDetails.roles && userSessionDetails.roles.includes(role);
+  if (!userSessionDetails || !userSessionDetails.roles) {
+    return false;
+  }
+  return userSessionDetails.roles.includes(role);
 };
 
 // this is complicated to enable it to format "smartly" as a person types
@@ -228,6 +338,40 @@ export const getFromOpenElisServerV2 = (url) => {
       }
     });
   });
+};
+
+export const patchToOpenElisServerJsonResponse = (
+  endPoint,
+  payLoad,
+  callback,
+  extraParams,
+) => {
+  fetch(
+    config.serverBaseUrl + endPoint,
+
+    {
+      //includes the browser sessionId in the Header for Authentication on the backend server
+      credentials: "include",
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": localStorage.getItem("CSRF"),
+      },
+      body: payLoad,
+    },
+  )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then((json) => {
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
 };
 
 export const convertAlphaNumLabNumForDisplay = (labNumber) => {
@@ -369,3 +513,11 @@ export const Roles = {
   VALIDATION: "Validation",
   REPORTS: "Reports",
 };
+
+export const toBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+  });

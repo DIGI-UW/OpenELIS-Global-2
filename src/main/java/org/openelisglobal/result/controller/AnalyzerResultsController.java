@@ -235,16 +235,20 @@ public class AnalyzerResultsController extends BaseController {
         if (GenericValidator.isBlankOrNull(type)) {
             return form;
         }
-
-        AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(
-                AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerNameFromRequest()));
-        if (analyzerPlugin instanceof BidirectionalAnalyzer) {
-            BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
-            form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
+        List<AnalyzerResults> analyzerResultsList = new ArrayList<>();
+        try {
+            AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(
+                    AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerNameFromRequest()));
+            if (analyzerPlugin instanceof BidirectionalAnalyzer) {
+                BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
+                form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
+            }
+            analyzerResultsList = getAnalyzerResults();
+        } catch (Exception e) {
+            return form;
         }
 
         AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
-        List<AnalyzerResults> analyzerResultsList = getAnalyzerResults();
         if (GenericValidator.isBlankOrNull(request.getParameter("page"))) {
             // get list of AnalyzerData from table based on analyzer type
             if (analyzerResultsList.isEmpty()) {

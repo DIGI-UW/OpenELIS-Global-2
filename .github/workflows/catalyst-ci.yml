@@ -1,0 +1,66 @@
+name: Catalyst CI Tests
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'projects/catalyst/**'
+      - '.github/workflows/catalyst-ci.yml'
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'projects/catalyst/**'
+      - '.github/workflows/catalyst-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  test-catalyst:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project:
+          - catalyst-gateway
+          - catalyst-agents
+          - catalyst-mcp
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Load cached venv
+        id: cached-uv-dependencies
+        uses: actions/cache@v4
+        with:
+          path: projects/catalyst/${{ matrix.project }}/.venv
+          key: venv-${{ runner.os }}-${{ matrix.project }}-${{ hashFiles('projects/catalyst/${{ matrix.project }}/uv.lock') }}
+
+      - name: Install dependencies
+        working-directory: projects/catalyst/${{ matrix.project }}
+        run: |
+          uv sync --frozen --no-install-project --extra dev
+
+      - name: Run tests
+        working-directory: projects/catalyst/${{ matrix.project }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}/projects/catalyst/${{ matrix.project }}
+        run: |
+          uv run pytest tests/ -v
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.project }}
+          path: projects/catalyst/${{ matrix.project }}/.pytest_cache
+          if-no-files-found: ignore

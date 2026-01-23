@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <referral_type id="1" name="Internal"
+        description="Referral within the same facility"
+        display_key="referral.type.internal" lastupdated="2024-07-01 09:00:00" />
+
+    <referral_type id="2" name="External"
+        description="Referral to another facility"
+        display_key="referral.type.external" lastupdated="2024-07-02 10:15:00" />
+
+    <referral_type id="3" name="Specialist"
+        description="Referral to a specialist"
+        display_key="referral.type.specialist"
+        lastupdated="2024-07-03 11:30:00" />
+
+    <referral_type id="4" name="Emergency" description=""
+        display_key="" lastupdated="2024-07-04 12:45:00" />
+
+    <referral_type id="5" name="External"
+        description="Referral to another facility"
+        display_key="referral.type.external" lastupdated="2024-07-02 10:15:00" />
+    <referral_type id="6" name="External"
+        description="Referral to another facility"
+        display_key="referral.type.external" lastupdated="2024-07-02 10:15:00" />
+
+</dataset>

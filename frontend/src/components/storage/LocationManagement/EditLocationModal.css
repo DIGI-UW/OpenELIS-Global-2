@@ -1,0 +1,18 @@
+/* EditLocationModal styling */
+
+/* Ensure modal body scrolls when content is tall */
+.edit-location-modal .cds--modal-body {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px); /* Leave room for header/footer */
+}
+
+.edit-location-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 1rem; /* Ensure last field (toggle) is visible */
+}
+
+.edit-location-form .cds--form-item {
+  margin-bottom: 0;
+}

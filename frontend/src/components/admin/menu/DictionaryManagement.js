@@ -57,12 +57,12 @@ function DictionaryManagement() {
   const [dictionaryEntry, setDictionaryEntry] = useState("");
   const [localAbbreviation, setLocalAbbreviation] = useState("");
   const [isActive, setIsActive] = useState("");
+  const [loincCode, setLoincCode] = useState("");
 
   const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-
-  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [editMode, setEditMode] = useState(true);
@@ -92,14 +92,29 @@ function DictionaryManagement() {
     };
   }, [paging, startingRecNo]);
 
+  useEffect(() => {
+    if (selectedRowIds.length === 1) {
+      setModifyButton(false);
+    } else {
+      setModifyButton(true);
+    }
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
+    }
+  }, [selectedRowIds]);
+
   const handleNextPage = () => {
     setPaging((pager) => Math.max(pager, 2));
     setStartingRecNo(fromRecordCount);
+    setSelectedRowIds([]);
   };
 
   const handlePreviousPage = () => {
     setPaging((pager) => Math.max(pager - 1, 1));
     setStartingRecNo(Math.max(fromRecordCount, 1));
+    setSelectedRowIds([]);
   };
 
   const yesOrNo = [
@@ -141,6 +156,7 @@ function DictionaryManagement() {
             dictEntry: item.dictEntry,
             localAbbreviation: item.localAbbreviation,
             isActive: item.isActive,
+            loincCode: item.loincCode || "",
             categoryName: item.dictionaryCategory
               ? item.dictionaryCategory.categoryName
               : "not available",
@@ -187,6 +203,7 @@ function DictionaryManagement() {
             dictEntry: item.dictEntry,
             localAbbreviation: item.localAbbreviation,
             isActive: item.isActive,
+            loincCode: item.loincCode || "",
             categoryName: item.dictionaryCategory
               ? item.dictionaryCategory.categoryName
               : "not available",
@@ -223,6 +240,8 @@ function DictionaryManagement() {
     dictEntry: dictionaryEntry,
     localAbbreviation: localAbbreviation,
     isActive: isActive.id,
+    loincCode: loincCode.trim() || null,
+    dirtyFormFields: "",
   };
 
   async function displayStatus(res) {
@@ -240,7 +259,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "error.add.edited.msg" }),
       });
     }
-    reloadConfiguration();
+    window.location.reload();
   }
 
   const handleSubmitModal = (e) => {
@@ -279,11 +298,12 @@ function DictionaryManagement() {
       dictEntry: dictionaryEntry,
       localAbbreviation: localAbbreviation,
       isActive: isActive.id,
+      loincCode: loincCode.trim() || null,
       dirtyFormFields: dirtyFields,
     };
 
     postToOpenElisServerFullResponse(
-      `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+      `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
       JSON.stringify(updateData),
       displayStatus,
     );
@@ -296,24 +316,16 @@ function DictionaryManagement() {
         <TableSelectRow
           key={cell.id}
           id={cell.id}
-          radio={true}
-          checked={selectedRowId === row.id}
+          checked={selectedRowIds.includes(row.id)}
           name="selectRowRadio"
           ariaLabel="selectRow"
-          onSelect={() => {
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":isActive"),
-            );
-
-            let isActiveValue = "";
-            if (isActiveCell) {
-              isActiveValue = isActiveCell.value;
+          onSelect={(e) => {
+            e.stopPropagation();
+            if (selectedRowIds.includes(row.id)) {
+              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
+            } else {
+              setSelectedRowIds([...selectedRowIds, row.id]);
             }
-
-            setModifyButton(false);
-            setSelectedRowId(row.id);
-
-            setDeactivateButton(isActiveValue !== "Y");
           }}
         />
       );
@@ -332,7 +344,11 @@ function DictionaryManagement() {
         </TableCell>
       );
     }
-    return <TableCell key={cell.id}>{cell.value}</TableCell>;
+    return (
+      <TableCell key={cell.id} data-cy={`cell-${cell.info.header}-${row.id}`}>
+        {cell.value}
+      </TableCell>
+    );
   };
 
   const handleDictionaryMenuItems = (res) => {
@@ -342,14 +358,15 @@ function DictionaryManagement() {
       setDictionaryEntry(res.dictEntry);
       setIsActive(yesOrNo.find((item) => item.id === res.isActive));
       setLocalAbbreviation(res.localAbbreviation);
+      setLoincCode(res.loincCode || "");
     }
   };
 
   const handleOnClickOnModification = async (event) => {
     event.preventDefault();
-    if (selectedRowId) {
+    if (selectedRowIds.length == 1) {
       const selectedItem = dictionaryMenuList.find(
-        (item) => item.id === selectedRowId,
+        (item) => item.id === selectedRowIds[0],
       );
 
       if (selectedItem) {
@@ -358,12 +375,13 @@ function DictionaryManagement() {
         setDictionaryEntry(selectedItem.dictEntry);
         setLocalAbbreviation(selectedItem.localAbbreviation);
         setIsActive(yesOrNo.find((item) => item.id === selectedItem.isActive));
+        setLoincCode(selectedItem.loincCode);
         setOpen(true);
         setEditMode(false);
       }
 
       getFromOpenElisServer(
-        `/rest/Dictionary?ID=${selectedRowId}&startingRecNo=${startingRecNo}`,
+        `/rest/Dictionary?ID=${selectedRowIds[0]}&startingRecNo=${startingRecNo}`,
         handleDictionaryMenuItems,
       );
       setOpen(true);
@@ -373,12 +391,9 @@ function DictionaryManagement() {
 
   const handleDeactivation = async (event) => {
     event.preventDefault();
-    const list = [...dictionaryMenuList];
-    list.splice(selectedRowId, 1);
-    setDictionaryMenuList(list);
-    if (selectedRowId) {
+    if (selectedRowIds) {
       postToOpenElisServer(
-        `/rest/delete-dictionary?selectedIDs=${selectedRowId}`,
+        `/rest/DeleteDictionary?ID=${selectedRowIds.join(",")}`,
         {},
         handleDelete,
       );
@@ -403,6 +418,7 @@ function DictionaryManagement() {
         message: intl.formatMessage({ id: "dictionary.menu.deactivate.fail" }),
       });
     }
+    window.location.reload();
   };
 
   const handlePanelSearchChange = (event) => {
@@ -424,7 +440,7 @@ function DictionaryManagement() {
           { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
           {
             label: "dictionary.label.modify",
-            link: "/MasterListsPage#DictionaryManagement",
+            link: "/MasterListsPage/DictionaryMenu",
           },
         ]}
       />
@@ -460,6 +476,7 @@ function DictionaryManagement() {
                 }}
               >
                 <Button
+                  data-cy="addButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={!editMode}
                   onClick={() => setOpen(true)}
@@ -469,6 +486,7 @@ function DictionaryManagement() {
                   })}
                 </Button>
                 <Button
+                  data-cy="modifyButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={modifyButton}
                   type="submit"
@@ -492,6 +510,7 @@ function DictionaryManagement() {
                     id="dictNumber"
                     labelText="Dictionary Number"
                     disabled
+                    value={dictionaryNumber}
                     onChange={(e) => setDictionaryNumber(e.target.value)}
                     style={{
                       marginBottom: "1rem",
@@ -547,16 +566,32 @@ function DictionaryManagement() {
                       marginBottom: "1rem",
                     }}
                   />
+
+                  <TextInput
+                    id="loincCode"
+                    labelText="LOINC Code"
+                    value={loincCode}
+                    onChange={(e) => setLoincCode(e.target.value)}
+                    // invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
+                    // invalidText={
+                    //   <FormattedMessage id="dictionary.loincCode.invalid" />
+                    // }
+                    style={{
+                      marginBottom: "1rem",
+                    }}
+                  />
                 </Modal>
                 <Button
+                  data-cy="deactivateButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
-                  disabled={modifyButton || deactivateButton}
+                  disabled={deactivateButton}
                   onClick={handleDeactivation}
                   type="submit"
                 >
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
                 </Button>
               </Column>
+
               <Column
                 lg={16}
                 md={8}
@@ -631,12 +666,7 @@ function DictionaryManagement() {
                   id: "search.by.dictionary.entry",
                 })}
                 onChange={handlePanelSearchChange}
-                value={(() => {
-                  if (panelSearchTerm) {
-                    return panelSearchTerm;
-                  }
-                  return "";
-                })()}
+                value={panelSearchTerm || ""}
               ></Search>
             </Section>
           </Column>
@@ -685,6 +715,11 @@ function DictionaryManagement() {
                   header: intl.formatMessage({
                     id: "dictionary.category.isActive",
                   }),
+                },
+
+                {
+                  key: "loincCode",
+                  header: "LOINC",
                 },
               ]}
               isSortable

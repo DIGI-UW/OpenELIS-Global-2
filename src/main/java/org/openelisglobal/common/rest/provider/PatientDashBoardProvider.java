@@ -267,21 +267,24 @@ public class PatientDashBoardProvider {
                 orderBean.setLabNumber(sample.getAccessionNumber());
             }
 
-            IGenericClient fhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
-            ServiceRequest serviceRequest = fhirClient.read().resource(ServiceRequest.class)
-                    .withId(eOrder.getExternalId()).execute();
-
             Test test = null;
-            for (Coding coding : serviceRequest.getCode().getCoding()) {
-                if (coding.hasSystem()) {
-                    if (coding.getSystem().equalsIgnoreCase("http://loinc.org")) {
-                        List<Test> tests = testService.getActiveTestsByLoinc(coding.getCode());
-                        if (tests.size() != 0) {
-                            test = tests.get(0);
-                            break;
+            try {
+                IGenericClient fhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
+                ServiceRequest serviceRequest = fhirClient.read().resource(ServiceRequest.class)
+                        .withId(eOrder.getExternalId()).execute();
+                for (Coding coding : serviceRequest.getCode().getCoding()) {
+                    if (coding.hasSystem()) {
+                        if (coding.getSystem().equalsIgnoreCase("http://loinc.org")) {
+                            List<Test> tests = testService.getActiveTestsByLoinc(coding.getCode());
+                            if (tests.size() != 0) {
+                                test = tests.get(0);
+                                break;
+                            }
                         }
                     }
                 }
+            } catch (Exception e) {
+
             }
             if (test != null) {
                 orderBean.setTestName(test.getLocalizedTestName().getLocalizedValue());

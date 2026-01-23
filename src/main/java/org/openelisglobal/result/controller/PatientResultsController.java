@@ -13,8 +13,6 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -122,14 +120,17 @@ public class PatientResultsController extends BaseController {
 
     private void addInventory(PatientResultsForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
-        List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
-        form.setInventoryItems(list);
+        // TODO: Re-enable after new inventory frontend integration
+        // InventoryUtility inventoryUtility =
+        // SpringContext.getBean(InventoryUtility.class);
+        // List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
+        // form.setInventoryItems(list);
     }
 
     private void addEmptyInventoryList(PatientResultsForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        form.setInventoryItems(new ArrayList<InventoryKitItem>());
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(new ArrayList<InventoryKitItem>());
     }
 
     private Patient getPatient(String patientID) {

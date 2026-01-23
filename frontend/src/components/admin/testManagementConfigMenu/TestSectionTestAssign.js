@@ -47,15 +47,15 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.testUnit.manage",
-    link: "/MasterListsPage#TestSectionManagement",
+    link: "/MasterListsPage/TestSectionManagement",
   },
   {
     label: "configuration.panel.assign",
-    link: "/MasterListsPage#TestSectionTestAssign",
+    link: "/MasterListsPage/TestSectionTestAssign",
   },
 ];
 
@@ -233,13 +233,13 @@ function TestSectionTestAssign() {
                           >
                             <ClickableTile
                               onClick={() => {
-                                setTestSectionTestAssignModal(true),
+                                (setTestSectionTestAssignModal(true),
                                   setTestSectionTestAssignPost({
                                     testId: test.id,
                                     testValue: test.value,
                                     testSectionNameOld: sectionName,
                                     testSectionIdOld: sectionId,
-                                  });
+                                  }));
                               }}
                             >
                               {test.value}

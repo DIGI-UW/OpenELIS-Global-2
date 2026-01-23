@@ -1,0 +1,39 @@
+{
+  "patient1": {
+    "firstName": "Alice",
+    "lastName": "MergeTest",
+    "nationalId": "UG-MERGE-ALICE-001",
+    "externalId": "EXT-ALICE-001",
+    "dob": "15/03/1985",
+    "gender": "F",
+    "phone": "+256701234567",
+    "workPhone": null,
+    "fax": null,
+    "email": "alice@testmerge.com",
+    "city": "Kampala",
+    "address": "123 Test Street, Kampala",
+    "sampleCount": 2
+  },
+  "patient2": {
+    "firstName": "Bob",
+    "lastName": "MergeTarget",
+    "nationalId": "UG-MERGE-BOB-002",
+    "externalId": "EXT-BOB-002",
+    "dob": "20/06/1988",
+    "gender": "M",
+    "phone": "+256709876543",
+    "workPhone": "+256700111222",
+    "fax": "+256700333444",
+    "email": "bob@testmerge.com",
+    "city": "Entebbe",
+    "address": "456 Medical Road, Entebbe",
+    "sampleCount": 1
+  },
+  "mergeReason": "E2E Test: Duplicate patient records identified during data quality review. National ID UG-MERGE-BOB-002 is a duplicate entry for patient Alice MergeTest.",
+  "expectedConflicts": ["phone", "email", "address"],
+  "expectedTotalSamples": 3,
+  "expectedInheritedFields": {
+    "workPhone": "+256700111222",
+    "fax": "+256700333444"
+  }
+}

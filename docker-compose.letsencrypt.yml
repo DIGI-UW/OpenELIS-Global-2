@@ -1,0 +1,21 @@
+# Override file for Let's Encrypt certificate support
+# Usage: docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
+# 
+# This override adds Let's Encrypt certificate support to the proxy service.
+# Certificates must be generated first using: ./scripts/generate-letsencrypt-certs.sh
+#
+# Required environment variables (set in .env or export):
+#   LETSENCRYPT_EMAIL - Email address for Let's Encrypt notifications (for cert generation)
+#   LETSENCRYPT_DOMAIN - Domain name (default: storage.openelis-global.org)
+#
+# Optional environment variables:
+#   LETSENCRYPT_STAGING - Set to "true" to use Let's Encrypt staging environment (for testing)
+
+services:
+    proxy:
+        volumes:
+            - ./volume/letsencrypt:/etc/letsencrypt:ro
+            - ./nginx-proxy/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+        environment:
+            - LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN:-storage.openelis-global.org}
+        entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]

@@ -7,6 +7,7 @@ import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import CustomLabNumberInput from "../common/CustomLabNumberInput";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
@@ -23,6 +24,8 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
+  const [searchTermToPage, setSearchTermToPage] = useState({});
+  const [labNumber, setLabNumber] = useState("");
   const intl = useIntl();
 
   useEffect(() => {
@@ -38,6 +41,7 @@ const Index = () => {
 
   useEffect(() => {
     if (url) {
+      setIsLoading(true);
       getFromOpenElisServer(
         "/rest/AnalyzerResults?type=" + type,
         handleResults,
@@ -71,11 +75,12 @@ const Index = () => {
       setResults(data);
       setIsLoading(false);
       if (data.paging) {
-        var { totalPages, currentPage } = data.paging;
+        var { totalPages, currentPage, searchTermToPage } = data.paging;
         if (totalPages > 1) {
           setPagination(true);
           setCurrentApiPage(currentPage);
           setTotalApiPages(totalPages);
+          setSearchTermToPage(searchTermToPage);
           if (parseInt(currentPage) < parseInt(totalPages)) {
             setNextPage(parseInt(currentPage) + 1);
           } else {

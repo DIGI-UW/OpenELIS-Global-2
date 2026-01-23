@@ -88,7 +88,7 @@ public class ElectronicOrdersController extends BaseController {
             eOrderDisplayItems = convertToDisplayItem(electronicOrders, form.getUseAllInfo());
 
             form.setSearchFinished(true);
-            form.setEOrders(eOrderDisplayItems);
+            form.seteOrders(eOrderDisplayItems);
         }
 
         return findForward(FWD_SUCCESS, form);

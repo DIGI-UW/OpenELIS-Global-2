@@ -40,6 +40,8 @@ public class DictionaryForm extends BaseForm {
     // in validator
     private String dirtyFormFields = "";
 
+    private String loincCode;
+
     public DictionaryForm() {
         setFormName("dictionaryForm");
     }
@@ -106,5 +108,13 @@ public class DictionaryForm extends BaseForm {
 
     public void setDirtyFormFields(String dirtyFormFields) {
         this.dirtyFormFields = dirtyFormFields;
+    }
+
+    public String getLoincCode() {
+        return loincCode;
+    }
+
+    public void setLoincCode(String loincCode) {
+        this.loincCode = loincCode;
     }
 }

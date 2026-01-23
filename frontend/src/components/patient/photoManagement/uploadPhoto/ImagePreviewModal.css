@@ -1,0 +1,206 @@
+/* Styles pour ImagePreviewModal */
+
+.image-upload-panel {
+  padding: 1rem 0;
+  min-height: 400px;
+}
+
+/* Zone de drag and drop */
+.dropzone {
+  border: 2px dashed #c6c6c6;
+  border-radius: 8px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #f4f4f4;
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.dropzone:hover {
+  border-color: #0f62fe;
+  background-color: #e5f6ff;
+}
+
+.dropzone-active {
+  border-color: #0f62fe;
+  background-color: #d0e2ff;
+  border-style: solid;
+}
+
+.dropzone-icon {
+  color: #0f62fe;
+  opacity: 0.7;
+}
+
+.dropzone-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #161616;
+  margin: 0;
+}
+
+.dropzone-subtitle {
+  font-size: 0.875rem;
+  color: #525252;
+  margin: 0;
+}
+
+.dropzone-formats {
+  font-size: 0.75rem;
+  color: #8d8d8d;
+  margin: 0;
+  margin-top: 0.5rem;
+}
+
+.image-preview-container {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.preview-label {
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #161616;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 400px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Styles pour la caméra */
+.camera-panel {
+  padding: 1rem 0;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-start-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex: 1;
+}
+
+.camera-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: #525252;
+  text-align: center;
+  padding: 3rem;
+}
+
+.camera-button {
+  margin-top: 1rem;
+}
+
+.camera-active-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+  width: 100%;
+}
+
+.camera-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 350px;
+  max-height: 450px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #000;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  min-height: 350px;
+  max-height: 450px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Bouton de capture style iOS */
+.capture-button-overlay {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.capture-circle-button {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  border: 4px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.capture-circle-button:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+
+.capture-circle-button:active {
+  transform: scale(0.95);
+}
+
+.capture-circle-inner {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background-color: white;
+  transition: all 0.2s ease;
+}
+
+.capture-circle-button:hover .capture-circle-inner {
+  background-color: #f0f0f0;
+}
+
+.camera-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 0;
+}
+
+/* Responsive */
+@media (max-width: 672px) {
+  .camera-video {
+    max-height: 300px;
+  }
+
+  .capture-circle-button {
+    width: 60px;
+    height: 60px;
+  }
+
+  .capture-circle-inner {
+    width: 46px;
+    height: 46px;
+  }
+}

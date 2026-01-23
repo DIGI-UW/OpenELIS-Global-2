@@ -16,3 +16,9 @@
 [submodule "dataexport"]
 	path = dataexport
 	url = https://github.com/I-TECH-UW/dataexport.git
+[submodule "tools/astm-http-bridge"]
+	path = tools/astm-http-bridge
+	url = https://github.com/DIGI-UW/astm-http-bridge.git
+[submodule "tools/astm-mock-server"]
+	path = tools/astm-mock-server
+	url = https://github.com/DIGI-UW/astm-mock-server.git

@@ -1,0 +1,19 @@
+{
+  "calcValue": "Calculated Value Tests Management",
+  "reflexTets": "Reflex Tests Management",
+  "toggleOn": "On",
+  "toggleOff": "Off",
+  "ruleName": "Test Rule",
+  "overAllOptions": "All",
+  "sample": "Serum",
+  "searchTest": "Amylase(Serum)",
+  "relation": "Is greater than",
+  "numericValue": "0",
+  "internalNote": "Internal Use Only",
+  "externalNote": "External Use Only",
+  "mtcFunction": "Plus",
+  "secMtcFunction": "Does Not Equal",
+  "mathFunction": "Mathematical Function",
+  "patientAttribute": "Patient Age(Years)",
+  "finalResult": "Completed Successfully"
+}

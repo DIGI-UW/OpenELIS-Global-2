@@ -1,0 +1,908 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OpenELIS Sample Storage Management API",
+    "description": "REST API for managing physical storage locations and sample assignments in OpenELIS Global. POC scope includes P1 (Assignment), P2A (Search), P2B (Movement) user stories only.",
+    "version": "1.0.0-POC",
+    "contact": {
+      "name": "OpenELIS Global",
+      "url": "https://openelis-global.org"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://localhost/rest",
+      "description": "Local development server"
+    },
+    {
+      "url": "https://openelis.org/rest",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Storage Hierarchy",
+      "description": "CRUD operations for storage location hierarchy (Room, Device, Shelf, Rack, Position)"
+    },
+    {
+      "name": "Sample Assignment",
+      "description": "Assign SampleItems (physical specimens) to storage locations. Storage tracking operates at SampleItem level, not Sample level."
+    },
+    {
+      "name": "Sample Search",
+      "description": "Search and filter SampleItems by ID, External ID, parent Sample accession number, or location"
+    },
+    {
+      "name": "Sample Movement",
+      "description": "Move SampleItems (physical specimens) between storage locations"
+    }
+  ],
+  "paths": {
+    "/storage/rooms": {
+      "get": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "List all storage rooms",
+        "operationId": "listRooms",
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "schema": { "type": "boolean" },
+            "description": "Filter by active status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of storage rooms",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StorageRoom" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Create a new storage room",
+        "operationId": "createRoom",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StorageRoomInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Room created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRoom" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (duplicate code, etc.)"
+          }
+        }
+      }
+    },
+    "/storage/rooms/{id}": {
+      "get": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Get storage room by ID",
+        "operationId": "getRoomById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Storage room details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRoom" }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Update storage room",
+        "operationId": "updateRoom",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StorageRoomInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Room updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRoom" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Delete storage room",
+        "operationId": "deleteRoom",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Room deleted successfully"
+          },
+          "409": {
+            "description": "Cannot delete room with child devices"
+          }
+        }
+      }
+    },
+    "/storage/devices": {
+      "get": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "List storage devices",
+        "operationId": "listDevices",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by parent room ID"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["freezer", "refrigerator", "cabinet", "other"]
+            },
+            "description": "Filter by device type"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "schema": { "type": "boolean" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of storage devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StorageDevice" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Create a new storage device",
+        "operationId": "createDevice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StorageDeviceInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Device created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageDevice" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/shelves": {
+      "get": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "List storage shelves",
+        "operationId": "listShelves",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by parent device ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of storage shelves",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StorageShelf" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Create a new storage shelf",
+        "operationId": "createShelf",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StorageShelfInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shelf created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageShelf" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/racks": {
+      "get": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "List storage racks",
+        "operationId": "listRacks",
+        "parameters": [
+          {
+            "name": "shelfId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by parent shelf ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of storage racks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StorageRack" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Create a new storage rack",
+        "operationId": "createRack",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StorageRackInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rack created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRack" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/positions": {
+      "get": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "List storage positions",
+        "operationId": "listPositions",
+        "parameters": [
+          {
+            "name": "rackId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by parent rack ID",
+            "required": true
+          },
+          {
+            "name": "occupied",
+            "in": "query",
+            "schema": { "type": "boolean" },
+            "description": "Filter by occupancy status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of storage positions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StoragePosition" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Storage Hierarchy"],
+        "summary": "Create a new storage position",
+        "operationId": "createPosition",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoragePositionInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Position created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoragePosition" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/sample-items/assign": {
+      "post": {
+        "tags": ["Sample Assignment"],
+        "summary": "Assign SampleItem to storage location (P1)",
+        "operationId": "assignSampleItem",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sampleItemId", "locationId", "locationType"],
+                "properties": {
+                  "sampleItemId": {
+                    "type": "string",
+                    "description": "SampleItem ID (physical specimen) to assign"
+                  },
+                  "locationId": {
+                    "type": "string",
+                    "description": "Location ID (device, shelf, or rack ID)"
+                  },
+                  "locationType": {
+                    "type": "string",
+                    "enum": ["device", "shelf", "rack"],
+                    "description": "Location type: 'device', 'shelf', or 'rack'"
+                  },
+                  "positionCoordinate": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "description": "Optional text-based position coordinate"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "Optional assignment notes"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SampleItem assigned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "assignmentId": { "type": "string" },
+                    "hierarchicalPath": {
+                      "type": "string",
+                      "example": "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
+                    },
+                    "assignedDate": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (position occupied, location inactive, etc.)"
+          },
+          "404": {
+            "description": "SampleItem or location not found"
+          }
+        }
+      }
+    },
+    "/storage/sample-items/search": {
+      "get": {
+        "tags": ["Sample Search"],
+        "summary": "Search SampleItems by ID, External ID, parent Sample accession, or location (P2A)",
+        "operationId": "searchSampleItems",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Search query - matches SampleItem ID, External ID, parent Sample accession number, or location path (OR logic, case-insensitive partial match)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of matching SampleItems with location details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SampleItemLocationDetails" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/sample-items": {
+      "get": {
+        "tags": ["Sample Search"],
+        "summary": "Get all SampleItems with storage assignments, optionally filtered by location/status (P2A)",
+        "operationId": "getSampleItems",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "deviceId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "shelfId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "rackId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "disposed"]
+            }
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of SampleItems matching filters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SampleItemLocationSummary" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/sample-items/move": {
+      "post": {
+        "tags": ["Sample Movement"],
+        "summary": "Move SampleItem to new storage location (P2B)",
+        "operationId": "moveSampleItem",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sampleItemId", "locationId", "locationType"],
+                "properties": {
+                  "sampleItemId": {
+                    "type": "string",
+                    "description": "SampleItem ID (physical specimen) to move"
+                  },
+                  "locationId": {
+                    "type": "string",
+                    "description": "Target location ID (device, shelf, or rack ID)"
+                  },
+                  "locationType": {
+                    "type": "string",
+                    "enum": ["device", "shelf", "rack"],
+                    "description": "Target location type: 'device', 'shelf', or 'rack'"
+                  },
+                  "positionCoordinate": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "description": "Optional text-based position coordinate"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Optional reason for move"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SampleItem moved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "movementId": { "type": "string" },
+                    "previousLocation": {
+                      "type": "string",
+                      "description": "Hierarchical path of previous location"
+                    },
+                    "newLocation": {
+                      "type": "string",
+                      "description": "Hierarchical path of new location"
+                    },
+                    "newHierarchicalPath": {
+                      "type": "string",
+                      "description": "Hierarchical path of new location (same as newLocation for backward compatibility)"
+                    },
+                    "movedDate": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (location inactive, etc.)"
+          },
+          "404": {
+            "description": "SampleItem or target location not found"
+          }
+        }
+      }
+    },
+    "/storage/sample-items/bulk-move": {
+      "post": {
+        "tags": ["Sample Movement"],
+        "summary": "Move multiple SampleItems to target rack (P2B)",
+        "operationId": "bulkMoveSampleItems",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sampleItemIds", "targetRackId"],
+                "properties": {
+                  "sampleItemIds": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Array of SampleItem IDs (physical specimens) to move"
+                  },
+                  "targetRackId": {
+                    "type": "string",
+                    "description": "Target rack ID"
+                  },
+                  "positionAssignments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["sampleItemId", "positionCoordinate"],
+                      "properties": {
+                        "sampleItemId": { "type": "string" },
+                        "positionCoordinate": { "type": "string" }
+                      }
+                    },
+                    "description": "Optional manual position assignments (if not provided, system auto-assigns)"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Optional reason for bulk move"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bulk move completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "movementIds": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "total": { "type": "integer" },
+                        "successful": { "type": "integer" },
+                        "failed": { "type": "integer" }
+                      }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "sampleItemId": { "type": "string" },
+                          "error": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StorageRoom": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fhirUuid": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "description": { "type": "string" },
+          "active": { "type": "boolean" },
+          "lastupdated": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StorageRoomInput": {
+        "type": "object",
+        "required": ["name", "code"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 255 },
+          "code": { "type": "string", "maxLength": 50 },
+          "description": { "type": "string" },
+          "active": { "type": "boolean", "default": true }
+        }
+      },
+      "StorageDevice": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fhirUuid": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["freezer", "refrigerator", "cabinet", "other"]
+          },
+          "temperatureSetting": { "type": "number", "format": "float" },
+          "capacityLimit": { "type": "integer" },
+          "active": { "type": "boolean" },
+          "parentRoomId": { "type": "string" },
+          "parentRoomName": { "type": "string" },
+          "lastupdated": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StorageDeviceInput": {
+        "type": "object",
+        "required": ["name", "code", "type", "parentRoomId"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 255 },
+          "code": { "type": "string", "maxLength": 50 },
+          "type": {
+            "type": "string",
+            "enum": ["freezer", "refrigerator", "cabinet", "other"]
+          },
+          "temperatureSetting": { "type": "number" },
+          "capacityLimit": { "type": "integer" },
+          "active": { "type": "boolean", "default": true },
+          "parentRoomId": { "type": "string" }
+        }
+      },
+      "StorageShelf": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fhirUuid": { "type": "string", "format": "uuid" },
+          "label": { "type": "string" },
+          "capacityLimit": { "type": "integer" },
+          "active": { "type": "boolean" },
+          "parentDeviceId": { "type": "string" },
+          "parentDeviceName": { "type": "string" },
+          "lastupdated": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StorageShelfInput": {
+        "type": "object",
+        "required": ["label", "parentDeviceId"],
+        "properties": {
+          "label": { "type": "string", "maxLength": 100 },
+          "capacityLimit": { "type": "integer" },
+          "active": { "type": "boolean", "default": true },
+          "parentDeviceId": { "type": "string" }
+        }
+      },
+      "StorageRack": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fhirUuid": { "type": "string", "format": "uuid" },
+          "label": { "type": "string" },
+          "rows": { "type": "integer", "minimum": 0 },
+          "columns": { "type": "integer", "minimum": 0 },
+          "capacity": { "type": "integer", "description": "Calculated as rows * columns" },
+          "positionSchemaHint": { "type": "string" },
+          "active": { "type": "boolean" },
+          "parentShelfId": { "type": "string" },
+          "parentShelfLabel": { "type": "string" },
+          "lastupdated": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StorageRackInput": {
+        "type": "object",
+        "required": ["label", "rows", "columns", "parentShelfId"],
+        "properties": {
+          "label": { "type": "string", "maxLength": 100 },
+          "rows": { "type": "integer", "minimum": 0 },
+          "columns": { "type": "integer", "minimum": 0 },
+          "positionSchemaHint": { "type": "string", "maxLength": 50 },
+          "active": { "type": "boolean", "default": true },
+          "parentShelfId": { "type": "string" }
+        }
+      },
+      "StoragePosition": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "coordinate": { "type": "string", "maxLength": 50 },
+          "rowIndex": { "type": "integer" },
+          "columnIndex": { "type": "integer" },
+          "occupied": { "type": "boolean" },
+          "parentRackId": { "type": "string" },
+          "parentRackLabel": { "type": "string" },
+          "lastupdated": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StoragePositionInput": {
+        "type": "object",
+        "required": ["coordinate", "parentRackId"],
+        "properties": {
+          "coordinate": { "type": "string", "maxLength": 50 },
+          "rowIndex": { "type": "integer" },
+          "columnIndex": { "type": "integer" },
+          "parentRackId": { "type": "string" }
+        }
+      },
+      "SampleItemLocationDetails": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "SampleItem ID" },
+          "sampleItemId": { "type": "string", "description": "SampleItem ID (same as id)" },
+          "sampleItemExternalId": { "type": "string", "description": "SampleItem external ID (optional)" },
+          "sampleAccessionNumber": { "type": "string", "description": "Parent Sample accession number" },
+          "type": { "type": "string", "description": "SampleItem type (e.g., 'Blood', 'Serum')" },
+          "status": { "type": "string", "enum": ["active", "disposed"] },
+          "location": {
+            "type": "string",
+            "description": "Hierarchical path of storage location",
+            "example": "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
+          },
+          "hierarchicalPath": {
+            "type": "string",
+            "description": "Hierarchical path of storage location (same as location)",
+            "example": "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5"
+          },
+          "assignedBy": { "type": "string", "description": "User ID who assigned the location" },
+          "date": { "type": "string", "format": "date-time", "description": "Assignment date" }
+        }
+      },
+      "SampleItemLocationSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "SampleItem ID" },
+          "sampleItemId": { "type": "string", "description": "SampleItem ID (same as id)" },
+          "sampleItemExternalId": { "type": "string", "description": "SampleItem external ID (optional)" },
+          "sampleAccessionNumber": { "type": "string", "description": "Parent Sample accession number" },
+          "type": { "type": "string", "description": "SampleItem type" },
+          "status": { "type": "string", "enum": ["active", "disposed"] },
+          "location": { "type": "string", "description": "Hierarchical path" },
+          "hierarchicalPath": { "type": "string", "description": "Hierarchical path (same as location)" },
+          "assignedBy": { "type": "string" },
+          "date": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID",
+        "description": "OpenELIS session-based authentication (existing Spring Security)"
+      }
+    }
+  },
+  "security": [
+    {
+      "sessionAuth": []
+    }
+  ]
+}
+

@@ -25,11 +25,11 @@ public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, String> impleme
         try {
             String sql = "from NceSpecimen ns where ns.nceId=:nceId ";
             Query<NceSpecimen> query = entityManager.unwrap(Session.class).createQuery(sql, NceSpecimen.class);
-            query.setParameter("nceId", nceId);
+            query.setParameter("nceId", Integer.parseInt(nceId));
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in NceCategory getAllNceCategory()", e);
+            throw new LIMSRuntimeException("Error in NceSpecimen getSpecimenByNceId(String nceId)", e);
         }
         return list;
     }

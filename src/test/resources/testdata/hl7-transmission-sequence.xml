@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <hl7_transmission_sequence id="10001"
+        lastupdated="2025-07-15 12:00:00" />
+    <hl7_transmission_sequence id="10002"
+        lastupdated="2025-07-15 12:05:00" />
+    <hl7_transmission_sequence id="10003"
+        lastupdated="2025-07-15 12:10:00" />
+    <hl7_transmission_sequence id="10004"
+        lastupdated="2025-07-15 12:05:00" />
+    <hl7_transmission_sequence id="10005"
+        lastupdated="2025-07-15 12:05:00" />
+    <hl7_transmission_sequence id="10006"
+        lastupdated="2025-07-15 12:10:00" />
+    <hl7_transmission_sequence id="10007"
+        lastupdated="2025-07-15 12:10:00" />
+    <hl7_transmission_sequence id="10008"
+        lastupdated="2025-07-15 12:05:00" />
+</dataset>

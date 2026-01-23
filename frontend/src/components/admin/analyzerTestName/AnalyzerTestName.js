@@ -19,6 +19,8 @@ import {
   Modal,
   TextInput,
   Dropdown,
+  Select,
+  SelectItem,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -41,7 +43,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.analyzerTest",
-    link: "/MasterListsPage#analyzerMenu",
+    link: "/MasterListsPage/analyzerMenu",
   },
 ];
 function AnalyzerTestName() {
@@ -74,6 +76,10 @@ function AnalyzerTestName() {
   const [selectedAnalyzerId, setSelectedAnalyzerId] = useState(null);
   const [selectedTest, setSelectedTest] = useState(null);
   const [selectedTestId, setSelectedTestId] = useState(null);
+  const [filterAnalyzer, setFilterAnalyser] = useState("");
+  const [originalAnalyzerId, setOriginalAnalyzerId] = useState(null);
+  const [originalAnalyzerTestName, setOriginalAnalyzerTestName] = useState("");
+  const [editingItemId, setEditingItemId] = useState(null);
 
   const handleMenuItems = (res) => {
     if (!res) {
@@ -87,9 +93,11 @@ function AnalyzerTestName() {
     componentMounted.current = true;
     setLoading(true);
     getFromOpenElisServer(
-      `/rest/AnalyzerTestNameMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+      `/rest/AnalyzerTestNameMenu?paging=${paging}&startingRecNo=${startingRecNo}&analyzerId=${filterAnalyzer}`,
       handleMenuItems,
     );
+    fetchDropdownData();
+    fetchDropdownDatatestlist();
     return () => {
       componentMounted.current = false;
       setLoading(false);
@@ -103,6 +111,8 @@ function AnalyzerTestName() {
           id: item.uniqueId,
           analyzerName: `${item.analyzerName} - ${item.analyzerTestName}`,
           actualTestName: item.actualTestName,
+          analyzerTestName: item.analyzerTestName,
+          analyzerNameOnly: item.analyzerName,
         };
       });
       setFromRecordCount(AnalyzerTestName.fromRecordCount);
@@ -131,6 +141,14 @@ function AnalyzerTestName() {
     if (response) {
       setAnalyzerList(response.analyzerList || []);
       // setTestList(response.testList || []);
+      if (response.analyzerList.length == 0) {
+        setNotificationVisible(true);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "message.noPluginFound" }),
+        });
+      }
     }
   }
 
@@ -141,6 +159,17 @@ function AnalyzerTestName() {
       setModifyButton(true);
     }
   }, [selectedRowIds]);
+
+  useEffect(() => {
+    setLoading(true);
+    setFromRecordCount("");
+    setToRecordCount("");
+    setTotalRecordCount("");
+    getFromOpenElisServer(
+      `/rest/AnalyzerTestNameMenu?analyzerId=${filterAnalyzer}`,
+      handleMenuItems,
+    );
+  }, [filterAnalyzer]);
 
   useEffect(() => {
     if (selectedRowIds.length === 0) {
@@ -204,8 +233,6 @@ function AnalyzerTestName() {
     setSelectedAnalyzerId(null);
     setSelectedTest(null);
     setSelectedTestId(null);
-    fetchDropdownData();
-    fetchDropdownDatatestlist();
     setIsAddModalOpen(true);
   };
 
@@ -213,18 +240,74 @@ function AnalyzerTestName() {
     setIsAddModalOpen(false);
   };
 
-  const openUpdateModal = (AnalyzerId) => {
-    fetchDropdownData();
-    fetchDropdownDatatestlist();
-    setIsUpdateModalOpen(true);
+  const openUpdateModal = () => {
+    if (selectedRowIds.length === 1) {
+      const selectedItem = AnalyzerTestNameShow.find(
+        (item) => item.id === selectedRowIds[0],
+      );
+      if (selectedItem) {
+        setEditingItemId(selectedItem.id);
+        const analyzerName = selectedItem.analyzerNameOnly;
+        const analyzerTestName = selectedItem.analyzerTestName;
+        const actualTestName = selectedItem.actualTestName;
+
+        setTestName(analyzerTestName || "");
+
+        // Find analyzer by name
+        const analyzer = analyzerList.find((a) => a.name === analyzerName);
+        if (analyzer) {
+          setSelectedAnalyzer(analyzer);
+          setSelectedAnalyzerId(analyzer.id);
+          // Store original values for update
+          setOriginalAnalyzerId(analyzer.id);
+          setOriginalAnalyzerTestName(analyzerTestName);
+        }
+
+        // Find test by value (actualTestName matches test.value)
+        // test.value format: "<test name>(<sampleType>)", extract test name by removing last bracket
+        const test = testList.find((t) => {
+          if (!t.value) return false;
+          // Extract test name by removing last bracket and its contents
+          const testNameFromValue = t.value
+            .replace(/\s*\([^)]*\)\s*$/, "")
+            .trim();
+          return testNameFromValue === actualTestName;
+        });
+        if (test) {
+          setSelectedTest(test);
+          setSelectedTestId(test.id);
+        } else {
+          // If not found by value, try to find by name or label
+          const testByName = testList.find(
+            (t) => t.name === actualTestName || t.label === actualTestName,
+          );
+          if (testByName) {
+            setSelectedTest(testByName);
+            setSelectedTestId(testByName.id);
+          }
+        }
+
+        setIsUpdateModalOpen(true);
+      }
+    }
   };
 
   const closeUpdateModal = () => {
     setIsUpdateModalOpen(false);
+    setEditingItemId(null);
+    setTestName("");
+    setSelectedAnalyzer(null);
+    setSelectedAnalyzerId(null);
+    setSelectedTest(null);
+    setSelectedTestId(null);
+    setOriginalAnalyzerId(null);
+    setOriginalAnalyzerTestName("");
   };
   const checkIfCombinationExists = () => {
     return AnalyzerTestNameShow.some(
-      (item) => item.analyzerName === `${selectedAnalyzer.name} - ${testName}`,
+      (item) =>
+        item.id !== editingItemId &&
+        item.analyzerName === `${selectedAnalyzer?.name} - ${testName}`,
     );
   };
 
@@ -245,6 +328,7 @@ function AnalyzerTestName() {
       analyzerId: selectedAnalyzerId,
       analyzerTestName: testName,
       testId: selectedTestId,
+      newMapping: true,
     };
 
     postToOpenElisServerFullResponse(
@@ -254,36 +338,42 @@ function AnalyzerTestName() {
     );
 
     closeAddModal();
-    window.location.reload();
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const handleUpdateAnalyzer = () => {
-    if (checkIfCombinationExists()) {
+    if (!originalAnalyzerId || !originalAnalyzerTestName || !selectedTestId) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
-          id: "analyzer.combinationName.notification",
+          id: "error.required.fields",
         }),
       });
       setNotificationVisible(true);
       return;
     }
-    const newAnalyzer = {
-      analyzerId: selectedAnalyzerId,
-      analyzerTestName: testName,
+
+    // Only update the testId, keep original analyzerId and analyzerTestName
+    const updateData = {
+      analyzerId: originalAnalyzerId,
+      analyzerTestName: originalAnalyzerTestName,
       testId: selectedTestId,
+      newMapping: false,
     };
 
     postToOpenElisServerFullResponse(
       "/rest/AnalyzerTestName",
-      JSON.stringify(newAnalyzer),
+      JSON.stringify(updateData),
       displayStatus,
     );
 
     closeUpdateModal();
-
-    window.location.reload();
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const renderCell = (cell, row) => {
@@ -356,6 +446,7 @@ function AnalyzerTestName() {
           modalHeading="Add Analyzer Test Name"
           primaryButtonText="Add"
           secondaryButtonText="Cancel"
+          primaryButtonDisabled={analyzerList.length == 0}
           onRequestSubmit={handleAddAnalyzer}
           onRequestClose={closeAddModal}
         >
@@ -414,11 +505,13 @@ function AnalyzerTestName() {
             items={analyzerList}
             itemToString={(item) => (item ? item.name : "")}
             selectedItem={selectedAnalyzer}
+            disabled={true}
             onChange={({ selectedItem }) => {
               setSelectedAnalyzer(selectedItem);
               setSelectedAnalyzerId(selectedItem ? selectedItem.id : null);
             }}
           />
+          <br />
           <Dropdown
             id="test-dropdown"
             titleText={intl.formatMessage({ id: "label.actualTestName" })}
@@ -437,6 +530,7 @@ function AnalyzerTestName() {
               id: "sidenav.label.admin.analyzerTest",
             })}
             value={testName}
+            readOnly
             onChange={(e) => setTestName(e.target.value)}
             required
           />
@@ -446,6 +540,33 @@ function AnalyzerTestName() {
         <div className="orderLegendBody">
           <>
             <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={4} md={8} sm={4}>
+                <Select
+                  labelText={intl.formatMessage({
+                    id: "select.label.analyzer",
+                    defaultMessage: "Select Analyzer",
+                  })}
+                  value={filterAnalyzer}
+                  onChange={(e) => {
+                    setFilterAnalyser(e.target.value);
+                  }}
+                >
+                  <SelectItem
+                    value=""
+                    text={intl.formatMessage({
+                      id: "all.label",
+                    })}
+                  />
+                  {analyzerList.map((analyzer, analyzer_index) => (
+                    <SelectItem
+                      text={analyzer.name}
+                      value={analyzer.id}
+                      key={analyzer_index}
+                    />
+                  ))}
+                </Select>
+              </Column>
+              <Column lg={12} md={8} sm={4}></Column>
               <Column lg={16} md={8} sm={4}>
                 <DataTable
                   rows={AnalyzerTestNameShow.slice(

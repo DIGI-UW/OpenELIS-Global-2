@@ -1,0 +1,312 @@
+package org.openelisglobal.{module}.controller;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openelisglobal.{module}.form.{Entity}Form;
+import org.openelisglobal.{module}.service.{Entity}Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.MockMvc;
+
+/**
+ * Controller tests for {ControllerName} using @WebMvcTest
+ * 
+ * References:
+ * - Testing Roadmap: .specify/guides/testing-roadmap.md
+ * - Backend Best Practices: .specify/guides/backend-testing-best-practices.md
+ * - Template: WebMvcTest Controller Test
+ * 
+ * @WebMvcTest provides:
+ * - Faster execution than @SpringBootTest (no full application context)
+ * - Focused testing of HTTP layer only (request/response mapping, status codes)
+ * - Mocked service layer (use @MockBean)
+ * 
+ * TDD Workflow (MANDATORY for complex logic):
+ * - RED: Write failing test first (defines expected behavior)
+ * - GREEN: Write minimal code to make test pass
+ * - REFACTOR: Improve code quality while keeping tests green
+ * 
+ * SDD Checkpoint: Integration tests MUST pass after Phase 3 (Controllers)
+ * Test Coverage Goal: >80% (measured via JaCoCo)
+ * 
+ * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
+ * Example: testGetLocation_WithValidId_ReturnsLocation
+ * 
+ * Use this template for testing REST endpoints in isolation.
+ * For full integration tests, use @SpringBootTest (see BaseWebContextSensitiveTest).
+ * 
+ * Reference: Testing Roadmap > @WebMvcTest (Controller Layer)
+ */
+@RunWith(SpringRunner.class)
+@WebMvcTest({ControllerName}.class)
+public class {ControllerName}Test {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    // ✅ CORRECT: Use @MockBean for Spring context tests (NOT @Mock)
+    // @Mock is for isolated unit tests (@RunWith(MockitoJUnitRunner.class))
+    // Reference: Testing Roadmap > @MockBean vs @Mock
+    @MockBean
+    private {Entity}Service {entity}Service;
+
+    private ObjectMapper objectMapper;
+
+    @Before
+    public void setUp() {
+        objectMapper = new ObjectMapper();
+    }
+
+    /**
+     * Test: GET {Entity} by ID
+     * Task Reference: T{###}
+     * 
+     * Testing HTTP layer:
+     * - Request/response mapping
+     * - Status codes
+     * - JSON serialization/deserialization
+     * - JSONPath assertions
+     * 
+     * Reference: Testing Roadmap > MockMvc Patterns > Request Building Patterns
+     */
+    @Test
+    public void testGet{Entity}_WithValidId_Returns{Entity}() throws Exception {
+        // Arrange: Setup mock service behavior
+        // ✅ CORRECT: Use builders for test data
+        {Entity} {entity} = {Entity}Builder.create()
+            .withId("TEST-001")
+            .withName("Test {Entity}")
+            .withCode("TEST-CODE")
+            .build();
+        when({entity}Service.get{Entity}ById("TEST-001")).thenReturn({entity});
+        
+        // Act & Assert: Perform HTTP request and verify response
+        // ✅ CORRECT: Use MockMvc for HTTP testing
+        mockMvc.perform(get("/rest/{module}/{entities}/TEST-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value("TEST-001"))
+            .andExpect(jsonPath("$.name").value("Test {Entity}"))
+            .andExpect(jsonPath("$.code").value("TEST-CODE"));
+    }
+
+    /**
+     * Test: GET all {Entities}
+     * Task Reference: T{###}
+     * 
+     * Testing array responses:
+     * - Array size assertions
+     * - Array element assertions
+     * 
+     * Reference: Testing Roadmap > MockMvc Patterns > Response Assertion Patterns
+     */
+    @Test
+    public void testGetAll{Entities}_ReturnsArray() throws Exception {
+        // Arrange
+        {Entity} {entity}1 = {Entity}Builder.create()
+            .withId("TEST-001")
+            .withName("Test {Entity} 1")
+            .build();
+        {Entity} {entity}2 = {Entity}Builder.create()
+            .withId("TEST-002")
+            .withName("Test {Entity} 2")
+            .build();
+        when({entity}Service.getAll{Entities}()).thenReturn(Arrays.asList({entity}1, {entity}2));
+        
+        // Act & Assert
+        mockMvc.perform(get("/rest/{module}/{entities}")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].id").value("TEST-001"))
+            .andExpect(jsonPath("$[1].id").value("TEST-002"));
+    }
+
+    /**
+     * Test: POST create {Entity}
+     * Task Reference: T{###}
+     * 
+     * Testing POST requests:
+     * - Request body serialization
+     * - Service method invocation
+     * - Response body creation (201 Created)
+     * 
+     * Reference: Testing Roadmap > MockMvc Patterns > Request Building Patterns
+     */
+    @Test
+    public void testCreate{Entity}_ValidInput_Returns201() throws Exception {
+        // Arrange: Create form object
+        {Entity}Form form = new {Entity}Form();
+        form.setName("New {Entity}");
+        form.setCode("NEW-CODE");
+        String requestBody = objectMapper.writeValueAsString(form);
+        
+        // Arrange: Mock service response
+        when({entity}Service.insert(any({Entity}.class))).thenReturn("NEW-ID");
+        
+        // Act & Assert: POST request
+        mockMvc.perform(post("/rest/{module}/{entities}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value("NEW-ID"));
+    }
+
+    /**
+     * Test: PUT update {Entity}
+     * Task Reference: T{###}
+     * 
+     * Testing PUT requests:
+     * - Request body serialization
+     * - Service method invocation
+     * - Response body (200 OK)
+     */
+    @Test
+    public void testUpdate{Entity}_ValidInput_Returns200() throws Exception {
+        // Arrange
+        {Entity}Form form = new {Entity}Form();
+        form.setName("Updated {Entity}");
+        form.setCode("UPDATED-CODE");
+        String requestBody = objectMapper.writeValueAsString(form);
+        
+        when({entity}Service.update(any({Entity}.class))).thenReturn("TEST-001");
+        
+        // Act & Assert
+        mockMvc.perform(put("/rest/{module}/{entities}/TEST-001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value("TEST-001"));
+    }
+
+    /**
+     * Test: DELETE {Entity}
+     * Task Reference: T{###}
+     * 
+     * Testing DELETE requests:
+     * - Service method invocation
+     * - Response status (204 No Content)
+     */
+    @Test
+    public void testDelete{Entity}_WithValidId_Returns204() throws Exception {
+        // Arrange
+        doNothing().when({entity}Service).delete("TEST-001");
+        
+        // Act & Assert
+        mockMvc.perform(delete("/rest/{module}/{entities}/TEST-001")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNoContent());
+    }
+
+    /**
+     * Test: GET {Entity} - 404 Not Found
+     * Task Reference: T{###}
+     * 
+     * Testing error responses:
+     * - 404 Not Found (resource not found)
+     * 
+     * Reference: Testing Roadmap > MockMvc Patterns > Error Response Testing
+     */
+    @Test
+    public void testGet{Entity}_WithInvalidId_Returns404() throws Exception {
+        // Arrange: Setup mock to return null (not found)
+        when({entity}Service.get{Entity}ById("INVALID-ID")).thenReturn(null);
+        
+        // Act & Assert: Verify error response
+        mockMvc.perform(get("/rest/{module}/{entities}/INVALID-ID")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Test: POST create {Entity} - 400 Bad Request
+     * Task Reference: T{###}
+     * 
+     * Testing validation errors:
+     * - 400 Bad Request (validation errors)
+     */
+    @Test
+    public void testCreate{Entity}_WithInvalidInput_Returns400() throws Exception {
+        // Arrange: Create invalid form (missing required fields)
+        {Entity}Form form = new {Entity}Form();
+        // Missing required fields
+        String requestBody = objectMapper.writeValueAsString(form);
+        
+        // Act & Assert
+        mockMvc.perform(post("/rest/{module}/{entities}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").exists());
+    }
+
+    /**
+     * Test: POST create {Entity} - 409 Conflict
+     * Task Reference: T{###}
+     * 
+     * Testing constraint violations:
+     * - 409 Conflict (duplicate code, etc.)
+     */
+    @Test
+    public void testCreate{Entity}_WithDuplicateCode_Returns409() throws Exception {
+        // Arrange
+        {Entity}Form form = new {Entity}Form();
+        form.setName("Test {Entity}");
+        form.setCode("DUPLICATE-CODE");
+        String requestBody = objectMapper.writeValueAsString(form);
+        
+        when({entity}Service.insert(any({Entity}.class)))
+            .thenThrow(new LIMSRuntimeException("Duplicate code"));
+        
+        // Act & Assert
+        mockMvc.perform(post("/rest/{module}/{entities}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isConflict());
+    }
+
+    /**
+     * Test: GET {Entity} - 500 Internal Server Error
+     * Task Reference: T{###}
+     * 
+     * Testing service exceptions:
+     * - 500 Internal Server Error (service exceptions)
+     */
+    @Test
+    public void testGet{Entity}_ServiceException_Returns500() throws Exception {
+        // Arrange
+        when({entity}Service.get{Entity}ById("ERROR-ID"))
+            .thenThrow(new RuntimeException("Database error"));
+        
+        // Act & Assert
+        mockMvc.perform(get("/rest/{module}/{entities}/ERROR-ID")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isInternalServerError());
+    }
+
+    // Additional test methods:
+    // - Test query parameters (e.g., ?active=true)
+    // - Test request headers (e.g., Authorization)
+    // - Test nested object responses (JSONPath for nested fields)
+    // - Test pagination responses
+    // - Test sorting/filtering
+    
+    // ❌ ANTI-PATTERNS to avoid:
+    // - Don't use @Mock in Spring context tests (use @MockBean)
+    // - Don't use @SpringBootTest when @WebMvcTest would work (slower execution)
+    // - Don't test service logic in controller tests (mock services, test HTTP layer)
+    // - Don't use hardcoded test data (use builders)
+    // - Don't forget to set ContentType and Accept headers
+    // - Don't test database interactions (mock services instead)
+}
+
