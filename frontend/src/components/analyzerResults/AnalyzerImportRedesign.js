@@ -47,7 +47,8 @@ import "./AnalyzerImportRedesign.css";
 
 const AnalyzerImportRedesign = ({ analyzerType }) => {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -100,12 +101,14 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       (response) => {
         if (response) {
           // Extract QC samples (control samples identified by isControl flag)
-          const qcSamplesList = response.resultList?.filter((r) => r.isControl) || [];
-          const patientResults = response.resultList?.filter((r) => !r.isControl) || [];
+          const qcSamplesList =
+            response.resultList?.filter((r) => r.isControl) || [];
+          const patientResults =
+            response.resultList?.filter((r) => !r.isControl) || [];
 
           // Enrich patient results with computed fields
-          const enrichedResults = patientResults.map((result) => 
-            enrichResultWithComputedFields(result)
+          const enrichedResults = patientResults.map((result) =>
+            enrichResultWithComputedFields(result),
           );
 
           setQcSamples(qcSamplesList);
@@ -121,7 +124,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
           fetchReagentStatus();
         }
         setLoading(false);
-      }
+      },
     );
   }, [analyzerType]);
 
@@ -143,7 +146,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       return flags;
     }
 
-    const rangeMatch = result.normalRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
+    const rangeMatch = result.normalRange.match(
+      /(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/,
+    );
     if (!rangeMatch) {
       return flags;
     }
@@ -189,9 +194,12 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     if (flags.includes("critical")) {
       return {
         suggested: {
-          label: flags.includes("below-normal") || parseFloat(result.result) < parseFloat(result.normalRange?.split("-")[0] || "0")
-            ? "Critical Low"
-            : "Critical High",
+          label:
+            flags.includes("below-normal") ||
+            parseFloat(result.result) <
+              parseFloat(result.normalRange?.split("-")[0] || "0")
+              ? "Critical Low"
+              : "Critical High",
           color: "red",
         },
       };
@@ -294,7 +302,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       JSON.stringify(ncPayload),
       (status) => {
         console.log("Non-conformity record created, status:", status);
-      }
+      },
     );
   };
 
@@ -312,7 +320,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
             setSelectedReagentLots(selected);
           }
         }
-      }
+      },
     );
   };
 
@@ -323,7 +331,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         if (response && response.reagents) {
           setAvailableReagentLots(response.reagents);
         }
-      }
+      },
     );
   };
 
@@ -334,7 +342,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         if (response) {
           setQcHistory(response.history || []);
         }
-      }
+      },
     );
   };
 
@@ -345,7 +353,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         if (response) {
           setAnalyzerInfo(response);
         }
-      }
+      },
     );
   };
 
@@ -356,7 +364,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         if (response) {
           setReagentStatus(response.reagents || []);
         }
-      }
+      },
     );
   };
 
@@ -372,9 +380,12 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
           if (response.history && response.history.length > 0) {
             const currentValue = parseFloat(result.result);
             const previousValue = parseFloat(response.history[0].value);
-            
+
             if (!isNaN(currentValue) && !isNaN(previousValue)) {
-              const deltaPercent = calculateDeltaPercent(currentValue, previousValue);
+              const deltaPercent = calculateDeltaPercent(
+                currentValue,
+                previousValue,
+              );
               response.deltaCheck = {
                 previous: response.history[0].value,
                 change: `${deltaPercent > 0 ? "+" : ""}${deltaPercent.toFixed(1)}%`,
@@ -385,7 +396,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
           }
           setRowDetailsCache((prev) => ({ ...prev, [resultId]: response }));
         }
-      }
+      },
     );
   };
 
@@ -398,7 +409,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
 
   const toggleSelectRow = (rowId) => {
     setSelectedRows((prev) =>
-      prev.includes(rowId) ? prev.filter((id) => id !== rowId) : [...prev, rowId],
+      prev.includes(rowId)
+        ? prev.filter((id) => id !== rowId)
+        : [...prev, rowId],
     );
   };
 
@@ -422,8 +435,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.qc.failed.cannot.save" }) || 
-                "QC failure detected - Results cannot be accepted until non-conformity is resolved",
+        message:
+          intl.formatMessage({ id: "error.qc.failed.cannot.save" }) ||
+          "QC failure detected - Results cannot be accepted until non-conformity is resolved",
       });
       setNotificationVisible(true);
       return;
@@ -433,8 +447,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       addNotification({
         kind: NotificationKinds.warning,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "warning.no.results.selected" }) || 
-                "Please select results to import",
+        message:
+          intl.formatMessage({ id: "warning.no.results.selected" }) ||
+          "Please select results to import",
       });
       setNotificationVisible(true);
       return;
@@ -451,30 +466,36 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       })),
     };
 
-    postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload), (status) => {
-      if (status === 200) {
-        addNotification({
-          kind: NotificationKinds.success,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "success.results.saved" }) || 
-                  "Results imported successfully",
-        });
-        setNotificationVisible(true);
-        
-        // Refresh data
-        fetchAnalyzerResults();
-        setSelectedRows([]);
-      } else {
-        addNotification({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "error.save.results" }) || 
-                  "Error saving results",
-        });
-        setNotificationVisible(true);
-      }
-      setSaving(false);
-    });
+    postToOpenElisServer(
+      "/rest/AnalyzerResults",
+      JSON.stringify(payload),
+      (status) => {
+        if (status === 200) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage({ id: "success.results.saved" }) ||
+              "Results imported successfully",
+          });
+          setNotificationVisible(true);
+
+          // Refresh data
+          fetchAnalyzerResults();
+          setSelectedRows([]);
+        } else {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage({ id: "error.save.results" }) ||
+              "Error saving results",
+          });
+          setNotificationVisible(true);
+        }
+        setSaving(false);
+      },
+    );
   };
 
   const handleRetest = () => {
@@ -487,19 +508,24 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       resultList: selectedResults.map((r) => ({ ...r, isRejected: true })),
     };
 
-    postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload), (status) => {
-      if (status === 200) {
-        addNotification({
-          kind: NotificationKinds.success,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "success.results.retest" }) || 
-                  "Results marked for retest",
-        });
-        setNotificationVisible(true);
-        fetchAnalyzerResults();
-        setSelectedRows([]);
-      }
-    });
+    postToOpenElisServer(
+      "/rest/AnalyzerResults",
+      JSON.stringify(payload),
+      (status) => {
+        if (status === 200) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage({ id: "success.results.retest" }) ||
+              "Results marked for retest",
+          });
+          setNotificationVisible(true);
+          fetchAnalyzerResults();
+          setSelectedRows([]);
+        }
+      },
+    );
   };
 
   const handleIgnore = () => {
@@ -512,19 +538,24 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       resultList: selectedResults.map((r) => ({ ...r, isDeleted: true })),
     };
 
-    postToOpenElisServer("/rest/AnalyzerResults", JSON.stringify(payload), (status) => {
-      if (status === 200) {
-        addNotification({
-          kind: NotificationKinds.success,
-          title: intl.formatMessage({ id: "notification.title" }),
-          message: intl.formatMessage({ id: "success.results.ignored" }) || 
-                  "Results ignored",
-        });
-        setNotificationVisible(true);
-        fetchAnalyzerResults();
-        setSelectedRows([]);
-      }
-    });
+    postToOpenElisServer(
+      "/rest/AnalyzerResults",
+      JSON.stringify(payload),
+      (status) => {
+        if (status === 200) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage({ id: "success.results.ignored" }) ||
+              "Results ignored",
+          });
+          setNotificationVisible(true);
+          fetchAnalyzerResults();
+          setSelectedRows([]);
+        }
+      },
+    );
   };
 
   const handleRefresh = () => {
@@ -677,61 +708,81 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         </div>
 
         {qcPanelExpanded && (
-          <div style={{ 
-            padding: "1rem", 
-            background: "#f4f4f4",
-            overflowX: "auto",
-            overflowY: "hidden"
-          }}>
-            <div style={{
-              display: "flex",
-              gap: "1rem",
-              minWidth: "min-content"
-            }}>
-            {qcSamples.map((qc, idx) => (
-              <div key={qc.id} className={`qc-micro-card ${qc.qcStatus}`} style={{
-                minWidth: "110px",
-                maxWidth: "130px",
-                flex: "0 0 auto"
-              }}>
-                <div style={{ marginBottom: "0.5rem" }}>
-                  <div style={{ 
-                    display: "flex", 
-                    justifyContent: "space-between", 
-                    alignItems: "center",
-                    marginBottom: "0.25rem"
-                  }}>
-                    <span className="text-label" style={{ fontSize: "0.75rem", fontWeight: "600" }}>
-                      {qc.controlType || `L${idx + 1}`}
-                    </span>
-                    <span style={{
-                      fontSize: "0.65rem",
-                      fontWeight: "600",
-                      color: qc.qcStatus === "pass" ? "#525252" : "#da1e28",
-                      textTransform: "uppercase"
-                    }}>
-                      {qc.qcStatus === "pass" ? "PASS" : "FAIL"}
-                    </span>
+          <div
+            style={{
+              padding: "1rem",
+              background: "#f4f4f4",
+              overflowX: "auto",
+              overflowY: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "1rem",
+                minWidth: "min-content",
+              }}
+            >
+              {qcSamples.map((qc, idx) => (
+                <div
+                  key={qc.id}
+                  className={`qc-micro-card ${qc.qcStatus}`}
+                  style={{
+                    minWidth: "110px",
+                    maxWidth: "130px",
+                    flex: "0 0 auto",
+                  }}
+                >
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "0.25rem",
+                      }}
+                    >
+                      <span
+                        className="text-label"
+                        style={{ fontSize: "0.75rem", fontWeight: "600" }}
+                      >
+                        {qc.controlType || `L${idx + 1}`}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.65rem",
+                          fontWeight: "600",
+                          color: qc.qcStatus === "pass" ? "#525252" : "#da1e28",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {qc.qcStatus === "pass" ? "PASS" : "FAIL"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div className="text-value-lg" style={{ fontSize: "1rem", marginBottom: "0.25rem" }}>
-                  {formatResult(qc.result, qc.significantDigits)}
-                </div>
-                <div className="text-label" style={{ fontSize: "0.75rem" }}>{qc.units}</div>
-               
-                {qc.failureReason && (
                   <div
-                    style={{
-                      color: "#da1e28",
-                      fontSize: "0.65rem",
-                      marginTop: "0.25rem",
-                    }}
+                    className="text-value-lg"
+                    style={{ fontSize: "1rem", marginBottom: "0.25rem" }}
                   >
-                    {qc.failureReason}
+                    {formatResult(qc.result, qc.significantDigits)}
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="text-label" style={{ fontSize: "0.75rem" }}>
+                    {qc.units}
+                  </div>
+
+                  {qc.failureReason && (
+                    <div
+                      style={{
+                        color: "#da1e28",
+                        fontSize: "0.65rem",
+                        marginTop: "0.25rem",
+                      }}
+                    >
+                      {qc.failureReason}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -766,7 +817,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
             <Button
               kind="ghost"
               size="sm"
-              onClick={() => window.location.href = `/NonConformity?id=${nonConformityId}`}
+              onClick={() =>
+                (window.location.href = `/NonConformity?id=${nonConformityId}`)
+              }
             >
               View Non-Conformity
             </Button>
@@ -841,7 +894,10 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                 <div style={{ fontSize: "0.875rem", color: "#525252" }}>
                   <span
                     style={{
-                      color: runSettings.analyzerStatus === "online" ? "#24a148" : "#da1e28",
+                      color:
+                        runSettings.analyzerStatus === "online"
+                          ? "#24a148"
+                          : "#da1e28",
                     }}
                   >
                     ● {runSettings.analyzerStatus}
@@ -849,7 +905,13 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                   {" • "}
                   QC {runSettings.analyzerQcStatus === "pass" ? "Pass" : "Fail"}
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "#525252", marginTop: "0.5rem" }}>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#525252",
+                    marginTop: "0.5rem",
+                  }}
+                >
                   ✓ Auto-assigned to all
                 </div>
               </div>
@@ -913,7 +975,13 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: "0.75rem", color: "#0f62fe", marginTop: "0.5rem" }}>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#0f62fe",
+                  marginTop: "0.5rem",
+                }}
+              >
                 ⚡ FIFO lots pre-selected. Applied to all saved results.
               </div>
             </div>
@@ -1071,8 +1139,12 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
 
   const renderSummaryStats = () => {
     const pendingCount = results.filter((r) => r.status === "pending").length;
-    const flaggedCount = results.filter((r) => r.flags && r.flags.length > 0).length;
-    const criticalCount = results.filter((r) => r.flags?.includes("critical")).length;
+    const flaggedCount = results.filter(
+      (r) => r.flags && r.flags.length > 0,
+    ).length;
+    const criticalCount = results.filter((r) =>
+      r.flags?.includes("critical"),
+    ).length;
     const nonConformingCount = results.filter((r) => r.nonConforming).length;
 
     return (
@@ -1081,13 +1153,16 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         <Tag type="blue">Pending: {pendingCount}</Tag>
         {flaggedCount > 0 && <Tag type="orange">Flagged: {flaggedCount}</Tag>}
         {criticalCount > 0 && <Tag type="red">Critical: {criticalCount}</Tag>}
-        {nonConformingCount > 0 && <Tag type="red">NC: {nonConformingCount}</Tag>}
+        {nonConformingCount > 0 && (
+          <Tag type="red">NC: {nonConformingCount}</Tag>
+        )}
       </>
     );
   };
 
   const renderBulkActions = () => {
-    const saveDisabled = overallQcStatus === "fail" || selectedRows.length === 0;
+    const saveDisabled =
+      overallQcStatus === "fail" || selectedRows.length === 0;
 
     return (
       <div
@@ -1105,7 +1180,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
           <Checkbox
             id="select-all"
             labelText=""
-            checked={selectedRows.length === results.length && results.length > 0}
+            checked={
+              selectedRows.length === results.length && results.length > 0
+            }
             indeterminate={
               selectedRows.length > 0 && selectedRows.length < results.length
             }
@@ -1194,7 +1271,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                         <span>
                           <strong>{hist.value}</strong> {hist.unit}
                         </span>
-                        <span style={{ color: "#525252" }}>{hist.interpretation}</span>
+                        <span style={{ color: "#525252" }}>
+                          {hist.interpretation}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1233,7 +1312,11 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                     </div>
                     <div>
                       <strong>QC Status:</strong>{" "}
-                      <Tag type={details.qcLinkage.status === "pass" ? "green" : "red"}>
+                      <Tag
+                        type={
+                          details.qcLinkage.status === "pass" ? "green" : "red"
+                        }
+                      >
                         {details.qcLinkage.status.toUpperCase()}
                       </Tag>
                     </div>
@@ -1254,7 +1337,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               <div style={{ padding: "1rem" }}>
                 <h5>Analyzer</h5>
                 <div style={{ marginTop: "0.5rem" }}>
-                  <strong>{details.analyzer?.name || runSettings?.analyzerName}</strong>
+                  <strong>
+                    {details.analyzer?.name || runSettings?.analyzerName}
+                  </strong>
                 </div>
 
                 <h5 style={{ marginTop: "1rem" }}>Reagents Used</h5>
@@ -1279,7 +1364,8 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                           <strong>{reagent.reagentName}</strong>
                         </div>
                         <div style={{ fontSize: "0.875rem", color: "#525252" }}>
-                          Lot: {reagent.lotNumber} | Exp: {reagent.expirationDate}
+                          Lot: {reagent.lotNumber} | Exp:{" "}
+                          {reagent.expirationDate}
                         </div>
                       </div>
                     ))}
@@ -1299,61 +1385,106 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
 
   const renderQaSidebar = () => {
     return (
-      <div style={{ 
-        padding: "1rem", 
-        backgroundColor: "#f4f4f4", 
-        height: "100%",
-        maxHeight: "calc(100vh - 120px)",
-        overflowY: "auto",
-        position: "sticky",
-        top: "80px"
-      }}>
+      <div
+        style={{
+          padding: "1rem",
+          backgroundColor: "#f4f4f4",
+          height: "100%",
+          maxHeight: "calc(100vh - 120px)",
+          overflowY: "auto",
+          position: "sticky",
+          top: "80px",
+        }}
+      >
         {/* Current Run QC Status */}
         <div style={{ marginBottom: "1.5rem" }}>
-          <h5 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "600" }}>
+          <h5
+            style={{
+              marginBottom: "0.75rem",
+              fontSize: "0.875rem",
+              fontWeight: "600",
+            }}
+          >
             Current Run Summary
           </h5>
-          <div style={{
-            border: "1px solid #e0e0e0",
-            borderRadius: "4px",
-            padding: "0.75rem",
-            backgroundColor: "#ffffff",
-          }}>
+          <div
+            style={{
+              border: "1px solid #e0e0e0",
+              borderRadius: "4px",
+              padding: "0.75rem",
+              backgroundColor: "#ffffff",
+            }}
+          >
             <div style={{ marginBottom: "0.5rem" }}>
               <strong style={{ fontSize: "0.875rem" }}>QC Status:</strong>{" "}
-              <span style={{
-                color: overallQcStatus === "pass" ? "#24a148" : overallQcStatus === "fail" ? "#da1e28" : "#525252",
-                fontWeight: "600"
-              }}>
+              <span
+                style={{
+                  color:
+                    overallQcStatus === "pass"
+                      ? "#24a148"
+                      : overallQcStatus === "fail"
+                        ? "#da1e28"
+                        : "#525252",
+                  fontWeight: "600",
+                }}
+              >
                 {overallQcStatus === "pass"
                   ? "Passed"
                   : overallQcStatus === "fail"
-                  ? "Failed"
-                  : "Pending"}
+                    ? "Failed"
+                    : "Pending"}
               </span>
             </div>
             {qcSamples.length > 0 && (
               <>
-                <div style={{ fontSize: "0.75rem", color: "#525252", marginBottom: "0.25rem" }}>
-                  Passed: {qcSamples.filter(qc => qc.qcStatus === "pass").length} / {qcSamples.length}
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#525252",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  Passed:{" "}
+                  {qcSamples.filter((qc) => qc.qcStatus === "pass").length} /{" "}
+                  {qcSamples.length}
                 </div>
                 <div style={{ fontSize: "0.75rem", color: "#da1e28" }}>
-                  Failed: {qcSamples.filter(qc => qc.qcStatus === "fail").length}
+                  Failed:{" "}
+                  {qcSamples.filter((qc) => qc.qcStatus === "fail").length}
                 </div>
               </>
             )}
-            
+
             {/* Analyzer Info */}
             {analyzerInfo && (
-              <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #e0e0e0" }}>
-                <div style={{ fontSize: "0.75rem", color: "#525252", marginBottom: "0.25rem" }}>
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  paddingTop: "0.75rem",
+                  borderTop: "1px solid #e0e0e0",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#525252",
+                    marginBottom: "0.25rem",
+                  }}
+                >
                   <strong>Analyzer:</strong> {analyzerInfo.name}
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "#525252", marginBottom: "0.25rem" }}>
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#525252",
+                    marginBottom: "0.25rem",
+                  }}
+                >
                   <strong>Status:</strong> {analyzerInfo.status}
                 </div>
                 <div style={{ fontSize: "0.75rem", color: "#525252" }}>
-                  <strong>Last Calibration:</strong> {analyzerInfo.lastCalibration}
+                  <strong>Last Calibration:</strong>{" "}
+                  {analyzerInfo.lastCalibration}
                 </div>
               </div>
             )}
@@ -1362,7 +1493,13 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
 
         {/* Recent QC History */}
         <div style={{ marginBottom: "1.5rem" }}>
-          <h5 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "600" }}>
+          <h5
+            style={{
+              marginBottom: "0.75rem",
+              fontSize: "0.875rem",
+              fontWeight: "600",
+            }}
+          >
             Recent QC History
           </h5>
           <div style={{ marginTop: "0.5rem" }}>
@@ -1386,12 +1523,16 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
           </div>
         </div>
 
-
-
         {/* Reagent Status */}
         {reagentStatus.length > 0 && (
           <div>
-            <h5 style={{ marginBottom: "0.75rem", fontSize: "0.875rem", fontWeight: "600" }}>
+            <h5
+              style={{
+                marginBottom: "0.75rem",
+                fontSize: "0.875rem",
+                fontWeight: "600",
+              }}
+            >
               Reagent Status
             </h5>
             <div style={{ marginTop: "0.5rem" }}>
@@ -1410,7 +1551,8 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                   <div style={{ color: "#525252" }}>Lot: {reagent.lot}</div>
                   <div
                     style={{
-                      color: reagent.status === "expiring" ? "#f1c21b" : "#525252",
+                      color:
+                        reagent.status === "expiring" ? "#f1c21b" : "#525252",
                     }}
                   >
                     Exp: {reagent.expires}
@@ -1447,16 +1589,25 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     },
     {
       key: "result",
-      header: intl.formatMessage({ id: "column.name.result", defaultMessage: "Result" }),
+      header: intl.formatMessage({
+        id: "column.name.result",
+        defaultMessage: "Result",
+      }),
     },
     {
       key: "range",
-      header: intl.formatMessage({ id: "column.name.range", defaultMessage: "Range" }),
+      header: intl.formatMessage({
+        id: "column.name.range",
+        defaultMessage: "Range",
+      }),
     },
     { key: "qc", header: "QC" },
     {
       key: "flags",
-      header: intl.formatMessage({ id: "column.name.flags", defaultMessage: "Flags" }),
+      header: intl.formatMessage({
+        id: "column.name.flags",
+        defaultMessage: "Flags",
+      }),
     },
     {
       key: "interpretation",
@@ -1499,12 +1650,13 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       <div>
         <strong
           style={{
-            color: result.flags?.includes("above-normal") ||
+            color:
+              result.flags?.includes("above-normal") ||
               result.flags?.includes("below-normal")
-              ? "#f1c21b"
-              : result.flags?.includes("critical")
-              ? "#da1e28"
-              : "#161616",
+                ? "#f1c21b"
+                : result.flags?.includes("critical")
+                  ? "#da1e28"
+                  : "#161616",
           }}
         >
           {formatResult(result.result, result.significantDigits)}
@@ -1519,12 +1671,17 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
           result.qcStatus === "pass"
             ? "green"
             : result.qcStatus === "fail"
-            ? "red"
-            : "gray"
+              ? "red"
+              : "gray"
         }
         size="sm"
       >
-        QC {result.qcStatus === "pass" ? "PASS" : result.qcStatus === "fail" ? "FAIL" : "—"}
+        QC{" "}
+        {result.qcStatus === "pass"
+          ? "PASS"
+          : result.qcStatus === "fail"
+            ? "FAIL"
+            : "—"}
       </Tag>
     ),
     flags: (
@@ -1567,13 +1724,23 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
             </h3>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <Button kind="ghost" renderIcon={Renew} onClick={handleRefresh}>
-                <FormattedMessage id="button.refresh" defaultMessage="Refresh" />
+                <FormattedMessage
+                  id="button.refresh"
+                  defaultMessage="Refresh"
+                />
               </Button>
-              <Button kind="ghost" renderIcon={Settings} onClick={() => {
-                fetchAvailableReagentLots();
-                setShowReagentModal(true);
-              }}>
-                <FormattedMessage id="button.settings" defaultMessage="Settings" />
+              <Button
+                kind="ghost"
+                renderIcon={Settings}
+                onClick={() => {
+                  fetchAvailableReagentLots();
+                  setShowReagentModal(true);
+                }}
+              >
+                <FormattedMessage
+                  id="button.settings"
+                  defaultMessage="Settings"
+                />
               </Button>
             </div>
           </div>
@@ -1633,7 +1800,10 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                     <TableRow>
                       <TableExpandHeader />
                       {headers.map((header) => (
-                        <TableHeader {...getHeaderProps({ header })} key={header.key}>
+                        <TableHeader
+                          {...getHeaderProps({ header })}
+                          key={header.key}
+                        >
                           {header.header}
                         </TableHeader>
                       ))}
@@ -1641,7 +1811,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                   </TableHead>
                   <TableBody>
                     {rows.map((row) => {
-                      const originalRow = row.cells.find((c) => c.id.includes("_originalResult"))?.value;
+                      const originalRow = row.cells.find((c) =>
+                        c.id.includes("_originalResult"),
+                      )?.value;
                       return (
                         <React.Fragment key={row.id}>
                           <TableExpandRow
@@ -1650,18 +1822,27 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
                               backgroundColor: originalRow?.nonConforming
                                 ? "#fff1f1"
                                 : originalRow?.flags?.includes("critical")
-                                ? "#fff4e5"
-                                : undefined,
+                                  ? "#fff4e5"
+                                  : undefined,
                             }}
                             isExpanded={expandedRows[row.id]}
                             onExpand={() =>
-                              handleRowExpand(row.id, originalRow, !expandedRows[row.id])
+                              handleRowExpand(
+                                row.id,
+                                originalRow,
+                                !expandedRows[row.id],
+                              )
                             }
                           >
                             {row.cells
-                              .filter((cell) => cell.info.header !== "_originalResult")
+                              .filter(
+                                (cell) =>
+                                  cell.info.header !== "_originalResult",
+                              )
                               .map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
                               ))}
                           </TableExpandRow>
                           {expandedRows[row.id] && (
