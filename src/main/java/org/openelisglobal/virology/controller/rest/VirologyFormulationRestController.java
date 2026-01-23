@@ -16,8 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for logging formulation data in virology workflow.
- * Handles POST requests to save formulation details (stabilizers, preservatives, concentrations).
+ * REST controller for logging formulation data in virology workflow. Handles
+ * POST requests to save formulation details (stabilizers, preservatives,
+ * concentrations).
  */
 @Slf4j
 @RestController
@@ -107,16 +108,16 @@ public class VirologyFormulationRestController extends BaseRestController {
     }
 
     /**
-     * Save formulation data for selected samples.
-     * Updates the JSONB data column for each sample with formulation parameters.
+     * Save formulation data for selected samples. Updates the JSONB data column for
+     * each sample with formulation parameters.
      *
      * @param httpRequest HTTP servlet request
-     * @param request Formulation request containing sample IDs and formulation data
+     * @param request     Formulation request containing sample IDs and formulation
+     *                    data
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(value = "/save", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveFormulationData(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveFormulationData(HttpServletRequest httpRequest,
             @RequestBody FormulationRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -168,17 +169,13 @@ public class VirologyFormulationRestController extends BaseRestController {
             log.info("Formulation data to apply: {}", formulationData);
 
             // Apply data to all selected samples
-            int updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId(),
-                    request.getSampleIds(),
-                    formulationData,
-                    getSysUserId(httpRequest));
+            int updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId(),
+                    request.getSampleIds(), formulationData, getSysUserId(httpRequest));
 
             log.info("Successfully updated {} samples with formulation data", updatedCount);
 
             // Update sample status to IN_PROGRESS
-            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(
-                    request.getNotebookPageId(),
+            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(request.getNotebookPageId(),
                     request.getSampleIds(),
                     org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS,
                     getSysUserId(httpRequest));
@@ -200,16 +197,15 @@ public class VirologyFormulationRestController extends BaseRestController {
     }
 
     /**
-     * Complete formulation for selected samples.
-     * Updates the sample status to COMPLETED.
+     * Complete formulation for selected samples. Updates the sample status to
+     * COMPLETED.
      *
      * @param httpRequest HTTP servlet request
-     * @param request Formulation request containing sample IDs
+     * @param request     Formulation request containing sample IDs
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(value = "/complete", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> completeFormulation(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> completeFormulation(HttpServletRequest httpRequest,
             @RequestBody FormulationRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -232,10 +228,8 @@ public class VirologyFormulationRestController extends BaseRestController {
             }
 
             // Update sample status to COMPLETED
-            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(
-                    request.getNotebookPageId(),
-                    request.getSampleIds(),
-                    org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.COMPLETED,
+            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(request.getNotebookPageId(),
+                    request.getSampleIds(), org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.COMPLETED,
                     getSysUserId(httpRequest));
 
             log.info("Updated status to COMPLETED for {} samples", statusUpdatedCount);

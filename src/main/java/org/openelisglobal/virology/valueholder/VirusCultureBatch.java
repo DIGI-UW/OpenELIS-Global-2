@@ -1,24 +1,21 @@
 package org.openelisglobal.virology.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Main entity that tracks a virus culture batch through all 9 process steps
- * of the virus culture growth workflow (Stage 2)
+ * Main entity that tracks a virus culture batch through all 9 process steps of
+ * the virus culture growth workflow (Stage 2)
  */
 @Entity
 @Table(name = "virus_culture_batch")
@@ -27,36 +24,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class VirusCultureBatch extends BaseObject<Integer> {
 
     public enum BatchStatus {
-        MEDIA_PREP_PENDING,
-        MEDIA_PREP_IN_PROGRESS,
-        MEDIA_PREP_COMPLETE,
-        STERILIZATION_PENDING,
-        STERILIZATION_IN_PROGRESS,
-        STERILIZATION_COMPLETE,
-        CELL_CULTURE_PENDING,
-        CELL_CULTURE_IN_PROGRESS,
-        CELL_CULTURE_COMPLETE,
-        QUALITY_CONTROL_PENDING,
-        QUALITY_CONTROL_IN_PROGRESS,
-        QUALITY_CONTROL_COMPLETE,
-        VIRUS_CULTURE_PENDING,
-        VIRUS_CULTURE_IN_PROGRESS,
-        VIRUS_CULTURE_COMPLETE,
-        DARK_ROOM_IMAGING_PENDING,
-        DARK_ROOM_IMAGING_IN_PROGRESS,
-        DARK_ROOM_IMAGING_COMPLETE,
-        FORMULATION_PENDING,
-        FORMULATION_IN_PROGRESS,
-        FORMULATION_COMPLETE,
-        FEEDING_PENDING,
-        FEEDING_IN_PROGRESS,
-        FEEDING_COMPLETE,
-        PACKAGING_PENDING,
-        PACKAGING_IN_PROGRESS,
-        PACKAGING_COMPLETE,
-        WORKFLOW_COMPLETE,
-        FAILED,
-        CANCELLED
+        MEDIA_PREP_PENDING, MEDIA_PREP_IN_PROGRESS, MEDIA_PREP_COMPLETE, STERILIZATION_PENDING,
+        STERILIZATION_IN_PROGRESS, STERILIZATION_COMPLETE, CELL_CULTURE_PENDING, CELL_CULTURE_IN_PROGRESS,
+        CELL_CULTURE_COMPLETE, QUALITY_CONTROL_PENDING, QUALITY_CONTROL_IN_PROGRESS, QUALITY_CONTROL_COMPLETE,
+        VIRUS_CULTURE_PENDING, VIRUS_CULTURE_IN_PROGRESS, VIRUS_CULTURE_COMPLETE, DARK_ROOM_IMAGING_PENDING,
+        DARK_ROOM_IMAGING_IN_PROGRESS, DARK_ROOM_IMAGING_COMPLETE, FORMULATION_PENDING, FORMULATION_IN_PROGRESS,
+        FORMULATION_COMPLETE, FEEDING_PENDING, FEEDING_IN_PROGRESS, FEEDING_COMPLETE, PACKAGING_PENDING,
+        PACKAGING_IN_PROGRESS, PACKAGING_COMPLETE, WORKFLOW_COMPLETE, FAILED, CANCELLED
     }
 
     @Id
@@ -481,13 +455,8 @@ public class VirusCultureBatch extends BaseObject<Integer> {
 
     @Override
     public String toString() {
-        return "VirusCultureBatch{" +
-                "id=" + id +
-                ", batchId='" + batchId + '\'' +
-                ", status=" + status +
-                ", virusStrain='" + virusStrain + '\'' +
-                ", cellLineUsed='" + cellLineUsed + '\'' +
-                ", passageNumber=" + passageNumber +
-                '}';
+        return "VirusCultureBatch{" + "id=" + id + ", batchId='" + batchId + '\'' + ", status=" + status
+                + ", virusStrain='" + virusStrain + '\'' + ", cellLineUsed='" + cellLineUsed + '\'' + ", passageNumber="
+                + passageNumber + '}';
     }
 }

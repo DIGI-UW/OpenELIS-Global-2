@@ -1,15 +1,11 @@
 package org.openelisglobal.virology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
-
 import org.openelisglobal.common.controller.BaseController;
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -42,12 +38,10 @@ public class VirusCultureWorkflowController extends BaseController {
     /**
      * Create new virus culture batch from a notebook page sample
      */
-    @PostMapping(value = "/batch",
-                 consumes = MediaType.APPLICATION_JSON_VALUE,
-                 produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/batch", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createBatch(@Valid @RequestBody CreateBatchRequest request,
-                                                           HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -60,7 +54,8 @@ public class VirusCultureWorkflowController extends BaseController {
             if (request.getNotebookPageSampleId() != null) {
                 // Note: You may want to add a service method to get NotebookPageSample by ID
                 // For now, this handles the case where notebookPageSampleId might be null
-                // notebookPageSample = notebookPageSampleService.get(request.getNotebookPageSampleId());
+                // notebookPageSample =
+                // notebookPageSampleService.get(request.getNotebookPageSampleId());
             }
 
             // Validate batch creation
@@ -75,12 +70,8 @@ public class VirusCultureWorkflowController extends BaseController {
             }
 
             // Create batch
-            VirusCultureBatch batch = virusCultureWorkflowService.createVirusCultureBatch(
-                    notebookPageSample,
-                    request.getVirusStrain(),
-                    request.getCellLine(),
-                    currentUser
-            );
+            VirusCultureBatch batch = virusCultureWorkflowService.createVirusCultureBatch(notebookPageSample,
+                    request.getVirusStrain(), request.getCellLine(), currentUser);
 
             response.put("success", true);
             response.put("message", "Virus culture batch created successfully");
@@ -113,8 +104,7 @@ public class VirusCultureWorkflowController extends BaseController {
                 return ResponseEntity.notFound().build();
             }
 
-            List<VirusCultureWorkflowStatus> workflowStatus =
-                    virusCultureWorkflowService.getWorkflowStatus(batchId);
+            List<VirusCultureWorkflowStatus> workflowStatus = virusCultureWorkflowService.getWorkflowStatus(batchId);
 
             Map<String, Object> progressInfo = virusCultureWorkflowService.getWorkflowProgress(batchId);
 
@@ -141,8 +131,7 @@ public class VirusCultureWorkflowController extends BaseController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            List<VirusCultureBatch> batches = virusCultureWorkflowService
-                    .getVirusCultureBatchesBySample(sampleId);
+            List<VirusCultureBatch> batches = virusCultureWorkflowService.getVirusCultureBatchesBySample(sampleId);
 
             response.put("success", true);
             response.put("batches", batches);
@@ -188,18 +177,15 @@ public class VirusCultureWorkflowController extends BaseController {
     /**
      * Start a workflow step
      */
-    @PostMapping(value = "/batch/{batchId}/step/{stepName}/start",
-                 produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/batch/{batchId}/step/{stepName}/start", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> startStep(@PathVariable Integer batchId,
-                                                         @PathVariable String stepName,
-                                                         HttpServletRequest httpRequest) {
+    public ResponseEntity<Map<String, Object>> startStep(@PathVariable Integer batchId, @PathVariable String stepName,
+            HttpServletRequest httpRequest) {
         Map<String, Object> response = new HashMap<>();
 
         try {
             // Validate step can be started
-            Map<String, Object> validationResult = virusCultureWorkflowService
-                    .validateStepCanStart(batchId, stepName);
+            Map<String, Object> validationResult = virusCultureWorkflowService.validateStepCanStart(batchId, stepName);
 
             if (!(Boolean) validationResult.get("valid")) {
                 response.put("success", false);
@@ -212,8 +198,8 @@ public class VirusCultureWorkflowController extends BaseController {
             String systemUserId = getSysUserId(httpRequest);
             SystemUser currentUser = systemUserService.get(systemUserId);
 
-            VirusCultureWorkflowStatus status = virusCultureWorkflowService
-                    .startWorkflowStep(batchId, stepName, currentUser);
+            VirusCultureWorkflowStatus status = virusCultureWorkflowService.startWorkflowStep(batchId, stepName,
+                    currentUser);
 
             response.put("success", true);
             response.put("message", "Step started successfully");
@@ -231,14 +217,10 @@ public class VirusCultureWorkflowController extends BaseController {
     /**
      * Complete a workflow step
      */
-    @PostMapping(value = "/batch/{batchId}/step/{stepName}/complete",
-                 consumes = MediaType.APPLICATION_JSON_VALUE,
-                 produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/batch/{batchId}/step/{stepName}/complete", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> completeStep(@PathVariable Integer batchId,
-                                                            @PathVariable String stepName,
-                                                            @RequestBody CompleteStepRequest request,
-                                                            HttpServletRequest httpRequest) {
+            @PathVariable String stepName, @RequestBody CompleteStepRequest request, HttpServletRequest httpRequest) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -246,13 +228,12 @@ public class VirusCultureWorkflowController extends BaseController {
             String systemUserId = getSysUserId(httpRequest);
             SystemUser currentUser = systemUserService.get(systemUserId);
 
-            VirusCultureWorkflowStatus.QualityCheckResult qcResult =
-                    request.getQualityResult() != null
-                            ? VirusCultureWorkflowStatus.QualityCheckResult.valueOf(request.getQualityResult())
-                            : VirusCultureWorkflowStatus.QualityCheckResult.NOT_APPLICABLE;
+            VirusCultureWorkflowStatus.QualityCheckResult qcResult = request.getQualityResult() != null
+                    ? VirusCultureWorkflowStatus.QualityCheckResult.valueOf(request.getQualityResult())
+                    : VirusCultureWorkflowStatus.QualityCheckResult.NOT_APPLICABLE;
 
-            VirusCultureWorkflowStatus status = virusCultureWorkflowService
-                    .completeWorkflowStep(batchId, stepName, currentUser, qcResult, request.getNotes());
+            VirusCultureWorkflowStatus status = virusCultureWorkflowService.completeWorkflowStep(batchId, stepName,
+                    currentUser, qcResult, request.getNotes());
 
             // Auto-advance to next step if possible
             boolean advanced = virusCultureWorkflowService.autoAdvanceWorkflow(batchId);
@@ -278,13 +259,10 @@ public class VirusCultureWorkflowController extends BaseController {
     /**
      * Record quality control data
      */
-    @PostMapping(value = "/batch/{batchId}/quality-control",
-                 consumes = MediaType.APPLICATION_JSON_VALUE,
-                 produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/batch/{batchId}/quality-control", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> recordQualityControl(@PathVariable Integer batchId,
-                                                                    @Valid @RequestBody VirusCultureQualityControl qualityControl,
-                                                                    HttpServletRequest httpRequest) {
+            @Valid @RequestBody VirusCultureQualityControl qualityControl, HttpServletRequest httpRequest) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -294,12 +272,11 @@ public class VirusCultureWorkflowController extends BaseController {
 
             qualityControl.setTestedBy(currentUser);
 
-            VirusCultureQualityControl savedQc = virusCultureWorkflowService
-                    .recordQualityControl(batchId, qualityControl);
+            VirusCultureQualityControl savedQc = virusCultureWorkflowService.recordQualityControl(batchId,
+                    qualityControl);
 
             // Validate QC results
-            Map<String, Object> validationResult = virusCultureWorkflowService
-                    .validateQualityControlResults(savedQc);
+            Map<String, Object> validationResult = virusCultureWorkflowService.validateQualityControlResults(savedQc);
 
             response.put("success", true);
             response.put("message", "Quality control data recorded successfully");
@@ -318,13 +295,10 @@ public class VirusCultureWorkflowController extends BaseController {
     /**
      * Record virus inoculation data
      */
-    @PostMapping(value = "/batch/{batchId}/virus-inoculation",
-                 consumes = MediaType.APPLICATION_JSON_VALUE,
-                 produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/batch/{batchId}/virus-inoculation", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> recordVirusInoculation(@PathVariable Integer batchId,
-                                                                      @Valid @RequestBody VirusCultureVirusInoculation virusInoculation,
-                                                                      HttpServletRequest httpRequest) {
+            @Valid @RequestBody VirusCultureVirusInoculation virusInoculation, HttpServletRequest httpRequest) {
         Map<String, Object> response = new HashMap<>();
 
         try {
@@ -334,8 +308,8 @@ public class VirusCultureWorkflowController extends BaseController {
 
             virusInoculation.setPerformedBy(currentUser);
 
-            VirusCultureVirusInoculation savedInoculation = virusCultureWorkflowService
-                    .recordVirusInoculation(batchId, virusInoculation);
+            VirusCultureVirusInoculation savedInoculation = virusCultureWorkflowService.recordVirusInoculation(batchId,
+                    virusInoculation);
 
             response.put("success", true);
             response.put("message", "Virus inoculation data recorded successfully");
@@ -411,28 +385,58 @@ public class VirusCultureWorkflowController extends BaseController {
         private String notes;
 
         // Getters and setters
-        public Integer getNotebookPageSampleId() { return notebookPageSampleId; }
-        public void setNotebookPageSampleId(Integer notebookPageSampleId) { this.notebookPageSampleId = notebookPageSampleId; }
+        public Integer getNotebookPageSampleId() {
+            return notebookPageSampleId;
+        }
 
-        public String getVirusStrain() { return virusStrain; }
-        public void setVirusStrain(String virusStrain) { this.virusStrain = virusStrain; }
+        public void setNotebookPageSampleId(Integer notebookPageSampleId) {
+            this.notebookPageSampleId = notebookPageSampleId;
+        }
 
-        public String getCellLine() { return cellLine; }
-        public void setCellLine(String cellLine) { this.cellLine = cellLine; }
+        public String getVirusStrain() {
+            return virusStrain;
+        }
 
-        public String getNotes() { return notes; }
-        public void setNotes(String notes) { this.notes = notes; }
+        public void setVirusStrain(String virusStrain) {
+            this.virusStrain = virusStrain;
+        }
+
+        public String getCellLine() {
+            return cellLine;
+        }
+
+        public void setCellLine(String cellLine) {
+            this.cellLine = cellLine;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
     }
 
     public static class CompleteStepRequest {
         private String qualityResult;
         private String notes;
 
-        public String getQualityResult() { return qualityResult; }
-        public void setQualityResult(String qualityResult) { this.qualityResult = qualityResult; }
+        public String getQualityResult() {
+            return qualityResult;
+        }
 
-        public String getNotes() { return notes; }
-        public void setNotes(String notes) { this.notes = notes; }
+        public void setQualityResult(String qualityResult) {
+            this.qualityResult = qualityResult;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
     }
 
     // Required implementations from BaseController

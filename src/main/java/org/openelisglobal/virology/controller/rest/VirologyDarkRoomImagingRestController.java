@@ -1,6 +1,6 @@
 package org.openelisglobal.virology.controller.rest;
 
-import java.io.File;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,9 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import jakarta.servlet.http.HttpServletRequest;
-
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.slf4j.Logger;
@@ -25,11 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * REST Controller for Virology Dark Room Imaging operations.
@@ -37,11 +31,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Handles imaging and fluorescence analysis data for virus culture samples.
  * Part of Page 6 in the Virology & Vaccine Unit workflow.
  *
- * Captures:
- * - Image ID (reference to stored image)
- * - CPE (Cytopathic Effect) observations
- * - Fluorescence intensity measurements
- * - Imaging notes and observations
+ * Captures: - Image ID (reference to stored image) - CPE (Cytopathic Effect)
+ * observations - Fluorescence intensity measurements - Imaging notes and
+ * observations
  */
 @RestController
 @RequestMapping("/rest/virology/dark-room-imaging")
@@ -126,20 +118,20 @@ public class VirologyDarkRoomImagingRestController extends BaseRestController {
     }
 
     /**
-     * Save dark room imaging data for selected samples with optional base64 image uploads.
+     * Save dark room imaging data for selected samples with optional base64 image
+     * uploads.
      *
      * POST /rest/virology/dark-room-imaging
      *
-     * Updates sample status to IN_PROGRESS after saving data.
-     * Accepts JSON with optional base64-encoded images in uploadedImages array.
+     * Updates sample status to IN_PROGRESS after saving data. Accepts JSON with
+     * optional base64-encoded images in uploadedImages array.
      *
      * @param httpRequest the HTTP request
      * @param request     the imaging data including optional base64 images
      * @return response with success status and updated count
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveImagingData(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveImagingData(HttpServletRequest httpRequest,
             @RequestBody ImagingDataRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -193,20 +185,15 @@ public class VirologyDarkRoomImagingRestController extends BaseRestController {
             log.info("Dark room imaging data to apply: {} field(s)", imagingData.size());
 
             // Apply data to all selected samples
-            int updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId(),
-                    request.getSampleIds(),
-                    imagingData,
-                    sysUserId);
+            int updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId(),
+                    request.getSampleIds(), imagingData, sysUserId);
 
             log.info("Successfully updated {} samples with imaging data", updatedCount);
 
             // Update sample status to IN_PROGRESS
-            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(
-                    request.getNotebookPageId(),
+            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(request.getNotebookPageId(),
                     request.getSampleIds(),
-                    org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS,
-                    sysUserId);
+                    org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS, sysUserId);
 
             log.info("Updated status to IN_PROGRESS for {} samples", statusUpdatedCount);
 

@@ -159,7 +159,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setParentRoom(parentRoom);
         device.setCode("test-frz01");
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         Integer deviceId = storageLocationService.insert(device);
         assertNotNull(deviceId);
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
@@ -177,7 +177,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         Integer deviceId = storageLocationService.insert(device);
         assertNotNull(deviceId);
         StorageDevice retrieved = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
@@ -195,7 +195,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         try {
             storageLocationService.insert(device);
             fail("Should have thrown exception");
@@ -215,7 +215,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device1.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device1.setParentRoom(parentRoom);
         device1.setActive(true);
-        device1.setSysUserIdValue(1);
+        device1.setSysUserId("1");
         storageLocationService.insert(device1);
 
         StorageDevice device2 = new StorageDevice();
@@ -224,7 +224,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device2.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device2.setParentRoom(parentRoom);
         device2.setActive(true);
-        device2.setSysUserIdValue(1);
+        device2.setSysUserId("1");
 
         try {
             storageLocationService.insert(device2);
@@ -244,7 +244,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         device.setTypeEnum(StorageDevice.DeviceType.FREEZER);
         device.setParentRoom(parentRoom);
         device.setActive(true);
-        device.setSysUserIdValue(1);
+        device.setSysUserId("1");
         Integer deviceId = storageLocationService.insert(device);
 
         StorageDevice updatedDevice = (StorageDevice) storageLocationService.get(deviceId, StorageDevice.class);
@@ -264,7 +264,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         shelf.setParentDevice(parentDevice);
         shelf.setCode("test-sha01");
         shelf.setActive(true);
-        shelf.setSysUserIdValue(1);
+        shelf.setSysUserId("1");
         Integer shelfId = storageLocationService.insert(shelf);
         StorageShelf retrieved = (StorageShelf) storageLocationService.get(shelfId, StorageShelf.class);
         assertEquals("TEST-SHA01", retrieved.getCode());
@@ -279,7 +279,7 @@ public class StorageLocationServiceIntegrationTest extends BaseWebContextSensiti
         rack.setParentShelf(parentShelf);
         rack.setCode("test-rkr01");
         rack.setActive(true);
-        rack.setSysUserIdValue(1);
+        rack.setSysUserId("1");
         Integer rackId = storageLocationService.insert(rack);
         StorageRack retrieved = (StorageRack) storageLocationService.get(rackId, StorageRack.class);
         assertEquals("TEST-RKR01", retrieved.getCode());

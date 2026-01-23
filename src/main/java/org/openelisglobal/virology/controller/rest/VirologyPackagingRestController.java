@@ -1,5 +1,6 @@
 package org.openelisglobal.virology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
@@ -14,12 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for virology product packaging logging.
- * Handles final product packaging specifications for virology workflows.
+ * REST controller for virology product packaging logging. Handles final product
+ * packaging specifications for virology workflows.
  */
 @RestController
 @RequestMapping("/rest/virology/packaging")
@@ -31,15 +31,14 @@ public class VirologyPackagingRestController extends BaseRestController {
     private NotebookPageSampleService notebookPageSampleService;
 
     /**
-     * Save packaging log with product specifications.
-     * Records batch ID, vial type, fill volume, labeling information.
+     * Save packaging log with product specifications. Records batch ID, vial type,
+     * fill volume, labeling information.
      *
      * @param request Packaging log request
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> savePackaging(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> savePackaging(HttpServletRequest httpRequest,
             @Valid @RequestBody PackagingRequest request) {
 
         try {
@@ -63,18 +62,16 @@ public class VirologyPackagingRestController extends BaseRestController {
 
             // Apply packaging data to selected samples
             int updatedCount = 0;
-            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty() && request.getNotebookPageId() != null) {
-                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: " + request.getSampleIds());
-                updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId().intValue(),
-                    request.getSampleIds(),
-                    packagingData,
-                    getSysUserId(httpRequest)
-                );
+            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty()
+                    && request.getNotebookPageId() != null) {
+                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: "
+                        + request.getSampleIds());
+                updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId().intValue(),
+                        request.getSampleIds(), packagingData, getSysUserId(httpRequest));
                 log.info("Updated " + updatedCount + " samples with packaging data");
             } else {
-                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId() +
-                         ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
+                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId()
+                        + ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
             }
 
             Map<String, Object> response = new HashMap<>();

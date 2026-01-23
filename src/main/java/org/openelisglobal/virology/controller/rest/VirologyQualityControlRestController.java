@@ -17,7 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST controller for logging quality control data in virology workflow.
- * Handles POST requests to save viability percentage, sterility results, and QC notes.
+ * Handles POST requests to save viability percentage, sterility results, and QC
+ * notes.
  */
 @Slf4j
 @RestController
@@ -107,16 +108,15 @@ public class VirologyQualityControlRestController extends BaseRestController {
     }
 
     /**
-     * Save quality control data for selected samples.
-     * Updates the JSONB data column for each sample with QC parameters.
+     * Save quality control data for selected samples. Updates the JSONB data column
+     * for each sample with QC parameters.
      *
      * @param httpRequest HTTP servlet request
-     * @param request Quality control request containing sample IDs and QC data
+     * @param request     Quality control request containing sample IDs and QC data
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveQualityControlData(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveQualityControlData(HttpServletRequest httpRequest,
             @RequestBody QualityControlRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -186,11 +186,8 @@ public class VirologyQualityControlRestController extends BaseRestController {
             log.info("Quality control data to apply: {}", qcData);
 
             // Apply data to all selected samples
-            int updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId(),
-                    request.getSampleIds(),
-                    qcData,
-                    getSysUserId(httpRequest));
+            int updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId(),
+                    request.getSampleIds(), qcData, getSysUserId(httpRequest));
 
             log.info("Successfully updated {} samples with quality control data", updatedCount);
 

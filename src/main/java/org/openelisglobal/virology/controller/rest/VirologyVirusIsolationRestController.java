@@ -1,5 +1,6 @@
 package org.openelisglobal.virology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
@@ -14,12 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for virology virus isolation logging.
- * Handles virus isolation from culture batches with full traceability.
+ * REST controller for virology virus isolation logging. Handles virus isolation
+ * from culture batches with full traceability.
  */
 @RestController
 @RequestMapping("/rest/virology/virus-isolation")
@@ -31,15 +31,14 @@ public class VirologyVirusIsolationRestController extends BaseRestController {
     private NotebookPageSampleService notebookPageSampleService;
 
     /**
-     * Save virus isolation log with culture batch linkage.
-     * Records isolation method, batch IDs, and virus strain information.
+     * Save virus isolation log with culture batch linkage. Records isolation
+     * method, batch IDs, and virus strain information.
      *
      * @param request Virus isolation log request
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveVirusIsolation(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveVirusIsolation(HttpServletRequest httpRequest,
             @Valid @RequestBody VirusIsolationRequest request) {
 
         try {
@@ -57,18 +56,16 @@ public class VirologyVirusIsolationRestController extends BaseRestController {
 
             // Apply isolation data to selected samples
             int updatedCount = 0;
-            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty() && request.getNotebookPageId() != null) {
-                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: " + request.getSampleIds());
-                updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId().intValue(),
-                    request.getSampleIds(),
-                    isolationData,
-                    getSysUserId(httpRequest)
-                );
+            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty()
+                    && request.getNotebookPageId() != null) {
+                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: "
+                        + request.getSampleIds());
+                updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId().intValue(),
+                        request.getSampleIds(), isolationData, getSysUserId(httpRequest));
                 log.info("Updated " + updatedCount + " samples with virus isolation data");
             } else {
-                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId() +
-                         ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
+                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId()
+                        + ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
             }
 
             Map<String, Object> response = new HashMap<>();

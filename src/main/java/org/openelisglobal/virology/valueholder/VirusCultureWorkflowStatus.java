@@ -1,19 +1,17 @@
 package org.openelisglobal.virology.valueholder;
 
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-
+import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Entity to track progress through all 9 process steps of the virus culture workflow
+ * Entity to track progress through all 9 process steps of the virus culture
+ * workflow
  */
 @Entity
 @Table(name = "virus_culture_workflow_status")
@@ -22,20 +20,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class VirusCultureWorkflowStatus extends BaseObject<Integer> {
 
     public enum StepStatus {
-        PENDING,
-        IN_PROGRESS,
-        COMPLETED,
-        FAILED,
-        SKIPPED,
-        ON_HOLD
+        PENDING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED, ON_HOLD
     }
 
     public enum QualityCheckResult {
-        NOT_APPLICABLE,
-        PENDING,
-        PASSED,
-        FAILED,
-        CONDITIONAL_PASS
+        NOT_APPLICABLE, PENDING, PASSED, FAILED, CONDITIONAL_PASS
     }
 
     @Id
@@ -262,8 +251,8 @@ public class VirusCultureWorkflowStatus extends BaseObject<Integer> {
     }
 
     public boolean hasQualityIssue() {
-        return qualityCheckResult == QualityCheckResult.FAILED ||
-               qualityCheckResult == QualityCheckResult.CONDITIONAL_PASS;
+        return qualityCheckResult == QualityCheckResult.FAILED
+                || qualityCheckResult == QualityCheckResult.CONDITIONAL_PASS;
     }
 
     /**
@@ -306,12 +295,7 @@ public class VirusCultureWorkflowStatus extends BaseObject<Integer> {
 
     @Override
     public String toString() {
-        return "VirusCultureWorkflowStatus{" +
-                "id=" + id +
-                ", stepName='" + stepName + '\'' +
-                ", stepOrder=" + stepOrder +
-                ", status=" + status +
-                ", qualityCheckResult=" + qualityCheckResult +
-                '}';
+        return "VirusCultureWorkflowStatus{" + "id=" + id + ", stepName='" + stepName + '\'' + ", stepOrder="
+                + stepOrder + ", status=" + status + ", qualityCheckResult=" + qualityCheckResult + '}';
     }
 }

@@ -18,9 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for Virology Preclinical and Clinical Trials page.
- * Handles saving trial data for both preclinical (animal) and clinical (human) trials.
- * Uses trialsHistory array pattern to allow multiple trials of both types per sample.
+ * REST controller for Virology Preclinical and Clinical Trials page. Handles
+ * saving trial data for both preclinical (animal) and clinical (human) trials.
+ * Uses trialsHistory array pattern to allow multiple trials of both types per
+ * sample.
  */
 @RestController
 @RequestMapping("/rest/virology")
@@ -58,8 +59,7 @@ public class VirologyTrialsRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/trials", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveTrialData(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveTrialData(HttpServletRequest httpRequest,
             @RequestBody TrialsRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -127,13 +127,9 @@ public class VirologyTrialsRestController extends BaseRestController {
             }
 
             // Append trial event to trialsHistory array (allows multiple trials per sample)
-            int updatedCount = notebookPageSampleService.bulkAppendToArray(
-                request.notebookPageId.intValue(),
-                request.sampleIds,
-                "trialsHistory", // Array field name
-                trialEvent,
-                getSysUserId(httpRequest)
-            );
+            int updatedCount = notebookPageSampleService.bulkAppendToArray(request.notebookPageId.intValue(),
+                    request.sampleIds, "trialsHistory", // Array field name
+                    trialEvent, getSysUserId(httpRequest));
 
             log.info("Appended trial event to " + updatedCount + " samples");
 

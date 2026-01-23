@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for logging virus culture data in virology workflow.
- * Handles POST requests to save virus strain, culture conditions, and culture notes.
+ * REST controller for logging virus culture data in virology workflow. Handles
+ * POST requests to save virus strain, culture conditions, and culture notes.
  */
 @Slf4j
 @RestController
@@ -98,16 +98,16 @@ public class VirologyVirusCultureRestController extends BaseRestController {
     }
 
     /**
-     * Save virus culture data for selected samples.
-     * Updates the JSONB data column for each sample with virus culture parameters.
+     * Save virus culture data for selected samples. Updates the JSONB data column
+     * for each sample with virus culture parameters.
      *
      * @param httpRequest HTTP servlet request
-     * @param request Virus culture request containing sample IDs and culture data
+     * @param request     Virus culture request containing sample IDs and culture
+     *                    data
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveVirusCultureData(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveVirusCultureData(HttpServletRequest httpRequest,
             @RequestBody VirusCultureRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -141,7 +141,8 @@ public class VirologyVirusCultureRestController extends BaseRestController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            if (request.getCo2Percentage() != null && (request.getCo2Percentage() < 0 || request.getCo2Percentage() > 100)) {
+            if (request.getCo2Percentage() != null
+                    && (request.getCo2Percentage() < 0 || request.getCo2Percentage() > 100)) {
                 response.put("success", false);
                 response.put("error", "CO₂ percentage must be between 0 and 100");
                 return ResponseEntity.badRequest().body(response);
@@ -176,17 +177,13 @@ public class VirologyVirusCultureRestController extends BaseRestController {
             log.info("Virus culture data to apply: {}", cultureData);
 
             // Apply data to all selected samples
-            int updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId(),
-                    request.getSampleIds(),
-                    cultureData,
-                    getSysUserId(httpRequest));
+            int updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId(),
+                    request.getSampleIds(), cultureData, getSysUserId(httpRequest));
 
             log.info("Successfully updated {} samples with virus culture data", updatedCount);
 
             // Update sample status to IN_PROGRESS
-            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(
-                    request.getNotebookPageId(),
+            int statusUpdatedCount = notebookPageSampleService.bulkUpdateStatus(request.getNotebookPageId(),
                     request.getSampleIds(),
                     org.openelisglobal.notebook.valueholder.NotebookPageSample.Status.IN_PROGRESS,
                     getSysUserId(httpRequest));

@@ -66,8 +66,8 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
     int bulkUpdateStatus(Integer pageId, List<Integer> sampleIds, Status status, String userId);
 
     /**
-     * Clear destinationType for multiple samples on a page (unroute them).
-     * This makes samples available for re-routing.
+     * Clear destinationType for multiple samples on a page (unroute them). This
+     * makes samples available for re-routing.
      *
      * @param pageId    the notebook page ID
      * @param sampleIds list of sample item IDs
@@ -101,8 +101,9 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
     int bulkApplyData(Integer pageId, List<Integer> sampleIds, Map<String, Object> data, String userId);
 
     /**
-     * Bulk append data to a JSONB array field for multiple samples on a page.
-     * This is useful for logging recurring events (e.g., feeding history) without overwriting previous entries.
+     * Bulk append data to a JSONB array field for multiple samples on a page. This
+     * is useful for logging recurring events (e.g., feeding history) without
+     * overwriting previous entries.
      *
      * @param pageId     the notebook page ID
      * @param sampleIds  list of sample item IDs
@@ -111,7 +112,8 @@ public interface NotebookPageSampleService extends BaseObjectService<NotebookPag
      * @param userId     the user performing the update
      * @return number of records updated
      */
-    int bulkAppendToArray(Integer pageId, List<Integer> sampleIds, String arrayField, Map<String, Object> newEntry, String userId);
+    int bulkAppendToArray(Integer pageId, List<Integer> sampleIds, String arrayField, Map<String, Object> newEntry,
+            String userId);
 
     /**
      * Get paginated samples for a page with optional status filter.

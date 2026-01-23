@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for logging cell culture data in virology workflow.
- * Handles POST requests to save cell line, passage number, and growth conditions.
+ * REST controller for logging cell culture data in virology workflow. Handles
+ * POST requests to save cell line, passage number, and growth conditions.
  */
 @Slf4j
 @RestController
@@ -143,16 +143,16 @@ public class VirologyCellCultureRestController extends BaseRestController {
     }
 
     /**
-     * Save cell culture data for selected samples.
-     * Updates the JSONB data column for each sample with cell culture parameters.
+     * Save cell culture data for selected samples. Updates the JSONB data column
+     * for each sample with cell culture parameters.
      *
      * @param httpRequest HTTP servlet request
-     * @param request Cell culture request containing sample IDs and culture data
+     * @param request     Cell culture request containing sample IDs and culture
+     *                    data
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveCellCultureData(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveCellCultureData(HttpServletRequest httpRequest,
             @RequestBody CellCultureRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -226,11 +226,8 @@ public class VirologyCellCultureRestController extends BaseRestController {
             log.info("Cell culture data to apply: {}", cellCultureData);
 
             // Apply data to all selected samples
-            int updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId(),
-                    request.getSampleIds(),
-                    cellCultureData,
-                    getSysUserId(httpRequest));
+            int updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId(),
+                    request.getSampleIds(), cellCultureData, getSysUserId(httpRequest));
 
             log.info("Successfully updated {} samples with cell culture data", updatedCount);
 
