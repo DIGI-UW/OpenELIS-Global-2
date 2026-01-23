@@ -182,27 +182,27 @@ public class TraditionalMedicineManifestImportServiceImpl implements Traditional
             }
 
             // Validate source types
-            List<String> validSourceTypes = List.of("Plant material", "Other traditional medicine source");
+            List<String> validSourceTypes = List.of("Plant material", "Other traditional medicine source", "Plant Extract");
             if (row.sourceType() != null
                     && !validSourceTypes.stream().anyMatch(t -> t.equalsIgnoreCase(row.sourceType()))) {
                 errors.add(new ParseError(row.rowNumber(), "source_type", "Invalid source type: " + row.sourceType()
-                        + ". Must be one of: Plant material, Other traditional medicine source"));
+                        + ". Must be one of: Plant material, Other traditional medicine source, Plant Extract"));
             }
 
             // Validate plant parts if provided
-            List<String> validPlantParts = List.of("Root", "Leaf", "Stem", "Bark", "Flower", "Seed", "Whole plant");
+            List<String> validPlantParts = List.of("Root", "Leaf", "Stem", "Bark", "Flower", "Seed", "Whole plant", "Rhizome", "Multiple", "Whole organism", "Bee product");
             if (row.plantPart() != null && !row.plantPart().isBlank()
                     && !validPlantParts.stream().anyMatch(p -> p.equalsIgnoreCase(row.plantPart()))) {
                 errors.add(new ParseError(row.rowNumber(), "plant_part", "Invalid plant part: " + row.plantPart()
-                        + ". Must be one of: Root, Leaf, Stem, Bark, Flower, Seed, Whole plant"));
+                        + ". Must be one of: Root, Leaf, Stem, Bark, Flower, Seed, Whole plant, Rhizome, Multiple, Whole organism, Bee product"));
             }
 
             // Validate sample conditions if provided
-            List<String> validConditions = List.of("Fresh", "Dried", "Preserved");
+            List<String> validConditions = List.of("Fresh", "Dried", "Preserved", "Processed", "Crystalline");
             if (row.sampleCondition() != null && !row.sampleCondition().isBlank()
                     && !validConditions.stream().anyMatch(c -> c.equalsIgnoreCase(row.sampleCondition()))) {
                 errors.add(new ParseError(row.rowNumber(), "sample_condition", "Invalid sample condition: "
-                        + row.sampleCondition() + ". Must be one of: Fresh, Dried, Preserved"));
+                        + row.sampleCondition() + ". Must be one of: Fresh, Dried, Preserved, Processed, Crystalline"));
             }
         }
 

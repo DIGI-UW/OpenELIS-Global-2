@@ -1,0 +1,53 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,englishName,frenchName
+Morphological Authentication,TMMRD_BOTANICAL,Plant Material|Plant Extract,,,Y,Y,1000,,Morphological Authentication,Authentification Morphologique
+Microscopic Authentication,TMMRD_BOTANICAL,Plant Material|Plant Extract,,,Y,Y,1001,,Microscopic Authentication,Authentification Microscopique
+DNA Barcoding,TMMRD_BOTANICAL,Plant Material|Plant Extract,,,Y,Y,1002,,DNA Barcoding,Code-barres ADN
+Protein Profiling,TMMRD_BOTANICAL,Plant Material|Plant Extract,,,Y,Y,1003,,Protein Profiling,Profilage Protéique
+TLC Alkaloid Screening,TMMRD_PHYTOCHEM,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1100,,TLC Alkaloid Screening,Criblage Alcaloïde TLC
+TLC Flavonoid Screening,TMMRD_PHYTOCHEM,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1101,,TLC Flavonoid Screening,Criblage Flavonoïde TLC
+TLC Tannin Screening,TMMRD_PHYTOCHEM,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1102,,TLC Tannin Screening,Criblage Tanin TLC
+TLC Saponin Screening,TMMRD_PHYTOCHEM,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1103,,TLC Saponin Screening,Criblage Saponine TLC
+TLC Phenolic Screening,TMMRD_PHYTOCHEM,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1104,,TLC Phenolic Screening,Criblage Phénolique TLC
+TLC Terpenoid Screening,TMMRD_PHYTOCHEM,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1105,,TLC Terpenoid Screening,Criblage Terpénoïde TLC
+TLC Steroid Screening,TMMRD_PHYTOCHEM,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1106,,TLC Steroid Screening,Criblage Stéroïde TLC
+HPLC Quantitative Analysis,TMMRD_ANALYTICAL,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1200,mg/kg,HPLC Quantitative Analysis,Analyse Quantitative HPLC
+HPLC Fingerprinting,TMMRD_ANALYTICAL,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1201,,HPLC Fingerprinting,Empreinte HPLC
+GC-MS Analysis,TMMRD_ANALYTICAL,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1202,mg/kg,GC-MS Analysis,Analyse GC-MS
+LC-MS Analysis,TMMRD_ANALYTICAL,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1203,mg/kg,LC-MS Analysis,Analyse LC-MS
+NMR Spectroscopy,TMMRD_ANALYTICAL,Plant Extract|Herbal Product,,,Y,Y,1204,,NMR Spectroscopy,Spectroscopie RMN
+FTIR Spectroscopy,TMMRD_ANALYTICAL,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1205,,FTIR Spectroscopy,Spectroscopie FTIR
+UV-Vis Spectroscopy,TMMRD_ANALYTICAL,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1206,mg/L,UV-Vis Spectroscopy,Spectroscopie UV-Vis
+Antimicrobial Assay E.coli,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1300,mm,Antimicrobial Assay E.coli,Essai Antimicrobien E.coli
+Antimicrobial Assay S.aureus,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1301,mm,Antimicrobial Assay S.aureus,Essai Antimicrobien S.aureus
+Antimicrobial Assay P.aeruginosa,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1302,mm,Antimicrobial Assay P.aeruginosa,Essai Antimicrobien P.aeruginosa
+Antimicrobial Assay C.albicans,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1303,mm,Antimicrobial Assay C.albicans,Essai Antimicrobien C.albicans
+Antioxidant DPPH Assay,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1304,IC50 μg/mL,Antioxidant DPPH Assay,Essai Antioxydant DPPH
+Antioxidant ABTS Assay,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1305,IC50 μg/mL,Antioxidant ABTS Assay,Essai Antioxydant ABTS
+Anti-inflammatory Assay,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1306,IC50 μg/mL,Anti-inflammatory Assay,Essai Anti-inflammatoire
+Anticancer Cell Viability,TMMRD_BIOLOGICAL,Plant Extract|Herbal Product,,,Y,Y,1307,IC50 μg/mL,Anticancer Cell Viability,Viabilité Cellulaire Anticancer
+Acute Toxicity LD50,TMMRD_SAFETY,Plant Extract|Herbal Product,,,Y,Y,1400,mg/kg,Acute Toxicity LD50,Toxicité Aiguë LD50
+Cytotoxicity Assay,TMMRD_SAFETY,Plant Extract|Herbal Product,,,Y,Y,1401,IC50 μg/mL,Cytotoxicity Assay,Essai Cytotoxicité
+Genotoxicity Ames Test,TMMRD_SAFETY,Plant Extract|Herbal Product,,,Y,Y,1402,,Genotoxicity Ames Test,Test Ames Génotoxicité
+Heavy Metals Lead,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1500,ppm,Heavy Metals Lead,Métaux Lourds Plomb
+Heavy Metals Mercury,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1501,ppm,Heavy Metals Mercury,Métaux Lourds Mercure
+Heavy Metals Cadmium,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1502,ppm,Heavy Metals Cadmium,Métaux Lourds Cadmium
+Heavy Metals Arsenic,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1503,ppm,Heavy Metals Arsenic,Métaux Lourds Arsenic
+Pesticide Residue Screen,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1504,ppm,Pesticide Residue Screen,Criblage Résidus Pesticides
+Microbial Contamination Total Count,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1505,CFU/g,Microbial Contamination Total Count,Contamination Microbienne Compte Total
+Microbial Contamination Yeast/Mold,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1506,CFU/g,Microbial Contamination Yeast/Mold,Contamination Microbienne Levures/Moisissures
+Microbial Contamination E.coli,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1507,CFU/g,Microbial Contamination E.coli,Contamination Microbienne E.coli
+Microbial Contamination Salmonella,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1508,,Microbial Contamination Salmonella,Contamination Microbienne Salmonelle
+Aflatoxin B1 Analysis,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1509,ppb,Aflatoxin B1 Analysis,Analyse Aflatoxine B1
+Aflatoxin Total Analysis,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1510,ppb,Aflatoxin Total Analysis,Analyse Aflatoxine Totale
+Moisture Content,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1511,%,Moisture Content,Teneur en Humidité
+Ash Content,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1512,%,Ash Content,Teneur en Cendres
+Extractable Matter,TMMRD_PRODUCT_QC,Plant Material|Plant Extract|Herbal Product,,,Y,Y,1513,%,Extractable Matter,Matière Extractible
+pH Determination,TMMRD_PRODUCT_QC,Plant Extract|Herbal Product,,,Y,Y,1514,pH units,pH Determination,Détermination du pH
+Stability Testing Accelerated,TMMRD_PRODUCT_QC,Plant Extract|Herbal Product,,,Y,Y,1515,,Stability Testing Accelerated,Test Stabilité Accéléré
+Stability Testing Real Time,TMMRD_PRODUCT_QC,Plant Extract|Herbal Product,,,Y,Y,1516,,Stability Testing Real Time,Test Stabilité Temps Réel
+Dissolution Testing,TMMRD_PRODUCT_QC,Herbal Product,,,Y,Y,1517,%,Dissolution Testing,Test Dissolution
+Disintegration Testing,TMMRD_PRODUCT_QC,Herbal Product,,,Y,Y,1518,minutes,Disintegration Testing,Test Désintégration
+Formulation Development,TMMRD_FORMULATION,Plant Extract|Herbal Product,,,Y,Y,1600,,Formulation Development,Développement Formulation
+Excipient Compatibility,TMMRD_FORMULATION,Plant Extract|Herbal Product,,,Y,Y,1601,,Excipient Compatibility,Compatibilité Excipients
+Bioavailability Study,TMMRD_FORMULATION,Herbal Product,,,Y,Y,1602,,Bioavailability Study,Étude Biodisponibilité
+Bioequivalence Study,TMMRD_FORMULATION,Herbal Product,,,Y,Y,1603,,Bioequivalence Study,Étude Bioéquivalence

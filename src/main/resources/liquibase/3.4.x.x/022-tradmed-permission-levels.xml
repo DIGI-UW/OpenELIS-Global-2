@@ -8,7 +8,8 @@
     <!-- ======================================================== -->
     <!-- TMMRD WORKFLOW PERMISSION LEVELS                         -->
     <!-- Adds action-level permissions per TMMRD SRS Section 11   -->
-    <!-- Permission Levels: VIEW, REGISTER, UPDATE, YES, APPROVE, FULL -->
+    <!-- Uses same permission model as bioanalytical lab          -->
+    <!-- Permission Levels: VIEW, REGISTER, UPDATE, APPROVE, FULL -->
     <!-- ======================================================== -->
 
     <!-- CHANGESET 1: Add permission_level column if not exists -->

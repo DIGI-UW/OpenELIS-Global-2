@@ -32,6 +32,9 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import TraditionalMedicineManifestImportModal from "../../workflow/TraditionalMedicineManifestImportModal";
+import { usePermissions } from "../../../../hooks/usePermissions";
+import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
+import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -65,18 +68,71 @@ function TraditionalMedicineSampleCreationPage({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } = useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const { hasAnyRole } = usePermissions();
+
+  // TMMRD permissions per SRS Section 11
+  const {
+    getPagePermissionLevel,
+    canRegisterData,
+    canSaveData,
+    canApproveData,
+    hasFullControl,
+    isReadOnly,
+    canAccessStage1,
+  } = useTMMRDPermissions();
+
+  // STAGE 1 allowed roles per TMMRD SRS Section 11
+  const allowedRoles = [
+    "Lab Technician",
+    "Researcher",
+    "Pharmacognosist",
+    "Lab Manager",
+    "Principal Investigator"
+  ];
+
+  const canAccessPage = hasAnyRole(allowedRoles);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Sample Intake & Registration"
+        reason="This page requires specific Traditional Medicine laboratory roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
+
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel("Sample Intake & Registration");
+  const canImportSamples = canRegisterData(pagePermissionLevel);
+  const canEditMetadata = canSaveData(pagePermissionLevel);
+  const canSaveDataLocal = canEditMetadata; // Alias for button conditions
+  const canAuthenticateSamples = canApproveData(pagePermissionLevel);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Check if page has a real ID
+  const hasRealPageId =
+    pageData?.id && !String(pageData.id).startsWith("default-");
+
+  // Debug logging can be enabled if needed
+  // console.log("TMMRD Sample Creation Page - Permission Debug:", {
+  //   pagePermissionLevel,
+  //   canImportSamples,
+  //   canEditMetadata,
+  //   canSaveDataLocal,
+  //   canAuthenticateSamples,
+  //   hasRealPageId
+  // });
+
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  // Authentication modal state
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isApplyingAuth, setIsApplyingAuth] = useState(false);
 
-  // Authentication form fields
   const [authMethod, setAuthMethod] = useState(null);
   const [authResult, setAuthResult] = useState(null);
   const [verifiedBy, setVerifiedBy] = useState("");
@@ -112,9 +168,107 @@ function TraditionalMedicineSampleCreationPage({
     [addNotification, setNotificationVisible],
   );
 
-  // Check if page has a real ID
-  const hasRealPageId =
-    pageData?.id && !String(pageData.id).startsWith("default-");
+  // Bulk operations following bioanalytical pattern
+  const bulkApplyMetadata = useCallback(async (sampleIds, data) => {
+    if (!hasRealPageId) return false;
+
+    try {
+      const response = await postToOpenElisServerJsonResponse(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+        JSON.stringify({
+          sampleIds: sampleIds.map(id => parseInt(id, 10)),
+          data: data
+        })
+      );
+
+      if (response.success) {
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.bulk.apply.success" }),
+          message: intl.formatMessage(
+            { id: "notification.bulk.apply.samples.count" },
+            { count: response.updatedCount }
+          )
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.bulk.apply.error" }),
+        message: error.message || "Failed to apply metadata to samples"
+      });
+      return false;
+    }
+  }, [hasRealPageId, pageData?.id, notify, intl]);
+
+  const bulkAdvanceSamples = useCallback(async (sampleIds, targetPageIndex = 2) => {
+    try {
+      const response = await postToOpenElisServerJsonResponse(
+        `/rest/notebook/${entryId}/samples/advance`,
+        JSON.stringify({
+          sampleIds: sampleIds.map(id => parseInt(id, 10)),
+          fromPageId: pageData.id,
+          toPageIndex: targetPageIndex
+        })
+      );
+
+      if (response.success) {
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.samples.advanced" }),
+          message: intl.formatMessage(
+            { id: "notification.samples.advanced.count" },
+            { count: response.advancedCount, stage: targetPageIndex }
+          )
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.samples.advance.error" }),
+        message: error.message || "Failed to advance samples to next stage"
+      });
+      return false;
+    }
+  }, [entryId, pageData?.id, notify, intl]);
+
+  const markSamplesCompleted = useCallback(async (sampleIds) => {
+    if (!hasRealPageId) return false;
+
+    try {
+      const response = await postToOpenElisServerJsonResponse(
+        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+        JSON.stringify({
+          sampleIds: sampleIds.map(id => parseInt(id, 10)),
+          status: "COMPLETED"
+        })
+      );
+
+      if (response.success) {
+        notify({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.samples.completed" }),
+          message: intl.formatMessage(
+            { id: "notification.samples.completed.count" },
+            { count: response.updatedCount }
+          )
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.samples.complete.error" }),
+        message: error.message || "Failed to mark samples as completed"
+      });
+      return false;
+    }
+  }, [hasRealPageId, pageData?.id, notify, intl]);
 
   // Load samples for this page
   const loadPageSamples = useCallback(() => {
@@ -530,6 +684,7 @@ function TraditionalMedicineSampleCreationPage({
           size="sm"
           renderIcon={Upload}
           onClick={() => setImportModalOpen(true)}
+          disabled={!canImportSamples}
         >
           <FormattedMessage
             id="notebook.page.tradmed.importManifest"
@@ -542,7 +697,7 @@ function TraditionalMedicineSampleCreationPage({
           size="sm"
           renderIcon={Edit}
           onClick={openAuthModal}
-          disabled={selectedSampleIds.length === 0 || !hasRealPageId}
+          disabled={!canAuthenticateSamples || selectedSampleIds.length === 0 || !hasRealPageId}
         >
           <FormattedMessage
             id="notebook.page.tradmed.authenticate"
@@ -556,11 +711,56 @@ function TraditionalMedicineSampleCreationPage({
           size="sm"
           renderIcon={Checkmark}
           onClick={markAsRegistered}
-          disabled={selectedSampleIds.length === 0}
+          disabled={!canSaveDataLocal || selectedSampleIds.length === 0}
         >
           <FormattedMessage
             id="notebook.page.tradmed.markAsRegistered"
             defaultMessage="Mark as Registered ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        {/* Bulk operations following bioanalytical pattern */}
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={CheckmarkFilled}
+          onClick={async () => {
+            const success = await markSamplesCompleted(selectedSampleIds);
+            if (success) {
+              loadPageSamples();
+              setSelectedSampleIds([]);
+            }
+          }}
+          disabled={!canSaveDataLocal || selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="notebook.page.tradmed.markCompleted"
+            defaultMessage="Mark Completed ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Chemistry}
+          onClick={async () => {
+            const success = await bulkAdvanceSamples(selectedSampleIds, 2);
+            if (success) {
+              loadPageSamples();
+              setSelectedSampleIds([]);
+              // Notify parent to refresh progress
+              if (onProgressUpdate) {
+                onProgressUpdate();
+              }
+            }
+          }}
+          disabled={!canSaveDataLocal || selectedSampleIds.length === 0 || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="notebook.page.tradmed.advanceToAuth"
+            defaultMessage="Advance to Authentication ({count})"
             values={{ count: selectedSampleIds.length }}
           />
         </Button>

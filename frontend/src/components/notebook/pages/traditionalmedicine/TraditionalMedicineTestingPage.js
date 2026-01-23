@@ -25,6 +25,9 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import { usePermissions } from "../../../../hooks/usePermissions";
+import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
+import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -49,32 +52,168 @@ function TraditionalMedicineTestingPage({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } = useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const { hasAnyRole } = usePermissions();
+
+  // TMMRD permissions per SRS Section 11
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canAccessStage5to6,
+  } = useTMMRDPermissions();
+
+  // STAGE 5-6 allowed roles per TMMRD SRS Section 11 - Researchers lead analytics
+  const allowedRoles = [
+    "Researcher",
+    "Pharmacognosist",
+    "Lab Manager",
+    "Principal Investigator"
+  ];
+
+  const canAccessPage = hasAnyRole(allowedRoles);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Testing & Analytics"
+        reason="This page requires specific Traditional Medicine testing roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
+
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel("Testing & Analytics");
+  const canEditData = canSaveData(pagePermissionLevel);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [testingModalOpen, setTestingModalOpen] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
 
-  const [phytochemicalResults, setPhytochemicalResults] = useState({});
-  const [testingNotes, setTestingNotes] = useState("");
-  const [approvalStatus, setApprovalStatus] = useState(null);
+  const [assignedTests, setAssignedTests] = useState([]);
+  const [testAssignmentModal, setTestAssignmentModal] = useState(false);
+  const [assignmentData, setAssignmentData] = useState({
+    category: "",
+    subcategory: "",
+    specificTest: "",
+    methodology: "",
+    expectedResults: "",
+    acceptanceCriteria: "",
+  });
 
-  const phytochemicalOptions = [
-    "Alkaloids",
-    "Flavonoids",
-    "Tannins",
-    "Saponins",
-    "Terpenoids",
-    "Glycosides",
+  // TMMRD Test Catalog Hierarchy - Based on SRS Sections 4-5
+  const tmmrdTestCategories = [
+    { id: "BOTANICAL", text: "Botanical Authentication" },
+    { id: "PHYTOCHEMICAL", text: "Phytochemical Screening" },
+    { id: "ANALYTICAL", text: "Analytical Techniques" },
+    { id: "BIOLOGICAL", text: "Biological Activity Assays" },
+    { id: "SAFETY", text: "Safety & Toxicity Studies" },
+    { id: "PRODUCT_QC", text: "Product Quality Control" },
+    { id: "FORMULATION", text: "Formulation Development" },
   ];
 
-  const approvalOptions = [
-    { id: "approve", label: "Approve for Production" },
-    { id: "further_testing", label: "Requires Further Testing" },
-    { id: "reject", label: "Reject - Not Suitable" },
-  ];
+  const getTMMRDSubcategories = (categoryId) => {
+    switch (categoryId) {
+      case "BOTANICAL":
+        return [
+          { id: "MORPHOLOGICAL", text: "Morphological Authentication" },
+          { id: "MICROSCOPIC", text: "Microscopic Authentication" },
+          { id: "DNA_BARCODING", text: "DNA Barcoding" },
+          { id: "PROTEIN_PROFILING", text: "Protein Profiling" },
+        ];
+      case "PHYTOCHEMICAL":
+        return [
+          { id: "TLC_SCREENING", text: "TLC Screening Methods" },
+          { id: "CHEMICAL_TESTS", text: "Chemical Tests" },
+          { id: "QUANTITATIVE", text: "Quantitative Analysis" },
+        ];
+      case "ANALYTICAL":
+        return [
+          { id: "CHROMATOGRAPHY", text: "Chromatographic Methods" },
+          { id: "SPECTROSCOPY", text: "Spectroscopic Methods" },
+          { id: "MASS_SPECTROMETRY", text: "Mass Spectrometry" },
+        ];
+      case "BIOLOGICAL":
+        return [
+          { id: "ANTIMICROBIAL", text: "Antimicrobial Assays" },
+          { id: "ANTIOXIDANT", text: "Antioxidant Activity" },
+          { id: "ANTI_INFLAMMATORY", text: "Anti-inflammatory Activity" },
+          { id: "ANTICANCER", text: "Anticancer Activity" },
+        ];
+      case "SAFETY":
+        return [
+          { id: "ACUTE_TOXICITY", text: "Acute Toxicity" },
+          { id: "CYTOTOXICITY", text: "Cytotoxicity" },
+          { id: "GENOTOXICITY", text: "Genotoxicity" },
+        ];
+      case "PRODUCT_QC":
+        return [
+          { id: "CONTAMINATION", text: "Contamination Testing" },
+          { id: "STABILITY", text: "Stability Studies" },
+          { id: "PURITY", text: "Purity Analysis" },
+        ];
+      case "FORMULATION":
+        return [
+          { id: "DEVELOPMENT", text: "Formulation Development" },
+          { id: "COMPATIBILITY", text: "Excipient Compatibility" },
+          { id: "BIOAVAILABILITY", text: "Bioavailability Studies" },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const getTMMRDSpecificTests = (subcategoryId) => {
+    switch (subcategoryId) {
+      case "TLC_SCREENING":
+        return [
+          { id: "TLC_ALKALOID", text: "TLC Alkaloid Screening", unit: "" },
+          { id: "TLC_FLAVONOID", text: "TLC Flavonoid Screening", unit: "" },
+          { id: "TLC_TANNIN", text: "TLC Tannin Screening", unit: "" },
+          { id: "TLC_SAPONIN", text: "TLC Saponin Screening", unit: "" },
+          { id: "TLC_PHENOLIC", text: "TLC Phenolic Screening", unit: "" },
+          { id: "TLC_TERPENOID", text: "TLC Terpenoid Screening", unit: "" },
+          { id: "TLC_STEROID", text: "TLC Steroid Screening", unit: "" },
+        ];
+      case "CHROMATOGRAPHY":
+        return [
+          { id: "HPLC_QUANTITATIVE", text: "HPLC Quantitative Analysis", unit: "mg/kg" },
+          { id: "HPLC_FINGERPRINTING", text: "HPLC Fingerprinting", unit: "" },
+          { id: "GC_MS", text: "GC-MS Analysis", unit: "mg/kg" },
+          { id: "LC_MS", text: "LC-MS Analysis", unit: "mg/kg" },
+        ];
+      case "ANTIMICROBIAL":
+        return [
+          { id: "ANTIMICROBIAL_ECOLI", text: "Antimicrobial Assay E.coli", unit: "mm" },
+          { id: "ANTIMICROBIAL_SAUREUS", text: "Antimicrobial Assay S.aureus", unit: "mm" },
+          { id: "ANTIMICROBIAL_PAERUGINOSA", text: "Antimicrobial Assay P.aeruginosa", unit: "mm" },
+          { id: "ANTIMICROBIAL_CALBICANS", text: "Antimicrobial Assay C.albicans", unit: "mm" },
+        ];
+      case "ANTIOXIDANT":
+        return [
+          { id: "DPPH_ASSAY", text: "DPPH Antioxidant Assay", unit: "IC50 μg/mL" },
+          { id: "ABTS_ASSAY", text: "ABTS Antioxidant Assay", unit: "IC50 μg/mL" },
+        ];
+      case "CONTAMINATION":
+        return [
+          { id: "HEAVY_METALS_LEAD", text: "Heavy Metals Lead", unit: "ppm" },
+          { id: "HEAVY_METALS_MERCURY", text: "Heavy Metals Mercury", unit: "ppm" },
+          { id: "PESTICIDE_RESIDUE", text: "Pesticide Residue Screen", unit: "ppm" },
+          { id: "MICROBIAL_TOTAL", text: "Total Microbial Count", unit: "CFU/g" },
+          { id: "AFLATOXIN_B1", text: "Aflatoxin B1 Analysis", unit: "ppb" },
+        ];
+      case "ACUTE_TOXICITY":
+        return [
+          { id: "LD50_ORAL", text: "Acute Toxicity LD50 (Oral)", unit: "mg/kg" },
+          { id: "LD50_DERMAL", text: "Acute Toxicity LD50 (Dermal)", unit: "mg/kg" },
+        ];
+      default:
+        return [];
+    }
+  };
+
 
   // Notification callback
   const notify = useCallback(
@@ -108,8 +247,8 @@ function TraditionalMedicineTestingPage({
                   accessionNumber: s.accessionNumber,
                   status: s.pageStatus || s.status || "PENDING",
                   localName: s.data?.localName,
-                  approvalStatus: s.data?.approvalStatus,
-                  testingNotes: s.data?.testingNotes,
+                  assignedTests: s.data?.assignedTests || [],
+                  testingStatus: s.data?.assignedTests?.length > 0 ? "ASSIGNED" : "PENDING",
                 }))
               : [],
           );
@@ -127,13 +266,18 @@ function TraditionalMedicineTestingPage({
     };
   }, [entryId, pageData?.id, loadPageSamples]);
 
-  const resetForm = useCallback(() => {
-    setPhytochemicalResults({});
-    setTestingNotes("");
-    setApprovalStatus(null);
+  const resetAssignmentForm = useCallback(() => {
+    setAssignmentData({
+      category: "",
+      subcategory: "",
+      specificTest: "",
+      methodology: "",
+      expectedResults: "",
+      acceptanceCriteria: "",
+    });
   }, []);
 
-  const openModal = useCallback(() => {
+  const openTestAssignmentModal = useCallback(() => {
     if (selectedSampleIds.length === 0) {
       notify({
         kind: NotificationKinds.error,
@@ -144,17 +288,41 @@ function TraditionalMedicineTestingPage({
       });
       return;
     }
-    resetForm();
-    setTestingModalOpen(true);
-  }, [selectedSampleIds, intl, resetForm, notify]);
+    resetAssignmentForm();
+    setTestAssignmentModal(true);
+  }, [selectedSampleIds, intl, resetAssignmentForm, notify]);
 
-  const applyTesting = useCallback(() => {
-    if (!approvalStatus) {
+  const handleCategoryChange = useCallback(({ selectedItem }) => {
+    setAssignmentData(prev => ({
+      ...prev,
+      category: selectedItem?.id || "",
+      subcategory: "", // Reset child selections
+      specificTest: "",
+    }));
+  }, []);
+
+  const handleSubcategoryChange = useCallback(({ selectedItem }) => {
+    setAssignmentData(prev => ({
+      ...prev,
+      subcategory: selectedItem?.id || "",
+      specificTest: "", // Reset child selection
+    }));
+  }, []);
+
+  const handleSpecificTestChange = useCallback(({ selectedItem }) => {
+    setAssignmentData(prev => ({
+      ...prev,
+      specificTest: selectedItem?.id || "",
+    }));
+  }, []);
+
+  const assignTestsToSamples = useCallback(() => {
+    if (!assignmentData.specificTest) {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.page.tradmed.testing.error.approvalRequired",
-          defaultMessage: "Please select approval status.",
+          id: "notebook.page.tradmed.testing.error.testRequired",
+          defaultMessage: "Please select a specific test.",
         }),
       });
       return;
@@ -165,8 +333,7 @@ function TraditionalMedicineTestingPage({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
           id: "notebook.page.tradmed.error.noPage",
-          defaultMessage:
-            "Cannot update samples: Page not properly initialized.",
+          defaultMessage: "Cannot assign tests: Page not properly initialized.",
         }),
       });
       return;
@@ -175,66 +342,59 @@ function TraditionalMedicineTestingPage({
     setIsApplying(true);
 
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
+    const selectedTest = getTMMRDSpecificTests(assignmentData.subcategory)
+      .find(test => test.id === assignmentData.specificTest);
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/tradmed/page/${pageData.id}/testing`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
         sampleIds,
-        phytochemicalResults,
-        testingNotes,
-        approvalStatus: approvalStatus.id,
-        approvalStatusLabel: approvalStatus.label,
+        data: {
+          assignedTests: [...(assignedTests), {
+            testId: assignmentData.specificTest,
+            testName: selectedTest?.text,
+            category: assignmentData.category,
+            subcategory: assignmentData.subcategory,
+            unit: selectedTest?.unit,
+            methodology: assignmentData.methodology,
+            expectedResults: assignmentData.expectedResults,
+            acceptanceCriteria: assignmentData.acceptanceCriteria,
+            status: "ASSIGNED",
+            assignedAt: new Date().toISOString(),
+          }],
+        },
       }),
       (response) => {
         setIsApplying(false);
-        if (response?.success) {
-          // Update sample status using bulk endpoint after testing
-          postToOpenElisServer(
-            `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-            JSON.stringify({
-              sampleIds,
-              status: "IN_PROGRESS",
-            }),
-            (statusCode) => {
-              if (statusCode === 200) {
-                notify({
-                  kind: NotificationKinds.success,
-                  title: response.message ||
-                    intl.formatMessage(
-                      {
-                        id: "notebook.page.tradmed.testing.success",
-                        defaultMessage: "Updated testing results for {count} sample(s).",
-                      },
-                      { count: response.updatedCount || selectedSampleIds.length },
-                    ),
-                });
-                setTestingModalOpen(false);
-                setSelectedSampleIds([]);
-                loadPageSamples();
-                if (onProgressUpdate) onProgressUpdate();
-              } else {
-                notify({
-                  kind: NotificationKinds.error,
-                  title: intl.formatMessage({
-                    id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage: "Testing recorded but failed to update sample status.",
-                  }),
-                });
-              }
-            }
-          );
+        if (response?.success !== false) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.page.tradmed.testing.assignSuccess",
+                defaultMessage: "Assigned test {testName} to {count} sample(s).",
+              },
+              {
+                testName: selectedTest?.text,
+                count: selectedSampleIds.length
+              },
+            ),
+          });
+          setTestAssignmentModal(false);
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) onProgressUpdate();
         } else {
           notify({
             kind: NotificationKinds.error,
-            title: response?.error || "Operation failed",
+            title: response?.error || "Test assignment failed",
           });
         }
       },
     );
   }, [
-    phytochemicalResults,
-    testingNotes,
-    approvalStatus,
+    assignmentData,
+    assignedTests,
     hasRealPageId,
     pageData?.id,
     selectedSampleIds,
@@ -244,15 +404,14 @@ function TraditionalMedicineTestingPage({
     notify,
   ]);
 
+
+
   const pendingSamples = useMemo(
-    () => samples.filter((s) => !s.approvalStatus),
+    () => samples.filter((s) => s.testingStatus === "PENDING"),
     [samples],
   );
-  const testedSamples = useMemo(
-    () =>
-      samples.filter(
-        (s) => s.approvalStatus && s.status === "COMPLETED",
-      ),
+  const assignedSamples = useMemo(
+    () => samples.filter((s) => s.testingStatus === "ASSIGNED"),
     [samples],
   );
 
@@ -280,7 +439,7 @@ function TraditionalMedicineTestingPage({
               <span className="progress-label">
                 <FormattedMessage
                   id="notebook.page.tradmed.testing.pending"
-                  defaultMessage="Awaiting Testing"
+                  defaultMessage="Awaiting Test Assignment"
                 />
               </span>
               <span className="progress-value">{pendingSamples.length}</span>
@@ -288,11 +447,11 @@ function TraditionalMedicineTestingPage({
             <Tile className="progress-tile verified">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tradmed.testing.tested"
-                  defaultMessage="Tested"
+                  id="notebook.page.tradmed.testing.assigned"
+                  defaultMessage="Tests Assigned"
                 />
               </span>
-              <span className="progress-value">{testedSamples.length}</span>
+              <span className="progress-value">{assignedSamples.length}</span>
             </Tile>
           </div>
         </Column>
@@ -303,12 +462,12 @@ function TraditionalMedicineTestingPage({
           kind="primary"
           size="sm"
           renderIcon={Edit}
-          onClick={openModal}
+          onClick={openTestAssignmentModal}
           disabled={selectedSampleIds.length === 0 || !hasRealPageId}
         >
           <FormattedMessage
-            id="notebook.page.tradmed.testing.recordResults"
-            defaultMessage="Record Testing Results ({count})"
+            id="notebook.page.tradmed.testing.assignTests"
+            defaultMessage="Assign Tests ({count})"
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
@@ -333,7 +492,7 @@ function TraditionalMedicineTestingPage({
           <h5>
             <FormattedMessage
               id="notebook.page.tradmed.testing.pending.title"
-              defaultMessage="Samples Awaiting Testing"
+              defaultMessage="Samples Awaiting Test Assignment"
             />
             <Tag type="blue" size="sm" className="count-tag">
               {pendingSamples.length}
@@ -346,7 +505,7 @@ function TraditionalMedicineTestingPage({
               <p>
                 <FormattedMessage
                   id="notebook.page.tradmed.testing.pending.empty"
-                  defaultMessage="No samples awaiting testing."
+                  defaultMessage="No samples awaiting test assignment."
                 />
               </p>
             </div>
@@ -371,34 +530,46 @@ function TraditionalMedicineTestingPage({
         <div className="table-section-header">
           <h5>
             <FormattedMessage
-              id="notebook.page.tradmed.testing.tested.title"
-              defaultMessage="Tested Samples"
+              id="notebook.page.tradmed.testing.assigned.title"
+              defaultMessage="Samples with Assigned Tests"
             />
             <Tag type="green" size="sm" className="count-tag">
-              {testedSamples.length}
+              {assignedSamples.length}
             </Tag>
           </h5>
         </div>
         <div className="sample-grid-container">
-          {!loading && testedSamples.length === 0 ? (
+          {!loading && assignedSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
-                  id="notebook.page.tradmed.testing.tested.empty"
-                  defaultMessage="No samples tested yet."
+                  id="notebook.page.tradmed.testing.assigned.empty"
+                  defaultMessage="No tests have been assigned yet."
                 />
               </p>
             </div>
           ) : (
             <SampleGrid
-              gridId="tested-samples"
-              samples={testedSamples}
+              gridId="assigned-samples"
+              samples={assignedSamples}
               showSelection={false}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
                 { key: "localName", header: "Local Name" },
-                { key: "approvalStatus", header: "Approval Status" },
+                {
+                  key: "assignedTests",
+                  header: "Assigned Tests",
+                  render: (sample) => (
+                    <div>
+                      {sample.assignedTests.map((test, idx) => (
+                        <Tag key={idx} type="blue" size="sm" style={{ marginRight: '4px', marginBottom: '2px' }}>
+                          {test.testName}
+                        </Tag>
+                      ))}
+                    </div>
+                  ),
+                },
               ]}
             />
           )}
@@ -406,94 +577,122 @@ function TraditionalMedicineTestingPage({
       </div>
 
       <Modal
-        open={testingModalOpen}
-        onRequestClose={() => setTestingModalOpen(false)}
-        onRequestSubmit={applyTesting}
+        open={testAssignmentModal}
+        onRequestClose={() => setTestAssignmentModal(false)}
+        onRequestSubmit={assignTestsToSamples}
         modalHeading={intl.formatMessage({
-          id: "notebook.page.tradmed.testing.modal.title",
-          defaultMessage: "Record Testing Results & Approval",
+          id: "notebook.page.tradmed.testing.modal.assign.title",
+          defaultMessage: "Assign TMMRD Tests to Samples",
         })}
         primaryButtonText={
           isApplying
             ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
+                id: "label.assigning",
+                defaultMessage: "Assigning...",
               })
             : intl.formatMessage({
-                id: "notebook.page.tradmed.testing.modal.record",
-                defaultMessage: "Record Results",
+                id: "notebook.page.tradmed.testing.modal.assign.button",
+                defaultMessage: "Assign Tests",
               })
         }
         secondaryButtonText={intl.formatMessage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplying}
+        primaryButtonDisabled={isApplying || !assignmentData.specificTest}
         size="lg"
       >
         {isApplying && <Loading withOverlay={false} small />}
 
         <Grid fullWidth narrow>
-          <Column lg={16} md={8} sm={4}>
-            <div
-              style={{
-                marginBottom: "1rem",
-                padding: "0.5rem",
-                backgroundColor: "#f4f4f4",
-                borderRadius: "4px",
-              }}
-            >
-              <h5
-                style={{ margin: "0 0 0.5rem 0" }}
-              >
-                <FormattedMessage
-                  id="notebook.page.tradmed.testing.modal.phytochemical"
-                  defaultMessage="Phytochemical Screening Results"
-                />
-              </h5>
-              {phytochemicalOptions.map((option) => (
-                <Checkbox
-                  key={option}
-                  id={option}
-                  labelText={option}
-                  checked={phytochemicalResults[option] || false}
-                  onChange={(e) =>
-                    setPhytochemicalResults({
-                      ...phytochemicalResults,
-                      [option]: e.target.checked,
-                    })
-                  }
-                />
-              ))}
-            </div>
+          <Column lg={8} md={4} sm={2}>
+            <Dropdown
+              id="test-category"
+              titleText={intl.formatMessage({
+                id: "notebook.page.tradmed.testing.modal.category",
+                defaultMessage: "Test Category *",
+              })}
+              label="Select category..."
+              items={tmmrdTestCategories}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={tmmrdTestCategories.find(c => c.id === assignmentData.category)}
+              onChange={handleCategoryChange}
+            />
+          </Column>
+
+          <Column lg={8} md={4} sm={2}>
+            {assignmentData.category && getTMMRDSubcategories(assignmentData.category).length > 0 && (
+              <Dropdown
+                id="test-subcategory"
+                titleText={intl.formatMessage({
+                  id: "notebook.page.tradmed.testing.modal.subcategory",
+                  defaultMessage: "Test Subcategory *",
+                })}
+                label="Select subcategory..."
+                items={getTMMRDSubcategories(assignmentData.category)}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={getTMMRDSubcategories(assignmentData.category).find(sc => sc.id === assignmentData.subcategory)}
+                onChange={handleSubcategoryChange}
+              />
+            )}
           </Column>
 
           <Column lg={16} md={8} sm={4}>
-            <Dropdown
-              id="approval"
-              titleText={intl.formatMessage({
-                id: "notebook.page.tradmed.testing.modal.approval",
-                defaultMessage: "Approval Status *",
-              })}
-              label="Select..."
-              items={approvalOptions}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItem={approvalStatus}
-              onChange={({ selectedItem }) => setApprovalStatus(selectedItem)}
-            />
+            {assignmentData.subcategory && getTMMRDSpecificTests(assignmentData.subcategory).length > 0 && (
+              <Dropdown
+                id="specific-test"
+                titleText={intl.formatMessage({
+                  id: "notebook.page.tradmed.testing.modal.specificTest",
+                  defaultMessage: "Specific Test *",
+                })}
+                label="Select specific test..."
+                items={getTMMRDSpecificTests(assignmentData.subcategory)}
+                itemToString={(item) => (item ? `${item.text}${item.unit ? ` (${item.unit})` : ''}` : "")}
+                selectedItem={getTMMRDSpecificTests(assignmentData.subcategory).find(st => st.id === assignmentData.specificTest)}
+                onChange={handleSpecificTestChange}
+              />
+            )}
           </Column>
 
           <Column lg={16} md={8} sm={4}>
             <TextArea
-              id="testing-notes"
+              id="methodology"
               labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.testing.modal.notes",
-                defaultMessage: "Testing Notes & Results",
+                id: "notebook.page.tradmed.testing.modal.methodology",
+                defaultMessage: "Test Methodology",
               })}
-              value={testingNotes}
-              onChange={(e) => setTestingNotes(e.target.value)}
-              rows={4}
-              placeholder="Document testing results, interpretation, and rationale for approval decision"
+              value={assignmentData.methodology}
+              onChange={(e) => setAssignmentData(prev => ({ ...prev, methodology: e.target.value }))}
+              rows={3}
+              placeholder="Specify the test methodology, protocols, or procedures to be followed..."
+            />
+          </Column>
+
+          <Column lg={8} md={4} sm={2}>
+            <TextArea
+              id="expected-results"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.testing.modal.expectedResults",
+                defaultMessage: "Expected Results",
+              })}
+              value={assignmentData.expectedResults}
+              onChange={(e) => setAssignmentData(prev => ({ ...prev, expectedResults: e.target.value }))}
+              rows={3}
+              placeholder="Describe expected results or outcome ranges..."
+            />
+          </Column>
+
+          <Column lg={8} md={4} sm={2}>
+            <TextArea
+              id="acceptance-criteria"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.testing.modal.acceptanceCriteria",
+                defaultMessage: "Acceptance Criteria",
+              })}
+              value={assignmentData.acceptanceCriteria}
+              onChange={(e) => setAssignmentData(prev => ({ ...prev, acceptanceCriteria: e.target.value }))}
+              rows={3}
+              placeholder="Define pass/fail criteria and quality standards..."
             />
           </Column>
         </Grid>

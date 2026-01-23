@@ -25,6 +25,9 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import { usePermissions } from "../../../../hooks/usePermissions";
+import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
+import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -48,6 +51,40 @@ function TraditionalMedicineFormulationPage({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } = useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const { hasAnyRole } = usePermissions();
+
+  // TMMRD permissions per SRS Section 11
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canAccessStage7,
+  } = useTMMRDPermissions();
+
+  // STAGE 7 allowed roles per TMMRD SRS Section 11 - Pharmacognosists lead formulation
+  const allowedRoles = [
+    "Lab Technician",
+    "Researcher",
+    "Pharmacognosist",
+    "Lab Manager",
+    "Principal Investigator"
+  ];
+
+  const canAccessPage = hasAnyRole(allowedRoles);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Formulation Development"
+        reason="This page requires specific Traditional Medicine formulation roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
+
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel("Formulation Development");
+  const canEditData = canSaveData(pagePermissionLevel);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);

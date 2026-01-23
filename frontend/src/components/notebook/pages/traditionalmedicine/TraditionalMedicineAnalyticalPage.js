@@ -25,6 +25,9 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import { usePermissions } from "../../../../hooks/usePermissions";
+import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
+import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -49,6 +52,39 @@ function TraditionalMedicineAnalyticalPage({
   const intl = useIntl();
   const { setNotificationVisible, addNotification } = useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const { hasAnyRole } = usePermissions();
+
+  // TMMRD permissions per SRS Section 11
+  const {
+    getPagePermissionLevel,
+    canSaveData,
+    canAccessStage5to6,
+  } = useTMMRDPermissions();
+
+  // STAGE 5-6 allowed roles per TMMRD SRS Section 11 - Researchers lead analytics
+  const allowedRoles = [
+    "Researcher",
+    "Pharmacognosist",
+    "Lab Manager",
+    "Principal Investigator"
+  ];
+
+  const canAccessPage = hasAnyRole(allowedRoles);
+
+  // Check page access - show access denied if user lacks required roles
+  if (!canAccessPage) {
+    return (
+      <AccessDeniedMessage
+        page="Analytical Pathways"
+        reason="This page requires specific Traditional Medicine analytical roles to access."
+        requiredRoles={allowedRoles}
+      />
+    );
+  }
+
+  // Get user's action-level permission for this page
+  const pagePermissionLevel = getPagePermissionLevel("Analytical Pathways");
+  const canEditData = canSaveData(pagePermissionLevel);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);

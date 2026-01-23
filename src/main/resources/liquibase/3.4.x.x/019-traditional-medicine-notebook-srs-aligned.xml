@@ -30,6 +30,7 @@
             <column name="status" value="ACTIVE"/>
             <column name="is_template" valueBoolean="true"/>
             <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
         </insert>
 
         <rollback>
@@ -60,6 +61,7 @@
             <column name="instructions" value="STAGE 1 (SRS) - Receive plant materials or traditional medicine samples. Record metadata: origin, species, collector, date/time, sample condition. Two-phase workflow: Sample Receipt → Registration &amp; Labeling."/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="page_order" valueNumeric="1"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;1&quot;,&quot;title&quot;:&quot;Sample Intake, Reception &amp; Registration&quot;,&quot;srsRequirements&quot;:{&quot;sampleArrival&quot;:[&quot;Plant materials or traditional medicine samples received&quot;,&quot;May arrive fresh or dried&quot;],&quot;registrationLabeling&quot;:[&quot;Assign unique sample ID&quot;,&quot;Record metadata (origin, species, collector, date/time)&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -87,6 +89,7 @@
             <column name="instructions" value="STAGE 2 (SRS) - Botanical verification or expert identification. Methods: Morphological examination, Microscopic analysis, Molecular identification (DNA barcoding: ITS, rbcL, matK genes). Document method used, result (species confirmed, uncertain, misidentified), authenticator name and date. Link to herbarium specimen if prepared."/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="page_order" valueNumeric="2"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;2&quot;,&quot;title&quot;:&quot;Authentication&quot;,&quot;srsRequirements&quot;:{&quot;process&quot;:[&quot;Botanical verification or expert identification&quot;,&quot;Morphological examination&quot;,&quot;Microscopic analysis&quot;,&quot;Molecular identification (DNA barcoding: ITS, rbcL, matK)&quot;],&quot;documentation&quot;:[&quot;Authentication method used&quot;,&quot;Result (species confirmed, uncertain, misidentified)&quot;,&quot;Authenticator name and date&quot;,&quot;Link to herbarium catalog number if applicable&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -114,6 +117,7 @@
             <column name="instructions" value="STAGE 3 (SRS) - Assign storage location based on sample condition. Fresh (2-8°C), Dried (room temp), Preserved (fixative/alcohol). Create herbarium specimen if needed: record specimen ID, species, collector, location, date, herbarium cabinet location. Link to LMIS sample record and ongoing projects."/>
             <column name="page_type" value="STORAGE_ASSIGNMENT"/>
             <column name="page_order" valueNumeric="3"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;3&quot;,&quot;title&quot;:&quot;Storage &amp; Herbarium Placement&quot;,&quot;srsRequirements&quot;:{&quot;storageOptions&quot;:[&quot;Fresh samples: Refrigerated (2-8°C) short-term&quot;,&quot;Dried samples: Room temperature in sealed containers&quot;,&quot;Preserved samples: In fixative or alcohol&quot;],&quot;herbariumPlacement&quot;:[&quot;Mount, label, catalog specimen&quot;,&quot;Record: Specimen ID, Species, Collector, Location, Date&quot;,&quot;Herbarium cabinet location (hierarchical)&quot;,&quot;Link to LMIS sample record&quot;,&quot;Link to ongoing analytical or formulation projects&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -141,6 +145,7 @@
             <column name="instructions" value="STAGE 4 (SRS) - Physical processing of samples. Freshly processed or drying (air, oven, freeze). Preparation methods: Grinding, Chopping, Powdering. Document: Method, weight before/after, yield (%), date, operator. Create child/processed samples from original material."/>
             <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
             <column name="page_order" valueNumeric="4"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;4&quot;,&quot;title&quot;:&quot;Sample Preparation for Analysis&quot;,&quot;srsRequirements&quot;:{&quot;physicalProcessing&quot;:[&quot;Freshly processed: used immediately&quot;,&quot;Air drying, Oven drying (controlled temp), Freeze drying&quot;],&quot;preparationMethods&quot;:[&quot;Grinding (to powder)&quot;,&quot;Chopping (coarse pieces)&quot;,&quot;Powdering (fine powder for extraction)&quot;],&quot;documentation&quot;:[&quot;Processing method&quot;,&quot;Weight before/after processing&quot;,&quot;Yield (% of starting material)&quot;,&quot;Date, operator&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -168,6 +173,7 @@
             <column name="instructions" value="STAGE 5 (SRS) - Extract compounds from prepared plant material. Solvents: Ethanol, methanol, water, hexane, chloroform. Techniques: Maceration, Soxhlet, Ultrasonic, Distillation. Remove impurities via filtration. Concentrate extract via evaporation or distillation. Document: Solvent, plant weight, technique, temp, duration, yields, operator. Create aliquots/child samples from extracts."/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="page_order" valueNumeric="5"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;5&quot;,&quot;title&quot;:&quot;Extraction, Filtration &amp; Concentration&quot;,&quot;srsRequirements&quot;:{&quot;extraction&quot;:[&quot;Solvents: Ethanol, methanol, water, hexane, chloroform&quot;,&quot;Techniques: Maceration, Soxhlet, Ultrasonic, Distillation&quot;],&quot;filtration&quot;:[&quot;Remove plant debris and impurities&quot;,&quot;Methods: Filter paper, vacuum, centrifugation&quot;],&quot;concentration&quot;:[&quot;Evaporation (rotary evaporator), Distillation&quot;],&quot;documentation&quot;:[&quot;Solvent type/volume, Plant weight, Technique, Temp, Duration&quot;,&quot;Yield (extract weight or volume), Final volume/weight&quot;,&quot;Yield (% extraction efficiency)&quot;,&quot;Operator, date&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -195,6 +201,7 @@
             <column name="instructions" value="STAGE 6 (SRS) - Dual-path decision point. PATH A: Advanced Analysis (Fractionation via chromatography, Identification/Isolation via TLC/HPLC/GC-MS/LC-MS, Purification via recrystallization/HPLC, Characterization via NMR/MS/IR-FTIR, store spectral data). PATH B: Direct to Production (skip analysis, proceed to formulation). User selects path based on research needs."/>
             <column name="page_type" value="BRANCHING"/>
             <column name="page_order" valueNumeric="6"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;6&quot;,&quot;title&quot;:&quot;Analytical Pathways (Dual-Path Decision)&quot;,&quot;pathA&quot;:{&quot;name&quot;:&quot;Advanced Analysis Path&quot;,&quot;fractionation&quot;:[&quot;Chromatography: column, HPLC prep&quot;,&quot;Record method and fractions collected&quot;],&quot;identification&quot;:[&quot;Detect active constituents&quot;,&quot;Techniques: TLC, HPLC, GC-MS, LC-MS&quot;,&quot;Link to compound database (if known)&quot;],&quot;purification&quot;:[&quot;Recrystallization, prep-HPLC, column chromatography&quot;,&quot;Record purity level (% by HPLC/NMR)&quot;],&quot;characterization&quot;:[&quot;NMR, Mass Spectrometry, IR/FTIR&quot;,&quot;Store spectral data (files linked to compound)&quot;]},&quot;pathB&quot;:{&quot;name&quot;:&quot;Direct to Production Path&quot;,&quot;description&quot;:[&quot;Skip advanced analysis&quot;,&quot;Proceed directly to product development&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -222,6 +229,7 @@
             <column name="instructions" value="STAGE 7 (SRS) - Preliminary phytochemical screening (Alkaloids, Flavonoids, Tannins, Saponins, Terpenoids, Glycosides, Others). Safety/Toxicity studies (in vitro, in vivo, LD50, NOAEL). Efficacy tests (antimicrobial, antioxidant, anti-inflammatory, anticancer). Document outcomes and protocols. Three-way approval: Approve, Further Testing, Reject."/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="page_order" valueNumeric="7"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;7&quot;,&quot;title&quot;:&quot;Product Development &amp; Testing&quot;,&quot;phytochemicalScreening&quot;:[&quot;Alkaloids, Flavonoids, Tannins, Saponins, Terpenoids, Glycosides, Others&quot;,&quot;Record: positive/negative for each class&quot;],&quot;safetyToxicity&quot;:[&quot;In vitro: Cell-based toxicity assays&quot;,&quot;In vivo: Animal models (if applicable)&quot;,&quot;Record: LD50, NOAEL, Safety classification&quot;,&quot;Link to external trial data if conducted elsewhere&quot;],&quot;efficacyTest&quot;:[&quot;Biological assays: Antimicrobial, Antioxidant, Anti-inflammatory, Anticancer&quot;,&quot;Document outcomes and protocols&quot;],&quot;approval&quot;:[&quot;Three-way decision: Approve / Further Testing Required / Reject&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
@@ -249,6 +257,7 @@
             <column name="instructions" value="STAGE 8 (SRS) - Select formulation type (Capsules, Tinctures, Ointments/creams, Teas, Syrups, Others). Record: Ingredients with quantities/concentrations, Manufacturing steps, Batch number, Manufacturing date. Product QC: Stability testing, Microbial contamination, Heavy metals, Pesticide residues, Active constituent quantification. Document: Product specifications, Batch records, QC results."/>
             <column name="page_type" value="BULK_DATA_ENTRY"/>
             <column name="page_order" valueNumeric="8"/>
+            <column name="completed" valueBoolean="false"/>
             <column name="content" value="{&quot;stage&quot;:&quot;8&quot;,&quot;title&quot;:&quot;Formulation of Medical Product&quot;,&quot;formulationTypes&quot;:[&quot;Capsules, Tinctures, Ointments/creams, Teas, Syrups, Others&quot;],&quot;formulationProcess&quot;:[&quot;Select based on intended use and stability&quot;,&quot;Record: Ingredients (extract + excipients), Quantities/concentrations&quot;,&quot;Manufacturing steps, Batch number, Manufacturing date&quot;],&quot;productTesting&quot;:[&quot;Stability testing (accelerated and real-time)&quot;,&quot;Microbial contamination testing&quot;,&quot;Heavy metal testing&quot;,&quot;Pesticide residue testing (if applicable)&quot;,&quot;Active constituent quantification&quot;],&quot;documentation&quot;:[&quot;Product specifications, Batch records, QC results&quot;]}}"/>
             <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Traditional &amp; Modern Medicine Research Lab' AND is_template = true LIMIT 1)"/>
             <column name="last_updated" valueComputed="${now}"/>
