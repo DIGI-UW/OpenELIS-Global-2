@@ -18,9 +18,9 @@ import org.springframework.stereotype.Service;
 /**
  * FileImportWatchService - Polls configured import directories for new files.
  * 
- * Uses Spring @Scheduled annotation to poll directories at configured intervals.
- * Processes files matching the configured file pattern and moves them to archive
- * or error directories based on processing results.
+ * Uses Spring @Scheduled annotation to poll directories at configured
+ * intervals. Processes files matching the configured file pattern and moves
+ * them to archive or error directories based on processing results.
  * 
  * Task Reference: T054
  */
@@ -34,8 +34,8 @@ public class FileImportWatchService {
     private long pollIntervalMillis;
 
     /**
-     * Polls all active import directories for new files.
-     * Runs at configured interval (default: 60 seconds).
+     * Polls all active import directories for new files. Runs at configured
+     * interval (default: 60 seconds).
      */
     @Scheduled(fixedRateString = "${file.import.poll.interval:60000}")
     public void pollImportDirectories() {
@@ -104,7 +104,7 @@ public class FileImportWatchService {
      * Processes a single file using FileAnalyzerReader.
      * 
      * @param filePath The path to the file to process
-     * @param config The file import configuration
+     * @param config   The file import configuration
      */
     private void processFile(Path filePath, FileImportConfiguration config) {
         LogEvent.logInfo(this.getClass().getSimpleName(), "processFile",

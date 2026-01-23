@@ -35,8 +35,7 @@ public class FileImportConfigurationDAOImpl extends BaseDAOImpl<FileImportConfig
             FileImportConfiguration result = query.uniqueResult();
             return Optional.ofNullable(result);
         } catch (org.hibernate.NonUniqueResultException e) {
-            throw new LIMSRuntimeException(
-                    "Multiple FileImportConfiguration found for analyzer ID: " + analyzerId, e);
+            throw new LIMSRuntimeException("Multiple FileImportConfiguration found for analyzer ID: " + analyzerId, e);
         } catch (Exception e) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "findByAnalyzerId",
                     "No FileImportConfiguration found for analyzer ID: " + analyzerId + ": " + e.getMessage());

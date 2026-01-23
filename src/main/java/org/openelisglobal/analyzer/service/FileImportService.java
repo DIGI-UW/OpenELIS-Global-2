@@ -29,9 +29,9 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
     /**
      * Process a file for import based on configuration
      * 
-     * @param filePath           Path to the file to process
-     * @param configuration      FileImportConfiguration to use
-     * @param systemUserId       System user ID for audit trail
+     * @param filePath      Path to the file to process
+     * @param configuration FileImportConfiguration to use
+     * @param systemUserId  System user ID for audit trail
      * @return true if processing succeeded, false otherwise
      */
     boolean processFile(Path filePath, FileImportConfiguration configuration, String systemUserId);
@@ -59,10 +59,10 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
      * Check for duplicate results (analyzer ID + sample ID + test + timestamp)
      * 
      * @param analyzerId Analyzer ID from configuration
-     * @param sampleId    Sample ID
-     * @param testCode    Test code
-     * @param testDate    Test date
-     * @param testTime    Test time
+     * @param sampleId   Sample ID
+     * @param testCode   Test code
+     * @param testDate   Test date
+     * @param testTime   Test time
      * @return true if duplicate exists, false otherwise
      */
     boolean isDuplicate(Integer analyzerId, String sampleId, String testCode, String testDate, String testTime);

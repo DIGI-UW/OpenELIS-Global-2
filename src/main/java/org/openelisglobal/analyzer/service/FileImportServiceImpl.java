@@ -13,10 +13,9 @@ import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
-import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -154,7 +153,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             tempResult.setAnalyzerId(String.valueOf(analyzerId));
             tempResult.setAccessionNumber(sampleId);
             tempResult.setTestName(testCode);
-            
+
             // Parse date and time to create completeDate
             Timestamp completeDate = null;
             if (testDate != null && !testDate.isEmpty()) {
@@ -166,12 +165,9 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
                         dateTimeString += " 00:00:00";
                     }
                     // Try common date formats
-                    SimpleDateFormat[] formats = {
-                        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"),
-                        new SimpleDateFormat("yyyy-MM-dd HH:mm"),
-                        new SimpleDateFormat("MM/dd/yyyy HH:mm:ss"),
-                        new SimpleDateFormat("dd-MM-yyyy HH:mm:ss")
-                    };
+                    SimpleDateFormat[] formats = { new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"),
+                            new SimpleDateFormat("yyyy-MM-dd HH:mm"), new SimpleDateFormat("MM/dd/yyyy HH:mm:ss"),
+                            new SimpleDateFormat("dd-MM-yyyy HH:mm:ss") };
                     for (SimpleDateFormat format : formats) {
                         try {
                             completeDate = new Timestamp(format.parse(dateTimeString).getTime());
@@ -193,35 +189,34 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
             // Query for duplicates (analyzerId, accessionNumber, testName)
             List<AnalyzerResults> duplicates = analyzerResultsDAO.getDuplicateResultByAccessionAndTest(tempResult);
-            
+
             if (duplicates != null && !duplicates.isEmpty()) {
                 // Check if any duplicate has the same completeDate
                 if (completeDate != null) {
                     for (AnalyzerResults duplicate : duplicates) {
-                        if (duplicate.getCompleteDate() != null
-                                && duplicate.getCompleteDate().equals(completeDate)) {
+                        if (duplicate.getCompleteDate() != null && duplicate.getCompleteDate().equals(completeDate)) {
                             LogEvent.logDebug(this.getClass().getSimpleName(), "isDuplicate",
-                                    "Found exact duplicate: analyzer=" + analyzerId + ", sample=" + sampleId 
-                                            + ", test=" + testCode + ", date=" + completeDate);
+                                    "Found exact duplicate: analyzer=" + analyzerId + ", sample=" + sampleId + ", test="
+                                            + testCode + ", date=" + completeDate);
                             return true;
                         }
                     }
                     // If we have a date but no exact match, it's not a duplicate
                     return false;
                 } else {
-                    // No date provided, consider it a duplicate if analyzerId, accessionNumber and testName match
+                    // No date provided, consider it a duplicate if analyzerId, accessionNumber and
+                    // testName match
                     LogEvent.logDebug(this.getClass().getSimpleName(), "isDuplicate",
-                            "Found duplicate (no date check): analyzer=" + analyzerId + ", sample=" + sampleId 
+                            "Found duplicate (no date check): analyzer=" + analyzerId + ", sample=" + sampleId
                                     + ", test=" + testCode);
                     return true;
                 }
             }
-            
+
             return false;
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "isDuplicate",
-                    "Error checking duplicate for analyzer: " + analyzerId + ", sample: " + sampleId 
-                            + ", test: " + testCode + ": " + e.getMessage());
+            LogEvent.logError(this.getClass().getSimpleName(), "isDuplicate", "Error checking duplicate for analyzer: "
+                    + analyzerId + ", sample: " + sampleId + ", test: " + testCode + ": " + e.getMessage());
             return false; // On error, don't block processing
         }
     }

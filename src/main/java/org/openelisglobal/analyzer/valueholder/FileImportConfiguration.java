@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -146,9 +145,8 @@ public class FileImportConfiguration extends BaseObject<String> {
         // Deserialize from JSON if needed
         if (columnMappings.isEmpty() && columnMappingsJson != null && !columnMappingsJson.isEmpty()) {
             try {
-                columnMappings = objectMapper.readValue(columnMappingsJson,
-                        new TypeReference<Map<String, String>>() {
-                        });
+                columnMappings = objectMapper.readValue(columnMappingsJson, new TypeReference<Map<String, String>>() {
+                });
             } catch (JsonProcessingException e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "getColumnMappings",
                         "Error deserializing column mappings from JSON: " + e.getMessage());

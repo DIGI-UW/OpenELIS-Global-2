@@ -11,8 +11,8 @@ import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzer.service.FileImportService;
+import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -21,8 +21,8 @@ import org.openelisglobal.spring.util.SpringContext;
 /**
  * FileAnalyzerReader - Reads CSV/TXT files for analyzer result import.
  * 
- * Extends AnalyzerReader to support file-based analyzer integration (M3).
- * Uses Apache Commons CSV for parsing.
+ * Extends AnalyzerReader to support file-based analyzer integration (M3). Uses
+ * Apache Commons CSV for parsing.
  */
 public class FileAnalyzerReader extends AnalyzerReader {
 
@@ -56,8 +56,8 @@ public class FileAnalyzerReader extends AnalyzerReader {
 
         try {
             // Determine CSV format based on configuration
-            CSVFormat csvFormat = CSVFormat.DEFAULT.withDelimiter(
-                    configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
+            CSVFormat csvFormat = CSVFormat.DEFAULT
+                    .withDelimiter(configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
                             ? configuration.getDelimiter().charAt(0)
                             : ',');
 
@@ -207,7 +207,8 @@ public class FileAnalyzerReader extends AnalyzerReader {
 
                 if (sampleId != null && testCode != null) {
                     // Check for duplicate
-                    boolean isDuplicate = fileImportService.isDuplicate(analyzerId, sampleId, testCode, testDate, testTime);
+                    boolean isDuplicate = fileImportService.isDuplicate(analyzerId, sampleId, testCode, testDate,
+                            testTime);
                     if (isDuplicate) {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "checkDuplicatesBeforeInsertion",
                                 "Duplicate result detected (will still be inserted): analyzer=" + analyzerId

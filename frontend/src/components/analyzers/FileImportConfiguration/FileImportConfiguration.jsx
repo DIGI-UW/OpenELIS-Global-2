@@ -66,8 +66,12 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
           ? JSON.stringify(configuration.columnMappings, null, 2)
           : "{}",
         delimiter: configuration.delimiter || ",",
-        hasHeader: configuration.hasHeader !== undefined ? configuration.hasHeader : true,
-        active: configuration.active !== undefined ? configuration.active : true,
+        hasHeader:
+          configuration.hasHeader !== undefined
+            ? configuration.hasHeader
+            : true,
+        active:
+          configuration.active !== undefined ? configuration.active : true,
       });
     } else {
       setFormData({
@@ -146,7 +150,9 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
     } catch (e) {
       setNotification({
         kind: "error",
-        title: intl.formatMessage({ id: "file.import.configuration.error.save" }),
+        title: intl.formatMessage({
+          id: "file.import.configuration.error.save",
+        }),
         subtitle: intl.formatMessage({
           id: "file.import.configuration.validation.columnMappings.invalid",
         }),
@@ -172,11 +178,15 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
       if (response.error || response.statusCode >= 400) {
         setNotification({
           kind: "error",
-          title: intl.formatMessage({ id: "file.import.configuration.error.save" }),
+          title: intl.formatMessage({
+            id: "file.import.configuration.error.save",
+          }),
           subtitle:
             response.error ||
             response.message ||
-            intl.formatMessage({ id: "file.import.configuration.error.unknown" }),
+            intl.formatMessage({
+              id: "file.import.configuration.error.unknown",
+            }),
         });
       } else {
         setNotification({
@@ -245,7 +255,8 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
             })}
             items={analyzerOptions}
             selectedItem={
-              analyzerOptions.find((opt) => opt.id === formData.analyzerId) || null
+              analyzerOptions.find((opt) => opt.id === formData.analyzerId) ||
+              null
             }
             itemToString={(item) => (item ? item.text : "")}
             onChange={({ selectedItem }) =>
@@ -267,7 +278,9 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
               id: "file.import.configuration.importDirectory.placeholder",
             })}
             value={formData.importDirectory}
-            onChange={(e) => handleFieldChange("importDirectory", e.target.value)}
+            onChange={(e) =>
+              handleFieldChange("importDirectory", e.target.value)
+            }
             invalid={!!errors.importDirectory}
             invalidText={errors.importDirectory}
             required
@@ -300,7 +313,9 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
               id: "file.import.configuration.archiveDirectory.placeholder",
             })}
             value={formData.archiveDirectory}
-            onChange={(e) => handleFieldChange("archiveDirectory", e.target.value)}
+            onChange={(e) =>
+              handleFieldChange("archiveDirectory", e.target.value)
+            }
             helperText={intl.formatMessage({
               id: "file.import.configuration.archiveDirectory.helperText",
             })}
@@ -316,7 +331,9 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
               id: "file.import.configuration.errorDirectory.placeholder",
             })}
             value={formData.errorDirectory}
-            onChange={(e) => handleFieldChange("errorDirectory", e.target.value)}
+            onChange={(e) =>
+              handleFieldChange("errorDirectory", e.target.value)
+            }
             helperText={intl.formatMessage({
               id: "file.import.configuration.errorDirectory.helperText",
             })}
@@ -330,7 +347,9 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
             })}
             placeholder='{"Sample_ID": "sampleId", "Test_Code": "testCode", "Result": "result"}'
             value={formData.columnMappings}
-            onChange={(e) => handleFieldChange("columnMappings", e.target.value)}
+            onChange={(e) =>
+              handleFieldChange("columnMappings", e.target.value)
+            }
             invalid={!!errors.columnMappings}
             invalidText={errors.columnMappings}
             rows={4}
