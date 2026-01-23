@@ -96,7 +96,7 @@
   },
   "devDependencies": {
     "@testing-library/react-hooks": "^8.0.1",
-    "cypress": "^12.17.4",
+    "cypress": "^15.9.0",
     "cypress-xpath": "^2.0.1",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
