@@ -59,7 +59,7 @@ public class SerialPortRestController extends BaseRestController {
     @GetMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> getConfiguration(@PathVariable String id) {
         try {
-            Optional<SerialPortConfiguration> configOpt = serialPortService.get(id);
+            Optional<SerialPortConfiguration> configOpt = serialPortService.getById(id);
             if (configOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(createErrorResponse("Serial port configuration not found: " + id));
@@ -145,7 +145,7 @@ public class SerialPortRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateConfiguration(@PathVariable String id,
             @RequestBody SerialPortConfiguration config) {
         try {
-            Optional<SerialPortConfiguration> existingOpt = serialPortService.get(id);
+            Optional<SerialPortConfiguration> existingOpt = serialPortService.getById(id);
             if (existingOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(createErrorResponse("Serial port configuration not found: " + id));
@@ -198,7 +198,7 @@ public class SerialPortRestController extends BaseRestController {
     @DeleteMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> deleteConfiguration(@PathVariable String id) {
         try {
-            Optional<SerialPortConfiguration> configOpt = serialPortService.get(id);
+            Optional<SerialPortConfiguration> configOpt = serialPortService.getById(id);
             if (configOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(createErrorResponse("Serial port configuration not found: " + id));
@@ -209,7 +209,7 @@ public class SerialPortRestController extends BaseRestController {
                 serialPortService.closeConnection(id);
             }
 
-            serialPortService.delete(id);
+            serialPortService.delete(configOpt.get());
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Serial port configuration deleted successfully");
             return ResponseEntity.ok(response);

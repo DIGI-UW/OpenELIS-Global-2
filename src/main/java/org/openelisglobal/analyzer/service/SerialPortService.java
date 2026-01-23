@@ -13,6 +13,14 @@ import org.openelisglobal.common.service.BaseObjectService;
 public interface SerialPortService extends BaseObjectService<SerialPortConfiguration, String> {
 
     /**
+     * Get SerialPortConfiguration by ID (optional lookup, returns empty if not found)
+     * 
+     * @param id The configuration ID
+     * @return Optional SerialPortConfiguration
+     */
+    Optional<SerialPortConfiguration> getById(String id);
+
+    /**
      * Get SerialPortConfiguration by analyzer ID
      * 
      * @param analyzerId The analyzer ID

@@ -6,11 +6,11 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
-import SerialConfiguration from "./SerialConfiguration";
-import * as serialService from "../../../services/serialService";
+import SerialConfiguration from "../SerialConfiguration";
+import * as serialService from "../../../../services/serialService";
 
 // Mock the serial service
-jest.mock("../../../services/serialService");
+jest.mock("../../../../services/serialService");
 
 const messages = {
   "serial.config.create.title": "Create Serial Port Configuration",

@@ -42,6 +42,12 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<SerialPortConfiguration> getById(String id) {
+        return serialPortConfigurationDAO.get(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<SerialPortConfiguration> getByAnalyzerId(Integer analyzerId) {
         return serialPortConfigurationDAO.findByAnalyzerId(analyzerId);
     }

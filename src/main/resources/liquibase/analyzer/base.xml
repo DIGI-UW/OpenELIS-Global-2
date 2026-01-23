@@ -25,6 +25,6 @@
   <include relativeToChangelogFile="true" file="004-016-add-analyzer-id-to-field-mapping.xml"/>
   <include relativeToChangelogFile="true" file="004-017-add-qc-service-unavailable-error-type.xml"/>
   <!-- Madagascar 011: RS232 serial adapter (M2) -->
-  <include relativeToChangelogFile="true" file="011-003-create-serial-port-configuration-table.xml"/>
+  <include relativeToChangelogFile="true" file="../3.3.x.x/038-create-serial-port-configuration-table.xml"/>
 
 </databaseChangeLog>

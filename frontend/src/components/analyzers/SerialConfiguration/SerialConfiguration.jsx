@@ -27,7 +27,7 @@ import {
   connectSerialPort,
   disconnectSerialPort,
   getSerialPortStatus,
-} from "../../services/serialService";
+} from "../../../services/serialService";
 import "./SerialConfiguration.css";
 
 const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave }) => {
