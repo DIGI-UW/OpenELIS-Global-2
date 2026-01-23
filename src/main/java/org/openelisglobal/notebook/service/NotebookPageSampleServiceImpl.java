@@ -421,8 +421,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                     if (page == null) {
                         page = noteBookService.getPage(pageId);
                         if (page == null) {
-                            LogEvent.logError(this.getClass().getName(), "bulkApplyData",
-                                    "Page not found: " + pageId);
+                            LogEvent.logError(this.getClass().getName(), "bulkApplyData", "Page not found: " + pageId);
                             continue;
                         }
                     }
@@ -467,10 +466,11 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
     @Override
     @Transactional
-    public int bulkAppendToArray(Integer pageId, List<Integer> sampleIds, String arrayField, Map<String, Object> newEntry, String userId) {
+    public int bulkAppendToArray(Integer pageId, List<Integer> sampleIds, String arrayField,
+            Map<String, Object> newEntry, String userId) {
         int totalUpdated = 0;
-        LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
-                "Starting bulkAppendToArray for pageId=" + pageId + ", sampleIds=" + sampleIds + ", arrayField=" + arrayField);
+        LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray", "Starting bulkAppendToArray for pageId="
+                + pageId + ", sampleIds=" + sampleIds + ", arrayField=" + arrayField);
 
         // Get page reference for creating new records if needed
         NoteBookPage page = null;
@@ -505,14 +505,14 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                     nps.setNotebookPage(page);
                     nps.setSampleItemId(sampleId.toString());
                     nps.setStatus(Status.IN_PROGRESS);
-                    
+
                     // Initialize data with array field containing first entry
                     Map<String, Object> data = new HashMap<>();
                     List<Map<String, Object>> array = new java.util.ArrayList<>();
                     array.add(newEntry);
                     data.put(arrayField, array);
                     nps.setData(data);
-                    
+
                     insert(nps);
                     entityManager.flush();
                     totalUpdated++;
@@ -521,32 +521,30 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 } else {
                     LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
                             "Found sample record: id=" + nps.getId() + ", sampleItemId=" + nps.getSampleItemId());
-                    
-                    // Use native SQL to append to JSONB array - Hibernate JSONB type doesn't detect nested changes
+
+                    // Use native SQL to append to JSONB array - Hibernate JSONB type doesn't detect
+                    // nested changes
                     try {
                         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                         String newEntryJson = mapper.writeValueAsString(newEntry);
-                        
+
                         // Use CAST instead of :: to avoid Hibernate parameter parsing issues
-                        String sql = "UPDATE clinlims.notebook_page_sample " +
-                                    "SET data = CASE " +
-                                    "  WHEN data->'" + arrayField + "' IS NULL THEN jsonb_set(data, '{" + arrayField + "}', CAST(:newArray AS jsonb)) " +
-                                    "  ELSE jsonb_set(data, '{" + arrayField + "}', (data->'" + arrayField + "' || CAST(:newEntry AS jsonb))) " +
-                                    "END, " +
-                                    "status = :status, " +
-                                    "last_updated = CURRENT_TIMESTAMP " +
-                                    "WHERE id = :npsId";
-                        
+                        String sql = "UPDATE clinlims.notebook_page_sample " + "SET data = CASE " + "  WHEN data->'"
+                                + arrayField + "' IS NULL THEN jsonb_set(data, '{" + arrayField
+                                + "}', CAST(:newArray AS jsonb)) " + "  ELSE jsonb_set(data, '{" + arrayField
+                                + "}', (data->'" + arrayField + "' || CAST(:newEntry AS jsonb))) " + "END, "
+                                + "status = :status, " + "last_updated = CURRENT_TIMESTAMP " + "WHERE id = :npsId";
+
                         int updated = entityManager.createNativeQuery(sql)
-                            .setParameter("newArray", "[" + newEntryJson + "]")
-                            .setParameter("newEntry", newEntryJson)
-                            .setParameter("status", nps.getStatus() == Status.PENDING ? "IN_PROGRESS" : nps.getStatus().name())
-                            .setParameter("npsId", nps.getId())
-                            .executeUpdate();
-                        
+                                .setParameter("newArray", "[" + newEntryJson + "]")
+                                .setParameter("newEntry", newEntryJson)
+                                .setParameter("status",
+                                        nps.getStatus() == Status.PENDING ? "IN_PROGRESS" : nps.getStatus().name())
+                                .setParameter("npsId", nps.getId()).executeUpdate();
+
                         LogEvent.logInfo(this.getClass().getName(), "bulkAppendToArray",
                                 "Native SQL updated " + updated + " record(s) for npsId=" + nps.getId());
-                        
+
                         totalUpdated++;
                     } catch (Exception e) {
                         LogEvent.logError(this.getClass().getName(), "bulkAppendToArray",

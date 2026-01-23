@@ -1,21 +1,18 @@
 package org.openelisglobal.virology.valueholder;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 7: Formulation
- * Document formulation details (stabilizers, preservatives, concentrations)
+ * Process Step 7: Formulation Document formulation details (stabilizers,
+ * preservatives, concentrations)
  */
 @Entity
 @Table(name = "virus_culture_formulation")
@@ -144,32 +141,77 @@ public class VirusCultureFormulation extends BaseObject<Integer> {
     }
 
     @Override
-    public Integer getId() { return id; }
+    public Integer getId() {
+        return id;
+    }
+
     @Override
-    public void setId(Integer id) { this.id = id; }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     // Getters and setters (abbreviated for brevity)
-    public VirusCultureBatch getCultureBatch() { return cultureBatch; }
-    public void setCultureBatch(VirusCultureBatch cultureBatch) { this.cultureBatch = cultureBatch; }
+    public VirusCultureBatch getCultureBatch() {
+        return cultureBatch;
+    }
 
-    public String getFormulationType() { return formulationType; }
-    public void setFormulationType(String formulationType) { this.formulationType = formulationType; }
+    public void setCultureBatch(VirusCultureBatch cultureBatch) {
+        this.cultureBatch = cultureBatch;
+    }
 
-    public String getStabilizerName() { return stabilizerName; }
-    public void setStabilizerName(String stabilizerName) { this.stabilizerName = stabilizerName; }
+    public String getFormulationType() {
+        return formulationType;
+    }
 
-    public String getPreservativeName() { return preservativeName; }
-    public void setPreservativeName(String preservativeName) { this.preservativeName = preservativeName; }
+    public void setFormulationType(String formulationType) {
+        this.formulationType = formulationType;
+    }
 
-    public BigDecimal getFinalVolumeMl() { return finalVolumeMl; }
-    public void setFinalVolumeMl(BigDecimal finalVolumeMl) { this.finalVolumeMl = finalVolumeMl; }
+    public String getStabilizerName() {
+        return stabilizerName;
+    }
 
-    public Timestamp getFormulationDate() { return formulationDate; }
-    public void setFormulationDate(Timestamp formulationDate) { this.formulationDate = formulationDate; }
+    public void setStabilizerName(String stabilizerName) {
+        this.stabilizerName = stabilizerName;
+    }
 
-    public SystemUser getFormulatedBy() { return formulatedBy; }
-    public void setFormulatedBy(SystemUser formulatedBy) { this.formulatedBy = formulatedBy; }
+    public String getPreservativeName() {
+        return preservativeName;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public void setPreservativeName(String preservativeName) {
+        this.preservativeName = preservativeName;
+    }
+
+    public BigDecimal getFinalVolumeMl() {
+        return finalVolumeMl;
+    }
+
+    public void setFinalVolumeMl(BigDecimal finalVolumeMl) {
+        this.finalVolumeMl = finalVolumeMl;
+    }
+
+    public Timestamp getFormulationDate() {
+        return formulationDate;
+    }
+
+    public void setFormulationDate(Timestamp formulationDate) {
+        this.formulationDate = formulationDate;
+    }
+
+    public SystemUser getFormulatedBy() {
+        return formulatedBy;
+    }
+
+    public void setFormulatedBy(SystemUser formulatedBy) {
+        this.formulatedBy = formulatedBy;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
 }

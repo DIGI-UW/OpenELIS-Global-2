@@ -18,8 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for virology sterilization logging.
- * Handles sterilization parameter logging (autoclaving, filtration) for virology workflows.
+ * REST controller for virology sterilization logging. Handles sterilization
+ * parameter logging (autoclaving, filtration) for virology workflows.
  */
 @RestController
 @RequestMapping("/rest/virology/sterilization")
@@ -31,15 +31,15 @@ public class VirologySterilizationRestController extends BaseRestController {
     private NotebookPageSampleService notebookPageSampleService;
 
     /**
-     * Save sterilization log with parameters.
-     * Records sterilization method, temperature, time, and pressure.
+     * Save sterilization log with parameters. Records sterilization method,
+     * temperature, time, and pressure.
      *
      * @param request Sterilization log request
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveSterilization(
-            HttpServletRequest httpRequest, @Valid @RequestBody SterilizationRequest request) {
+    public ResponseEntity<Map<String, Object>> saveSterilization(HttpServletRequest httpRequest,
+            @Valid @RequestBody SterilizationRequest request) {
 
         try {
             log.info("Saving sterilization log for notebook page: " + request.getNotebookPageId());
@@ -74,8 +74,8 @@ public class VirologySterilizationRestController extends BaseRestController {
 
                 // Verify the data was saved by reading it back
                 for (Integer sampleId : request.getSampleIds()) {
-                    var savedSample = notebookPageSampleService.getByPageIdAndSampleItemId(
-                            request.getNotebookPageId().intValue(), sampleId);
+                    var savedSample = notebookPageSampleService
+                            .getByPageIdAndSampleItemId(request.getNotebookPageId().intValue(), sampleId);
                     if (savedSample != null) {
                         log.info("Verified sample " + sampleId + " data after save: " + savedSample.getData());
                     } else {

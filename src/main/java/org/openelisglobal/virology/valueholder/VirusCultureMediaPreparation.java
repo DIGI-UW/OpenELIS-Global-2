@@ -1,22 +1,19 @@
 package org.openelisglobal.virology.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
-
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 1: Media Preparation
- * Log materials used (type, lot number, expiry)
+ * Process Step 1: Media Preparation Log materials used (type, lot number,
+ * expiry)
  */
 @Entity
 @Table(name = "virus_culture_media_preparation")
@@ -89,7 +86,8 @@ public class VirusCultureMediaPreparation extends BaseObject<Integer> {
         super();
     }
 
-    public VirusCultureMediaPreparation(VirusCultureBatch cultureBatch, String mediaType, String lotNumber, Date expiryDate) {
+    public VirusCultureMediaPreparation(VirusCultureBatch cultureBatch, String mediaType, String lotNumber,
+            Date expiryDate) {
         this();
         this.cultureBatch = cultureBatch;
         this.mediaType = mediaType;
@@ -106,48 +104,118 @@ public class VirusCultureMediaPreparation extends BaseObject<Integer> {
     }
 
     @Override
-    public Integer getId() { return id; }
+    public Integer getId() {
+        return id;
+    }
+
     @Override
-    public void setId(Integer id) { this.id = id; }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
-    public VirusCultureBatch getCultureBatch() { return cultureBatch; }
-    public void setCultureBatch(VirusCultureBatch cultureBatch) { this.cultureBatch = cultureBatch; }
+    public VirusCultureBatch getCultureBatch() {
+        return cultureBatch;
+    }
 
-    public String getMediaType() { return mediaType; }
-    public void setMediaType(String mediaType) { this.mediaType = mediaType; }
+    public void setCultureBatch(VirusCultureBatch cultureBatch) {
+        this.cultureBatch = cultureBatch;
+    }
 
-    public String getLotNumber() { return lotNumber; }
-    public void setLotNumber(String lotNumber) { this.lotNumber = lotNumber; }
+    public String getMediaType() {
+        return mediaType;
+    }
 
-    public Date getExpiryDate() { return expiryDate; }
-    public void setExpiryDate(Date expiryDate) { this.expiryDate = expiryDate; }
+    public void setMediaType(String mediaType) {
+        this.mediaType = mediaType;
+    }
 
-    public String getSupplier() { return supplier; }
-    public void setSupplier(String supplier) { this.supplier = supplier; }
+    public String getLotNumber() {
+        return lotNumber;
+    }
 
-    public BigDecimal getVolumeMl() { return volumeMl; }
-    public void setVolumeMl(BigDecimal volumeMl) { this.volumeMl = volumeMl; }
+    public void setLotNumber(String lotNumber) {
+        this.lotNumber = lotNumber;
+    }
 
-    public Timestamp getPreparationDate() { return preparationDate; }
-    public void setPreparationDate(Timestamp preparationDate) { this.preparationDate = preparationDate; }
+    public Date getExpiryDate() {
+        return expiryDate;
+    }
 
-    public String getEquipmentUsed() { return equipmentUsed; }
-    public void setEquipmentUsed(String equipmentUsed) { this.equipmentUsed = equipmentUsed; }
+    public void setExpiryDate(Date expiryDate) {
+        this.expiryDate = expiryDate;
+    }
 
-    public BigDecimal getPhLevel() { return phLevel; }
-    public void setPhLevel(BigDecimal phLevel) { this.phLevel = phLevel; }
+    public String getSupplier() {
+        return supplier;
+    }
 
-    public String getSterilityTestResult() { return sterilityTestResult; }
-    public void setSterilityTestResult(String sterilityTestResult) { this.sterilityTestResult = sterilityTestResult; }
+    public void setSupplier(String supplier) {
+        this.supplier = supplier;
+    }
 
-    public SystemUser getPreparedBy() { return preparedBy; }
-    public void setPreparedBy(SystemUser preparedBy) { this.preparedBy = preparedBy; }
+    public BigDecimal getVolumeMl() {
+        return volumeMl;
+    }
 
-    public SystemUser getQualityCheckedBy() { return qualityCheckedBy; }
-    public void setQualityCheckedBy(SystemUser qualityCheckedBy) { this.qualityCheckedBy = qualityCheckedBy; }
+    public void setVolumeMl(BigDecimal volumeMl) {
+        this.volumeMl = volumeMl;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public Timestamp getPreparationDate() {
+        return preparationDate;
+    }
+
+    public void setPreparationDate(Timestamp preparationDate) {
+        this.preparationDate = preparationDate;
+    }
+
+    public String getEquipmentUsed() {
+        return equipmentUsed;
+    }
+
+    public void setEquipmentUsed(String equipmentUsed) {
+        this.equipmentUsed = equipmentUsed;
+    }
+
+    public BigDecimal getPhLevel() {
+        return phLevel;
+    }
+
+    public void setPhLevel(BigDecimal phLevel) {
+        this.phLevel = phLevel;
+    }
+
+    public String getSterilityTestResult() {
+        return sterilityTestResult;
+    }
+
+    public void setSterilityTestResult(String sterilityTestResult) {
+        this.sterilityTestResult = sterilityTestResult;
+    }
+
+    public SystemUser getPreparedBy() {
+        return preparedBy;
+    }
+
+    public void setPreparedBy(SystemUser preparedBy) {
+        this.preparedBy = preparedBy;
+    }
+
+    public SystemUser getQualityCheckedBy() {
+        return qualityCheckedBy;
+    }
+
+    public void setQualityCheckedBy(SystemUser qualityCheckedBy) {
+        this.qualityCheckedBy = qualityCheckedBy;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
 
     public boolean isExpired() {
         return expiryDate != null && expiryDate.before(new Date(System.currentTimeMillis()));

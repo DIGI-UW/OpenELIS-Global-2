@@ -1,22 +1,19 @@
 package org.openelisglobal.virology.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
-
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 9: Packaging
- * Track batch ID, packaging specs (vial type, fill volume, labeling)
+ * Process Step 9: Packaging Track batch ID, packaging specs (vial type, fill
+ * volume, labeling)
  */
 @Entity
 @Table(name = "virus_culture_packaging")
@@ -142,41 +139,101 @@ public class VirusCulturePackaging extends BaseObject<Integer> {
     }
 
     @Override
-    public Integer getId() { return id; }
+    public Integer getId() {
+        return id;
+    }
+
     @Override
-    public void setId(Integer id) { this.id = id; }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     // Key getters and setters
-    public VirusCultureBatch getCultureBatch() { return cultureBatch; }
-    public void setCultureBatch(VirusCultureBatch cultureBatch) { this.cultureBatch = cultureBatch; }
+    public VirusCultureBatch getCultureBatch() {
+        return cultureBatch;
+    }
 
-    public String getFinalBatchId() { return finalBatchId; }
-    public void setFinalBatchId(String finalBatchId) { this.finalBatchId = finalBatchId; }
+    public void setCultureBatch(VirusCultureBatch cultureBatch) {
+        this.cultureBatch = cultureBatch;
+    }
 
-    public String getVialType() { return vialType; }
-    public void setVialType(String vialType) { this.vialType = vialType; }
+    public String getFinalBatchId() {
+        return finalBatchId;
+    }
 
-    public Integer getVialCount() { return vialCount; }
-    public void setVialCount(Integer vialCount) { this.vialCount = vialCount; }
+    public void setFinalBatchId(String finalBatchId) {
+        this.finalBatchId = finalBatchId;
+    }
 
-    public BigDecimal getFillVolumeMl() { return fillVolumeMl; }
-    public void setFillVolumeMl(BigDecimal fillVolumeMl) { this.fillVolumeMl = fillVolumeMl; }
+    public String getVialType() {
+        return vialType;
+    }
 
-    public Date getExpiryDate() { return expiryDate; }
-    public void setExpiryDate(Date expiryDate) { this.expiryDate = expiryDate; }
+    public void setVialType(String vialType) {
+        this.vialType = vialType;
+    }
 
-    public Timestamp getPackagingDate() { return packagingDate; }
-    public void setPackagingDate(Timestamp packagingDate) { this.packagingDate = packagingDate; }
+    public Integer getVialCount() {
+        return vialCount;
+    }
 
-    public SystemUser getPackagedBy() { return packagedBy; }
-    public void setPackagedBy(SystemUser packagedBy) { this.packagedBy = packagedBy; }
+    public void setVialCount(Integer vialCount) {
+        this.vialCount = vialCount;
+    }
 
-    public SystemUser getReleasedBy() { return releasedBy; }
-    public void setReleasedBy(SystemUser releasedBy) { this.releasedBy = releasedBy; }
+    public BigDecimal getFillVolumeMl() {
+        return fillVolumeMl;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public void setFillVolumeMl(BigDecimal fillVolumeMl) {
+        this.fillVolumeMl = fillVolumeMl;
+    }
 
-    public boolean isReleased() { return releasedBy != null; }
-    public boolean isExpired() { return expiryDate != null && expiryDate.before(new Date(System.currentTimeMillis())); }
+    public Date getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(Date expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+
+    public Timestamp getPackagingDate() {
+        return packagingDate;
+    }
+
+    public void setPackagingDate(Timestamp packagingDate) {
+        this.packagingDate = packagingDate;
+    }
+
+    public SystemUser getPackagedBy() {
+        return packagedBy;
+    }
+
+    public void setPackagedBy(SystemUser packagedBy) {
+        this.packagedBy = packagedBy;
+    }
+
+    public SystemUser getReleasedBy() {
+        return releasedBy;
+    }
+
+    public void setReleasedBy(SystemUser releasedBy) {
+        this.releasedBy = releasedBy;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public boolean isReleased() {
+        return releasedBy != null;
+    }
+
+    public boolean isExpired() {
+        return expiryDate != null && expiryDate.before(new Date(System.currentTimeMillis()));
+    }
 }

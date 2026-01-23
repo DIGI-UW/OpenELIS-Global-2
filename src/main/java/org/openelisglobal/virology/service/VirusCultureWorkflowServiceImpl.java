@@ -1,14 +1,12 @@
 package org.openelisglobal.virology.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -43,10 +41,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
     // ==========================================
 
     @Override
-    public VirusCultureBatch createVirusCultureBatch(NotebookPageSample notebookPageSample,
-                                                     String virusStrain,
-                                                     String cellLine,
-                                                     SystemUser createdBy) {
+    public VirusCultureBatch createVirusCultureBatch(NotebookPageSample notebookPageSample, String virusStrain,
+            String cellLine, SystemUser createdBy) {
         // Generate unique batch ID
         String batchId = generateBatchId(virusStrain);
 
@@ -129,10 +125,9 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
     public VirusCultureWorkflowStatus getCurrentWorkflowStep(Integer batchId) {
         List<VirusCultureWorkflowStatus> statuses = workflowStatusDAO.findByCultureBatchId(batchId);
         return statuses.stream()
-                .filter(status -> status.getStatus() == VirusCultureWorkflowStatus.StepStatus.IN_PROGRESS ||
-                                status.getStatus() == VirusCultureWorkflowStatus.StepStatus.PENDING)
-                .min(Comparator.comparing(VirusCultureWorkflowStatus::getStepOrder))
-                .orElse(null);
+                .filter(status -> status.getStatus() == VirusCultureWorkflowStatus.StepStatus.IN_PROGRESS
+                        || status.getStatus() == VirusCultureWorkflowStatus.StepStatus.PENDING)
+                .min(Comparator.comparing(VirusCultureWorkflowStatus::getStepOrder)).orElse(null);
     }
 
     @Override
@@ -153,11 +148,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
     }
 
     @Override
-    public VirusCultureWorkflowStatus completeWorkflowStep(Integer batchId,
-                                                           String stepName,
-                                                           SystemUser completedBy,
-                                                           VirusCultureWorkflowStatus.QualityCheckResult qualityResult,
-                                                           String notes) {
+    public VirusCultureWorkflowStatus completeWorkflowStep(Integer batchId, String stepName, SystemUser completedBy,
+            VirusCultureWorkflowStatus.QualityCheckResult qualityResult, String notes) {
         Optional<VirusCultureBatch> batchOpt = virusCultureBatchDAO.get(batchId);
         if (batchOpt.isPresent()) {
             VirusCultureBatch batch = batchOpt.get();
@@ -182,10 +174,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
     }
 
     @Override
-    public VirusCultureWorkflowStatus failWorkflowStep(Integer batchId,
-                                                       String stepName,
-                                                       SystemUser failedBy,
-                                                       String reason) {
+    public VirusCultureWorkflowStatus failWorkflowStep(Integer batchId, String stepName, SystemUser failedBy,
+            String reason) {
         Optional<VirusCultureBatch> batchOpt = virusCultureBatchDAO.get(batchId);
         if (batchOpt.isPresent()) {
             VirusCultureBatch batch = batchOpt.get();
@@ -212,8 +202,7 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
         List<VirusCultureWorkflowStatus> statuses = workflowStatusDAO.findByCultureBatchId(batchId);
 
         long completedSteps = statuses.stream()
-                .filter(s -> s.getStatus() == VirusCultureWorkflowStatus.StepStatus.COMPLETED)
-                .count();
+                .filter(s -> s.getStatus() == VirusCultureWorkflowStatus.StepStatus.COMPLETED).count();
 
         progress.put("totalSteps", statuses.size());
         progress.put("completedSteps", completedSteps);
@@ -229,7 +218,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
     // ==========================================
 
     @Override
-    public VirusCultureMediaPreparation recordMediaPreparation(Integer batchId, VirusCultureMediaPreparation mediaPreparation) {
+    public VirusCultureMediaPreparation recordMediaPreparation(Integer batchId,
+            VirusCultureMediaPreparation mediaPreparation) {
         Optional<VirusCultureBatch> batchOpt = virusCultureBatchDAO.get(batchId);
         if (batchOpt.isPresent()) {
             mediaPreparation.setCultureBatch(batchOpt.get());
@@ -277,7 +267,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
     }
 
     @Override
-    public VirusCultureVirusInoculation recordVirusInoculation(Integer batchId, VirusCultureVirusInoculation virusInoculation) {
+    public VirusCultureVirusInoculation recordVirusInoculation(Integer batchId,
+            VirusCultureVirusInoculation virusInoculation) {
         Optional<VirusCultureBatch> batchOpt = virusCultureBatchDAO.get(batchId);
         if (batchOpt.isPresent()) {
             virusInoculation.setCultureBatch(batchOpt.get());
@@ -362,10 +353,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
 
         // Check if previous steps are completed
         List<VirusCultureWorkflowStatus> statuses = workflowStatusDAO.findByCultureBatchId(batchId);
-        VirusCultureWorkflowStatus targetStep = statuses.stream()
-                .filter(s -> s.getStepName().equals(stepName))
-                .findFirst()
-                .orElse(null);
+        VirusCultureWorkflowStatus targetStep = statuses.stream().filter(s -> s.getStepName().equals(stepName))
+                .findFirst().orElse(null);
 
         if (targetStep == null) {
             validation.put("canStart", false);
@@ -374,8 +363,7 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
         }
 
         // Check if any previous steps are incomplete
-        boolean previousStepsComplete = statuses.stream()
-                .filter(s -> s.getStepOrder() < targetStep.getStepOrder())
+        boolean previousStepsComplete = statuses.stream().filter(s -> s.getStepOrder() < targetStep.getStepOrder())
                 .allMatch(s -> s.getStatus() == VirusCultureWorkflowStatus.StepStatus.COMPLETED);
 
         if (!previousStepsComplete) {
@@ -405,7 +393,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
 
         if (hasActiveBatch) {
             validation.put("canCreate", false);
-            ((List<String>) validation.get("reasons")).add("There is already an active virus culture batch for this sample");
+            ((List<String>) validation.get("reasons"))
+                    .add("There is already an active virus culture batch for this sample");
         }
 
         return validation;
@@ -429,8 +418,8 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
     @Override
     public String generateBatchId(String virusStrain) {
         String strainPrefix = virusStrain != null && virusStrain.length() >= 3
-            ? virusStrain.substring(0, 3).toUpperCase()
-            : "VCB";
+                ? virusStrain.substring(0, 3).toUpperCase()
+                : "VCB";
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
         return strainPrefix + "-" + timestamp;
@@ -446,8 +435,7 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
         // Get next step
         List<VirusCultureWorkflowStatus> allSteps = workflowStatusDAO.findByCultureBatchId(batchId);
         Optional<VirusCultureWorkflowStatus> nextStep = allSteps.stream()
-                .filter(s -> s.getStepOrder() == currentStep.getStepOrder() + 1)
-                .findFirst();
+                .filter(s -> s.getStepOrder() == currentStep.getStepOrder() + 1).findFirst();
 
         if (nextStep.isPresent() && nextStep.get().getStatus() == VirusCultureWorkflowStatus.StepStatus.PENDING) {
             // Auto-start next step
@@ -465,16 +453,17 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
         List<VirusCultureBatch> activeBatches = virusCultureBatchDAO.findActiveBatches();
         List<VirusCultureBatch> feedingDue = new ArrayList<>();
 
-        // Feeding is typically required during virus culture phase (24-72 hour intervals)
+        // Feeding is typically required during virus culture phase (24-72 hour
+        // intervals)
         long feedingInterval = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
         long currentTime = System.currentTimeMillis();
 
         for (VirusCultureBatch batch : activeBatches) {
             // Check if batch is in a stage that requires feeding
-            if (batch.getStatus() == VirusCultureBatch.BatchStatus.VIRUS_CULTURE_PENDING ||
-                batch.getStatus() == VirusCultureBatch.BatchStatus.VIRUS_CULTURE_IN_PROGRESS ||
-                batch.getStatus() == VirusCultureBatch.BatchStatus.DARK_ROOM_IMAGING_PENDING ||
-                batch.getStatus() == VirusCultureBatch.BatchStatus.DARK_ROOM_IMAGING_IN_PROGRESS) {
+            if (batch.getStatus() == VirusCultureBatch.BatchStatus.VIRUS_CULTURE_PENDING
+                    || batch.getStatus() == VirusCultureBatch.BatchStatus.VIRUS_CULTURE_IN_PROGRESS
+                    || batch.getStatus() == VirusCultureBatch.BatchStatus.DARK_ROOM_IMAGING_PENDING
+                    || batch.getStatus() == VirusCultureBatch.BatchStatus.DARK_ROOM_IMAGING_IN_PROGRESS) {
 
                 // Get last feeding record for this batch
                 // For now, we'll use a simple time-based check from batch creation
@@ -499,18 +488,15 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
 
         // Calculate today's completed batches
         long todayStart = System.currentTimeMillis() - (24 * 60 * 60 * 1000);
-        long completedToday = allBatches.stream()
-            .filter(batch -> batch.isWorkflowComplete() &&
-                    batch.getLastupdated() != null &&
-                    batch.getLastupdated().getTime() >= todayStart)
-            .count();
+        long completedToday = allBatches.stream().filter(batch -> batch.isWorkflowComplete()
+                && batch.getLastupdated() != null && batch.getLastupdated().getTime() >= todayStart).count();
 
         // Calculate success rate (completed vs total non-cancelled batches)
-        long totalNonCancelled = allBatches.stream()
-            .filter(batch -> !batch.isCancelled())
-            .count();
-        double successRate = totalNonCancelled > 0 ?
-            (double) allBatches.stream().filter(VirusCultureBatch::isWorkflowComplete).count() / totalNonCancelled * 100 : 0;
+        long totalNonCancelled = allBatches.stream().filter(batch -> !batch.isCancelled()).count();
+        double successRate = totalNonCancelled > 0
+                ? (double) allBatches.stream().filter(VirusCultureBatch::isWorkflowComplete).count() / totalNonCancelled
+                        * 100
+                : 0;
 
         // Frontend-expected fields
         dashboard.put("activeBatches", activeBatches.size());
@@ -541,51 +527,58 @@ public class VirusCultureWorkflowServiceImpl implements VirusCultureWorkflowServ
         if (qualityControl.getViabilityPercentage() != null) {
             if (qualityControl.getViabilityPercentage().compareTo(new BigDecimal("70.0")) < 0) {
                 validation.put("isValid", false);
-                recommendations.add("CRITICAL: Cell viability below minimum threshold (70%). Batch should be terminated.");
+                recommendations
+                        .add("CRITICAL: Cell viability below minimum threshold (70%). Batch should be terminated.");
             } else if (qualityControl.getViabilityPercentage().compareTo(new BigDecimal("80.0")) < 0) {
                 recommendations.add("WARNING: Cell viability below optimal threshold (80%). Monitor closely.");
             }
         }
 
         // Sterility validation - critical for virus culture
-        if (qualityControl.getSterilityResult() == VirusCultureQualityControl.SterilityResult.FAIL ||
-            qualityControl.getSterilityResult() == VirusCultureQualityControl.SterilityResult.CONTAMINATED) {
+        if (qualityControl.getSterilityResult() == VirusCultureQualityControl.SterilityResult.FAIL
+                || qualityControl.getSterilityResult() == VirusCultureQualityControl.SterilityResult.CONTAMINATED) {
             validation.put("isValid", false);
-            recommendations.add("CRITICAL: Sterility test failed. Batch contaminated and must be terminated immediately.");
+            recommendations
+                    .add("CRITICAL: Sterility test failed. Batch contaminated and must be terminated immediately.");
         }
 
         // Mycoplasma test validation
-        if (qualityControl.getMycoplasmaTestResult() == VirusCultureQualityControl.SterilityResult.FAIL ||
-            qualityControl.getMycoplasmaTestResult() == VirusCultureQualityControl.SterilityResult.CONTAMINATED) {
+        if (qualityControl.getMycoplasmaTestResult() == VirusCultureQualityControl.SterilityResult.FAIL
+                || qualityControl
+                        .getMycoplasmaTestResult() == VirusCultureQualityControl.SterilityResult.CONTAMINATED) {
             validation.put("isValid", false);
             recommendations.add("CRITICAL: Mycoplasma contamination detected. Batch must be terminated.");
         }
 
-        // Endotoxin level validation (EU/ml should be <5.0 for most cell culture applications)
-        if (qualityControl.getEndotoxinLevelEuMl() != null &&
-            qualityControl.getEndotoxinLevelEuMl().compareTo(new BigDecimal("5.0")) > 0) {
+        // Endotoxin level validation (EU/ml should be <5.0 for most cell culture
+        // applications)
+        if (qualityControl.getEndotoxinLevelEuMl() != null
+                && qualityControl.getEndotoxinLevelEuMl().compareTo(new BigDecimal("5.0")) > 0) {
             validation.put("isValid", false);
             recommendations.add("CRITICAL: Endotoxin level too high (>5.0 EU/ml). Media may be contaminated.");
         }
 
         // pH validation (optimal range: 7.2-7.4 for most cell culture)
         if (qualityControl.getPhMeasurement() != null) {
-            if (qualityControl.getPhMeasurement().compareTo(new BigDecimal("6.8")) < 0 ||
-                qualityControl.getPhMeasurement().compareTo(new BigDecimal("7.8")) > 0) {
+            if (qualityControl.getPhMeasurement().compareTo(new BigDecimal("6.8")) < 0
+                    || qualityControl.getPhMeasurement().compareTo(new BigDecimal("7.8")) > 0) {
                 validation.put("isValid", false);
                 recommendations.add("CRITICAL: pH outside acceptable range (6.8-7.8). Check medium composition.");
-            } else if (qualityControl.getPhMeasurement().compareTo(new BigDecimal("7.2")) < 0 ||
-                       qualityControl.getPhMeasurement().compareTo(new BigDecimal("7.4")) > 0) {
+            } else if (qualityControl.getPhMeasurement().compareTo(new BigDecimal("7.2")) < 0
+                    || qualityControl.getPhMeasurement().compareTo(new BigDecimal("7.4")) > 0) {
                 recommendations.add("WARNING: pH outside optimal range (7.2-7.4). Monitor culture conditions.");
             }
         }
 
         // Overall result interpretation validation
-        if (qualityControl.getResultInterpretation() == VirusCultureQualityControl.ResultInterpretation.FAILED ||
-            qualityControl.getResultInterpretation() == VirusCultureQualityControl.ResultInterpretation.OUT_OF_SPECIFICATION) {
+        if (qualityControl.getResultInterpretation() == VirusCultureQualityControl.ResultInterpretation.FAILED
+                || qualityControl
+                        .getResultInterpretation() == VirusCultureQualityControl.ResultInterpretation.OUT_OF_SPECIFICATION) {
             validation.put("isValid", false);
-            recommendations.add("Quality control assessment failed. Review all test results and consider batch termination.");
-        } else if (qualityControl.getResultInterpretation() == VirusCultureQualityControl.ResultInterpretation.REQUIRES_RETEST) {
+            recommendations
+                    .add("Quality control assessment failed. Review all test results and consider batch termination.");
+        } else if (qualityControl
+                .getResultInterpretation() == VirusCultureQualityControl.ResultInterpretation.REQUIRES_RETEST) {
             recommendations.add("Quality control requires retesting. Verify test procedures and repeat analysis.");
         }
 

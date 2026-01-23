@@ -1,5 +1,6 @@
 package org.openelisglobal.virology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
@@ -14,12 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for virology titer measurement logging.
- * Handles viral load quantification (TCID50, PFU/mL, etc.) with array-based history.
+ * REST controller for virology titer measurement logging. Handles viral load
+ * quantification (TCID50, PFU/mL, etc.) with array-based history.
  */
 @RestController
 @RequestMapping("/rest/virology/titer-measurement")
@@ -31,15 +31,14 @@ public class VirologyTiterMeasurementRestController extends BaseRestController {
     private NotebookPageSampleService notebookPageSampleService;
 
     /**
-     * Save titer measurement log with assay method and titer values.
-     * Records multiple measurements per sample (appends to titerHistory array).
+     * Save titer measurement log with assay method and titer values. Records
+     * multiple measurements per sample (appends to titerHistory array).
      *
      * @param request Titer measurement log request
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveTiterMeasurement(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveTiterMeasurement(HttpServletRequest httpRequest,
             @Valid @RequestBody TiterMeasurementRequest request) {
 
         try {
@@ -58,19 +57,17 @@ public class VirologyTiterMeasurementRestController extends BaseRestController {
 
             // Append titer measurement event to history (instead of overwriting)
             int updatedCount = 0;
-            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty() && request.getNotebookPageId() != null) {
-                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: " + request.getSampleIds());
-                updatedCount = notebookPageSampleService.bulkAppendToArray(
-                    request.getNotebookPageId().intValue(),
-                    request.getSampleIds(),
-                    "titerHistory", // Array field name
-                    measurementEvent,
-                    getSysUserId(httpRequest)
-                );
+            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty()
+                    && request.getNotebookPageId() != null) {
+                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: "
+                        + request.getSampleIds());
+                updatedCount = notebookPageSampleService.bulkAppendToArray(request.getNotebookPageId().intValue(),
+                        request.getSampleIds(), "titerHistory", // Array field name
+                        measurementEvent, getSysUserId(httpRequest));
                 log.info("Appended titer measurement to " + updatedCount + " samples");
             } else {
-                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId() +
-                         ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
+                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId()
+                        + ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
             }
 
             Map<String, Object> response = new HashMap<>();

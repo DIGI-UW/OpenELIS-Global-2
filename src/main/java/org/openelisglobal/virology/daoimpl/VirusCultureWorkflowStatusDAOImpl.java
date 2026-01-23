@@ -1,10 +1,8 @@
 package org.openelisglobal.virology.daoimpl;
 
 import java.util.List;
-
-import org.hibernate.query.Query;
-
 import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.virology.dao.VirusCultureWorkflowStatusDAO;
 import org.openelisglobal.virology.valueholder.VirusCultureBatch;
@@ -17,7 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @Transactional
-public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureWorkflowStatus, Integer> implements VirusCultureWorkflowStatusDAO {
+public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureWorkflowStatus, Integer>
+        implements VirusCultureWorkflowStatusDAO {
 
     public VirusCultureWorkflowStatusDAOImpl() {
         super(VirusCultureWorkflowStatus.class);
@@ -31,8 +30,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         }
 
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.cultureBatch = :cultureBatch ORDER BY vws.stepOrder ASC";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("cultureBatch", cultureBatch);
 
         return query.getResultList();
@@ -46,8 +45,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         }
 
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.cultureBatch.id = :cultureBatchId ORDER BY vws.stepOrder ASC";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("cultureBatchId", cultureBatchId);
 
         return query.getResultList();
@@ -61,8 +60,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         }
 
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.cultureBatch = :cultureBatch AND vws.stepName = :stepName";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("cultureBatch", cultureBatch);
         query.setParameter("stepName", stepName);
         query.setMaxResults(1);
@@ -79,8 +78,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         }
 
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.status = :status ORDER BY vws.stepOrder ASC";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("status", status.name());
 
         return query.getResultList();
@@ -94,8 +93,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         }
 
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.cultureBatch = :cultureBatch AND vws.status = :status ORDER BY vws.stepOrder ASC";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("cultureBatch", cultureBatch);
         query.setParameter("status", VirusCultureWorkflowStatus.StepStatus.IN_PROGRESS);
         query.setMaxResults(1);
@@ -112,8 +111,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         }
 
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.cultureBatch = :cultureBatch AND vws.status = :status ORDER BY vws.stepOrder ASC";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("cultureBatch", cultureBatch);
         query.setParameter("status", VirusCultureWorkflowStatus.StepStatus.PENDING);
         query.setMaxResults(1);
@@ -130,8 +129,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
         }
 
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.assignedTo.id = :userId ORDER BY vws.stepOrder ASC";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("userId", userId);
 
         return query.getResultList();
@@ -141,8 +140,8 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
     @Transactional(readOnly = true)
     public List<VirusCultureWorkflowStatus> findInProgress() {
         String hql = "FROM VirusCultureWorkflowStatus vws WHERE vws.status = :status ORDER BY vws.stepOrder ASC";
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("status", VirusCultureWorkflowStatus.StepStatus.IN_PROGRESS);
 
         return query.getResultList();
@@ -152,13 +151,13 @@ public class VirusCultureWorkflowStatusDAOImpl extends BaseDAOImpl<VirusCultureW
     @Transactional(readOnly = true)
     public List<VirusCultureWorkflowStatus> findFailedQualityChecks() {
         String hql = """
-            FROM VirusCultureWorkflowStatus vws
-            WHERE vws.status = :failedStatus
-            OR vws.qualityCheckResult = :failedQc
-            ORDER BY vws.stepOrder ASC
-            """;
-        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class)
-                .createQuery(hql, VirusCultureWorkflowStatus.class);
+                FROM VirusCultureWorkflowStatus vws
+                WHERE vws.status = :failedStatus
+                OR vws.qualityCheckResult = :failedQc
+                ORDER BY vws.stepOrder ASC
+                """;
+        Query<VirusCultureWorkflowStatus> query = entityManager.unwrap(Session.class).createQuery(hql,
+                VirusCultureWorkflowStatus.class);
         query.setParameter("failedStatus", VirusCultureWorkflowStatus.StepStatus.FAILED);
         query.setParameter("failedQc", VirusCultureWorkflowStatus.QualityCheckResult.FAILED);
 

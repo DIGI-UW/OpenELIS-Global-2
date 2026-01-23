@@ -1,21 +1,18 @@
 package org.openelisglobal.virology.valueholder;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 4: Quality Control
- * Log QC results (viability %, sterility pass/fail)
+ * Process Step 4: Quality Control Log QC results (viability %, sterility
+ * pass/fail)
  */
 @Entity
 @Table(name = "virus_culture_quality_control")
@@ -24,31 +21,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class VirusCultureQualityControl extends BaseObject<Integer> {
 
     public enum QcType {
-        VIABILITY_ASSAY,
-        STERILITY_TEST,
-        MYCOPLASMA_TEST,
-        ENDOTOXIN_TEST,
-        PH_MEASUREMENT,
-        GLUCOSE_TEST,
-        LACTATE_TEST,
+        VIABILITY_ASSAY, STERILITY_TEST, MYCOPLASMA_TEST, ENDOTOXIN_TEST, PH_MEASUREMENT, GLUCOSE_TEST, LACTATE_TEST,
         FULL_QC_PANEL
     }
 
     public enum SterilityResult {
-        PASS,
-        FAIL,
-        PENDING,
-        CONTAMINATED,
-        INCONCLUSIVE
+        PASS, FAIL, PENDING, CONTAMINATED, INCONCLUSIVE
     }
 
     public enum ResultInterpretation {
-        PENDING,
-        ACCEPTABLE,
-        OUT_OF_SPECIFICATION,
-        MARGINAL,
-        FAILED,
-        REQUIRES_RETEST
+        PENDING, ACCEPTABLE, OUT_OF_SPECIFICATION, MARGINAL, FAILED, REQUIRES_RETEST
     }
 
     @Id
@@ -318,8 +300,8 @@ public class VirusCultureQualityControl extends BaseObject<Integer> {
     }
 
     public boolean isFailed() {
-        return resultInterpretation == ResultInterpretation.FAILED ||
-               resultInterpretation == ResultInterpretation.OUT_OF_SPECIFICATION;
+        return resultInterpretation == ResultInterpretation.FAILED
+                || resultInterpretation == ResultInterpretation.OUT_OF_SPECIFICATION;
     }
 
     public boolean isPending() {
@@ -331,8 +313,8 @@ public class VirusCultureQualityControl extends BaseObject<Integer> {
     }
 
     public boolean isSterile() {
-        return sterilityResult == SterilityResult.PASS &&
-               (mycoplasmaTestResult == null || mycoplasmaTestResult == SterilityResult.PASS);
+        return sterilityResult == SterilityResult.PASS
+                && (mycoplasmaTestResult == null || mycoplasmaTestResult == SterilityResult.PASS);
     }
 
     public boolean isViable() {
@@ -345,12 +327,8 @@ public class VirusCultureQualityControl extends BaseObject<Integer> {
 
     @Override
     public String toString() {
-        return "VirusCultureQualityControl{" +
-                "id=" + id +
-                ", qcType=" + qcType +
-                ", viabilityPercentage=" + viabilityPercentage +
-                ", sterilityResult=" + sterilityResult +
-                ", resultInterpretation=" + resultInterpretation +
-                '}';
+        return "VirusCultureQualityControl{" + "id=" + id + ", qcType=" + qcType + ", viabilityPercentage="
+                + viabilityPercentage + ", sterilityResult=" + sterilityResult + ", resultInterpretation="
+                + resultInterpretation + '}';
     }
 }

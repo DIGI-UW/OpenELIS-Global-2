@@ -1,21 +1,18 @@
 package org.openelisglobal.virology.valueholder;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 5: Virus Culture
- * Record virus strain, culture conditions (temp, CO₂, duration)
+ * Process Step 5: Virus Culture Record virus strain, culture conditions (temp,
+ * CO₂, duration)
  */
 @Entity
 @Table(name = "virus_culture_virus_inoculation")
@@ -316,14 +313,9 @@ public class VirusCultureVirusInoculation extends BaseObject<Integer> {
 
     @Override
     public String toString() {
-        return "VirusCultureVirusInoculation{" +
-                "id=" + id +
-                ", virusStrain='" + virusStrain + '\'' +
-                ", virusStockId='" + virusStockId + '\'' +
-                ", multiplicityOfInfection=" + multiplicityOfInfection +
-                ", infectionTemperatureCelsius=" + infectionTemperatureCelsius +
-                ", co2Percentage=" + co2Percentage +
-                ", durationHours=" + durationHours +
-                '}';
+        return "VirusCultureVirusInoculation{" + "id=" + id + ", virusStrain='" + virusStrain + '\''
+                + ", virusStockId='" + virusStockId + '\'' + ", multiplicityOfInfection=" + multiplicityOfInfection
+                + ", infectionTemperatureCelsius=" + infectionTemperatureCelsius + ", co2Percentage=" + co2Percentage
+                + ", durationHours=" + durationHours + '}';
     }
 }

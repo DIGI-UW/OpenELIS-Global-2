@@ -2,22 +2,20 @@ package org.openelisglobal.virology.service;
 
 import java.sql.Timestamp;
 import java.util.*;
-import java.util.stream.Collectors;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openelisglobal.notebook.dao.NotebookPageSampleDAO;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
-import org.openelisglobal.virology.controller.rest.VirologyProgressionRestController.ValidationResult;
 import org.openelisglobal.virology.controller.rest.VirologyProgressionRestController.ProgressionResult;
+import org.openelisglobal.virology.controller.rest.VirologyProgressionRestController.ValidationResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementation of VirologyProgressionService.
- * Handles validation and execution of sample progression through virology workflow stages.
+ * Implementation of VirologyProgressionService. Handles validation and
+ * execution of sample progression through virology workflow stages.
  */
 @Service
 public class VirologyProgressionServiceImpl implements VirologyProgressionService {
@@ -28,12 +26,10 @@ public class VirologyProgressionServiceImpl implements VirologyProgressionServic
     private NotebookPageSampleDAO notebookPageSampleDAO;
 
     // Valid stage transitions
-    private static final Map<String, List<String>> VALID_TRANSITIONS = Map.of(
-        "stage1_reception", List.of("stage2_culture"),
-        "stage2_culture", List.of("stage3_vaccine"),
-        "stage3_vaccine", List.of() // Final stage
+    private static final Map<String, List<String>> VALID_TRANSITIONS = Map.of("stage1_reception",
+            List.of("stage2_culture"), "stage2_culture", List.of("stage3_vaccine"), "stage3_vaccine", List.of() // Final
+                                                                                                                // stage
     );
-
 
     @Override
     public ValidationResult validateProgression(Long entryId, String fromStage, String toStage, List<Long> sampleIds) {
@@ -55,14 +51,14 @@ public class VirologyProgressionServiceImpl implements VirologyProgressionServic
 
             // Stage-specific validation
             switch (fromStage) {
-                case "stage1_reception":
-                    validateStage1Completion(samples, errors);
-                    break;
-                case "stage2_culture":
-                    validateStage2Completion(samples, errors);
-                    break;
-                default:
-                    errors.add("Unknown source stage: " + fromStage);
+            case "stage1_reception":
+                validateStage1Completion(samples, errors);
+                break;
+            case "stage2_culture":
+                validateStage2Completion(samples, errors);
+                break;
+            default:
+                errors.add("Unknown source stage: " + fromStage);
             }
 
             return new ValidationResult(errors.isEmpty(), errors);
@@ -76,12 +72,14 @@ public class VirologyProgressionServiceImpl implements VirologyProgressionServic
 
     @Override
     @Transactional
-    public ProgressionResult advanceSamples(Long entryId, String fromStage, String toStage, List<Long> sampleIds, String userId) {
+    public ProgressionResult advanceSamples(Long entryId, String fromStage, String toStage, List<Long> sampleIds,
+            String userId) {
         try {
             // Validate before progression
             ValidationResult validation = validateProgression(entryId, fromStage, toStage, sampleIds);
             if (!validation.isValid()) {
-                return new ProgressionResult(false, "Validation failed: " + String.join(", ", validation.getErrors()), 0);
+                return new ProgressionResult(false, "Validation failed: " + String.join(", ", validation.getErrors()),
+                        0);
             }
 
             // Get samples to progress
@@ -193,7 +191,8 @@ public class VirologyProgressionServiceImpl implements VirologyProgressionServic
             // Check if sample has completed virus culture workflow
             if (!Status.COMPLETED.equals(sample.getStatus())) {
                 String externalId = getExternalIdFromSample(sample);
-                errors.add("Sample " + externalId + " virus culture workflow not completed (status: " + sample.getStatus() + ")");
+                errors.add("Sample " + externalId + " virus culture workflow not completed (status: "
+                        + sample.getStatus() + ")");
                 continue;
             }
 
@@ -224,14 +223,15 @@ public class VirologyProgressionServiceImpl implements VirologyProgressionServic
         if (sample.getData() != null && sample.getData().get("externalId") != null) {
             return sample.getData().get("externalId").toString();
         }
-        return sample.getSampleItemId();  // Fallback to sample item ID
+        return sample.getSampleItemId(); // Fallback to sample item ID
     }
 
-    private void createProgressionAuditTrail(Long entryId, String fromStage, String toStage, List<Long> sampleIds, String userId, Timestamp timestamp) {
+    private void createProgressionAuditTrail(Long entryId, String fromStage, String toStage, List<Long> sampleIds,
+            String userId, Timestamp timestamp) {
         // This would create an audit trail entry for the progression
         // For now, just log it
-        log.info("AUDIT: User " + userId + " progressed " + sampleIds.size() + " samples in entry " + entryId +
-                 " from " + fromStage + " to " + toStage + " at " + timestamp);
+        log.info("AUDIT: User " + userId + " progressed " + sampleIds.size() + " samples in entry " + entryId + " from "
+                + fromStage + " to " + toStage + " at " + timestamp);
     }
 
     private Map<String, Object> getStageStatus(Long entryId, String stage) {

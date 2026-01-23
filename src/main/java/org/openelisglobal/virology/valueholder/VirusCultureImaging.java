@@ -1,21 +1,18 @@
 package org.openelisglobal.virology.valueholder;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 6: Dark Room Imaging
- * Store image data, analysis results (CPE observation, fluorescence intensity)
+ * Process Step 6: Dark Room Imaging Store image data, analysis results (CPE
+ * observation, fluorescence intensity)
  */
 @Entity
 @Table(name = "virus_culture_imaging")
@@ -24,12 +21,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class VirusCultureImaging extends BaseObject<Integer> {
 
     public enum ImagingType {
-        BRIGHTFIELD,
-        FLUORESCENCE,
-        PHASE_CONTRAST,
-        CONFOCAL,
-        TIME_LAPSE,
-        LIVE_DEAD_STAINING
+        BRIGHTFIELD, FLUORESCENCE, PHASE_CONTRAST, CONFOCAL, TIME_LAPSE, LIVE_DEAD_STAINING
     }
 
     @Id
@@ -152,8 +144,7 @@ public class VirusCultureImaging extends BaseObject<Integer> {
     @PostUpdate
     protected void calculateInfectionPercentage() {
         if (cellCountTotal != null && cellCountTotal > 0 && cellCountInfected != null) {
-            infectionPercentage = BigDecimal.valueOf(cellCountInfected)
-                    .multiply(BigDecimal.valueOf(100))
+            infectionPercentage = BigDecimal.valueOf(cellCountInfected).multiply(BigDecimal.valueOf(100))
                     .divide(BigDecimal.valueOf(cellCountTotal), 2, BigDecimal.ROUND_HALF_UP);
         }
     }
@@ -376,25 +367,27 @@ public class VirusCultureImaging extends BaseObject<Integer> {
     }
 
     public String getCpeLevel() {
-        if (cpeScore == null) return "Not Assessed";
+        if (cpeScore == null)
+            return "Not Assessed";
         switch (cpeScore) {
-            case 0: return "No CPE";
-            case 1: return "Minimal CPE (<25%)";
-            case 2: return "Moderate CPE (25-50%)";
-            case 3: return "Significant CPE (50-75%)";
-            case 4: return "Complete CPE (>75%)";
-            default: return "Invalid Score";
+        case 0:
+            return "No CPE";
+        case 1:
+            return "Minimal CPE (<25%)";
+        case 2:
+            return "Moderate CPE (25-50%)";
+        case 3:
+            return "Significant CPE (50-75%)";
+        case 4:
+            return "Complete CPE (>75%)";
+        default:
+            return "Invalid Score";
         }
     }
 
     @Override
     public String toString() {
-        return "VirusCultureImaging{" +
-                "id=" + id +
-                ", imagingType=" + imagingType +
-                ", cpeScore=" + cpeScore +
-                ", infectionPercentage=" + infectionPercentage +
-                ", qualityScore=" + qualityScore +
-                '}';
+        return "VirusCultureImaging{" + "id=" + id + ", imagingType=" + imagingType + ", cpeScore=" + cpeScore
+                + ", infectionPercentage=" + infectionPercentage + ", qualityScore=" + qualityScore + '}';
     }
 }

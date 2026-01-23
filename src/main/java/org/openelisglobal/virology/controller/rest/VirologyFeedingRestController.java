@@ -1,5 +1,6 @@
 package org.openelisglobal.virology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,12 +16,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for virology culture feeding logging.
- * Handles feeding schedule and reagent traceability logging for culture maintenance in virology workflows.
+ * REST controller for virology culture feeding logging. Handles feeding
+ * schedule and reagent traceability logging for culture maintenance in virology
+ * workflows.
  */
 @RestController
 @RequestMapping("/rest/virology/feeding")
@@ -32,15 +33,14 @@ public class VirologyFeedingRestController extends BaseRestController {
     private NotebookPageSampleService notebookPageSampleService;
 
     /**
-     * Save feeding log with full material traceability.
-     * Records feeding schedule, reagents used with lot numbers and expiry dates.
+     * Save feeding log with full material traceability. Records feeding schedule,
+     * reagents used with lot numbers and expiry dates.
      *
      * @param request Feeding log request
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveFeeding(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveFeeding(HttpServletRequest httpRequest,
             @Valid @RequestBody FeedingRequest request) {
 
         try {
@@ -78,19 +78,17 @@ public class VirologyFeedingRestController extends BaseRestController {
 
             // Append feeding event to history (instead of overwriting)
             int updatedCount = 0;
-            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty() && request.getNotebookPageId() != null) {
-                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: " + request.getSampleIds());
-                updatedCount = notebookPageSampleService.bulkAppendToArray(
-                    request.getNotebookPageId().intValue(),
-                    request.getSampleIds(),
-                    "feedingHistory", // Array field name
-                    feedingEvent,
-                    getSysUserId(httpRequest)
-                );
+            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty()
+                    && request.getNotebookPageId() != null) {
+                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: "
+                        + request.getSampleIds());
+                updatedCount = notebookPageSampleService.bulkAppendToArray(request.getNotebookPageId().intValue(),
+                        request.getSampleIds(), "feedingHistory", // Array field name
+                        feedingEvent, getSysUserId(httpRequest));
                 log.info("Appended feeding event to " + updatedCount + " samples");
             } else {
-                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId() +
-                         ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
+                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId()
+                        + ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
             }
 
             Map<String, Object> response = new HashMap<>();

@@ -33,8 +33,7 @@ public class VirologySeedVirusProductionRestController extends BaseRestControlle
     }
 
     @PostMapping(value = "/seed-virus-production", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveSeedVirusProduction(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveSeedVirusProduction(HttpServletRequest httpRequest,
             @RequestBody SeedVirusProductionRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -68,17 +67,11 @@ public class VirologySeedVirusProductionRestController extends BaseRestControlle
 
             // Convert Long to Integer for service method
             Integer pageId = request.notebookPageId.intValue();
-            List<Integer> sampleIdInts = request.sampleIds.stream()
-                .map(Long::intValue)
-                .toList();
+            List<Integer> sampleIdInts = request.sampleIds.stream().map(Long::intValue).toList();
 
             // Apply seed virus production data to samples
-            int updatedCount = notebookPageSampleService.bulkApplyData(
-                pageId,
-                sampleIdInts,
-                productionData,
-                getSysUserId(httpRequest)
-            );
+            int updatedCount = notebookPageSampleService.bulkApplyData(pageId, sampleIdInts, productionData,
+                    getSysUserId(httpRequest));
 
             response.put("success", true);
             response.put("samplesUpdated", updatedCount);

@@ -1,13 +1,13 @@
 package org.openelisglobal.virology.form;
 
-import java.util.List;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import java.util.List;
 
 /**
- * Form for handling virology workflow stage progression requests.
- * Used when advancing samples between workflow stages.
+ * Form for handling virology workflow stage progression requests. Used when
+ * advancing samples between workflow stages.
  */
 public class VirologyProgressionForm {
 
@@ -15,20 +15,19 @@ public class VirologyProgressionForm {
     private Long entryId;
 
     @NotEmpty(message = "From stage is required")
-    @Pattern(regexp = "^(stage1_reception|stage2_culture|stage3_vaccine)$",
-             message = "Invalid from stage. Must be: stage1_reception, stage2_culture, or stage3_vaccine")
+    @Pattern(regexp = "^(stage1_reception|stage2_culture|stage3_vaccine)$", message = "Invalid from stage. Must be: stage1_reception, stage2_culture, or stage3_vaccine")
     private String fromStage;
 
     @NotEmpty(message = "To stage is required")
-    @Pattern(regexp = "^(stage2_culture|stage3_vaccine)$",
-             message = "Invalid to stage. Must be: stage2_culture or stage3_vaccine")
+    @Pattern(regexp = "^(stage2_culture|stage3_vaccine)$", message = "Invalid to stage. Must be: stage2_culture or stage3_vaccine")
     private String toStage;
 
     @NotEmpty(message = "Sample IDs are required")
     private List<Long> sampleIds;
 
     // Default constructor
-    public VirologyProgressionForm() {}
+    public VirologyProgressionForm() {
+    }
 
     // Constructor with parameters
     public VirologyProgressionForm(Long entryId, String fromStage, String toStage, List<Long> sampleIds) {
@@ -73,11 +72,7 @@ public class VirologyProgressionForm {
 
     @Override
     public String toString() {
-        return "VirologyProgressionForm{" +
-                "entryId=" + entryId +
-                ", fromStage='" + fromStage + '\'' +
-                ", toStage='" + toStage + '\'' +
-                ", sampleIds=" + sampleIds +
-                '}';
+        return "VirologyProgressionForm{" + "entryId=" + entryId + ", fromStage='" + fromStage + '\'' + ", toStage='"
+                + toStage + '\'' + ", sampleIds=" + sampleIds + '}';
     }
 }

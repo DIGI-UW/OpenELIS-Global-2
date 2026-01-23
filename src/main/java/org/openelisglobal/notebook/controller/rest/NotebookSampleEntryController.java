@@ -85,7 +85,7 @@ public class NotebookSampleEntryController extends BaseRestController {
     @Autowired
     private PatientService patientService;
 
-    @Autowired
+    @Autowired(required = false)
     private OrderSampleLinkService orderSampleLinkService;
 
     @Autowired
@@ -281,16 +281,16 @@ public class NotebookSampleEntryController extends BaseRestController {
         java.util.Set<String> includedSampleIds = new java.util.HashSet<>();
         List<Map<String, Object>> sampleMaps = new java.util.ArrayList<>();
 
-        LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
-                "Loading samples for pageId=" + pageId + ", found " + pageSamples.size() + " NotebookPageSample records");
+        LogEvent.logInfo(this.getClass().getName(), "getPageSamples", "Loading samples for pageId=" + pageId
+                + ", found " + pageSamples.size() + " NotebookPageSample records");
 
         // First pass: build sample maps from page samples
         for (org.openelisglobal.notebook.valueholder.NotebookPageSample nps : pageSamples) {
             String sampleItemId = nps.getSampleItemId();
 
             LogEvent.logInfo(this.getClass().getName(), "getPageSamples",
-                    "Processing NPS: id=" + nps.getId() + ", sampleItemId=" + sampleItemId
-                            + ", data=" + (nps.getData() != null ? nps.getData().toString() : "null"));
+                    "Processing NPS: id=" + nps.getId() + ", sampleItemId=" + sampleItemId + ", data="
+                            + (nps.getData() != null ? nps.getData().toString() : "null"));
 
             // Check if this is a composite/virtual sample ID (e.g., "123_cassette_0",
             // "123_block_0")
@@ -1276,8 +1276,8 @@ public class NotebookSampleEntryController extends BaseRestController {
     }
 
     /**
-     * Unroute samples by clearing their destinationType in NotebookPageSample.
-     * This makes them available for re-routing. SampleRouting records are kept as
+     * Unroute samples by clearing their destinationType in NotebookPageSample. This
+     * makes them available for re-routing. SampleRouting records are kept as
      * historical data. POST /notebook/{id}/samples/unroute
      *
      * @param notebookId  the notebook ID

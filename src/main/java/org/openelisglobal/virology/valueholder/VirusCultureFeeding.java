@@ -1,21 +1,17 @@
 package org.openelisglobal.virology.valueholder;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 8: Feeding
- * Log feeding schedule, reagents used
+ * Process Step 8: Feeding Log feeding schedule, reagents used
  */
 @Entity
 @Table(name = "virus_culture_feeding")
@@ -24,11 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class VirusCultureFeeding extends BaseObject<Integer> {
 
     public enum FeedingType {
-        FULL_MEDIA_CHANGE,
-        PARTIAL_MEDIA_CHANGE,
-        SUPPLEMENT_ADDITION,
-        GLUCOSE_FEEDING,
-        MAINTENANCE_FEEDING
+        FULL_MEDIA_CHANGE, PARTIAL_MEDIA_CHANGE, SUPPLEMENT_ADDITION, GLUCOSE_FEEDING, MAINTENANCE_FEEDING
     }
 
     @Id
@@ -133,34 +125,79 @@ public class VirusCultureFeeding extends BaseObject<Integer> {
     }
 
     @Override
-    public Integer getId() { return id; }
+    public Integer getId() {
+        return id;
+    }
+
     @Override
-    public void setId(Integer id) { this.id = id; }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     // Key getters and setters
-    public VirusCultureBatch getCultureBatch() { return cultureBatch; }
-    public void setCultureBatch(VirusCultureBatch cultureBatch) { this.cultureBatch = cultureBatch; }
+    public VirusCultureBatch getCultureBatch() {
+        return cultureBatch;
+    }
 
-    public FeedingType getFeedingType() { return feedingType; }
-    public void setFeedingType(FeedingType feedingType) { this.feedingType = feedingType; }
+    public void setCultureBatch(VirusCultureBatch cultureBatch) {
+        this.cultureBatch = cultureBatch;
+    }
 
-    public String getMediaType() { return mediaType; }
-    public void setMediaType(String mediaType) { this.mediaType = mediaType; }
+    public FeedingType getFeedingType() {
+        return feedingType;
+    }
 
-    public BigDecimal getVolumeAddedMl() { return volumeAddedMl; }
-    public void setVolumeAddedMl(BigDecimal volumeAddedMl) { this.volumeAddedMl = volumeAddedMl; }
+    public void setFeedingType(FeedingType feedingType) {
+        this.feedingType = feedingType;
+    }
 
-    public Timestamp getFeedingDate() { return feedingDate; }
-    public void setFeedingDate(Timestamp feedingDate) { this.feedingDate = feedingDate; }
+    public String getMediaType() {
+        return mediaType;
+    }
 
-    public Timestamp getNextFeedingDue() { return nextFeedingDue; }
-    public void setNextFeedingDue(Timestamp nextFeedingDue) { this.nextFeedingDue = nextFeedingDue; }
+    public void setMediaType(String mediaType) {
+        this.mediaType = mediaType;
+    }
 
-    public SystemUser getPerformedBy() { return performedBy; }
-    public void setPerformedBy(SystemUser performedBy) { this.performedBy = performedBy; }
+    public BigDecimal getVolumeAddedMl() {
+        return volumeAddedMl;
+    }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public void setVolumeAddedMl(BigDecimal volumeAddedMl) {
+        this.volumeAddedMl = volumeAddedMl;
+    }
+
+    public Timestamp getFeedingDate() {
+        return feedingDate;
+    }
+
+    public void setFeedingDate(Timestamp feedingDate) {
+        this.feedingDate = feedingDate;
+    }
+
+    public Timestamp getNextFeedingDue() {
+        return nextFeedingDue;
+    }
+
+    public void setNextFeedingDue(Timestamp nextFeedingDue) {
+        this.nextFeedingDue = nextFeedingDue;
+    }
+
+    public SystemUser getPerformedBy() {
+        return performedBy;
+    }
+
+    public void setPerformedBy(SystemUser performedBy) {
+        this.performedBy = performedBy;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
 
     public boolean isFeedingDue() {
         return nextFeedingDue != null && nextFeedingDue.before(new Timestamp(System.currentTimeMillis()));

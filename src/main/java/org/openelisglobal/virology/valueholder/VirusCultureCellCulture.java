@@ -1,21 +1,18 @@
 package org.openelisglobal.virology.valueholder;
 
-import java.math.BigDecimal;
-import java.sql.Timestamp;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 import org.hibernate.annotations.DynamicUpdate;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
- * Process Step 3: Cell Culture
- * Track cell line, passage number, growth conditions
+ * Process Step 3: Cell Culture Track cell line, passage number, growth
+ * conditions
  */
 @Entity
 @Table(name = "virus_culture_cell_culture")
@@ -114,61 +111,156 @@ public class VirusCultureCellCulture extends BaseObject<Integer> {
     }
 
     @Override
-    public Integer getId() { return id; }
+    public Integer getId() {
+        return id;
+    }
+
     @Override
-    public void setId(Integer id) { this.id = id; }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
-    public VirusCultureBatch getCultureBatch() { return cultureBatch; }
-    public void setCultureBatch(VirusCultureBatch cultureBatch) { this.cultureBatch = cultureBatch; }
+    public VirusCultureBatch getCultureBatch() {
+        return cultureBatch;
+    }
 
-    public String getCellLine() { return cellLine; }
-    public void setCellLine(String cellLine) { this.cellLine = cellLine; }
+    public void setCultureBatch(VirusCultureBatch cultureBatch) {
+        this.cultureBatch = cultureBatch;
+    }
 
-    public Integer getPassageNumber() { return passageNumber; }
-    public void setPassageNumber(Integer passageNumber) { this.passageNumber = passageNumber; }
+    public String getCellLine() {
+        return cellLine;
+    }
 
-    public String getSeedingDensity() { return seedingDensity; }
-    public void setSeedingDensity(String seedingDensity) { this.seedingDensity = seedingDensity; }
+    public void setCellLine(String cellLine) {
+        this.cellLine = cellLine;
+    }
 
-    public String getFlaskType() { return flaskType; }
-    public void setFlaskType(String flaskType) { this.flaskType = flaskType; }
+    public Integer getPassageNumber() {
+        return passageNumber;
+    }
 
-    public BigDecimal getMediaVolumeMl() { return mediaVolumeMl; }
-    public void setMediaVolumeMl(BigDecimal mediaVolumeMl) { this.mediaVolumeMl = mediaVolumeMl; }
+    public void setPassageNumber(Integer passageNumber) {
+        this.passageNumber = passageNumber;
+    }
 
-    public BigDecimal getIncubationTemperatureCelsius() { return incubationTemperatureCelsius; }
-    public void setIncubationTemperatureCelsius(BigDecimal incubationTemperatureCelsius) { this.incubationTemperatureCelsius = incubationTemperatureCelsius; }
+    public String getSeedingDensity() {
+        return seedingDensity;
+    }
 
-    public BigDecimal getCo2Percentage() { return co2Percentage; }
-    public void setCo2Percentage(BigDecimal co2Percentage) { this.co2Percentage = co2Percentage; }
+    public void setSeedingDensity(String seedingDensity) {
+        this.seedingDensity = seedingDensity;
+    }
 
-    public BigDecimal getHumidityPercentage() { return humidityPercentage; }
-    public void setHumidityPercentage(BigDecimal humidityPercentage) { this.humidityPercentage = humidityPercentage; }
+    public String getFlaskType() {
+        return flaskType;
+    }
 
-    public Integer getConfluencePercentage() { return confluencePercentage; }
-    public void setConfluencePercentage(Integer confluencePercentage) { this.confluencePercentage = confluencePercentage; }
+    public void setFlaskType(String flaskType) {
+        this.flaskType = flaskType;
+    }
 
-    public Long getCellCount() { return cellCount; }
-    public void setCellCount(Long cellCount) { this.cellCount = cellCount; }
+    public BigDecimal getMediaVolumeMl() {
+        return mediaVolumeMl;
+    }
 
-    public BigDecimal getDoublingTimeHours() { return doublingTimeHours; }
-    public void setDoublingTimeHours(BigDecimal doublingTimeHours) { this.doublingTimeHours = doublingTimeHours; }
+    public void setMediaVolumeMl(BigDecimal mediaVolumeMl) {
+        this.mediaVolumeMl = mediaVolumeMl;
+    }
 
-    public String getMorphologyObservation() { return morphologyObservation; }
-    public void setMorphologyObservation(String morphologyObservation) { this.morphologyObservation = morphologyObservation; }
+    public BigDecimal getIncubationTemperatureCelsius() {
+        return incubationTemperatureCelsius;
+    }
 
-    public Timestamp getSeedingDate() { return seedingDate; }
-    public void setSeedingDate(Timestamp seedingDate) { this.seedingDate = seedingDate; }
+    public void setIncubationTemperatureCelsius(BigDecimal incubationTemperatureCelsius) {
+        this.incubationTemperatureCelsius = incubationTemperatureCelsius;
+    }
 
-    public Timestamp getHarvestDate() { return harvestDate; }
-    public void setHarvestDate(Timestamp harvestDate) { this.harvestDate = harvestDate; }
+    public BigDecimal getCo2Percentage() {
+        return co2Percentage;
+    }
 
-    public SystemUser getTechnician() { return technician; }
-    public void setTechnician(SystemUser technician) { this.technician = technician; }
+    public void setCo2Percentage(BigDecimal co2Percentage) {
+        this.co2Percentage = co2Percentage;
+    }
 
-    public Timestamp getCreatedDate() { return createdDate; }
-    public void setCreatedDate(Timestamp createdDate) { this.createdDate = createdDate; }
+    public BigDecimal getHumidityPercentage() {
+        return humidityPercentage;
+    }
 
-    public boolean isReadyForHarvest() { return confluencePercentage != null && confluencePercentage >= 80; }
-    public boolean isHarvested() { return harvestDate != null; }
+    public void setHumidityPercentage(BigDecimal humidityPercentage) {
+        this.humidityPercentage = humidityPercentage;
+    }
+
+    public Integer getConfluencePercentage() {
+        return confluencePercentage;
+    }
+
+    public void setConfluencePercentage(Integer confluencePercentage) {
+        this.confluencePercentage = confluencePercentage;
+    }
+
+    public Long getCellCount() {
+        return cellCount;
+    }
+
+    public void setCellCount(Long cellCount) {
+        this.cellCount = cellCount;
+    }
+
+    public BigDecimal getDoublingTimeHours() {
+        return doublingTimeHours;
+    }
+
+    public void setDoublingTimeHours(BigDecimal doublingTimeHours) {
+        this.doublingTimeHours = doublingTimeHours;
+    }
+
+    public String getMorphologyObservation() {
+        return morphologyObservation;
+    }
+
+    public void setMorphologyObservation(String morphologyObservation) {
+        this.morphologyObservation = morphologyObservation;
+    }
+
+    public Timestamp getSeedingDate() {
+        return seedingDate;
+    }
+
+    public void setSeedingDate(Timestamp seedingDate) {
+        this.seedingDate = seedingDate;
+    }
+
+    public Timestamp getHarvestDate() {
+        return harvestDate;
+    }
+
+    public void setHarvestDate(Timestamp harvestDate) {
+        this.harvestDate = harvestDate;
+    }
+
+    public SystemUser getTechnician() {
+        return technician;
+    }
+
+    public void setTechnician(SystemUser technician) {
+        this.technician = technician;
+    }
+
+    public Timestamp getCreatedDate() {
+        return createdDate;
+    }
+
+    public void setCreatedDate(Timestamp createdDate) {
+        this.createdDate = createdDate;
+    }
+
+    public boolean isReadyForHarvest() {
+        return confluencePercentage != null && confluencePercentage >= 80;
+    }
+
+    public boolean isHarvested() {
+        return harvestDate != null;
+    }
 }

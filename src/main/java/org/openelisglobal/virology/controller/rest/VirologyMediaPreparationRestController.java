@@ -1,5 +1,6 @@
 package org.openelisglobal.virology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,12 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for virology media preparation logging.
- * Handles material traceability logging for media preparation in virology workflows.
+ * REST controller for virology media preparation logging. Handles material
+ * traceability logging for media preparation in virology workflows.
  */
 @RestController
 @RequestMapping("/rest/virology/media-preparation")
@@ -32,15 +32,14 @@ public class VirologyMediaPreparationRestController extends BaseRestController {
     private NotebookPageSampleService notebookPageSampleService;
 
     /**
-     * Save media preparation log with full material traceability.
-     * Records media, reagents, equipment used with lot numbers and expiry dates.
+     * Save media preparation log with full material traceability. Records media,
+     * reagents, equipment used with lot numbers and expiry dates.
      *
      * @param request Media preparation log request
      * @return ResponseEntity with success/failure status
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveMediaPreparation(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveMediaPreparation(HttpServletRequest httpRequest,
             @Valid @RequestBody MediaPreparationRequest request) {
 
         try {
@@ -79,18 +78,16 @@ public class VirologyMediaPreparationRestController extends BaseRestController {
 
             // Apply media preparation data to selected samples
             int updatedCount = 0;
-            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty() && request.getNotebookPageId() != null) {
-                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: " + request.getSampleIds());
-                updatedCount = notebookPageSampleService.bulkApplyData(
-                    request.getNotebookPageId().intValue(),
-                    request.getSampleIds(),
-                    mediaData,
-                    getSysUserId(httpRequest)
-                );
+            if (request.getSampleIds() != null && !request.getSampleIds().isEmpty()
+                    && request.getNotebookPageId() != null) {
+                log.info("Attempting to update samples. PageId: " + request.getNotebookPageId() + ", SampleIds: "
+                        + request.getSampleIds());
+                updatedCount = notebookPageSampleService.bulkApplyData(request.getNotebookPageId().intValue(),
+                        request.getSampleIds(), mediaData, getSysUserId(httpRequest));
                 log.info("Updated " + updatedCount + " samples with media preparation data");
             } else {
-                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId() +
-                         ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
+                log.warn("Cannot update samples - missing data. PageId: " + request.getNotebookPageId()
+                        + ", SampleIds: " + (request.getSampleIds() != null ? request.getSampleIds().size() : "null"));
             }
 
             Map<String, Object> response = new HashMap<>();

@@ -32,8 +32,7 @@ public class VirologyGenomeSequencingRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/genome-sequencing", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> saveGenomeSequencing(
-            HttpServletRequest httpRequest,
+    public ResponseEntity<Map<String, Object>> saveGenomeSequencing(HttpServletRequest httpRequest,
             @RequestBody GenomeSequencingRequest request) {
 
         Map<String, Object> response = new HashMap<>();
@@ -60,17 +59,11 @@ public class VirologyGenomeSequencingRestController extends BaseRestController {
 
             // Convert Long to Integer for service method
             Integer pageId = request.notebookPageId.intValue();
-            List<Integer> sampleIdInts = request.sampleIds.stream()
-                .map(Long::intValue)
-                .toList();
+            List<Integer> sampleIdInts = request.sampleIds.stream().map(Long::intValue).toList();
 
             // Apply genome sequencing data to samples
-            int updatedCount = notebookPageSampleService.bulkApplyData(
-                pageId,
-                sampleIdInts,
-                sequencingData,
-                getSysUserId(httpRequest)
-            );
+            int updatedCount = notebookPageSampleService.bulkApplyData(pageId, sampleIdInts, sequencingData,
+                    getSysUserId(httpRequest));
 
             response.put("success", true);
             response.put("samplesUpdated", updatedCount);
