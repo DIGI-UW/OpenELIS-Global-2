@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -12,11 +19,7 @@ import {
   Loading,
   NumberInput,
 } from "@carbon/react";
-import {
-  Renew,
-  CheckmarkFilled,
-  Edit,
-} from "@carbon/react/icons";
+import { Renew, CheckmarkFilled, Edit } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
@@ -52,16 +55,14 @@ function TraditionalMedicineExtractionPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage3to4,
-  } = useTMMRDPermissions();
+  const { getPagePermissionLevel, canSaveData, canAccessStage3to4 } =
+    useTMMRDPermissions();
 
   // STAGE 4 allowed roles per TMMRD SRS Section 11 - Lab Technicians and Researchers
   const allowedRoles = [
@@ -69,7 +70,7 @@ function TraditionalMedicineExtractionPage({
     "Researcher",
     "Pharmacognosist",
     "Lab Manager",
-    "Principal Investigator"
+    "Principal Investigator",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);
@@ -86,7 +87,9 @@ function TraditionalMedicineExtractionPage({
   }
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Extraction & Concentration");
+  const pagePermissionLevel = getPagePermissionLevel(
+    "Extraction & Concentration",
+  );
   const canEditData = canSaveData(pagePermissionLevel);
 
   const [samples, setSamples] = useState([]);
@@ -95,6 +98,7 @@ function TraditionalMedicineExtractionPage({
 
   const [extractionModalOpen, setExtractionModalOpen] = useState(false);
   const [isApplyingExtraction, setIsApplyingExtraction] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const [solventType, setSolventType] = useState(null);
   const [extractionTechnique, setExtractionTechnique] = useState(null);
@@ -248,26 +252,26 @@ function TraditionalMedicineExtractionPage({
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
     const yieldPercent =
       plantMaterialWeight && extractWeight
-        ? (((parseFloat(extractWeight) / parseFloat(plantMaterialWeight)) *
-            100).toFixed(2))
+        ? (
+            (parseFloat(extractWeight) / parseFloat(plantMaterialWeight)) *
+            100
+          ).toFixed(2)
         : null;
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/tradmed/page/${pageData.id}/extraction`,
+      `/rest/notebook/tradmed/page/${pageData.id}/extract`,
       JSON.stringify({
         sampleIds,
-        solventType: solventType.id,
-        solventTypeLabel: solventType.label,
+        solvent: solventType.id,
         extractionTechnique: extractionTechnique.id,
-        plantMaterialWeight,
+        materialWeight: plantMaterialWeight,
         solventVolume,
-        extractionTemp,
-        extractionDuration,
+        extractionTemperature: extractionTemp,
+        extractionDurationMinutes: extractionDuration,
         filtrationMethod: filtrationMethod?.id || null,
         concentrationMethod: concentrationMethod?.id || null,
         extractWeight,
-        yieldPercent,
-        extractNotes,
+        notes: extractNotes,
       }),
       (response) => {
         setIsApplyingExtraction(false);
@@ -283,13 +287,17 @@ function TraditionalMedicineExtractionPage({
               if (statusCode === 200) {
                 notify({
                   kind: NotificationKinds.success,
-                  title: response.message ||
+                  title:
+                    response.message ||
                     intl.formatMessage(
                       {
                         id: "notebook.page.tradmed.extraction.success",
                         defaultMessage: "Extracted {count} sample(s).",
                       },
-                      { count: response.updatedCount || selectedSampleIds.length },
+                      {
+                        count:
+                          response.updatedCount || selectedSampleIds.length,
+                      },
                     ),
                 });
                 setExtractionModalOpen(false);
@@ -301,11 +309,12 @@ function TraditionalMedicineExtractionPage({
                   kind: NotificationKinds.error,
                   title: intl.formatMessage({
                     id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage: "Extraction completed but failed to update sample status.",
+                    defaultMessage:
+                      "Extraction completed but failed to update sample status.",
                   }),
                 });
               }
-            }
+            },
           );
         } else {
           notify({
@@ -335,15 +344,88 @@ function TraditionalMedicineExtractionPage({
     notify,
   ]);
 
+  // Handle marking extracted samples complete (moving to next page)
+  const handleMarkComplete = useCallback(() => {
+    // Filter samples that can be marked complete: selected, extracted, and not already completed
+    const samplesToComplete = samples.filter(
+      (s) =>
+        selectedSampleIds.includes(s.id) &&
+        s.solventType &&
+        s.status !== "COMPLETED",
+    );
+
+    if (samplesToComplete.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.extract.noEligibleSamples",
+          defaultMessage:
+            "Selected samples must have extraction recorded before completing.",
+        }),
+      });
+      return;
+    }
+
+    setIsCompleting(true);
+
+    const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+      JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
+      (response) => {
+        setIsCompleting(false);
+
+        if (response && response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.tradmed.extract.completeSuccess",
+                defaultMessage:
+                  "Successfully marked {count} samples as complete.",
+              },
+              { count: response.updatedCount || sampleIds.length },
+            ),
+          });
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          notify({
+            kind: NotificationKinds.error,
+            title:
+              response?.error ||
+              intl.formatMessage({
+                id: "notebook.tradmed.extract.completeFailed",
+                defaultMessage: "Failed to mark samples complete.",
+              }),
+          });
+        }
+      },
+    );
+  }, [
+    selectedSampleIds,
+    samples,
+    pageData?.id,
+    intl,
+    notify,
+    loadPageSamples,
+    onProgressUpdate,
+  ]);
+
   const unpreparedSamples = useMemo(
     () => samples.filter((s) => !s.solventType),
     [samples],
   );
-  const extractedSamples = useMemo(
-    () =>
-      samples.filter(
-        (s) => s.solventType && s.status === "COMPLETED",
-      ),
+  const extractedInProgressSamples = useMemo(
+    () => samples.filter((s) => s.solventType && s.status !== "COMPLETED"),
+    [samples],
+  );
+  const extractedCompletedSamples = useMemo(
+    () => samples.filter((s) => s.solventType && s.status === "COMPLETED"),
     [samples],
   );
 
@@ -383,7 +465,9 @@ function TraditionalMedicineExtractionPage({
                   defaultMessage="Extracted"
                 />
               </span>
-              <span className="progress-value">{extractedSamples.length}</span>
+              <span className="progress-value">
+                {extractedInProgressSamples.length}
+              </span>
             </Tile>
           </div>
         </Column>
@@ -417,7 +501,6 @@ function TraditionalMedicineExtractionPage({
           />
         </Button>
       </div>
-
 
       <div className="sample-table-section">
         <div className="table-section-header">
@@ -459,20 +542,47 @@ function TraditionalMedicineExtractionPage({
         </div>
       </div>
 
+      {/* Extracted Samples Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <h5>
-            <FormattedMessage
-              id="notebook.page.tradmed.extraction.extracted.title"
-              defaultMessage="Extracted Samples"
-            />
-            <Tag type="green" size="sm" className="count-tag">
-              {extractedSamples.length}
-            </Tag>
-          </h5>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <div>
+              <h5>
+                <FormattedMessage
+                  id="notebook.page.tradmed.extraction.extracted.inProgress.title"
+                  defaultMessage="Extracted (Pending Completion)"
+                />
+                <Tag type="blue" size="sm" className="count-tag">
+                  {extractedInProgressSamples.length}
+                </Tag>
+              </h5>
+            </div>
+            {selectedSampleIds.length > 0 && (
+              <Button
+                kind="tertiary"
+                size="sm"
+                renderIcon={CheckmarkFilled}
+                onClick={handleMarkComplete}
+                disabled={isCompleting || !hasRealPageId}
+              >
+                <FormattedMessage
+                  id="notebook.tradmed.extract.markComplete"
+                  defaultMessage="Mark Complete ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            )}
+          </div>
         </div>
         <div className="sample-grid-container">
-          {!loading && extractedSamples.length === 0 ? (
+          {!loading && extractedInProgressSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -483,9 +593,9 @@ function TraditionalMedicineExtractionPage({
             </div>
           ) : (
             <SampleGrid
-              gridId="extracted-samples"
-              samples={extractedSamples}
-              showSelection={false}
+              gridId="extracted-in-progress-samples"
+              samples={extractedInProgressSamples}
+              onSelectionChange={setSelectedSampleIds}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
@@ -499,6 +609,39 @@ function TraditionalMedicineExtractionPage({
           )}
         </div>
       </div>
+
+      {/* Extracted Samples Section - COMPLETED */}
+      {extractedCompletedSamples.length > 0 && (
+        <div className="sample-table-section">
+          <div className="table-section-header">
+            <h5>
+              <FormattedMessage
+                id="notebook.page.tradmed.extraction.extracted.completed.title"
+                defaultMessage="Extraction Completion Finalized"
+              />
+              <Tag type="green" size="sm" className="count-tag">
+                {extractedCompletedSamples.length}
+              </Tag>
+            </h5>
+          </div>
+          <div className="sample-grid-container">
+            <SampleGrid
+              gridId="extracted-completed-samples"
+              samples={extractedCompletedSamples}
+              showSelection={false}
+              loading={loading}
+              columns={[
+                { key: "accessionNumber", header: "Accession #" },
+                { key: "localName", header: "Local Name" },
+                { key: "solventType", header: "Solvent" },
+                { key: "extractionTechnique", header: "Technique" },
+                { key: "extractWeight", header: "Extract Weight (g)" },
+                { key: "yieldPercent", header: "Yield %" },
+              ]}
+            />
+          </div>
+        </div>
+      )}
 
       <Modal
         open={extractionModalOpen}
@@ -528,8 +671,8 @@ function TraditionalMedicineExtractionPage({
       >
         {isApplyingExtraction && <Loading withOverlay={false} small />}
 
-        <Grid fullWidth narrow>
-          <Column lg={8} md={4} sm={4}>
+        <Grid narrow>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="solvent"
               titleText={intl.formatMessage({
@@ -544,7 +687,7 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="technique"
               titleText={intl.formatMessage({
@@ -561,7 +704,7 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <NumberInput
               id="plant-weight"
               label={intl.formatMessage({
@@ -569,12 +712,16 @@ function TraditionalMedicineExtractionPage({
                 defaultMessage: "Plant Material Weight (g)",
               })}
               value={plantMaterialWeight}
-              onChange={(e) => setPlantMaterialWeight(e.imaginaryTarget?.value || e.target?.value || "")}
+              onChange={(e) =>
+                setPlantMaterialWeight(
+                  e.imaginaryTarget?.value || e.target?.value || "",
+                )
+              }
               step={0.1}
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <NumberInput
               id="solvent-vol"
               label={intl.formatMessage({
@@ -582,12 +729,16 @@ function TraditionalMedicineExtractionPage({
                 defaultMessage: "Solvent Volume (mL)",
               })}
               value={solventVolume}
-              onChange={(e) => setSolventVolume(e.imaginaryTarget?.value || e.target?.value || "")}
+              onChange={(e) =>
+                setSolventVolume(
+                  e.imaginaryTarget?.value || e.target?.value || "",
+                )
+              }
               step={1}
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <NumberInput
               id="ext-temp"
               label={intl.formatMessage({
@@ -595,12 +746,16 @@ function TraditionalMedicineExtractionPage({
                 defaultMessage: "Temperature (°C)",
               })}
               value={extractionTemp}
-              onChange={(e) => setExtractionTemp(e.imaginaryTarget?.value || e.target?.value || "")}
+              onChange={(e) =>
+                setExtractionTemp(
+                  e.imaginaryTarget?.value || e.target?.value || "",
+                )
+              }
               step={1}
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <TextInput
               id="ext-duration"
               labelText={intl.formatMessage({
@@ -612,7 +767,7 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="filtration"
               titleText={intl.formatMessage({
@@ -627,7 +782,7 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="concentration"
               titleText={intl.formatMessage({
@@ -644,7 +799,7 @@ function TraditionalMedicineExtractionPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <NumberInput
               id="extract-weight"
               label={intl.formatMessage({
@@ -652,12 +807,16 @@ function TraditionalMedicineExtractionPage({
                 defaultMessage: "Extract Weight (g)",
               })}
               value={extractWeight}
-              onChange={(e) => setExtractWeight(e.imaginaryTarget?.value || e.target?.value || "")}
+              onChange={(e) =>
+                setExtractWeight(
+                  e.imaginaryTarget?.value || e.target?.value || "",
+                )
+              }
               step={0.1}
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="extract-notes"
               labelText={intl.formatMessage({

@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -11,11 +18,7 @@ import {
   Loading,
   Checkbox,
 } from "@carbon/react";
-import {
-  Renew,
-  CheckmarkFilled,
-  Edit,
-} from "@carbon/react/icons";
+import { Renew, CheckmarkFilled, Edit } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
@@ -50,23 +53,21 @@ function TraditionalMedicineAnalyticalPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage5to6,
-  } = useTMMRDPermissions();
+  const { getPagePermissionLevel, canSaveData, canAccessStage5to6 } =
+    useTMMRDPermissions();
 
   // STAGE 5-6 allowed roles per TMMRD SRS Section 11 - Researchers lead analytics
   const allowedRoles = [
     "Researcher",
     "Pharmacognosist",
     "Lab Manager",
-    "Principal Investigator"
+    "Principal Investigator",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);
@@ -92,6 +93,7 @@ function TraditionalMedicineAnalyticalPage({
 
   const [pathwayModalOpen, setPathwayModalOpen] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const [selectedPath, setSelectedPath] = useState(null);
   const [fractionationMethod, setFractionationMethod] = useState(null);
@@ -238,13 +240,18 @@ function TraditionalMedicineAnalyticalPage({
               if (statusCode === 200) {
                 notify({
                   kind: NotificationKinds.success,
-                  title: response.message ||
+                  title:
+                    response.message ||
                     intl.formatMessage(
                       {
                         id: "notebook.page.tradmed.analytical.success",
-                        defaultMessage: "Updated pathway for {count} sample(s).",
+                        defaultMessage:
+                          "Updated pathway for {count} sample(s).",
                       },
-                      { count: response.updatedCount || selectedSampleIds.length },
+                      {
+                        count:
+                          response.updatedCount || selectedSampleIds.length,
+                      },
                     ),
                 });
                 setPathwayModalOpen(false);
@@ -256,11 +263,12 @@ function TraditionalMedicineAnalyticalPage({
                   kind: NotificationKinds.error,
                   title: intl.formatMessage({
                     id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage: "Pathway assigned but failed to update sample status.",
+                    defaultMessage:
+                      "Pathway assigned but failed to update sample status.",
                   }),
                 });
               }
-            }
+            },
           );
         } else {
           notify({
@@ -283,15 +291,88 @@ function TraditionalMedicineAnalyticalPage({
     notify,
   ]);
 
+  // Handle marking analyzed samples complete (moving to next page)
+  const handleMarkComplete = useCallback(() => {
+    // Filter samples that can be marked complete: selected, have selected path, and not already completed
+    const samplesToComplete = samples.filter(
+      (s) =>
+        selectedSampleIds.includes(s.id) &&
+        s.selectedPath &&
+        s.status !== "COMPLETED",
+    );
+
+    if (samplesToComplete.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.analytical.noEligibleSamples",
+          defaultMessage:
+            "Selected samples must have analytical pathway selected before completing.",
+        }),
+      });
+      return;
+    }
+
+    setIsCompleting(true);
+
+    const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+      JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
+      (response) => {
+        setIsCompleting(false);
+
+        if (response && response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.tradmed.analytical.completeSuccess",
+                defaultMessage:
+                  "Successfully marked {count} samples as complete.",
+              },
+              { count: response.updatedCount || sampleIds.length },
+            ),
+          });
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          notify({
+            kind: NotificationKinds.error,
+            title:
+              response?.error ||
+              intl.formatMessage({
+                id: "notebook.tradmed.analytical.completeFailed",
+                defaultMessage: "Failed to mark samples complete.",
+              }),
+          });
+        }
+      },
+    );
+  }, [
+    selectedSampleIds,
+    samples,
+    pageData?.id,
+    intl,
+    notify,
+    loadPageSamples,
+    onProgressUpdate,
+  ]);
+
   const pendingSamples = useMemo(
     () => samples.filter((s) => !s.selectedPath),
     [samples],
   );
-  const processedSamples = useMemo(
-    () =>
-      samples.filter(
-        (s) => s.selectedPath && s.status === "COMPLETED",
-      ),
+  const processedInProgressSamples = useMemo(
+    () => samples.filter((s) => s.selectedPath && s.status !== "COMPLETED"),
+    [samples],
+  );
+  const processedCompletedSamples = useMemo(
+    () => samples.filter((s) => s.selectedPath && s.status === "COMPLETED"),
     [samples],
   );
 
@@ -331,7 +412,9 @@ function TraditionalMedicineAnalyticalPage({
                   defaultMessage="Pathway Assigned"
                 />
               </span>
-              <span className="progress-value">{processedSamples.length}</span>
+              <span className="progress-value">
+                {processedInProgressSamples.length}
+              </span>
             </Tile>
           </div>
         </Column>
@@ -365,7 +448,6 @@ function TraditionalMedicineAnalyticalPage({
           />
         </Button>
       </div>
-
 
       <div className="sample-table-section">
         <div className="table-section-header">
@@ -407,20 +489,47 @@ function TraditionalMedicineAnalyticalPage({
         </div>
       </div>
 
+      {/* Assigned Pathway Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <h5>
-            <FormattedMessage
-              id="notebook.page.tradmed.analytical.assigned.title"
-              defaultMessage="Samples with Pathway Assigned"
-            />
-            <Tag type="green" size="sm" className="count-tag">
-              {processedSamples.length}
-            </Tag>
-          </h5>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <div>
+              <h5>
+                <FormattedMessage
+                  id="notebook.page.tradmed.analytical.assigned.inProgress.title"
+                  defaultMessage="Pathway Assigned (Pending Completion)"
+                />
+                <Tag type="blue" size="sm" className="count-tag">
+                  {processedInProgressSamples.length}
+                </Tag>
+              </h5>
+            </div>
+            {selectedSampleIds.length > 0 && (
+              <Button
+                kind="tertiary"
+                size="sm"
+                renderIcon={CheckmarkFilled}
+                onClick={handleMarkComplete}
+                disabled={isCompleting || !hasRealPageId}
+              >
+                <FormattedMessage
+                  id="notebook.tradmed.analytical.markComplete"
+                  defaultMessage="Mark Complete ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            )}
+          </div>
         </div>
         <div className="sample-grid-container">
-          {!loading && processedSamples.length === 0 ? (
+          {!loading && processedInProgressSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -431,9 +540,9 @@ function TraditionalMedicineAnalyticalPage({
             </div>
           ) : (
             <SampleGrid
-              gridId="assigned-pathway"
-              samples={processedSamples}
-              showSelection={false}
+              gridId="assigned-in-progress-pathway"
+              samples={processedInProgressSamples}
+              onSelectionChange={setSelectedSampleIds}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
@@ -445,6 +554,37 @@ function TraditionalMedicineAnalyticalPage({
           )}
         </div>
       </div>
+
+      {/* Assigned Pathway Section - COMPLETED */}
+      {processedCompletedSamples.length > 0 && (
+        <div className="sample-table-section">
+          <div className="table-section-header">
+            <h5>
+              <FormattedMessage
+                id="notebook.page.tradmed.analytical.assigned.completed.title"
+                defaultMessage="Analytical Pathway Completion Finalized"
+              />
+              <Tag type="green" size="sm" className="count-tag">
+                {processedCompletedSamples.length}
+              </Tag>
+            </h5>
+          </div>
+          <div className="sample-grid-container">
+            <SampleGrid
+              gridId="assigned-completed-pathway"
+              samples={processedCompletedSamples}
+              showSelection={false}
+              loading={loading}
+              columns={[
+                { key: "accessionNumber", header: "Accession #" },
+                { key: "localName", header: "Local Name" },
+                { key: "selectedPath", header: "Pathway" },
+                { key: "fractionationMethod", header: "Fractionation" },
+              ]}
+            />
+          </div>
+        </div>
+      )}
 
       <Modal
         open={pathwayModalOpen}
@@ -474,8 +614,8 @@ function TraditionalMedicineAnalyticalPage({
       >
         {isApplying && <Loading withOverlay={false} small />}
 
-        <Grid fullWidth narrow>
-          <Column lg={16} md={8} sm={4}>
+        <Grid narrow>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="pathway"
               titleText={intl.formatMessage({
@@ -490,7 +630,7 @@ function TraditionalMedicineAnalyticalPage({
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="fractionation"
               titleText={intl.formatMessage({
@@ -507,7 +647,7 @@ function TraditionalMedicineAnalyticalPage({
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="analysis-notes"
               labelText={intl.formatMessage({

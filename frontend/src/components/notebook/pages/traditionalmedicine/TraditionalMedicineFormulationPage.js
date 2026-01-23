@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -11,11 +18,7 @@ import {
   TextArea,
   Loading,
 } from "@carbon/react";
-import {
-  Renew,
-  CheckmarkFilled,
-  Edit,
-} from "@carbon/react/icons";
+import { Renew, CheckmarkFilled, Edit } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
@@ -49,16 +52,14 @@ function TraditionalMedicineFormulationPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage7,
-  } = useTMMRDPermissions();
+  const { getPagePermissionLevel, canSaveData, canAccessStage7 } =
+    useTMMRDPermissions();
 
   // STAGE 7 allowed roles per TMMRD SRS Section 11 - Pharmacognosists lead formulation
   const allowedRoles = [
@@ -66,7 +67,7 @@ function TraditionalMedicineFormulationPage({
     "Researcher",
     "Pharmacognosist",
     "Lab Manager",
-    "Principal Investigator"
+    "Principal Investigator",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);
@@ -92,6 +93,7 @@ function TraditionalMedicineFormulationPage({
 
   const [formulationModalOpen, setFormulationModalOpen] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const [formulationType, setFormulationType] = useState(null);
   const [batchNumber, setBatchNumber] = useState("");
@@ -246,13 +248,18 @@ function TraditionalMedicineFormulationPage({
               if (statusCode === 200) {
                 notify({
                   kind: NotificationKinds.success,
-                  title: response.message ||
+                  title:
+                    response.message ||
                     intl.formatMessage(
                       {
                         id: "notebook.page.tradmed.formulation.success",
-                        defaultMessage: "Recorded formulation for {count} sample(s).",
+                        defaultMessage:
+                          "Recorded formulation for {count} sample(s).",
                       },
-                      { count: response.updatedCount || selectedSampleIds.length },
+                      {
+                        count:
+                          response.updatedCount || selectedSampleIds.length,
+                      },
                     ),
                 });
                 setFormulationModalOpen(false);
@@ -264,11 +271,12 @@ function TraditionalMedicineFormulationPage({
                   kind: NotificationKinds.error,
                   title: intl.formatMessage({
                     id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage: "Formulation recorded but failed to update sample status.",
+                    defaultMessage:
+                      "Formulation recorded but failed to update sample status.",
                   }),
                 });
               }
-            }
+            },
           );
         } else {
           notify({
@@ -293,15 +301,88 @@ function TraditionalMedicineFormulationPage({
     notify,
   ]);
 
+  // Handle marking formulated samples complete (moving to next page)
+  const handleMarkComplete = useCallback(() => {
+    // Filter samples that can be marked complete: selected, formulated, and not already completed
+    const samplesToComplete = samples.filter(
+      (s) =>
+        selectedSampleIds.includes(s.id) &&
+        s.formulationType &&
+        s.status !== "COMPLETED",
+    );
+
+    if (samplesToComplete.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.formulation.noEligibleSamples",
+          defaultMessage:
+            "Selected samples must have formulation type recorded before completing.",
+        }),
+      });
+      return;
+    }
+
+    setIsCompleting(true);
+
+    const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+      JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
+      (response) => {
+        setIsCompleting(false);
+
+        if (response && response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.tradmed.formulation.completeSuccess",
+                defaultMessage:
+                  "Successfully marked {count} samples as complete.",
+              },
+              { count: response.updatedCount || sampleIds.length },
+            ),
+          });
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          notify({
+            kind: NotificationKinds.error,
+            title:
+              response?.error ||
+              intl.formatMessage({
+                id: "notebook.tradmed.formulation.completeFailed",
+                defaultMessage: "Failed to mark samples complete.",
+              }),
+          });
+        }
+      },
+    );
+  }, [
+    selectedSampleIds,
+    samples,
+    pageData?.id,
+    intl,
+    notify,
+    loadPageSamples,
+    onProgressUpdate,
+  ]);
+
   const pendingSamples = useMemo(
     () => samples.filter((s) => !s.formulationType),
     [samples],
   );
-  const formulatedSamples = useMemo(
-    () =>
-      samples.filter(
-        (s) => s.formulationType && s.status === "COMPLETED",
-      ),
+  const formulatedInProgressSamples = useMemo(
+    () => samples.filter((s) => s.formulationType && s.status !== "COMPLETED"),
+    [samples],
+  );
+  const formulatedCompletedSamples = useMemo(
+    () => samples.filter((s) => s.formulationType && s.status === "COMPLETED"),
     [samples],
   );
 
@@ -341,7 +422,9 @@ function TraditionalMedicineFormulationPage({
                   defaultMessage="Formulated"
                 />
               </span>
-              <span className="progress-value">{formulatedSamples.length}</span>
+              <span className="progress-value">
+                {formulatedInProgressSamples.length}
+              </span>
             </Tile>
           </div>
         </Column>
@@ -375,7 +458,6 @@ function TraditionalMedicineFormulationPage({
           />
         </Button>
       </div>
-
 
       <div className="sample-table-section">
         <div className="table-section-header">
@@ -416,20 +498,47 @@ function TraditionalMedicineFormulationPage({
         </div>
       </div>
 
+      {/* Formulated Products Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <h5>
-            <FormattedMessage
-              id="notebook.page.tradmed.formulation.formulated.title"
-              defaultMessage="Formulated Products"
-            />
-            <Tag type="green" size="sm" className="count-tag">
-              {formulatedSamples.length}
-            </Tag>
-          </h5>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <div>
+              <h5>
+                <FormattedMessage
+                  id="notebook.page.tradmed.formulation.formulated.inProgress.title"
+                  defaultMessage="Formulated (Pending Completion)"
+                />
+                <Tag type="blue" size="sm" className="count-tag">
+                  {formulatedInProgressSamples.length}
+                </Tag>
+              </h5>
+            </div>
+            {selectedSampleIds.length > 0 && (
+              <Button
+                kind="tertiary"
+                size="sm"
+                renderIcon={CheckmarkFilled}
+                onClick={handleMarkComplete}
+                disabled={isCompleting || !hasRealPageId}
+              >
+                <FormattedMessage
+                  id="notebook.tradmed.formulation.markComplete"
+                  defaultMessage="Mark Complete ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            )}
+          </div>
         </div>
         <div className="sample-grid-container">
-          {!loading && formulatedSamples.length === 0 ? (
+          {!loading && formulatedInProgressSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -440,9 +549,9 @@ function TraditionalMedicineFormulationPage({
             </div>
           ) : (
             <SampleGrid
-              gridId="formulated-samples"
-              samples={formulatedSamples}
-              showSelection={false}
+              gridId="formulated-in-progress-samples"
+              samples={formulatedInProgressSamples}
+              onSelectionChange={setSelectedSampleIds}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
@@ -453,6 +562,36 @@ function TraditionalMedicineFormulationPage({
           )}
         </div>
       </div>
+
+      {/* Formulated Products Section - COMPLETED */}
+      {formulatedCompletedSamples.length > 0 && (
+        <div className="sample-table-section">
+          <div className="table-section-header">
+            <h5>
+              <FormattedMessage
+                id="notebook.page.tradmed.formulation.formulated.completed.title"
+                defaultMessage="Formulation Completion Finalized"
+              />
+              <Tag type="green" size="sm" className="count-tag">
+                {formulatedCompletedSamples.length}
+              </Tag>
+            </h5>
+          </div>
+          <div className="sample-grid-container">
+            <SampleGrid
+              gridId="formulated-completed-samples"
+              samples={formulatedCompletedSamples}
+              showSelection={false}
+              loading={loading}
+              columns={[
+                { key: "accessionNumber", header: "Accession #" },
+                { key: "formulationType", header: "Type" },
+                { key: "batchNumber", header: "Batch #" },
+              ]}
+            />
+          </div>
+        </div>
+      )}
 
       <Modal
         open={formulationModalOpen}
@@ -482,8 +621,8 @@ function TraditionalMedicineFormulationPage({
       >
         {isApplying && <Loading withOverlay={false} small />}
 
-        <Grid fullWidth narrow>
-          <Column lg={8} md={4} sm={4}>
+        <Grid narrow>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="formulation-type"
               titleText={intl.formatMessage({
@@ -498,7 +637,7 @@ function TraditionalMedicineFormulationPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <TextInput
               id="batch-number"
               labelText={intl.formatMessage({
@@ -511,7 +650,7 @@ function TraditionalMedicineFormulationPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <TextInput
               id="manufacturing-date"
               labelText={intl.formatMessage({
@@ -524,7 +663,7 @@ function TraditionalMedicineFormulationPage({
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="ingredients"
               labelText={intl.formatMessage({
@@ -538,7 +677,7 @@ function TraditionalMedicineFormulationPage({
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="qc-notes"
               labelText={intl.formatMessage({

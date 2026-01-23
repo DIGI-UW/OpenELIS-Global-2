@@ -14,6 +14,7 @@ import { NotificationContext } from "../../layout/Layout";
 import PageNavigation from "./PageNavigation";
 import {
   TraditionalMedicineSampleCreationPage,
+  TraditionalMedicineAuthenticationPage,
   TraditionalMedicineAuthenticationStoragePage,
   TraditionalMedicinePreparationPage,
   TraditionalMedicineExtractionPage,
@@ -275,7 +276,7 @@ function TraditionalMedicineWorkflowTab({ notebookId, entryId: propEntryId }) {
 
     switch (pageOrder) {
       case 1:
-        // Page 1: Sample Intake, Registration & Authentication
+        // Page 1: Sample Intake, Reception & Registration (SRS Stage 1)
         return (
           <TraditionalMedicineSampleCreationPage
             key={`tradmed-create-${page.id}`}
@@ -287,6 +288,19 @@ function TraditionalMedicineWorkflowTab({ notebookId, entryId: propEntryId }) {
           />
         );
       case 2:
+        // Page 2: Authentication & Verification (SRS Stage 2)
+        return (
+          <TraditionalMedicineAuthenticationPage
+            key={`tradmed-auth-${page.id}`}
+            entryId={entryId}
+            pageData={page}
+            progress={progress}
+            onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
+          />
+        );
+      case 3:
+        // Page 3: Storage & Herbarium Placement (SRS Stage 3)
         return (
           <TraditionalMedicineAuthenticationStoragePage
             key={`tradmed-storage-${page.id}`}
@@ -297,7 +311,8 @@ function TraditionalMedicineWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 3:
+      case 4:
+        // Page 4: Sample Preparation for Analysis (SRS Stage 4)
         return (
           <TraditionalMedicinePreparationPage
             key={`tradmed-prep-${page.id}`}
@@ -308,7 +323,8 @@ function TraditionalMedicineWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 4:
+      case 5:
+        // Page 5: Extraction, Filtration & Concentration (SRS Stage 5)
         return (
           <TraditionalMedicineExtractionPage
             key={`tradmed-extraction-${page.id}`}
@@ -319,7 +335,8 @@ function TraditionalMedicineWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 5:
+      case 6:
+        // Page 6: Analytical Pathways (SRS Stage 6)
         return (
           <TraditionalMedicineAnalyticalPage
             key={`tradmed-analytical-${page.id}`}
@@ -330,7 +347,8 @@ function TraditionalMedicineWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 6:
+      case 7:
+        // Page 7: Product Development & Testing (SRS Stage 7)
         return (
           <TraditionalMedicineTestingPage
             key={`tradmed-testing-${page.id}`}
@@ -341,21 +359,11 @@ function TraditionalMedicineWorkflowTab({ notebookId, entryId: propEntryId }) {
             notebookId={notebook?.id}
           />
         );
-      case 7:
+      case 8:
+        // Page 8: Formulation of Medical Product (SRS Stage 8)
         return (
           <TraditionalMedicineFormulationPage
             key={`tradmed-formulation-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-            notebookId={notebook?.id}
-          />
-        );
-      case 8:
-        return (
-          <TraditionalMedicineArchivalPage
-            key={`tradmed-archival-${page.id}`}
             entryId={entryId}
             pageData={page}
             progress={progress}

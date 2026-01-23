@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -10,6 +17,7 @@ import {
   TextInput,
   TextArea,
   Loading,
+  NumberInput,
 } from "@carbon/react";
 import {
   CloudUpload,
@@ -20,6 +28,9 @@ import {
   Pending,
   Edit,
   WarningAltFilled,
+  Archive,
+  Location,
+  Temperature,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useMemo as useMemoHook } from "react";
@@ -31,6 +42,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
+import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { useTMMRDPermissions } from "../../../../hooks/useTMMRDPermissions";
 import AccessDeniedMessage from "../../../common/AccessDeniedMessage";
@@ -62,7 +75,8 @@ function TraditionalMedicineAuthenticationStoragePage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
@@ -78,7 +92,7 @@ function TraditionalMedicineAuthenticationStoragePage({
   const allowedRoles = [
     "Pharmacognosist",
     "Lab Manager",
-    "Principal Investigator"
+    "Principal Investigator",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);
@@ -95,7 +109,9 @@ function TraditionalMedicineAuthenticationStoragePage({
   }
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Authentication & Storage");
+  const pagePermissionLevel = getPagePermissionLevel(
+    "Authentication & Storage",
+  );
   const canEditData = canSaveData(pagePermissionLevel);
   const canApproveAuth = canApproveData(pagePermissionLevel);
 
@@ -106,32 +122,72 @@ function TraditionalMedicineAuthenticationStoragePage({
   // Storage modal state
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [isApplyingStorage, setIsApplyingStorage] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
-  // Storage form fields
-  const [storageCondition, setStorageCondition] = useState(null);
-  const [storageLocation, setStorageLocation] = useState("");
+  // Storage form fields - following immunology pattern
+  const [selectedCondition, setSelectedCondition] = useState(null);
+  const [retentionYears, setRetentionYears] = useState(5);
+  const [storageNotes, setStorageNotes] = useState("");
   const [herbariumSpecimenId, setHerbariumSpecimenId] = useState("");
   const [herbariumNotes, setHerbariumNotes] = useState("");
   const [linkedProject, setLinkedProject] = useState("");
-  const [storageNotes, setStorageNotes] = useState("");
 
-  // Storage condition options (per SRS)
+  // Standardized storage hierarchy state (following other lab patterns)
+  const [storageSelection, setStorageSelection] = useState({
+    room: null,
+    device: null,
+    shelf: null,
+    rack: null,
+    box: null,
+  });
+  const [boxLayout, setBoxLayout] = useState({});
+  const [wellAssignments, setWellAssignments] = useState({});
+
+  // TMMRD-specific storage conditions using backend-compatible enum values
   const storageConditionOptions = [
-    { id: "fresh", label: "Fresh Sample (Refrigerated 2-8°C)" },
     {
-      id: "dried",
-      label: "Dried Sample (Room Temperature, Sealed Container)",
+      id: "REFRIGERATED", // Backend enum value
+      label: intl.formatMessage({
+        id: "notebook.tradmed.storage.condition.refrigerated",
+        defaultMessage:
+          "Refrigerated Storage (2-8°C) - Fresh Plants & Extracts",
+      }),
+      category: "refrigerated",
+      tempRange: "2-8°C",
+      description: "For fresh plant materials and stable extracts",
     },
-    { id: "preserved", label: "Preserved (In Fixative/Alcohol)" },
-  ];
-
-  // Storage location hierarchy (example - would come from backend in production)
-  const storageLocationOptions = [
-    { id: "herbarium_a", label: "Herbarium Cabinet A" },
-    { id: "herbarium_b", label: "Herbarium Cabinet B" },
-    { id: "cold_storage_1", label: "Cold Storage Unit 1 (4°C)" },
-    { id: "cold_storage_2", label: "Cold Storage Unit 2 (-20°C)" },
-    { id: "desiccant_cabinet", label: "Desiccant-Controlled Cabinet" },
+    {
+      id: "ROOM_TEMP", // Backend enum value (correct spelling)
+      label: intl.formatMessage({
+        id: "notebook.tradmed.storage.condition.roomTemp",
+        defaultMessage:
+          "Room Temperature - Dried Plants, Herbarium & Preserved Samples",
+      }),
+      category: "room_temp",
+      tempRange: "18-25°C",
+      description:
+        "For dried materials, herbarium specimens, and preserved samples",
+    },
+    {
+      id: "FROZEN_MINUS20", // Backend enum value
+      label: intl.formatMessage({
+        id: "notebook.tradmed.storage.condition.frozen20",
+        defaultMessage: "Frozen Storage (-20°C) - Unstable Extracts",
+      }),
+      category: "extracts",
+      tempRange: "-20°C",
+      description: "For unstable plant extracts requiring freezing",
+    },
+    {
+      id: "FROZEN_MINUS80", // Backend enum value
+      label: intl.formatMessage({
+        id: "notebook.tradmed.storage.condition.frozen80",
+        defaultMessage: "Ultra-Low Storage (-80°C) - Purified Compounds",
+      }),
+      category: "compounds",
+      tempRange: "-80°C",
+      description: "For purified compounds, light-protected storage",
+    },
   ];
 
   // Notification callback
@@ -142,6 +198,169 @@ function TraditionalMedicineAuthenticationStoragePage({
     },
     [addNotification, setNotificationVisible],
   );
+
+  // Load box occupancy data
+  const loadBoxOccupancy = useCallback((boxId) => {
+    if (!boxId) return;
+
+    getFromOpenElisServer(
+      `/rest/storage/boxes/${boxId}/occupancy`,
+      (occupancyData) => {
+        if (occupancyData && typeof occupancyData === "object") {
+          setBoxLayout(occupancyData);
+        }
+      },
+    );
+  }, []);
+
+  // Storage hierarchy selection handler - following immunology pattern
+  const handleStorageSelectionChange = useCallback((selection) => {
+    setStorageSelection(selection);
+    setWellAssignments({});
+  }, []);
+
+  // Handle box layout loaded - following immunology pattern
+  const handleBoxLayoutLoaded = useCallback((wells) => {
+    setBoxLayout(wells || {});
+  }, []);
+
+  // Handle well click - following immunology pattern
+  const handleWellClick = useCallback(
+    (wellCoord, wellInfo) => {
+      if (wellInfo && !wellInfo.pending) {
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage(
+            {
+              id: "notebook.tradmed.storage.wellOccupied",
+              defaultMessage:
+                "Well {well} is already occupied. Choose another position.",
+            },
+            { well: wellCoord },
+          ),
+        });
+        return;
+      }
+
+      // Find the first selected sample without well assignment
+      const unassignedSample = selectedSampleIds.find(
+        (sampleId) => !Object.keys(wellAssignments).includes(sampleId),
+      );
+
+      if (unassignedSample) {
+        setWellAssignments((prev) => ({
+          ...prev,
+          [unassignedSample]: wellCoord,
+        }));
+      }
+    },
+    [selectedSampleIds, wellAssignments, intl, notify],
+  );
+
+  // Auto-assign vial positions for TMMRD extracts and compounds
+  const handleAutoPopulate = useCallback(() => {
+    if (!storageSelection.box) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.storage.selectBoxFirst",
+          defaultMessage: "Please select a storage box first.",
+        }),
+      });
+      return;
+    }
+
+    // Only auto-assign for extracts and compounds that use vials
+    if (
+      selectedCondition?.category !== "extracts" &&
+      selectedCondition?.category !== "compounds"
+    ) {
+      notify({
+        kind: NotificationKinds.info,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.storage.autoAssignNotNeeded",
+          defaultMessage:
+            "Auto-assignment is only for extracts and compounds in vials.",
+        }),
+      });
+      return;
+    }
+
+    const rows = storageSelection.box.rows || 8;
+    const columns = storageSelection.box.columns || 12;
+    const rowLetters = Array.from({ length: rows }, (_, i) =>
+      String.fromCharCode("A".charCodeAt(0) + i),
+    );
+
+    const newAssignments = {};
+    let sampleIndex = 0;
+
+    for (let row of rowLetters) {
+      for (let col = 1; col <= columns; col++) {
+        if (sampleIndex >= selectedSampleIds.length) break;
+
+        const wellCoord = `${row}${col}`;
+        if (!boxLayout[wellCoord]) {
+          newAssignments[selectedSampleIds[sampleIndex]] = wellCoord;
+          sampleIndex++;
+        }
+      }
+      if (sampleIndex >= selectedSampleIds.length) break;
+    }
+
+    setWellAssignments(newAssignments);
+
+    if (sampleIndex < selectedSampleIds.length) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage(
+          {
+            id: "notebook.tradmed.storage.notEnoughVials",
+            defaultMessage:
+              "Not enough empty vials. {assigned} of {total} samples assigned.",
+          },
+          { assigned: sampleIndex, total: selectedSampleIds.length },
+        ),
+      });
+    } else {
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage(
+          {
+            id: "notebook.tradmed.storage.autoAssignSuccess",
+            defaultMessage:
+              "Auto-assigned {count} extract/compound samples to vials.",
+          },
+          { count: sampleIndex },
+        ),
+      });
+    }
+  }, [
+    storageSelection.box,
+    selectedCondition,
+    selectedSampleIds,
+    boxLayout,
+    intl,
+    notify,
+  ]);
+
+  // Get combined layout - following immunology pattern exactly
+  const getCombinedLayout = useCallback(() => {
+    const combined = { ...boxLayout };
+
+    Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
+      if (!combined[wellCoord]) {
+        const sample = samples.find((s) => s.id === sampleId);
+        combined[wellCoord] = {
+          sampleItemId: sampleId,
+          externalId: sample?.externalId || sampleId,
+          pending: true,
+        };
+      }
+    });
+
+    return combined;
+  }, [boxLayout, wellAssignments, samples]);
 
   // Check if page has a real ID
   const hasRealPageId =
@@ -161,49 +380,191 @@ function TraditionalMedicineAuthenticationStoragePage({
 
     setLoading(true);
 
+    let samplesData = [];
+    let routingData = [];
+    let loadCount = 0;
+
+    const processData = () => {
+      loadCount++;
+      if (loadCount < 2) return;
+
+      if (componentMounted.current) {
+        const routingMap = {};
+        console.log("DEBUG - Processing routing data, total records:", routingData.length);
+        routingData.forEach((routing) => {
+          if (routing.destinationType === "STORAGE" && routing.sampleItemId) {
+            console.log("DEBUG - Building routing map entry for sample:", {
+              sampleItemId: routing.sampleItemId,
+              roomName: routing.roomName,
+              deviceName: routing.deviceName,
+              shelfName: routing.shelfName,
+              rackName: routing.rackName,
+              boxName: routing.boxName,
+            });
+            routingMap[String(routing.sampleItemId)] = {
+              boxId: routing.boxId,
+              boxName: routing.boxName,
+              wellCoordinate: routing.wellCoordinate,
+              roomId: routing.roomId,
+              roomName: routing.roomName,
+              deviceId: routing.deviceId,
+              deviceName: routing.deviceName,
+              shelfId: routing.shelfId,
+              shelfName: routing.shelfName,
+              rackId: routing.rackId,
+              rackName: routing.rackName,
+              routedAt: routing.routedAt,
+              hasRouting: true,
+            };
+          }
+        });
+        console.log("DEBUG - Final routingMap:", routingMap);
+
+        const transformedSamples = samplesData.map((sample) => {
+          const sampleId = String(sample.id || sample.sampleItemId);
+          const routing = routingMap[sampleId];
+
+          // Build storage hierarchy from routing data
+          let storageHierarchy = sample.data?.storageHierarchy || null;
+          console.log("DEBUG - Processing sample for storage hierarchy:", {
+            sampleId,
+            hasExistingHierarchy: !!storageHierarchy,
+            hasRouting: !!routing,
+            sampleData: sample.data,
+          });
+
+          if (!storageHierarchy && routing?.hasRouting) {
+            console.log("DEBUG - Building storageHierarchy from routing for sample:", sampleId);
+            storageHierarchy = {
+              room: routing.roomName
+                ? {
+                    id: routing.roomId,
+                    name: routing.roomName,
+                    label: routing.roomName,
+                  }
+                : null,
+              device: routing.deviceName
+                ? {
+                    id: routing.deviceId,
+                    name: routing.deviceName,
+                    label: routing.deviceName,
+                  }
+                : null,
+              shelf: routing.shelfName
+                ? {
+                    id: routing.shelfId,
+                    name: routing.shelfName,
+                    label: routing.shelfName,
+                  }
+                : null,
+              rack: routing.rackName
+                ? {
+                    id: routing.rackId,
+                    name: routing.rackName,
+                    label: routing.rackName,
+                  }
+                : null,
+              box: routing.boxName
+                ? {
+                    id: routing.boxId,
+                    name: routing.boxName,
+                    label: routing.boxName,
+                  }
+                : null,
+            };
+            console.log("DEBUG - Built storageHierarchy:", { sampleId, storageHierarchy });
+          }
+
+          const storageBox =
+            sample.data?.storageBox || routing?.boxName || null;
+          const storageWell =
+            sample.data?.storageWell || routing?.wellCoordinate || null;
+
+          const hasStorageAssignment = !!(
+            sample.data?.storageCondition ||
+            sample.storageCondition ||
+            sample.condition ||
+            sample.storage?.condition ||
+            routing?.hasRouting ||
+            storageHierarchy
+          );
+
+          return {
+            id: sampleId,
+            externalId: sample.externalId,
+            accessionNumber: sample.accessionNumber,
+            sampleType: sample.sampleType || sample.typeOfSample?.description,
+            status: sample.pageStatus || sample.status || "PENDING",
+            // Traditional medicine specific fields
+            sampleCategory: sample.data?.sampleCategory,
+            localName: sample.data?.localName,
+            scientificName: sample.data?.scientificName,
+            species: sample.data?.species,
+            // Authentication data from Page 1
+            authenticationMethod: sample.data?.authenticationMethod,
+            authenticationMethodLabel: sample.data?.authenticationMethodLabel,
+            authenticationResult: sample.data?.authenticationResult,
+            authenticationResultLabel: sample.data?.authenticationResultLabel,
+            verifiedBy: sample.data?.verifiedBy,
+            verificationDate: sample.data?.verificationDate,
+            // Storage data (following immunology pattern)
+            storageCondition:
+              sample.data?.storageCondition ||
+              sample.storageCondition ||
+              sample.condition,
+            storageLocation:
+              sample.data?.storageLocation ||
+              sample.storageLocation ||
+              sample.storage?.location,
+            storageHierarchy: storageHierarchy,
+            storageBox: storageBox,
+            storageWell: storageWell,
+            wellAssignment:
+              sample.data?.wellAssignment || sample.wellAssignment,
+            retentionExpiry:
+              sample.data?.retentionExpiry ||
+              sample.retentionExpiry ||
+              sample.storage?.expiryDate,
+            hasStorageAssignment: hasStorageAssignment,
+            // TMMRD-specific fields
+            herbariumSpecimenId: sample.data?.herbariumSpecimenId,
+            herbariumNotes: sample.data?.herbariumNotes,
+            linkedProject: sample.data?.linkedProject,
+            storedAt: sample.data?.storedAt || sample.storedAt,
+            storedBy: sample.data?.storedBy || sample.storedBy,
+          };
+        });
+
+        setSamples(transformedSamples);
+        setLoading(false);
+      }
+    };
+
     getFromOpenElisServer(
       `/rest/notebook/page/${pageData.id}/samples`,
       (response) => {
-        if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              externalId: sample.externalId,
-              accessionNumber: sample.accessionNumber,
-              sampleType: sample.sampleType || sample.typeOfSample?.description,
-              status: sample.pageStatus || sample.status || "PENDING",
-              // Traditional medicine specific fields
-              sampleCategory: sample.data?.sampleCategory,
-              localName: sample.data?.localName,
-              scientificName: sample.data?.scientificName,
-              species: sample.data?.species,
-              // Authentication data from Page 1
-              authenticationMethod: sample.data?.authenticationMethod,
-              authenticationMethodLabel:
-                sample.data?.authenticationMethodLabel,
-              authenticationResult: sample.data?.authenticationResult,
-              authenticationResultLabel:
-                sample.data?.authenticationResultLabel,
-              verifiedBy: sample.data?.verifiedBy,
-              verificationDate: sample.data?.verificationDate,
-              // Storage data (to be filled by this page)
-              storageCondition: sample.data?.storageCondition,
-              storageLocation: sample.data?.storageLocation,
-              herbariumSpecimenId: sample.data?.herbariumSpecimenId,
-              herbariumNotes: sample.data?.herbariumNotes,
-              linkedProject: sample.data?.linkedProject,
-              storedAt: sample.data?.storedAt,
-              storedBy: sample.data?.storedBy,
-            }));
-            setSamples(transformedSamples);
-          } else {
-            setSamples([]);
-          }
-          setLoading(false);
+        if (response && Array.isArray(response)) {
+          samplesData = response;
         }
+        processData();
       },
     );
-  }, [pageData?.id]);
+
+    // Load routing data for storage assignments
+    if (entryId) {
+      getFromOpenElisServer(
+        `/rest/notebook/${entryId}/routing?destinationType=STORAGE`,
+        (response) => {
+          if (response && Array.isArray(response)) {
+            routingData = response;
+          }
+          processData();
+        },
+      );
+    } else {
+      processData();
+    }
+  }, [pageData?.id, entryId]);
 
   // Load samples on mount
   useEffect(() => {
@@ -216,14 +577,23 @@ function TraditionalMedicineAuthenticationStoragePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId, pageData?.id]);
 
-  // Reset storage form
+  // Reset storage form - following immunology pattern
   const resetStorageForm = useCallback(() => {
-    setStorageCondition(null);
-    setStorageLocation("");
+    setSelectedCondition(null);
+    setRetentionYears(5);
+    setStorageNotes("");
     setHerbariumSpecimenId("");
     setHerbariumNotes("");
     setLinkedProject("");
-    setStorageNotes("");
+    setStorageSelection({
+      room: null,
+      device: null,
+      shelf: null,
+      rack: null,
+      box: null,
+    });
+    setBoxLayout({});
+    setWellAssignments({});
   }, []);
 
   // Open storage modal
@@ -242,26 +612,61 @@ function TraditionalMedicineAuthenticationStoragePage({
     setStorageModalOpen(true);
   }, [selectedSampleIds, intl, resetStorageForm, notify]);
 
-  // Apply storage assignment to selected samples
-  const applyStorage = useCallback(() => {
-    if (!storageCondition) {
+  // Handle storage assignment - TMMRD-specific validation
+  const handleAssignStorage = useCallback(() => {
+    if (!selectedCondition) {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.page.tradmed.storage.error.conditionRequired",
-          defaultMessage: "Please select storage condition.",
+          id: "notebook.tradmed.storage.selectCondition",
+          defaultMessage: "Please select a storage condition.",
         }),
       });
       return;
     }
 
-    if (!hasRealPageId) {
+    // TMMRD-specific validation based on storage type
+    const requiresVialAssignment =
+      selectedCondition.category === "extracts" ||
+      selectedCondition.category === "compounds";
+
+    if (requiresVialAssignment && !storageSelection.box) {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.page.tradmed.error.noPage",
+          id: "notebook.tradmed.storage.selectBoxForVials",
           defaultMessage:
-            "Cannot update samples: Page not properly initialized.",
+            "Please select a storage box for extract/compound vials.",
+        }),
+      });
+      return;
+    }
+
+    if (requiresVialAssignment && Object.keys(wellAssignments).length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.storage.noVialAssignments",
+          defaultMessage:
+            "Please assign samples to vials using Auto-Assign or click on positions.",
+        }),
+      });
+      return;
+    }
+
+    // For herbarium and plant materials, need rack/shelf level selection
+    if (
+      !requiresVialAssignment &&
+      !storageSelection.rack &&
+      !storageSelection.shelf &&
+      !storageSelection.device
+    ) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.storage.selectRackLevel",
+          defaultMessage:
+            "Please select storage location down to shelf/rack level.",
         }),
       });
       return;
@@ -269,116 +674,219 @@ function TraditionalMedicineAuthenticationStoragePage({
 
     setIsApplyingStorage(true);
 
-    const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
+    const nbId = entryId; // Use entryId as notebook ID for TMMRD
 
-    postToOpenElisServerJsonResponse(
-      `/rest/notebook/tradmed/page/${pageData.id}/storage`,
-      JSON.stringify({
-        sampleIds: sampleIds,
-        storageCondition: storageCondition.id,
-        storageConditionLabel: storageCondition.label,
-        storageLocation: storageLocation || null,
+    let payload;
+
+    if (requiresVialAssignment) {
+      // For extracts/compounds using vial assignments
+      const wellAssignmentsForBackend = {};
+      Object.entries(wellAssignments).forEach(([sampleId, wellCoord]) => {
+        wellAssignmentsForBackend[sampleId] = wellCoord;
+      });
+
+      payload = {
+        sampleIds: Object.keys(wellAssignments).map((id) => parseInt(id, 10)),
+        boxId: storageSelection.box.id,
+        wellAssignments: wellAssignmentsForBackend,
+        condition: selectedCondition.id,
+        retentionYears: retentionYears,
+        storageNotes: storageNotes,
+        postAnalysisStorage: true, // Mark as traditional medicine storage
+        // TMMRD-specific fields stored in NotebookPageSample.data
         herbariumSpecimenId: herbariumSpecimenId || null,
         herbariumNotes: herbariumNotes || null,
         linkedProject: linkedProject || null,
-        storageNotes: storageNotes || null,
-      }),
+      };
+    } else {
+      // For herbarium specimens and plant materials using bulk location assignment
+      // Backend expects rack-level assignment, so use shelf or rack if available
+      const rackId =
+        storageSelection.rack?.id ||
+        storageSelection.shelf?.id ||
+        storageSelection.device?.id;
+
+      if (!rackId) {
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({
+            id: "notebook.tradmed.storage.needsRackLevel",
+            defaultMessage:
+              "Please select storage down to shelf/rack level for traditional medicine samples.",
+          }),
+        });
+        setIsApplyingStorage(false);
+        return;
+      }
+
+      payload = {
+        sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+        locationId: rackId, // Use rack/shelf ID as backend expects
+        condition: selectedCondition.id,
+        retentionYears: retentionYears,
+        storageNotes: storageNotes,
+        postAnalysisStorage: true, // Mark as traditional medicine storage
+        // TMMRD-specific fields stored in NotebookPageSample.data
+        herbariumSpecimenId: herbariumSpecimenId || null,
+        herbariumNotes: herbariumNotes || null,
+        linkedProject: linkedProject || null,
+      };
+    }
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/${nbId}/samples/assign-storage`,
+      JSON.stringify(payload),
       (response) => {
         setIsApplyingStorage(false);
 
         if (response && response.success) {
-          // Update sample status using bulk endpoint after storage assignment
-          postToOpenElisServer(
-            `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-            JSON.stringify({
-              sampleIds: sampleIds,
-              status: "IN_PROGRESS",
-            }),
-            (statusCode) => {
-              if (statusCode === 200) {
-                notify({
-                  kind: NotificationKinds.success,
-                  title: response.message ||
-                    intl.formatMessage(
-                      {
-                        id: "notebook.page.tradmed.storage.success",
-                        defaultMessage: "Assigned storage for {count} sample(s).",
-                      },
-                      { count: response.updatedCount || selectedSampleIds.length },
-                    ),
-                });
-                setStorageModalOpen(false);
-                setSelectedSampleIds([]);
-                loadPageSamples();
-                if (onProgressUpdate) onProgressUpdate();
-              } else {
-                notify({
-                  kind: NotificationKinds.error,
-                  title: intl.formatMessage({
-                    id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage: "Storage assigned but failed to update sample status.",
-                  }),
-                });
-              }
-            }
-          );
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.tradmed.storage.assignSuccess",
+                defaultMessage:
+                  "Successfully assigned {count} samples to traditional medicine storage ({condition}).",
+              },
+              {
+                count: response.assignedCount || selectedSampleIds.length,
+                condition: selectedCondition.label,
+              },
+            ),
+          });
+          setStorageModalOpen(false);
+          setSelectedSampleIds([]);
+          setWellAssignments({});
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
         } else {
           notify({
             kind: NotificationKinds.error,
-            title: response?.error ||
+            title:
+              response?.error ||
               intl.formatMessage({
-                id: "notebook.page.tradmed.storage.error.failed",
-                defaultMessage: "Failed to assign storage. Please try again.",
+                id: "notebook.tradmed.storage.assignError",
+                defaultMessage: "Failed to assign samples to storage.",
               }),
           });
         }
       },
     );
   }, [
-    storageCondition,
-    storageLocation,
+    storageSelection.box,
+    selectedCondition,
+    wellAssignments,
+    retentionYears,
+    storageNotes,
     herbariumSpecimenId,
     herbariumNotes,
     linkedProject,
-    storageNotes,
-    hasRealPageId,
-    pageData?.id,
-    selectedSampleIds,
+    entryId,
     intl,
+    notify,
     loadPageSamples,
     onProgressUpdate,
-    notify,
   ]);
 
-  // Split samples by storage status
-  const unaccessibleSamples = useMemoHook(
+  // Handle marking samples complete (moving to next page)
+  const handleMarkComplete = useCallback(() => {
+    // Filter samples that can be marked complete: selected, authenticated, not already completed, and have storage condition assigned
+    const samplesToComplete = samples.filter(
+      (s) =>
+        selectedSampleIds.includes(s.id) &&
+        s.status !== "COMPLETED" &&
+        s.authenticationResult === "confirmed" &&
+        (s.storageCondition || s.hasStorageAssignment), // Must have storage condition OR storage assignment
+    );
+
+    if (samplesToComplete.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.storage.noEligibleSamples",
+          defaultMessage:
+            "Selected samples must be authenticated and have storage condition assigned before completing.",
+        }),
+      });
+      return;
+    }
+
+    setIsCompleting(true);
+
+    const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+      JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
+      (response) => {
+        setIsCompleting(false);
+
+        if (response && response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.tradmed.storage.completeSuccess",
+                defaultMessage:
+                  "Successfully marked {count} samples as complete.",
+              },
+              { count: response.updatedCount || sampleIds.length },
+            ),
+          });
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          notify({
+            kind: NotificationKinds.error,
+            title:
+              response?.error ||
+              intl.formatMessage({
+                id: "notebook.tradmed.storage.completeFailed",
+                defaultMessage: "Failed to mark samples complete.",
+              }),
+          });
+        }
+      },
+    );
+  }, [
+    selectedSampleIds,
+    samples,
+    pageData?.id,
+    intl,
+    notify,
+    loadPageSamples,
+    onProgressUpdate,
+  ]);
+
+  // Split samples by storage completion status (only 2 tables: IN_PROGRESS and COMPLETED)
+  // IN_PROGRESS: Authenticated samples (from Page 2) ready for storage assignment
+  // COMPLETED: Samples that have been assigned storage and marked complete to move to Page 4
+
+  const authenticatedInProgressSamples = useMemoHook(
     () =>
       samples.filter(
         (s) =>
-          !s.authenticationResult ||
-          s.authenticationResult !== "confirmed",
+          s.authenticationResult === "confirmed" && s.status !== "COMPLETED",
       ),
     [samples],
   );
 
-  const storedSamples = useMemoHook(
-    () => samples.filter((s) => s.storageCondition && s.status === "COMPLETED"),
-    [samples],
-  );
-
-  const authenticatedNotStoredSamples = useMemoHook(
+  const authenticatedCompletedSamples = useMemoHook(
     () =>
       samples.filter(
         (s) =>
-          s.authenticationResult === "confirmed" &&
-          !s.storageCondition,
+          s.authenticationResult === "confirmed" && s.status === "COMPLETED",
       ),
     [samples],
   );
 
-  const unaccessibleCount = unaccessibleSamples.length;
-  const authenticatedNotStoredCount = authenticatedNotStoredSamples.length;
-  const storedCount = storedSamples.length;
+  const authenticatedInProgressCount = authenticatedInProgressSamples.length;
+  const authenticatedCompletedCount = authenticatedCompletedSamples.length;
 
   // Helper to render authentication status
   const renderAuthenticationStatus = (sample) => {
@@ -416,21 +924,161 @@ function TraditionalMedicineAuthenticationStoragePage({
     );
   };
 
-  // Helper to render storage condition tag
-  const renderStorageConditionTag = (sample) => {
-    if (!sample.storageCondition) {
+  // Helper to render storage status (following MNTD pattern)
+  const renderStorageStatus = (sample) => {
+    const hasStorageAssignment =
+      sample.storageCondition ||
+      sample.hasStorageAssignment ||
+      sample.storageHierarchy;
+
+    // GREEN tag - Completed and stored
+    if (sample.status === "COMPLETED" && hasStorageAssignment) {
       return (
-        <Tag type="gray" size="sm">
+        <Tag type="green" size="sm" renderIcon={Checkmark}>
           <FormattedMessage
-            id="notebook.page.tradmed.storage.notAssigned"
-            defaultMessage="Not Assigned"
+            id="notebook.tradmed.storage.status.sent"
+            defaultMessage="Sent to Page 4"
           />
         </Tag>
       );
     }
+
+    // CYAN tag - In Progress (has storage assignment but not completed)
+    if (hasStorageAssignment) {
+      return (
+        <Tag type="cyan" size="sm" renderIcon={Archive}>
+          <FormattedMessage
+            id="notebook.tradmed.storage.status.inProgress"
+            defaultMessage="In Progress"
+          />
+        </Tag>
+      );
+    }
+
+    // GRAY tag - No storage assignment
     return (
-      <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
-        {sample.storageCondition}
+      <Tag type="gray" size="sm">
+        <FormattedMessage
+          id="notebook.tradmed.storage.status.awaiting"
+          defaultMessage="Awaiting Storage"
+        />
+      </Tag>
+    );
+  };
+
+  // Render storage location tag - following immunology pattern
+  const renderStorageTag = (sample) => {
+    // Check if sample has any storage assignment
+    const hasStorageAssignment =
+      sample.storageCondition ||
+      sample.hasStorageAssignment ||
+      sample.storageHierarchy;
+
+    if (!hasStorageAssignment) {
+      // Debug: Log when no storage assignment found
+      if (sample.id) {
+        console.log("DEBUG - No storage assignment for sample:", {
+          id: sample.id,
+          externalId: sample.externalId,
+          storageCondition: sample.storageCondition,
+          hasStorageAssignment: sample.hasStorageAssignment,
+          storageHierarchy: sample.storageHierarchy,
+        });
+      }
+      return null;
+    }
+
+    // Build hierarchy path like MNTD: Device > Room > Rack > Box
+    let locationPath = "";
+
+    if (sample.storageHierarchy) {
+      const parts = [];
+      // Follow MNTD order: room -> device -> shelf -> rack -> box
+      if (
+        sample.storageHierarchy.room?.label ||
+        sample.storageHierarchy.room?.name
+      )
+        parts.push(
+          sample.storageHierarchy.room.label ||
+            sample.storageHierarchy.room.name,
+        );
+      if (
+        sample.storageHierarchy.device?.label ||
+        sample.storageHierarchy.device?.name
+      )
+        parts.push(
+          sample.storageHierarchy.device.label ||
+            sample.storageHierarchy.device.name,
+        );
+      if (
+        sample.storageHierarchy.shelf?.label ||
+        sample.storageHierarchy.shelf?.name
+      )
+        parts.push(
+          sample.storageHierarchy.shelf.label ||
+            sample.storageHierarchy.shelf.name,
+        );
+      if (
+        sample.storageHierarchy.rack?.label ||
+        sample.storageHierarchy.rack?.name
+      )
+        parts.push(
+          sample.storageHierarchy.rack.label ||
+            sample.storageHierarchy.rack.name,
+        );
+      if (
+        sample.storageHierarchy.box?.label ||
+        sample.storageHierarchy.box?.name
+      )
+        parts.push(
+          sample.storageHierarchy.box.label || sample.storageHierarchy.box.name,
+        );
+
+      locationPath = parts.length > 0 ? parts.join(" > ") : "Storage Assigned";
+      console.log("DEBUG - Storage hierarchy path built:", {
+        sampleId: sample.id,
+        hierarchy: sample.storageHierarchy,
+        path: locationPath,
+      });
+    } else if (sample.storageLocation) {
+      locationPath = sample.storageLocation;
+      console.log("DEBUG - Using storageLocation fallback:", {
+        sampleId: sample.id,
+        storageLocation: sample.storageLocation,
+      });
+    } else {
+      // Fallback for successful storage assignment without full hierarchy details
+      locationPath = "Storage Assigned";
+      console.log("DEBUG - Using generic fallback for sample:", {
+        sampleId: sample.id,
+        hasStorageAssignment: sample.hasStorageAssignment,
+        storageCondition: sample.storageCondition,
+      });
+    }
+
+    return (
+      <Tag type="blue" renderIcon={Location} size="sm" title={locationPath}>
+        {locationPath}
+      </Tag>
+    );
+  };
+
+  // Render storage condition tag - following immunology pattern
+  const renderConditionTag = (sample) => {
+    if (!sample.storageCondition) return null;
+
+    // TMMRD-specific condition labels
+    const conditionLabels = {
+      REFRIGERATED: "2-8°C",
+      ROOM_TEMP: "Room Temp",
+      FROZEN_MINUS20: "-20°C",
+      FROZEN_MINUS80: "-80°C",
+      LIQUID_NITROGEN: "LN₂",
+    };
+
+    return (
+      <Tag type="cool-gray" renderIcon={Temperature} size="sm">
+        {conditionLabels[sample.storageCondition] || sample.storageCondition}
       </Tag>
     );
   };
@@ -461,28 +1109,23 @@ function TraditionalMedicineAuthenticationStoragePage({
               <span className="progress-label">
                 <FormattedMessage
                   id="notebook.page.tradmed.storage.readyForStorage"
-                  defaultMessage="Ready for Storage"
+                  defaultMessage="Ready for Storage Assignment"
                 />
               </span>
-              <span className="progress-value">{authenticatedNotStoredCount}</span>
+              <span className="progress-value">
+                {authenticatedInProgressCount}
+              </span>
             </Tile>
             <Tile className="progress-tile verified">
               <span className="progress-label">
                 <FormattedMessage
                   id="notebook.page.tradmed.storage.stored"
-                  defaultMessage="Stored"
+                  defaultMessage="Storage Complete"
                 />
               </span>
-              <span className="progress-value">{storedCount}</span>
-            </Tile>
-            <Tile className="progress-tile pending">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="notebook.page.tradmed.storage.needsAuth"
-                  defaultMessage="Needs Authentication"
-                />
+              <span className="progress-value">
+                {authenticatedCompletedCount}
               </span>
-              <span className="progress-value">{unaccessibleCount}</span>
             </Tile>
           </div>
         </Column>
@@ -504,6 +1147,22 @@ function TraditionalMedicineAuthenticationStoragePage({
           />
         </Button>
 
+        {selectedSampleIds.length > 0 && (
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={isCompleting || !pageData?.id}
+          >
+            <FormattedMessage
+              id="notebook.tradmed.storage.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        )}
+
         <Button
           kind="ghost"
           size="sm"
@@ -518,92 +1177,39 @@ function TraditionalMedicineAuthenticationStoragePage({
         </Button>
       </div>
 
-
-      {/* Needs Authentication Section */}
+      {/* Authenticated Samples Section - IN PROGRESS (Ready for Storage Assignment) */}
       <div className="sample-table-section">
         <div className="table-section-header">
           <h5>
             <FormattedMessage
-              id="notebook.page.tradmed.storage.needsAuth.title"
-              defaultMessage="Samples Awaiting Authentication"
-            />
-            <Tag type="gray" size="sm" className="count-tag">
-              {unaccessibleCount}
-            </Tag>
-          </h5>
-          <p className="table-section-description">
-            <FormattedMessage
-              id="notebook.page.tradmed.storage.needsAuth.description"
-              defaultMessage="Samples that have not yet been authenticated on Page 1. Please complete authentication before proceeding to storage."
-            />
-          </p>
-        </div>
-        <div className="sample-grid-container">
-          {!loading && unaccessibleSamples.length === 0 ? (
-            <div className="empty-table-state">
-              <p>
-                <FormattedMessage
-                  id="notebook.page.tradmed.storage.needsAuth.empty"
-                  defaultMessage="No samples awaiting authentication."
-                />
-              </p>
-            </div>
-          ) : (
-            <SampleGrid
-              gridId="unaccessible-samples"
-              samples={unaccessibleSamples}
-              selectedIds={[]}
-              showSelection={false}
-              loading={loading}
-              columns={[
-                { key: "accessionNumber", header: "Accession #" },
-                { key: "externalId", header: "Sample ID" },
-                { key: "localName", header: "Local Name" },
-                { key: "scientificName", header: "Scientific Name" },
-                {
-                  key: "authenticationStatus",
-                  header: "Auth Status",
-                  render: (_value, row) => renderAuthenticationStatus(row),
-                },
-              ]}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Authenticated Not Yet Stored Section */}
-      <div className="sample-table-section">
-        <div className="table-section-header">
-          <h5>
-            <FormattedMessage
-              id="notebook.page.tradmed.storage.readyForStorage.title"
+              id="notebook.page.tradmed.storage.inProgress.title"
               defaultMessage="Authenticated - Ready for Storage Assignment"
             />
             <Tag type="blue" size="sm" className="count-tag">
-              {authenticatedNotStoredCount}
+              {authenticatedInProgressCount}
             </Tag>
           </h5>
           <p className="table-section-description">
             <FormattedMessage
-              id="notebook.page.tradmed.storage.readyForStorage.description"
-              defaultMessage="Samples that have been authenticated and are ready for storage location assignment and herbarium cataloging."
+              id="notebook.page.tradmed.storage.inProgress.description"
+              defaultMessage="Samples authenticated from Page 2. Select samples and use 'Assign Storage' to designate storage locations and herbarium cataloging, then 'Mark Complete' to move to next page."
             />
           </p>
         </div>
         <div className="sample-grid-container">
-          {!loading && authenticatedNotStoredSamples.length === 0 ? (
+          {!loading && authenticatedInProgressSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
-                  id="notebook.page.tradmed.storage.readyForStorage.empty"
-                  defaultMessage="No authenticated samples awaiting storage assignment."
+                  id="notebook.page.tradmed.storage.inProgress.empty"
+                  defaultMessage="No authenticated samples awaiting storage assignment. Complete authentication on Page 2 first."
                 />
               </p>
             </div>
           ) : (
             <SampleGrid
-              gridId="ready-for-storage-samples"
-              samples={authenticatedNotStoredSamples}
+              gridId="authenticated-in-progress-samples"
+              samples={authenticatedInProgressSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               showSelection={true}
@@ -614,9 +1220,41 @@ function TraditionalMedicineAuthenticationStoragePage({
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
                 {
-                  key: "authenticationStatus",
-                  header: "Auth Status",
-                  render: (_value, row) => renderAuthenticationStatus(row),
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStorageStatus(sample),
+                },
+                {
+                  key: "storage",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.storage.column.storage",
+                    defaultMessage: "Storage Location",
+                  }),
+                  render: (_value, sample) => (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "4px",
+                        alignItems: "center",
+                      }}
+                    >
+                      {renderStorageTag(sample)}
+                      {renderConditionTag(sample)}
+                    </div>
+                  ),
+                },
+                {
+                  key: "herbariumSpecimenId",
+                  header: "Herbarium ID",
+                  render: (_value, sample) => {
+                    if (!sample.herbariumSpecimenId) {
+                      return <span>—</span>;
+                    }
+                    return <span>{sample.herbariumSpecimenId}</span>;
+                  },
                 },
               ]}
             />
@@ -624,39 +1262,30 @@ function TraditionalMedicineAuthenticationStoragePage({
         </div>
       </div>
 
-      {/* Stored Samples Section */}
-      <div className="sample-table-section">
-        <div className="table-section-header">
-          <h5>
-            <FormattedMessage
-              id="notebook.page.tradmed.storage.stored.title"
-              defaultMessage="Stored & Catalogued Specimens"
-            />
-            <Tag type="green" size="sm" className="count-tag">
-              {storedCount}
-            </Tag>
-          </h5>
-          <p className="table-section-description">
-            <FormattedMessage
-              id="notebook.page.tradmed.storage.stored.description"
-              defaultMessage="Samples that have been assigned to storage locations and herbarium placements."
-            />
-          </p>
-        </div>
-        <div className="sample-grid-container">
-          {!loading && storedSamples.length === 0 ? (
-            <div className="empty-table-state">
-              <p>
-                <FormattedMessage
-                  id="notebook.page.tradmed.storage.stored.empty"
-                  defaultMessage="No samples have been assigned to storage yet."
-                />
-              </p>
-            </div>
-          ) : (
+      {/* Authenticated Samples Section - COMPLETED */}
+      {authenticatedCompletedCount > 0 && (
+        <div className="sample-table-section">
+          <div className="table-section-header">
+            <h5>
+              <FormattedMessage
+                id="notebook.page.tradmed.storage.completed.title"
+                defaultMessage="Storage Assignment Complete"
+              />
+              <Tag type="green" size="sm" className="count-tag">
+                {authenticatedCompletedCount}
+              </Tag>
+            </h5>
+            <p className="table-section-description">
+              <FormattedMessage
+                id="notebook.page.tradmed.storage.completed.description"
+                defaultMessage="Samples with storage assigned and marked complete, ready to proceed to Page 4 (Preparation)."
+              />
+            </p>
+          </div>
+          <div className="sample-grid-container">
             <SampleGrid
-              gridId="stored-samples"
-              samples={storedSamples}
+              gridId="authenticated-completed-samples"
+              samples={authenticatedCompletedSamples}
               showSelection={false}
               loading={loading}
               columns={[
@@ -664,23 +1293,57 @@ function TraditionalMedicineAuthenticationStoragePage({
                 { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
-                { key: "storageCondition", header: "Storage Condition" },
-                { key: "storageLocation", header: "Location" },
-                { key: "herbariumSpecimenId", header: "Herbarium ID" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStorageStatus(sample),
+                },
+                {
+                  key: "storage",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.storage.column.storage",
+                    defaultMessage: "Storage Location",
+                  }),
+                  render: (_value, sample) => (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "4px",
+                        alignItems: "center",
+                      }}
+                    >
+                      {renderStorageTag(sample)}
+                      {renderConditionTag(sample)}
+                    </div>
+                  ),
+                },
+                {
+                  key: "herbariumSpecimenId",
+                  header: "Herbarium ID",
+                  render: (_value, sample) => {
+                    if (!sample.herbariumSpecimenId) {
+                      return <span>—</span>;
+                    }
+                    return <span>{sample.herbariumSpecimenId}</span>;
+                  },
+                },
               ]}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Storage Assignment Modal */}
       <Modal
         open={storageModalOpen}
         onRequestClose={() => setStorageModalOpen(false)}
-        onRequestSubmit={applyStorage}
+        onRequestSubmit={handleAssignStorage}
         modalHeading={intl.formatMessage({
-          id: "notebook.page.tradmed.storage.modal.title",
-          defaultMessage: "Assign Storage & Herbarium Placement",
+          id: "notebook.tradmed.storage.storageModal.title",
+          defaultMessage: "Assign Traditional Medicine Storage",
         })}
         primaryButtonText={
           isApplyingStorage
@@ -689,76 +1352,307 @@ function TraditionalMedicineAuthenticationStoragePage({
                 defaultMessage: "Assigning...",
               })
             : intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.assign",
-                defaultMessage: "Assign Storage",
+                id: "notebook.tradmed.storage.storageModal.assign",
+                defaultMessage: "Assign to Storage",
               })
         }
         secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
+          id: "common.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplyingStorage}
+        primaryButtonDisabled={
+          !selectedCondition ||
+          isApplyingStorage ||
+          // For extracts/compounds requiring vials: need box and well assignments
+          ((selectedCondition?.category === "extracts" ||
+            selectedCondition?.category === "compounds") &&
+            (!storageSelection.box ||
+              Object.keys(wellAssignments).length === 0)) ||
+          // For other storage types: need rack/shelf level selection
+          (selectedCondition?.category !== "extracts" &&
+            selectedCondition?.category !== "compounds" &&
+            !storageSelection.rack &&
+            !storageSelection.shelf &&
+            !storageSelection.device)
+        }
         size="md"
       >
-        <div style={{ marginBottom: "1rem" }}>
-          <p>
-            <FormattedMessage
-              id="notebook.page.tradmed.storage.modal.description"
-              defaultMessage="Assign storage conditions and herbarium placement for {count} selected sample(s). Per SRS requirements, specify storage condition, location, and herbarium cataloging details."
-              values={{ count: selectedSampleIds.length }}
-            />
-          </p>
-        </div>
+        <p className="modal-description">
+          <FormattedMessage
+            id="notebook.tradmed.storage.storageModal.description"
+            defaultMessage="Store {count} traditional medicine samples under defined conditions. Select appropriate storage based on sample type and retention requirements."
+            values={{ count: selectedSampleIds.length }}
+          />
+        </p>
 
-        {isApplyingStorage && <Loading withOverlay={false} small />}
+        <Grid fullWidth>
+          {/* Storage Location Selection */}
+          <Column lg={8} md={4} sm={4}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h5 style={{ marginBottom: "0.5rem" }}>
+                <Location size={16} style={{ marginRight: "0.5rem" }} />
+                <FormattedMessage
+                  id="notebook.tradmed.storage.storageLocation"
+                  defaultMessage="Traditional Medicine Storage Location"
+                />
+              </h5>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  color: "#525252",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.tradmed.storage.locationHint"
+                  defaultMessage="Select storage based on sample type: Herbarium cabinets for specimens, storage cabinets for plant materials, refrigerated units for extracts."
+                />
+              </p>
+              <StorageHierarchySelector
+                onSelectionChange={handleStorageSelectionChange}
+                entryId={entryId}
+                onBoxLayoutLoaded={handleBoxLayoutLoaded}
+                boxRequired={false}
+                showPath={true}
+              />
+            </div>
+          </Column>
 
-        <Grid fullWidth narrow>
+          {/* TMMRD Storage Assignment Preview */}
+          <Column lg={8} md={4} sm={4}>
+            {selectedCondition ? (
+              <div>
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <h5>
+                    <Archive size={16} style={{ marginRight: "0.5rem" }} />
+                    <FormattedMessage
+                      id="notebook.tradmed.storage.assignmentPreview"
+                      defaultMessage="Storage Assignment"
+                    />
+                  </h5>
+                </div>
+
+                <div
+                  style={{
+                    padding: "1rem",
+                    backgroundColor: "#f4f4f4",
+                    borderRadius: "4px",
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <strong>
+                      <FormattedMessage
+                        id="notebook.tradmed.storage.storageType"
+                        defaultMessage="Storage Type:"
+                      />
+                    </strong>{" "}
+                    {selectedCondition.label}
+                  </div>
+
+                  <div style={{ marginBottom: "0.5rem" }}>
+                    <strong>
+                      <FormattedMessage
+                        id="notebook.tradmed.storage.sampleCount"
+                        defaultMessage="Samples to Store:"
+                      />
+                    </strong>{" "}
+                    {selectedSampleIds.length}
+                  </div>
+
+                  {storageSelection.room && (
+                    <div style={{ marginBottom: "0.5rem" }}>
+                      <strong>
+                        <FormattedMessage
+                          id="notebook.tradmed.storage.location"
+                          defaultMessage="Location:"
+                        />
+                      </strong>{" "}
+                      {storageSelection.room.name}
+                      {storageSelection.device &&
+                        ` > ${storageSelection.device.name}`}
+                      {storageSelection.shelf &&
+                        ` > ${storageSelection.shelf.name}`}
+                      {storageSelection.rack &&
+                        ` > ${storageSelection.rack.name}`}
+                      {storageSelection.box &&
+                        ` > ${storageSelection.box.name}`}
+                    </div>
+                  )}
+
+                  {!storageSelection.rack &&
+                    !storageSelection.shelf &&
+                    storageSelection.room &&
+                    selectedCondition?.category !== "extracts" &&
+                    selectedCondition?.category !== "compounds" && (
+                      <div
+                        style={{
+                          marginBottom: "0.5rem",
+                          color: "#da1e28",
+                          fontSize: "0.875rem",
+                        }}
+                      >
+                        <FormattedMessage
+                          id="notebook.tradmed.storage.needsRackSelection"
+                          defaultMessage="Please select down to shelf/rack level for traditional medicine storage."
+                        />
+                      </div>
+                    )}
+
+                  {/* Show box layout only for extract/compound storage that uses vials */}
+                  {storageSelection.box &&
+                  (selectedCondition.category === "extracts" ||
+                    selectedCondition.category === "compounds") ? (
+                    <div>
+                      <div
+                        style={{ marginTop: "1rem", marginBottom: "0.5rem" }}
+                      >
+                        <Button
+                          kind="tertiary"
+                          size="sm"
+                          renderIcon={Renew}
+                          onClick={handleAutoPopulate}
+                          disabled={selectedSampleIds.length === 0}
+                        >
+                          <FormattedMessage
+                            id="notebook.tradmed.storage.autoAssignVials"
+                            defaultMessage="Auto-Assign Vial Positions"
+                          />
+                        </Button>
+                      </div>
+
+                      <BoxLayoutViewer
+                        boxId={storageSelection.box.id}
+                        layout={getCombinedLayout()}
+                        rows={storageSelection.box.rows || 8}
+                        columns={storageSelection.box.columns || 12}
+                        onWellClick={handleWellClick}
+                      />
+
+                      <div
+                        style={{
+                          marginTop: "0.5rem",
+                          fontSize: "0.875rem",
+                          color: "#525252",
+                        }}
+                      >
+                        <FormattedMessage
+                          id="notebook.tradmed.storage.vialAssignments"
+                          defaultMessage="{assigned} of {total} samples assigned to vials"
+                          values={{
+                            assigned: Object.keys(wellAssignments).length,
+                            total: selectedSampleIds.length,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        marginTop: "1rem",
+                        fontSize: "0.875rem",
+                        color: "#525252",
+                      }}
+                    >
+                      <FormattedMessage
+                        id="notebook.tradmed.storage.bulkAssignment"
+                        defaultMessage="Samples will be assigned to the selected storage location."
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "2rem",
+                  textAlign: "center",
+                  backgroundColor: "#f4f4f4",
+                  borderRadius: "4px",
+                }}
+              >
+                <Temperature size={32} />
+                <p style={{ marginTop: "0.5rem", color: "#525252" }}>
+                  <FormattedMessage
+                    id="notebook.tradmed.storage.selectConditionFirst"
+                    defaultMessage="Select a storage condition to see assignment details"
+                  />
+                </p>
+              </div>
+            )}
+          </Column>
+
+          {/* Storage Settings */}
           <Column lg={16} md={8} sm={4}>
+            <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+              <FormattedMessage
+                id="notebook.tradmed.storage.storageSettings"
+                defaultMessage="Storage Settings"
+              />
+            </h5>
+          </Column>
+
+          <Column lg={8} md={4} sm={4}>
             <Dropdown
-              id="storage-condition"
+              id="storage-condition-dropdown"
               titleText={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.condition",
+                id: "notebook.tradmed.storage.condition",
                 defaultMessage: "Storage Condition *",
               })}
               label={intl.formatMessage({
-                id: "label.select",
-                defaultMessage: "Select...",
+                id: "notebook.tradmed.storage.selectCondition",
+                defaultMessage: "Select condition...",
               })}
               items={storageConditionOptions}
               itemToString={(item) => (item ? item.label : "")}
-              selectedItem={storageCondition}
-              onChange={({ selectedItem }) => setStorageCondition(selectedItem)}
+              selectedItem={selectedCondition}
+              onChange={({ selectedItem }) =>
+                setSelectedCondition(selectedItem)
+              }
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
-            <Dropdown
-              id="storage-location"
-              titleText={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.location",
-                defaultMessage: "Storage Location",
-              })}
+          <Column lg={8} md={4} sm={4}>
+            <NumberInput
+              id="retention-years"
               label={intl.formatMessage({
-                id: "label.select",
-                defaultMessage: "Select...",
+                id: "notebook.tradmed.storage.retentionYears",
+                defaultMessage: "Retention Period (Years)",
               })}
-              items={storageLocationOptions}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItem={
-                storageLocationOptions.find((l) => l.id === storageLocation) ||
-                null
-              }
-              onChange={({ selectedItem }) =>
-                setStorageLocation(selectedItem?.id || "")
-              }
+              value={retentionYears}
+              min={1}
+              max={30}
+              step={1}
+              onChange={(e, { value }) => setRetentionYears(value)}
+              helperText={intl.formatMessage(
+                {
+                  id: "notebook.tradmed.storage.expiryDate",
+                  defaultMessage: "Expiry date will be: {date}",
+                },
+                {
+                  date: new Date(
+                    Date.now() + retentionYears * 365 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString(),
+                },
+              )}
             />
+          </Column>
+
+          {/* Traditional Medicine Specific Fields */}
+          <Column lg={16} md={8} sm={4}>
+            <h5 style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+              <FormattedMessage
+                id="notebook.tradmed.storage.herbariumSection"
+                defaultMessage="Herbarium & Documentation"
+              />
+            </h5>
           </Column>
 
           <Column lg={8} md={4} sm={4}>
             <TextInput
               id="herbarium-specimen-id"
               labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.herbariumId",
+                id: "notebook.tradmed.storage.herbariumId",
                 defaultMessage: "Herbarium Specimen ID",
               })}
               value={herbariumSpecimenId}
@@ -771,7 +1665,7 @@ function TraditionalMedicineAuthenticationStoragePage({
             <TextInput
               id="linked-project"
               labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.linkedProject",
+                id: "notebook.tradmed.storage.linkedProject",
                 defaultMessage: "Linked Project",
               })}
               value={linkedProject}
@@ -780,39 +1674,31 @@ function TraditionalMedicineAuthenticationStoragePage({
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={8} md={4} sm={4}>
             <TextArea
               id="herbarium-notes"
               labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.herbariumNotes",
+                id: "notebook.tradmed.storage.herbariumNotes",
                 defaultMessage: "Herbarium Notes",
               })}
               value={herbariumNotes}
               onChange={(e) => setHerbariumNotes(e.target.value)}
               rows={2}
-              placeholder={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.herbariumNotesPlaceholder",
-                defaultMessage:
-                  "Specimen mounting, labeling, condition notes, etc.",
-              })}
+              placeholder="Specimen mounting, labeling, condition notes, etc."
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={8} md={4} sm={4}>
             <TextArea
               id="storage-notes"
               labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.storageNotes",
+                id: "notebook.tradmed.storage.notes",
                 defaultMessage: "Storage Notes",
               })}
               value={storageNotes}
               onChange={(e) => setStorageNotes(e.target.value)}
               rows={2}
-              placeholder={intl.formatMessage({
-                id: "notebook.page.tradmed.storage.modal.storageNotesPlaceholder",
-                defaultMessage:
-                  "Storage condition details, environmental requirements, etc.",
-              })}
+              placeholder="Storage condition details, environmental requirements, etc."
             />
           </Column>
         </Grid>

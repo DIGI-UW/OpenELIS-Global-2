@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -55,16 +62,14 @@ function TraditionalMedicinePreparationPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage3to4,
-  } = useTMMRDPermissions();
+  const { getPagePermissionLevel, canSaveData, canAccessStage3to4 } =
+    useTMMRDPermissions();
 
   // STAGE 3-4 allowed roles per TMMRD SRS Section 11 - Lab Technicians and Researchers
   const allowedRoles = [
@@ -72,7 +77,7 @@ function TraditionalMedicinePreparationPage({
     "Researcher",
     "Pharmacognosist",
     "Lab Manager",
-    "Principal Investigator"
+    "Principal Investigator",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);
@@ -99,6 +104,7 @@ function TraditionalMedicinePreparationPage({
   // Preparation modal state
   const [preparationModalOpen, setPreparationModalOpen] = useState(false);
   const [isApplyingPrep, setIsApplyingPrep] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Preparation form fields
   const [processingMethod, setProcessingMethod] = useState(null);
@@ -241,9 +247,11 @@ function TraditionalMedicinePreparationPage({
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
     const yieldPercent =
       weightBefore && weightAfter
-        ? (((parseFloat(weightBefore) - parseFloat(weightAfter)) /
-            parseFloat(weightBefore)) *
-            100).toFixed(2)
+        ? (
+            ((parseFloat(weightBefore) - parseFloat(weightAfter)) /
+              parseFloat(weightBefore)) *
+            100
+          ).toFixed(2)
         : null;
 
     postToOpenElisServerJsonResponse(
@@ -276,13 +284,17 @@ function TraditionalMedicinePreparationPage({
               if (statusCode === 200) {
                 notify({
                   kind: NotificationKinds.success,
-                  title: response.message ||
+                  title:
+                    response.message ||
                     intl.formatMessage(
                       {
                         id: "notebook.page.tradmed.prep.success",
                         defaultMessage: "Prepared {count} sample(s).",
                       },
-                      { count: response.updatedCount || selectedSampleIds.length },
+                      {
+                        count:
+                          response.updatedCount || selectedSampleIds.length,
+                      },
                     ),
                 });
                 setPreparationModalOpen(false);
@@ -294,20 +306,21 @@ function TraditionalMedicinePreparationPage({
                   kind: NotificationKinds.error,
                   title: intl.formatMessage({
                     id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage: "Preparation recorded but failed to update sample status.",
+                    defaultMessage:
+                      "Preparation recorded but failed to update sample status.",
                   }),
                 });
               }
-            }
+            },
           );
         } else {
           notify({
             kind: NotificationKinds.error,
-            title: response?.error ||
+            title:
+              response?.error ||
               intl.formatMessage({
                 id: "notebook.page.tradmed.prep.error.failed",
-                defaultMessage:
-                  "Failed to prepare samples. Please try again.",
+                defaultMessage: "Failed to prepare samples. Please try again.",
               }),
           });
         }
@@ -330,11 +343,87 @@ function TraditionalMedicinePreparationPage({
     notify,
   ]);
 
+  // Handle marking prepared samples complete (moving to next page)
+  const handleMarkComplete = useCallback(() => {
+    // Filter samples that can be marked complete: selected, prepared, and not already completed
+    const samplesToComplete = samples.filter(
+      (s) =>
+        selectedSampleIds.includes(s.id) &&
+        s.processingMethod &&
+        s.status !== "COMPLETED",
+    );
+
+    if (samplesToComplete.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.tradmed.prep.noEligibleSamples",
+          defaultMessage:
+            "Selected samples must have processing method recorded before completing.",
+        }),
+      });
+      return;
+    }
+
+    setIsCompleting(true);
+
+    const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+      JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
+      (response) => {
+        setIsCompleting(false);
+
+        if (response && response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.tradmed.prep.completeSuccess",
+                defaultMessage:
+                  "Successfully marked {count} samples as complete.",
+              },
+              { count: response.updatedCount || sampleIds.length },
+            ),
+          });
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) {
+            onProgressUpdate();
+          }
+        } else {
+          notify({
+            kind: NotificationKinds.error,
+            title:
+              response?.error ||
+              intl.formatMessage({
+                id: "notebook.tradmed.prep.completeFailed",
+                defaultMessage: "Failed to mark samples complete.",
+              }),
+          });
+        }
+      },
+    );
+  }, [
+    selectedSampleIds,
+    samples,
+    pageData?.id,
+    intl,
+    notify,
+    loadPageSamples,
+    onProgressUpdate,
+  ]);
+
   const unpreparedSamples = useMemo(
     () => samples.filter((s) => !s.processingMethod),
     [samples],
   );
-  const preparedSamples = useMemo(
+  const preparedInProgressSamples = useMemo(
+    () => samples.filter((s) => s.processingMethod && s.status !== "COMPLETED"),
+    [samples],
+  );
+  const preparedCompletedSamples = useMemo(
     () => samples.filter((s) => s.processingMethod && s.status === "COMPLETED"),
     [samples],
   );
@@ -386,7 +475,9 @@ function TraditionalMedicinePreparationPage({
                   defaultMessage="Prepared"
                 />
               </span>
-              <span className="progress-value">{preparedSamples.length}</span>
+              <span className="progress-value">
+                {preparedInProgressSamples.length}
+              </span>
             </Tile>
           </div>
         </Column>
@@ -420,7 +511,6 @@ function TraditionalMedicinePreparationPage({
           />
         </Button>
       </div>
-
 
       <div className="sample-table-section">
         <div className="table-section-header">
@@ -463,20 +553,47 @@ function TraditionalMedicinePreparationPage({
         </div>
       </div>
 
+      {/* Prepared Samples Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <h5>
-            <FormattedMessage
-              id="notebook.page.tradmed.prep.prepared.title"
-              defaultMessage="Prepared Samples"
-            />
-            <Tag type="green" size="sm" className="count-tag">
-              {preparedSamples.length}
-            </Tag>
-          </h5>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <div>
+              <h5>
+                <FormattedMessage
+                  id="notebook.page.tradmed.prep.prepared.inProgress.title"
+                  defaultMessage="Prepared (Pending Completion)"
+                />
+                <Tag type="blue" size="sm" className="count-tag">
+                  {preparedInProgressSamples.length}
+                </Tag>
+              </h5>
+            </div>
+            {selectedSampleIds.length > 0 && (
+              <Button
+                kind="tertiary"
+                size="sm"
+                renderIcon={CheckmarkFilled}
+                onClick={handleMarkComplete}
+                disabled={isCompleting || !hasRealPageId}
+              >
+                <FormattedMessage
+                  id="notebook.tradmed.prep.markComplete"
+                  defaultMessage="Mark Complete ({count})"
+                  values={{ count: selectedSampleIds.length }}
+                />
+              </Button>
+            )}
+          </div>
         </div>
         <div className="sample-grid-container">
-          {!loading && preparedSamples.length === 0 ? (
+          {!loading && preparedInProgressSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -487,9 +604,9 @@ function TraditionalMedicinePreparationPage({
             </div>
           ) : (
             <SampleGrid
-              gridId="prepared-samples"
-              samples={preparedSamples}
-              showSelection={false}
+              gridId="prepared-in-progress-samples"
+              samples={preparedInProgressSamples}
+              onSelectionChange={setSelectedSampleIds}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
@@ -508,6 +625,44 @@ function TraditionalMedicinePreparationPage({
           )}
         </div>
       </div>
+
+      {/* Prepared Samples Section - COMPLETED */}
+      {preparedCompletedSamples.length > 0 && (
+        <div className="sample-table-section">
+          <div className="table-section-header">
+            <h5>
+              <FormattedMessage
+                id="notebook.page.tradmed.prep.prepared.completed.title"
+                defaultMessage="Preparation Completion Finalized"
+              />
+              <Tag type="green" size="sm" className="count-tag">
+                {preparedCompletedSamples.length}
+              </Tag>
+            </h5>
+          </div>
+          <div className="sample-grid-container">
+            <SampleGrid
+              gridId="prepared-completed-samples"
+              samples={preparedCompletedSamples}
+              showSelection={false}
+              loading={loading}
+              columns={[
+                { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
+                { key: "localName", header: "Local Name" },
+                { key: "processingMethod", header: "Processing Method" },
+                { key: "weightBefore", header: "Weight Before (g)" },
+                { key: "weightAfter", header: "Weight After (g)" },
+                {
+                  key: "yieldPercent",
+                  header: "Yield %",
+                  render: (_value, row) => renderYieldTag(row),
+                },
+              ]}
+            />
+          </div>
+        </div>
+      )}
 
       <Modal
         open={preparationModalOpen}
@@ -547,8 +702,8 @@ function TraditionalMedicinePreparationPage({
 
         {isApplyingPrep && <Loading withOverlay={false} small />}
 
-        <Grid fullWidth narrow>
-          <Column lg={16} md={8} sm={4}>
+        <Grid narrow>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="processing-method"
               titleText={intl.formatMessage({
@@ -566,7 +721,7 @@ function TraditionalMedicinePreparationPage({
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="drying-method"
               titleText={intl.formatMessage({
@@ -584,7 +739,7 @@ function TraditionalMedicinePreparationPage({
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <NumberInput
               id="weight-before"
               label={intl.formatMessage({
@@ -592,12 +747,16 @@ function TraditionalMedicinePreparationPage({
                 defaultMessage: "Weight Before (g)",
               })}
               value={weightBefore}
-              onChange={(e) => setWeightBefore(e.imaginaryTarget?.value || e.target?.value || "")}
+              onChange={(e) =>
+                setWeightBefore(
+                  e.imaginaryTarget?.value || e.target?.value || "",
+                )
+              }
               step={0.1}
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <NumberInput
               id="weight-after"
               label={intl.formatMessage({
@@ -605,12 +764,16 @@ function TraditionalMedicinePreparationPage({
                 defaultMessage: "Weight After (g)",
               })}
               value={weightAfter}
-              onChange={(e) => setWeightAfter(e.imaginaryTarget?.value || e.target?.value || "")}
+              onChange={(e) =>
+                setWeightAfter(
+                  e.imaginaryTarget?.value || e.target?.value || "",
+                )
+              }
               step={0.1}
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <NumberInput
               id="drying-temp"
               label={intl.formatMessage({
@@ -618,12 +781,16 @@ function TraditionalMedicinePreparationPage({
                 defaultMessage: "Drying Temperature (°C)",
               })}
               value={dryingTemperature}
-              onChange={(e) => setDryingTemperature(e.imaginaryTarget?.value || e.target?.value || "")}
+              onChange={(e) =>
+                setDryingTemperature(
+                  e.imaginaryTarget?.value || e.target?.value || "",
+                )
+              }
               step={1}
             />
           </Column>
 
-          <Column lg={8} md={4} sm={4}>
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <TextInput
               id="drying-duration"
               labelText={intl.formatMessage({
@@ -636,7 +803,7 @@ function TraditionalMedicinePreparationPage({
             />
           </Column>
 
-          <Column lg={16} md={8} sm={4}>
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea
               id="prep-notes"
               labelText={intl.formatMessage({

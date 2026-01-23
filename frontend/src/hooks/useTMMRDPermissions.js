@@ -1,4 +1,4 @@
-import { usePermissions } from './usePermissions';
+import { usePermissions } from "./usePermissions";
 
 /**
  * TMMRD (Traditional Medicine & Modern Research Development) Permissions Hook
@@ -24,13 +24,13 @@ export const useTMMRDPermissions = () => {
 
   // Permission hierarchy (lowest to highest)
   const permissionHierarchy = [
-    "VIEW",           // Read-only
-    "LIMITED",        // Minimal modifications
-    "REGISTER",       // Can import/register samples
-    "UPDATE",         // Can edit data
-    "YES",           // Can perform work (legacy compatibility)
-    "APPROVE",        // Can approve operations
-    "FULL"           // Complete control
+    "VIEW", // Read-only
+    "LIMITED", // Minimal modifications
+    "REGISTER", // Can import/register samples
+    "UPDATE", // Can edit data
+    "YES", // Can perform work (legacy compatibility)
+    "APPROVE", // Can approve operations
+    "FULL", // Complete control
   ];
 
   /**
@@ -73,14 +73,18 @@ export const useTMMRDPermissions = () => {
    * Check if user can save/update data
    */
   const canSaveData = (permissionLevel) => {
-    return ["UPDATE", "YES", "REGISTER", "APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+    return ["UPDATE", "YES", "REGISTER", "APPROVE", "FULL"].includes(
+      permissionLevel?.toUpperCase(),
+    );
   };
 
   /**
    * Check if user can register/import samples
    */
   const canRegisterData = (permissionLevel) => {
-    return ["REGISTER", "UPDATE", "YES", "APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+    return ["REGISTER", "UPDATE", "YES", "APPROVE", "FULL"].includes(
+      permissionLevel?.toUpperCase(),
+    );
   };
 
   /**
@@ -108,14 +112,18 @@ export const useTMMRDPermissions = () => {
    * Check if user can modify data
    */
   const canModify = (permissionLevel) => {
-    return ["LIMITED", "UPDATE", "YES", "REGISTER", "APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+    return ["LIMITED", "UPDATE", "YES", "REGISTER", "APPROVE", "FULL"].includes(
+      permissionLevel?.toUpperCase(),
+    );
   };
 
   /**
    * Check if user can perform work (legacy YES permission)
    */
   const canPerformWork = (permissionLevel) => {
-    return ["YES", "UPDATE", "REGISTER", "APPROVE", "FULL"].includes(permissionLevel?.toUpperCase());
+    return ["YES", "UPDATE", "REGISTER", "APPROVE", "FULL"].includes(
+      permissionLevel?.toUpperCase(),
+    );
   };
 
   // Note: hasRole and hasAnyRole are now provided by usePermissions() hook
@@ -149,31 +157,58 @@ export const useTMMRDPermissions = () => {
    */
   const canAccessStage1 = () => {
     // Sample Intake & Registration - Lab Technicians lead, others view
-    const allowedRoles = ["Lab Technician", "Researcher", "Pharmacognosist", "Lab Manager", "Principal Investigator"];
+    const allowedRoles = [
+      "Lab Technician",
+      "Researcher",
+      "Pharmacognosist",
+      "Lab Manager",
+      "Principal Investigator",
+    ];
     return hasAnyRole(allowedRoles);
   };
 
   const canAccessStage2 = () => {
     // Authentication & Storage - Pharmacognosists lead
-    const allowedRoles = ["Pharmacognosist", "Lab Manager", "Principal Investigator"];
+    const allowedRoles = [
+      "Pharmacognosist",
+      "Lab Manager",
+      "Principal Investigator",
+    ];
     return hasAnyRole(allowedRoles);
   };
 
   const canAccessStage3to4 = () => {
     // Preparation & Extraction - Lab Technicians and Researchers
-    const allowedRoles = ["Lab Technician", "Researcher", "Pharmacognosist", "Lab Manager", "Principal Investigator"];
+    const allowedRoles = [
+      "Lab Technician",
+      "Researcher",
+      "Pharmacognosist",
+      "Lab Manager",
+      "Principal Investigator",
+    ];
     return hasAnyRole(allowedRoles);
   };
 
   const canAccessStage5to6 = () => {
     // Analytics & Testing - Researchers lead
-    const allowedRoles = ["Researcher", "Pharmacognosist", "Lab Manager", "Principal Investigator"];
+    const allowedRoles = [
+      "Researcher",
+      "Pharmacognosist",
+      "Lab Manager",
+      "Principal Investigator",
+    ];
     return hasAnyRole(allowedRoles);
   };
 
   const canAccessStage7 = () => {
     // Formulation - Pharmacognosists lead
-    const allowedRoles = ["Lab Technician", "Researcher", "Pharmacognosist", "Lab Manager", "Principal Investigator"];
+    const allowedRoles = [
+      "Lab Technician",
+      "Researcher",
+      "Pharmacognosist",
+      "Lab Manager",
+      "Principal Investigator",
+    ];
     return hasAnyRole(allowedRoles);
   };
 
@@ -218,7 +253,7 @@ export const useTMMRDPermissions = () => {
     canAccessStage8,
 
     // Utility
-    permissionHierarchy
+    permissionHierarchy,
   };
 };
 

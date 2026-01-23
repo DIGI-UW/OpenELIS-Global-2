@@ -66,7 +66,8 @@ function TraditionalMedicineSampleCreationPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
@@ -87,7 +88,7 @@ function TraditionalMedicineSampleCreationPage({
     "Researcher",
     "Pharmacognosist",
     "Lab Manager",
-    "Principal Investigator"
+    "Principal Investigator",
   ];
 
   const canAccessPage = hasAnyRole(allowedRoles);
@@ -104,7 +105,9 @@ function TraditionalMedicineSampleCreationPage({
   }
 
   // Get user's action-level permission for this page
-  const pagePermissionLevel = getPagePermissionLevel("Sample Intake & Registration");
+  const pagePermissionLevel = getPagePermissionLevel(
+    "Sample Intake & Registration",
+  );
   const canImportSamples = canRegisterData(pagePermissionLevel);
   const canEditMetadata = canSaveData(pagePermissionLevel);
   const canSaveDataLocal = canEditMetadata; // Alias for button conditions
@@ -130,34 +133,9 @@ function TraditionalMedicineSampleCreationPage({
 
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [isApplyingAuth, setIsApplyingAuth] = useState(false);
+  // Authentication is now handled on Stage 2 (dedicated Authentication page)
 
-  const [authMethod, setAuthMethod] = useState(null);
-  const [authResult, setAuthResult] = useState(null);
-  const [verifiedBy, setVerifiedBy] = useState("");
-  const [verificationDate, setVerificationDate] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
-  const [authNotes, setAuthNotes] = useState("");
-
-  // Authentication method options per SRS
-  const authMethodOptions = [
-    { id: "botanical_verification", label: "Botanical Verification" },
-    { id: "expert_identification", label: "Expert Identification" },
-    { id: "morphological_analysis", label: "Morphological Analysis" },
-    { id: "molecular_identification", label: "Molecular Identification (DNA)" },
-    { id: "chemical_profiling", label: "Chemical Profiling" },
-    { id: "reference_comparison", label: "Reference Specimen Comparison" },
-  ];
-
-  // Authentication result options
-  const authResultOptions = [
-    { id: "confirmed", label: "Confirmed / Authenticated" },
-    { id: "not_confirmed", label: "Not Confirmed" },
-    { id: "inconclusive", label: "Inconclusive - Further Testing Required" },
-    { id: "partial", label: "Partially Confirmed" },
-  ];
+  // Authentication options moved to Stage 2 (TraditionalMedicineAuthenticationPage)
 
   // Notification callback
   const notify = useCallback(
@@ -169,106 +147,121 @@ function TraditionalMedicineSampleCreationPage({
   );
 
   // Bulk operations following bioanalytical pattern
-  const bulkApplyMetadata = useCallback(async (sampleIds, data) => {
-    if (!hasRealPageId) return false;
+  const bulkApplyMetadata = useCallback(
+    async (sampleIds, data) => {
+      if (!hasRealPageId) return false;
 
-    try {
-      const response = await postToOpenElisServerJsonResponse(
-        `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
-        JSON.stringify({
-          sampleIds: sampleIds.map(id => parseInt(id, 10)),
-          data: data
-        })
-      );
+      try {
+        const response = await postToOpenElisServerJsonResponse(
+          `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+          JSON.stringify({
+            sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+            data: data,
+          }),
+        );
 
-      if (response.success) {
+        if (response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({
+              id: "notification.bulk.apply.success",
+            }),
+            message: intl.formatMessage(
+              { id: "notification.bulk.apply.samples.count" },
+              { count: response.updatedCount },
+            ),
+          });
+          return true;
+        }
+        return false;
+      } catch (error) {
         notify({
-          kind: NotificationKinds.success,
-          title: intl.formatMessage({ id: "notification.bulk.apply.success" }),
-          message: intl.formatMessage(
-            { id: "notification.bulk.apply.samples.count" },
-            { count: response.updatedCount }
-          )
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.bulk.apply.error" }),
+          message: error.message || "Failed to apply metadata to samples",
         });
-        return true;
+        return false;
       }
-      return false;
-    } catch (error) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.bulk.apply.error" }),
-        message: error.message || "Failed to apply metadata to samples"
-      });
-      return false;
-    }
-  }, [hasRealPageId, pageData?.id, notify, intl]);
+    },
+    [hasRealPageId, pageData?.id, notify, intl],
+  );
 
-  const bulkAdvanceSamples = useCallback(async (sampleIds, targetPageIndex = 2) => {
-    try {
-      const response = await postToOpenElisServerJsonResponse(
-        `/rest/notebook/${entryId}/samples/advance`,
-        JSON.stringify({
-          sampleIds: sampleIds.map(id => parseInt(id, 10)),
-          fromPageId: pageData.id,
-          toPageIndex: targetPageIndex
-        })
-      );
+  const bulkAdvanceSamples = useCallback(
+    async (sampleIds, targetPageIndex = 2) => {
+      try {
+        const response = await postToOpenElisServerJsonResponse(
+          `/rest/notebook/${entryId}/samples/advance`,
+          JSON.stringify({
+            sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+            fromPageId: pageData.id,
+            toPageIndex: targetPageIndex,
+          }),
+        );
 
-      if (response.success) {
+        if (response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.samples.advanced" }),
+            message: intl.formatMessage(
+              { id: "notification.samples.advanced.count" },
+              { count: response.advancedCount, stage: targetPageIndex },
+            ),
+          });
+          return true;
+        }
+        return false;
+      } catch (error) {
         notify({
-          kind: NotificationKinds.success,
-          title: intl.formatMessage({ id: "notification.samples.advanced" }),
-          message: intl.formatMessage(
-            { id: "notification.samples.advanced.count" },
-            { count: response.advancedCount, stage: targetPageIndex }
-          )
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({
+            id: "notification.samples.advance.error",
+          }),
+          message: error.message || "Failed to advance samples to next stage",
         });
-        return true;
+        return false;
       }
-      return false;
-    } catch (error) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.samples.advance.error" }),
-        message: error.message || "Failed to advance samples to next stage"
-      });
-      return false;
-    }
-  }, [entryId, pageData?.id, notify, intl]);
+    },
+    [entryId, pageData?.id, notify, intl],
+  );
 
-  const markSamplesCompleted = useCallback(async (sampleIds) => {
-    if (!hasRealPageId) return false;
+  const markSamplesCompleted = useCallback(
+    async (sampleIds) => {
+      if (!hasRealPageId) return false;
 
-    try {
-      const response = await postToOpenElisServerJsonResponse(
-        `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-        JSON.stringify({
-          sampleIds: sampleIds.map(id => parseInt(id, 10)),
-          status: "COMPLETED"
-        })
-      );
+      try {
+        const response = await postToOpenElisServerJsonResponse(
+          `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+          JSON.stringify({
+            sampleIds: sampleIds.map((id) => parseInt(id, 10)),
+            status: "COMPLETED",
+          }),
+        );
 
-      if (response.success) {
+        if (response.success) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.samples.completed" }),
+            message: intl.formatMessage(
+              { id: "notification.samples.completed.count" },
+              { count: response.updatedCount },
+            ),
+          });
+          return true;
+        }
+        return false;
+      } catch (error) {
         notify({
-          kind: NotificationKinds.success,
-          title: intl.formatMessage({ id: "notification.samples.completed" }),
-          message: intl.formatMessage(
-            { id: "notification.samples.completed.count" },
-            { count: response.updatedCount }
-          )
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({
+            id: "notification.samples.complete.error",
+          }),
+          message: error.message || "Failed to mark samples as completed",
         });
-        return true;
+        return false;
       }
-      return false;
-    } catch (error) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.samples.complete.error" }),
-        message: error.message || "Failed to mark samples as completed"
-      });
-      return false;
-    }
-  }, [hasRealPageId, pageData?.id, notify, intl]);
+    },
+    [hasRealPageId, pageData?.id, notify, intl],
+  );
 
   // Load samples for this page
   const loadPageSamples = useCallback(() => {
@@ -353,145 +346,7 @@ function TraditionalMedicineSampleCreationPage({
     }
   }, [loadPageSamples, onProgressUpdate]);
 
-  // Reset authentication form
-  const resetAuthForm = useCallback(() => {
-    setAuthMethod(null);
-    setAuthResult(null);
-    setVerifiedBy("");
-    setVerificationDate(new Date().toISOString().slice(0, 10));
-    setAuthNotes("");
-  }, []);
-
-  // Open authentication modal
-  const openAuthModal = useCallback(() => {
-    if (selectedSampleIds.length === 0) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notebook.page.tradmed.error.noSelection",
-          defaultMessage: "Please select at least one sample.",
-        }),
-      });
-      return;
-    }
-    resetAuthForm();
-    setAuthModalOpen(true);
-  }, [selectedSampleIds, intl, resetAuthForm, notify]);
-
-  // Apply authentication to selected samples using dedicated authentication endpoint
-  // Per SRS: LMS logs authentication method and result
-  // When authentication is "confirmed", backend automatically marks samples as COMPLETED to advance to next stage
-  const applyAuthentication = useCallback(() => {
-    if (!authMethod) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notebook.page.tradmed.error.authMethodRequired",
-          defaultMessage: "Please select an authentication method.",
-        }),
-      });
-      return;
-    }
-
-    if (!authResult) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notebook.page.tradmed.error.authResultRequired",
-          defaultMessage: "Please select an authentication result.",
-        }),
-      });
-      return;
-    }
-
-    if (!hasRealPageId) {
-      notify({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({
-          id: "notebook.page.tradmed.error.noPage",
-          defaultMessage:
-            "Cannot update samples: Page not properly initialized.",
-        }),
-      });
-      return;
-    }
-
-    setIsApplyingAuth(true);
-
-    const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
-
-    // Use dedicated authentication endpoint
-    // Backend handles: logging method/result, updating status, advancing to next stage if confirmed
-    postToOpenElisServerJsonResponse(
-      `/rest/notebook/tradmed/page/${pageData.id}/authenticate`,
-      JSON.stringify({
-        sampleIds: sampleIds,
-        authenticationMethod: authMethod.id,
-        authenticationResult: authResult.id,
-        verifiedBy: verifiedBy || null,
-        verificationDate: verificationDate || null,
-        authenticationNotes: authNotes || null,
-      }),
-      (response) => {
-        setIsApplyingAuth(false);
-
-        if (response && response.success) {
-          // Backend returns different message based on result (confirmed vs other)
-          const message =
-            response.message ||
-            (authResult.id === "confirmed"
-              ? intl.formatMessage(
-                  {
-                    id: "notebook.page.tradmed.success.authConfirmed",
-                    defaultMessage:
-                      "Authenticated {count} sample(s). Samples are now ready for the next stage (Storage/Preparation).",
-                  },
-                  { count: response.updatedCount || selectedSampleIds.length },
-                )
-              : intl.formatMessage(
-                  {
-                    id: "notebook.page.tradmed.success.authApplied",
-                    defaultMessage:
-                      "Applied authentication to {count} sample(s).",
-                  },
-                  { count: response.updatedCount || selectedSampleIds.length },
-                ));
-
-          notify({
-            kind: NotificationKinds.success,
-            title: message,
-          });
-          setAuthModalOpen(false);
-          setSelectedSampleIds([]);
-          loadPageSamples();
-          if (onProgressUpdate) onProgressUpdate();
-        } else {
-          notify({
-            kind: NotificationKinds.error,
-            title: response?.error ||
-              intl.formatMessage({
-                id: "notebook.page.tradmed.error.authFailed",
-                defaultMessage:
-                  "Failed to apply authentication. Please try again.",
-              }),
-          });
-        }
-      },
-    );
-  }, [
-    authMethod,
-    authResult,
-    verifiedBy,
-    verificationDate,
-    authNotes,
-    hasRealPageId,
-    pageData?.id,
-    selectedSampleIds,
-    intl,
-    loadPageSamples,
-    onProgressUpdate,
-    notify,
-  ]);
+  // Authentication functionality moved to Stage 2 (TraditionalMedicineAuthenticationPage)
 
   const markAsRegistered = useCallback(() => {
     if (selectedSampleIds.length === 0) {
@@ -578,51 +433,7 @@ function TraditionalMedicineSampleCreationPage({
   const pendingCount = pendingSamples.length;
   const completedCount = registeredSamples.length;
 
-  // Helper to render authentication status for a sample
-  const renderAuthenticationStatus = (sample) => {
-    if (!sample.authenticationMethod) {
-      return (
-        <Tag type="gray" size="sm" renderIcon={Pending}>
-          <FormattedMessage
-            id="notebook.page.tradmed.auth.notStarted"
-            defaultMessage="Not Started"
-          />
-        </Tag>
-      );
-    }
-    if (sample.authenticationResult === "confirmed") {
-      return (
-        <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
-          {sample.authenticationMethodLabel || "Verified"}
-        </Tag>
-      );
-    }
-    if (sample.authenticationResult === "not_confirmed") {
-      return (
-        <Tag type="red" size="sm" renderIcon={WarningAltFilled}>
-          <FormattedMessage
-            id="notebook.page.tradmed.auth.notConfirmed"
-            defaultMessage="Not Confirmed"
-          />
-        </Tag>
-      );
-    }
-    if (sample.authenticationResult === "inconclusive") {
-      return (
-        <Tag type="purple" size="sm" renderIcon={Renew}>
-          <FormattedMessage
-            id="notebook.page.tradmed.auth.inconclusive"
-            defaultMessage="Inconclusive"
-          />
-        </Tag>
-      );
-    }
-    return (
-      <Tag type="blue" size="sm" renderIcon={Chemistry}>
-        {sample.authenticationResultLabel || "Partial"}
-      </Tag>
-    );
-  };
+  // Authentication status rendering moved to Stage 2 (TraditionalMedicineAuthenticationPage)
 
   return (
     <div className="tradmed-sample-creation-page">
@@ -631,13 +442,13 @@ function TraditionalMedicineSampleCreationPage({
         <h4>
           <FormattedMessage
             id="notebook.page.tradmed.sampleCreation.title"
-            defaultMessage="Sample Intake, Registration & Authentication"
+            defaultMessage="Sample Intake & Registration"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
             id="notebook.page.tradmed.sampleCreation.description"
-            defaultMessage="Import traditional medicine samples, record metadata (origin, species, collector), and authenticate via botanical verification or expert identification."
+            defaultMessage="Import traditional medicine samples and record complete metadata including origin, species, collector, date/time, and sample condition. Authentication is handled in Stage 2."
           />
         </p>
       </div>
@@ -658,8 +469,8 @@ function TraditionalMedicineSampleCreationPage({
             <Tile className="progress-tile pending">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tradmed.pendingAuth"
-                  defaultMessage="Pending / In Progress"
+                  id="notebook.page.tradmed.pending"
+                  defaultMessage="Pending Registration"
                 />
               </span>
               <span className="progress-value">{pendingCount}</span>
@@ -667,8 +478,8 @@ function TraditionalMedicineSampleCreationPage({
             <Tile className="progress-tile verified">
               <span className="progress-label">
                 <FormattedMessage
-                  id="notebook.page.tradmed.authenticated"
-                  defaultMessage="Authenticated"
+                  id="notebook.page.tradmed.registered"
+                  defaultMessage="Registered"
                 />
               </span>
               <span className="progress-value">{completedCount}</span>
@@ -677,7 +488,7 @@ function TraditionalMedicineSampleCreationPage({
         </Column>
       </Grid>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - SRS Stage 1: Sample Intake & Registration Only */}
       <div className="page-actions-bar">
         <Button
           kind="primary"
@@ -693,20 +504,6 @@ function TraditionalMedicineSampleCreationPage({
         </Button>
 
         <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Edit}
-          onClick={openAuthModal}
-          disabled={!canAuthenticateSamples || selectedSampleIds.length === 0 || !hasRealPageId}
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.authenticate"
-            defaultMessage="Authenticate ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        <Button
           kind="secondary"
           size="sm"
           renderIcon={Checkmark}
@@ -716,51 +513,6 @@ function TraditionalMedicineSampleCreationPage({
           <FormattedMessage
             id="notebook.page.tradmed.markAsRegistered"
             defaultMessage="Mark as Registered ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        {/* Bulk operations following bioanalytical pattern */}
-        <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={CheckmarkFilled}
-          onClick={async () => {
-            const success = await markSamplesCompleted(selectedSampleIds);
-            if (success) {
-              loadPageSamples();
-              setSelectedSampleIds([]);
-            }
-          }}
-          disabled={!canSaveDataLocal || selectedSampleIds.length === 0 || !hasRealPageId}
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.markCompleted"
-            defaultMessage="Mark Completed ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Chemistry}
-          onClick={async () => {
-            const success = await bulkAdvanceSamples(selectedSampleIds, 2);
-            if (success) {
-              loadPageSamples();
-              setSelectedSampleIds([]);
-              // Notify parent to refresh progress
-              if (onProgressUpdate) {
-                onProgressUpdate();
-              }
-            }
-          }}
-          disabled={!canSaveDataLocal || selectedSampleIds.length === 0 || !hasRealPageId}
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.advanceToAuth"
-            defaultMessage="Advance to Authentication ({count})"
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
@@ -779,14 +531,13 @@ function TraditionalMedicineSampleCreationPage({
         </Button>
       </div>
 
-
       {/* Pending / In Progress Samples Section */}
       <div className="sample-table-section">
         <div className="table-section-header">
           <h5>
             <FormattedMessage
               id="notebook.page.tradmed.pendingSamples.title"
-              defaultMessage="Pending Authentication"
+              defaultMessage="Pending Registration"
             />
             <Tag type="gray" size="sm" className="count-tag">
               {pendingCount}
@@ -795,7 +546,7 @@ function TraditionalMedicineSampleCreationPage({
           <p className="table-section-description">
             <FormattedMessage
               id="notebook.page.tradmed.pendingSamples.description"
-              defaultMessage="Samples awaiting authentication verification. Select samples and authenticate them using botanical verification, expert identification, or other methods per SRS requirements."
+              defaultMessage="Imported samples awaiting registration. Select samples and mark them as registered to advance them to Stage 2 (Authentication)."
             />
           </p>
         </div>
@@ -805,7 +556,7 @@ function TraditionalMedicineSampleCreationPage({
               <p>
                 <FormattedMessage
                   id="notebook.page.tradmed.pendingSamples.empty"
-                  defaultMessage="No pending samples. Import a manifest to add traditional medicine samples."
+                  defaultMessage="No pending samples. Import a manifest to add traditional medicine samples with complete metadata."
                 />
               </p>
             </div>
@@ -836,12 +587,7 @@ function TraditionalMedicineSampleCreationPage({
                 { key: "sampleCondition", header: "Condition" },
                 // Intended Use
                 { key: "intendedUse", header: "Intended Use" },
-                // Authentication Status (SRS: LMS logs method and result)
-                {
-                  key: "authenticationStatus",
-                  header: "Authentication",
-                  render: (_value, row) => renderAuthenticationStatus(row),
-                },
+                // Authentication Status moved to Stage 2 (TraditionalMedicineAuthenticationPage)
               ]}
             />
           )}
@@ -854,7 +600,7 @@ function TraditionalMedicineSampleCreationPage({
           <h5>
             <FormattedMessage
               id="notebook.page.tradmed.registeredSamples.title"
-              defaultMessage="Authenticated & Registered"
+              defaultMessage="Registered Samples"
             />
             <Tag type="green" size="sm" className="count-tag">
               {completedCount}
@@ -863,7 +609,7 @@ function TraditionalMedicineSampleCreationPage({
           <p className="table-section-description">
             <FormattedMessage
               id="notebook.page.tradmed.registeredSamples.description"
-              defaultMessage="Samples that have been authenticated and are ready to proceed to the next workflow stage (Storage & Herbarium Placement)."
+              defaultMessage="Samples that have been registered and are ready to proceed to Stage 2 (Authentication & Verification)."
             />
           </p>
         </div>
@@ -873,7 +619,7 @@ function TraditionalMedicineSampleCreationPage({
               <p>
                 <FormattedMessage
                   id="notebook.page.tradmed.registeredSamples.empty"
-                  defaultMessage="No authenticated samples yet. Select pending samples and authenticate them."
+                  defaultMessage="No registered samples yet. Select pending samples and mark them as registered."
                 />
               </p>
             </div>
@@ -902,12 +648,7 @@ function TraditionalMedicineSampleCreationPage({
                 { key: "sampleCondition", header: "Condition" },
                 // Intended Use
                 { key: "intendedUse", header: "Intended Use" },
-                // Authentication Status (SRS: LMS logs method and result)
-                {
-                  key: "authenticationStatus",
-                  header: "Authentication",
-                  render: (_value, row) => renderAuthenticationStatus(row),
-                },
+                // Authentication Status moved to Stage 2 (TraditionalMedicineAuthenticationPage)
               ]}
             />
           )}
@@ -934,122 +675,7 @@ function TraditionalMedicineSampleCreationPage({
         onImportSuccess={handleImportSuccess}
       />
 
-      {/* Authentication Modal */}
-      <Modal
-        open={authModalOpen}
-        onRequestClose={() => setAuthModalOpen(false)}
-        onRequestSubmit={applyAuthentication}
-        modalHeading={intl.formatMessage({
-          id: "notebook.page.tradmed.authModal.title",
-          defaultMessage: "Sample Authentication",
-        })}
-        primaryButtonText={
-          isApplyingAuth
-            ? intl.formatMessage({
-                id: "label.applying",
-                defaultMessage: "Applying...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.apply",
-                defaultMessage: "Apply Authentication",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingAuth}
-        size="md"
-      >
-        <div style={{ marginBottom: "1rem" }}>
-          <p>
-            <FormattedMessage
-              id="notebook.page.tradmed.authModal.description"
-              defaultMessage="Record authentication details for {count} selected sample(s). Per SRS requirements, the system logs the authentication method and result."
-              values={{ count: selectedSampleIds.length }}
-            />
-          </p>
-        </div>
-
-        {isApplyingAuth && <Loading withOverlay={false} small />}
-
-        <Grid fullWidth narrow>
-          <Column lg={8} md={4} sm={4}>
-            <Dropdown
-              id="auth-method"
-              titleText={intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.method",
-                defaultMessage: "Authentication Method *",
-              })}
-              label={intl.formatMessage({
-                id: "label.select",
-                defaultMessage: "Select...",
-              })}
-              items={authMethodOptions}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItem={authMethod}
-              onChange={({ selectedItem }) => setAuthMethod(selectedItem)}
-            />
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Dropdown
-              id="auth-result"
-              titleText={intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.result",
-                defaultMessage: "Authentication Result *",
-              })}
-              label={intl.formatMessage({
-                id: "label.select",
-                defaultMessage: "Select...",
-              })}
-              items={authResultOptions}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItem={authResult}
-              onChange={({ selectedItem }) => setAuthResult(selectedItem)}
-            />
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="verified-by"
-              labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.verifiedBy",
-                defaultMessage: "Verified By (Expert/Botanist)",
-              })}
-              value={verifiedBy}
-              onChange={(e) => setVerifiedBy(e.target.value)}
-            />
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              id="verification-date"
-              labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.date",
-                defaultMessage: "Verification Date",
-              })}
-              type="date"
-              value={verificationDate}
-              onChange={(e) => setVerificationDate(e.target.value)}
-            />
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            <TextArea
-              id="auth-notes"
-              labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.notes",
-                defaultMessage: "Authentication Notes",
-              })}
-              value={authNotes}
-              onChange={(e) => setAuthNotes(e.target.value)}
-              rows={3}
-              placeholder={intl.formatMessage({
-                id: "notebook.page.tradmed.authModal.notesPlaceholder",
-                defaultMessage:
-                  "Additional notes about the authentication process, reference materials used, etc.",
-              })}
-            />
-          </Column>
-        </Grid>
-      </Modal>
+      {/* Authentication Modal removed - now handled on Stage 2 (TraditionalMedicineAuthenticationPage) */}
     </div>
   );
 }

@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -11,12 +18,7 @@ import {
   Loading,
   TextInput,
 } from "@carbon/react";
-import {
-  Renew,
-  CheckmarkFilled,
-  Edit,
-  Download,
-} from "@carbon/react/icons";
+import { Renew, CheckmarkFilled, Edit, Download } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
@@ -51,22 +53,17 @@ function TraditionalMedicineArchivalPage({
   onProgressUpdate,
 }) {
   const intl = useIntl();
-  const { setNotificationVisible, addNotification } = useContext(NotificationContext);
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
   const componentMounted = useRef(false);
   const { hasAnyRole } = usePermissions();
 
   // TMMRD permissions per SRS Section 11
-  const {
-    getPagePermissionLevel,
-    canSaveData,
-    canAccessStage8,
-  } = useTMMRDPermissions();
+  const { getPagePermissionLevel, canSaveData, canAccessStage8 } =
+    useTMMRDPermissions();
 
   // STAGE 8 allowed roles per TMMRD SRS Section 11 - Management only for archival
-  const allowedRoles = [
-    "Lab Manager",
-    "Principal Investigator"
-  ];
+  const allowedRoles = ["Lab Manager", "Principal Investigator"];
 
   const canAccessPage = hasAnyRole(allowedRoles);
 
@@ -231,13 +228,17 @@ function TraditionalMedicineArchivalPage({
               if (statusCode === 200) {
                 notify({
                   kind: NotificationKinds.success,
-                  title: response.message ||
+                  title:
+                    response.message ||
                     intl.formatMessage(
                       {
                         id: "notebook.page.tradmed.archival.success",
                         defaultMessage: "Archived {count} sample record(s).",
                       },
-                      { count: response.updatedCount || selectedSampleIds.length },
+                      {
+                        count:
+                          response.updatedCount || selectedSampleIds.length,
+                      },
                     ),
                 });
                 setArchivalModalOpen(false);
@@ -249,11 +250,12 @@ function TraditionalMedicineArchivalPage({
                   kind: NotificationKinds.error,
                   title: intl.formatMessage({
                     id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage: "Archival recorded but failed to update sample status.",
+                    defaultMessage:
+                      "Archival recorded but failed to update sample status.",
                   }),
                 });
               }
-            }
+            },
           );
         } else {
           notify({
@@ -283,10 +285,7 @@ function TraditionalMedicineArchivalPage({
     [samples],
   );
   const archivedSamples = useMemo(
-    () =>
-      samples.filter(
-        (s) => s.archiveType && s.status === "COMPLETED",
-      ),
+    () => samples.filter((s) => s.archiveType && s.status === "COMPLETED"),
     [samples],
   );
 
@@ -372,7 +371,6 @@ function TraditionalMedicineArchivalPage({
           />
         </Button>
       </div>
-
 
       <div className="sample-table-section">
         <div className="table-section-header">
