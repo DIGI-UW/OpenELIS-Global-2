@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BIOEQUIVALENCE LABORATORY NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with 5 workflow pages -->
+    <!-- hard-coded for the Bioequivalence Laboratory workflow -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-bioequivalence-notebook-template" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Bioequivalence Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Bioequivalence Laboratory"/>
+            <column name="objective" value="Complete bioequivalence study testing workflow from sample reception to archiving"/>
+            <column name="protocol" value="Standard Bioequivalence Laboratory Protocol"/>
+            <column name="content" value="Bioequivalence Laboratory notebook template with 5 predefined workflow pages for bioequivalence study sample reception, test assignment, analytical execution, reporting, and storage/archiving."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Bioequivalence Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE RECEPTION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bioequivalence-page-1-sample-reception" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Reception page for Bioequivalence Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Reception"/>
+            <column name="instructions" value="Register bioequivalence study sample receipt: Assign or retain Sample ID, capture sample type (API, tablet, plasma, serum, etc.), note source (Medical Lab or clinical site), record requested bioequivalence tests, document storage condition on arrival, receipt date/time, and receiving personnel. Link to bioequivalence study protocol."/>
+            <column name="content" value="Sample Reception - Batch verification and metadata capture of incoming bioequivalence study samples"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: TEST ASSIGNMENT -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bioequivalence-page-2-test-assignment" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Test Assignment page for Bioequivalence Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Test Assignment"/>
+            <column name="instructions" value="Assign bioequivalence tests to analysts by test category. Select analytical method (LC-MS/MS, HPLC, dissolution apparatus, etc.) from dropdown. Specify instrument ID, calibration status. Document sample preparation methodology for bioequivalence studies. Define QC requirements (calibration curve criteria, control samples). Set expected analysis date."/>
+            <column name="content" value="Test Assignment - Methodology selection and analyst assignment for bioequivalence testing"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: ANALYTICAL EXECUTION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bioequivalence-page-3-analytical-execution" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Analytical Execution page for Bioequivalence Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Analytical Execution"/>
+            <column name="instructions" value="Record execution date/time and analyst ID for bioequivalence testing. Upload or link calibration curve details (r² value, slope, intercept, acceptance criteria). Document QC sample results (Low/Medium/High concentrations) with acceptance limits. Upload raw data files (chromatograms, spectra). Record calculated results with units. Document any deviations. Verify ALCOA+ compliance (Attributable, Legible, Contemporaneous, Original, Accurate, Complete)."/>
+            <column name="content" value="Analytical Execution - Raw data capture and QC validation for bioequivalence studies"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: REPORTING & RELEASE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bioequivalence-page-4-reporting" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reporting &amp; Release page for Bioequivalence Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reporting &amp; Release"/>
+            <column name="instructions" value="Compile all bioequivalence study results. Validate against acceptance criteria. Perform Primary Review (analyst validation). Perform Secondary Review (senior scientist/QA). Obtain Final Approval (lab manager/study director). Select result distribution method (email, REDCap, LMIS integration, regulatory submission). Generate bioequivalence performance metrics dashboard. Document data integrity and audit trail."/>
+            <column name="content" value="Reporting &amp; Release - Bioequivalence result compilation, validation, and report generation with embedded dashboard"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: POST-TEST STORAGE & ARCHIVING -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bioequivalence-page-5-storage-archiving" author="openelis-bioequivalence">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Post-Test Storage &amp; Archiving page for Bioequivalence Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Post-Test Storage &amp; Archiving"/>
+            <column name="instructions" value="Document quantity retained for storage from bioequivalence study. Determine transfer to biorepository (long-term storage at -80°C for biological samples, room temperature for pharmaceutical). Record storage location hierarchy (Room → Freezer → Shelf → Rack → Box → Position). Set retention period (2 years for bioequivalence studies, 5-10 years for regulatory, or custom). Set up environmental monitoring. Document raw data archiving locations. Record disposal criteria and methods. Maintain sample-result traceability."/>
+            <column name="content" value="Post-Test Storage &amp; Archiving - Storage tracking, retention periods, and data archiving for bioequivalence samples"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioequivalence Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

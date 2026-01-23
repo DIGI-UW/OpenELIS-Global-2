@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_ENTRY TABLE -->
+    <!-- Separate table for notebook instances (actual lab work) -->
+    <!-- References notebook (template) for shared metadata/pages -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-entry-sequence" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="notebook_entry_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for notebook_entry table.</comment>
+        <createSequence sequenceName="notebook_entry_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-notebook-entry-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ENTRY table for notebook instances (actual lab work).</comment>
+        <createTable tableName="notebook_entry">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="notebook_entry_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_entry"/>
+            </column>
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="technician_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="creator_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_completed" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Foreign key constraints -->
+    <changeSet id="add-notebook-entry-foreign-keys" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to notebook_entry table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry"
+            baseColumnNames="notebook_id"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            constraintName="fk_notebook_entry_notebook"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry"
+            baseColumnNames="technician_id"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_notebook_entry_technician"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry"
+            baseColumnNames="creator_id"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_notebook_entry_creator"/>
+    </changeSet>
+
+    <!-- Indexes for common queries -->
+    <changeSet id="add-notebook-entry-indexes" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for notebook_entry table.</comment>
+        <createIndex tableName="notebook_entry" indexName="idx_notebook_entry_notebook">
+            <column name="notebook_id"/>
+        </createIndex>
+        <createIndex tableName="notebook_entry" indexName="idx_notebook_entry_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="notebook_entry" indexName="idx_notebook_entry_technician">
+            <column name="technician_id"/>
+        </createIndex>
+        <createIndex tableName="notebook_entry" indexName="idx_notebook_entry_date">
+            <column name="date_created"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_ENTRY_SAMPLE junction table -->
+    <!-- Links notebook entries to their samples -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-entry-sample-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_entry_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ENTRY_SAMPLE junction table for entry-sample relationships.</comment>
+        <createTable tableName="notebook_entry_sample">
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="external_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_added" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        <addPrimaryKey
+            tableName="notebook_entry_sample"
+            columnNames="notebook_entry_id, sample_item_id"
+            constraintName="pk_notebook_entry_sample"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry_sample"
+            baseColumnNames="notebook_entry_id"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            constraintName="fk_nes_notebook_entry"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry_sample"
+            baseColumnNames="sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            constraintName="fk_nes_sample_item"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK_ENTRY_COMMENT table -->
+    <!-- Comments specific to notebook entries -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-entry-comment-sequence" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="notebook_entry_comment_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for notebook_entry_comment table.</comment>
+        <createSequence sequenceName="notebook_entry_comment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-notebook-entry-comment-table" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_entry_comment" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ENTRY_COMMENT table for entry-specific comments.</comment>
+        <createTable tableName="notebook_entry_comment">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="notebook_entry_comment_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_notebook_entry_comment"/>
+            </column>
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="author_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry_comment"
+            baseColumnNames="notebook_entry_id"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            constraintName="fk_nec_notebook_entry"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry_comment"
+            baseColumnNames="author_id"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_nec_author"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- Fix column names if created with wrong name -->
+    <!-- ======================================================== -->
+    <changeSet id="fix-notebook-entry-lastupdated-column" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            <columnExists tableName="notebook_entry" columnName="lastupdated" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated in notebook_entry table.</comment>
+        <renameColumn tableName="notebook_entry" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- Update notebook_page_sample to reference notebook_entry -->
+    <!-- ======================================================== -->
+    <changeSet id="add-notebook-entry-id-to-page-sample" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_sample" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_page_sample" columnName="notebook_entry_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding notebook_entry_id column to notebook_page_sample for entry tracking.</comment>
+        <addColumn tableName="notebook_page_sample">
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint
+            baseTableName="notebook_page_sample"
+            baseColumnNames="notebook_entry_id"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            constraintName="fk_nps_notebook_entry"/>
+    </changeSet>
+
+</databaseChangeLog>

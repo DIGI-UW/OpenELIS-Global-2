@@ -14,12 +14,19 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.type.JsonMapType;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
 @Entity
 @Table(name = "notebook_page")
+@TypeDef(name = "jsonb-map", typeClass = JsonMapType.class)
 public class NoteBookPage extends BaseObject<Integer> {
 
     @Id
@@ -51,6 +58,10 @@ public class NoteBookPage extends BaseObject<Integer> {
     @Column(name = "sample_type_id")
     private Integer sampleTypeId;
 
+    @Column(name = "page_id")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String pageId;
+
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "notebook_page_panels", joinColumns = @JoinColumn(name = "notebook_page_id"))
     @Column(name = "panel")
@@ -63,6 +74,15 @@ public class NoteBookPage extends BaseObject<Integer> {
 
     @Column(name = "completed")
     private Boolean completed;
+
+    @Type(type = "jsonb-map")
+    @Column(name = "data", columnDefinition = "jsonb")
+    private Map<String, Object> data;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "notebook_page_allowed_roles", joinColumns = @JoinColumn(name = "notebook_page_id"))
+    @Column(name = "role")
+    private Set<String> allowedRoles = new HashSet<>();
 
     public Integer getId() {
         return id;
@@ -150,4 +170,30 @@ public class NoteBookPage extends BaseObject<Integer> {
         this.panels = panels;
     }
 
+    public Map<String, Object> getData() {
+        return data;
+    }
+
+    public void setData(Map<String, Object> data) {
+        this.data = data;
+    }
+
+    public Set<String> getAllowedRoles() {
+        if (allowedRoles == null) {
+            allowedRoles = new HashSet<>();
+        }
+        return allowedRoles;
+    }
+
+    public void setAllowedRoles(Set<String> allowedRoles) {
+        this.allowedRoles = allowedRoles;
+    }
+
+    public String getPageId() {
+        return pageId;
+    }
+
+    public void setPageId(String pageId) {
+        this.pageId = pageId;
+    }
 }

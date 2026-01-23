@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-room-environment-log-sequence" author="codebase">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="notebook_entry_room_environment_log_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for notebook_entry_room_environment_log table</comment>
+        <createSequence sequenceName="notebook_entry_room_environment_log_seq" schemaName="clinlims"
+                        startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-room-environment-log-table" author="codebase">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_entry_room_environment_log" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create table for storing room-level environmental monitoring logs (O2, humidity)</comment>
+        <createTable tableName="notebook_entry_room_environment_log" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_room_env_log_notebook_entry"
+                             references="clinlims.notebook_entry(id)"/>
+            </column>
+            <column name="room_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="room_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="oxygen_level" type="DOUBLE PRECISION">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity" type="DOUBLE PRECISION">
+                <constraints nullable="true"/>
+            </column>
+            <column name="checked_by" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="checked_date_time" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="logged_by" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="logged_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-room-environment-log-indexes" author="codebase">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_room_environment_log" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Create indexes for room environment log table</comment>
+        <createIndex indexName="idx_room_env_log_entry_id"
+                     tableName="notebook_entry_room_environment_log"
+                     schemaName="clinlims">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+        <createIndex indexName="idx_room_env_log_room_id"
+                     tableName="notebook_entry_room_environment_log"
+                     schemaName="clinlims">
+            <column name="room_id"/>
+        </createIndex>
+        <createIndex indexName="idx_room_env_log_checked_datetime"
+                     tableName="notebook_entry_room_environment_log"
+                     schemaName="clinlims">
+            <column name="checked_date_time"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Fix column naming to match BaseObject expectation -->
+    <changeSet id="fix-room-env-log-lastupdated-column" author="codebase">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_room_environment_log" schemaName="clinlims"/>
+            <columnExists tableName="notebook_entry_room_environment_log" schemaName="clinlims" columnName="lastupdated"/>
+            <not>
+                <columnExists tableName="notebook_entry_room_environment_log" schemaName="clinlims" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated to match BaseObject</comment>
+        <renameColumn
+            schemaName="clinlims"
+            tableName="notebook_entry_room_environment_log"
+            oldColumnName="lastupdated"
+            newColumnName="last_updated"
+            columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+</databaseChangeLog>

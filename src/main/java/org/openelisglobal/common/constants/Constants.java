@@ -20,6 +20,8 @@ public class Constants {
     public static final String ROLE_VALIDATION = "Validation";
     public static final String ROLE_REPORTS = "Reports";
     public static final String ROLE_PATHOLOGIST = "Pathologist";
+    public static final String ROLE_NOTEBOOK_ADMIN = "Notebook Administrator";
+
     // roles groups
     public static final String GLOBAL_ROLES_GROUP = "Global Roles";
     public static final String LAB_ROLES_GROUP = "Lab Unit Roles";

@@ -1,0 +1,271 @@
+/* BacteriologyQCBackend Component Styles */
+.bacteriology-qc-backend {
+  padding: 1rem 0;
+}
+
+/* Notifications */
+.qc-notification {
+  margin-bottom: 1rem;
+}
+
+.qc-blocking-notification {
+  margin-bottom: 1rem;
+  border-left: 4px solid #da1e28;
+}
+
+/* Media Selection Tiles */
+.media-selection-tile {
+  margin-bottom: 1rem;
+  min-height: 200px;
+}
+
+.media-selection-tile h4 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+/* QC Testing Sections */
+.qc-sections-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.media-qc-tile {
+  margin-bottom: 1rem;
+  min-height: 300px;
+}
+
+.media-qc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.media-qc-header h5 {
+  margin: 0;
+  font-weight: 600;
+  color: #161616;
+}
+
+.qc-test-item {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+.qc-test-item .bx--radio-button-group {
+  margin-bottom: 0;
+}
+
+/* QC Summary */
+.qc-summary-tile {
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #f4f4f4 0%, #e8e8e8 100%);
+  border: 1px solid #d1d1d1;
+}
+
+.qc-summary-tile h4 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+.qc-summary-stats {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.qc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.qc-stat-label {
+  font-size: 0.875rem;
+  color: #6f6f6f;
+  margin-bottom: 0.25rem;
+}
+
+.qc-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #161616;
+}
+
+.qc-stat-passed .qc-stat-value {
+  color: #198038;
+}
+
+.qc-stat-failed .qc-stat-value {
+  color: #da1e28;
+}
+
+.qc-stat-pending .qc-stat-value {
+  color: #f1c21b;
+}
+
+/* Quarantined Samples */
+.quarantined-samples-tile {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.quarantined-samples-tile h4 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: #da1e28;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quarantined-samples-tile h4::before {
+  content: "⚠️";
+  font-size: 1.25rem;
+}
+
+/* Table Styling */
+.quarantined-samples-tile .bx--data-table {
+  background-color: #fff;
+}
+
+.quarantined-samples-tile .bx--data-table th {
+  background-color: #f4f4f4;
+  color: #161616;
+  font-weight: 600;
+}
+
+.quarantined-samples-tile .bx--data-table td {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Loading States */
+.qc-loading-overlay {
+  position: relative;
+}
+
+.qc-loading-overlay::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* QC Status Tags */
+.bx--tag--green {
+  background-color: #d9f7be;
+  color: #389e0d;
+  border: 1px solid #b7eb8f;
+}
+
+.bx--tag--red {
+  background-color: #ffa39e;
+  color: #cf1322;
+  border: 1px solid #ffb3ba;
+}
+
+.bx--tag--gray {
+  background-color: #f0f0f0;
+  color: #8c8c8c;
+  border: 1px solid #d9d9d9;
+}
+
+/* Responsive Design */
+@media (max-width: 672px) {
+  .qc-sections-container {
+    grid-template-columns: 1fr;
+  }
+
+  .qc-summary-stats {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .media-qc-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+@media (min-width: 672px) and (max-width: 1056px) {
+  .qc-sections-container {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+/* Animations */
+.qc-notification {
+  animation: slideIn 0.3s ease-out;
+}
+
+.media-qc-tile {
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.media-qc-tile:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .qc-stat-passed .qc-stat-value {
+    color: #005d00;
+  }
+
+  .qc-stat-failed .qc-stat-value {
+    color: #a00000;
+  }
+
+  .qc-stat-pending .qc-stat-value {
+    color: #8a6914;
+  }
+}
+
+/* Print styles */
+@media print {
+  .bacteriology-qc-backend {
+    color: black;
+  }
+
+  .qc-notification {
+    display: none;
+  }
+
+  .media-qc-tile,
+  .qc-summary-tile,
+  .quarantined-samples-tile {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

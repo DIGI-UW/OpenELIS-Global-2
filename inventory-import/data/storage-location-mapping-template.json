@@ -1,0 +1,85 @@
+{
+  "description": "Storage Location Mapping Template - Maps Excel location names to database IDs",
+  "instructions": [
+    "1. Query your storage_device table to get IDs and names",
+    "2. Fill in the actual IDs from your database",
+    "3. This mapping is OPTIONAL - if not provided, locations will be extracted from storage_path",
+    "4. Format: 'Excel Location Name': {'id': <database_id>, 'type': 'device|shelf|rack|box'}"
+  ],
+  "query_to_populate_this": "SELECT id, name, storage_type FROM storage_device WHERE active='Y' ORDER BY name;",
+  "freezers": {
+    "PARA Freezer 04": {
+      "id": null,
+      "type": "device",
+      "temperature": "-20°C",
+      "notes": "Ultra-low freezer for long-term storage"
+    },
+    "PARA Freezer 05": {
+      "id": null,
+      "type": "device",
+      "temperature": "-20°C",
+      "notes": "Ultra-low freezer for long-term storage"
+    },
+    "Left third partition": {
+      "id": null,
+      "type": "shelf",
+      "parent_freezer": "PARA Freezer 04",
+      "notes": "Shelf location within freezer"
+    },
+    "Right bottom partition": {
+      "id": null,
+      "type": "shelf",
+      "parent_freezer": "PARA Freezer 04",
+      "notes": "Shelf location within freezer"
+    }
+  },
+  "refrigerators": {
+    "Refrigerator 1": {
+      "id": null,
+      "type": "device",
+      "temperature": "4°C",
+      "notes": "Standard refrigerator"
+    },
+    "Refrigerator 2": {
+      "id": null,
+      "type": "device",
+      "temperature": "4°C",
+      "notes": "Standard refrigerator"
+    },
+    "Refrigerator 3": {
+      "id": null,
+      "type": "device",
+      "temperature": "4°C",
+      "notes": "Standard refrigerator"
+    },
+    "Room (15-30°C)": {
+      "id": null,
+      "type": "room",
+      "temperature": "15-30°C",
+      "notes": "Room temperature storage"
+    }
+  },
+  "cabinets_and_shelves": {
+    "Lunch box": {
+      "id": null,
+      "type": "box",
+      "notes": "Small container/lunch box"
+    },
+    "Cabinet 1": {
+      "id": null,
+      "type": "cabinet",
+      "notes": "Storage cabinet"
+    },
+    "Shelf 1": {
+      "id": null,
+      "type": "shelf",
+      "notes": "Storage shelf"
+    }
+  },
+  "notes": [
+    "type values: 'device' (freezer/fridge), 'shelf' (partition/shelf), 'rack' (drawer/rack), 'box' (container), 'room' (room/space)",
+    "Hierarchical: Room > Device > Shelf > Rack/Box",
+    "If your storage hierarchy is different, adjust the structure",
+    "Leave 'id' as null initially, then fill from database query results"
+  ]
+}

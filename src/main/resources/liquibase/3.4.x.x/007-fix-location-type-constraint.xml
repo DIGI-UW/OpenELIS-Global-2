@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-51: Fix chk_location_type_valid constraint to include 'box' -->
+    <!-- Migration 018 accidentally removed 'box' from the valid location types
+         when updating the constraint to allow NULL values. StorageBox is a valid
+         location type for sample assignments. -->
+    <changeSet id="fix-location-type-constraint-add-box" author="ogc-51">
+        <comment>
+            Fix chk_location_type_valid constraint to include 'box' as a valid location type.
+            Migration 018-allow-null-location-for-disposed accidentally removed 'box' from
+            the valid values when updating the constraint to allow NULL.
+        </comment>
+
+        <!-- Drop and recreate the constraint with 'box' included -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_location_type_valid
+            CHECK (location_type IS NULL OR location_type IN ('device', 'shelf', 'rack', 'box'));
+        </sql>
+
+        <rollback>
+            <!-- Restore constraint without 'box' (as it was in 018) -->
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                ADD CONSTRAINT chk_location_type_valid
+                CHECK (location_type IS NULL OR location_type IN ('device', 'shelf', 'rack'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

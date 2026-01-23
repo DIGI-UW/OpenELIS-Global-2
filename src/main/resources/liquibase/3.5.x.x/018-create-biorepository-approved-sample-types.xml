@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BIOREPOSITORY_APPROVED_SAMPLE_TYPE TABLE -->
+    <!-- Configuration table for approved sample types in biorepository -->
+    <!-- Implements FR-MAN-007: Validate against biorepository-approved list -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-biorepository-approved-sample-type-seq" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="biorepository_approved_sample_type_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for biorepository_approved_sample_type table</comment>
+        <createSequence sequenceName="biorepository_approved_sample_type_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="biorepository_approved_sample_type_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-biorepository-approved-sample-type-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create configuration table for biorepository-approved sample types per FR-MAN-007</comment>
+
+        <createTable tableName="biorepository_approved_sample_type" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type_of_sample_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INTEGER" defaultValueNumeric="0"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Foreign Key to type_of_sample -->
+    <changeSet id="add-biorepository-approved-sample-type-fk" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+            <tableExists tableName="type_of_sample" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_biorepo_approved_type_of_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key to type_of_sample table</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_biorepo_approved_type_of_sample"
+            baseTableSchemaName="clinlims"
+            baseTableName="biorepository_approved_sample_type"
+            baseColumnNames="type_of_sample_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="type_of_sample"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="biorepository_approved_sample_type"
+                constraintName="fk_biorepo_approved_type_of_sample"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Unique constraint on type_of_sample_id -->
+    <changeSet id="add-biorepository-approved-sample-type-unique" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_biorepo_approved_type_unique" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add unique constraint on type_of_sample_id</comment>
+
+        <createIndex indexName="idx_biorepo_approved_type_unique" tableName="biorepository_approved_sample_type" schemaName="clinlims" unique="true">
+            <column name="type_of_sample_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_biorepo_approved_type_unique" tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Index on category for filtering -->
+    <changeSet id="add-biorepository-approved-sample-type-category-idx" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_biorepo_approved_category" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add index on category column</comment>
+
+        <createIndex indexName="idx_biorepo_approved_category" tableName="biorepository_approved_sample_type" schemaName="clinlims">
+            <column name="category"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_biorepo_approved_category" tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Check constraint on category values per spec -->
+    <changeSet id="add-biorepository-approved-sample-type-category-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for category values per spec</comment>
+
+        <sql>
+            ALTER TABLE clinlims.biorepository_approved_sample_type
+            ADD CONSTRAINT chk_biorepo_approved_category
+            CHECK (category IN ('BLOOD_DERIVED', 'NUCLEIC_ACIDS', 'TISSUE', 'CELLULAR', 'MICROBIOLOGICAL', 'OTHER'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.biorepository_approved_sample_type DROP CONSTRAINT IF EXISTS chk_biorepo_approved_category;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Seed initial approved sample types based on spec -->
+    <!-- Categories from spec: Blood-derived (Serum, Plasma, Whole Blood), Nucleic Acids (DNA, RNA), -->
+    <!-- Tissue (Biopsies, FFPE blocks), Cellular (Cell lines, PBMCs), Microbiological (Isolates, cultures) -->
+    <changeSet id="seed-biorepository-approved-sample-types" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.biorepository_approved_sample_type
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed initial approved sample types per spec FR-MAN-007</comment>
+
+        <!-- Blood-derived samples -->
+        <sql>
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'BLOOD_DERIVED', true, 1, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) = 'serum' AND is_active = 'Y' LIMIT 1;
+
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'BLOOD_DERIVED', true, 2, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) = 'plasma' AND is_active = 'Y' LIMIT 1;
+
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'BLOOD_DERIVED', true, 3, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) LIKE '%whole blood%' AND is_active = 'Y' LIMIT 1;
+
+            -- Nucleic Acids
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'NUCLEIC_ACIDS', true, 10, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) = 'dna' AND is_active = 'Y' LIMIT 1;
+
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'NUCLEIC_ACIDS', true, 11, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) = 'rna' AND is_active = 'Y' LIMIT 1;
+
+            -- Tissue samples
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'TISSUE', true, 20, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) LIKE '%biopsy%' OR LOWER(description) LIKE '%biopsies%' AND is_active = 'Y' LIMIT 1;
+
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'TISSUE', true, 21, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) LIKE '%ffpe%' AND is_active = 'Y' LIMIT 1;
+
+            -- Cellular samples
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'CELLULAR', true, 30, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) LIKE '%cell line%' AND is_active = 'Y' LIMIT 1;
+
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'CELLULAR', true, 31, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) LIKE '%pbmc%' AND is_active = 'Y' LIMIT 1;
+
+            -- Microbiological samples
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'MICROBIOLOGICAL', true, 40, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) LIKE '%isolate%' AND is_active = 'Y' LIMIT 1;
+
+            INSERT INTO clinlims.biorepository_approved_sample_type (id, type_of_sample_id, category, is_active, display_order, sys_user_id)
+            SELECT nextval('clinlims.biorepository_approved_sample_type_seq'), id, 'MICROBIOLOGICAL', true, 41, '1'
+            FROM clinlims.type_of_sample WHERE LOWER(description) LIKE '%culture%' AND is_active = 'Y' LIMIT 1;
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.biorepository_approved_sample_type;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

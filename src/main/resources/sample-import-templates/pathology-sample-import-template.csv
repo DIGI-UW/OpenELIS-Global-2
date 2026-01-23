@@ -1,0 +1,11 @@
+firstName,surname,nationalId,sampleCategory,receivedDateTime,receivedBy,sourceFacility,specimenType,specimenSite,collectionDateTime,patientId,requestingClinician,clinicalDetails,studyId,piName,participantAnimalId,ethicalApprovalRef
+John,,,"Clinical diagnostic",2025-01-15 09:30,Jane Smith,Alert Hospital,Fresh biopsy,Liver - right lobe,2025-01-15 08:00,PAT-2025-001,Dr. Michael Brown,"Suspected hepatocellular carcinoma, elevated AFP",,,,
+Maria,Garcia,,Clinical diagnostic,2025-01-15 10:15,Jane Smith,Alert Hospital,Fine needle aspirate (FNA),Thyroid - left lobe nodule,2025-01-15 09:30,PAT-2025-002,Dr. Sarah Johnson,"2cm thyroid nodule, TI-RADS 4",,,,
+Ahmed,,,"Clinical diagnostic",2025-01-15 11:00,John Doe,Alert Hospital,Cervical smear,,2025-01-15 10:00,PAT-2025-003,Dr. Emily Chen,Routine cervical screening,,,,
+Fatima,Hassan,,Clinical diagnostic,2025-01-15 11:30,John Doe,Alert Hospital,Pleural fluid,Left pleural cavity,2025-01-15 10:45,PAT-2025-004,Dr. Michael Brown,"Suspected malignant pleural effusion, lung mass on CT",,,,
+Robert,,,"Clinical diagnostic",2025-01-15 12:00,Jane Smith,Alert Hospital,EDTA blood (peripheral smear),,2025-01-15 11:15,PAT-2025-005,Dr. Lisa Wang,"Pancytopenia, suspected leukemia",,,,
+Participant001,,,"Research",2025-01-15 14:00,Mary Johnson,Research project,Human tissue (fresh),Skin lesion - forearm,2025-01-15 13:00,,,,"LEPROSY-2025",Dr. James Wilson,PART-001,IRB-2025-0042
+MouseMF015,,,"Research",2025-01-15 14:30,Mary Johnson,Research project,Animal tissue (mouse footpad),Left hind footpad,2025-01-15 12:30,,,,"MLEPRAE-STUDY",Dr. James Wilson,MOUSE-MF-015,IACUC-2024-108
+Culture042,,,"Research",2025-01-15 15:00,Mary Johnson,Research project,Bacterial/cellular pellet,M. leprae culture,2025-01-15 14:00,,,,"MLEPRAE-STUDY",Dr. James Wilson,CULTURE-042,IRB-2025-0042
+Grace,,,"Clinical diagnostic",2025-01-15 15:30,Jane Smith,Alert Hospital,Surgical resection,Colon - sigmoid,2025-01-15 07:30,PAT-2025-006,Dr. Robert Kim,"Sigmoid colon adenocarcinoma, partial colectomy specimen",,,,
+Peter,Okonkwo,,Clinical diagnostic,2025-01-15 16:00,John Doe,External clinic,Urine for cytology,,2025-01-15 15:00,EXT-2025-001,Dr. Amanda Lee,Hematuria workup - suspected urothelial carcinoma,,,,

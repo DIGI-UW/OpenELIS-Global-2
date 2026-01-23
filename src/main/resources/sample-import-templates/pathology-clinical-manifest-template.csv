@@ -1,0 +1,8 @@
+firstName,surname,patientId,requestingClinician,specimenType,specimenSite,collectionDateTime,clinicalDetails,receivedDateTime,receivedBy,sourceFacility
+John,,PAT-2025-001,Dr. Michael Brown,Fresh biopsy,Liver - right lobe,2025-01-15 08:00,"Suspected hepatocellular carcinoma, elevated AFP",2025-01-15 09:30,Jane Smith,Alert Hospital
+Maria,Garcia,PAT-2025-002,Dr. Sarah Johnson,Fine needle aspirate (FNA),Thyroid - left lobe nodule,2025-01-15 09:30,"2cm thyroid nodule, TI-RADS 4",2025-01-15 10:15,Jane Smith,Alert Hospital
+Ahmed,,PAT-2025-003,Dr. Emily Chen,Cervical smear,,2025-01-15 10:00,Routine cervical screening,2025-01-15 11:00,John Doe,Alert Hospital
+Fatima,Hassan,PAT-2025-004,Dr. Michael Brown,Pleural fluid,Left pleural cavity,2025-01-15 10:45,"Suspected malignant pleural effusion, lung mass on CT",2025-01-15 11:30,John Doe,Alert Hospital
+Robert,,PAT-2025-005,Dr. Lisa Wang,EDTA blood (peripheral smear),,2025-01-15 11:15,"Pancytopenia, suspected leukemia",2025-01-15 12:00,Jane Smith,Alert Hospital
+Grace,,PAT-2025-006,Dr. Robert Kim,Surgical resection,Colon - sigmoid,2025-01-15 07:30,"Sigmoid colon adenocarcinoma, partial colectomy specimen",2025-01-15 15:30,Jane Smith,Alert Hospital
+Peter,Okonkwo,EXT-2025-001,Dr. Amanda Lee,Urine for cytology,,2025-01-15 15:00,Hematuria workup - suspected urothelial carcinoma,2025-01-15 16:00,John Doe,External clinic

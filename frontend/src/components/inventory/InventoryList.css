@@ -64,12 +64,137 @@
   color: #da1e28;
 }
 
-/* Ensure proper spacing for toolbar items */
-.cds--toolbar-content {
+/* Filters Section - Outside DataTable to prevent dropdown overlap */
+.inventory-filters-section {
+  background-color: #f4f4f4;
+  border-radius: 5px;
+  padding: 1.5rem 2%;
+  border: 1px solid #e0e0e0;
+  position: relative;
+  z-index: 10; /* Ensure filters are above other content */
+}
+
+.inventory-filters-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 1rem;
 }
 
-/* Fix dropdown alignment in toolbar */
-.cds--toolbar-content .cds--dropdown {
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.action-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Fix dropdown positioning and ensure they appear above table */
+.inventory-filters-section .cds--dropdown {
   min-width: 150px;
+  position: relative;
+  z-index: 100; /* Higher than default to appear above table content */
+}
+
+/* Ensure dropdown menus appear above everything */
+.inventory-filters-section .cds--dropdown .cds--list-box__menu {
+  z-index: 1000 !important;
+  position: absolute;
+}
+
+/* Search input styling within filters */
+.inventory-filters-section .cds--search {
+  min-width: 200px;
+  background-color: #ffffff;
+}
+
+/* Ensure search input has proper styling */
+.inventory-filters-section .cds--search-input {
+  background-color: #ffffff;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .inventory-filters-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .action-buttons-group {
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
+}
+
+/* Reagent Table Column Grouping Styles */
+.reagent-group-header {
+  background-color: #f4f4f4 !important;
+  color: #161616 !important;
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+  text-align: center !important;
+  border: none !important;
+  padding: 0.75rem 0.5rem !important;
+  vertical-align: middle !important;
+}
+
+.reagent-column-header {
+  background-color: #ffffff !important;
+  color: #525252 !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  text-align: center !important;
+  border: none !important;
+  padding: 0.5rem 0.25rem !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Hover effects for grouped headers */
+.reagent-group-header:hover {
+  background-color: #e8e8e8 !important;
+}
+
+.reagent-column-header:hover {
+  background-color: #f8f8f8 !important;
+}
+
+/* Responsive design for grouped headers */
+@media (max-width: 1200px) {
+  .reagent-group-header {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.25rem !important;
+  }
+
+  .reagent-column-header {
+    font-size: 0.7rem !important;
+    padding: 0.375rem 0.125rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .reagent-group-header {
+    font-size: 0.75rem !important;
+    padding: 0.375rem 0.125rem !important;
+  }
+
+  .reagent-column-header {
+    font-size: 0.65rem !important;
+    padding: 0.25rem 0.0625rem !important;
+  }
 }

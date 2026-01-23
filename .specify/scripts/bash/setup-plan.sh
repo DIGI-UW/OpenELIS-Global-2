@@ -24,7 +24,7 @@ for arg in "$@"; do
 done
 
 # Get script directory and load common functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 # Get all paths and variables from common functions
@@ -36,21 +36,15 @@ check_feature_branch "$CURRENT_BRANCH" "$HAS_GIT" || exit 1
 # Ensure the feature directory exists
 mkdir -p "$FEATURE_DIR"
 
-# Copy plan template only if plan doesn't exist or is empty
+# Copy plan template if it exists
 TEMPLATE="$REPO_ROOT/.specify/templates/plan-template.md"
 if [[ -f "$TEMPLATE" ]]; then
-    if [[ ! -f "$IMPL_PLAN" ]] || [[ ! -s "$IMPL_PLAN" ]]; then
-        cp "$TEMPLATE" "$IMPL_PLAN"
-        echo "Copied plan template to $IMPL_PLAN"
-    else
-        echo "Plan already exists at $IMPL_PLAN, skipping template copy"
-    fi
+    cp "$TEMPLATE" "$IMPL_PLAN"
+    echo "Copied plan template to $IMPL_PLAN"
 else
     echo "Warning: Plan template not found at $TEMPLATE"
-    # Create a basic plan file if template doesn't exist and plan doesn't exist
-    if [[ ! -f "$IMPL_PLAN" ]]; then
-        touch "$IMPL_PLAN"
-    fi
+    # Create a basic plan file if template doesn't exist
+    touch "$IMPL_PLAN"
 fi
 
 # Output results

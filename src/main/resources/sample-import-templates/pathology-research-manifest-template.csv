@@ -1,0 +1,6 @@
+firstName,studyId,piName,participantAnimalId,specimenType,specimenSite,collectionDateTime,ethicalApprovalRef,receivedDateTime,receivedBy,sourceFacility
+Participant001,LEPROSY-2025,Dr. James Wilson,PART-001,Human tissue (fresh),Skin lesion - forearm,2025-01-15 13:00,IRB-2025-0042,2025-01-15 14:00,Mary Johnson,Research project
+MouseMF015,MLEPRAE-STUDY,Dr. James Wilson,MOUSE-MF-015,Animal tissue (mouse footpad),Left hind footpad,2025-01-15 12:30,IACUC-2024-108,2025-01-15 14:30,Mary Johnson,Research project
+Culture042,MLEPRAE-STUDY,Dr. James Wilson,CULTURE-042,Bacterial/cellular pellet,M. leprae culture,2025-01-15 14:00,IRB-2025-0042,2025-01-15 15:00,Mary Johnson,Research project
+Participant002,LEPROSY-2025,Dr. James Wilson,PART-002,Human tissue (frozen),Skin biopsy - arm,2025-01-15 10:00,IRB-2025-0042,2025-01-15 11:00,Mary Johnson,Research project
+RatModel01,RAT-NERVE-STUDY,Dr. Sarah Chen,RAT-001,Animal tissue (nerve),Sciatic nerve,2025-01-15 09:00,IACUC-2024-115,2025-01-15 10:30,John Doe,Research project

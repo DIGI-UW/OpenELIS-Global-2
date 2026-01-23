@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- UPDATE PAGE TYPE CONSTRAINT FOR VIROLOGY WORKFLOW        -->
+    <!-- Add VIRUS_CULTURE_WORKFLOW to allowed page types         -->
+    <!-- Must run BEFORE creating virology pages                  -->
+    <!-- ======================================================== -->
+    <changeSet id="update-page-type-constraint-add-virus-culture-workflow" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if VIRUS_CULTURE_WORKFLOW is not already in the constraint -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM pg_constraint c
+                WHERE c.conname = 'chk_page_type'
+                AND pg_get_constraintdef(c.oid) LIKE '%VIRUS_CULTURE_WORKFLOW%'
+            </sqlCheck>
+        </preConditions>
+        <comment>Update CHECK constraint to add VIRUS_CULTURE_WORKFLOW for virology workflow pages.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+            ALTER TABLE clinlims.notebook_page
+            ADD CONSTRAINT chk_page_type
+            CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT', 'CHILD_SAMPLE_CREATION', 'ASSAY_EXECUTION', 'VIRUS_CULTURE_WORKFLOW'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+                ALTER TABLE clinlims.notebook_page
+                ADD CONSTRAINT chk_page_type
+                CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT', 'CHILD_SAMPLE_CREATION', 'ASSAY_EXECUTION'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- VIROLOGY & VACCINE UNIT NOTEBOOK TEMPLATE                 -->
+    <!-- Creates a predefined notebook template with 7 workflow pages -->
+    <!-- Page 1: Sample Intake & Registration                      -->
+    <!-- Page 2: Media Preparation                                 -->
+    <!-- Page 3: Cell Culture                                      -->
+    <!-- Page 4: Quality Control                                   -->
+    <!-- Page 5: Virus Culture                                     -->
+    <!-- Page 6: Dark Room Imaging                                 -->
+    <!-- Page 7: Formulation                                       -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-virology-notebook-template" author="openelis-virology">
+        <validCheckSum>8:07d52aadbe7739e68a9f59a15ae3343a</validCheckSum>
+        <validCheckSum>8:f7ccda9927326d6600b222fe109e117e</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Virology and Vaccine Unit notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Virology and Vaccine Unit"/>
+            <column name="objective" value="Complete virology and vaccine production workflow from sample intake through virus culture to vaccine development"/>
+            <column name="protocol" value="Standard Virology and Vaccine Production Protocol"/>
+            <column name="content" value="Virology and Vaccine Unit notebook template with 6 predefined workflow pages: Sample Intake and Registration, Media Preparation, Cell Culture, Quality Control, Virus Culture, and Dark Room Imaging."/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Virology and Vaccine Unit' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE INTAKE & REGISTRATION (Stage 1)            -->
+    <!-- Sample Arrival and Registration                           -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virology-page-1-sample-intake" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology and Vaccine Unit' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Intake and Registration page for Virology notebook (Stage 1)</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Intake and Registration"/>
+            <column name="instructions" value="Sample Arrival: Receive pre-labeled or labeled samples (clinical specimens or research samples). Registration: Enter metadata (Sample ID, Source, Type, Date/time), assign test type (Viral or Bacterial testing), link to project/study if applicable."/>
+            <column name="content" value="Stage 1: Sample Intake and Registration - Sample arrival verification and metadata entry"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: MEDIA PREPARATION                                 -->
+    <!-- Log materials used in media preparation with full traceability -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virology-page-2-media-preparation" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology and Vaccine Unit' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Media Preparation page for Virology notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Media Preparation"/>
+            <column name="instructions" value="Log materials used in media preparation with full traceability. Select media, reagents (with lot numbers and expiry dates), and equipment. Record sterilization parameters (temperature, time, pressure)."/>
+            <column name="content" value="Media Preparation - Material logging and sterilization tracking"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: CELL CULTURE                                      -->
+    <!-- Grow host cells and track cell line, passage number, growth conditions -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virology-page-3-cell-culture" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology and Vaccine Unit' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Cell Culture page for Virology notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Cell Culture"/>
+            <column name="instructions" value="Grow host cells where the virus will be propagated. Track cell line (e.g., Vero, MDCK), passage number, and growth conditions (temperature, CO₂ percentage, humidity). Record seeding density, flask type, and media volume."/>
+            <column name="content" value="Cell Culture - Host cell growth and tracking"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: QUALITY CONTROL                                   -->
+    <!-- Validate cell viability and sterility                     -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virology-page-4-quality-control" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology and Vaccine Unit' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Quality Control page for Virology notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Quality Control"/>
+            <column name="instructions" value="Validate cell viability and sterility. Log QC results including viability percentage (0-100%), sterility result (Pass/Fail), test method, acceptance criteria, and any deviation notes."/>
+            <column name="content" value="Quality Control - Cell viability and sterility validation"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: VIRUS CULTURE                                     -->
+    <!-- Inoculate cells with virus and track culture conditions  -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virology-page-5-virus-culture" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology and Vaccine Unit' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Virus Culture page for Virology notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Virus Culture"/>
+            <column name="instructions" value="Inoculate cells with virus. Record virus strain, culture conditions (temperature, CO₂ percentage, duration), and any observations during the culture period."/>
+            <column name="content" value="Virus Culture - Virus inoculation and culture condition tracking"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: DARK ROOM IMAGING (Stage 6)                      -->
+    <!-- Imaging or Fluorescence Analysis                         -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-virology-page-6-dark-room-imaging" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page WHERE notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Page 6: Dark Room Imaging for Virology template</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Dark Room Imaging"/>
+            <column name="instructions" value="Perform imaging or fluorescence analysis on virus culture samples. Store image data (Image ID), record CPE (Cytopathic Effect) observations, measure fluorescence intensity, and document any relevant observations."/>
+            <column name="content" value="Dark Room Imaging - Capture image data and fluorescence analysis results"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 7: FORMULATION (Stage 7)                            -->
+    <!-- Prepare viral product and document formulation details   -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-virology-page-7-formulation" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page WHERE notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 7
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Page 7: Formulation for Virology template</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Formulation"/>
+            <column name="instructions" value="Prepare viral product while recording formulation details. Document stabilizers, preservatives, virus concentration, buffer composition, batch number, and formulation notes for traceability."/>
+            <column name="content" value="Formulation - Prepare viral product and document formulation details"/>
+            <column name="page_order" value="7"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true) AND page_order = 7</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

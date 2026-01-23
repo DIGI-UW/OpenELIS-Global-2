@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- FIX COLUMN NAMING: lastupdated -> last_updated -->
+    <!-- BaseObject expects 'last_updated' column name -->
+    <!-- ======================================================== -->
+
+    <changeSet id="fix-shipment-lastupdated-column" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <columnExists tableName="shipment" schemaName="clinlims" columnName="lastupdated"/>
+            <not>
+                <columnExists tableName="shipment" schemaName="clinlims" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated in shipment table to match BaseObject</comment>
+
+        <renameColumn
+            schemaName="clinlims"
+            tableName="shipment"
+            oldColumnName="lastupdated"
+            newColumnName="last_updated"
+            columnDataType="TIMESTAMP"/>
+
+        <rollback>
+            <renameColumn
+                schemaName="clinlims"
+                tableName="shipment"
+                oldColumnName="last_updated"
+                newColumnName="lastupdated"
+                columnDataType="TIMESTAMP"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="fix-biosample-lastupdated-column" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <columnExists tableName="bio_sample" schemaName="clinlims" columnName="lastupdated"/>
+            <not>
+                <columnExists tableName="bio_sample" schemaName="clinlims" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated in bio_sample table to match BaseObject</comment>
+
+        <renameColumn
+            schemaName="clinlims"
+            tableName="bio_sample"
+            oldColumnName="lastupdated"
+            newColumnName="last_updated"
+            columnDataType="TIMESTAMP"/>
+
+        <rollback>
+            <renameColumn
+                schemaName="clinlims"
+                tableName="bio_sample"
+                oldColumnName="last_updated"
+                newColumnName="lastupdated"
+                columnDataType="TIMESTAMP"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="fix-docverification-lastupdated-column" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <columnExists tableName="documentation_verification" schemaName="clinlims" columnName="lastupdated"/>
+            <not>
+                <columnExists tableName="documentation_verification" schemaName="clinlims" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated in documentation_verification table to match BaseObject</comment>
+
+        <renameColumn
+            schemaName="clinlims"
+            tableName="documentation_verification"
+            oldColumnName="lastupdated"
+            newColumnName="last_updated"
+            columnDataType="TIMESTAMP"/>
+
+        <rollback>
+            <renameColumn
+                schemaName="clinlims"
+                tableName="documentation_verification"
+                oldColumnName="last_updated"
+                newColumnName="lastupdated"
+                columnDataType="TIMESTAMP"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

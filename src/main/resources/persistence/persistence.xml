@@ -56,10 +56,32 @@
 
         <!-- Inventory Management entities (004-remove-old-inventory) -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryAuditLog</class>
+        <!-- Notebook Entry entities (OGC-51 Immunology Workflow) -->
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntry</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryComment</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookPageSample</class>
+        <class>org.openelisglobal.notebook.valueholder.AnalyzerResultImport</class>
+        <class>org.openelisglobal.notebook.valueholder.SampleRouting</class>
+        <class>org.openelisglobal.notebook.valueholder.WorkflowPageTemplate</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryTemperatureLog</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryRoomEnvironmentLog</class>
+
+        <!-- Biorepository entities -->
+        <class>org.openelisglobal.biorepository.valueholder.Shipment</class>
+        <class>org.openelisglobal.biorepository.valueholder.BioSample</class>
+        <class>org.openelisglobal.biorepository.valueholder.DocumentationVerification</class>
+        <class>org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleTransferRequest</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleTransferItem</class>
+        <class>org.openelisglobal.biorepository.valueholder.RetentionPolicy</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleRetrievalItem</class>
+        <class>org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog</class>
+        <class>org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection</class>
 
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>

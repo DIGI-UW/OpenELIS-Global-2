@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- LAB ENVIRONMENTAL LOG TABLE -->
+    <!-- Purpose: Store lab-wide environmental monitoring data -->
+    <!-- Replaces: Project-specific freezer logging -->
+    <!-- Features: -->
+    <!--   - Support for different storage unit types -->
+    <!--   - Context-specific fields for Movable Fridge -->
+    <!--   - Temperature and humidity tracking -->
+    <!--   - FHIR compliance with UUID field -->
+    <!-- ======================================================== -->
+    <changeSet id="create-lab-environmental-log-table" author="openelis-environmental">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lab_environmental_log" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create lab environmental log table for lab-wide environmental monitoring</comment>
+
+        <!-- Create the main table -->
+        <createTable tableName="lab_environmental_log" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="true"/>
+            </column>
+            <column name="storage_unit_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="storage_unit_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interval_type" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="temperature_value" type="DECIMAL(8,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_unit" type="VARCHAR(5)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="humidity_value" type="DECIMAL(5,2)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="checked_by" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="checked_date_time" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Movable Fridge specific fields -->
+            <column name="sample_type" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="project_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="additional_details" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Audit fields -->
+            <column name="logged_by" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="logged_at" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!-- Create sequence for ID generation -->
+        <createSequence sequenceName="lab_environmental_log_seq"
+                       schemaName="clinlims"
+                       startValue="1"
+                       incrementBy="1"/>
+
+        <!-- Add indexes for better performance -->
+        <createIndex indexName="idx_lab_env_log_storage_type" tableName="lab_environmental_log" schemaName="clinlims">
+            <column name="storage_unit_type"/>
+        </createIndex>
+
+        <createIndex indexName="idx_lab_env_log_storage_unit_id" tableName="lab_environmental_log" schemaName="clinlims">
+            <column name="storage_unit_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_lab_env_log_checked_date" tableName="lab_environmental_log" schemaName="clinlims">
+            <column name="checked_date_time"/>
+        </createIndex>
+
+        <createIndex indexName="idx_lab_env_log_fhir_uuid" tableName="lab_environmental_log" schemaName="clinlims">
+            <column name="fhir_uuid"/>
+        </createIndex>
+
+        <!-- Add check constraints -->
+        <sql>
+            ALTER TABLE clinlims.lab_environmental_log
+            ADD CONSTRAINT chk_storage_unit_type
+            CHECK (storage_unit_type IN ('ROOM', 'FREEZER', 'EQUIPMENT_ANALYZER', 'MOVABLE_FRIDGE'));
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.lab_environmental_log
+            ADD CONSTRAINT chk_temperature_unit
+            CHECK (temperature_unit IN ('C', 'F') OR temperature_unit IS NULL);
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.lab_environmental_log
+            ADD CONSTRAINT chk_interval_type
+            CHECK (interval_type IN ('AM', 'PM') OR interval_type IS NULL);
+        </sql>
+
+        <rollback>
+            <dropTable tableName="lab_environmental_log" schemaName="clinlims"/>
+            <dropSequence sequenceName="lab_environmental_log_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

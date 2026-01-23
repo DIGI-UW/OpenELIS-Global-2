@@ -398,16 +398,21 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @GetMapping("/devices")
     public ResponseEntity<List<Map<String, Object>>> getDevices(@RequestParam(required = false) String roomId,
-            @RequestParam(required = false) String type, @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String type, @RequestParam(required = false) String status,
+            @RequestParam(required = false) String temperatureSetting) {
         try {
             List<Map<String, Object>> response;
-            if (type != null || roomId != null || status != null) {
+            if (type != null || roomId != null || status != null || temperatureSetting != null) {
                 // Apply filters - service returns Maps with all data resolved
                 StorageDevice.DeviceType deviceType = type != null ? StorageDevice.DeviceType.valueOf(type) : null;
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
                 Boolean activeStatus = status != null && !status.isEmpty() ? ("active".equalsIgnoreCase(status) ? true
                         : "inactive".equalsIgnoreCase(status) ? false : null) : null;
-                response = storageDashboardService.filterDevicesForAPI(deviceType, roomIdInt, activeStatus);
+                java.math.BigDecimal temperatureValue = temperatureSetting != null
+                        ? new java.math.BigDecimal(temperatureSetting)
+                        : null;
+                response = storageDashboardService.filterDevicesForAPI(deviceType, roomIdInt, activeStatus,
+                        temperatureValue);
             } else {
                 // No filters - return all devices
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
@@ -1203,21 +1208,24 @@ public class StorageLocationRestController extends BaseRestController {
 
     @GetMapping("/boxes")
     public ResponseEntity<List<StorageBoxResponse>> getBoxes(@RequestParam(required = false) String rackId,
-            @RequestParam(required = false) Boolean occupied) {
+            @RequestParam(required = false) Boolean active, @RequestParam(required = false) Boolean occupied) {
         try {
             List<StorageBox> boxes;
             if (rackId != null) {
                 Integer rackIdInt = Integer.parseInt(rackId);
                 boxes = storageLocationService.getBoxesByRack(rackIdInt);
-                // Filter by occupied status if specified
-                if (occupied != null) {
-                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
-                }
             } else {
                 boxes = storageLocationService.getAllBoxes();
-                if (occupied != null) {
-                    boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
-                }
+            }
+
+            // Filter by active status if specified
+            if (active != null) {
+                boxes.removeIf(b -> !active.equals(b.getActive()));
+            }
+
+            // Filter by occupied status if specified
+            if (occupied != null) {
+                boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
             }
 
             List<StorageBoxResponse> response = new ArrayList<>();
@@ -1348,6 +1356,52 @@ public class StorageLocationRestController extends BaseRestController {
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             logger.error("Error deleting box", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get occupancy/layout information for a specific box. GET
+     * /rest/storage/boxes/{id}/occupancy Returns map of occupied well coordinates
+     * with sample information.
+     *
+     * @param id Box ID
+     * @return Map with occupiedCoordinates, totalCapacity, occupiedCount,
+     *         availableCount
+     */
+    @GetMapping("/boxes/{id}/occupancy")
+    public ResponseEntity<Map<String, Object>> getBoxOccupancy(@PathVariable String id) {
+        try {
+            Integer boxId = Integer.parseInt(id);
+            StorageBox box = (StorageBox) storageLocationService.get(boxId, StorageBox.class);
+            if (box == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            Map<String, Map<String, String>> occupiedCoordinates = sampleStorageAssignmentDAO
+                    .getOccupiedCoordinatesWithSampleInfo(boxId);
+
+            int totalCapacity = box.getCapacity() != null ? box.getCapacity()
+                    : (box.getRows() != null ? box.getRows() : 8) * (box.getColumns() != null ? box.getColumns() : 12);
+            int occupiedCount = occupiedCoordinates.size();
+            int availableCount = totalCapacity - occupiedCount;
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("boxId", boxId);
+            response.put("boxLabel", box.getLabel());
+            response.put("rows", box.getRows() != null ? box.getRows() : 8);
+            response.put("columns", box.getColumns() != null ? box.getColumns() : 12);
+            response.put("totalCapacity", totalCapacity);
+            response.put("occupiedCount", occupiedCount);
+            response.put("availableCount", availableCount);
+            response.put("occupiedCoordinates", occupiedCoordinates);
+
+            // Also provide a simple list of occupied well coordinates for easy checking
+            response.put("occupiedWells", new ArrayList<>(occupiedCoordinates.keySet()));
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error getting box occupancy", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

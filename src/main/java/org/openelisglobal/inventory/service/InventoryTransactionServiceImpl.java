@@ -25,6 +25,7 @@ public class InventoryTransactionServiceImpl extends AuditableBaseObjectServiceI
 
     public InventoryTransactionServiceImpl() {
         super(InventoryTransaction.class);
+        this.auditTrailLog = true; // Enable generic audit trail
     }
 
     @Override

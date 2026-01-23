@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- FIX PATHOLOGY PAGE ORDER -->
+    <!-- Corrects the page_order for Pathology Laboratory notebook -->
+    <!-- to ensure proper workflow sequence: -->
+    <!-- 1. Sample Creation & Metadata Capture -->
+    <!-- 2. Sample Quality Control -->
+    <!-- 3. Sample Processing & Grossing/Aliquoting -->
+    <!-- 4. Testing, Staining & Microscopy -->
+    <!-- 5. Storage & Inventory Management -->
+    <!-- 6. Reporting & Performance Monitoring -->
+    <!-- 7. Disposal & Archiving -->
+    <!-- 8. Reference & SOP Module -->
+    <!-- ======================================================== -->
+
+    <changeSet id="fix-pathology-page-order" author="openelis-pathology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Pathology Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Fix page order for Pathology Laboratory notebook template and instances</comment>
+
+        <!-- Update template pages -->
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="1"/>
+            <where>title = 'Sample Creation &amp; Metadata Capture' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="2"/>
+            <where>title = 'Sample Quality Control' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="3"/>
+            <where>title = 'Sample Processing &amp; Aliquoting' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="4"/>
+            <where>title = 'Testing, Staining &amp; Microscopy' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="5"/>
+            <where>title = 'Storage &amp; Inventory Management' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="6"/>
+            <where>title = 'Reporting &amp; Performance Monitoring' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="7"/>
+            <where>title = 'Disposal &amp; Archiving' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="8"/>
+            <where>title = 'Reference &amp; SOP Module' AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory')</where>
+        </update>
+
+        <rollback>
+            <!-- No rollback needed - this is a data correction -->
+        </rollback>
+    </changeSet>
+
+    <!-- Second changeset to ensure order is fixed even if first one already ran -->
+    <changeSet id="fix-pathology-page-order-v2" author="openelis-pathology">
+        <comment>Re-apply page order fix for Pathology Laboratory notebook (v2)</comment>
+
+        <!-- Use raw SQL to update page orders -->
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 1
+            WHERE title = 'Sample Creation &amp; Metadata Capture'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 2
+            WHERE title = 'Sample Quality Control'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 3
+            WHERE title = 'Sample Processing &amp; Aliquoting'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 4
+            WHERE title = 'Testing, Staining &amp; Microscopy'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 5
+            WHERE title = 'Storage &amp; Inventory Management'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 6
+            WHERE title = 'Reporting &amp; Performance Monitoring'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 7
+            WHERE title = 'Disposal &amp; Archiving'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <sql>
+            UPDATE clinlims.notebook_page SET page_order = 8
+            WHERE title = 'Reference &amp; SOP Module'
+            AND notebook_id IN (SELECT id FROM clinlims.notebook WHERE title = 'Pathology Laboratory');
+        </sql>
+
+        <rollback>
+            <!-- No rollback needed - this is a data correction -->
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

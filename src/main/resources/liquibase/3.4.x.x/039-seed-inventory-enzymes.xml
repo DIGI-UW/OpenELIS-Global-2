@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Seed Inventory Enzymes for Bacteriology PCR Workflows
+        ======================================================
+        Pre-populates inventory with enzyme types used in PCR and molecular workflows
+    -->
+
+    <!-- Tag DNA Polymerase -->
+    <changeSet id="seed-enzyme-001-tag-dna-polymerase" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Taq DNA Polymerase' AND item_type = 'ENZYME';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Taq DNA Polymerase enzyme</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Taq DNA Polymerase',
+                'Heat-stable DNA polymerase from Thermus aquaticus for PCR amplification',
+                'ENZYME',
+                'DNA Polymerases',
+                'New England Biolabs',
+                'M0273L',
+                '2-8°C (Refrigerated)',
+                'units',
+                2,
+                365,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- Pfu Polymerase -->
+    <changeSet id="seed-enzyme-002-pfu-polymerase" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Pfu Polymerase' AND item_type = 'ENZYME';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Pfu Polymerase enzyme</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Pfu Polymerase',
+                'High-fidelity DNA polymerase from Pyrococcus furiosus for accurate PCR',
+                'ENZYME',
+                'DNA Polymerases',
+                'New England Biolabs',
+                'M0520L',
+                '2-8°C (Refrigerated)',
+                'units',
+                2,
+                365,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- Phusion Polymerase -->
+    <changeSet id="seed-enzyme-003-phusion-polymerase" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Phusion Polymerase' AND item_type = 'ENZYME';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Phusion Polymerase enzyme</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Phusion High-Fidelity DNA Polymerase',
+                'Ultra-high-fidelity polymerase for long and difficult amplifications',
+                'ENZYME',
+                'DNA Polymerases',
+                'Thermo Fisher Scientific',
+                'F530L',
+                '2-8°C (Refrigerated)',
+                'units',
+                2,
+                365,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- Q5 Polymerase -->
+    <changeSet id="seed-enzyme-004-q5-polymerase" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Q5 High-Fidelity DNA Polymerase' AND item_type = 'ENZYME';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Q5 Polymerase enzyme</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Q5 High-Fidelity DNA Polymerase',
+                'High-fidelity thermostable polymerase engineered for robust PCR performance',
+                'ENZYME',
+                'DNA Polymerases',
+                'New England Biolabs',
+                'M0491L',
+                '2-8°C (Refrigerated)',
+                'units',
+                2,
+                365,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- Reverse Transcriptase -->
+    <changeSet id="seed-enzyme-005-reverse-transcriptase" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Reverse Transcriptase' AND item_type = 'ENZYME';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Reverse Transcriptase enzyme</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Reverse Transcriptase',
+                'RNA-dependent DNA polymerase for RT-PCR and cDNA synthesis',
+                'ENZYME',
+                'Reverse Transcriptases',
+                'New England Biolabs',
+                'M0253L',
+                '2-8°C (Refrigerated)',
+                'units',
+                2,
+                365,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+    <!-- Platinum SuperFi Polymerase -->
+    <changeSet id="seed-enzyme-006-platinum-superfi" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.inventory_item
+                WHERE name = 'Platinum SuperFi DNA Polymerase' AND item_type = 'ENZYME';
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed Platinum SuperFi Polymerase enzyme</comment>
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                id, fhir_uuid, name, description, item_type, category,
+                manufacturer, catalog_number, storage_requirements, units,
+                low_stock_threshold, expiration_alert_days, is_active
+            ) VALUES (
+                nextval('clinlims.inventory_item_seq'),
+                uuid_generate_v4(),
+                'Platinum SuperFi DNA Polymerase',
+                'Ultra-high-fidelity polymerase for superior specificity and processivity',
+                'ENZYME',
+                'DNA Polymerases',
+                'Thermo Fisher Scientific',
+                'A11635-03',
+                '2-8°C (Refrigerated)',
+                'units',
+                2,
+                365,
+                'Y'
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

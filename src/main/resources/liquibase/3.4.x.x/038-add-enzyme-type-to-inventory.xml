@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="add-enzyme-type-to-inventory-item" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="enzyme_type"/>
+            </not>
+        </preConditions>
+        <comment>Add enzyme_type column to inventory_item table for tracking specific enzyme types</comment>
+
+        <addColumn schemaName="clinlims" tableName="inventory_item">
+            <column name="enzyme_type" type="VARCHAR(50)" remarks="Type of enzyme (TAG_DNA_POLYMERASE, PFU_POLYMERASE, PHUSION_POLYMERASE, Q5_POLYMERASE, REVERSE_TRANSCRIPTASE, PLATINUM_SUPERFI)">
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add 'general' to chk_location_type_valid constraint -->
+    <!-- Support for shelf-level storage assignment without specific rack/box -->
+    <changeSet id="add-general-location-type" author="shelf-storage-update">
+        <comment>
+            Add 'general' as a valid location type to support shelf-level storage assignment.
+            Some laboratories do not use rack/box hierarchy and need to assign samples
+            directly to shelf level with location_type = 'general'.
+        </comment>
+
+        <!-- Drop and recreate the constraint with 'general' included -->
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_location_type_valid
+            CHECK (location_type IS NULL OR location_type IN ('device', 'shelf', 'rack', 'box', 'general'));
+        </sql>
+
+        <rollback>
+            <!-- Restore constraint without 'general' -->
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                ADD CONSTRAINT chk_location_type_valid
+                CHECK (location_type IS NULL OR location_type IN ('device', 'shelf', 'rack', 'box'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

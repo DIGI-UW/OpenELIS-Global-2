@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- UPDATE BIOANALYTICAL WORKFLOW PAGE CONTENT STRUCTURE -->
+    <!-- Add detailed pageDescription and content JSON structure -->
+    <!-- following the MNTD template pattern -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE RECEPTION & REGISTRATION CONTENT UPDATE -->
+    <!-- ======================================================== -->
+    <changeSet id="update-bioanalytical-page-1-content" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Sample Reception &amp; Registration page content with detailed JSON structure</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Sample Reception &amp; Registration&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sampleIdentity&quot;: {
+      &quot;sampleId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sample ID&quot;, &quot;required&quot;: true},
+      &quot;sampleType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sample Type&quot;, &quot;options&quot;: [&quot;API&quot;, &quot;Tablet&quot;, &quot;Plasma&quot;, &quot;Serum&quot;, &quot;Urine&quot;, &quot;Other biological matrix&quot;], &quot;required&quot;: true},
+      &quot;sourceOrigin&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Source Origin&quot;, &quot;options&quot;: [&quot;Medical Laboratory&quot;, &quot;External Client&quot;, &quot;Contract Research Organization&quot;], &quot;required&quot;: true}
+    },
+    &quot;testRequirements&quot;: {
+      &quot;requestedTests&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Requested Tests&quot;, &quot;options&quot;: [&quot;Bioequivalence Study&quot;, &quot;Dissolution&quot;, &quot;Content Uniformity&quot;, &quot;Assay&quot;, &quot;Impurities&quot;, &quot;Pharmacokinetic Analysis&quot;], &quot;required&quot;: true},
+      &quot;studyProtocol&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Study Protocol&quot;, &quot;required&quot;: false}
+    },
+    &quot;receptionMetadata&quot;: {
+      &quot;dateTimeOfReceipt&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Date/Time of Receipt&quot;, &quot;required&quot;: true},
+      &quot;receivingPersonnel&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Receiving Personnel&quot;, &quot;required&quot;: true},
+      &quot;storageConditionOnArrival&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Condition on Arrival&quot;, &quot;options&quot;: [&quot;Room Temperature&quot;, &quot;Refrigerated (2-8°C)&quot;, &quot;Frozen (-20°C)&quot;, &quot;Ultra-frozen (-80°C)&quot;], &quot;required&quot;: true}
+    },
+    &quot;studyLinking&quot;: {
+      &quot;bioequivalenceStudy&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Bioequivalence Study&quot;, &quot;source&quot;: &quot;bioequivalence_study&quot;, &quot;required&quot;: false},
+      &quot;subjectId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Subject ID&quot;, &quot;required&quot;: false},
+      &quot;timepoint&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sampling Timepoint&quot;, &quot;required&quot;: false}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate unique system ID&quot;, &quot;Assign barcode label&quot;, &quot;Set status: Registered - Awaiting Processing&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;dateTimeOfReceipt&quot;, &quot;receivingPersonnel&quot;, &quot;storageConditionOnArrival&quot;]
+  },
+  &quot;manifestImport&quot;: {
+    &quot;csvColumnMapping&quot;: {
+      &quot;sampleIdColumn&quot;: &quot;Sample ID&quot;,
+      &quot;sampleTypeColumn&quot;: &quot;Sample Type&quot;,
+      &quot;sourceOriginColumn&quot;: &quot;Source Origin&quot;,
+      &quot;requestedTestsColumn&quot;: &quot;Requested Tests&quot;,
+      &quot;dateTimeOfReceiptColumn&quot;: &quot;Date/Time of Receipt&quot;,
+      &quot;receivingPersonnelColumn&quot;: &quot;Receiving Personnel&quot;
+    }
+  },
+  &quot;nextPage&quot;: &quot;Test Assignment &amp; Preparation&quot;
+}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 1</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="content" value="Sample Reception &amp; Registration - Batch verification and metadata capture of incoming samples"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 1</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: TEST ASSIGNMENT & PREPARATION CONTENT UPDATE -->
+    <!-- ======================================================== -->
+    <changeSet id="update-bioanalytical-page-2-content" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Test Assignment &amp; Preparation page content with detailed JSON structure</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Test Assignment &amp; Preparation&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;testAssignment&quot;: {
+      &quot;assignedAnalyst&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Assigned Analyst/Pharmacist&quot;, &quot;source&quot;: &quot;system_user&quot;, &quot;required&quot;: true},
+      &quot;testCategory&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Test Category&quot;, &quot;options&quot;: [&quot;Bioanalytical&quot;, &quot;Dissolution&quot;, &quot;Content Uniformity&quot;, &quot;Assay&quot;, &quot;Impurities&quot;], &quot;required&quot;: true},
+      &quot;expectedAnalysisDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Expected Analysis Date&quot;, &quot;required&quot;: true}
+    },
+    &quot;analyticalMethodology&quot;: {
+      &quot;analyticalMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Analytical Method&quot;, &quot;options&quot;: [&quot;HPLC UV-Vis&quot;, &quot;LC-MS/MS&quot;, &quot;GC-MS&quot;, &quot;Dissolution Apparatus&quot;, &quot;Spectrophotometry&quot;], &quot;required&quot;: true},
+      &quot;instrumentId&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Instrument ID&quot;, &quot;source&quot;: &quot;instrument_inventory&quot;, &quot;required&quot;: true},
+      &quot;calibrationStatus&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Calibration Status&quot;, &quot;options&quot;: [&quot;Current&quot;, &quot;Expired&quot;, &quot;Pending&quot;], &quot;required&quot;: true}
+    },
+    &quot;samplePreparation&quot;: {
+      &quot;preparationMethodology&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Sample Preparation Methodology&quot;, &quot;required&quot;: true},
+      &quot;extractionMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Extraction Method&quot;, &quot;options&quot;: [&quot;Protein Precipitation&quot;, &quot;Liquid-Liquid Extraction&quot;, &quot;Solid Phase Extraction&quot;, &quot;Direct Injection&quot;], &quot;required&quot;: false}
+    },
+    &quot;qcRequirements&quot;: {
+      &quot;calibrationCurveCriteria&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Calibration Curve Criteria (r² ≥ 0.99)&quot;, &quot;required&quot;: true},
+      &quot;controlSamples&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Control Samples&quot;, &quot;options&quot;: [&quot;Low, Medium, High QC&quot;, &quot;LLOQ, Mid, ULOQ&quot;], &quot;required&quot;: true},
+      &quot;acceptanceCriteria&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Acceptance Criteria (±15%, ±20% at LLOQ)&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Assign analyst to samples&quot;, &quot;Link analytical method to test&quot;, &quot;Update status: Test Assigned&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;assignedAnalyst&quot;, &quot;testCategory&quot;, &quot;analyticalMethod&quot;, &quot;instrumentId&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Analytical Test Execution&quot;
+}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 2</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="content" value="Test Assignment &amp; Preparation - Methodology selection and analyst assignment"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 2</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: ANALYTICAL TEST EXECUTION CONTENT UPDATE -->
+    <!-- ======================================================== -->
+    <changeSet id="update-bioanalytical-page-3-content" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Analytical Test Execution page content with detailed JSON structure</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Analytical Test Execution&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;executionMetadata&quot;: {
+      &quot;executionDateTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Execution Date/Time&quot;, &quot;required&quot;: true},
+      &quot;analystId&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Analyst ID&quot;, &quot;source&quot;: &quot;system_user&quot;, &quot;required&quot;: true},
+      &quot;runSequence&quot;: {&quot;type&quot;: &quot;integer&quot;, &quot;label&quot;: &quot;Run Sequence Number&quot;, &quot;required&quot;: true}
+    },
+    &quot;calibrationCurve&quot;: {
+      &quot;rSquaredValue&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;r² Value&quot;, &quot;min&quot;: 0.99, &quot;required&quot;: true},
+      &quot;slope&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Slope&quot;, &quot;required&quot;: true},
+      &quot;intercept&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Intercept&quot;, &quot;required&quot;: true},
+      &quot;acceptanceCriteria&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Acceptance Criteria Met&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;], &quot;required&quot;: true}
+    },
+    &quot;qcSamples&quot;: {
+      &quot;lowQcResult&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Low QC Result&quot;, &quot;required&quot;: true},
+      &quot;mediumQcResult&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Medium QC Result&quot;, &quot;required&quot;: true},
+      &quot;highQcResult&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;High QC Result&quot;, &quot;required&quot;: true},
+      &quot;qcAcceptanceLimits&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;QC Acceptance Limits (±15%, ±20% at LLOQ)&quot;, &quot;required&quot;: true}
+    },
+    &quot;rawDataCapture&quot;: {
+      &quot;chromatogramFiles&quot;: {&quot;type&quot;: &quot;fileUpload&quot;, &quot;label&quot;: &quot;Chromatograms/Spectra Files&quot;, &quot;acceptedFormats&quot;: [&quot;.pdf&quot;, &quot;.raw&quot;, &quot;.wiff&quot;, &quot;.d&quot;], &quot;required&quot;: true},
+      &quot;calculatedResults&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Calculated Results&quot;, &quot;unit&quot;: &quot;ng/mL or μg/mL&quot;, &quot;required&quot;: true},
+      &quot;resultsUnit&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Results Unit&quot;, &quot;options&quot;: [&quot;ng/mL&quot;, &quot;μg/mL&quot;, &quot;mg/L&quot;, &quot;%&quot;], &quot;required&quot;: true}
+    },
+    &quot;qualityControl&quot;: {
+      &quot;deviations&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Deviations (if any)&quot;, &quot;required&quot;: false},
+      &quot;alcoaCompliance&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;ALCOA+ Compliance Verified&quot;, &quot;description&quot;: &quot;Attributable, Legible, Contemporaneous, Original, Accurate, Complete&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Store raw data files&quot;, &quot;Calculate final results&quot;, &quot;Update status: Analysis Complete&quot;, &quot;Generate data integrity audit trail&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;executionDateTime&quot;, &quot;analystId&quot;, &quot;qcAcceptanceLimits&quot;]
+  },
+  &quot;nextPage&quot;: &quot;Reporting &amp; Release&quot;
+}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 3</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="content" value="Analytical Test Execution - Raw data capture and QC validation"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 3</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: REPORTING & RELEASE CONTENT UPDATE -->
+    <!-- ======================================================== -->
+    <changeSet id="update-bioanalytical-page-4-content" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Reporting &amp; Release page content with detailed JSON structure</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Reporting &amp; Release&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;resultCompilation&quot;: {
+      &quot;sampleResults&quot;: {&quot;type&quot;: &quot;aggregated&quot;, &quot;label&quot;: &quot;Compiled Sample Results&quot;, &quot;source&quot;: &quot;analytical_execution&quot;, &quot;required&quot;: true},
+      &quot;acceptanceCriteriaValidation&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Results Meet Acceptance Criteria&quot;, &quot;options&quot;: [&quot;Yes&quot;, &quot;No&quot;, &quot;Conditional&quot;], &quot;required&quot;: true}
+    },
+    &quot;reviewProcess&quot;: {
+      &quot;primaryReview&quot;: {
+        &quot;analystValidation&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Primary Review (Analyst Validation)&quot;, &quot;required&quot;: true},
+        &quot;primaryReviewer&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Primary Reviewer&quot;, &quot;source&quot;: &quot;system_user&quot;, &quot;required&quot;: true},
+        &quot;primaryReviewDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Primary Review Date&quot;, &quot;required&quot;: true}
+      },
+      &quot;secondaryReview&quot;: {
+        &quot;seniorScientistReview&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Secondary Review (Senior Scientist/QA)&quot;, &quot;required&quot;: true},
+        &quot;secondaryReviewer&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Secondary Reviewer&quot;, &quot;source&quot;: &quot;system_user&quot;, &quot;required&quot;: true},
+        &quot;secondaryReviewDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Secondary Review Date&quot;, &quot;required&quot;: true}
+      },
+      &quot;finalApproval&quot;: {
+        &quot;labManagerApproval&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Final Approval (Lab Manager/Study Director)&quot;, &quot;required&quot;: true},
+        &quot;finalApprover&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Final Approver&quot;, &quot;source&quot;: &quot;system_user&quot;, &quot;required&quot;: true},
+        &quot;finalApprovalDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Final Approval Date&quot;, &quot;required&quot;: true}
+      }
+    },
+    &quot;resultDistribution&quot;: {
+      &quot;distributionMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Result Distribution Method&quot;, &quot;options&quot;: [&quot;Email&quot;, &quot;REDCap Integration&quot;, &quot;LIMS Integration&quot;, &quot;Manual Delivery&quot;], &quot;required&quot;: true},
+      &quot;recipientList&quot;: {&quot;type&quot;: &quot;multiSelect&quot;, &quot;label&quot;: &quot;Recipients&quot;, &quot;source&quot;: &quot;contact_list&quot;, &quot;required&quot;: true}
+    },
+    &quot;performanceMetrics&quot;: {
+      &quot;dashboardGeneration&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Generate Performance Metrics Dashboard&quot;, &quot;required&quot;: true},
+      &quot;dataIntegrityDocumentation&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Document Data Integrity&quot;, &quot;required&quot;: true},
+      &quot;auditTrailComplete&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Audit Trail Complete&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Generate analytical report&quot;, &quot;Create performance dashboard&quot;, &quot;Archive audit trail&quot;, &quot;Update status: Report Released&quot;, &quot;Notify stakeholders&quot;],
+  &quot;reportGeneration&quot;: {
+    &quot;templates&quot;: [&quot;Bioequivalence Study Report&quot;, &quot;Analytical Certificate&quot;, &quot;QC Summary Report&quot;],
+    &quot;embedDashboard&quot;: true
+  },
+  &quot;nextPage&quot;: &quot;Post-Test Storage &amp; Archiving&quot;
+}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 4</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="content" value="Reporting &amp; Release - Result compilation, validation, and report generation with embedded dashboard"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 4</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: POST-TEST STORAGE & ARCHIVING CONTENT UPDATE -->
+    <!-- ======================================================== -->
+    <changeSet id="update-bioanalytical-page-5-content" author="openelis-bioanalytical">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Update Post-Test Storage &amp; Archiving page content with detailed JSON structure</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Post-Test Storage &amp; Archiving&quot;,
+  &quot;dataPoints&quot;: {
+    &quot;sampleRetention&quot;: {
+      &quot;quantityRetained&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Quantity Retained for Storage&quot;, &quot;unit&quot;: &quot;mL or tubes&quot;, &quot;required&quot;: true},
+      &quot;transferToBiorepository&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Transfer to Biorepository&quot;, &quot;options&quot;: [&quot;Yes - Long-term storage&quot;, &quot;No - Local storage&quot;, &quot;Partial transfer&quot;], &quot;required&quot;: true},
+      &quot;storageTemperature&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Storage Temperature&quot;, &quot;options&quot;: [&quot;-80°C (biological samples)&quot;, &quot;-20°C&quot;, &quot;2-8°C&quot;, &quot;Room temperature (pharmaceutical)&quot;], &quot;required&quot;: true}
+    },
+    &quot;storageLocationHierarchy&quot;: {
+      &quot;room&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Room&quot;, &quot;source&quot;: &quot;storage_room&quot;, &quot;required&quot;: true},
+      &quot;freezer&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Freezer&quot;, &quot;source&quot;: &quot;storage_device&quot;, &quot;required&quot;: true},
+      &quot;shelf&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Shelf&quot;, &quot;source&quot;: &quot;storage_shelf&quot;, &quot;required&quot;: true},
+      &quot;rack&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Rack&quot;, &quot;source&quot;: &quot;storage_rack&quot;, &quot;required&quot;: true},
+      &quot;box&quot;: {&quot;type&quot;: &quot;reference&quot;, &quot;label&quot;: &quot;Box&quot;, &quot;source&quot;: &quot;storage_box&quot;, &quot;required&quot;: true},
+      &quot;position&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Position&quot;, &quot;required&quot;: true}
+    },
+    &quot;retentionPolicy&quot;: {
+      &quot;retentionPeriod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Retention Period&quot;, &quot;options&quot;: [&quot;2 years (bioequivalence)&quot;, &quot;5-10 years (regulatory)&quot;, &quot;Custom period&quot;], &quot;required&quot;: true},
+      &quot;customRetentionPeriod&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Custom Retention Period&quot;, &quot;conditionalOn&quot;: &quot;retentionPeriod == Custom period&quot;, &quot;required&quot;: false},
+      &quot;regulatoryRequirement&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Regulatory Requirement&quot;, &quot;options&quot;: [&quot;FDA&quot;, &quot;EMA&quot;, &quot;ICH&quot;, &quot;Local Authority&quot;], &quot;required&quot;: false}
+    },
+    &quot;environmentalMonitoring&quot;: {
+      &quot;temperatureMonitoring&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Temperature Monitoring Setup&quot;, &quot;required&quot;: true},
+      &quot;alarmSystem&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Alarm System Active&quot;, &quot;required&quot;: true},
+      &quot;monitoringFrequency&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Monitoring Frequency&quot;, &quot;options&quot;: [&quot;Continuous&quot;, &quot;Daily&quot;, &quot;Weekly&quot;], &quot;required&quot;: true}
+    },
+    &quot;dataArchiving&quot;: {
+      &quot;rawDataLocation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Raw Data Archiving Location&quot;, &quot;required&quot;: true},
+      &quot;backupLocation&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Backup Location&quot;, &quot;required&quot;: true},
+      &quot;archiveFormat&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Archive Format&quot;, &quot;options&quot;: [&quot;Digital (PDF/A)&quot;, &quot;Physical printouts&quot;, &quot;Both digital and physical&quot;], &quot;required&quot;: true}
+    },
+    &quot;disposalCriteria&quot;: {
+      &quot;disposalCriteria&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Disposal Criteria&quot;, &quot;required&quot;: true},
+      &quot;disposalMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Disposal Method&quot;, &quot;options&quot;: [&quot;Autoclave&quot;, &quot;Incineration&quot;, &quot;Chemical treatment&quot;, &quot;Standard waste&quot;], &quot;required&quot;: true},
+      &quot;traceabilityMaintenance&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Sample-Result Traceability Maintained&quot;, &quot;required&quot;: true}
+    }
+  },
+  &quot;systemActions&quot;: [&quot;Update storage location&quot;, &quot;Set retention period&quot;, &quot;Initialize environmental monitoring&quot;, &quot;Archive analytical data&quot;, &quot;Update status: Archived&quot;],
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;storageTemperature&quot;, &quot;room&quot;, &quot;freezer&quot;, &quot;retentionPeriod&quot;]
+  },
+  &quot;complianceChecks&quot;: [&quot;Temperature range validation&quot;, &quot;Access control verification&quot;, &quot;Inventory tracking setup&quot;, &quot;Environmental monitoring active&quot;, &quot;Data archiving complete&quot;],
+  &quot;nextPage&quot;: null
+}"/>
+            <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 5</where>
+        </update>
+
+        <rollback>
+            <update tableName="notebook_page" schemaName="clinlims">
+                <column name="content" value="Post-Test Storage &amp; Archiving - Storage tracking, retention periods, and data archiving"/>
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bioanalytical &amp; Bioequivalence Laboratory' AND is_template = true) AND page_order = 5</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

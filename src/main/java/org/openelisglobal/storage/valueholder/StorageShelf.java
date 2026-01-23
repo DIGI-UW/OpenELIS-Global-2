@@ -34,7 +34,7 @@ public class StorageShelf extends BaseObject<Integer> {
     @Column(name = "ID")
     private Integer id;
 
-    @Column(name = "FHIR_UUID", nullable = false, unique = true)
+    @Column(name = "FHIR_UUID", nullable = false, unique = true, columnDefinition = "uuid")
     private UUID fhirUuid;
 
     @Column(name = "LABEL", length = 100, nullable = false)
@@ -53,8 +53,8 @@ public class StorageShelf extends BaseObject<Integer> {
     @JoinColumn(name = "PARENT_DEVICE_ID", nullable = false)
     private StorageDevice parentDevice;
 
-    @Column(name = "SYS_USER_ID", nullable = false)
-    private Integer sysUserId;
+    @Column(name = "SYS_USER_ID", nullable = false, length = 36)
+    private String sysUserIdValue;
 
     @Override
     public Integer getId() {
@@ -114,22 +114,14 @@ public class StorageShelf extends BaseObject<Integer> {
         this.parentDevice = parentDevice;
     }
 
-    public Integer getSysUserIdValue() {
-        return sysUserId;
-    }
-
-    public void setSysUserIdValue(Integer sysUserId) {
-        this.sysUserId = sysUserId;
-    }
-
     @Override
     public String getSysUserId() {
-        return sysUserId != null ? sysUserId.toString() : null;
+        return sysUserIdValue;
     }
 
     @Override
     public void setSysUserId(String sysUserId) {
-        this.sysUserId = sysUserId != null ? Integer.parseInt(sysUserId) : null;
+        this.sysUserIdValue = sysUserId;
     }
 
     @PrePersist

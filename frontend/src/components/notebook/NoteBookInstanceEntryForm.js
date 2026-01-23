@@ -22,9 +22,6 @@ import {
   FileUploaderItem,
   Loading,
   Tag,
-  Tabs,
-  TabList,
-  Tab,
   Accordion,
   AccordionItem,
   ContentSwitcher,
@@ -45,6 +42,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Checkmark,
+  Add,
 } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
@@ -61,16 +59,18 @@ import {
   hasRole,
   toBase64,
 } from "../utils/Utils";
-import { Add } from "@carbon/icons-react";
-import AddSample from "../addOrder/AddSample";
-import { sampleObject } from "../addOrder/Index";
-import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { SearchResults } from "../resultPage/SearchResultForm";
-import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
-import GenericSampleOrder from "../genericSample/GenericSampleOrder";
-import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
-import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
+import { usePermissions } from "../../hooks/usePermissions";
+import { Permissions } from "../../constants/roles";
+import NotebookWorkflowTab from "./workflow/NotebookWorkflowTab";
+import MNTDWorkflowTab from "./workflow/MNTDWorkflowTab";
+import TBWorkflowTab from "./workflow/TBWorkflowTab";
+import PharmaceuticalWorkflowTab from "./workflow/PharmaceuticalWorkflowTab";
+import BacteriologyWorkflowTab from "./workflow/BacteriologyWorkflowTab";
+import PathologyWorkflowTab from "./workflow/PathologyWorkflowTab";
+import BioanalyticalWorkflowTab from "./workflow/BioanalyticalWorkflowTab";
+import BioequivalenceWorkflowTab from "./workflow/BioequivalenceWorkflowTab";
+import MedLabWorkflowTab from "./workflow/MedLabWorkflowTab";
+import BiorepositoryWorkflowTab from "./workflow/BiorepositoryWorkflowTab";
 
 const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
@@ -87,10 +87,9 @@ const NoteBookInstanceEntryForm = () => {
   const TABS = Object.freeze({
     CONTENT: 0,
     ATTACHMENTS: 1,
-    SAMPLES: 2,
-    WORKFLOW: 3,
-    COMMENTS: 4,
-    AUDIT_TRAIL: 5,
+    WORKFLOW: 2,
+    COMMENTS: 3,
+    AUDIT_TRAIL: 4,
   });
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -106,25 +105,32 @@ const NoteBookInstanceEntryForm = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { hasRoleForCurrentLabUnit } = usePermissions();
+
+  // Template's allowed roles - will be set when template data is loaded
+  const [templateAllowedRoles, setTemplateAllowedRoles] = useState([]);
+
+  // Check if user can create/edit notebook entries for this specific template
+  // Uses the template's allowedRoles if available, otherwise falls back to generic permissions
+  const canEditEntry = hasRoleForCurrentLabUnit(
+    templateAllowedRoles.length > 0
+      ? templateAllowedRoles
+      : Permissions.CREATE_OR_EDIT_NOTEBOOK_ENTRY,
+  );
+
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
   const [technicianUsers, setTechnicianUsers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmittingSample, setIsSubmittingSample] = useState(false);
   const [loading, setLoading] = useState(false);
   const [noteBookData, setNoteBookData] = useState(NoteBookInitialData);
   const [noteBookForm, setNoteBookForm] = useState(NoteBookFormValues);
-  const [sampleList, setSampleList] = useState([]);
   const [analyzerList, setAnalyzerList] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [addedSampleIds, setAddedSampleIds] = useState([]);
-  const [accession, setAccesiion] = useState("");
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
   const [allPanels, setAllPanels] = useState([]);
   const [sampleTypes, setSampleTypes] = useState([]);
-  const [samples, setSamples] = useState([sampleObject]);
-  const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
   const [errors, setErrors] = useState([]);
   const [selectedTab, setSelectedTab] = useState(TABS.CONTENT);
   const [comments, setComments] = useState([]);
@@ -134,17 +140,8 @@ const NoteBookInstanceEntryForm = () => {
   const [auditTrailPage, setAuditTrailPage] = useState(1);
   const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
   const [questionnaires, setQuestionnaires] = useState([]);
-  const [sampleLocations, setSampleLocations] = useState({}); // Track location by sampleItemId
-  const [resultsModalOpen, setResultsModalOpen] = useState(false);
-  const [resultsModalAccession, setResultsModalAccession] = useState("");
-  const [resultsModalData, setResultsModalData] = useState({ testResult: [] });
-  const [searchBy, setSearchBy] = useState({ type: "oder", doRange: false });
-  const [param, setParam] = useState("&accessionNumber=");
   const [projectTags, setProjectTags] = useState([]); // Template tags (for display only)
   const [projectFiles, setProjectFiles] = useState([]); // Template files (for display only)
-  const [showSampleCreationForm, setShowSampleCreationForm] = useState(false); // Toggle sample creation form
-  const [showSampleEditForm, setShowSampleEditForm] = useState(false); // Toggle sample edit form
-  const [showSampleImportForm, setShowSampleImportForm] = useState(false); // Toggle sample import form
 
   const handleSubmit = () => {
     if (isSubmitting) {
@@ -166,7 +163,7 @@ const NoteBookInstanceEntryForm = () => {
     );
     noteBookForm.pages = noteBookData.pages;
     noteBookForm.files = noteBookData.files;
-    noteBookForm.analyzerIds = noteBookData.analyzers.map((entry) =>
+    noteBookForm.inventoryInstrumentIds = noteBookData.analyzers.map((entry) =>
       Number(entry.id),
     );
     noteBookForm.tags = noteBookData.tags;
@@ -174,7 +171,6 @@ const NoteBookInstanceEntryForm = () => {
     noteBookForm.comments = comments
       .filter((c) => c.id === null)
       .map((c) => ({ id: null, text: c.text }));
-    console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
         ? "/rest/notebook/update/" + notebookentryid
@@ -188,7 +184,6 @@ const NoteBookInstanceEntryForm = () => {
 
   const handleSubmited = async (response) => {
     var body = await response.json();
-    console.log(body);
     var status = response.status;
     setIsSubmitting(false);
     setNotificationVisible(true);
@@ -198,91 +193,27 @@ const NoteBookInstanceEntryForm = () => {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      // Reload data to get comments with proper id and author from backend
-      getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
-      // Reload audit trail after save
-      loadAuditTrail(body.id);
+      // Only redirect if we have a valid id
+      if (body.id) {
+        // Reload data to get comments with proper id and author from backend
+        getFromOpenElisServer(
+          "/rest/notebook/view/" + body.id,
+          loadInitialData,
+        );
+        // Reload audit trail after save
+        loadAuditTrail(body.id);
+        window.location.href = "/NoteBookInstanceEditForm/" + body.id;
+      }
     } else {
+      // Show error message from backend if available
+      const errorMessage =
+        body.error || intl.formatMessage({ id: "error.save.msg" });
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.msg" }),
+        message: errorMessage,
       });
-    }
-    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
-  };
-
-  // Check if a sample is already added (by sampleItemId)
-  const isSampleAdded = (sample) => {
-    const sampleItemId = sample.sampleItemId || sample.id;
-    return noteBookData.samples.some(
-      (s) => (s.sampleItemId || s.id) === sampleItemId,
-    );
-  };
-
-  // Add sample to noteBookData.samples
-  const handleAddSample = (sample) => {
-    if (isSampleAdded(sample)) return; // prevent duplicates
-
-    setNoteBookData((prev) => ({
-      ...prev,
-      samples: [...prev.samples, sample],
-    }));
-    const sampleItemId = sample.sampleItemId || sample.id;
-    setAddedSampleIds((prev) => [...prev, sampleItemId]);
-  };
-
-  // Remove sample from selected samples
-  const handleRemoveSample = (sampleId) => {
-    setNoteBookData((prev) => ({
-      ...prev,
-      samples: prev.samples.filter((s) => s.id !== sampleId),
-    }));
-    setAddedSampleIds((prev) => prev.filter((id) => id !== sampleId));
-  };
-
-  const handleSubmitOrderForm = (e) => {
-    e.preventDefault();
-    if (isSubmittingSample) {
-      return;
-    }
-    setIsSubmittingSample(true);
-    orderFormValues.sampleXML = getSamplesXmlValues();
-    orderFormValues.sampleOrderItems.modified = true;
-    //remove display Lists rom the form
-    orderFormValues.sampleOrderItems.priorityList = [];
-    orderFormValues.sampleOrderItems.programList = [];
-    orderFormValues.sampleOrderItems.referringSiteList = [];
-    orderFormValues.initialSampleConditionList = [];
-    orderFormValues.testSectionList = [];
-    orderFormValues.sampleOrderItems.providersList = [];
-    orderFormValues.sampleOrderItems.paymentOptions = [];
-    orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
-    postToOpenElisServer(
-      "/rest/SampleEdit",
-      JSON.stringify(orderFormValues),
-      handlePost,
-    );
-  };
-
-  const handlePost = (status) => {
-    setIsSubmittingSample(false);
-    if (status === 200) {
-      showAlertMessage(
-        <FormattedMessage id="save.order.success.msg" />,
-        NotificationKinds.success,
-      );
-      setSamples([sampleObject]);
-      getFromOpenElisServer(
-        "/rest/notebook/samples?accession=" + accession,
-        setSampleList,
-      );
-    } else {
-      showAlertMessage(
-        <FormattedMessage id="server.error.msg" />,
-        NotificationKinds.error,
-      );
+      // Do NOT redirect on error - stay on the page
     }
   };
 
@@ -293,86 +224,6 @@ const NoteBookInstanceEntryForm = () => {
       title: intl.formatMessage({ id: "notification.title" }),
       message: msg,
     });
-  };
-
-  const getSamplesXmlValues = () => {
-    let sampleXmlString = "";
-    let referralItems = [];
-    if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
-        sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
-        sampleXmlString += "<samples>";
-        let tests = null;
-        samples.map((sampleItem) => {
-          if (sampleItem.tests.length > 0) {
-            tests = Object.keys(sampleItem.tests)
-              .map(function (i) {
-                return sampleItem.tests[i].id;
-              })
-              .join(",");
-            // Extract storage location data if present
-            const storageLocation = sampleItem.sampleXML?.storageLocation;
-            const storageLocationId = storageLocation?.id || "";
-            const storageLocationType = storageLocation?.type || "";
-            const storagePositionCoordinate =
-              storageLocation?.positionCoordinate || "";
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''  storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
-          }
-          if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
-            });
-          }
-        });
-        sampleXmlString += "</samples>";
-      }
-    }
-    return sampleXmlString;
-  };
-
-  const elementError = (path) => {
-    if (errors?.errors?.length > 0) {
-      let error = errors.inner?.find((e) => e.path === path);
-      if (error) {
-        return error.message;
-      } else {
-        return null;
-      }
-    }
-  };
-
-  const loadOrderValues = (data) => {
-    if (componentMounted.current) {
-      data.sampleOrderItems.referringSiteName = "";
-      setOrderFormValues(data);
-    }
   };
 
   const [showTagModal, setShowTagModal] = useState(false);
@@ -476,27 +327,36 @@ const NoteBookInstanceEntryForm = () => {
     setNewComment("");
   };
 
-  const handleAccesionChange = (e, rawValue) => {
-    setAccesiion(rawValue ? rawValue : e?.target?.value);
-  };
-
-  const handleAccesionSearch = () => {
-    getFromOpenElisServer(
-      "/rest/notebook/samples?accession=" + accession,
-      setSampleList,
-    );
-
-    getFromOpenElisServer(
-      "/rest/SampleEdit?accessionNumber=" + accession,
-      loadOrderValues,
-    );
-  };
-
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
-    getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
+    getFromOpenElisServer(
+      "/rest/inventory/instruments?status=active",
+      (response) => {
+        if (response && Array.isArray(response) && response.length > 0) {
+          // Transform inventory instruments to IdValuePair format for FilterableMultiSelect
+          setAnalyzerList(
+            response.map((instrument) => ({
+              id: instrument.id,
+              value: instrument.name,
+            })),
+          );
+        } else {
+          // Mock data if no instruments available in inventory
+          setAnalyzerList([
+            { id: "1", value: "Analytical Balance" },
+            { id: "2", value: "HPLC System" },
+            { id: "3", value: "UV-Vis Spectrophotometer" },
+            { id: "4", value: "Dissolution Apparatus" },
+            { id: "5", value: "Centrifuge" },
+            { id: "6", value: "Karl Fischer Titrator" },
+            { id: "7", value: "GC-MS System" },
+            { id: "8", value: "pH Meter" },
+          ]);
+        }
+      },
+    );
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/panels", setAllPanels);
@@ -532,39 +392,37 @@ const NoteBookInstanceEntryForm = () => {
         "/rest/notebook/view/" + notebookid,
         loadInitialProjectData,
       );
-      // Fetch default samples associated with this notebook template
-      getFromOpenElisServer(
-        "/rest/notebook/notebooksamples?noteBookId=" + notebookid,
-        (samples) => {
-          if (samples && Array.isArray(samples)) {
-            setSampleList(samples);
-          }
-        },
-      );
     }
   }, []);
 
-  // Fetch storage locations for all selected samples
-  useEffect(() => {
-    if (noteBookData?.samples && noteBookData.samples.length > 0) {
-      noteBookData.samples.forEach((sample) => {
-        const sampleItemId = sample.sampleItemId || sample.id;
-        if (sampleItemId) {
-          fetchSampleLocation(sampleItemId);
-        }
-      });
-    }
-  }, [noteBookData?.samples]);
+  // Check if user is authorized to create entries for this notebook
+  // Uses role-based permission checking: Global Roles → AllLabUnits → Specific Lab Unit
+  // @param {Set|Array} allowedRoles - The template's specific allowedRoles
+  const checkAuthorization = (allowedRoles) => {
+    // Convert Set to Array if needed
+    const rolesArray = allowedRoles
+      ? Array.isArray(allowedRoles)
+        ? allowedRoles
+        : Array.from(allowedRoles)
+      : [];
 
-  // Check if user is authorized to access this notebook
-  const checkAuthorization = (technicianId) => {
-    if (technicianId && userSessionDetails.userId != technicianId) {
+    // Check if user has any of the notebook's specific allowedRoles
+    // hasRoleForCurrentLabUnit checks:
+    // 1. Global Admin (always allowed)
+    // 2. Global roles (userSessionDetails.roles)
+    // 3. AllLabUnits roles (userSessionDetails.userLabRolesMap["AllLabUnits"])
+    // 4. Specific lab unit roles (userSessionDetails.userLabRolesMap[loginLabUnit])
+    const hasAccess =
+      rolesArray.length === 0 || hasRoleForCurrentLabUnit(rolesArray);
+
+    if (!hasAccess) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
-          id: "notebook.error.notAssigned",
-          defaultMessage: "You are not assigned to this project",
+          id: "notebook.permission.entry.edit.required",
+          defaultMessage:
+            "You need permission to create or edit notebook entries",
         }),
       });
       setNotificationVisible(true);
@@ -580,8 +438,14 @@ const NoteBookInstanceEntryForm = () => {
   const loadInitialProjectData = (data) => {
     if (componentMounted.current) {
       if (data && data.id) {
-        // Check authorization
-        if (!checkAuthorization(data.technicianId)) {
+        // Store template's allowedRoles for permission checking
+        const allowedRoles = data.allowedRoles || [];
+        setTemplateAllowedRoles(
+          Array.isArray(allowedRoles) ? allowedRoles : Array.from(allowedRoles),
+        );
+
+        // Check authorization using template's specific allowedRoles
+        if (!checkAuthorization(allowedRoles)) {
           setLoading(false);
           return;
         }
@@ -611,20 +475,29 @@ const NoteBookInstanceEntryForm = () => {
   };
 
   const loadInitialData = (data) => {
+    console.log("Loading data", { data });
     if (componentMounted.current) {
       if (data && data.id) {
-        // Check authorization
-        if (!checkAuthorization(data.technicianId)) {
-          setLoading(false);
-          return;
-        }
-
         // If this is an instance (isTemplate=false) and we have templateId from backend,
         // fetch the latest parent template properties to ensure we always display the most up-to-date template data
         if (data.isTemplate === false && data.templateId) {
           getFromOpenElisServer(
             "/rest/notebook/view/" + data.templateId,
             (templateData) => {
+              // Store template's allowedRoles for permission checking
+              const allowedRoles = templateData.allowedRoles || [];
+              setTemplateAllowedRoles(
+                Array.isArray(allowedRoles)
+                  ? allowedRoles
+                  : Array.from(allowedRoles),
+              );
+
+              // Check authorization using template's specific allowedRoles
+              if (!checkAuthorization(allowedRoles)) {
+                setLoading(false);
+                return;
+              }
+
               // Merge pages: Keep existing instance pages, add new template pages that don't exist
               const instancePages = data.pages || [];
               const templatePages = templateData.pages || [];
@@ -687,17 +560,22 @@ const NoteBookInstanceEntryForm = () => {
               setNoteBookData(mergedData);
             },
           );
-
-          // Fetch default samples associated with this notebook template
-          getFromOpenElisServer(
-            "/rest/notebook/notebooksamples?noteBookId=" + data.templateId,
-            (samples) => {
-              if (samples && Array.isArray(samples)) {
-                setSampleList(samples);
-              }
-            },
-          );
         } else {
+          // This is either a template or an entry without parent templateId
+          // For templates, use allowedRoles from the data itself if available
+          const allowedRoles = data.allowedRoles || [];
+          setTemplateAllowedRoles(
+            Array.isArray(allowedRoles)
+              ? allowedRoles
+              : Array.from(allowedRoles),
+          );
+
+          // Check authorization - if no allowedRoles, fall back to generic permissions
+          if (allowedRoles.length > 0 && !checkAuthorization(allowedRoles)) {
+            setLoading(false);
+            return;
+          }
+
           setNoteBookData(data);
         }
 
@@ -745,7 +623,7 @@ const NoteBookInstanceEntryForm = () => {
                 hour12: false,
               });
             }
-            return { ...item, id: index + 1, time: formattedTime };
+            return { ...item, id: String(index + 1), time: formattedTime };
           });
           setAuditTrailItems(updatedAuditTrailItems);
         } else {
@@ -765,61 +643,6 @@ const NoteBookInstanceEntryForm = () => {
     setAuditTrailPageSize(pageInfo.pageSize);
   };
 
-  // Open results modal for a specific sample
-  const handleOpenResultsModal = (sample) => {
-    const accession = sample.accessionNumber || "";
-    if (!accession) {
-      addNotification({
-        kind: NotificationKinds.warning,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "notebook.results.noAccession",
-          defaultMessage: "No accession number available for this sample",
-        }),
-      });
-      setNotificationVisible(true);
-      return;
-    }
-
-    setParam("&accessionNumber=" + accession);
-    setResultsModalAccession(accession);
-    setResultsModalData({ testResult: [] });
-    setResultsModalOpen(true);
-
-    // Fetch results for this accession
-    const labNumber = accession.split("-")[0];
-    const searchEndPoint =
-      "/rest/LogbookResults?" +
-      "labNumber=" +
-      labNumber +
-      "&doRange=" +
-      false +
-      "&finished=" +
-      false +
-      "&patientPK=" +
-      "&collectionDate=" +
-      "&recievedDate=" +
-      "&selectedTest=" +
-      "&selectedSampleStatus=" +
-      "&selectedAnalysisStatus=";
-    getFromOpenElisServer(searchEndPoint, (data) => {
-      if (data && data.testResult) {
-        // Add IDs to results for SearchResults component
-        var i = 0;
-        data.testResult.forEach((item) => (item.id = "" + i++));
-        setResultsModalData(data);
-      } else {
-        setResultsModalData({ testResult: [] });
-      }
-    });
-  };
-
-  const handleCloseResultsModal = () => {
-    setResultsModalOpen(false);
-    setResultsModalAccession("");
-    setResultsModalData({ testResult: [] });
-  };
-
   const statusColors = {
     DRAFT: "gray",
     SUBMITTED: "cyan",
@@ -837,205 +660,6 @@ const NoteBookInstanceEntryForm = () => {
 
   const getStatusColor = (status) => {
     return statusColors[status] || "gray";
-  };
-
-  // Toggle sample creation form visibility
-  const handleCreateSample = () => {
-    setShowSampleCreationForm(true);
-  };
-
-  // Handle successful sample creation - hide form and refresh sample list
-  const handleSampleCreationSuccess = (data) => {
-    setShowSampleCreationForm(false);
-    refreshSampleList();
-    // Show success notification
-    addNotification({
-      kind: NotificationKinds.success,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage(
-        { id: "genericSample.order.success.message" },
-        { accessionNumber: data.accessionNumber },
-      ),
-    });
-    setNotificationVisible(true);
-  };
-
-  // Toggle sample edit form visibility
-  const handleEditSample = () => {
-    setShowSampleEditForm(true);
-  };
-
-  // Handle successful sample edit - hide form and refresh sample list
-  const handleSampleEditSuccess = (data) => {
-    setShowSampleEditForm(false);
-    refreshSampleList();
-    // Show success notification
-    addNotification({
-      kind: NotificationKinds.success,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage(
-        { id: "genericSample.edit.success" },
-        { accessionNumber: data.accessionNumber },
-      ),
-    });
-    setNotificationVisible(true);
-  };
-
-  // Toggle sample import form visibility
-  const handleImportSamples = () => {
-    setShowSampleImportForm(true);
-  };
-
-  // Handle successful sample import - hide form and refresh sample list
-  const handleSampleImportSuccess = (data) => {
-    setShowSampleImportForm(false);
-    refreshSampleList();
-    // Show success notification
-    addNotification({
-      kind: NotificationKinds.success,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage(
-        { id: "genericSample.import.success" },
-        { count: data.totalCreated || 0 },
-      ),
-    });
-    setNotificationVisible(true);
-  };
-
-  // Refresh sample list for this notebook
-  const refreshSampleList = () => {
-    if (noteBookData.templateId || notebookid) {
-      getFromOpenElisServer(
-        "/rest/notebook/notebooksamples?noteBookId=" +
-          (noteBookData.templateId || notebookid),
-        (samples) => {
-          if (samples && Array.isArray(samples)) {
-            setSampleList(samples);
-          }
-        },
-      );
-    }
-  };
-
-  // Fetch location for a SampleItem
-  const fetchSampleLocation = (sampleItemId) => {
-    // Skip if already fetched or no sampleItemId
-    if (!sampleItemId || sampleLocations[sampleItemId]) {
-      return;
-    }
-
-    getFromOpenElisServer(
-      `/rest/storage/sample-items/${encodeURIComponent(sampleItemId)}`,
-      (response) => {
-        if (response) {
-          const locationPath =
-            response.hierarchicalPath || response.location || "";
-          setSampleLocations((prev) => ({
-            ...prev,
-            [sampleItemId]: {
-              locationPath,
-              sampleItemId: sampleItemId,
-              sampleItemExternalId: response.sampleItemExternalId || null,
-              sampleAccessionNumber: response.sampleAccessionNumber || "",
-            },
-          }));
-        }
-      },
-      (error) => {
-        // SampleItem may not have location assigned yet
-        console.debug("No location found for SampleItem:", sampleItemId);
-        // Store empty location to prevent repeated calls
-        setSampleLocations((prev) => ({
-          ...prev,
-          [sampleItemId]: { locationPath: "", sampleItemId: sampleItemId },
-        }));
-      },
-    );
-  };
-
-  // Handle location assignment for a sample
-  const handleLocationAssignment = async (locationData, sampleItemId) => {
-    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-    const newLocation = locationData?.newLocation || locationData;
-
-    // Use sampleItemId from parameter or stored location data
-    const actualSampleItemId =
-      locationData?.sample?.sampleItemId ||
-      locationData?.sample?.id ||
-      sampleItemId ||
-      (sampleLocations[sampleItemId] &&
-      typeof sampleLocations[sampleItemId] === "object"
-        ? sampleLocations[sampleItemId].sampleItemId
-        : null);
-
-    if (!actualSampleItemId || !newLocation) {
-      console.error("Missing SampleItem ID or location for assignment", {
-        sampleItemId: actualSampleItemId,
-        newLocation,
-      });
-      return;
-    }
-
-    try {
-      // Call assignment API with SampleItem ID
-      const assignmentData = {
-        sampleItemId: actualSampleItemId,
-        locationId:
-          newLocation.rack?.id ||
-          newLocation.shelf?.id ||
-          newLocation.device?.id,
-        locationType: newLocation.rack
-          ? "rack"
-          : newLocation.shelf
-            ? "shelf"
-            : "device",
-        positionCoordinate:
-          locationData.positionCoordinate ||
-          newLocation.position?.coordinate ||
-          "",
-        notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
-      };
-
-      postToOpenElisServerFullResponse(
-        "/rest/storage/sample-items/assign",
-        JSON.stringify(assignmentData),
-        async (response) => {
-          const body = await response.json();
-          if (response.status === 200 && body.success) {
-            // Update local state with location path
-            const locationPath = body.hierarchicalPath || "";
-            const storedData = sampleLocations[sampleItemId];
-            setSampleLocations((prev) => ({
-              ...prev,
-              [sampleItemId]:
-                storedData && typeof storedData === "object"
-                  ? { ...storedData, locationPath }
-                  : locationPath,
-            }));
-            addNotification({
-              title: intl.formatMessage({ id: "notification.title" }),
-              message: intl.formatMessage({
-                id: "storage.location.assigned.success",
-                defaultMessage: "Location assigned successfully",
-              }),
-              kind: NotificationKinds.success,
-            });
-            setNotificationVisible(true);
-          }
-        },
-      );
-    } catch (error) {
-      console.error("Error assigning location:", error);
-      addNotification({
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "storage.location.assigned.error",
-          defaultMessage: "Failed to assign location",
-        }),
-        kind: NotificationKinds.error,
-      });
-      setNotificationVisible(true);
-    }
   };
 
   return (
@@ -1244,7 +868,6 @@ const NoteBookInstanceEntryForm = () => {
             <Switch
               text={intl.formatMessage({ id: "notebook.tab.attachments" })}
             />
-            <Switch text={intl.formatMessage({ id: "notebook.tab.samples" })} />
             <Switch
               text={intl.formatMessage({ id: "notebook.tab.workflow" })}
             />
@@ -1338,13 +961,17 @@ const NoteBookInstanceEntryForm = () => {
               <Column lg={16} md={8} sm={4}>
                 {(initialMount || mode === MODES.CREATE) && (
                   <FilterableMultiSelect
+                    key={`instruments-${analyzerList.length}-${noteBookData.analyzers?.length || 0}-${initialMount}`}
                     id="instruments"
                     titleText={
                       <FormattedMessage id="notebook.instruments.title" />
                     }
                     items={analyzerList}
                     itemToString={(item) => (item ? item.value : "")}
-                    initialSelectedItems={noteBookData.analyzers}
+                    initialSelectedItems={noteBookData.analyzers || []}
+                    compareItems={(a, b) =>
+                      String(a.id) === String(b.id) ? 0 : 1
+                    }
                     onChange={(changes) => {
                       setNoteBookData({
                         ...noteBookData,
@@ -1413,603 +1040,6 @@ const NoteBookInstanceEntryForm = () => {
                 )}
               </Column>
             </Grid>
-          </Column>
-        )}
-        {selectedTab === TABS.SAMPLES && (
-          <Column lg={16} md={8} sm={4}>
-            {/* Sample Creation Form - embedded GenericSampleOrder */}
-            {showSampleCreationForm && (
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "1rem",
-                    }}
-                  >
-                    <h5>
-                      <FormattedMessage
-                        id="notebook.sample.create.title"
-                        defaultMessage="Create New Sample"
-                      />
-                    </h5>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      onClick={() => setShowSampleCreationForm(false)}
-                    >
-                      <FormattedMessage
-                        id="button.cancel"
-                        defaultMessage="Cancel"
-                      />
-                    </Button>
-                  </div>
-                </Column>
-                <Column lg={16} md={8} sm={4}>
-                  <GenericSampleOrder
-                    title="notebook.sample.order.title"
-                    titleDefault="Create Sample for Notebook"
-                    showBreadcrumbs={false}
-                    showNotebookSelection={false}
-                    showSampleType={true}
-                    showQuantity={true}
-                    showUom={true}
-                    showFrom={true}
-                    showCollector={true}
-                    showCollectionDate={true}
-                    showCollectionTime={true}
-                    showQuestionnaire={true}
-                    showSuccessScreen={false}
-                    saveEndpoint="/rest/GenericSampleOrder"
-                    initialValues={{
-                      notebookId:
-                        noteBookData.templateId || notebookid
-                          ? parseInt(noteBookData.templateId || notebookid)
-                          : null,
-                      notebookEntryId: notebookentryid
-                        ? parseInt(notebookentryid)
-                        : null,
-                    }}
-                    onSaveSuccess={handleSampleCreationSuccess}
-                    onSaveError={(error) => {
-                      addNotification({
-                        kind: NotificationKinds.error,
-                        title: intl.formatMessage({ id: "notification.title" }),
-                        message: error,
-                      });
-                      setNotificationVisible(true);
-                    }}
-                    renderCustomContent={(formData, updateField) => (
-                      <Grid fullWidth={true}>
-                        <Column lg={16} md={8} sm={4}>
-                          <div
-                            style={{
-                              marginBottom: "1rem",
-                              padding: "0.5rem",
-                              backgroundColor: "#f4f4f4",
-                              borderRadius: "4px",
-                            }}
-                          >
-                            <p style={{ margin: 0, fontSize: "0.875rem" }}>
-                              <FormattedMessage
-                                id="notebook.sample.order.info"
-                                defaultMessage="This sample will be associated with the current notebook."
-                              />
-                            </p>
-                          </div>
-                        </Column>
-                      </Grid>
-                    )}
-                  />
-                </Column>
-              </Grid>
-            )}
-
-            {/* Sample Edit Form - embedded GenericSampleOrderEdit */}
-            {showSampleEditForm && (
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "1rem",
-                    }}
-                  >
-                    <h5>
-                      <FormattedMessage
-                        id="notebook.sample.edit.title"
-                        defaultMessage="Edit Sample"
-                      />
-                    </h5>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      onClick={() => setShowSampleEditForm(false)}
-                    >
-                      <FormattedMessage
-                        id="button.cancel"
-                        defaultMessage="Cancel"
-                      />
-                    </Button>
-                  </div>
-                </Column>
-                <Column lg={16} md={8} sm={4}>
-                  <GenericSampleOrderEdit
-                    title="notebook.sample.edit.title"
-                    titleDefault="Edit Sample"
-                    showBreadcrumbs={false}
-                    showNotebookSelection={false}
-                    showSampleType={true}
-                    showQuantity={true}
-                    showUom={true}
-                    showFrom={true}
-                    showCollector={true}
-                    showCollectionDate={true}
-                    showCollectionTime={true}
-                    showQuestionnaire={true}
-                    onSaveSuccess={handleSampleEditSuccess}
-                    onSaveError={(error) => {
-                      addNotification({
-                        kind: NotificationKinds.error,
-                        title: intl.formatMessage({ id: "notification.title" }),
-                        message: error,
-                      });
-                      setNotificationVisible(true);
-                    }}
-                  />
-                </Column>
-              </Grid>
-            )}
-
-            {/* Sample Import Form - embedded GenericSampleOrderImport */}
-            {showSampleImportForm && (
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "1rem",
-                    }}
-                  >
-                    <h5>
-                      <FormattedMessage
-                        id="notebook.sample.import.title"
-                        defaultMessage="Import Samples"
-                      />
-                    </h5>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      onClick={() => setShowSampleImportForm(false)}
-                    >
-                      <FormattedMessage
-                        id="button.cancel"
-                        defaultMessage="Cancel"
-                      />
-                    </Button>
-                  </div>
-                </Column>
-                <Column lg={16} md={8} sm={4}>
-                  <GenericSampleOrderImport
-                    title="notebook.sample.import.title"
-                    titleDefault="Import Samples"
-                    showBreadcrumbs={false}
-                    showPrintBarcodes={true}
-                    onImportSuccess={handleSampleImportSuccess}
-                    onImportError={(error) => {
-                      addNotification({
-                        kind: NotificationKinds.error,
-                        title: intl.formatMessage({ id: "notification.title" }),
-                        message: error,
-                      });
-                      setNotificationVisible(true);
-                    }}
-                  />
-                </Column>
-              </Grid>
-            )}
-
-            {/* Sample Management UI - default view */}
-            {!showSampleCreationForm &&
-              !showSampleEditForm &&
-              !showSampleImportForm && (
-                <Grid fullWidth={true} className="gridBoundary">
-                  <Column lg={8} md={8} sm={4}>
-                    <h5>
-                      {" "}
-                      <FormattedMessage id="notebook.label.sampleManagement" />
-                    </h5>
-                  </Column>
-                  <Column lg={8} md={8} sm={4}>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <Button
-                        kind="primary"
-                        size="sm"
-                        onClick={handleCreateSample}
-                        disabled={isViewMode}
-                        renderIcon={Add}
-                      >
-                        <FormattedMessage
-                          id="notebook.sample.create"
-                          defaultMessage="Create"
-                        />
-                      </Button>
-                      <Button
-                        kind="secondary"
-                        size="sm"
-                        onClick={handleEditSample}
-                        disabled={isViewMode}
-                      >
-                        <FormattedMessage
-                          id="notebook.sample.edit"
-                          defaultMessage="Edit"
-                        />
-                      </Button>
-                      <Button
-                        kind="tertiary"
-                        size="sm"
-                        onClick={handleImportSamples}
-                        disabled={isViewMode}
-                      >
-                        <FormattedMessage
-                          id="notebook.sample.import"
-                          defaultMessage="Import"
-                        />
-                      </Button>
-                    </div>
-                  </Column>
-                  <Column lg={16} md={8} sm={4}>
-                    <br></br>
-                  </Column>
-
-                  <Column lg={8} md={8} sm={4}>
-                    <CustomLabNumberInput
-                      id="accession"
-                      name="accession"
-                      value={accession}
-                      placeholder={intl.formatMessage({
-                        id: "notebook.search.byAccession",
-                      })}
-                      onChange={handleAccesionChange}
-                    />
-                  </Column>
-                  <Column lg={8} md={8} sm={4}>
-                    <Button
-                      size="md"
-                      onClick={handleAccesionSearch}
-                      labelText={intl.formatMessage({
-                        id: "label.button.search",
-                      })}
-                    >
-                      <FormattedMessage id="label.button.search" />
-                    </Button>
-                  </Column>
-
-                  <Column lg={16} md={8} sm={4}>
-                    <br></br>
-                  </Column>
-                  <Column lg={16} md={8} sm={4}>
-                    {orderFormValues?.sampleOrderItems.labNo === accession &&
-                      accession != "" && (
-                        <Accordion>
-                          <AccordionItem title="Add Sample">
-                            <Grid className="gridBoundary">
-                              <Column lg={16} md={8} sm={4}>
-                                <AddSample
-                                  error={elementError}
-                                  setSamples={setSamples}
-                                  samples={samples}
-                                />
-                              </Column>
-                              <Column lg={16} md={8} sm={4}>
-                                <Button
-                                  data-cy="submit-order"
-                                  kind="primary"
-                                  className="forwardButton"
-                                  onClick={handleSubmitOrderForm}
-                                  disabled={isSubmittingSample}
-                                >
-                                  <FormattedMessage id="label.button.submit" />
-                                </Button>
-                              </Column>
-                            </Grid>
-                          </AccordionItem>
-                        </Accordion>
-                      )}
-                  </Column>
-
-                  <Column lg={16} md={8} sm={4}>
-                    <br></br>
-                  </Column>
-
-                  <Column lg={16} md={8} sm={4}>
-                    <h5>
-                      {intl.formatMessage({ id: "notebook.samples.available" })}
-                    </h5>
-                  </Column>
-
-                  <Column lg={16} md={8} sm={4}>
-                    <Grid className="gridBoundary">
-                      {sampleList?.length === 0 && (
-                        <Column lg={16} md={8} sm={4}>
-                          <InlineNotification
-                            kind="info"
-                            title={intl.formatMessage({
-                              id: "notebook.samples.none.title",
-                            })}
-                            subtitle={intl.formatMessage({
-                              id: "notebook.samples.none.subtitle",
-                            })}
-                          />
-                        </Column>
-                      )}
-                      {sampleList?.map((sample) => (
-                        <Column key={sample.id} lg={16} md={8} sm={12}>
-                          <Grid fullWidth={true} className="gridBoundary">
-                            <Column lg={16} md={8} sm={4}>
-                              <h5>
-                                {sample.sampleType} - {sample.externalId}
-                              </h5>
-                            </Column>
-                            <Column lg={2} md={8} sm={4}>
-                              <h6>
-                                {intl.formatMessage({
-                                  id: "sample.collection.date",
-                                })}
-                              </h6>
-                            </Column>
-                            <Column lg={14} md={8} sm={4}>
-                              {sample.collectionDate ||
-                                intl.formatMessage({ id: "not.available" })}
-                            </Column>
-
-                            <Column lg={2} md={8} sm={4}>
-                              <h6>
-                                {intl.formatMessage({
-                                  id: "notebook.samples.resultsRecorded",
-                                })}
-                              </h6>
-                            </Column>
-                            <Column lg={14} md={8} sm={4}>
-                              {sample.results.length}
-                            </Column>
-                            <Column lg={16} md={8} sm={4}>
-                              <Button
-                                kind="primary"
-                                disabled={isViewMode || isSampleAdded(sample)}
-                                size="sm"
-                                onClick={() => handleAddSample(sample)}
-                              >
-                                <Add />{" "}
-                                <FormattedMessage id="label.button.add" />
-                              </Button>
-                            </Column>
-                          </Grid>
-                        </Column>
-                      ))}
-                    </Grid>
-                  </Column>
-
-                  <Column lg={16} md={8} sm={4}>
-                    <h5>
-                      {intl.formatMessage({ id: "notebook.samples.selected" })}
-                    </h5>
-                  </Column>
-
-                  <Column lg={16} md={8} sm={4}>
-                    {noteBookData?.samples?.length === 0 && (
-                      <Grid className="gridBoundary">
-                        <Column lg={16} md={8} sm={4}>
-                          <InlineNotification
-                            kind="info"
-                            title={intl.formatMessage({
-                              id: "notebook.samples.none.title.selected",
-                            })}
-                            subtitle={intl.formatMessage({
-                              id: "notebook.samples.none.subtitle.selected",
-                            })}
-                          />
-                        </Column>
-                      </Grid>
-                    )}
-                    {noteBookData?.samples?.length > 0 && (
-                      <>
-                        <Grid className="gridBoundary">
-                          {noteBookData.samples.map((sample) => (
-                            <Column
-                              key={sample.id || Math.random()}
-                              lg={16}
-                              md={8}
-                              sm={4}
-                            >
-                              <Grid fullWidth={true} className="gridBoundary">
-                                <Column lg={16} md={8} sm={4}>
-                                  <h5>
-                                    {sample.sampleType} -{" "}
-                                    {sample.externalId}{" "}
-                                  </h5>
-                                </Column>
-                                <Column lg={2} md={8} sm={4}>
-                                  <h6>
-                                    {intl.formatMessage({
-                                      id: "sample.collection.date",
-                                    })}
-                                  </h6>
-                                </Column>
-                                <Column lg={14} md={8} sm={4}>
-                                  {sample.collectionDate}
-                                </Column>
-
-                                <Column lg={2} md={8} sm={4}>
-                                  <h6>
-                                    {intl.formatMessage({
-                                      id: "notebook.samples.resultsRecorded",
-                                    })}
-                                  </h6>
-                                </Column>
-                                <Column lg={14} md={8} sm={4}>
-                                  {sample.results &&
-                                  Array.isArray(sample.results) &&
-                                  sample.results.length > 0 ? (
-                                    <div>
-                                      {sample.results.map(
-                                        (result, resultIndex) => (
-                                          <Tile
-                                            key={resultIndex}
-                                            style={{
-                                              marginBottom: "0.5rem",
-                                              padding: "0.75rem",
-                                            }}
-                                          >
-                                            <div
-                                              style={{
-                                                marginBottom: "0.25rem",
-                                              }}
-                                            >
-                                              <strong>
-                                                {result.test ||
-                                                  intl.formatMessage({
-                                                    id: "not.available",
-                                                  })}
-                                              </strong>
-                                            </div>
-                                            <div
-                                              style={{
-                                                marginBottom: "0.25rem",
-                                                color: "#525252",
-                                              }}
-                                            >
-                                              {intl.formatMessage({
-                                                id: "column.name.result",
-                                              })}
-                                              :{" "}
-                                              {result.result ||
-                                                intl.formatMessage({
-                                                  id: "not.available",
-                                                })}
-                                            </div>
-                                            <div
-                                              style={{
-                                                fontSize: "0.875rem",
-                                                color: "#525252",
-                                              }}
-                                            >
-                                              {intl.formatMessage({
-                                                id: "notebook.sample.result.dateCreated",
-                                              })}
-                                              :{" "}
-                                              {result.dateCreated
-                                                ? new Date(
-                                                    result.dateCreated,
-                                                  ).toLocaleString()
-                                                : intl.formatMessage({
-                                                    id: "not.available",
-                                                  })}
-                                            </div>
-                                          </Tile>
-                                        ),
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span>
-                                      {intl.formatMessage({
-                                        id: "notebook.results.none.title",
-                                      })}
-                                    </span>
-                                  )}
-                                </Column>
-                                {sample.voided && (
-                                  <>
-                                    <Column lg={16} md={8} sm={4}>
-                                      <InlineNotification
-                                        kind="warning"
-                                        title={intl.formatMessage({
-                                          id: "sample.voided.title",
-                                        })}
-                                        subtitle={sample.voidReason}
-                                        hideCloseButton
-                                      />
-                                    </Column>
-                                    <Column lg={16} md={8} sm={4}>
-                                      <br></br>
-                                    </Column>
-                                  </>
-                                )}
-                                {/* Storage Location Widget */}
-                                <Column lg={16} md={8} sm={4}>
-                                  <br />
-                                  <StorageLocationSelector
-                                    workflow="results"
-                                    showQuickFind={true}
-                                    sampleInfo={{
-                                      sampleItemId:
-                                        sample.sampleItemId || sample.id,
-                                      sampleItemExternalId:
-                                        sample.externalId || null,
-                                      sampleAccessionNumber:
-                                        sample.accessionNumber || "",
-                                      sampleId:
-                                        sample.sampleItemId || sample.id,
-                                      type: sample.sampleType || "",
-                                      status: sample.sampleStatus || "Active",
-                                    }}
-                                    hierarchicalPath={
-                                      sampleLocations[
-                                        sample.sampleItemId || sample.id
-                                      ]?.locationPath || ""
-                                    }
-                                    onLocationChange={(locationData) => {
-                                      handleLocationAssignment(
-                                        locationData,
-                                        sample.sampleItemId || sample.id,
-                                      );
-                                    }}
-                                  />
-                                </Column>
-                                <Column lg={16} md={8} sm={4}>
-                                  <Button
-                                    kind="primary"
-                                    size="sm"
-                                    onClick={() =>
-                                      handleOpenResultsModal(sample)
-                                    }
-                                    style={{ marginRight: "0.5rem" }}
-                                  >
-                                    <FormattedMessage
-                                      id={
-                                        sample.results &&
-                                        Array.isArray(sample.results) &&
-                                        sample.results.length > 0
-                                          ? "notebook.button.editResults"
-                                          : "notebook.button.enterResults"
-                                      }
-                                    />
-                                  </Button>
-                                  <Button
-                                    kind="danger--tertiary"
-                                    size="sm"
-                                    onClick={() =>
-                                      handleRemoveSample(sample.id)
-                                    }
-                                  >
-                                    <FormattedMessage id="label.button.remove" />
-                                  </Button>
-                                </Column>
-                              </Grid>
-                            </Column>
-                          ))}
-                        </Grid>
-                      </>
-                    )}
-                  </Column>
-                </Grid>
-              )}
           </Column>
         )}
         {selectedTab === TABS.ATTACHMENTS && (
@@ -2124,224 +1154,342 @@ const NoteBookInstanceEntryForm = () => {
         )}
         {selectedTab === TABS.WORKFLOW && (
           <Column lg={16} md={8} sm={4}>
-            <Grid fullWidth={true} className="gridBoundary">
-              <Column lg={16} md={8} sm={4}>
-                <h5>
-                  {" "}
-                  <FormattedMessage id="notebook.label.pages" />
-                </h5>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br></br>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                {noteBookData?.pages?.length === 0 && (
-                  <InlineNotification
-                    kind="info"
-                    title={intl.formatMessage({
-                      id: "notebook.pages.none.title",
-                    })}
-                    subtitle={intl.formatMessage({
-                      id: "notebook.pages.none.subtitle",
-                    })}
-                  />
-                )}
-                {noteBookData?.pages?.length > 0 && (
-                  <Accordion>
-                    {noteBookData.pages.map((page, index) => (
-                      <AccordionItem
-                        key={index}
-                        style={{ marginBottom: "1rem" }}
-                        title={
-                          <span
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                            }}
+            {/* Use enhanced workflow view for notebook instances (non-templates) */}
+            {/* Detect workflow type based on notebook title */}
+            {/*
+              IMPORTANT: Do NOT pass entryId to workflow tabs.
+
+              The notebookentryid from URL params is a NoteBook ID (from notebook table),
+              NOT a NotebookEntry ID (from notebook_entry table). These are different entities.
+
+              The workflow tabs have their own logic to:
+              1. Load notebook data using notebookId
+              2. Check for existing NotebookEntry via /rest/notebook-entry/by-notebook/{notebookId}
+              3. Create a new NotebookEntry if needed
+
+              Passing notebookentryid as entryId would cause 404 errors because the workflow
+              tabs would try to fetch /rest/notebook-entry/{notebookId} which doesn't exist.
+            */}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title
+                ?.toLowerCase()
+                .includes("malaria and neglected tropical disease") && (
+                <MNTDWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("pharmaceutical") && (
+                <PharmaceuticalWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("malaria and neglected tropical disease") && (
+                <TBWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("bacteriology") && (
+                <BacteriologyWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("pathology") && (
+                <PathologyWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("bioanalytical") && (
+                <BioanalyticalWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("bioequivalence") && (
+                <BioequivalenceWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title
+                ?.toLowerCase()
+                .includes("medical laboratory") && (
+                <MedLabWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              noteBookData?.title?.toLowerCase().includes("biorepository") && (
+                <BiorepositoryWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {noteBookData?.isTemplate !== true &&
+              noteBookData?.id &&
+              !noteBookData?.title?.toLowerCase().includes("tuberculosis") &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("malaria and neglected tropical disease") &&
+              !noteBookData?.title?.toLowerCase().includes("pharmaceutical") &&
+              !noteBookData?.title?.toLowerCase().includes("bacteriology") &&
+              !noteBookData?.title?.toLowerCase().includes("pathology") &&
+              !noteBookData?.title?.toLowerCase().includes("bioanalytical") &&
+              !noteBookData?.title?.toLowerCase().includes("bioequivalence") &&
+              !noteBookData?.title
+                ?.toLowerCase()
+                .includes("medical laboratory") &&
+              !noteBookData?.title?.toLowerCase().includes("biorepository") && (
+                <NotebookWorkflowTab notebookId={noteBookData.id} />
+              )}
+            {/* Use accordion view for templates or when no ID is available */}
+            {(noteBookData?.isTemplate === true || !noteBookData?.id) && (
+              <Grid fullWidth={true} className="gridBoundary">
+                <Column lg={16} md={8} sm={4}>
+                  <h5>
+                    {" "}
+                    <FormattedMessage id="notebook.label.pages" />
+                  </h5>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  <br></br>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  {noteBookData?.pages?.length === 0 && (
+                    <InlineNotification
+                      kind="info"
+                      title={intl.formatMessage({
+                        id: "notebook.pages.none.title",
+                      })}
+                      subtitle={intl.formatMessage({
+                        id: "notebook.pages.none.subtitle",
+                      })}
+                    />
+                  )}
+                  {noteBookData?.pages?.length > 0 && (
+                    <Accordion>
+                      {[...noteBookData.pages]
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))
+                        .filter((page) => {
+                          // During entry creation (CREATE mode), show ALL pages - no restrictions
+                          // Page-level role restrictions only apply when viewing/editing existing entries
+                          if (mode === MODES.CREATE) {
+                            return true;
+                          }
+
+                          // Check page-level access control for existing entries
+                          const pageRoles = page.allowedRoles
+                            ? Array.isArray(page.allowedRoles)
+                              ? page.allowedRoles
+                              : Array.from(page.allowedRoles)
+                            : [];
+                          // No roles = no restriction = show page
+                          if (pageRoles.length === 0) return true;
+                          // Check if user has any of the page's required roles
+                          return hasRoleForCurrentLabUnit(pageRoles);
+                        })
+                        .map((page, index) => (
+                          <AccordionItem
+                            key={index}
+                            style={{ marginBottom: "1rem" }}
+                            title={
+                              <span
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                }}
+                              >
+                                {intl.formatMessage(
+                                  { id: "pagination.page" },
+                                  { page: page.order || index + 1 },
+                                )}
+                                :{" "}
+                                <h5 style={{ margin: 0, display: "inline" }}>
+                                  {page.title}
+                                </h5>
+                                {page.completed && (
+                                  <Tag type="green" size="sm">
+                                    <FormattedMessage id="notebook.page.completed" />
+                                  </Tag>
+                                )}
+                              </span>
+                            }
                           >
-                            {intl.formatMessage(
-                              { id: "pagination.page" },
-                              { page: page.order || index + 1 },
-                            )}
-                            :{" "}
-                            <h5 style={{ margin: 0, display: "inline" }}>
-                              {page.title}
-                            </h5>
-                            {page.completed && (
-                              <Tag type="green" size="sm">
-                                <FormattedMessage id="notebook.page.completed" />
-                              </Tag>
-                            )}
-                          </span>
-                        }
-                      >
-                        <Grid>
-                          <Column lg={2} md={8} sm={4}>
-                            <h6>
-                              {intl.formatMessage({
-                                id: "notebook.page.instructions",
-                              })}
-                            </h6>
-                          </Column>
-                          <Column lg={14} md={8} sm={4}>
-                            {page.instructions}
-                          </Column>
-                          <Column lg={2} md={8} sm={4}>
-                            <h6>
-                              {intl.formatMessage({
-                                id: "notebook.page.content",
-                              })}
-                            </h6>
-                          </Column>
-                          <Column lg={14} md={8} sm={4}>
-                            {page.content}
-                          </Column>
-                          {page.sampleTypeId && (
-                            <>
+                            <Grid>
                               <Column lg={2} md={8} sm={4}>
                                 <h6>
                                   {intl.formatMessage({
-                                    id: "sample.type",
+                                    id: "notebook.page.instructions",
                                   })}
                                 </h6>
                               </Column>
                               <Column lg={14} md={8} sm={4}>
-                                <div>
-                                  <span style={{ marginRight: "0.5rem" }}>
-                                    {intl.formatMessage({ id: "sample.type" })}
-                                    :{" "}
-                                  </span>
-                                  {(() => {
-                                    const sampleType = sampleTypes.find(
-                                      (st) => st.id == page.sampleTypeId,
-                                    );
-                                    return sampleType ? (
-                                      <Tag type="blue" size="sm">
-                                        {sampleType.value}
-                                      </Tag>
-                                    ) : (
-                                      <></>
-                                    );
-                                  })()}
-                                </div>
+                                {page.instructions}
                               </Column>
-                            </>
-                          )}
-                          {page.panels &&
-                            Array.isArray(page.panels) &&
-                            page.panels.length > 0 && (
-                              <>
-                                <Column lg={2} md={8} sm={4}>
-                                  <h6>
-                                    <FormattedMessage id="sample.label.orderpanel" />
-                                  </h6>
-                                </Column>
-                                <Column lg={14} md={8} sm={4}>
-                                  <div>
-                                    <span style={{ marginRight: "0.5rem" }}>
-                                      <FormattedMessage id="sample.label.orderpanel" />
-                                      :{" "}
-                                    </span>
-                                    {page.panels
-                                      .filter((panelId) => panelId != null)
-                                      .map((panelId, panelIndex) => {
-                                        // Try to find panel by ID (handle both string and number)
-                                        const panel = allPanels.find((p) => {
-                                          if (!p || p.id == null) return false;
-                                          // Normalize both to strings for comparison
-                                          const pId = String(p.id).trim();
-                                          const pagePanelId =
-                                            String(panelId).trim();
-                                          // Compare as both string and number
-                                          return (
-                                            pId === pagePanelId ||
-                                            Number(p.id) === Number(panelId) ||
-                                            p.id == panelId
-                                          );
-                                        });
-                                        // Only show panel if found (don't show ID fallback)
-                                        return panel ? (
-                                          <Tag
-                                            key={panelIndex}
-                                            type="green"
-                                            size="sm"
-                                            style={{ marginRight: "0.5rem" }}
-                                          >
-                                            {panel.value}
+                              <Column lg={2} md={8} sm={4}>
+                                <h6>
+                                  {intl.formatMessage({
+                                    id: "notebook.page.content",
+                                  })}
+                                </h6>
+                              </Column>
+                              <Column lg={14} md={8} sm={4}>
+                                {page.content}
+                              </Column>
+                              {page.sampleTypeId && (
+                                <>
+                                  <Column lg={2} md={8} sm={4}>
+                                    <h6>
+                                      {intl.formatMessage({
+                                        id: "sample.type",
+                                      })}
+                                    </h6>
+                                  </Column>
+                                  <Column lg={14} md={8} sm={4}>
+                                    <div>
+                                      <span style={{ marginRight: "0.5rem" }}>
+                                        {intl.formatMessage({
+                                          id: "sample.type",
+                                        })}
+                                        :{" "}
+                                      </span>
+                                      {(() => {
+                                        const sampleType = sampleTypes.find(
+                                          (st) => st.id == page.sampleTypeId,
+                                        );
+                                        return sampleType ? (
+                                          <Tag type="blue" size="sm">
+                                            {sampleType.value}
                                           </Tag>
-                                        ) : null;
-                                      })
-                                      .filter((tag) => tag !== null)}
-                                  </div>
-                                </Column>
-                              </>
-                            )}
-                          {page.tests &&
-                            Array.isArray(page.tests) &&
-                            page.tests.length > 0 && (
-                              <>
-                                <Column lg={2} md={8} sm={4}>
-                                  <h6>
-                                    {intl.formatMessage({
-                                      id: "barcode.label.info.tests",
+                                        ) : (
+                                          <></>
+                                        );
+                                      })()}
+                                    </div>
+                                  </Column>
+                                </>
+                              )}
+                              {page.panels &&
+                                Array.isArray(page.panels) &&
+                                page.panels.length > 0 && (
+                                  <>
+                                    <Column lg={2} md={8} sm={4}>
+                                      <h6>
+                                        <FormattedMessage id="sample.label.orderpanel" />
+                                      </h6>
+                                    </Column>
+                                    <Column lg={14} md={8} sm={4}>
+                                      <div>
+                                        <span style={{ marginRight: "0.5rem" }}>
+                                          <FormattedMessage id="sample.label.orderpanel" />
+                                          :{" "}
+                                        </span>
+                                        {page.panels
+                                          .filter((panelId) => panelId != null)
+                                          .map((panelId, panelIndex) => {
+                                            // Try to find panel by ID (handle both string and number)
+                                            const panel = allPanels.find(
+                                              (p) => {
+                                                if (!p || p.id == null)
+                                                  return false;
+                                                // Normalize both to strings for comparison
+                                                const pId = String(p.id).trim();
+                                                const pagePanelId =
+                                                  String(panelId).trim();
+                                                // Compare as both string and number
+                                                return (
+                                                  pId === pagePanelId ||
+                                                  Number(p.id) ===
+                                                    Number(panelId) ||
+                                                  p.id == panelId
+                                                );
+                                              },
+                                            );
+                                            // Only show panel if found (don't show ID fallback)
+                                            return panel ? (
+                                              <Tag
+                                                key={panelIndex}
+                                                type="green"
+                                                size="sm"
+                                                style={{
+                                                  marginRight: "0.5rem",
+                                                }}
+                                              >
+                                                {panel.value}
+                                              </Tag>
+                                            ) : null;
+                                          })
+                                          .filter((tag) => tag !== null)}
+                                      </div>
+                                    </Column>
+                                  </>
+                                )}
+                              {page.tests &&
+                                Array.isArray(page.tests) &&
+                                page.tests.length > 0 && (
+                                  <>
+                                    <Column lg={2} md={8} sm={4}>
+                                      <h6>
+                                        {intl.formatMessage({
+                                          id: "barcode.label.info.tests",
+                                        })}
+                                      </h6>
+                                    </Column>
+                                    <Column lg={14} md={8} sm={4}>
+                                      <div>
+                                        {page.tests.map((testId, testIndex) => {
+                                          const test = allTests.find(
+                                            (t) => t.id == testId,
+                                          );
+                                          return test ? (
+                                            <Tag
+                                              key={testIndex}
+                                              type="blue"
+                                              size="sm"
+                                            >
+                                              {test.value}
+                                            </Tag>
+                                          ) : (
+                                            <></>
+                                          );
+                                        })}
+                                      </div>
+                                    </Column>
+                                  </>
+                                )}
+                              <Column lg={16} md={8} sm={4}>
+                                <br />
+                                {!page.completed ? (
+                                  <Button
+                                    kind="primary"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleMarkPageComplete(index)
+                                    }
+                                    style={{ marginRight: "0.5rem" }}
+                                    hasIconOnly
+                                    renderIcon={Checkmark}
+                                    iconDescription={intl.formatMessage({
+                                      id: "notebook.page.markComplete",
                                     })}
-                                  </h6>
-                                </Column>
-                                <Column lg={14} md={8} sm={4}>
-                                  <div>
-                                    {page.tests.map((testId, testIndex) => {
-                                      const test = allTests.find(
-                                        (t) => t.id == testId,
-                                      );
-                                      return test ? (
-                                        <Tag
-                                          key={testIndex}
-                                          type="blue"
-                                          size="sm"
-                                        >
-                                          {test.value}
-                                        </Tag>
-                                      ) : (
-                                        <></>
-                                      );
-                                    })}
-                                  </div>
-                                </Column>
-                              </>
-                            )}
-                          <Column lg={16} md={8} sm={4}>
-                            <br />
-                            {!page.completed ? (
-                              <Button
-                                kind="primary"
-                                size="sm"
-                                onClick={() => handleMarkPageComplete(index)}
-                                style={{ marginRight: "0.5rem" }}
-                                hasIconOnly
-                                renderIcon={Checkmark}
-                                iconDescription={intl.formatMessage({
-                                  id: "notebook.page.markComplete",
-                                })}
-                                disabled={isViewMode}
-                              />
-                            ) : (
-                              <Tag
-                                type="green"
-                                size="sm"
-                                style={{ marginRight: "0.5rem" }}
-                              >
-                                <FormattedMessage id="notebook.page.completed" />
-                              </Tag>
-                            )}
-                          </Column>
-                        </Grid>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                )}
-              </Column>
-            </Grid>
+                                    disabled={isViewMode}
+                                  />
+                                ) : (
+                                  <Tag
+                                    type="green"
+                                    size="sm"
+                                    style={{ marginRight: "0.5rem" }}
+                                  >
+                                    <FormattedMessage id="notebook.page.completed" />
+                                  </Tag>
+                                )}
+                              </Column>
+                            </Grid>
+                          </AccordionItem>
+                        ))}
+                    </Accordion>
+                  )}
+                </Column>
+              </Grid>
+            )}
           </Column>
         )}
         {selectedTab === TABS.COMMENTS && (
@@ -2585,37 +1733,6 @@ const NoteBookInstanceEntryForm = () => {
         />
       </Modal>
       {/* Results Modal */}
-      <Modal
-        open={resultsModalOpen}
-        modalHeading={intl.formatMessage(
-          { id: "notebook.results.modal.title" },
-          { accession: resultsModalAccession },
-        )}
-        passiveModal
-        onRequestClose={handleCloseResultsModal}
-        size="lg"
-      >
-        {resultsModalData.testResult &&
-        resultsModalData.testResult.length > 0 ? (
-          <SearchResults
-            results={resultsModalData}
-            setResultForm={setResultsModalData}
-            extraParams={param}
-            searchBy={searchBy}
-            refreshOnSubmit={false}
-          />
-        ) : (
-          <InlineNotification
-            kind="info"
-            title={intl.formatMessage({
-              id: "notebook.results.none.title",
-            })}
-            subtitle={intl.formatMessage({
-              id: "notebook.results.none.subtitle",
-            })}
-          />
-        )}
-      </Modal>
       {/* Status Section */}
       <Grid fullWidth={true} className="orderLegendBody">
         <Column lg={16} md={8} sm={4}>
@@ -2668,7 +1785,16 @@ const NoteBookInstanceEntryForm = () => {
             <Column lg={8} md={8} sm={4}>
               <Button
                 kind="primary"
-                disabled={isSubmitting || isViewMode}
+                disabled={!canEditEntry || isSubmitting || isViewMode}
+                title={
+                  !canEditEntry
+                    ? intl.formatMessage({
+                        id: "notebook.permission.entry.edit.required",
+                        defaultMessage:
+                          "You need permission to create or edit notebook entries",
+                      })
+                    : undefined
+                }
                 onClick={() => handleSubmit()}
               >
                 <FormattedMessage id="label.button.save" />

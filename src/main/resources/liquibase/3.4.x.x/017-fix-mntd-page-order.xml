@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- FIX: Ensure correct page order for MNTD workflow pages -->
+    <!-- Page 9: Data Analysis & Export -->
+    <!-- Page 10: Reporting & REDCap Integration -->
+    <!-- ======================================================== -->
+    <changeSet id="fix-mntd-page-order-data-analysis" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory'
+                AND n.is_template = true
+                AND np.title = 'Data Analysis &amp; Export'
+            </sqlCheck>
+        </preConditions>
+        <comment>Ensure Data Analysis page has page_order = 9</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="9"/>
+            <where>
+                notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)
+                AND title = 'Data Analysis &amp; Export'
+            </where>
+        </update>
+    </changeSet>
+
+    <changeSet id="fix-mntd-page-order-reporting-redcap" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory'
+                AND n.is_template = true
+                AND np.title = 'Reporting &amp; REDCap Integration'
+            </sqlCheck>
+        </preConditions>
+        <comment>Ensure Reporting &amp; REDCap Integration page has page_order = 10</comment>
+
+        <update tableName="notebook_page" schemaName="clinlims">
+            <column name="page_order" value="10"/>
+            <where>
+                notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)
+                AND title = 'Reporting &amp; REDCap Integration'
+            </where>
+        </update>
+    </changeSet>
+
+    <!-- Also fix workflow_page_template display_order if needed -->
+    <changeSet id="fix-mntd-workflow-template-order-data-analysis" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template
+                WHERE workflow_category = 'MNTD' AND name = 'Data Analysis &amp; Export'
+            </sqlCheck>
+        </preConditions>
+        <comment>Ensure Data Analysis workflow template has display_order = 9</comment>
+
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="9"/>
+            <where>workflow_category = 'MNTD' AND name = 'Data Analysis &amp; Export'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="fix-mntd-workflow-template-order-reporting" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template
+                WHERE workflow_category = 'MNTD' AND name = 'Reporting &amp; REDCap Integration'
+            </sqlCheck>
+        </preConditions>
+        <comment>Ensure Reporting workflow template has display_order = 10</comment>
+
+        <update tableName="workflow_page_template" schemaName="clinlims">
+            <column name="display_order" value="10"/>
+            <where>workflow_category = 'MNTD' AND name = 'Reporting &amp; REDCap Integration'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,11 @@
+sample_id,sample_source,project_name,sample_type,collection_site,collection_date_time,collected_by,num_of_samples
+Ach-21-FY001,Field,Malaria Surveillance 2025,Whole blood,Addis Ababa Health Center,2025-12-10 08:30,Dr. Amare Tesfaye,5
+Ach-21-FY002,Field,Malaria Surveillance 2025,DBS,Bahir Dar Regional Lab,2025-12-10 09:15,Nurse Kebede Alemu,10
+Ach-21-FY003,External organization (UOG),Leishmaniasis Study,Serum,University of Gondar,2025-12-11 10:00,Prof. Mekdes Hailu,3
+Ach-21-FY004,Field,NTD Mapping Project,Plasma,Hawassa District Hospital,2025-12-11 14:30,Lab Tech Solomon Bekele,8
+Ach-21-FY005,External organization (WHO),Schistosomiasis Research,Tissue,WHO Ethiopia Office,2025-12-12 11:00,Dr. Sarah Johnson,2
+Ach-21-FY006,Field,Malaria Surveillance 2025,Cell pellet,Jimma Health Post,2025-12-12 15:45,Health Officer Tigist Worku,6
+Ach-21-FY007,Field,Chagas Disease Study,Culture,Mekelle Regional Lab,2025-12-13 08:00,Dr. Hagos Berhe,4
+Ach-21-FY008,External organization (UOG),Sleeping Sickness Survey,DNA/RNA preservative,University of Gondar,2025-12-13 13:30,Research Asst. Yonas Girma,12
+Ach-21-FY009,Field,NTD Mapping Project,Mosquito / sandfly / tsetsefly,Gambella Field Station,2025-12-14 06:00,Entomologist Dawit Haile,25
+Ach-21-FY010,Field,Malaria Surveillance 2025,Biopsy / microbiopsy,Dire Dawa Medical Center,2025-12-14 16:00,Dr. Fatima Ahmed,1

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-51: Immunology Laboratory Workflow Feature -->
+    <!-- Includes: NotebookPageSample, AnalyzerResultImport, SampleRouting tables -->
+    <!-- and page_type column extension to notebook_page -->
+
+    <include file="liquibase/3.4.x.x/001-notebook-page-sample.xml"/>
+    <include file="liquibase/3.4.x.x/002-analyzer-result-import.xml"/>
+    <include file="liquibase/3.4.x.x/003-sample-routing.xml"/>
+    <include file="liquibase/3.4.x.x/004-notebook-page-type.xml"/>
+    <include file="liquibase/3.4.x.x/005-notebook-entry-refactor.xml"/>
+    <include file="liquibase/3.4.x.x/006-workflow-page-templates.xml"/>
+    <include file="liquibase/3.4.x.x/007-fix-location-type-constraint.xml"/>
+    <include file="liquibase/3.4.x.x/008-immunology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/009-mntd-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/010-mntd-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/011-mntd-aliquoting-page.xml"/>
+    <include file="liquibase/3.4.x.x/011-tuberculosis-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/012-mntd-processing-qc-page.xml"/>
+    <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/012-notebook-access-control.xml"/>
+    <include file="liquibase/3.4.x.x/013-mntd-test-assignment-page.xml"/>
+    <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/014-mntd-test-execution-page.xml"/>
+    <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
+    <include file="liquibase/3.4.x.x/015-mntd-reporting-redcap-page.xml"/>
+    <include file="liquibase/3.4.x.x/016-mntd-data-analysis-page.xml"/>
+    <include file="liquibase/3.4.x.x/017-fix-mntd-page-order.xml"/>
+    <include file="liquibase/3.4.x.x/018-notebook-page-reference-table.xml"/>
+    <include file="liquibase/3.4.x.x/012-pharmaceuticals-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/013-pharma-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/014-pharmaceuticals-additional-pages.xml"/>
+    <include file="liquibase/3.4.x.x/012-notebook-access-control.xml"/>
+    <include file="liquibase/3.4.x.x/019-pharma-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/020-notebook-inventory-instruments.xml"/>
+    <include file="liquibase/3.4.x.x/021-mntd-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/022-notebook-entry-temperature-log.xml"/>
+    <include file="liquibase/3.4.x.x/021-immunology-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/022-add-rejected-status.xml"/>
+    <include file="liquibase/3.4.x.x/023-notebook-page-data.xml"/>
+    <include file="liquibase/3.4.x.x/024-bacteriology-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/025-bacteriology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/026-bacteriology-processing-qc-page.xml"/>
+    <include file="liquibase/3.4.x.x/027-bacteriology-assay-test-execution-page.xml"/>
+    <include file="liquibase/3.4.x.x/028-bacteriology-post-analysis-page.xml"/>
+    <include file="liquibase/3.4.x.x/029-bacteriology-retrieval-disposal-page.xml"/>
+    <include file="liquibase/3.4.x.x/030-bacteriology-reporting-data-export-page.xml"/>
+    <include file="liquibase/3.4.x.x/031-bacteriology-isolate-creation-page.xml"/>
+    <include file="liquibase/3.4.x.x/031-immunology-reporting-redcap-page.xml"/>
+    <include file="liquibase/3.4.x.x/032-notebook-delivery-record.xml"/>
+    <include file="liquibase/3.4.x.x/033-notebook-hierarchy.xml"/>
+    <include file="liquibase/3.4.x.x/034-notebook-project-metadata.xml"/>
+    <include file="liquibase/3.4.x.x/031-make-storage-box-rack-optional.xml"/>
+    <include file="liquibase/3.4.x.x/032-add-general-location-type.xml"/>
+    <include file="liquibase/3.4.x.x/033-fix-movement-constraints-for-general-location.xml"/>
+    <include file="liquibase/3.4.x.x/034-add-room-location-type.xml"/>
+    <include file="liquibase/3.4.x.x/035-inventory-unified-storage-location.xml"/>
+    <include file="liquibase/3.4.x.x/036-drop-legacy-inventory-storage-location.xml"/>
+    <include file="liquibase/3.4.x.x/037-update-inventory-item-type-constraint.xml"/>
+    <include file="liquibase/3.4.x.x/039-seed-inventory-enzymes.xml"/>
+    <include file="liquibase/3.4.x.x/040-seed-inventory-antibiotics.xml"/>
+    <include file="liquibase/3.4.x.x/035-notebook-entry-manifest-description.xml"/>
+    <include file="liquibase/3.4.x.x/019-pathology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/020-pathology-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/021-fix-pathology-page-order.xml"/>
+    <include file="liquibase/3.4.x.x/022-pathology-department-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/023-pathology-enhanced-metadata.xml"/>
+    <include file="liquibase/3.4.x.x/024-extend-external-id-length.xml"/>
+    <include file="liquibase/3.4.x.x/025-remove-pathology-reference-sop-page.xml"/>
+    <include file="liquibase/3.4.x.x/026-pathology-cassette-terminology.xml"/>
+    <include file="liquibase/3.4.x.x/027-pathology-granular-workflow-pages.xml"/>
+    <include file="liquibase/3.4.x.x/028-extend-sample-item-id-length.xml"/>
+    <include file="liquibase/3.4.x.x/041-add-equipment-usage-menu.xml"/>
+    <include file="liquibase/3.4.x.x/042-equipment-usage-form-fields.xml"/>
+    <include file="liquibase/3.4.x.x/043-lab-environmental-log-table.xml"/>
+    <include file="liquibase/3.4.x.x/024-virology-sample-types.xml"/>
+    <include file="liquibase/3.4.x.x/025-virology-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/026-virology-culture-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/027-vaccine-development-schema.xml"/>
+    <include file="liquibase/3.4.x.x/028-add-virus-culture-to-existing-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/029-add-dark-room-imaging-to-existing-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/030-add-formulation-to-existing-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/031-add-feeding-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/032-add-packaging-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/033-add-virus-isolation-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/034-add-titer-measurement-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/044-bioanalytical-workflow-pages.xml"/>
+    <include file="liquibase/3.4.x.x/045-bioanalytical-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/046-bioanalytical-supporting-tables.xml"/>
+    <include file="liquibase/3.4.x.x/047-bioanalytical-page-roles.xml"/>
+    <include file="liquibase/3.4.x.x/035-add-genome-sequencing-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/036-add-seed-virus-production-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/048-add-trials-page-to-virology-workflow.xml"/>
+    <include file="liquibase/3.4.x.x/048-bioanalytical-system-roles.xml"/>
+    <include file="liquibase/3.4.x.x/049-bioanalytical-permission-levels.xml"/>
+    <include file="liquibase/3.4.x.x/050-bioequivalence-notebook-template.xml"/>
+    <include file="liquibase/3.4.x.x/051-separate-bioanalytical-bioequivalence-notebooks.xml"/>
+    <include file="liquibase/3.4.x.x/052-bioequivalence-page-roles.xml"/>
+
+</databaseChangeLog>

@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BACTERIOLOGY PROCESSING & QUALITY CONTROL PAGE           -->
+    <!-- Page 4 of Bacteriology Laboratory Workflow               -->
+    <!--                                                          -->
+    <!-- SECTION A: Preparation for Processing                    -->
+    <!--   - Culture Media Preparation (type, batch, IQC)         -->
+    <!--   - Biochemical Media Preparation (type, batch, IQC)     -->
+    <!--   - Antibiotic Disc IQC (ATCC control strains)           -->
+    <!--   - Enrichment/Incubation Setup                          -->
+    <!--   - Media/Reagent Inventory Tracking                     -->
+    <!--                                                          -->
+    <!-- SECTION B: Processing and Quality Control                -->
+    <!--   - Gram Staining (direct smear)                         -->
+    <!--   - Microscopy Examination (preliminary ID)              -->
+    <!--   - Inoculation (onto appropriate culture media)         -->
+    <!--   - Incubation (18-48 hours, organism-dependent)         -->
+    <!--   - QC Result (Pass/Fail with retake options)            -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-bacteriology-page-4-processing-qc" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Processing and Quality Control page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Processing &amp; Quality Control"/>
+            <column name="instructions" value="Prepare culture and biochemical media with IQC verification. Test antibiotic discs with ATCC control strains. Process samples through Gram staining, microscopy examination, inoculation onto appropriate media, and incubation. Record QC results and document any failures with retake options."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Processing and Quality Control - Media Preparation and Sample Processing&quot;,
+  &quot;sections&quot;: {
+    &quot;preparationForProcessing&quot;: {
+      &quot;title&quot;: &quot;Preparation for Processing&quot;,
+      &quot;cultureMediaPreparation&quot;: {
+        &quot;mediaType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Media Type&quot;, &quot;options&quot;: [&quot;BLOOD_AGAR&quot;, &quot;MACCONKEY&quot;, &quot;SABOURAUD&quot;, &quot;CHOCOLATE_AGAR&quot;, &quot;MUELLER_HINTON&quot;, &quot;XLD&quot;, &quot;SS_AGAR&quot;, &quot;TCBS&quot;, &quot;MANNITOL_SALT&quot;, &quot;EMB&quot;, &quot;CLED&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;batchNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Batch Number&quot;, &quot;required&quot;: true},
+        &quot;preparationDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Preparation Date&quot;, &quot;required&quot;: true},
+        &quot;expiryDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Expiry Date&quot;, &quot;required&quot;: true},
+        &quot;sterilityTestResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sterility Test Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pending&quot;], &quot;required&quot;: true},
+        &quot;growthSupportResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Growth Support Test Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pending&quot;], &quot;required&quot;: true},
+        &quot;growthSupportOrganism&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Control Organism Used&quot;, &quot;required&quot;: false}
+      },
+      &quot;biochemicalMediaPreparation&quot;: {
+        &quot;mediaType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Media Type&quot;, &quot;options&quot;: [&quot;TSI&quot;, &quot;UREASE&quot;, &quot;CITRATE&quot;, &quot;INDOLE&quot;, &quot;MR_VP&quot;, &quot;MOTILITY&quot;, &quot;LYSINE&quot;, &quot;ORNITHINE&quot;, &quot;OXIDASE&quot;, &quot;CATALASE&quot;, &quot;COAGULASE&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;batchNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Batch Number&quot;, &quot;required&quot;: true},
+        &quot;preparationDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Preparation Date&quot;, &quot;required&quot;: true},
+        &quot;expiryDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Expiry Date&quot;, &quot;required&quot;: true},
+        &quot;sterilityTestResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sterility Test Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pending&quot;], &quot;required&quot;: true},
+        &quot;reactivityTestResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Reactivity Test Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pending&quot;], &quot;required&quot;: true},
+        &quot;reactivityTestOrganism&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Control Organism Used&quot;, &quot;required&quot;: false}
+      },
+      &quot;antibioticDiscIQC&quot;: {
+        &quot;discType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Disc Type&quot;, &quot;options&quot;: [&quot;AMP_10&quot;, &quot;AMC_30&quot;, &quot;GEN_10&quot;, &quot;CIP_5&quot;, &quot;CTX_30&quot;, &quot;CAZ_30&quot;, &quot;MEM_10&quot;, &quot;VAN_30&quot;, &quot;ERY_15&quot;, &quot;TET_30&quot;, &quot;SXT_25&quot;, &quot;CHL_30&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;lotNumber&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Lot Number&quot;, &quot;required&quot;: true},
+        &quot;expiryDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Expiry Date&quot;, &quot;required&quot;: true},
+        &quot;atccStrain&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;ATCC Control Strain&quot;, &quot;options&quot;: [&quot;ECOLI_25922&quot;, &quot;STAPH_25923&quot;, &quot;PSEUDO_27853&quot;, &quot;ENTERO_29212&quot;, &quot;KLEBSIELLA_700603&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;zoneDiameter&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Zone Diameter (mm)&quot;, &quot;required&quot;: true},
+        &quot;expectedRangeMin&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Expected Range Min (mm)&quot;, &quot;required&quot;: false},
+        &quot;expectedRangeMax&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Expected Range Max (mm)&quot;, &quot;required&quot;: false},
+        &quot;iqcResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;IQC Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;, &quot;Pending&quot;], &quot;required&quot;: true}
+      },
+      &quot;enrichmentIncubation&quot;: {
+        &quot;enrichmentRequired&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Enrichment Required&quot;, &quot;required&quot;: false},
+        &quot;enrichmentMedium&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Enrichment Medium&quot;, &quot;options&quot;: [&quot;SELENITE_F&quot;, &quot;TETRATHIONATE&quot;, &quot;RAPPAPORT&quot;, &quot;BHI&quot;, &quot;THIOGLYCOLLATE&quot;, &quot;ALKALINE_PEPTONE&quot;, &quot;BUFFERED_PEPTONE&quot;, &quot;TRYPTIC_SOY&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+        &quot;incubationCondition&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Incubation Condition&quot;, &quot;options&quot;: [&quot;AEROBIC_37&quot;, &quot;AEROBIC_35&quot;, &quot;CO2_37&quot;, &quot;ANAEROBIC_37&quot;, &quot;MICROAEROPHILIC&quot;, &quot;ROOM_TEMP&quot;, &quot;REFRIGERATED&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+        &quot;incubationDuration&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Incubation Duration&quot;, &quot;description&quot;: &quot;e.g., 18-24 hours&quot;, &quot;required&quot;: false}
+      },
+      &quot;inventoryTracking&quot;: {
+        &quot;enabled&quot;: true,
+        &quot;trackLotNumbers&quot;: true,
+        &quot;trackExpiryDates&quot;: true,
+        &quot;trackStockLevels&quot;: true,
+        &quot;alertOnExpiry&quot;: true,
+        &quot;alertOnLowStock&quot;: true
+      }
+    },
+    &quot;processingAndQC&quot;: {
+      &quot;title&quot;: &quot;Processing and Quality Control&quot;,
+      &quot;gramStaining&quot;: {
+        &quot;performed&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Gram Stain Performed&quot;, &quot;required&quot;: false},
+        &quot;result&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Gram Stain Result&quot;, &quot;options&quot;: [&quot;GRAM_POS_COCCI&quot;, &quot;GRAM_POS_BACILLI&quot;, &quot;GRAM_NEG_COCCI&quot;, &quot;GRAM_NEG_BACILLI&quot;, &quot;MIXED_FLORA&quot;, &quot;NO_ORGANISMS&quot;, &quot;YEAST&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+        &quot;performedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Performed By&quot;, &quot;required&quot;: false},
+        &quot;date&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Date&quot;, &quot;required&quot;: false}
+      },
+      &quot;microscopyExamination&quot;: {
+        &quot;performed&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Microscopy Performed&quot;, &quot;required&quot;: false},
+        &quot;findings&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Microscopy Findings&quot;, &quot;multiline&quot;: true, &quot;required&quot;: false},
+        &quot;preliminaryIdentification&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Preliminary Identification&quot;, &quot;required&quot;: false},
+        &quot;performedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Performed By&quot;, &quot;required&quot;: false}
+      },
+      &quot;inoculation&quot;: {
+        &quot;performed&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Inoculation Performed&quot;, &quot;required&quot;: false},
+        &quot;mediaUsed&quot;: {&quot;type&quot;: &quot;multiselect&quot;, &quot;label&quot;: &quot;Culture Media Used&quot;, &quot;options&quot;: [&quot;BLOOD_AGAR&quot;, &quot;MACCONKEY&quot;, &quot;SABOURAUD&quot;, &quot;CHOCOLATE_AGAR&quot;, &quot;MUELLER_HINTON&quot;, &quot;XLD&quot;, &quot;SS_AGAR&quot;, &quot;TCBS&quot;, &quot;MANNITOL_SALT&quot;, &quot;EMB&quot;, &quot;CLED&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+        &quot;inoculationDate&quot;: {&quot;type&quot;: &quot;date&quot;, &quot;label&quot;: &quot;Inoculation Date&quot;, &quot;required&quot;: false},
+        &quot;performedBy&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Performed By&quot;, &quot;required&quot;: false}
+      },
+      &quot;incubation&quot;: {
+        &quot;started&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Incubation Started&quot;, &quot;required&quot;: false},
+        &quot;condition&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Incubation Condition&quot;, &quot;options&quot;: [&quot;AEROBIC_37&quot;, &quot;AEROBIC_35&quot;, &quot;CO2_37&quot;, &quot;ANAEROBIC_37&quot;, &quot;MICROAEROPHILIC&quot;, &quot;ROOM_TEMP&quot;, &quot;REFRIGERATED&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+        &quot;duration&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Duration (hours)&quot;, &quot;description&quot;: &quot;18-48 hours organism-dependent&quot;, &quot;required&quot;: false},
+        &quot;expectedReadTime&quot;: {&quot;type&quot;: &quot;dateTime&quot;, &quot;label&quot;: &quot;Expected Read Time&quot;, &quot;required&quot;: false}
+      },
+      &quot;qualityControl&quot;: {
+        &quot;qcResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;QC Result&quot;, &quot;options&quot;: [&quot;Pass&quot;, &quot;Fail&quot;], &quot;required&quot;: false},
+        &quot;failureReason&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Failure Reason&quot;, &quot;options&quot;: [&quot;CONTAMINATION&quot;, &quot;NO_GROWTH&quot;, &quot;POOR_ISOLATION&quot;, &quot;MEDIA_FAILURE&quot;, &quot;TEMPERATURE_DEVIATION&quot;, &quot;TECHNICAL_ERROR&quot;, &quot;SAMPLE_QUALITY&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+        &quot;retakeRequired&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;label&quot;: &quot;Retake Required&quot;, &quot;required&quot;: false},
+        &quot;retakeAttempt&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Retake Attempt Number&quot;, &quot;required&quot;: false},
+        &quot;notes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Notes&quot;, &quot;multiline&quot;: true, &quot;required&quot;: false}
+      }
+    }
+  },
+  &quot;systemActions&quot;: [
+    &quot;Record media preparation with IQC results&quot;,
+    &quot;Track antibiotic disc IQC with ATCC control strains&quot;,
+    &quot;Update sample processing status&quot;,
+    &quot;Flag QC failures and enable retake workflow&quot;,
+    &quot;Alert on media/reagent expiry and low stock&quot;
+  ],
+  &quot;statusTransitions&quot;: {
+    &quot;onQCPass&quot;: &quot;COMPLETED&quot;,
+    &quot;onQCFail&quot;: &quot;REJECTED&quot;,
+    &quot;onRetake&quot;: &quot;IN_PROGRESS&quot;
+  },
+  &quot;bulkOperations&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;applyToSelected&quot;: [&quot;gramStainResult&quot;, &quot;inoculatedMedia&quot;, &quot;incubationCondition&quot;, &quot;qcResult&quot;]
+  },
+  &quot;previousPage&quot;: &quot;Temporary Storage Assignment&quot;,
+  &quot;nextPage&quot;: &quot;Culture &amp; Identification&quot;
+}"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ADD WORKFLOW PAGE TEMPLATE FOR PROCESSING QC             -->
+    <!-- ======================================================== -->
+    <changeSet id="insert-bacteriology-processing-qc-page-template" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'BACTERIOLOGY' AND name = 'Processing &amp; Quality Control'
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert Processing and Quality Control page template for Bacteriology workflow</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="304"/>
+            <column name="name" value="Processing &amp; Quality Control"/>
+            <column name="display_key" value="workflow.page.bacteriology.processingQC"/>
+            <column name="description" value="Prepare culture and biochemical media with IQC, test antibiotic discs, and process samples through Gram staining, microscopy, inoculation, and incubation"/>
+            <column name="default_instructions" value="Section A - Preparation: Record culture media preparation (Blood Agar, MacConkey, etc.) with batch numbers, dates, and IQC results. Record biochemical media preparation (TSI, Urease, Citrate, etc.) with sterility and reactivity tests. Test antibiotic discs with ATCC control strains and verify zone diameters. Track media/reagent inventory with expiry alerts. Section B - Processing: Perform Gram staining on direct smear, microscopy examination for preliminary ID, inoculation onto appropriate media, and incubation (18-48 hours). Record QC results - Pass continues to identification, Fail allows retake."/>
+            <column name="default_content" value="Processing and Quality Control - Media Preparation and Sample Processing"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="display_order" value="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'BACTERIOLOGY' AND name = 'Processing &amp; Quality Control'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CREATE PREPARATION RECORDS TABLES                        -->
+    <!-- Tables for storing culture media, biochemical media,     -->
+    <!-- and antibiotic disc IQC records                          -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bacteriology-culture-media-preparation-table" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_culture_media_prep" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create table for culture media preparation records</comment>
+
+        <createTable tableName="notebook_culture_media_prep" schemaName="clinlims">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="other_media_type" type="VARCHAR(255)"/>
+            <column name="batch_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="preparation_date" type="DATE"/>
+            <column name="expiry_date" type="DATE"/>
+            <column name="sterility_test_result" type="VARCHAR(20)"/>
+            <column name="sterility_test_date" type="DATE"/>
+            <column name="growth_support_result" type="VARCHAR(20)"/>
+            <column name="growth_support_organism" type="VARCHAR(255)"/>
+            <column name="growth_support_date" type="DATE"/>
+            <column name="prepared_by" type="VARCHAR(255)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="notebook_culture_media_prep"
+            baseColumnNames="notebook_entry_id"
+            constraintName="fk_culture_media_prep_entry"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <createIndex tableName="notebook_culture_media_prep" schemaName="clinlims" indexName="idx_culture_media_prep_entry">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="notebook_culture_media_prep" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-bacteriology-biochem-media-preparation-table" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_biochem_media_prep" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create table for biochemical media preparation records</comment>
+
+        <createTable tableName="notebook_biochem_media_prep" schemaName="clinlims">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="other_media_type" type="VARCHAR(255)"/>
+            <column name="batch_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="preparation_date" type="DATE"/>
+            <column name="expiry_date" type="DATE"/>
+            <column name="sterility_test_result" type="VARCHAR(20)"/>
+            <column name="sterility_test_date" type="DATE"/>
+            <column name="reactivity_test_result" type="VARCHAR(20)"/>
+            <column name="reactivity_test_organism" type="VARCHAR(255)"/>
+            <column name="reactivity_test_date" type="DATE"/>
+            <column name="prepared_by" type="VARCHAR(255)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="notebook_biochem_media_prep"
+            baseColumnNames="notebook_entry_id"
+            constraintName="fk_biochem_media_prep_entry"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <createIndex tableName="notebook_biochem_media_prep" schemaName="clinlims" indexName="idx_biochem_media_prep_entry">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="notebook_biochem_media_prep" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-bacteriology-antibiotic-iqc-table" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_antibiotic_disc_iqc" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create table for antibiotic disc IQC records</comment>
+
+        <createTable tableName="notebook_antibiotic_disc_iqc" schemaName="clinlims">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="disc_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="other_disc_type" type="VARCHAR(255)"/>
+            <column name="lot_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiry_date" type="DATE"/>
+            <column name="atcc_strain" type="VARCHAR(50)"/>
+            <column name="other_atcc_strain" type="VARCHAR(255)"/>
+            <column name="zone_diameter" type="DECIMAL(5,2)"/>
+            <column name="expected_range_min" type="DECIMAL(5,2)"/>
+            <column name="expected_range_max" type="DECIMAL(5,2)"/>
+            <column name="iqc_result" type="VARCHAR(20)"/>
+            <column name="test_date" type="DATE"/>
+            <column name="tested_by" type="VARCHAR(255)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="created_date" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="notebook_antibiotic_disc_iqc"
+            baseColumnNames="notebook_entry_id"
+            constraintName="fk_antibiotic_iqc_entry"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <createIndex tableName="notebook_antibiotic_disc_iqc" schemaName="clinlims" indexName="idx_antibiotic_iqc_entry">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="notebook_antibiotic_disc_iqc" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

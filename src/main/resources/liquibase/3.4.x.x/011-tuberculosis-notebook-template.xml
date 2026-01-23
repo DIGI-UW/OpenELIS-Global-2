@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- TUBERCULOSIS LABORATORY NOTEBOOK TEMPLATE -->
+    <!-- Creates a predefined notebook template with 6 workflow pages -->
+    <!-- for the Tuberculosis Laboratory workflow -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-tuberculosis-notebook-template" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Tuberculosis Laboratory notebook template</comment>
+
+        <insert tableName="notebook" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_seq"/>
+            <column name="title" value="Tuberculosis Laboratory"/>
+            <column name="objective" value="Tuberculosis Laboratory Workflowsa."/>
+            <column name="protocol" value="Tuberculosis Laboratory"/>
+            <column name="content" value="Tuberculosis Laboratory"/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_template" valueBoolean="true"/>
+            <column name="last_updated" valueComputed="${now}"/>
+            <column name="date_created" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook" schemaName="clinlims">
+                <where>title = 'Tuberculosis Laboratory' AND is_template = true</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 1: SAMPLE CREATION AND FULL METADATA CAPTURE -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-1-sample-creation" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Creation and Full Metadata Capture page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Creation &amp; Full Metadata Capture"/>
+            <column name="instructions" value="Capture complete sample metadata including accession number, specimen information, patient details, clinical context, requested tests, and receipt details."/>
+            <column name="content" value="Sample Creation &amp; Full Metadata Capture - Complete metadata entry for TB samples"/>
+            <column name="page_order" value="1"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 2: RAW SAMPLE QUALITY CHECK (QC) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-2-quality-check" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 2
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Raw Sample Quality Check (QC) page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Raw Sample Quality Check (QC)"/>
+            <column name="instructions" value="Perform quality checks on raw samples. Verify sample condition, volume, and suitability for processing."/>
+            <column name="content" value="Raw Sample Quality Check (QC) - Quality assessment of incoming samples"/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BATCH_VERIFICATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 2</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 3: SAMPLE STORAGE ASSIGNMENT -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-3-storage-assignment" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 3
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample Storage Assignment page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample Storage Assignment"/>
+            <column name="instructions" value="Assign samples to appropriate storage locations. Record storage location details and conditions."/>
+            <column name="content" value="Sample Storage Assignment - Assign samples to storage locations"/>
+            <column name="page_order" value="3"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 3</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 4: INITIAL SAMPLE PROCESSING -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-4-initial-processing" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 4
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Initial Sample Processing page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Initial Sample Processing"/>
+            <column name="instructions" value="Perform initial processing steps including sample preparation and decontamination procedures."/>
+            <column name="content" value="Initial Sample Processing - Sample preparation and decontamination"/>
+            <column name="page_order" value="4"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 4</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 5: CULTURE INOCULATION &amp; WEEKLY MONITORING -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-5-culture-monitoring" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Culture Inoculation &amp; Weekly Monitoring page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Culture Inoculation &amp; Weekly Monitoring"/>
+            <column name="instructions" value="Record culture inoculation details and perform weekly monitoring of culture growth. Document growth patterns and contamination status."/>
+            <column name="content" value="Culture Inoculation &amp; Weekly Monitoring - Culture setup and ongoing monitoring"/>
+            <column name="page_order" value="5"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 5</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 6: SAMPLE-LINKED TEST EXECUTION -->
+    <!-- ======================================================== -->
+    <changeSet id="create-tb-page-6-test-execution" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Tuberculosis Laboratory' AND n.is_template = true AND np.page_order = 6
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Sample-Linked Test Execution page for Tuberculosis Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Sample-Linked Test Execution"/>
+            <column name="instructions" value="Execute requested tests including culture, smear microscopy, GeneXpert, identification, and drug susceptibility testing. Record test results and methods used."/>
+            <column name="content" value="Sample-Linked Test Execution - Execute and record test results"/>
+            <column name="page_order" value="6"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="INDIVIDUAL_PROCESSING"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Tuberculosis Laboratory' AND is_template = true) AND page_order = 6</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

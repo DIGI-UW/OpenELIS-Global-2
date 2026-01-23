@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -8,11 +14,15 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+  TableSelectAll,
+  TableSelectRow,
   TableToolbar,
   TableToolbarContent,
-  TableToolbarSearch,
+  TableBatchActions,
+  TableBatchAction,
   Button,
   Dropdown,
+  Search,
   Tag,
   OverflowMenu,
   OverflowMenuItem,
@@ -32,6 +42,7 @@ import LotAdjustmentModal from "./LotAdjustmentModal";
 import DisposeLotModal from "./DisposeLotModal";
 import UpdateQCStatusModal from "./UpdateQCStatusModal";
 import LotDetailsPanel from "./LotDetailsPanel";
+import AuditLogViewer from "./AuditLogViewer";
 import "./InventoryList.css";
 
 const InventoryDashboard = () => {
@@ -55,6 +66,8 @@ const InventoryDashboard = () => {
   const [lots, setLots] = useState([]);
   const [items, setItems] = useState({});
   const [loading, setLoading] = useState(true);
+  const [unitMap, setUnitMap] = useState({});
+  const [projectMap, setProjectMap] = useState({});
 
   const [metrics, setMetrics] = useState({
     totalLots: 0,
@@ -64,11 +77,12 @@ const InventoryDashboard = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("CARTRIDGE");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   const [lotModalOpen, setLotModalOpen] = useState(false);
   const [usageModalOpen, setUsageModalOpen] = useState(false);
@@ -76,13 +90,30 @@ const InventoryDashboard = () => {
   const [disposalModalOpen, setDisposalModalOpen] = useState(false);
   const [qcStatusModalOpen, setQcStatusModalOpen] = useState(false);
   const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
+  const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedLotsForDisposal, setSelectedLotsForDisposal] = useState([]);
+
+  // Utility function to format dates safely
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "N/A";
+    try {
+      const date = new Date(dateValue);
+      return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+    } catch (error) {
+      console.warn("Date formatting error:", error);
+      return "N/A";
+    }
+  };
 
   const itemTypes = [
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
     { id: "REAGENT", text: "Reagent" },
+    { id: "CARTRIDGE", text: "Equipment" },
     { id: "RDT", text: "RDT" },
-    { id: "CARTRIDGE", text: "Cartridge" },
+    { id: "ENZYME", text: "Enzyme" },
+    { id: "ANTIBIOTICS", text: "Antibiotics" },
   ];
 
   const statusOptions = [
@@ -90,14 +121,186 @@ const InventoryDashboard = () => {
     { id: "ACTIVE", text: "Active" },
     { id: "IN_USE", text: "In Use" },
     { id: "EXPIRED", text: "Expired" },
-    { id: "CONSUMED", text: "Consumed" },
-    { id: "QUARANTINED", text: "Quarantined" },
   ];
 
-  const headers = [
+  // Equipment-specific headers (for CARTRIDGE type)
+  const equipmentHeaders = [
+    {
+      key: "name",
+      header: "Equipment Name",
+    },
+    {
+      key: "manufacturer",
+      header: "Manufacturer",
+    },
+    {
+      key: "modelNumber",
+      header: "Model",
+    },
+    {
+      key: "serialNumber",
+      header: "Serial Number",
+    },
+    {
+      key: "compatibleAnalyzers",
+      header: "Software",
+    },
+    {
+      key: "ahriTag",
+      header: "AHRI Tag",
+    },
+    {
+      key: "installationDate",
+      header: "Installation Date",
+    },
+    {
+      key: "currentLocation",
+      header: "Current Location",
+    },
+    {
+      key: "equipmentCondition",
+      header: "Equipment Condition (Functional/Non-functional)",
+    },
+    {
+      key: "lastServiceDate",
+      header: "Last Service Date",
+    },
+    {
+      key: "lastMaintenanceDate",
+      header: "Last Maintenance Date",
+    },
+    {
+      key: "actions",
+      header: "Action",
+    },
+  ];
+
+  // Reagent-specific headers with grouping (for REAGENT type)
+  const reagentHeaders = [
+    {
+      key: "name",
+      header: "Reagent Name",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "catalogNumber",
+      header: "Catalogue Number",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "manufacturer",
+      header: "Reagent Manufacturer",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "category",
+      header: "Reagent Category",
+      group: "reagentIdentifier",
+    },
+    {
+      key: "concentration",
+      header: "Concentration",
+      group: "reagentQuantity",
+    },
+    {
+      key: "units",
+      header: "Unit of Measurement",
+      group: "reagentQuantity",
+    },
+    {
+      key: "currentQuantity",
+      header: "Quantity",
+      group: "reagentQuantity",
+    },
+    {
+      key: "dateReceived",
+      header: "Date Received",
+      group: "reagentReception",
+    },
+    {
+      key: "receivedBy",
+      header: "Received By",
+      group: "reagentReception",
+    },
+    {
+      key: "projectName",
+      header: "Project Received For",
+      group: "reagentReception",
+    },
+    {
+      key: "storageTemp",
+      header: "Storage Temp",
+      group: "reagentLocation",
+    },
+    {
+      key: "storageLocation",
+      header: "Storage Location (Freezer)",
+      group: "reagentLocation",
+    },
+    {
+      key: "storageBoxNo",
+      header: "Storage Location (Box No)",
+      group: "reagentLocation",
+    },
+    {
+      key: "dateRegistered",
+      header: "Date Registered",
+      group: "reagentUtilization",
+    },
+    {
+      key: "expirationDate",
+      header: "Expiration Date",
+      group: "reagentStatus",
+    },
+    {
+      key: "stockStatus",
+      header: "Stock Status",
+      group: "reagentStatus",
+    },
+    {
+      key: "actions",
+      header: "Action",
+      group: "reagentStatus",
+    },
+  ];
+
+  // Column group definitions for reagents
+  const reagentColumnGroups = {
+    reagentIdentifier: {
+      label: "Reagent Identifier",
+      columns: ["name", "catalogNumber", "manufacturer", "category"],
+    },
+    reagentQuantity: {
+      label: "Reagent Quantity",
+      columns: ["concentration", "units", "currentQuantity"],
+    },
+    reagentReception: {
+      label: "Reagent Reception",
+      columns: ["dateReceived", "receivedBy", "projectName"],
+    },
+    reagentLocation: {
+      label: "Reagent Location",
+      columns: ["storageTemp", "storageLocation", "storageBoxNo"],
+    },
+    reagentUtilization: {
+      label: "Reagent Utilization",
+      columns: ["dateRegistered"],
+    },
+    reagentStatus: {
+      label: "Reagent Status",
+      columns: ["expirationDate", "stockStatus", "actions"],
+    },
+  };
+
+  // Default headers for all types or when no specific filter is selected
+  const defaultHeaders = [
     {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
+    },
+    {
+      key: "projectName",
+      header: "Project",
     },
     {
       key: "lotNumber",
@@ -116,6 +319,10 @@ const InventoryDashboard = () => {
       header: intl.formatMessage({ id: "lot.expirationDate" }),
     },
     {
+      key: "dateOpened",
+      header: intl.formatMessage({ id: "lot.openingDate" }) || "Opening Date",
+    },
+    {
       key: "status",
       header: intl.formatMessage({ id: "lot.status" }),
     },
@@ -129,38 +336,142 @@ const InventoryDashboard = () => {
     },
   ];
 
+  // Select headers based on current type filter
+  const headers = useMemo(() => {
+    if (typeFilter === "CARTRIDGE") {
+      return equipmentHeaders;
+    } else if (typeFilter === "REAGENT") {
+      return reagentHeaders;
+    } else {
+      return defaultHeaders;
+    }
+  }, [typeFilter, intl]);
+
+  // Helper function to render grouped headers for reagents
+  const renderGroupedHeaders = (
+    headers,
+    columnGroups,
+    getHeaderProps,
+    getSelectionProps,
+  ) => {
+    const groupOrder = Object.keys(columnGroups);
+
+    return (
+      <>
+        {/* Group header row */}
+        <TableRow>
+          <TableSelectAll {...getSelectionProps()} />
+          {groupOrder.map((groupKey) => {
+            const group = columnGroups[groupKey];
+            const colspan = group.columns.length;
+            return (
+              <TableHeader
+                key={groupKey}
+                colSpan={colspan}
+                className="reagent-group-header"
+              >
+                {group.label}
+              </TableHeader>
+            );
+          })}
+        </TableRow>
+        {/* Individual column header row */}
+        <TableRow>
+          <td></td> {/* Empty cell for selection column */}
+          {headers.map((header) => (
+            <TableHeader
+              key={header.key}
+              {...getHeaderProps({ header })}
+              className="reagent-column-header"
+            >
+              {header.header}
+            </TableHeader>
+          ))}
+        </TableRow>
+      </>
+    );
+  };
+
+  useEffect(() => {
+    fetchUnits();
+    fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        fetchLots();
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchLots();
+  }, [typeFilter, statusFilter, page, pageSize]);
+
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1);
+    }
   }, [typeFilter, statusFilter]);
+
+  const fetchUnits = async () => {
+    try {
+      const unitsData = await InventoryItemAPI.getUnitOptions();
+      const unitLookup = {};
+      unitsData.forEach((unit) => {
+        unitLookup[String(unit.id)] = unit.text;
+      });
+      setUnitMap(unitLookup);
+    } catch (error) {
+      console.error("Error fetching unit options:", error);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const { NotebookDataAPI } = await import("./InventoryService");
+      const notebooks = await NotebookDataAPI.getNotebooks();
+      const projectLookup = {};
+      notebooks.forEach((notebook) => {
+        projectLookup[notebook.id] = notebook.title;
+        projectLookup[String(notebook.id)] = notebook.title;
+      });
+      setProjectMap(projectLookup);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+    }
+  };
 
   const fetchLots = async () => {
     setLoading(true);
     try {
-      const lotsResponse = await InventoryLotAPI.getAll({
+      const offset = (page - 1) * pageSize;
+
+      const response = await InventoryLotAPI.getPaged({
+        limit: pageSize,
+        offset: offset,
+        sortBy: "expirationDate",
+        sortOrder: "asc",
+        itemType: typeFilter !== "ALL" ? typeFilter : undefined,
         status: statusFilter !== "ALL" ? statusFilter : undefined,
+        search: searchTerm || undefined,
       });
 
-      const validLots = Array.isArray(lotsResponse) ? lotsResponse : [];
+      const validLots = Array.isArray(response.lots) ? response.lots : [];
       setLots(validLots);
-
-      const uniqueItemIds = [
-        ...new Set(
-          validLots.map((lot) => lot.inventoryItem?.id).filter(Boolean),
-        ),
-      ];
+      setTotalRecords(response.totalRecords || 0);
 
       const itemsMap = {};
-      await Promise.all(
-        uniqueItemIds.map(async (itemId) => {
-          try {
-            const item = await InventoryItemAPI.getById(itemId);
-            itemsMap[itemId] = item;
-          } catch (error) {
-            console.error(`Error fetching item ${itemId}:`, error);
-          }
-        }),
-      );
-
+      validLots.forEach((lot) => {
+        if (lot.inventoryItem && lot.inventoryItem.id) {
+          itemsMap[lot.inventoryItem.id] = lot.inventoryItem;
+        }
+      });
       setItems(itemsMap);
 
       calculateMetrics(validLots, itemsMap);
@@ -262,53 +573,105 @@ const InventoryDashboard = () => {
     return { type: "inStock", label: "In Stock", kind: "green" };
   };
 
-  const getFilteredLots = () => {
-    let filtered = lots;
-
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return (
-          lot.lotNumber?.toLowerCase().includes(searchLower) ||
-          item?.name?.toLowerCase().includes(searchLower)
-        );
-      });
-    }
-
-    if (typeFilter !== "ALL") {
-      filtered = filtered.filter((lot) => {
-        const item = items[lot.inventoryItem?.id];
-        return item?.itemType === typeFilter;
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredLots = getFilteredLots();
-
-  const paginatedLots = filteredLots.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
-
-  const rows = paginatedLots.map((lot) => {
+  const rows = lots.map((lot) => {
     const item = items[lot.inventoryItem?.id];
     const stockStatus = getStockStatus(lot);
 
-    return {
+    const unitId = item?.units;
+    const unitsDisplay = unitMap[unitId] || unitId || "";
+
+    const projectName = item?.projectName;
+    let projectDisplay = "N/A";
+    if (projectName) {
+      if (isNaN(projectName)) {
+        projectDisplay = projectName;
+      } else {
+        projectDisplay = projectMap[projectName] || projectName;
+      }
+    }
+
+    const baseData = {
       id: String(lot.id),
       name: item?.name || "Unknown",
-      lotNumber: lot.lotNumber,
-      itemType: item?.itemType || "",
-      currentQuantity: `${lot.currentQuantity || 0} ${item?.units || ""}`,
-      expirationDate: lot.expirationDate
-        ? new Date(lot.expirationDate).toLocaleDateString()
-        : "N/A",
+      manufacturer: item?.manufacturer || "N/A",
+      catalogNumber: item?.catalogNumber || "N/A",
+      category: item?.category || "N/A",
+      units: unitsDisplay,
+      currentQuantity: `${lot.currentQuantity || 0}${unitsDisplay ? ` ${unitsDisplay}` : ""}`,
+      lotNumber: lot.lotNumber || "N/A",
+      projectName: projectDisplay,
       status: lot.status,
       stockStatus: stockStatus,
     };
+
+    // Equipment-specific row data (for CARTRIDGE items)
+    if (item?.itemType === "CARTRIDGE") {
+      return {
+        ...baseData,
+        // Map new equipment-specific fields
+        modelNumber: item?.modelNumber || "N/A",
+        serialNumber: item?.serialNumber || lot.lotNumber || "N/A",
+        compatibleAnalyzers: item?.compatibleAnalyzers || "N/A",
+        ahriTag: item?.ahriTag || "N/A",
+        installationDate: item?.installationDate
+          ? formatDate(item.installationDate)
+          : "N/A",
+        currentLocation: lot?.storagePath || "N/A",
+        equipmentCondition:
+          item?.equipmentCondition === "functional"
+            ? "Functional"
+            : item?.equipmentCondition === "non-functional"
+              ? "Non-functional"
+              : item?.equipmentCondition === "under-repair"
+                ? "Under Repair"
+                : item?.equipmentCondition === "decommissioned"
+                  ? "Decommissioned"
+                  : "Unknown",
+        lastServiceDate: item?.lastServiceDate
+          ? formatDate(item.lastServiceDate)
+          : "N/A",
+        lastMaintenanceDate: item?.lastMaintenanceDate
+          ? formatDate(item.lastMaintenanceDate)
+          : "N/A",
+      };
+    }
+
+    // Reagent-specific row data (for REAGENT items)
+    else if (item?.itemType === "REAGENT") {
+      return {
+        ...baseData,
+        // Map catalogue number to lot number for reagents
+        catalogNumber: lot.lotNumber || "N/A",
+        concentration: item?.concentration || "N/A",
+        dateReceived: lot.receiptDate
+          ? new Date(lot.receiptDate).toLocaleDateString()
+          : "N/A",
+        receivedBy: lot.receivedBy || "N/A",
+        storageTemp: item?.storageRequirements || "N/A",
+        storageLocation: lot.specificStorageLocation || "N/A",
+        storageBoxNo: lot.storageBoxNumber || "N/A",
+        dateRegistered: lot.createdDate
+          ? new Date(lot.createdDate).toLocaleDateString()
+          : "N/A",
+        expirationDate: lot.expirationDate
+          ? new Date(lot.expirationDate).toLocaleDateString()
+          : "N/A",
+      };
+    }
+
+    // Default row data for all other types or when viewing all types
+    else {
+      return {
+        ...baseData,
+        itemType: item?.itemType || "",
+        expirationDate: lot.expirationDate
+          ? new Date(lot.expirationDate).toLocaleDateString()
+          : "N/A",
+        dateOpened: lot.dateOpened
+          ? new Date(lot.dateOpened).toLocaleDateString()
+          : "Not Opened",
+      };
+    }
   });
 
   const handleLotSaved = () => {
@@ -414,203 +777,303 @@ const InventoryDashboard = () => {
         </Column>
       </Grid>
 
-      <DataTable rows={rows} headers={headers} isSortable>
+      <DataTable rows={rows} headers={headers} isSortable radio={false}>
         {({
           rows,
           headers,
           getHeaderProps,
           getRowProps,
+          getSelectionProps,
           getTableProps,
           getTableContainerProps,
-        }) => (
-          <TableContainer title="" description="" {...getTableContainerProps()}>
-            <TableToolbar>
-              <TableToolbarContent>
-                <TableToolbarSearch
-                  placeholder={intl.formatMessage({
-                    id: "inventory.search.placeholder",
-                  })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  value={searchTerm}
-                />
+          selectedRows,
+          selectRow,
+        }) => {
+          const handleBatchDispose = () => {
+            const selectedLots = selectedRows.map((row) => {
+              const lotIndex = rows.findIndex((r) => r.id === row.id);
+              return lots[lotIndex];
+            });
+            setSelectedLotsForDisposal(selectedLots);
+            setSelectedLot(null);
+            setDisposalModalOpen(true);
+          };
 
-                <Dropdown
-                  id="type-filter"
-                  titleText=""
-                  label={intl.formatMessage({
-                    id: "inventory.filter.type",
-                  })}
-                  items={itemTypes}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
+          return (
+            <>
+              <div className="inventory-filters-section">
+                <div className="inventory-filters-container">
+                  <div className="filter-group">
+                    <Search
+                      placeholder={intl.formatMessage({
+                        id: "inventory.search.placeholder",
+                      })}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      value={searchTerm}
+                      size="md"
+                    />
 
-                <Dropdown
-                  id="status-filter"
-                  titleText=""
-                  label={intl.formatMessage({
-                    id: "inventory.filter.status",
-                  })}
-                  items={statusOptions}
-                  itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
-                  }
-                  size="md"
-                />
+                    <Dropdown
+                      id="type-filter"
+                      titleText=""
+                      label={intl.formatMessage({
+                        id: "inventory.filter.type",
+                      })}
+                      items={itemTypes}
+                      itemToString={(item) => (item ? item.text : "")}
+                      selectedItem={itemTypes.find((t) => t.id === typeFilter)}
+                      onChange={({ selectedItem }) =>
+                        setTypeFilter(selectedItem.id)
+                      }
+                      size="md"
+                    />
 
-                <Button
-                  renderIcon={Add}
-                  onClick={() => {
-                    setSelectedLot(null);
-                    setLotModalOpen(true);
-                  }}
-                >
-                  <FormattedMessage id="inventory.add.button" />
-                </Button>
-              </TableToolbarContent>
-            </TableToolbar>
+                    <Dropdown
+                      id="status-filter"
+                      titleText=""
+                      label={intl.formatMessage({
+                        id: "inventory.filter.status",
+                      })}
+                      items={statusOptions}
+                      itemToString={(item) => (item ? item.text : "")}
+                      selectedItem={statusOptions.find(
+                        (s) => s.id === statusFilter,
+                      )}
+                      onChange={({ selectedItem }) =>
+                        setStatusFilter(selectedItem.id)
+                      }
+                      size="md"
+                    />
+                  </div>
 
-            <Table {...getTableProps()}>
-              <TableHead>
-                <TableRow>
-                  {headers.map((header) => (
-                    <TableHeader
-                      key={header.key}
-                      {...getHeaderProps({ header })}
+                  <div className="action-buttons-group">
+                    <Button
+                      renderIcon={Add}
+                      onClick={() => {
+                        setSelectedLot(null);
+                        setLotModalOpen(true);
+                      }}
                     >
-                      {header.header}
-                    </TableHeader>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={headers.length}>Loading...</TableCell>
-                  </TableRow>
-                ) : rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={headers.length}>
-                      No inventory items found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((row, rowIndex) => {
-                    const lot = paginatedLots[rowIndex];
-                    return (
-                      <TableRow key={row.id} {...getRowProps({ row })}>
-                        {row.cells.map((cell) => {
-                          if (cell.info.header === "stockStatus") {
-                            const status = cell.value;
-                            return (
-                              <TableCell key={cell.id}>
-                                {status && (
-                                  <Tag type={status.kind}>{status.label}</Tag>
-                                )}
-                              </TableCell>
-                            );
-                          }
+                      <FormattedMessage id="inventory.add.button" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <TableContainer
+                title=""
+                description=""
+                {...getTableContainerProps()}
+              >
+                <TableToolbar>
+                  <TableBatchActions
+                    onCancel={() => {
+                      selectedRows.forEach((rowId) => selectRow(rowId));
+                    }}
+                    totalSelected={selectedRows.length}
+                    shouldShowBatchActions={selectedRows.length > 0}
+                  >
+                    <TableBatchAction
+                      renderIcon={() => null}
+                      onClick={handleBatchDispose}
+                    >
+                      <FormattedMessage
+                        id="disposal.batch.button"
+                        defaultMessage="Dispose Selected ({count})"
+                        values={{ count: selectedRows.length }}
+                      />
+                    </TableBatchAction>
+                  </TableBatchActions>
+                  <TableToolbarContent>
+                    {/* Empty toolbar content since filters moved outside */}
+                  </TableToolbarContent>
+                </TableToolbar>
 
-                          if (cell.info.header === "actions") {
-                            return (
-                              <TableCell key={cell.id}>
-                                <OverflowMenu
-                                  size="sm"
-                                  flipped
-                                  ariaLabel={intl.formatMessage({
-                                    id: "label.button.action",
-                                  })}
-                                >
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "lot.details.view",
-                                    })}
-                                    onClick={() => handleViewDetails(lot)}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "button.edit",
-                                    })}
-                                    onClick={() => handleEditLot(lot)}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "usage.record.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setUsageModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "adjustment.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setAdjustmentModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "qc.status.update.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setQcStatusModalOpen(true);
-                                    }}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "disposal.button",
-                                    })}
-                                    onClick={() => {
-                                      setSelectedLot(lot);
-                                      setDisposalModalOpen(true);
-                                    }}
-                                    isDelete
-                                  />
-                                </OverflowMenu>
-                              </TableCell>
-                            );
-                          }
-
-                          return (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
-                          );
-                        })}
+                <Table {...getTableProps()}>
+                  <TableHead>
+                    {typeFilter === "REAGENT" ? (
+                      renderGroupedHeaders(
+                        headers,
+                        reagentColumnGroups,
+                        getHeaderProps,
+                        getSelectionProps,
+                      )
+                    ) : (
+                      <TableRow>
+                        <TableSelectAll {...getSelectionProps()} />
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
                       </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                    )}
+                  </TableHead>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={headers.length}>
+                          Loading...
+                        </TableCell>
+                      </TableRow>
+                    ) : rows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={headers.length}>
+                          No inventory items found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      rows.map((row, rowIndex) => {
+                        const lot = lots[rowIndex];
+                        return (
+                          <TableRow key={row.id} {...getRowProps({ row })}>
+                            <TableSelectRow {...getSelectionProps({ row })} />
+                            {row.cells.map((cell) => {
+                              if (cell.info.header === "stockStatus") {
+                                const status = cell.value;
+                                return (
+                                  <TableCell key={cell.id}>
+                                    {status && (
+                                      <Tag type={status.kind}>
+                                        {status.label}
+                                      </Tag>
+                                    )}
+                                  </TableCell>
+                                );
+                              }
 
-            {!loading && rows.length > 0 && (
-              <Pagination
-                backwardText="Previous page"
-                forwardText="Next page"
-                itemsPerPageText="Items per page:"
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[10, 20, 30, 40, 50]}
-                totalItems={filteredLots.length}
-                onChange={({ page, pageSize }) => {
-                  setPage(page);
-                  setPageSize(pageSize);
-                }}
-              />
-            )}
-          </TableContainer>
-        )}
+                              if (cell.info.header === "dateOpened") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    {cell.value === "Not Opened" ? (
+                                      <Tag type="outline">{cell.value}</Tag>
+                                    ) : (
+                                      cell.value
+                                    )}
+                                  </TableCell>
+                                );
+                              }
+
+                              if (cell.info.header === "actions") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <OverflowMenu
+                                      size="sm"
+                                      flipped
+                                      aria-label={
+                                        intl?.formatMessage({
+                                          id: "label.button.action",
+                                        }) || "Actions"
+                                      }
+                                    >
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "lot.details.view",
+                                        })}
+                                        onClick={() => handleViewDetails(lot)}
+                                      />
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "button.edit",
+                                        })}
+                                        onClick={() => handleEditLot(lot)}
+                                      />
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "usage.record.button",
+                                        })}
+                                        onClick={() => {
+                                          setSelectedLot(lot);
+                                          setSelectedItem(null);
+                                          setUsageModalOpen(true);
+                                        }}
+                                      />
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "usage.record.fefo.button",
+                                        })}
+                                        onClick={() => {
+                                          setSelectedItem(lot.inventoryItem);
+                                          setSelectedLot(null);
+                                          setUsageModalOpen(true);
+                                        }}
+                                      />
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "adjustment.button",
+                                        })}
+                                        onClick={() => {
+                                          setSelectedLot(lot);
+                                          setAdjustmentModalOpen(true);
+                                        }}
+                                      />
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "qc.status.update.button",
+                                        })}
+                                        onClick={() => {
+                                          setSelectedLot(lot);
+                                          setQcStatusModalOpen(true);
+                                        }}
+                                      />
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "audit.log.view.button",
+                                        })}
+                                        onClick={() => {
+                                          setSelectedLot(lot);
+                                          setAuditLogOpen(true);
+                                        }}
+                                      />
+                                      <OverflowMenuItem
+                                        itemText={intl.formatMessage({
+                                          id: "disposal.button",
+                                        })}
+                                        onClick={() => {
+                                          setSelectedLot(lot);
+                                          setDisposalModalOpen(true);
+                                        }}
+                                        isDelete
+                                      />
+                                    </OverflowMenu>
+                                  </TableCell>
+                                );
+                              }
+
+                              return (
+                                <TableCell key={cell.id}>
+                                  {cell.value}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+
+                {!loading && rows.length > 0 && (
+                  <Pagination
+                    backwardText="Previous page"
+                    forwardText="Next page"
+                    itemsPerPageText="Items per page:"
+                    page={page}
+                    pageSize={pageSize}
+                    pageSizes={[10, 20, 30, 40, 50]}
+                    totalItems={totalRecords}
+                    onChange={({ page, pageSize }) => {
+                      setPage(page);
+                      setPageSize(pageSize);
+                    }}
+                  />
+                )}
+              </TableContainer>
+            </>
+          );
+        }}
       </DataTable>
 
       {/* Lot Entry Modal */}
@@ -633,9 +1096,11 @@ const InventoryDashboard = () => {
           onClose={() => {
             setUsageModalOpen(false);
             setSelectedLot(null);
+            setSelectedItem(null);
           }}
           onSave={handleUsageSaved}
           lot={selectedLot}
+          item={selectedItem}
         />
       )}
 
@@ -659,9 +1124,17 @@ const InventoryDashboard = () => {
           onClose={() => {
             setDisposalModalOpen(false);
             setSelectedLot(null);
+            setSelectedLotsForDisposal([]);
           }}
           onSave={handleDisposalSaved}
           lot={selectedLot}
+          lots={
+            selectedLotsForDisposal.length > 0
+              ? selectedLotsForDisposal
+              : selectedLot
+                ? [selectedLot]
+                : []
+          }
         />
       )}
 
@@ -686,6 +1159,18 @@ const InventoryDashboard = () => {
           setSelectedLot(null);
         }}
         lot={selectedLot}
+      />
+
+      {/* Audit Log Viewer */}
+      <AuditLogViewer
+        open={auditLogOpen}
+        onClose={() => {
+          setAuditLogOpen(false);
+          setSelectedLot(null);
+        }}
+        entityType="LOT"
+        entityId={selectedLot?.id}
+        entityName={selectedLot?.lotNumber}
       />
     </>
   );

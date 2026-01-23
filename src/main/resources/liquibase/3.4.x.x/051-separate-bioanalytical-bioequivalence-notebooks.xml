@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- SEPARATE EXISTING COMBINED BIOANALYTICAL & BIOEQUIVALENCE NOTEBOOKS -->
+    <!-- This migration handles existing notebook instances that may have -->
+    <!-- the old combined "Bioanalytical & Bioequivalence Laboratory" title -->
+    <!-- and ensures proper separation of the two laboratory workflows -->
+    <!-- ======================================================== -->
+
+    <changeSet id="separate-existing-bioanalytical-bioequivalence-notebooks" author="openelis-separation">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.notebook
+                WHERE title LIKE '%Bioanalytical%Bioequivalence%'
+                   OR title LIKE '%Bioequivalence%Bioanalytical%'
+            </sqlCheck>
+        </preConditions>
+        <comment>Separate existing notebooks with combined bioanalytical and bioequivalence titles</comment>
+
+        <!-- Update existing non-template notebooks to use pure "Bioanalytical Laboratory" title -->
+        <!-- This affects actual notebook instances created by users -->
+        <sql>
+
+            UPDATE clinlims.notebook
+            SET title = 'Bioanalytical Laboratory',
+                content = REPLACE(content, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                content = REPLACE(content, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                objective = REPLACE(objective, 'bioanalytical and pharmaceutical quality testing', 'bioanalytical testing'),
+                objective = REPLACE(objective, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                objective = REPLACE(objective, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                protocol = REPLACE(protocol, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                protocol = REPLACE(protocol, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                last_updated = ${now}
+            WHERE (title LIKE '%Bioanalytical%Bioequivalence%' OR title LIKE '%Bioequivalence%Bioanalytical%')
+              AND is_template = false;
+        </sql>
+
+        <!-- Update any existing notebook pages that reference the combined lab -->
+        <sql>
+            UPDATE clinlims.notebook_page np
+            SET instructions = REPLACE(instructions, 'bioequivalence study', 'analytical study'),
+                instructions = REPLACE(instructions, 'Bioequivalence', 'Bioanalytical'),
+                instructions = REPLACE(instructions, 'bioequivalence', 'bioanalytical'),
+                content = REPLACE(content, 'Bioequivalence', 'Bioanalytical'),
+                content = REPLACE(content, 'bioequivalence', 'bioanalytical'),
+                last_updated = ${now}
+            FROM clinlims.notebook n
+            WHERE np.notebook_id = n.id
+              AND n.title = 'Bioanalytical Laboratory'
+              AND n.is_template = false
+              AND (np.instructions LIKE '%bioequivalence%' OR np.content LIKE '%bioequivalence%');
+        </sql>
+
+        <rollback>
+            <!-- Rollback: Restore combined titles -->
+            <sql>
+                UPDATE clinlims.notebook
+                SET title = 'Bioanalytical &amp; Bioequivalence Laboratory',
+                    content = REPLACE(content, 'Bioanalytical Laboratory', 'Bioanalytical &amp; Bioequivalence Laboratory'),
+                    objective = REPLACE(objective, 'bioanalytical testing', 'bioanalytical and pharmaceutical quality testing'),
+                    protocol = REPLACE(protocol, 'Bioanalytical Laboratory', 'Bioanalytical &amp; Bioequivalence Laboratory'),
+                    last_updated = ${now}
+                WHERE title = 'Bioanalytical Laboratory' AND is_template = false;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CLEAN UP EXISTING TEMPLATE NOTEBOOKS -->
+    <!-- Ensure template notebooks have correct titles -->
+    <!-- ======================================================== -->
+
+    <changeSet id="clean-up-template-notebook-titles" author="openelis-separation">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.notebook
+                WHERE title LIKE '%Bioanalytical%Bioequivalence%'
+                   AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Clean up template notebook titles to ensure separation</comment>
+
+        <!-- Update template notebook title if it still has the combined name -->
+        <sql>
+            UPDATE clinlims.notebook
+            SET title = 'Bioanalytical Laboratory',
+                content = REPLACE(content, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                content = REPLACE(content, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                objective = REPLACE(objective, 'bioanalytical and pharmaceutical quality testing', 'bioanalytical testing'),
+                objective = REPLACE(objective, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                objective = REPLACE(objective, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                protocol = REPLACE(protocol, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                protocol = REPLACE(protocol, 'Bioanalytical &amp; Bioequivalence', 'Bioanalytical'),
+                last_updated = ${now}
+            WHERE title LIKE '%Bioanalytical%Bioequivalence%'
+              AND is_template = true;
+        </sql>
+
+        <rollback>
+            <!-- This rollback intentionally left empty as we want to maintain separation -->
+            <!-- The original combined template will be replaced by separate templates -->
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

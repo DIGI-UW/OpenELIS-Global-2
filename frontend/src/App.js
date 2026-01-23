@@ -56,6 +56,7 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import EquipmentUsageManagement from "./components/equipmentUsage/EquipmentUsageManagement";
 
 export default function App() {
   const defaultLocale =
@@ -356,7 +357,6 @@ export default function App() {
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
@@ -374,25 +374,21 @@ export default function App() {
                   path="/NoteBookInstanceEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
                   exact
                   component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NotebookSampleOrder/:notebookId"
                   exact
                   component={() => <NotebookSampleOrder />}
-                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"
@@ -485,6 +481,12 @@ export default function App() {
                   path="/inventory"
                   exact
                   component={() => <InventoryManagement />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/equipment-usage"
+                  exact
+                  component={() => <EquipmentUsageManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

@@ -35,6 +35,9 @@
         <class>org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean</class>
         <class>org.openelisglobal.projectorganization.valueholder.ProjectOrganization</class>
 
+        <!-- Common valueholder entities -->
+        <class>org.openelisglobal.common.valueholder.AccessionNumberInfo</class>
+
         <class>org.itech.fhir.dataexport.core.model.DataExportAttempt</class>
         <class>org.itech.fhir.dataexport.core.model.DataExportTask</class>
 
@@ -87,13 +90,42 @@
         <class>org.openelisglobal.notebook.valueholder.NoteBookFile</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntry</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryComment</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryTemperatureLog</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookEntryRoomEnvironmentLog</class>
+        <class>org.openelisglobal.notebook.valueholder.NotebookPageSample</class>
+
+        <!-- MedLab entities -->
+        <class>org.openelisglobal.medlab.valueholder.OrderSampleLink</class>
+        <class>org.openelisglobal.notebook.valueholder.AnalyzerResultImport</class>
+        <class>org.openelisglobal.notebook.valueholder.SampleRouting</class>
+        <class>org.openelisglobal.notebook.valueholder.WorkflowPageTemplate</class>
 
         <!-- Inventory Management entities (004-remove-old-inventory) -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
-        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryAuditLog</class>
+
+        <!-- Equipment Management entities -->
+        <class>org.openelisglobal.equipmentusage.valueholder.Equipment</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageEntry</class>
+        <class>org.openelisglobal.equipmentusage.valueholder.EquipmentUsageAudit</class>
+
+        <!-- Biorepository entities -->
+        <class>org.openelisglobal.biorepository.valueholder.Shipment</class>
+        <class>org.openelisglobal.biorepository.valueholder.BioSample</class>
+        <class>org.openelisglobal.biorepository.valueholder.DocumentationVerification</class>
+        <class>org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleTransferRequest</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleTransferItem</class>
+        <class>org.openelisglobal.biorepository.valueholder.RetentionPolicy</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest</class>
+        <class>org.openelisglobal.biorepository.valueholder.SampleRetrievalItem</class>
+        <class>org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog</class>
+        <class>org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection</class>
 
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>

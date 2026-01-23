@@ -54,6 +54,8 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
+import { usePermissions } from "../../hooks/usePermissions";
+import { Permissions } from "../../constants/roles";
 import {
   NoteBookFormValues,
   NoteBookInitialData,
@@ -95,6 +97,11 @@ const NoteBookEntryForm = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { hasAnyRole } = usePermissions();
+
+  // Check if user can create/edit notebook templates
+  const canEditTemplate = hasAnyRole(Permissions.CREATE_OR_EDIT_NOTEBOOK);
+
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
   const [technicianUsers, setTechnicianUsers] = useState([]);
@@ -125,6 +132,16 @@ const NoteBookEntryForm = () => {
   const [pagePanelSearchTerm, setPagePanelSearchTerm] = useState("");
   const [pageSearchBoxTests, setPageSearchBoxTests] = useState([]);
   const [pageSearchBoxPanels, setPageSearchBoxPanels] = useState([]);
+  const [workflowPageTemplates, setWorkflowPageTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [organizations, setOrganizations] = useState([]);
+  const [selectedOrganizations, setSelectedOrganizations] = useState([]);
+  const [departmentsLoaded, setDepartmentsLoaded] = useState(false);
+  const [pendingSelectedDeptIds, setPendingSelectedDeptIds] = useState(null);
+  const [selectedAllowedRoles, setSelectedAllowedRoles] = useState([]);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [pendingSelectedRoleIds, setPendingSelectedRoleIds] = useState(null);
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   const isFormValid = () => {
     return (
@@ -180,6 +197,10 @@ const NoteBookEntryForm = () => {
     noteBookForm.type = noteBookData.type;
     noteBookForm.objective = noteBookData.objective;
     noteBookForm.protocol = noteBookData.protocol;
+    noteBookForm.principalInvestigator = noteBookData.principalInvestigator;
+    noteBookForm.fundingSource = noteBookData.fundingSource;
+    noteBookForm.budget = noteBookData.budget;
+    noteBookForm.projectTimeline = noteBookData.projectTimeline;
     noteBookForm.content = noteBookData.content;
     noteBookForm.status = noteBookData.status;
     noteBookForm.technicianId = noteBookData.technicianId;
@@ -188,7 +209,7 @@ const NoteBookEntryForm = () => {
       : [];
     noteBookForm.pages = noteBookData.pages;
     noteBookForm.files = noteBookData.files;
-    noteBookForm.analyzerIds = noteBookData.analyzers.map((entry) =>
+    noteBookForm.inventoryInstrumentIds = noteBookData.analyzers.map((entry) =>
       Number(entry.id),
     );
     noteBookForm.tags = noteBookData.tags;
@@ -202,6 +223,14 @@ const NoteBookEntryForm = () => {
     noteBookForm.comments = comments
       .filter((c) => c.id === null)
       .map((c) => ({ id: null, text: c.text }));
+    // Access control: departments (test sections) and allowed roles
+    // Only send if they were successfully loaded (to avoid accidentally clearing them)
+    if (departmentsLoaded || mode === MODES.CREATE) {
+      noteBookForm.departmentIds = selectedOrganizations.map((dept) => dept.id);
+    }
+    if (rolesLoaded || mode === MODES.CREATE) {
+      noteBookForm.allowedRoles = selectedAllowedRoles.map((role) => role.id);
+    }
     console.log(JSON.stringify(noteBookForm));
     var url =
       mode === MODES.EDIT
@@ -251,7 +280,9 @@ const NoteBookEntryForm = () => {
     sampleTypeId: null,
     panels: [],
     tests: [],
+    allowedRoles: [],
   });
+  const [pageSelectedRoles, setPageSelectedRoles] = useState([]);
   const [newTag, setNewTag] = useState("");
   const [pageError, setPageError] = useState("");
   const [tagError, setTagError] = useState("");
@@ -272,15 +303,38 @@ const NoteBookEntryForm = () => {
       sampleTypeId: null,
       panels: [],
       tests: [],
+      allowedRoles: [],
     });
     setPageSelectedTests([]);
     setPageSelectedPanels([]);
+    setPageSelectedRoles([]);
     setPageSampleTypeTests(sampleTypeTestsStructure);
     setPageTestSearchTerm("");
     setPagePanelSearchTerm("");
     setEditingPageIndex(null);
     setPageError("");
+    setSelectedTemplateId("");
     setShowPageModal(true);
+  };
+
+  // Handle template selection - populate page fields from template
+  const handleTemplateSelect = (event) => {
+    const templateId = event.target.value;
+    setSelectedTemplateId(templateId);
+
+    if (templateId) {
+      const template = workflowPageTemplates.find(
+        (t) => t.id === parseInt(templateId, 10),
+      );
+      if (template) {
+        setNewPage((prev) => ({
+          ...prev,
+          title: template.name || "",
+          content: template.defaultContent || "",
+          instructions: template.defaultInstructions || "",
+        }));
+      }
+    }
   };
 
   // Open modal for editing existing page
@@ -294,7 +348,14 @@ const NoteBookEntryForm = () => {
       sampleTypeId: page.sampleTypeId || null,
       panels: page.panels || [],
       tests: page.tests || [],
+      allowedRoles: page.allowedRoles || [],
     });
+    // Set selected roles for the multiselect
+    const existingRoles = page.allowedRoles || [];
+    const matchedRoles = availableRoles.filter((role) =>
+      existingRoles.includes(role.id),
+    );
+    setPageSelectedRoles(matchedRoles);
     // If page has sampleTypeId, fetch the tests for that sample type
     if (page.sampleTypeId) {
       getFromOpenElisServer(
@@ -361,11 +422,12 @@ const NoteBookEntryForm = () => {
       );
       return;
     }
-    // Update newPage with selected tests and panels
+    // Update newPage with selected tests, panels, and allowed roles
     const updatedPage = {
       ...newPage,
       tests: pageSelectedTests.map((test) => test.id),
       panels: pageSelectedPanels.map((panel) => parseInt(panel.id)),
+      allowedRoles: pageSelectedRoles.map((role) => role.id),
     };
     if (editingPageIndex !== null) {
       // Update existing page
@@ -623,6 +685,28 @@ const NoteBookEntryForm = () => {
             })),
           );
         }
+        // Load departments and allowed roles for access control
+        if (data.id) {
+          getFromOpenElisServer(
+            `/rest/notebook/${data.id}/departments`,
+            (deptsResponse) => {
+              if (Array.isArray(deptsResponse)) {
+                // Store IDs to match against organizations list once it's loaded
+                setPendingSelectedDeptIds(deptsResponse.map((dept) => dept.id));
+                setDepartmentsLoaded(true);
+              }
+            },
+          );
+          getFromOpenElisServer(
+            `/rest/notebook/${data.id}/allowed-roles`,
+            (rolesResponse) => {
+              if (Array.isArray(rolesResponse)) {
+                setPendingSelectedRoleIds(rolesResponse);
+                setRolesLoaded(true);
+              }
+            },
+          );
+        }
         // Load audit trail
         loadAuditTrail(data.id);
         setLoading(false);
@@ -678,16 +762,131 @@ const NoteBookEntryForm = () => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
-    getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
+    getFromOpenElisServer(
+      "/rest/inventory/instruments?status=active",
+      (response) => {
+        if (response && Array.isArray(response) && response.length > 0) {
+          // Transform inventory instruments to IdValuePair format for FilterableMultiSelect
+          setAnalyzerList(
+            response.map((instrument) => ({
+              id: instrument.id,
+              value: instrument.name,
+            })),
+          );
+        } else {
+          // Mock data if no instruments available in inventory
+          setAnalyzerList([
+            { id: "1", value: "Analytical Balance" },
+            { id: "2", value: "HPLC System" },
+            { id: "3", value: "UV-Vis Spectrophotometer" },
+            { id: "4", value: "Dissolution Apparatus" },
+            { id: "5", value: "Centrifuge" },
+            { id: "6", value: "Karl Fischer Titrator" },
+            { id: "7", value: "GC-MS System" },
+            { id: "8", value: "pH Meter" },
+          ]);
+        }
+      },
+    );
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/user-sample-types", setSampleTypes);
     getFromOpenElisServer("/rest/notebook/questionnaires", setQuestionnaires);
+    getFromOpenElisServer("/rest/notebook/departments", (depts) => {
+      console.log("Departments API response:", depts);
+      if (Array.isArray(depts)) {
+        const mappedOrgs = depts.map((dept) => ({
+          id: dept.id,
+          label: dept.name || dept.shortName,
+        }));
+        console.log("Mapped organizations:", mappedOrgs);
+        setOrganizations(mappedOrgs);
+      } else {
+        console.warn(
+          "Departments response was not an array:",
+          typeof depts,
+          depts,
+        );
+      }
+    });
     getFromOpenElisServer("/rest/panels", setAllPanels);
+    getFromOpenElisServer(
+      "/rest/notebook/workflow-page-templates",
+      (response) => {
+        if (Array.isArray(response)) {
+          setWorkflowPageTemplates(response);
+        } else {
+          setWorkflowPageTemplates([]);
+        }
+      },
+    );
+    // Fetch available roles dynamically from backend
+    // Using /rest/systemroles which returns {label: description, value: name}
+    getFromOpenElisServer("/rest/systemroles", (roles) => {
+      console.log("System roles API response:", roles);
+      if (Array.isArray(roles)) {
+        const mappedRoles = roles.map((role) => ({
+          id: role.value?.trim(), // role name is the ID we store (trim whitespace)
+          label: role.value?.trim(), // show role name as label
+        }));
+        console.log("Mapped available roles:", mappedRoles);
+        setAvailableRoles(mappedRoles);
+      } else {
+        console.warn(
+          "System roles response was not an array:",
+          typeof roles,
+          roles,
+        );
+      }
+    });
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  console.log({ organizations });
+
+  // Match pending selected department IDs to actual organization objects once both are loaded
+  useEffect(() => {
+    if (
+      pendingSelectedDeptIds !== null &&
+      organizations.length > 0 &&
+      pendingSelectedDeptIds.length > 0
+    ) {
+      // Convert IDs to strings for comparison to handle any type mismatches
+      const pendingIdsAsStrings = pendingSelectedDeptIds.map((id) =>
+        String(id),
+      );
+      const matchedOrgs = organizations.filter((org) =>
+        pendingIdsAsStrings.includes(String(org.id)),
+      );
+      console.log(
+        "Matching departments - pending:",
+        pendingIdsAsStrings,
+        "organizations:",
+        organizations.map((o) => o.id),
+        "matched:",
+        matchedOrgs,
+      );
+      setSelectedOrganizations(matchedOrgs);
+      setPendingSelectedDeptIds(null); // Clear pending to avoid re-running
+    }
+  }, [pendingSelectedDeptIds, organizations]);
+
+  // Match pending selected role IDs to actual role objects once loaded
+  useEffect(() => {
+    if (
+      pendingSelectedRoleIds !== null &&
+      availableRoles.length > 0 &&
+      pendingSelectedRoleIds.length > 0
+    ) {
+      const matchedRoles = availableRoles.filter((role) =>
+        pendingSelectedRoleIds.includes(role.id),
+      );
+      setSelectedAllowedRoles(matchedRoles);
+      setPendingSelectedRoleIds(null);
+    }
+  }, [pendingSelectedRoleIds, availableRoles]);
 
   useEffect(() => {
     if (!notebookid) {
@@ -802,6 +1001,99 @@ const NoteBookEntryForm = () => {
         )}
         {selectedTab === TABS.METADATA && (
           <Column lg={16} md={8} sm={4}>
+            {/* Project Information Fieldset */}
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="principalInvestigator"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.principalInvestigator",
+                    defaultMessage: "Principal Investigator (PI)",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.principalInvestigator.placeholder",
+                    defaultMessage: "Enter principal investigator name",
+                  })}
+                  value={noteBookData.principalInvestigator || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      principalInvestigator: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="fundingSource"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.fundingSource",
+                    defaultMessage: "Funding Source",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.fundingSource.placeholder",
+                    defaultMessage: "Enter funding source",
+                  })}
+                  value={noteBookData.fundingSource || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      fundingSource: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="budget"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.budget",
+                    defaultMessage: "Budget",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.budget.placeholder",
+                    defaultMessage: "Enter budget amount",
+                  })}
+                  value={noteBookData.budget || ""}
+                  type="number"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setNoteBookData({
+                      ...noteBookData,
+                      budget: value ? parseFloat(value) : null,
+                    });
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <TextInput
+                  id="projectTimeline"
+                  labelText={intl.formatMessage({
+                    id: "notebook.field.projectTimeline",
+                    defaultMessage: "Project Timeline",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.field.projectTimeline.placeholder",
+                    defaultMessage: "e.g., Jan 2025 - Dec 2025",
+                  })}
+                  value={noteBookData.projectTimeline || ""}
+                  type="text"
+                  onChange={(e) => {
+                    setNoteBookData({
+                      ...noteBookData,
+                      projectTimeline: e.target.value,
+                    });
+                  }}
+                />
+              </Column>
+            </Grid>
+            <br />
+            {/* Experiment Details */}
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={8} md={8} sm={4}>
                 <Select
@@ -890,6 +1182,50 @@ const NoteBookEntryForm = () => {
               <Column lg={16} md={8} sm={4}>
                 <br />
               </Column>
+              <Column lg={8} md={8} sm={4}>
+                <FilterableMultiSelect
+                  key={`departments-${selectedOrganizations.map((o) => o.id).join(",")}`}
+                  id="organizations"
+                  titleText={intl.formatMessage({
+                    id: "notebook.label.organizations",
+                    defaultMessage: "Locations/Organizations",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.label.selectDepartments",
+                    defaultMessage: "Select departments/units",
+                  })}
+                  items={organizations}
+                  itemToString={(item) => (item ? item.label : "")}
+                  initialSelectedItems={selectedOrganizations}
+                  onChange={({ selectedItems }) => {
+                    setSelectedOrganizations(selectedItems);
+                    setDepartmentsLoaded(true);
+                  }}
+                />
+              </Column>
+              <Column lg={8} md={8} sm={4}>
+                <FilterableMultiSelect
+                  key={`roles-${selectedAllowedRoles.map((r) => r.id).join(",")}`}
+                  id="allowedRoles"
+                  titleText={intl.formatMessage({
+                    id: "notebook.label.allowedRoles",
+                    defaultMessage: "Allowed Roles",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "notebook.label.selectRoles",
+                    defaultMessage: "Select roles that can create entries",
+                  })}
+                  items={availableRoles}
+                  itemToString={(item) => (item ? item.label : "")}
+                  initialSelectedItems={selectedAllowedRoles}
+                  onChange={({ selectedItems }) => {
+                    setSelectedAllowedRoles(selectedItems || []);
+                  }}
+                />
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
               <Column lg={16} md={8} sm={4}>
                 <TextArea
                   id="objective"
@@ -920,13 +1256,17 @@ const NoteBookEntryForm = () => {
               <Column lg={4} md={8} sm={4}>
                 {(initialMount || mode === MODES.CREATE) && (
                   <FilterableMultiSelect
+                    key={`instruments-${analyzerList.length}-${noteBookData.analyzers?.length || 0}-${initialMount}`}
                     id="instruments"
                     titleText={
                       <FormattedMessage id="notebook.instruments.title" />
                     }
                     items={analyzerList}
                     itemToString={(item) => (item ? item.value : "")}
-                    initialSelectedItems={noteBookData.analyzers}
+                    initialSelectedItems={noteBookData.analyzers || []}
+                    compareItems={(a, b) =>
+                      String(a.id) === String(b.id) ? 0 : 1
+                    }
                     onChange={(changes) => {
                       setNoteBookData({
                         ...noteBookData,
@@ -942,8 +1282,9 @@ const NoteBookEntryForm = () => {
                   noteBookData.analyzers.map((item, index) => (
                     <Tag
                       key={index}
-                      filter
+                      filter={canEditTemplate}
                       onClose={() => {
+                        if (!canEditTemplate) return;
                         var info = { ...noteBookData };
                         info["analyzers"].splice(index, 1);
                         setNoteBookData(info);
@@ -963,7 +1304,21 @@ const NoteBookEntryForm = () => {
                 </h5>
               </Column>
               <Column lg={8} md={8} sm={4}>
-                <Button onClick={openTagModal} kind="primary" size="sm">
+                <Button
+                  onClick={openTagModal}
+                  kind="primary"
+                  size="sm"
+                  disabled={!canEditTemplate}
+                  title={
+                    !canEditTemplate
+                      ? intl.formatMessage({
+                          id: "notebook.permission.edit.required",
+                          defaultMessage:
+                            "You need Notebook Administrator role to edit templates",
+                        })
+                      : undefined
+                  }
+                >
                   <Add />
                   <FormattedMessage id="notebook.tags.add" />
                 </Button>
@@ -975,8 +1330,9 @@ const NoteBookEntryForm = () => {
                 {noteBookData.tags.map((tag, index) => (
                   <Tag
                     key={index}
-                    filter
+                    filter={canEditTemplate}
                     onClose={() => {
+                      if (!canEditTemplate) return;
                       handleRemoveTag(index);
                     }}
                   >
@@ -998,6 +1354,7 @@ const NoteBookEntryForm = () => {
                   multiple
                   onAddFiles={handleAddFiles}
                   accept={[".pdf", ".png", ".jpg", ".txt"]}
+                  disabled={!canEditTemplate}
                 />
                 {uploadedFiles.map((fileObj, index) => (
                   <FileUploaderItem
@@ -1036,6 +1393,16 @@ const NoteBookEntryForm = () => {
                             kind="danger--tertiary"
                             size="sm"
                             onClick={() => handleRemoveFile(index)}
+                            disabled={!canEditTemplate}
+                            title={
+                              !canEditTemplate
+                                ? intl.formatMessage({
+                                    id: "notebook.permission.edit.required",
+                                    defaultMessage:
+                                      "You need Notebook Administrator role to edit templates",
+                                  })
+                                : undefined
+                            }
                           >
                             <FormattedMessage id="label.button.remove" />
                           </Button>
@@ -1058,7 +1425,21 @@ const NoteBookEntryForm = () => {
                 </h5>
               </Column>
               <Column lg={2} md={2} sm={4}>
-                <Button onClick={openPageModal} size="sm" kind="primary">
+                <Button
+                  onClick={openPageModal}
+                  size="sm"
+                  kind="primary"
+                  disabled={!canEditTemplate}
+                  title={
+                    !canEditTemplate
+                      ? intl.formatMessage({
+                          id: "notebook.permission.edit.required",
+                          defaultMessage:
+                            "You need Notebook Administrator role to edit templates",
+                        })
+                      : undefined
+                  }
+                >
                   <Add /> <FormattedMessage id="notebook.label.addpage" />
                 </Button>
               </Column>
@@ -1236,6 +1617,35 @@ const NoteBookEntryForm = () => {
                                 </Column>
                               </>
                             )}
+                          {page.allowedRoles &&
+                            Array.isArray(page.allowedRoles) &&
+                            page.allowedRoles.length > 0 && (
+                              <>
+                                <Column lg={2} md={8} sm={4}>
+                                  <h6>
+                                    {intl.formatMessage({
+                                      id: "notebook.page.allowedRoles",
+                                      defaultMessage: "Access Roles",
+                                    })}
+                                  </h6>
+                                </Column>
+                                <Column lg={14} md={8} sm={4}>
+                                  <div>
+                                    {page.allowedRoles.map(
+                                      (roleName, roleIndex) => (
+                                        <Tag
+                                          key={roleIndex}
+                                          type="purple"
+                                          size="sm"
+                                        >
+                                          {roleName}
+                                        </Tag>
+                                      ),
+                                    )}
+                                  </div>
+                                </Column>
+                              </>
+                            )}
                           <Column lg={16} md={8} sm={4}>
                             <br />
                             <Button
@@ -1243,6 +1653,16 @@ const NoteBookEntryForm = () => {
                               size="sm"
                               onClick={() => openEditPageModal(index)}
                               style={{ marginRight: "0.5rem" }}
+                              disabled={!canEditTemplate}
+                              title={
+                                !canEditTemplate
+                                  ? intl.formatMessage({
+                                      id: "notebook.permission.edit.required",
+                                      defaultMessage:
+                                        "You need Notebook Administrator role to edit templates",
+                                    })
+                                  : undefined
+                              }
                             >
                               <FormattedMessage id="label.button.edit" />
                             </Button>
@@ -1250,6 +1670,16 @@ const NoteBookEntryForm = () => {
                               kind="danger--tertiary"
                               size="sm"
                               onClick={() => handleRemovePage(index)}
+                              disabled={!canEditTemplate}
+                              title={
+                                !canEditTemplate
+                                  ? intl.formatMessage({
+                                      id: "notebook.permission.edit.required",
+                                      defaultMessage:
+                                        "You need Notebook Administrator role to edit templates",
+                                    })
+                                  : undefined
+                              }
                             >
                               <FormattedMessage id="label.button.remove" />
                             </Button>
@@ -1500,6 +1930,40 @@ const NoteBookEntryForm = () => {
             subtitle={pageError}
           />
         )}
+        {editingPageIndex === null &&
+          Array.isArray(workflowPageTemplates) &&
+          workflowPageTemplates.length > 0 && (
+            <Select
+              id="pageTemplate"
+              name="pageTemplate"
+              labelText={intl.formatMessage({
+                id: "notebook.page.modal.template.label",
+                defaultMessage: "Use Template (Optional)",
+              })}
+              value={selectedTemplateId}
+              onChange={handleTemplateSelect}
+              helperText={intl.formatMessage({
+                id: "notebook.page.modal.template.helper",
+                defaultMessage:
+                  "Select a predefined workflow page template to auto-fill fields",
+              })}
+            >
+              <SelectItem
+                text={intl.formatMessage({
+                  id: "notebook.page.modal.template.none",
+                  defaultMessage: "-- No template (custom page) --",
+                })}
+                value=""
+              />
+              {workflowPageTemplates.map((template) => (
+                <SelectItem
+                  key={template.id}
+                  text={`${template.displayOrder}. ${template.name} - ${template.description}`}
+                  value={template.id}
+                />
+              ))}
+            </Select>
+          )}
         <TextInput
           id="title"
           name="title"
@@ -1737,6 +2201,27 @@ const NoteBookEntryForm = () => {
           onChange={handlePageChange}
           required
         />
+        <FilterableMultiSelect
+          key={`pageRoles-${pageSelectedRoles.map((r) => r.id).join(",")}`}
+          id="pageAllowedRoles"
+          titleText={intl.formatMessage({
+            id: "notebook.page.modal.roles.label",
+            defaultMessage: "Page Access Roles (Optional)",
+          })}
+          placeholder={intl.formatMessage({
+            id: "notebook.page.modal.roles.placeholder",
+            defaultMessage: "Select roles that can view this page",
+          })}
+          items={availableRoles}
+          itemToString={(item) => (item ? item.label : "")}
+          initialSelectedItems={pageSelectedRoles}
+          onChange={({ selectedItems }) => setPageSelectedRoles(selectedItems)}
+          helperText={intl.formatMessage({
+            id: "notebook.page.modal.roles.helper",
+            defaultMessage:
+              "Leave empty to allow all users. Selected roles restrict page access.",
+          })}
+        />
       </Modal>
       <Modal
         open={showTagModal}
@@ -1836,7 +2321,18 @@ const NoteBookEntryForm = () => {
               <Button
                 kind="primary"
                 disabled={
-                  isSubmitting || (mode === MODES.CREATE && !isFormValid())
+                  !canEditTemplate ||
+                  isSubmitting ||
+                  (mode === MODES.CREATE && !isFormValid())
+                }
+                title={
+                  !canEditTemplate
+                    ? intl.formatMessage({
+                        id: "notebook.permission.edit.required",
+                        defaultMessage:
+                          "You need Notebook Administrator role to edit templates",
+                      })
+                    : undefined
                 }
                 onClick={() => handleSubmit()}
               >

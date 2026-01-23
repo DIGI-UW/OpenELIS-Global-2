@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Migration: Add Feeding page to Virology workflow
+
+        This changeset adds a new "Feeding" page (Page 8) to both the Virology notebook
+        template and existing notebook instances for culture feeding and maintenance activities.
+
+        Author: openelis-virology
+        Date: 2026-01-20
+    -->
+
+    <changeSet id="add-feeding-page-to-virology-template" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if the Virology template exists -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*)
+                FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit'
+                AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Feeding page (Page 8) to the Virology notebook template</comment>
+
+        <sql>
+            -- Insert Feeding page into the template
+            INSERT INTO clinlims.notebook_page (
+                id,
+                title,
+                instructions,
+                content,
+                page_order,
+                completed,
+                page_type,
+                notebook_id,
+                last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Feeding',
+                'Log culture feeding and maintenance activities. Record feeding schedule and reagents used from inventory with full traceability. Document feeding date, time, schedule (e.g., Daily, Every 2 days), reagents used, volume, and observations (e.g., cell confluence, media color, contamination check).',
+                'Feeding - Culture maintenance and feeding schedule tracking',
+                8,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title = 'Virology and Vaccine Unit'
+            AND n.is_template = true
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id
+                AND np.page_order = 8
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                -- Remove Feeding page from template
+                DELETE FROM clinlims.notebook_page
+                WHERE title = 'Feeding'
+                AND page_order = 8
+                AND notebook_id IN (
+                    SELECT id
+                    FROM clinlims.notebook
+                    WHERE title = 'Virology and Vaccine Unit'
+                    AND is_template = true
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-feeding-page-to-existing-virology-notebooks" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <!-- Only run if the Virology template exists -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*)
+                FROM clinlims.notebook
+                WHERE title = 'Virology and Vaccine Unit'
+                AND is_template = true
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Feeding page (Page 8) to existing Virology notebook instances that don't have it</comment>
+
+        <sql>
+            -- Insert Feeding page for each Virology notebook instance that doesn't have page 8
+            INSERT INTO clinlims.notebook_page (
+                id,
+                title,
+                instructions,
+                content,
+                page_order,
+                completed,
+                page_type,
+                notebook_id,
+                last_updated
+            )
+            SELECT
+                nextval('clinlims.notebook_page_seq'),
+                'Feeding',
+                'Log culture feeding and maintenance activities. Record feeding schedule and reagents used from inventory with full traceability. Document feeding date, time, schedule (e.g., Daily, Every 2 days), reagents used, volume, and observations (e.g., cell confluence, media color, contamination check).',
+                'Feeding - Culture maintenance and feeding schedule tracking',
+                8,
+                false,
+                'BULK_DATA_ENTRY',
+                n.id,
+                now()
+            FROM clinlims.notebook n
+            WHERE n.title LIKE '%Virology%'
+            AND n.is_template = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM clinlims.notebook_page np
+                WHERE np.notebook_id = n.id
+                AND np.page_order = 8
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                -- Remove Feeding pages added by this changeset
+                DELETE FROM clinlims.notebook_page
+                WHERE title = 'Feeding'
+                AND page_order = 8
+                AND notebook_id IN (
+                    SELECT id
+                    FROM clinlims.notebook
+                    WHERE title LIKE '%Virology%'
+                    AND is_template = false
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

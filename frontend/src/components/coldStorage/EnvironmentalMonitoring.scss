@@ -1,0 +1,82 @@
+// Environmental Monitoring component styles for Cold Storage feature
+
+.movable-fridge-section {
+  margin-top: 1rem;
+
+  .cds--tile-above-the-fold-content {
+    border-bottom: 1px solid var(--cds-border-subtle);
+    padding-bottom: 0.5rem;
+  }
+
+  .cds--tile-below-the-fold-content {
+    padding-top: 1rem;
+  }
+}
+
+.environmental-monitoring-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+
+  .stat-card {
+    background: var(--cds-background);
+    border: 1px solid var(--cds-border-subtle);
+    border-radius: var(--cds-border-radius);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .stat-icon {
+      color: var(--cds-icon-primary);
+    }
+
+    .stat-content {
+      .stat-value {
+        font-size: var(--cds-productive-heading-03-font-size);
+        font-weight: var(--cds-productive-heading-03-font-weight);
+        line-height: var(--cds-productive-heading-03-line-height);
+        color: var(--cds-text-primary);
+        margin: 0;
+      }
+
+      .stat-label {
+        font-size: var(--cds-body-compact-01-font-size);
+        color: var(--cds-text-secondary);
+        margin: 0;
+      }
+    }
+  }
+}
+
+.temperature-warning {
+  color: var(--cds-support-error);
+  font-weight: 600;
+
+  .warning-icon {
+    margin-left: 0.25rem;
+    vertical-align: text-bottom;
+  }
+}
+
+.storage-unit-icon {
+  margin-right: 0.5rem;
+  vertical-align: text-bottom;
+}
+
+.environmental-empty-state {
+  text-align: center;
+  padding: 3rem 0;
+  color: var(--cds-text-secondary);
+
+  .empty-icon {
+    opacity: 0.3;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    margin-top: 1rem;
+    font-size: var(--cds-body-01-font-size);
+  }
+}

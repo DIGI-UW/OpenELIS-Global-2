@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- QC_RESULT TABLE -->
+    <!-- Tracks QC control results for Levey-Jennings charting -->
+    <!-- Supports dual-level QC (Normal/Pathologic) per CLIA -->
+    <!-- Implements Westgard rule tracking -->
+    <!-- ======================================================== -->
+    <changeSet id="create-qc-result-sequence" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="qc_result_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating sequence for qc_result table.</comment>
+        <createSequence sequenceName="qc_result_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="create-qc-result-table" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_result" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating QC_RESULT table for Levey-Jennings QC tracking.</comment>
+        <createTable tableName="qc_result">
+            <column name="id" type="INTEGER" defaultValueSequenceNext="qc_result_seq">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_qc_result"/>
+            </column>
+            <column name="test_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="qc_level" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiry_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+            <column name="target_value" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sd_value" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acceptable_range_low" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acceptable_range_high" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_value" type="DECIMAL(10,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_time" type="TIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pass_fail" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="westgard_rule_violated" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="corrective_action" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="action_taken_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="action_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="is_calibration" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="true" unique="true" uniqueConstraintName="uq_qcr_fhir_uuid"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="add-qc-result-foreign-keys" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="qc_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding foreign key constraints to qc_result table.</comment>
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="test_id"
+            referencedTableName="test"
+            referencedColumnNames="id"
+            constraintName="fk_qcr_test"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="analyzer_id"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"
+            constraintName="fk_qcr_analyzer"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="performed_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_qcr_performed_by"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="action_taken_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            constraintName="fk_qcr_action_by"/>
+    </changeSet>
+
+    <changeSet id="add-qc-result-level-check" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="qc_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for qc_level values.</comment>
+        <sql>
+            ALTER TABLE clinlims.qc_result
+            ADD CONSTRAINT chk_qcr_level
+            CHECK (qc_level IN ('NORMAL', 'PATHOLOGIC'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.qc_result DROP CONSTRAINT IF EXISTS chk_qcr_level;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-qc-result-passfail-check" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="qc_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for pass_fail values.</comment>
+        <sql>
+            ALTER TABLE clinlims.qc_result
+            ADD CONSTRAINT chk_qcr_passfail
+            CHECK (pass_fail IN ('PASS', 'FAIL'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.qc_result DROP CONSTRAINT IF EXISTS chk_qcr_passfail;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-qc-result-westgard-check" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="qc_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for westgard_rule_violated values.</comment>
+        <sql>
+            ALTER TABLE clinlims.qc_result
+            ADD CONSTRAINT chk_qcr_westgard
+            CHECK (westgard_rule_violated IS NULL OR westgard_rule_violated IN
+                   ('NONE', 'ONE_2S', 'ONE_3S', 'TWO_2S', 'R_4S', 'FOUR_1S', 'TEN_X'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.qc_result DROP CONSTRAINT IF EXISTS chk_qcr_westgard;</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-qc-result-indexes" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="qc_result" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for query optimization.</comment>
+        <createIndex tableName="qc_result" indexName="idx_qcr_test_date">
+            <column name="test_id"/>
+            <column name="result_date"/>
+        </createIndex>
+        <createIndex tableName="qc_result" indexName="idx_qcr_passfail">
+            <column name="pass_fail"/>
+        </createIndex>
+        <createIndex tableName="qc_result" indexName="idx_qcr_lot">
+            <column name="lot_number"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="create-qc-result-reference-table" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'QC_RESULT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating QC_RESULT reference table entry for audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="QC_RESULT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='QC_RESULT'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

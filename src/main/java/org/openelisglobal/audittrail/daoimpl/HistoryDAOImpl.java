@@ -47,4 +47,21 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
         }
         return list;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<History> getAllHistoryByRefTableId(String tableId) throws LIMSRuntimeException {
+        List<History> list;
+
+        try {
+            String sql = "from History h where h.referenceTable = :tableId order by h.timestamp desc, h.activity desc";
+            Query<History> query = entityManager.unwrap(Session.class).createQuery(sql, History.class);
+            query.setParameter("tableId", Integer.parseInt(tableId));
+            list = query.list();
+        } catch (HibernateException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in AuditTrail getAllHistoryByRefTableId()", e);
+        }
+        return list;
+    }
 }

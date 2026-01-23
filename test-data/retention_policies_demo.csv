@@ -1,0 +1,24 @@
+Policy Name,Project,Sample Type,Period
+Malaria Study Retention,PROJ-MALARIA-001,,10 years
+Genomics Project Retention,PROJ-GENOMICS-001,,25 years
+AMR Surveillance Retention,PROJ-AMR-001,,15 years
+Respiratory Studies Retention,PROJ-RESP-001,,7 years
+Pathology Project Retention,PROJ-PATHOLOGY-001,,30 years
+Immunology Study Retention,PROJ-IMMUNO-001,,10 years
+Cell Bank Retention,PROJ-CELLBANK-001,,50 years
+Kidney Research Retention,PROJ-KIDNEY-001,,10 years
+Neurology Study Retention,PROJ-NEURO-001,,15 years
+Serum Default,,Serum,5 years
+Plasma Default,,Plasma,5 years
+Whole Blood Default,,Whole Blood,3 years
+DNA Long-term Storage,,DNA,25 years
+RNA Storage,,RNA,10 years
+Bacterial Isolate Storage,,Bacterial Isolate,20 years
+Viral Culture Storage,,Viral Culture,15 years
+FFPE Block Archive,,FFPE Block,30 years
+Fresh Frozen Tissue,,Fresh Frozen,10 years
+PBMCs Storage,,PBMCs,10 years
+Cell Line Repository,,Cell Line,99 years
+Urine Samples,,Urine,2 years
+CSF Samples,,CSF,5 years
+Respiratory Swab Default,,Respiratory Swab,3 years

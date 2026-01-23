@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BIO_SAMPLE TABLE -->
+    <!-- Biorepository sample with extended metadata -->
+    <!-- ISO 20387:2018 compliant sample tracking -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-biosample-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="bio_sample_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for bio_sample table</comment>
+        <createSequence sequenceName="bio_sample_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="bio_sample_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-biosample-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create bio_sample table for biorepository samples with extended metadata</comment>
+
+        <createTable tableName="bio_sample" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="barcode" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="external_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="shipment_id" type="NUMERIC(10,0)"/>
+            <column name="sample_type_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="biosafety_level" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="classification" type="VARCHAR(50)"/>
+            <column name="collection_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="collection_time" type="TIME"/>
+            <column name="receipt_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="NUMERIC(10,0)"/>
+            <column name="consent_id" type="VARCHAR(100)"/>
+            <column name="ethics_approval_ref" type="VARCHAR(100)"/>
+            <column name="mta_reference" type="VARCHAR(100)"/>
+            <column name="origin_lab" type="VARCHAR(255)"/>
+            <column name="principal_investigator" type="VARCHAR(255)"/>
+            <column name="arrival_condition" type="VARCHAR(50)"/>
+            <column name="arrival_condition_notes" type="TEXT"/>
+            <column name="initial_volume" type="DECIMAL(10,2)"/>
+            <column name="current_volume" type="DECIMAL(10,2)"/>
+            <column name="volume_unit" type="VARCHAR(20)" defaultValue="mL"/>
+            <column name="preservation_medium" type="VARCHAR(100)"/>
+            <column name="required_temp_min" type="DECIMAL(5,2)"/>
+            <column name="required_temp_max" type="DECIMAL(5,2)"/>
+            <column name="parent_sample_id" type="NUMERIC(10,0)"/>
+            <column name="retention_policy_id" type="NUMERIC(10,0)"/>
+            <column name="retention_expiry_date" type="DATE"/>
+            <column name="documentation_status" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="REGISTERED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quarantine_reason" type="TEXT"/>
+            <column name="special_handling" type="TEXT"/>
+            <column name="last_verified_date" type="TIMESTAMP"/>
+            <column name="notebook_entry_id" type="INTEGER"/>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="bio_sample" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Foreign Key Constraints -->
+    <changeSet id="add-biosample-fk-shipment" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <tableExists tableName="shipment" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_biosample_shipment" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from bio_sample.shipment_id to shipment</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_biosample_shipment"
+            baseTableSchemaName="clinlims"
+            baseTableName="bio_sample"
+            baseColumnNames="shipment_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="shipment"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                constraintName="fk_biosample_shipment"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-biosample-fk-sample-type" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <tableExists tableName="type_of_sample" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_biosample_sample_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from bio_sample.sample_type_id to type_of_sample</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_biosample_sample_type"
+            baseTableSchemaName="clinlims"
+            baseTableName="bio_sample"
+            baseColumnNames="sample_type_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="type_of_sample"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                constraintName="fk_biosample_sample_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-biosample-fk-project" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <tableExists tableName="project" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_biosample_project" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from bio_sample.project_id to project</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_biosample_project"
+            baseTableSchemaName="clinlims"
+            baseTableName="bio_sample"
+            baseColumnNames="project_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="project"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                constraintName="fk_biosample_project"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-biosample-fk-parent" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_biosample_parent" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add self-referential foreign key for aliquots</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_biosample_parent"
+            baseTableSchemaName="clinlims"
+            baseTableName="bio_sample"
+            baseColumnNames="parent_sample_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="bio_sample"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                constraintName="fk_biosample_parent"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-biosample-fk-notebook-entry" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_biosample_notebook_entry" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from bio_sample.notebook_entry_id to notebook_entry</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_biosample_notebook_entry"
+            baseTableSchemaName="clinlims"
+            baseTableName="bio_sample"
+            baseColumnNames="notebook_entry_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="bio_sample"
+                constraintName="fk_biosample_notebook_entry"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes -->
+    <changeSet id="add-biosample-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_biosample_barcode" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for bio_sample table</comment>
+
+        <createIndex indexName="idx_biosample_barcode" tableName="bio_sample" schemaName="clinlims" unique="true">
+            <column name="barcode"/>
+        </createIndex>
+
+        <createIndex indexName="idx_biosample_external_id" tableName="bio_sample" schemaName="clinlims">
+            <column name="external_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_biosample_fhir_uuid" tableName="bio_sample" schemaName="clinlims" unique="true">
+            <column name="fhir_uuid"/>
+        </createIndex>
+
+        <createIndex indexName="idx_biosample_status" tableName="bio_sample" schemaName="clinlims">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_biosample_project" tableName="bio_sample" schemaName="clinlims">
+            <column name="project_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_biosample_shipment" tableName="bio_sample" schemaName="clinlims">
+            <column name="shipment_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_biosample_collection_date" tableName="bio_sample" schemaName="clinlims">
+            <column name="collection_date"/>
+        </createIndex>
+
+        <createIndex indexName="idx_biosample_doc_status" tableName="bio_sample" schemaName="clinlims">
+            <column name="documentation_status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_biosample_barcode" tableName="bio_sample" schemaName="clinlims"/>
+            <dropIndex indexName="idx_biosample_external_id" tableName="bio_sample" schemaName="clinlims"/>
+            <dropIndex indexName="idx_biosample_fhir_uuid" tableName="bio_sample" schemaName="clinlims"/>
+            <dropIndex indexName="idx_biosample_status" tableName="bio_sample" schemaName="clinlims"/>
+            <dropIndex indexName="idx_biosample_project" tableName="bio_sample" schemaName="clinlims"/>
+            <dropIndex indexName="idx_biosample_shipment" tableName="bio_sample" schemaName="clinlims"/>
+            <dropIndex indexName="idx_biosample_collection_date" tableName="bio_sample" schemaName="clinlims"/>
+            <dropIndex indexName="idx_biosample_doc_status" tableName="bio_sample" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Check Constraints -->
+    <changeSet id="add-biosample-biosafety-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for biosafety_level values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.bio_sample
+            ADD CONSTRAINT chk_biosample_biosafety_level
+            CHECK (biosafety_level IN ('BSL-1', 'BSL-2', 'BSL-3', 'BSL-4'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS chk_biosample_biosafety_level;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-biosample-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.bio_sample
+            ADD CONSTRAINT chk_biosample_status
+            CHECK (status IN ('REGISTERED', 'PENDING_STORAGE', 'STORED', 'QUARANTINE', 'CHECKED_OUT', 'DISPOSED', 'ARCHIVED'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS chk_biosample_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-biosample-doc-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for documentation_status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.bio_sample
+            ADD CONSTRAINT chk_biosample_doc_status
+            CHECK (documentation_status IN ('PENDING', 'VERIFIED', 'QUARANTINE'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.bio_sample DROP CONSTRAINT IF EXISTS chk_biosample_doc_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

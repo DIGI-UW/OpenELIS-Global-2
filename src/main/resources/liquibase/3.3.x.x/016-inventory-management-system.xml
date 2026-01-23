@@ -571,4 +571,37 @@
         </insert>
     </changeSet>
 
+    <!-- Add unit_size column to inventory_lot table -->
+    <changeSet author="claude" id="inventory-011-add-unit-size-column">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="inventory_lot" columnName="unit_size"/>
+            </not>
+        </preConditions>
+        <comment>Add unit_size column to inventory_lot table to capture unit size information</comment>
+        <addColumn schemaName="clinlims" tableName="inventory_lot">
+            <column name="unit_size" type="VARCHAR(100)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Add project_name column to inventory_item table -->
+    <changeSet author="claude" id="inventory-012-add-project-name-column">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="project_name"/>
+            </not>
+        </preConditions>
+        <comment>Add project_name column to inventory_item table for notebook/project association</comment>
+        <addColumn schemaName="clinlims" tableName="inventory_item">
+            <column name="project_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add index for project_name searches -->
+        <createIndex indexName="idx_inventory_item_project_name" tableName="inventory_item" schemaName="clinlims">
+            <column name="project_name"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>

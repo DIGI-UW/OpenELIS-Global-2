@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- Add last_updated column to order_sample_link table -->
+    <!-- Required by BaseObject inheritance for optimistic locking -->
+    <!-- ======================================================== -->
+    <changeSet id="add-last-updated-to-order-sample-link" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="order_sample_link" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding last_updated column to order_sample_link table for BaseObject compatibility.</comment>
+        <addColumn tableName="order_sample_link">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Set initial values for existing rows -->
+    <changeSet id="set-initial-last-updated-order-sample-link" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="order_sample_link" schemaName="clinlims"/>
+            <columnExists tableName="order_sample_link" columnName="last_updated" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Setting initial last_updated values for existing order_sample_link rows.</comment>
+        <sql>
+            UPDATE clinlims.order_sample_link
+            SET last_updated = created_at
+            WHERE last_updated IS NULL;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

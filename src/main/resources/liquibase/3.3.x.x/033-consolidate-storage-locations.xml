@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Consolidate Storage Location Architecture
+        ========================================
+        Removes redundant catalog-level storage fields from inventory_item table.
+        Storage locations should only be tracked at the lot level, not catalog level.
+
+        Keeps:
+        - Hierarchical storage system (location_id, location_type, storage_path) on inventory_lot
+        - Lot-specific text fields (received_by, specific_storage_location, storage_box_number) on inventory_lot
+
+        Removes:
+        - Catalog-level storage fields from inventory_item (received_by, storage_location, storage_box_number)
+    -->
+
+    <changeSet id="consolidate-storage-001" author="claude-code">
+        <comment>Remove redundant catalog-level storage fields from inventory_item table</comment>
+
+        <!-- Drop indexes first -->
+        <dropIndex tableName="inventory_item" schemaName="clinlims" indexName="idx_inventory_item_storage_location"/>
+
+        <!-- Remove catalog-level received_by field (should only be at lot level) -->
+        <dropColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="received_by"/>
+        </dropColumn>
+
+        <!-- Remove catalog-level storage_location field (should only be at lot level) -->
+        <dropColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="storage_location"/>
+        </dropColumn>
+
+        <!-- Remove catalog-level storage_box_number field (should only be at lot level) -->
+        <dropColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="storage_box_number"/>
+        </dropColumn>
+    </changeSet>
+
+</databaseChangeLog>
