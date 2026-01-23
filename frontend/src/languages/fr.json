@@ -1393,5 +1393,7 @@
   "patient.nationalid": "Numéro d'identification nationale",
   "patient.nationality": "Nationalité",
   "patient.nationality.other": "Précisez Autre nationalité",
-  "patient.photo.active.camera": "Cliquer pour activer la caméra"
+  "patient.photo.active.camera": "Cliquer pour activer la caméra",
+  "storage.create.room.error": "Erreur lors de la création de la salle",
+  "storage.create.room.success": "Salle créée avec succès"
 }
