@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * DAO implementation for SerialPortConfiguration
- * Task Reference: T029, M2
+ * DAO implementation for SerialPortConfiguration Task Reference: T029, M2
  */
 @Component
 @Transactional

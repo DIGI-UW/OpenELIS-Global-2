@@ -30,7 +30,13 @@ import {
 } from "../../../services/serialService";
 import "./SerialConfiguration.css";
 
-const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave }) => {
+const SerialConfiguration = ({
+  analyzerId,
+  configuration,
+  open,
+  onClose,
+  onSave,
+}) => {
   const intl = useIntl();
   const isEditMode = !!configuration;
 
@@ -59,16 +65,31 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
 
   // Parity options
   const parityOptions = [
-    { id: "NONE", text: intl.formatMessage({ id: "serial.config.parity.none" }) },
-    { id: "EVEN", text: intl.formatMessage({ id: "serial.config.parity.even" }) },
+    {
+      id: "NONE",
+      text: intl.formatMessage({ id: "serial.config.parity.none" }),
+    },
+    {
+      id: "EVEN",
+      text: intl.formatMessage({ id: "serial.config.parity.even" }),
+    },
     { id: "ODD", text: intl.formatMessage({ id: "serial.config.parity.odd" }) },
-    { id: "MARK", text: intl.formatMessage({ id: "serial.config.parity.mark" }) },
-    { id: "SPACE", text: intl.formatMessage({ id: "serial.config.parity.space" }) },
+    {
+      id: "MARK",
+      text: intl.formatMessage({ id: "serial.config.parity.mark" }),
+    },
+    {
+      id: "SPACE",
+      text: intl.formatMessage({ id: "serial.config.parity.space" }),
+    },
   ];
 
   // Flow control options
   const flowControlOptions = [
-    { id: "NONE", text: intl.formatMessage({ id: "serial.config.flowControl.none" }) },
+    {
+      id: "NONE",
+      text: intl.formatMessage({ id: "serial.config.flowControl.none" }),
+    },
     { id: "RTS_CTS", text: "RTS/CTS" },
     { id: "XON_XOFF", text: "XON/XOFF" },
   ];
@@ -84,9 +105,10 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
         stopBits: configuration.stopBits || "ONE",
         parity: configuration.parity || "NONE",
         flowControl: configuration.flowControl || "NONE",
-        active: configuration.active !== undefined ? configuration.active : true,
+        active:
+          configuration.active !== undefined ? configuration.active : true,
       });
-      
+
       // Load connection status if configuration has ID
       if (configuration.id) {
         loadConnectionStatus(configuration.id);
@@ -131,19 +153,27 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
     const newErrors = {};
 
     if (!formData.analyzerId) {
-      newErrors.analyzerId = intl.formatMessage({ id: "serial.config.validation.analyzerId.required" });
+      newErrors.analyzerId = intl.formatMessage({
+        id: "serial.config.validation.analyzerId.required",
+      });
     }
 
     if (!formData.portName || !formData.portName.trim()) {
-      newErrors.portName = intl.formatMessage({ id: "serial.config.validation.portName.required" });
+      newErrors.portName = intl.formatMessage({
+        id: "serial.config.validation.portName.required",
+      });
     }
 
     if (formData.baudRate < 9600 || formData.baudRate > 115200) {
-      newErrors.baudRate = intl.formatMessage({ id: "serial.config.validation.baudRate.invalid" });
+      newErrors.baudRate = intl.formatMessage({
+        id: "serial.config.validation.baudRate.invalid",
+      });
     }
 
     if (formData.dataBits !== 7 && formData.dataBits !== 8) {
-      newErrors.dataBits = intl.formatMessage({ id: "serial.config.validation.dataBits.invalid" });
+      newErrors.dataBits = intl.formatMessage({
+        id: "serial.config.validation.dataBits.invalid",
+      });
     }
 
     setErrors(newErrors);
@@ -251,10 +281,14 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
           />
         )}
 
-        <FormGroup legendText={intl.formatMessage({ id: "serial.config.form.legend" })}>
+        <FormGroup
+          legendText={intl.formatMessage({ id: "serial.config.form.legend" })}
+        >
           <TextInput
             id="portName"
-            labelText={intl.formatMessage({ id: "serial.config.portName.label" })}
+            labelText={intl.formatMessage({
+              id: "serial.config.portName.label",
+            })}
             value={formData.portName}
             onChange={(e) => handleFieldChange("portName", e.target.value)}
             invalid={!!errors.portName}
@@ -267,7 +301,12 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
             id="baudRate"
             label={intl.formatMessage({ id: "serial.config.baudRate.label" })}
             value={formData.baudRate}
-            onChange={(e) => handleFieldChange("baudRate", e.imaginaryTarget?.value || e.target.value)}
+            onChange={(e) =>
+              handleFieldChange(
+                "baudRate",
+                e.imaginaryTarget?.value || e.target.value,
+              )
+            }
             invalid={!!errors.baudRate}
             invalidText={errors.baudRate}
             min={9600}
@@ -280,7 +319,12 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
             id="dataBits"
             label={intl.formatMessage({ id: "serial.config.dataBits.label" })}
             value={formData.dataBits}
-            onChange={(e) => handleFieldChange("dataBits", e.imaginaryTarget?.value || e.target.value)}
+            onChange={(e) =>
+              handleFieldChange(
+                "dataBits",
+                e.imaginaryTarget?.value || e.target.value,
+              )
+            }
             invalid={!!errors.dataBits}
             invalidText={errors.dataBits}
             min={7}
@@ -290,10 +334,16 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
 
           <Dropdown
             id="stopBits"
-            titleText={intl.formatMessage({ id: "serial.config.stopBits.label" })}
+            titleText={intl.formatMessage({
+              id: "serial.config.stopBits.label",
+            })}
             items={stopBitsOptions}
-            selectedItem={stopBitsOptions.find((opt) => opt.id === formData.stopBits)}
-            onChange={(e) => handleFieldChange("stopBits", e.selectedItem?.id || "ONE")}
+            selectedItem={stopBitsOptions.find(
+              (opt) => opt.id === formData.stopBits,
+            )}
+            onChange={(e) =>
+              handleFieldChange("stopBits", e.selectedItem?.id || "ONE")
+            }
             itemToString={(item) => (item ? item.text : "")}
           />
 
@@ -301,17 +351,27 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
             id="parity"
             titleText={intl.formatMessage({ id: "serial.config.parity.label" })}
             items={parityOptions}
-            selectedItem={parityOptions.find((opt) => opt.id === formData.parity)}
-            onChange={(e) => handleFieldChange("parity", e.selectedItem?.id || "NONE")}
+            selectedItem={parityOptions.find(
+              (opt) => opt.id === formData.parity,
+            )}
+            onChange={(e) =>
+              handleFieldChange("parity", e.selectedItem?.id || "NONE")
+            }
             itemToString={(item) => (item ? item.text : "")}
           />
 
           <Dropdown
             id="flowControl"
-            titleText={intl.formatMessage({ id: "serial.config.flowControl.label" })}
+            titleText={intl.formatMessage({
+              id: "serial.config.flowControl.label",
+            })}
             items={flowControlOptions}
-            selectedItem={flowControlOptions.find((opt) => opt.id === formData.flowControl)}
-            onChange={(e) => handleFieldChange("flowControl", e.selectedItem?.id || "NONE")}
+            selectedItem={flowControlOptions.find(
+              (opt) => opt.id === formData.flowControl,
+            )}
+            onChange={(e) =>
+              handleFieldChange("flowControl", e.selectedItem?.id || "NONE")
+            }
             itemToString={(item) => (item ? item.text : "")}
           />
 
@@ -325,7 +385,9 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
           {isEditMode && configuration?.id && (
             <div style={{ marginTop: "1rem" }}>
               <p>
-                <strong>{intl.formatMessage({ id: "serial.config.status.label" })}:</strong>{" "}
+                <strong>
+                  {intl.formatMessage({ id: "serial.config.status.label" })}:
+                </strong>{" "}
                 {connectionStatus || "DISCONNECTED"}
               </p>
               <div style={{ marginTop: "0.5rem" }}>
@@ -342,7 +404,9 @@ const SerialConfiguration = ({ analyzerId, configuration, open, onClose, onSave 
                   onClick={handleDisconnect}
                   disabled={connectionStatus !== "CONNECTED"}
                 >
-                  {intl.formatMessage({ id: "serial.config.disconnect.button" })}
+                  {intl.formatMessage({
+                    id: "serial.config.disconnect.button",
+                  })}
                 </Button>
               </div>
             </div>

@@ -5,15 +5,17 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.service.BaseObjectService;
 
 /**
- * Service interface for SerialPortConfiguration operations
- * Task Reference: T030, M2
+ * Service interface for SerialPortConfiguration operations Task Reference:
+ * T030, M2
  * 
- * Provides business logic for managing serial port configurations and connection lifecycle.
+ * Provides business logic for managing serial port configurations and
+ * connection lifecycle.
  */
 public interface SerialPortService extends BaseObjectService<SerialPortConfiguration, String> {
 
     /**
-     * Get SerialPortConfiguration by ID (optional lookup, returns empty if not found)
+     * Get SerialPortConfiguration by ID (optional lookup, returns empty if not
+     * found)
      * 
      * @param id The configuration ID
      * @return Optional SerialPortConfiguration

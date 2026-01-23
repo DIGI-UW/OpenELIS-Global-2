@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.Optional;
@@ -18,9 +17,8 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.StopBits;
 
 /**
- * Unit tests for SerialPortService implementation
- * Task Reference: T023, M2
- * Test Coverage Goal: >80%
+ * Unit tests for SerialPortService implementation Task Reference: T023, M2 Test
+ * Coverage Goal: >80%
  */
 @RunWith(MockitoJUnitRunner.class)
 public class SerialPortServiceTest {

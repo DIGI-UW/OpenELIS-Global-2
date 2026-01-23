@@ -15,7 +15,7 @@
             </not>
         </preConditions>
         <comment>Create serial_port_configuration table for RS232 analyzer communication settings</comment>
-        
+
         <createTable tableName="serial_port_configuration">
             <column name="id" type="VARCHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
