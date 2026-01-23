@@ -55,7 +55,14 @@ export default function SlideOverNotifications(props) {
         console.log("SubscribedOnAnotherDevice");
       }
     } catch (error) {
-      console.error("Error checking subscription status:", error);
+      // Silently handle 404 errors - push notifications may not be configured
+      if (
+        error.status !== 404 &&
+        error.message &&
+        !error.message.includes("404")
+      ) {
+        console.error("Error checking subscription status:", error);
+      }
       setSubscriptionState("NotSubscribed");
     }
   };

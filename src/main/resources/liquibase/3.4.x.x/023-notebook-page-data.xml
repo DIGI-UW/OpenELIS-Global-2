@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add data JSONB column to notebook_page for storing page-level metadata -->
+    <!-- such as assay run configurations for Analysis pages -->
+
+    <changeSet id="add-data-column-to-notebook-page" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="notebook_page" columnName="data"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="notebook_page">
+            <column name="data" type="jsonb">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <comment>Add JSONB data column to notebook_page for storing page-level metadata like assay run configurations</comment>
+    </changeSet>
+
+</databaseChangeLog>

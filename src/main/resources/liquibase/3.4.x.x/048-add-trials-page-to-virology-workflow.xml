@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="1" author="AI-Assistant" >
+    <comment>Add Preclinical and Clinical Trials page (Page 14) to Virology workflow template</comment>
+    <sql>
+      INSERT INTO clinlims.notebook_page (id, notebook_id, title, page_order, instructions, last_updated)
+      SELECT
+        nextval('clinlims.notebook_page_seq'),
+        n.id,
+        'Preclinical &amp; Clinical Trials',
+        14,
+        'Manage preclinical (animal) and clinical (human) trials - track trial phases, outcomes, and regulatory submissions',
+        now()
+      FROM clinlims.notebook n
+      WHERE n.title = 'Virology and Vaccine Unit'
+        AND n.is_template = true
+        AND NOT EXISTS (
+          SELECT 1 FROM clinlims.notebook_page np
+          WHERE np.notebook_id = n.id AND np.page_order = 14
+        );
+    </sql>
+  </changeSet>
+
+  <changeSet id="2" author="AI-Assistant" >
+    <comment>Add Preclinical and Clinical Trials page to existing Virology notebook instances</comment>
+    <sql>
+      INSERT INTO clinlims.notebook_page (id, notebook_id, title, page_order, instructions, last_updated)
+      SELECT
+        nextval('clinlims.notebook_page_seq'),
+        n.id,
+        'Preclinical &amp; Clinical Trials',
+        14,
+        'Manage preclinical (animal) and clinical (human) trials - track trial phases, outcomes, and regulatory submissions',
+        now()
+      FROM clinlims.notebook n
+      WHERE (n.title LIKE '%Virology%' OR n.title LIKE '%Vaccine%')
+        AND n.is_template = false
+        AND NOT EXISTS (
+          SELECT 1 FROM clinlims.notebook_page np
+          WHERE np.notebook_id = n.id AND np.page_order = 14
+        );
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

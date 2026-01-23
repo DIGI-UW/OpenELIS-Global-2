@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- Add version column to inventory_item table for optimistic locking -->
+    <changeSet id="add-inventory-item-version-column" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="inventory_item"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="inventory_item" columnName="version"/>
+            </not>
+        </preConditions>
+        <comment>Add version column to inventory_item table for Hibernate optimistic locking</comment>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="version" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="inventory_item" schemaName="clinlims" columnName="version"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -22,6 +22,7 @@ import {
   Loading,
   Link,
   FileUploader,
+  Modal,
 } from "@carbon/react";
 import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -790,6 +791,8 @@ export function SearchResults(props) {
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
+  const [inventoryLots, setInventoryLots] = useState([]); // Available inventory lots (FEFO ordered)
+  const [expiredLotWarning, setExpiredLotWarning] = useState(null); // {testId, lotId, lotNumber, expirationDate}
 
   const componentMounted = useRef(false);
 
@@ -809,6 +812,7 @@ export function SearchResults(props) {
       "/rest/displayList/REJECTION_REASONS",
       loadRejectReasons,
     );
+    getFromOpenElisServer("/rest/inventory/lots", loadInventoryLots);
     if (props.results.testResult.length > 0) {
       var defaultRejectedItems = {};
       props.results.testResult.forEach((result) => {
@@ -864,6 +868,62 @@ export function SearchResults(props) {
   const loadMethods = (values) => {
     if (componentMounted.current) {
       setMethods(values);
+    }
+  };
+
+  const loadInventoryLots = (values) => {
+    if (componentMounted.current) {
+      // Filter for available lots (ACTIVE or IN_USE, has quantity, QC passed)
+      const availableLots = values.filter((lot) => {
+        const hasQuantity = lot.currentQuantity && lot.currentQuantity > 0;
+        const isActiveStatus =
+          lot.status === "ACTIVE" || lot.status === "IN_USE";
+        const isQCPassed = !lot.qcStatus || lot.qcStatus === "PASSED";
+        return hasQuantity && isActiveStatus && isQCPassed;
+      });
+
+      // Sort by expiration date (FEFO - First Expiring, First Out)
+      availableLots.sort((a, b) => {
+        // Lots without expiration go last
+        if (!a.expirationDate && !b.expirationDate) return 0;
+        if (!a.expirationDate) return 1;
+        if (!b.expirationDate) return -1;
+        return new Date(a.expirationDate) - new Date(b.expirationDate);
+      });
+
+      // Transform lots into dropdown format and mark expired ones
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const lotOptions = availableLots.map((lot) => {
+        const isExpired =
+          lot.expirationDate && new Date(lot.expirationDate) < today;
+        const expiredLabel = isExpired ? " ⚠️ EXPIRED" : "";
+
+        // Format expiration date for display (YYYY-MM-DD or locale format)
+        let formattedExpDate = "N/A";
+        if (lot.expirationDate) {
+          try {
+            const expDate = new Date(lot.expirationDate);
+            if (!isNaN(expDate.getTime())) {
+              formattedExpDate = expDate.toLocaleDateString("en-CA"); // YYYY-MM-DD format
+            }
+          } catch (e) {
+            console.warn("Invalid expiration date:", lot.expirationDate);
+          }
+        }
+
+        return {
+          id: lot.id,
+          lotNumber: lot.lotNumber,
+          itemName: lot.inventoryItem?.name || "Unknown Item",
+          expirationDate: formattedExpDate,
+          quantityAvailable: lot.currentQuantity,
+          isExpired: isExpired,
+          displayText: `${lot.inventoryItem?.name || "Unknown"} - Lot ${lot.lotNumber} (Qty: ${lot.currentQuantity}, Exp: ${formattedExpDate})${expiredLabel}`,
+        };
+      });
+      setInventoryLots(lotOptions);
     }
   };
 
@@ -1470,6 +1530,27 @@ export function SearchResults(props) {
               ))}
             </Select>
           </Column>
+          <Column lg={3}>
+            <Select
+              id={"inventoryLot" + data.id}
+              name={"testResult[" + data.id + "].inventoryLotId"}
+              labelText={intl.formatMessage({
+                id: "result.label.lotused",
+                defaultMessage: "Lot Used",
+              })}
+              onChange={(e) => handleLotSelection(e, data.id)}
+              value={data.inventoryLotId || ""}
+            >
+              <SelectItem text="Select lot (optional)" value="" />
+              {inventoryLots.map((lot, lot_index) => (
+                <SelectItem
+                  text={lot.displayText}
+                  value={lot.id}
+                  key={lot_index}
+                />
+              ))}
+            </Select>
+          </Column>
           <Column lg={2}>
             <CompactFileInput
               data={data}
@@ -1726,6 +1807,47 @@ export function SearchResults(props) {
     }
 
     return validation;
+  };
+
+  const handleLotSelection = (e, rowId) => {
+    const { value } = e.target;
+
+    if (!value) {
+      // Empty selection, just update normally
+      handleChange(e, rowId);
+      return;
+    }
+
+    // Find the selected lot
+    const selectedLot = inventoryLots.find((lot) => lot.id === value);
+
+    if (selectedLot && selectedLot.isExpired) {
+      // Show warning modal for expired lot
+      setExpiredLotWarning({
+        testId: rowId,
+        lotId: selectedLot.id,
+        lotNumber: selectedLot.lotNumber,
+        itemName: selectedLot.itemName,
+        expirationDate: selectedLot.expirationDate,
+        pendingEvent: e,
+      });
+    } else {
+      // Not expired, proceed normally
+      handleChange(e, rowId);
+    }
+  };
+
+  const handleExpiredLotOverride = () => {
+    if (expiredLotWarning && expiredLotWarning.pendingEvent) {
+      // User acknowledged the warning, proceed with selection
+      handleChange(expiredLotWarning.pendingEvent, expiredLotWarning.testId);
+      setExpiredLotWarning(null);
+    }
+  };
+
+  const handleExpiredLotCancel = () => {
+    // User cancelled, clear the selection
+    setExpiredLotWarning(null);
   };
 
   const handleChange = (e, rowId) => {
@@ -2009,6 +2131,67 @@ export function SearchResults(props) {
             </Form>
           )}
         </Formik>
+
+        {/* Expired Lot Warning Modal */}
+        {expiredLotWarning && (
+          <Modal
+            open={true}
+            danger
+            modalHeading={intl.formatMessage({
+              id: "inventory.lot.expired.warning.title",
+              defaultMessage: "Expired Lot Warning",
+            })}
+            primaryButtonText={intl.formatMessage({
+              id: "inventory.lot.expired.proceed",
+              defaultMessage: "Use Anyway",
+            })}
+            secondaryButtonText={intl.formatMessage({
+              id: "label.button.cancel",
+              defaultMessage: "Cancel",
+            })}
+            onRequestClose={handleExpiredLotCancel}
+            onRequestSubmit={handleExpiredLotOverride}
+            size="sm"
+          >
+            <p>
+              <FormattedMessage
+                id="inventory.lot.expired.warning.message"
+                defaultMessage="The selected lot has expired and may not be suitable for use:"
+              />
+            </p>
+            <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+              <strong>
+                <FormattedMessage
+                  id="inventory.lot.item"
+                  defaultMessage="Item:"
+                />
+              </strong>{" "}
+              {expiredLotWarning.itemName}
+              <br />
+              <strong>
+                <FormattedMessage
+                  id="inventory.lot.number"
+                  defaultMessage="Lot Number:"
+                />
+              </strong>{" "}
+              {expiredLotWarning.lotNumber}
+              <br />
+              <strong>
+                <FormattedMessage
+                  id="inventory.lot.expiration"
+                  defaultMessage="Expiration Date:"
+                />
+              </strong>{" "}
+              {expiredLotWarning.expirationDate}
+            </div>
+            <p>
+              <FormattedMessage
+                id="inventory.lot.expired.warning.confirm"
+                defaultMessage="Are you sure you want to use this expired lot? This action will be logged for audit purposes."
+              />
+            </p>
+          </Modal>
+        )}
       </>
     </>
   );

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- ADD PAGE_TYPE COLUMN TO NOTEBOOK_PAGE -->
+    <!-- Extends existing notebook_page table for UI pattern differentiation -->
+    <!-- ======================================================== -->
+    <changeSet id="add-page-type-to-notebook-page" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_page" columnName="page_type" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding page_type column to notebook_page for UI pattern differentiation in immunology workflow.</comment>
+        <addColumn tableName="notebook_page">
+            <column name="page_type" type="VARCHAR(30)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="notebook_page" columnName="page_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-page-type-check-constraint" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="notebook_page" columnName="page_type" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Adding CHECK constraint for page_type values.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page
+            ADD CONSTRAINT chk_page_type
+            CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- UPDATE PAGE_TYPE CONSTRAINT TO ADD STORAGE_ASSIGNMENT -->
+    <!-- Required for MNTD workflow storage assignment pages -->
+    <!-- ======================================================== -->
+    <changeSet id="update-page-type-check-constraint-add-storage-assignment" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_page_type'
+            </sqlCheck>
+        </preConditions>
+        <comment>Update CHECK constraint to add STORAGE_ASSIGNMENT for MNTD workflow.</comment>
+        <sql>
+            ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+            ALTER TABLE clinlims.notebook_page
+            ADD CONSTRAINT chk_page_type
+            CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION', 'STORAGE_ASSIGNMENT'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.notebook_page DROP CONSTRAINT IF EXISTS chk_page_type;
+                ALTER TABLE clinlims.notebook_page
+                ADD CONSTRAINT chk_page_type
+                CHECK (page_type IS NULL OR page_type IN ('BATCH_VERIFICATION', 'BULK_DATA_ENTRY', 'BRANCHING', 'INDIVIDUAL_PROCESSING', 'AGGREGATION'));
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

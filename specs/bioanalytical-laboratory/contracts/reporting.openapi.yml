@@ -1,0 +1,869 @@
+openapi: 3.0.3
+info:
+  title: Bioanalytical Laboratory - Reporting & Dashboard API
+  description: |
+    API for performance metrics, dashboards, and external result distribution.
+
+    Provides comprehensive reporting across:
+    - Sample throughput (received, analyzed, reported)
+    - Quality metrics (QC pass rates, calibration acceptance, instrument uptime)
+    - Bioequivalence study progress tracking
+    - Instrument utilization analysis
+    - Turnaround time (TAT) by test type
+    - External report generation (LMIS, REDCap, CDISC/SDTM, research)
+    - Dashboard alerts (failed QC, overdue samples, instrument issues)
+
+    Part of the Bioanalytical & Bioequivalence Laboratory Notebook feature.
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Support
+    url: https://github.com/I-TECH-UW/OpenELIS-Global-2
+
+servers:
+  - url: /rest/notebook/bioanalytical
+    description: Bioanalytical lab API base path
+
+tags:
+  - name: Dashboard Metrics
+    description: Comprehensive metrics for laboratory dashboards
+  - name: Performance Metrics
+    description: Sample throughput, quality, and study progress
+  - name: Instrument Analysis
+    description: Instrument utilization and TAT tracking
+  - name: External Reporting
+    description: Generate and export reports to external systems
+  - name: Alerts
+    description: Dashboard alerts and notifications
+
+paths:
+  /dashboard:
+    get:
+      summary: Get complete dashboard metrics
+      description: |
+        Retrieve comprehensive dashboard metrics including throughput, quality,
+        study progress, and instrument utilization for the specified date range.
+
+        **Includes**:
+        - Sample throughput (received, analyzed, reported)
+        - Quality metrics (QC and calibration pass rates)
+        - Bioequivalence study completion status
+        - Instrument utilization (runs, hours in use)
+        - Historical performance trending
+
+        All metrics are aggregated for the specified time period.
+      operationId: getDashboardMetrics
+      tags:
+        - Dashboard Metrics
+      parameters:
+        - name: numberOfDays
+          in: query
+          description: Number of days of historical data (default 30, max 365)
+          required: false
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+      responses:
+        '200':
+          description: Dashboard metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetricsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/throughput:
+    get:
+      summary: Get sample throughput metrics
+      description: |
+        Retrieve sample throughput metrics for the specified date range.
+
+        **Metrics include**:
+        - **Samples Received**: Total samples received in period
+        - **Samples Analyzed**: Samples completed analytical testing
+        - **Samples Reported**: Samples with final validated results
+        - **Average TAT**: Average turnaround time in days
+        - **TAT by Test Type**: TAT broken down by specific test types
+        - **Queue Status**: Pending, in-progress, and completed samples
+        - **Backlog**: Number of samples waiting for analysis
+
+        TAT = (Report Date - Receipt Date) in calendar days
+      operationId: getThroughputMetrics
+      tags:
+        - Performance Metrics
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: startDate
+          in: query
+          description: Start date (ISO 8601 format, default 30 days ago)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End date (ISO 8601 format, default today)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Throughput metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThroughputMetricsResponse'
+        '400':
+          description: Bad request (invalid date range or entry)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/quality-metrics:
+    get:
+      summary: Get quality control metrics
+      description: |
+        Retrieve quality metrics including QC pass rates, calibration acceptance,
+        system suitability, and instrument uptime for the specified date range.
+
+        **Quality Metrics**:
+        - **QC Pass Rate**: Percentage of QC results within acceptance limits
+        - **Calibration Acceptance**: Percentage of calibration curves meeting r² ≥ 0.99
+        - **System Suitability**: Percentage of system suitability checks passed
+        - **Instrument Metrics**: Per-instrument quality data (uptime, maintenance)
+        - **Method Validation Status**: Current validation status of analytical methods
+
+        **Bioanalytical QC Acceptance Criteria**:
+        - Assay: ±15% of expected value
+        - LLOQ: ±20% of expected value
+        - QC Level (Low/Medium/High): ±15% of expected value
+      operationId: getQualityMetrics
+      tags:
+        - Performance Metrics
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: startDate
+          in: query
+          description: Start date (ISO 8601 format, default 30 days ago)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End date (ISO 8601 format, default today)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Quality metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityMetricsResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/study-progress:
+    get:
+      summary: Get bioequivalence study progress
+      description: |
+        Retrieve bioequivalence study progress metrics including enrollment,
+        sample collection status, and analytical completion.
+
+        **Study Progress Information**:
+        - Study ID and title
+        - Total subjects enrolled
+        - Subjects with complete sampling (all timepoints collected)
+        - Overall completion percentage
+        - Sampling timepoint status (e.g., "18/20 timepoints collected")
+        - Last update timestamp
+
+        Useful for tracking multi-subject BE studies and monitoring sampling progress.
+      operationId: getStudyProgress
+      tags:
+        - Performance Metrics
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: studyId
+          in: query
+          description: Optional filter by specific study ID
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Study progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudyProgressResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/instrument-utilization:
+    get:
+      summary: Get instrument utilization metrics
+      description: |
+        Retrieve instrument utilization data for the specified period.
+
+        **Utilization Data**:
+        - Instrument ID and type
+        - Percentage of time in use (0-100%)
+        - Total runs in period
+        - Total hours in use
+        - Last active date
+
+        Helps identify underutilized instruments and plan preventive maintenance.
+      operationId: getInstrumentUtilization
+      tags:
+        - Instrument Analysis
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: numberOfDays
+          in: query
+          description: Days of historical data (default 7, max 365)
+          required: false
+          schema:
+            type: integer
+            default: 7
+            minimum: 1
+            maximum: 365
+      responses:
+        '200':
+          description: Instrument utilization retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstrumentUtilizationResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/tat-by-test:
+    get:
+      summary: Get turnaround time by test type
+      description: |
+        Retrieve turnaround time (TAT) metrics broken down by specific test types
+        for the specified date range.
+
+        **Includes TAT for**:
+        - Bioanalytical: HPLC, LC-MS/MS (drug concentration analysis)
+        - Pharmaceutical: Assay, dissolution, hardness, friability, disintegration
+        - Other: Identity test, content uniformity, etc.
+
+        TAT = median or average time from sample receipt to result report (in days).
+      operationId: getTATByTestType
+      tags:
+        - Instrument Analysis
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: startDate
+          in: query
+          description: Start date (ISO 8601 format, default 30 days ago)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: End date (ISO 8601 format, default today)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: TAT by test type retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TATByTestTypeResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /external-reports:
+    get:
+      summary: Get available external reporting options
+      description: |
+        Retrieve list of available external reporting formats and destinations.
+
+        **Supported Export Formats**:
+        - **LMIS**: Medical Laboratory Information Management System (JSON/HL7)
+        - **REDCap**: Research Electronic Data Capture for bioequivalence studies
+        - **REGULATORY**: CDISC/SDTM format for regulatory agencies (FDA, EMA)
+        - **RESEARCH**: Generic research study export (CSV/JSON)
+
+        Use export type ID from this endpoint with the export-results endpoint.
+      operationId: getExternalReportOptions
+      tags:
+        - External Reporting
+      responses:
+        '200':
+          description: Export options retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportOptionsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entry/{entryId}/export-results:
+    post:
+      summary: Export validated results to external system
+      description: |
+        Export analyzed and validated results to external systems for integration
+        with LMIS, REDCap, regulatory submissions, or research databases.
+
+        **Workflow**:
+        1. Validate that entry has approved/released results
+        2. Transform data to target format
+        3. Validate against format requirements
+        4. Transmit to external system (async)
+        5. Return export status with tracking ID
+
+        **Export Types**:
+        - **LMIS**: Format for medical lab systems, includes test codes and units
+        - **REDCap**: Structured data export for bioequivalence study databases
+        - **REGULATORY**: CDISC SDTM format with audit trail for regulatory submission
+        - **RESEARCH**: Flexible CSV/JSON format for research databases
+
+        Export is asynchronous - check status with returned tracking ID.
+      operationId: exportResults
+      tags:
+        - External Reporting
+      parameters:
+        - name: entryId
+          in: path
+          description: Notebook entry ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: exportType
+          in: query
+          description: Export destination type
+          required: true
+          schema:
+            type: string
+            enum:
+              - LMIS
+              - REDCAP
+              - REGULATORY
+              - RESEARCH
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                includeAuditTrail:
+                  type: boolean
+                  description: Include audit trail (required for REGULATORY)
+                  default: false
+                externalSystemId:
+                  type: string
+                  description: Target system identifier (optional, defaults to configured system)
+      responses:
+        '200':
+          description: Export initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResultsResponse'
+        '400':
+          description: Bad request (no approved results or invalid export type)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notebook entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /alerts:
+    get:
+      summary: Get dashboard alerts
+      description: |
+        Retrieve active alerts for failed QC, overdue samples, and instrument issues.
+
+        **Alert Types**:
+        - **QC_FAILURE**: Failed quality control results in last 24 hours
+        - **OVERDUE_SAMPLES**: Samples exceeding expected TAT
+        - **INSTRUMENT_OFFLINE**: Instrument downtime
+        - **CALIBRATION_FAILED**: Calibration curve rejection
+        - **MAINTENANCE_OVERDUE**: Scheduled maintenance not completed
+        - **REAGENT_EXPIRATION**: Reagents nearing expiration date
+
+        Alerts are prioritized by severity (CRITICAL > WARNING > INFO).
+      operationId: getDashboardAlerts
+      tags:
+        - Alerts
+      parameters:
+        - name: severity
+          in: query
+          description: Filter by alert severity (optional)
+          required: false
+          schema:
+            type: string
+            enum:
+              - CRITICAL
+              - WARNING
+              - INFO
+        - name: limit
+          in: query
+          description: Maximum number of alerts to return (default 20, max 100)
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Alerts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertsResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    DashboardMetricsResponse:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        numberOfDays:
+          type: integer
+        throughput:
+          $ref: '#/components/schemas/ThroughputMetrics'
+        quality:
+          $ref: '#/components/schemas/QualityMetrics'
+        studyProgress:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudyProgressMetrics'
+        instrumentUtilization:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstrumentUtilizationData'
+
+    ThroughputMetrics:
+      type: object
+      properties:
+        samplesReceived:
+          type: integer
+        samplesAnalyzed:
+          type: integer
+        samplesReported:
+          type: integer
+        averageTATDays:
+          type: number
+          format: double
+        tatByTestType:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          example:
+            Assay: 2.1
+            Dissolution: 3.5
+            "Drug Concentration (HPLC)": 1.8
+            "Drug Concentration (LC-MS/MS)": 4.2
+        analyticalQueueLength:
+          type: integer
+          description: Samples currently in analytical queue
+        backlogSamples:
+          type: integer
+          description: Samples overdue for analysis
+
+    ThroughputMetricsResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        metrics:
+          $ref: '#/components/schemas/ThroughputMetrics'
+        percentageComplete:
+          type: number
+          format: double
+          description: Percentage of received samples that have been reported (samplesReported / samplesReceived * 100)
+
+    QualityMetrics:
+      type: object
+      properties:
+        qcPassRate:
+          type: number
+          format: double
+          example: 98.5
+          description: Percentage of QC results within acceptance limits
+        calibrationAcceptanceRate:
+          type: number
+          format: double
+          example: 99.2
+          description: Percentage of calibration curves meeting r² ≥ 0.99
+        systemSuitabilityPassRate:
+          type: number
+          format: double
+          example: 99.0
+          description: Percentage of system suitability checks passed
+        instrumentMetrics:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/InstrumentQualityData'
+        methodValidationStatus:
+          type: array
+          items:
+            type: string
+          example:
+            - "HPLC UV-Vis: VALIDATED"
+            - "LC-MS/MS: VALIDATED"
+            - "Dissolution USP II: PENDING_VALIDATION"
+
+    QualityMetricsResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        quality:
+          $ref: '#/components/schemas/QualityMetrics'
+
+    InstrumentQualityData:
+      type: object
+      properties:
+        instrumentId:
+          type: string
+        uptimePercentage:
+          type: number
+          format: double
+        maintenanceEventsLastMonth:
+          type: integer
+        systemSuitabilityRate:
+          type: number
+          format: double
+        lastMaintenanceDate:
+          type: string
+          format: date
+
+    StudyProgressMetrics:
+      type: object
+      properties:
+        studyId:
+          type: string
+          example: "BE-2025-001"
+        studyTitle:
+          type: string
+          example: "Bioequivalence of Formulation X"
+        totalSubjects:
+          type: integer
+        subjectsComplete:
+          type: integer
+        percentComplete:
+          type: number
+          format: double
+        samplingTimepointStatus:
+          type: string
+          example: "18/20 timepoints collected"
+        lastUpdate:
+          type: string
+          format: date
+
+    StudyProgressResponse:
+      type: object
+      properties:
+        studies:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudyProgressMetrics'
+        total:
+          type: integer
+
+    InstrumentUtilizationData:
+      type: object
+      properties:
+        instrumentId:
+          type: string
+          example: "HPLC-001"
+        instrumentType:
+          type: string
+          example: "HPLC"
+        utilizationPercentage:
+          type: number
+          format: double
+          description: Percentage of time in use (0-100%)
+        totalRuns:
+          type: integer
+        totalHoursInUse:
+          type: integer
+        lastActiveDate:
+          type: string
+          format: date
+
+    InstrumentUtilizationResponse:
+      type: object
+      properties:
+        numberOfDays:
+          type: integer
+        instruments:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstrumentUtilizationData'
+        total:
+          type: integer
+
+    TATByTestTypeResponse:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        tatByTestType:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          example:
+            Assay: 2.1
+            Dissolution: 3.5
+            "Drug Concentration (HPLC)": 1.8
+            "Drug Concentration (LC-MS/MS)": 4.2
+            Hardness: 1.2
+            Friability: 1.3
+            Disintegration: 1.5
+
+    ExportOptionsResponse:
+      type: object
+      properties:
+        exportOptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportOption'
+        total:
+          type: integer
+
+    ExportOption:
+      type: object
+      properties:
+        id:
+          type: string
+          enum:
+            - LMIS
+            - REDCAP
+            - REGULATORY
+            - RESEARCH
+        name:
+          type: string
+        description:
+          type: string
+        format:
+          type: string
+        requiresApproval:
+          type: boolean
+
+    ExportResultsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        entryId:
+          type: integer
+        exportType:
+          type: string
+        trackingId:
+          type: string
+          description: Unique ID to track export status
+        samplesExported:
+          type: integer
+        exportedBy:
+          type: string
+        exportDate:
+          type: string
+          format: date-time
+        destination:
+          type: string
+          description: Target system name
+        status:
+          type: string
+          enum:
+            - PENDING
+            - IN_PROGRESS
+            - COMPLETED
+            - FAILED
+          description: Current export status
+
+    AlertsResponse:
+      type: object
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        total:
+          type: integer
+        criticalCount:
+          type: integer
+        warningCount:
+          type: integer
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+          enum:
+            - CRITICAL
+            - WARNING
+            - INFO
+        type:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        relatedEntityId:
+          type: string
+          description: Optional link to affected sample/instrument/study
+        actionRequired:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        timestamp:
+          type: string
+          format: date-time
+          description: When error occurred
+        status:
+          type: integer
+          description: HTTP status code

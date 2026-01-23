@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 8: REPORTING & DATA EXPORT (Bacteriology) -->
+    <!-- Purpose: Finalize results and export data for external systems -->
+    <!-- Who uses it: Lab manager, Data manager, Quality officer -->
+    <!-- Data Points (Bacteriology-specific): -->
+    <!--   - Report Generation: Culture results, AST reports, QC reports -->
+    <!--   - Data Export: WHONET format, REDCap, LIMS integration -->
+    <!--   - Archiving: Final results archival with audit trail -->
+    <!-- System Actions: -->
+    <!--   - Final bacteriology report generated -->
+    <!--   - WHONET-compatible data export -->
+    <!--   - Results archived with chain of custody -->
+    <!--   - Full audit trail maintained -->
+    <!-- ======================================================== -->
+    <changeSet id="030-1-add-bacteriology-reporting-data-export-page" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 8
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reporting and Data Export page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reporting &amp; Data Export"/>
+            <column name="instructions" value="Finalize bacteriology results and export data. Generate culture result reports, antibiotic susceptibility testing (AST) reports, and QC summaries. Export data in WHONET format for AMR surveillance. Submit to REDCap or other external systems. Archive completed samples with full chain of custody documentation."/>
+            <column name="content" value="{&quot;pageDescription&quot;:&quot;Reporting and Data Export for Bacteriology&quot;,&quot;sections&quot;:[{&quot;id&quot;:&quot;reportGeneration&quot;,&quot;title&quot;:&quot;Report Generation&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;reportType&quot;,&quot;type&quot;:&quot;select&quot;,&quot;label&quot;:&quot;Report Type&quot;,&quot;options&quot;:[&quot;CULTURE_RESULTS&quot;,&quot;AST_REPORT&quot;,&quot;QC_SUMMARY&quot;,&quot;ORGANISM_SUMMARY&quot;,&quot;AMR_SURVEILLANCE&quot;,&quot;OUTBREAK_REPORT&quot;,&quot;CUSTOM&quot;]},{&quot;name&quot;:&quot;reportFormat&quot;,&quot;type&quot;:&quot;select&quot;,&quot;label&quot;:&quot;Report Format&quot;,&quot;options&quot;:[&quot;PDF&quot;,&quot;CSV&quot;,&quot;JSON&quot;,&quot;WHONET&quot;]},{&quot;name&quot;:&quot;dateRangeStart&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Date Range Start&quot;},{&quot;name&quot;:&quot;dateRangeEnd&quot;,&quot;type&quot;:&quot;date&quot;,&quot;label&quot;:&quot;Date Range End&quot;},{&quot;name&quot;:&quot;includeAllSamples&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Include All Samples&quot;},{&quot;name&quot;:&quot;recipientEmails&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Recipient Email(s)&quot;},{&quot;name&quot;:&quot;reportNotes&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;label&quot;:&quot;Report Notes&quot;}]},{&quot;id&quot;:&quot;dataExport&quot;,&quot;title&quot;:&quot;Data Export&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;exportFormat&quot;,&quot;type&quot;:&quot;select&quot;,&quot;label&quot;:&quot;Export Format&quot;,&quot;options&quot;:[&quot;WHONET&quot;,&quot;REDCAP&quot;,&quot;HL7&quot;,&quot;FHIR&quot;,&quot;CSV&quot;,&quot;JSON&quot;]},{&quot;name&quot;:&quot;whonetCountryCode&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;WHONET Country Code&quot;},{&quot;name&quot;:&quot;whonetLabCode&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;WHONET Laboratory Code&quot;},{&quot;name&quot;:&quot;redcapProjectId&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;REDCap Project ID&quot;},{&quot;name&quot;:&quot;recordIdField&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Record ID Field&quot;},{&quot;name&quot;:&quot;eventName&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Event Name (for longitudinal)&quot;},{&quot;name&quot;:&quot;instrumentName&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Instrument Name&quot;},{&quot;name&quot;:&quot;exportNotes&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;label&quot;:&quot;Export Notes&quot;}]},{&quot;id&quot;:&quot;bacteriologyDataSummary&quot;,&quot;title&quot;:&quot;Bacteriology Data Summary&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;totalCultures&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Total Cultures Processed&quot;,&quot;readOnly&quot;:true},{&quot;name&quot;:&quot;positiveIsolates&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Positive Isolates&quot;,&quot;readOnly&quot;:true},{&quot;name&quot;:&quot;organismsIdentified&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Organisms Identified&quot;,&quot;readOnly&quot;:true},{&quot;name&quot;:&quot;astCompleted&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;AST Completed&quot;,&quot;readOnly&quot;:true},{&quot;name&quot;:&quot;resistancePatterns&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Resistance Patterns Detected&quot;,&quot;readOnly&quot;:true},{&quot;name&quot;:&quot;mdrOrganisms&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;MDR Organisms&quot;,&quot;readOnly&quot;:true},{&quot;name&quot;:&quot;qcPassRate&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;QC Pass Rate&quot;,&quot;readOnly&quot;:true}]},{&quot;id&quot;:&quot;archiving&quot;,&quot;title&quot;:&quot;Results Archiving&quot;,&quot;fields&quot;:[{&quot;name&quot;:&quot;archiveLocation&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Archive Location&quot;},{&quot;name&quot;:&quot;archiveNotes&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;label&quot;:&quot;Archive Notes&quot;},{&quot;name&quot;:&quot;createBackup&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Create Backup Before Archiving&quot;},{&quot;name&quot;:&quot;retentionPeriod&quot;,&quot;type&quot;:&quot;select&quot;,&quot;label&quot;:&quot;Retention Period&quot;,&quot;options&quot;:[&quot;1_YEAR&quot;,&quot;2_YEARS&quot;,&quot;5_YEARS&quot;,&quot;10_YEARS&quot;,&quot;INDEFINITE&quot;]},{&quot;name&quot;:&quot;supervisorSignoff&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Supervisor Sign-off&quot;}]}],&quot;systemActions&quot;:[&quot;Generate culture results report&quot;,&quot;Generate AST report with interpretation&quot;,&quot;Export data in WHONET format&quot;,&quot;Submit data to REDCap&quot;,&quot;Calculate AMR statistics&quot;,&quot;Archive results with chain of custody&quot;,&quot;Maintain full audit trail&quot;,&quot;Send email notifications&quot;],&quot;bulkOperations&quot;:{&quot;enabled&quot;:true,&quot;applyToSelected&quot;:[&quot;reportType&quot;,&quot;reportFormat&quot;,&quot;exportFormat&quot;,&quot;archiveLocation&quot;]},&quot;workflowCompletion&quot;:true}"/>
+            <column name="page_order" value="8"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true) AND page_order = 8</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template entry for Reporting & Data Export page -->
+    <changeSet id="030-2-add-bacteriology-reporting-data-export-template" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 308
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="308"/>
+            <column name="name" value="Reporting &amp; Data Export"/>
+            <column name="display_key" value="workflow.page.bacteriology.reportingDataExport"/>
+            <column name="description" value="Finalize bacteriology results, generate reports, and export data to external systems"/>
+            <column name="default_instructions" value="Generate culture result reports, AST reports, and QC summaries. Export data in WHONET format for AMR surveillance. Submit to REDCap or other external systems. Archive completed samples with full chain of custody."/>
+            <column name="default_content" value="Reporting and Data Export - Finalize results, generate reports, export to WHONET/REDCap"/>
+            <column name="page_type" value="AGGREGATION"/>
+            <column name="display_order" value="8"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

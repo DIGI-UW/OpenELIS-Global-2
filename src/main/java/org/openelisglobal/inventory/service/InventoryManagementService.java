@@ -1,6 +1,8 @@
 package org.openelisglobal.inventory.service;
 
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 public interface InventoryManagementService {
@@ -46,9 +48,8 @@ public interface InventoryManagementService {
      */
     InventoryAlerts getInventoryAlerts(int daysForExpirationWarning);
 
-    /**
-     * Record to track consumption from multiple lots
-     */
+    @Setter
+    @Getter
     class ConsumptionRecord {
         private Long lotId;
         private String lotNumber;
@@ -61,70 +62,13 @@ public interface InventoryManagementService {
             this.quantityConsumed = quantityConsumed;
             this.remainingQuantity = remainingQuantity;
         }
-
-        public Long getLotId() {
-            return lotId;
-        }
-
-        public void setLotId(Long lotId) {
-            this.lotId = lotId;
-        }
-
-        public String getLotNumber() {
-            return lotNumber;
-        }
-
-        public void setLotNumber(String lotNumber) {
-            this.lotNumber = lotNumber;
-        }
-
-        public Double getQuantityConsumed() {
-            return quantityConsumed;
-        }
-
-        public void setQuantityConsumed(Double quantityConsumed) {
-            this.quantityConsumed = quantityConsumed;
-        }
-
-        public Double getRemainingQuantity() {
-            return remainingQuantity;
-        }
-
-        public void setRemainingQuantity(Double remainingQuantity) {
-            this.remainingQuantity = remainingQuantity;
-        }
     }
 
-    /**
-     * Container for inventory alerts
-     */
+    @Setter
+    @Getter
     class InventoryAlerts {
         private List<org.openelisglobal.inventory.valueholder.InventoryItem> lowStockItems;
         private List<InventoryLot> expiringLots;
         private List<InventoryLot> expiredLots;
-
-        public List<org.openelisglobal.inventory.valueholder.InventoryItem> getLowStockItems() {
-            return lowStockItems;
-        }
-
-        public void setLowStockItems(List<org.openelisglobal.inventory.valueholder.InventoryItem> lowStockItems) {
-            this.lowStockItems = lowStockItems;
-        }
-
-        public List<InventoryLot> getExpiringLots() {
-            return expiringLots;
-        }
-
-        public void setExpiringLots(List<InventoryLot> expiringLots) {
-            this.expiringLots = expiringLots;
-        }
-
-        public List<InventoryLot> getExpiredLots() {
-            return expiredLots;
-        }
-
-        public void setExpiredLots(List<InventoryLot> expiredLots) {
-            this.expiredLots = expiredLots;
-        }
     }
 }

@@ -1,0 +1,13 @@
+Well,Sample_ID,OD_450,Result,Interpretation,Run_Date,Dilution
+A1,GRP-002-001,0.452,Positive,Patient Sample,2024-12-09,1:100
+A2,GRP-003-003,0.123,Negative,Patient Sample,2024-12-09,1:100
+A3,GRP-001-001,0.089,Negative,Patient Sample,2024-12-09,1:100
+A4,GRP-001-002,0.567,Positive,Patient Sample,2024-12-09,1:100
+A5,GRP-001-003,0.234,Equivocal,Patient Sample,2024-12-09,1:100
+A6,GRP-002-002,0.678,Positive,Patient Sample,2024-12-09,1:100
+B1,GRP-003-001,0.145,Negative,Patient Sample,2024-12-09,1:100
+B2,GRP-003-002,0.789,Positive,Patient Sample,2024-12-09,1:100
+B3,GRP-005-002,0.321,Negative,Patient Sample,2024-12-09,1:100
+B4,CONTROL-POS,1.234,Positive,Control,2024-12-09,1:100
+B5,CONTROL-NEG,0.045,Negative,Control,2024-12-09,1:100
+B6,CAL-001,0.500,NA,Calibrator,2024-12-09,1:100

@@ -47,7 +47,7 @@ public class SampleStorageAssignment extends BaseObject<Integer> {
     private Integer locationId; // Can reference device, shelf, or rack ID
 
     @Column(name = "LOCATION_TYPE", length = 20, nullable = true)
-    private String locationType; // Enum: 'device', 'shelf', 'rack'
+    private String locationType; // Enum: 'room', 'device', 'shelf', 'rack', 'box'
 
     @Column(name = "POSITION_COORDINATE", length = 50)
     private String positionCoordinate; // Optional text-based coordinate (position is just text, not an entity)

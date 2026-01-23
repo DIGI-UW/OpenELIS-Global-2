@@ -1,0 +1,547 @@
+# Disposal & Archiving API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Sample Disposal and Biobank Archiving
+
+openapi: 3.0.3
+info:
+  title: Disposal & Archiving API
+  version: 1.0.0
+  description: API endpoints for sample disposal compliance and biobank archiving
+
+paths:
+  /rest/medlab/disposal:
+    post:
+      summary: Record sample disposal
+      operationId: recordDisposal
+      tags: [Disposal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisposalRecordForm"
+      responses:
+        "201":
+          description: Disposal recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisposalRecordResponse"
+        "400":
+          description: Invalid input or non-compliant disposal method
+        "404":
+          description: Sample not found
+
+    get:
+      summary: List disposal records
+      operationId: listDisposalRecords
+      tags: [Disposal]
+      parameters:
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: disposalMethod
+          in: query
+          schema:
+            $ref: "#/components/schemas/DisposalMethod"
+        - name: facilityName
+          in: query
+          schema:
+            type: string
+        - name: disposalReason
+          in: query
+          schema:
+            $ref: "#/components/schemas/DisposalReason"
+      responses:
+        "200":
+          description: Disposal records list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DisposalRecordResponse"
+
+  /rest/medlab/disposal/{id}:
+    get:
+      summary: Get disposal record details
+      operationId: getDisposalRecord
+      tags: [Disposal]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Disposal record details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisposalRecordResponse"
+        "404":
+          description: Disposal record not found
+
+  /rest/medlab/disposal/pending:
+    get:
+      summary: List samples pending disposal
+      operationId: listPendingDisposal
+      tags: [Disposal]
+      parameters:
+        - name: reason
+          in: query
+          schema:
+            $ref: "#/components/schemas/DisposalReason"
+        - name: sampleType
+          in: query
+          schema:
+            $ref: "#/components/schemas/SampleType"
+      responses:
+        "200":
+          description: Samples pending disposal
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingDisposal"
+
+  /rest/medlab/disposal/batch:
+    post:
+      summary: Batch dispose samples
+      operationId: batchDispose
+      tags: [Disposal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchDisposalForm"
+      responses:
+        "201":
+          description: Batch disposal recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  disposalBatchId:
+                    type: string
+                  disposed:
+                    type: integer
+                  failed:
+                    type: integer
+                  records:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DisposalRecordResponse"
+
+  /rest/medlab/disposal/methods/{sampleType}:
+    get:
+      summary: Get required disposal methods for sample type
+      operationId: getDisposalMethods
+      tags: [Disposal]
+      parameters:
+        - name: sampleType
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SampleType"
+      responses:
+        "200":
+          description: Required disposal methods
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisposalMethodRequirement"
+
+  /rest/medlab/disposal/verify:
+    post:
+      summary: Verify disposal by supervisor
+      operationId: verifyDisposal
+      tags: [Disposal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [disposalId, verifiedBy]
+              properties:
+                disposalId:
+                  type: integer
+                verifiedBy:
+                  type: integer
+                notes:
+                  type: string
+                  maxLength: 255
+      responses:
+        "200":
+          description: Disposal verified
+        "404":
+          description: Disposal record not found
+
+  /rest/medlab/biobank/transfer:
+    post:
+      summary: Transfer sample to biobank
+      operationId: transferToBiobank
+      tags: [Archiving]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BiobankTransferForm"
+      responses:
+        "201":
+          description: Sample transferred to biobank
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BiobankTransferResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Sample not found
+
+    get:
+      summary: List biobank transfers
+      operationId: listBiobankTransfers
+      tags: [Archiving]
+      parameters:
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: studyId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Biobank transfers list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BiobankTransferResponse"
+
+  /rest/medlab/archive/retention:
+    get:
+      summary: Get retention policy summary
+      operationId: getRetentionPolicy
+      tags: [Archiving]
+      responses:
+        "200":
+          description: Retention policies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RetentionPolicy"
+
+  /rest/medlab/archive/expiring:
+    get:
+      summary: List samples nearing retention expiry
+      operationId: listExpiringSamples
+      tags: [Archiving]
+      parameters:
+        - name: daysUntilExpiry
+          in: query
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+      responses:
+        "200":
+          description: Samples nearing expiry
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExpiringSample"
+
+components:
+  schemas:
+    DisposalRecordForm:
+      type: object
+      required: [sampleItemId, disposalReason, disposalMethod, facilityName, facilityLicense, disposedBy]
+      properties:
+        sampleItemId:
+          type: integer
+        disposalDate:
+          type: string
+          format: date
+        disposalTime:
+          type: string
+          format: time
+        disposalReason:
+          $ref: "#/components/schemas/DisposalReason"
+        disposalMethod:
+          $ref: "#/components/schemas/DisposalMethod"
+        facilityName:
+          type: string
+          maxLength: 200
+        facilityLicense:
+          type: string
+          maxLength: 100
+        facilityAccreditation:
+          type: string
+          maxLength: 100
+        disposedBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 500
+
+    DisposalRecordResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        disposalDate:
+          type: string
+          format: date
+        disposalTime:
+          type: string
+          format: time
+        disposalReason:
+          $ref: "#/components/schemas/DisposalReason"
+        disposalMethod:
+          $ref: "#/components/schemas/DisposalMethod"
+        facilityName:
+          type: string
+        facilityLicense:
+          type: string
+        facilityAccreditation:
+          type: string
+        disposedByName:
+          type: string
+        verifiedByName:
+          type: string
+        verifiedDate:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        fhirUuid:
+          type: string
+          format: uuid
+
+    PendingDisposal:
+      type: object
+      properties:
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        collectionDate:
+          type: string
+          format: date
+        disposalReason:
+          $ref: "#/components/schemas/DisposalReason"
+        requiredMethod:
+          $ref: "#/components/schemas/DisposalMethod"
+        daysInStorage:
+          type: integer
+        retentionExpired:
+          type: boolean
+
+    BatchDisposalForm:
+      type: object
+      required: [sampleItemIds, disposalReason, disposalMethod, facilityName, facilityLicense, disposedBy]
+      properties:
+        sampleItemIds:
+          type: array
+          items:
+            type: integer
+        disposalDate:
+          type: string
+          format: date
+        disposalReason:
+          $ref: "#/components/schemas/DisposalReason"
+        disposalMethod:
+          $ref: "#/components/schemas/DisposalMethod"
+        facilityName:
+          type: string
+          maxLength: 200
+        facilityLicense:
+          type: string
+          maxLength: 100
+        facilityAccreditation:
+          type: string
+          maxLength: 100
+        disposedBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 500
+
+    DisposalMethodRequirement:
+      type: object
+      properties:
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        requiredMethod:
+          $ref: "#/components/schemas/DisposalMethod"
+        facilityRequirement:
+          type: string
+          description: "licensed, accredited, etc."
+        regulatoryReference:
+          type: string
+        notes:
+          type: string
+
+    BiobankTransferForm:
+      type: object
+      required: [sampleItemId, biobankName, transferredBy]
+      properties:
+        sampleItemId:
+          type: integer
+        biobankName:
+          type: string
+          maxLength: 200
+        biobankId:
+          type: string
+          maxLength: 50
+        studyId:
+          type: string
+          maxLength: 50
+        storageLocation:
+          type: string
+          maxLength: 100
+        transferredBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 500
+
+    BiobankTransferResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        biobankName:
+          type: string
+        biobankId:
+          type: string
+        biobankSampleId:
+          type: string
+          description: "ID assigned by biobank"
+        studyId:
+          type: string
+        storageLocation:
+          type: string
+        transferDate:
+          type: string
+          format: date-time
+        transferredByName:
+          type: string
+        notes:
+          type: string
+
+    RetentionPolicy:
+      type: object
+      properties:
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        retentionDays:
+          type: integer
+        storageCondition:
+          type: string
+        regulatoryReference:
+          type: string
+        extensionAllowed:
+          type: boolean
+        maxExtensionDays:
+          type: integer
+
+    ExpiringSample:
+      type: object
+      properties:
+        sampleItemId:
+          type: integer
+        sampleBarcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        collectionDate:
+          type: string
+          format: date
+        retentionExpiryDate:
+          type: string
+          format: date
+        daysUntilExpiry:
+          type: integer
+        storageLocation:
+          type: string
+        recommendedAction:
+          type: string
+          enum: [dispose, extend, biobank]
+
+    DisposalReason:
+      type: string
+      enum:
+        - expiry
+        - exhaustion
+        - qc_fail
+        - safety
+        - request
+
+    DisposalMethod:
+      type: string
+      enum:
+        - incineration
+        - chemical_treatment
+        - autoclave
+        - other
+
+    SampleType:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - stool
+        - urine
+        - microbiology
+        - serology

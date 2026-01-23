@@ -1,0 +1,160 @@
+/* BoxLayoutViewer.css - Styles for 96-well plate visualization */
+
+.box-layout-viewer {
+  padding: 1rem;
+  background-color: var(--cds-ui-01, #f4f4f4);
+  border-radius: 8px;
+}
+
+.box-layout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.box-label {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.box-stats {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.box-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--cds-ui-03, #e0e0e0);
+  padding: 2px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.box-grid-row {
+  display: flex;
+  gap: 2px;
+}
+
+.box-grid-row.header-row {
+  margin-bottom: 2px;
+}
+
+.box-grid-cell {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.corner-cell {
+  background-color: transparent;
+}
+
+.header-cell {
+  background-color: var(--cds-ui-02, #ffffff);
+  font-weight: 600;
+  color: var(--cds-text-02, #525252);
+}
+
+.row-header-cell {
+  background-color: var(--cds-ui-02, #ffffff);
+  font-weight: 600;
+  color: var(--cds-text-02, #525252);
+}
+
+.well-cell {
+  background-color: var(--cds-ui-02, #ffffff);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.well-cell:hover {
+  background-color: var(--cds-hover-ui, #e8e8e8);
+  transform: scale(1.1);
+}
+
+.well-cell:focus {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: -2px;
+}
+
+.well-cell.occupied .well-dot {
+  background-color: var(--cds-interactive-01, #0f62fe);
+}
+
+.well-cell.empty .well-dot {
+  background-color: var(--cds-ui-03, #e0e0e0);
+  border: 1px solid var(--cds-ui-04, #8d8d8d);
+}
+
+.well-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.box-layout-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--cds-ui-03, #e0e0e0);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-02, #525252);
+}
+
+.legend-item .well-dot {
+  width: 14px;
+  height: 14px;
+}
+
+.legend-item .well-dot.empty {
+  background-color: var(--cds-ui-03, #e0e0e0);
+  border: 1px solid var(--cds-ui-04, #8d8d8d);
+}
+
+.legend-item .well-dot.occupied {
+  background-color: var(--cds-interactive-01, #0f62fe);
+}
+
+/* Tooltip content styling */
+.well-tooltip-content {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.well-tooltip-content div {
+  white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .box-grid-cell {
+    width: 28px;
+    height: 28px;
+  }
+
+  .well-dot {
+    width: 14px;
+    height: 14px;
+  }
+
+  .box-layout-legend {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

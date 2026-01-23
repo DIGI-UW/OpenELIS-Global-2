@@ -1,0 +1,354 @@
+# Environmental Monitoring API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Temperature and Environmental Monitoring
+
+openapi: 3.0.3
+info:
+  title: Environmental Monitoring API
+  version: 1.0.0
+  description: API endpoints for twice-daily temperature monitoring and excursion management
+
+paths:
+  /rest/medlab/environmental:
+    post:
+      summary: Record environmental reading
+      operationId: createEnvironmentalReading
+      tags: [EnvironmentalMonitoring]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvironmentalReadingForm"
+      responses:
+        "201":
+          description: Reading recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentalReadingResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Location not found
+
+    get:
+      summary: List environmental readings
+      operationId: listEnvironmentalReadings
+      tags: [EnvironmentalMonitoring]
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: integer
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: readingType
+          in: query
+          schema:
+            type: string
+            enum: [AM, PM]
+        - name: excursionsOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Readings list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnvironmentalReadingResponse"
+
+  /rest/medlab/environmental/{id}:
+    get:
+      summary: Get environmental reading details
+      operationId: getEnvironmentalReading
+      tags: [EnvironmentalMonitoring]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reading details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentalReadingResponse"
+        "404":
+          description: Reading not found
+
+    put:
+      summary: Update environmental reading
+      operationId: updateEnvironmentalReading
+      tags: [EnvironmentalMonitoring]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvironmentalReadingForm"
+      responses:
+        "200":
+          description: Reading updated
+        "404":
+          description: Reading not found
+
+  /rest/medlab/environmental/thresholds:
+    get:
+      summary: Get temperature thresholds by location type
+      operationId: getTemperatureThresholds
+      tags: [EnvironmentalMonitoring]
+      responses:
+        "200":
+          description: Temperature thresholds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemperatureThreshold"
+
+  /rest/medlab/environmental/excursions:
+    get:
+      summary: List temperature excursions
+      operationId: listExcursions
+      tags: [EnvironmentalMonitoring]
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: integer
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Excursions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnvironmentalReadingResponse"
+
+  /rest/medlab/environmental/chart/{locationId}:
+    get:
+      summary: Get temperature chart data
+      operationId: getTemperatureChartData
+      tags: [EnvironmentalMonitoring]
+      parameters:
+        - name: locationId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            minimum: 7
+            maximum: 365
+      responses:
+        "200":
+          description: Chart data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemperatureChartData"
+
+  /rest/medlab/environmental/pending:
+    get:
+      summary: List locations pending temperature reading
+      operationId: listPendingReadings
+      tags: [EnvironmentalMonitoring]
+      parameters:
+        - name: readingType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [AM, PM]
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Locations needing readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingReading"
+
+components:
+  schemas:
+    EnvironmentalReadingForm:
+      type: object
+      required: [locationId, temperature, readingType, recordedBy]
+      properties:
+        locationId:
+          type: integer
+        temperature:
+          type: number
+          format: float
+        readingType:
+          type: string
+          enum: [AM, PM]
+        readingDate:
+          type: string
+          format: date
+        readingTime:
+          type: string
+          format: time
+        recordedBy:
+          type: integer
+        dataLoggerId:
+          type: string
+          maxLength: 50
+        excursionReason:
+          type: string
+          maxLength: 255
+        notes:
+          type: string
+          maxLength: 500
+
+    EnvironmentalReadingResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        locationId:
+          type: integer
+        locationName:
+          type: string
+        locationPath:
+          type: string
+        temperature:
+          type: number
+          format: float
+        readingType:
+          type: string
+          enum: [AM, PM]
+        readingDate:
+          type: string
+          format: date
+        readingTime:
+          type: string
+          format: time
+        recordedByName:
+          type: string
+        minAcceptable:
+          type: number
+          format: float
+        maxAcceptable:
+          type: number
+          format: float
+        isExcursion:
+          type: boolean
+        excursionReason:
+          type: string
+        dataLoggerId:
+          type: string
+        notes:
+          type: string
+        fhirUuid:
+          type: string
+          format: uuid
+
+    TemperatureThreshold:
+      type: object
+      properties:
+        locationType:
+          type: string
+        minTemperature:
+          type: number
+          format: float
+        maxTemperature:
+          type: number
+          format: float
+        unit:
+          type: string
+          default: "°C"
+
+    TemperatureChartData:
+      type: object
+      properties:
+        locationId:
+          type: integer
+        locationName:
+          type: string
+        minThreshold:
+          type: number
+          format: float
+        maxThreshold:
+          type: number
+          format: float
+        readings:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              readingType:
+                type: string
+                enum: [AM, PM]
+              temperature:
+                type: number
+                format: float
+              isExcursion:
+                type: boolean
+
+    PendingReading:
+      type: object
+      properties:
+        locationId:
+          type: integer
+        locationName:
+          type: string
+        locationPath:
+          type: string
+        locationType:
+          type: string
+        lastReading:
+          type: string
+          format: date-time
+        requiredReadingType:
+          type: string
+          enum: [AM, PM]

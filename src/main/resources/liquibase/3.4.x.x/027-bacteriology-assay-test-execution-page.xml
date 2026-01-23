@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BACTERIOLOGY ASSAY/TEST EXECUTION PAGE                   -->
+    <!-- Page 5 of Bacteriology Laboratory Workflow               -->
+    <!--                                                          -->
+    <!-- SECTION A: Primary Culture & Microscopy                  -->
+    <!--   - Gram Staining (detailed morphology)                  -->
+    <!--   - Microscopy Examination (WBC, RBC, cells, bacteria)   -->
+    <!--                                                          -->
+    <!-- SECTION B: Isolation & Identification                    -->
+    <!--   - Culture on selective/differential media              -->
+    <!--   - Colony reading and morphology                        -->
+    <!--   - Biochemical Tests (Catalase, Coagulase, Oxidase,     -->
+    <!--     TSI/KIA, Motility, Indole, Citrate, Urease, Lysine,  -->
+    <!--     MR-VP, Nitrate reduction, etc.)                      -->
+    <!--                                                          -->
+    <!-- SECTION C: Drug Susceptibility Testing (DST)             -->
+    <!--   - Disc Diffusion (Kirby-Bauer)                         -->
+    <!--   - Broth Microdilution (MIC)                            -->
+    <!--   - AST Strip (E-test)                                   -->
+    <!--   - Automated AST                                        -->
+    <!--                                                          -->
+    <!-- SECTION D: Automated Identification and AST              -->
+    <!--   - BD BACTEC (blood culture)                            -->
+    <!--   - VITEK 2 / BD Phoenix                                 -->
+    <!--   - MALDI-TOF MS                                         -->
+    <!--                                                          -->
+    <!-- SECTION E: Molecular Techniques                          -->
+    <!--   - Nucleic Acid Extraction (DNA/RNA)                    -->
+    <!--   - PCR Assays (Conventional, Real-Time qPCR)            -->
+    <!--   - Whole Genome Sequencing (WGS)                        -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-bacteriology-page-5-assay-test-execution" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Bacteriology Laboratory' AND n.is_template = true AND np.page_order = 5
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Assay/Test Execution page for Bacteriology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Assay/Test Execution"/>
+            <column name="instructions" value="Execute comprehensive bacteriology tests including microscopy examination, culture isolation, biochemical identification, drug susceptibility testing (disc diffusion, MIC, E-test), automated identification (VITEK, Phoenix, MALDI-TOF), and molecular techniques (PCR, WGS). Record all results with QC validation."/>
+            <column name="content" value="{
+  &quot;pageDescription&quot;: &quot;Assay/Test Execution - Comprehensive Bacteriology Testing&quot;,
+  &quot;sections&quot;: {
+    &quot;primaryCultureMicroscopy&quot;: {
+      &quot;title&quot;: &quot;A. Primary Culture &amp; Microscopy&quot;,
+      &quot;gramStaining&quot;: {
+        &quot;stainType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Stain Type&quot;, &quot;options&quot;: [&quot;GRAM&quot;, &quot;ZN&quot;, &quot;MODIFIED_ZN&quot;, &quot;INDIA_INK&quot;, &quot;KOH&quot;, &quot;LACTOPHENOL&quot;, &quot;GIEMSA&quot;, &quot;ACRIDINE_ORANGE&quot;, &quot;CALCOFLUOR&quot;, &quot;WET_MOUNT&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;result&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Gram Stain Result&quot;, &quot;options&quot;: [&quot;GRAM_POS_COCCI_CLUSTERS&quot;, &quot;GRAM_POS_COCCI_CHAINS&quot;, &quot;GRAM_POS_COCCI_PAIRS&quot;, &quot;GRAM_POS_BACILLI&quot;, &quot;GRAM_POS_BACILLI_SPORE&quot;, &quot;GRAM_NEG_COCCI&quot;, &quot;GRAM_NEG_BACILLI&quot;, &quot;GRAM_NEG_COCCOBACILLI&quot;, &quot;MIXED_FLORA&quot;, &quot;NO_ORGANISMS&quot;, &quot;YEAST&quot;, &quot;YEAST_PSEUDOHYPHAE&quot;, &quot;OTHER&quot;], &quot;required&quot;: true}
+      },
+      &quot;microscopyExamination&quot;: {
+        &quot;wbcCount&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;WBC Count&quot;, &quot;options&quot;: [&quot;NONE&quot;, &quot;RARE&quot;, &quot;FEW&quot;, &quot;MODERATE&quot;, &quot;MANY&quot;, &quot;TNTC&quot;], &quot;required&quot;: false},
+        &quot;rbcCount&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;RBC Count&quot;, &quot;options&quot;: [&quot;NONE&quot;, &quot;RARE&quot;, &quot;FEW&quot;, &quot;MODERATE&quot;, &quot;MANY&quot;, &quot;TNTC&quot;], &quot;required&quot;: false},
+        &quot;epithelialCells&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Epithelial Cells&quot;, &quot;options&quot;: [&quot;NONE&quot;, &quot;RARE&quot;, &quot;FEW&quot;, &quot;MODERATE&quot;, &quot;MANY&quot;, &quot;TNTC&quot;], &quot;required&quot;: false},
+        &quot;bacteriaObserved&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Bacteria Observed&quot;, &quot;options&quot;: [&quot;NONE&quot;, &quot;RARE&quot;, &quot;FEW&quot;, &quot;MODERATE&quot;, &quot;MANY&quot;, &quot;TNTC&quot;], &quot;required&quot;: false},
+        &quot;preliminaryId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Preliminary Identification&quot;, &quot;required&quot;: false}
+      }
+    },
+    &quot;isolationIdentification&quot;: {
+      &quot;title&quot;: &quot;B. Isolation &amp; Identification&quot;,
+      &quot;cultureIsolation&quot;: {
+        &quot;mediaUsed&quot;: {&quot;type&quot;: &quot;multiselect&quot;, &quot;label&quot;: &quot;Media Used&quot;, &quot;options&quot;: [&quot;BLOOD_AGAR&quot;, &quot;CHOCOLATE_AGAR&quot;, &quot;MACCONKEY&quot;, &quot;EMB&quot;, &quot;XLD&quot;, &quot;SS_AGAR&quot;, &quot;TCBS&quot;, &quot;MANNITOL_SALT&quot;, &quot;MUELLER_HINTON&quot;, &quot;CLED&quot;, &quot;CHROMAGAR&quot;, &quot;SABOURAUD&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;incubationCondition&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Incubation Condition&quot;, &quot;required&quot;: false},
+        &quot;incubationDuration&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Incubation Duration&quot;, &quot;required&quot;: false}
+      },
+      &quot;colonyReading&quot;: {
+        &quot;colonyCount&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Colony Count&quot;, &quot;description&quot;: &quot;e.g., >10^5 CFU/mL, TNTC&quot;, &quot;required&quot;: false},
+        &quot;colonyMorphology&quot;: {&quot;type&quot;: &quot;multiselect&quot;, &quot;label&quot;: &quot;Colony Morphology&quot;, &quot;options&quot;: [&quot;LARGE&quot;, &quot;MEDIUM&quot;, &quot;SMALL&quot;, &quot;PINPOINT&quot;, &quot;MUCOID&quot;, &quot;SMOOTH&quot;, &quot;ROUGH&quot;, &quot;BETA_HEMOLYTIC&quot;, &quot;ALPHA_HEMOLYTIC&quot;, &quot;GAMMA_HEMOLYTIC&quot;, &quot;LACTOSE_FERMENTER&quot;, &quot;NON_LACTOSE_FERMENTER&quot;, &quot;PIGMENTED&quot;, &quot;SWARMING&quot;], &quot;required&quot;: false},
+        &quot;isolateId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Isolate ID&quot;, &quot;required&quot;: false}
+      },
+      &quot;biochemicalTests&quot;: {
+        &quot;catalase&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Catalase&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;coagulase&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Coagulase&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;oxidase&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Oxidase&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;tsiResult&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;TSI/KIA Result&quot;, &quot;options&quot;: [&quot;A_A&quot;, &quot;K_A&quot;, &quot;K_K&quot;, &quot;A_A_H2S&quot;, &quot;K_A_H2S&quot;, &quot;A_A_GAS&quot;, &quot;K_A_GAS&quot;], &quot;required&quot;: false},
+        &quot;motility&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Motility&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;indole&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Indole&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;citrate&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Citrate&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;urease&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Urease&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;lysine&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Lysine Decarboxylase&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;methylRed&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Methyl Red&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;vogesProskauer&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Voges-Proskauer&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;nitrateReduction&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Nitrate Reduction&quot;, &quot;options&quot;: [&quot;POSITIVE&quot;, &quot;NEGATIVE&quot;, &quot;NOT_DONE&quot;], &quot;required&quot;: false},
+        &quot;presumptiveId&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Presumptive Identification&quot;, &quot;required&quot;: false}
+      }
+    },
+    &quot;drugSusceptibilityTesting&quot;: {
+      &quot;title&quot;: &quot;C. Drug Susceptibility Testing (DST)&quot;,
+      &quot;dstMethod&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;DST Method&quot;, &quot;options&quot;: [&quot;DISC_DIFFUSION&quot;, &quot;BROTH_MICRODILUTION&quot;, &quot;AST_STRIP&quot;, &quot;AUTOMATED_AST&quot;], &quot;required&quot;: true, &quot;descriptions&quot;: {&quot;DISC_DIFFUSION&quot;: &quot;Kirby-Bauer method - measure zone of inhibition&quot;, &quot;BROTH_MICRODILUTION&quot;: &quot;Determine MIC - quantitative result&quot;, &quot;AST_STRIP&quot;: &quot;E-test gradient method for MIC determination&quot;, &quot;AUTOMATED_AST&quot;: &quot;Automated AST systems&quot;}},
+      &quot;guidelinesUsed&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Interpretation Guidelines&quot;, &quot;options&quot;: [&quot;CLSI&quot;, &quot;EUCAST&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+      &quot;antibioticPanel&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Antibiotic Panel&quot;, &quot;options&quot;: [&quot;FIRST_LINE&quot;, &quot;SECOND_LINE&quot;, &quot;BOTH&quot;], &quot;required&quot;: false, &quot;description&quot;: &quot;2nd line if resistance detected or clinically indicated. Panel depends on organism and clinical scenario.&quot;},
+      &quot;antibioticResults&quot;: {&quot;type&quot;: &quot;array&quot;, &quot;label&quot;: &quot;Antibiotic Results&quot;, &quot;items&quot;: {
+        &quot;antibiotic&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Antibiotic&quot;},
+        &quot;panelType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Panel&quot;, &quot;options&quot;: [&quot;1ST_LINE&quot;, &quot;2ND_LINE&quot;]},
+        &quot;zoneDiameter&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Zone Diameter (mm)&quot;, &quot;description&quot;: &quot;For Disc Diffusion method&quot;},
+        &quot;mic&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;MIC (µg/mL)&quot;, &quot;description&quot;: &quot;For Broth Microdilution or AST Strip&quot;},
+        &quot;interpretation&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Interpretation&quot;, &quot;options&quot;: [&quot;S&quot;, &quot;I&quot;, &quot;R&quot;], &quot;description&quot;: &quot;Per CLSI/EUCAST guidelines&quot;}
+      }}
+    },
+    &quot;automatedIdentification&quot;: {
+      &quot;title&quot;: &quot;D. Automated Identification and AST&quot;,
+      &quot;systemType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;System Type&quot;, &quot;options&quot;: [&quot;BD_BACTEC&quot;, &quot;VITEK_2&quot;, &quot;VITEK_MS&quot;, &quot;BD_PHOENIX&quot;, &quot;MICROSCAN&quot;, &quot;BRUKER_MALDI&quot;, &quot;BIOMERIEUX_MALDI&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+      &quot;cardType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Card Type&quot;, &quot;options&quot;: [&quot;GN&quot;, &quot;GP&quot;, &quot;YST&quot;, &quot;ANC&quot;, &quot;NH&quot;, &quot;AST_GN&quot;, &quot;AST_GP&quot;, &quot;AST_YS&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+      &quot;organismIdentified&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Organism Identified&quot;, &quot;required&quot;: true},
+      &quot;confidenceScore&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Confidence Score (%)&quot;, &quot;required&quot;: false},
+      &quot;maldiScore&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;MALDI Score&quot;, &quot;description&quot;: &quot;Score 2.0+: High confidence, 1.7-1.99: Low confidence, Below 1.7: Not reliable&quot;, &quot;required&quot;: false}
+    },
+    &quot;molecularTechniques&quot;: {
+      &quot;title&quot;: &quot;E. Molecular Techniques&quot;,
+      &quot;nucleicAcidExtraction&quot;: {
+        &quot;method&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Extraction Method&quot;, &quot;options&quot;: [&quot;MANUAL_COLUMN&quot;, &quot;MANUAL_PHENOL&quot;, &quot;AUTOMATED_QIAGEN&quot;, &quot;AUTOMATED_KINGFISHER&quot;, &quot;AUTOMATED_MAGNAPURE&quot;, &quot;AUTOMATED_MAXWELL&quot;, &quot;CHELEX&quot;, &quot;BOILING&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;nucleicAcidType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Nucleic Acid Type&quot;, &quot;options&quot;: [&quot;DNA&quot;, &quot;RNA&quot;, &quot;PLASMID&quot;, &quot;CDNA&quot;], &quot;required&quot;: true},
+        &quot;concentration&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Concentration (ng/µL)&quot;, &quot;required&quot;: false},
+        &quot;purity260280&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;A260/A280 Ratio&quot;, &quot;required&quot;: false},
+        &quot;purity260230&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;A260/A230 Ratio&quot;, &quot;required&quot;: false},
+        &quot;qualityAssessment&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Quality Assessment&quot;, &quot;options&quot;: [&quot;EXCELLENT&quot;, &quot;GOOD&quot;, &quot;ACCEPTABLE&quot;, &quot;POOR&quot;], &quot;required&quot;: false}
+      },
+      &quot;pcrAssays&quot;: {
+        &quot;assayType&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;PCR Assay Type&quot;, &quot;options&quot;: [&quot;CONVENTIONAL&quot;, &quot;REALTIME&quot;, &quot;MULTIPLEX&quot;, &quot;NESTED&quot;, &quot;RT_PCR&quot;, &quot;DIGITAL&quot;, &quot;LAMP&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;target&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Target Gene/Marker&quot;, &quot;options&quot;: [&quot;16S_RRNA&quot;, &quot;23S_RRNA&quot;, &quot;MEC_A&quot;, &quot;VAN_A&quot;, &quot;VAN_B&quot;, &quot;CTX_M&quot;, &quot;KPC&quot;, &quot;NDM&quot;, &quot;OXA_48&quot;, &quot;VIM&quot;, &quot;IMP&quot;, &quot;MCR_1&quot;, &quot;TET_M&quot;, &quot;ERM_B&quot;, &quot;TOX_A&quot;, &quot;TOX_B&quot;, &quot;SPA&quot;, &quot;PVL&quot;, &quot;SPECIES_SPECIFIC&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;result&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Result&quot;, &quot;options&quot;: [&quot;DETECTED&quot;, &quot;NOT_DETECTED&quot;, &quot;INDETERMINATE&quot;, &quot;INVALID&quot;], &quot;required&quot;: true},
+        &quot;ctValue&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Ct Value&quot;, &quot;description&quot;: &quot;For Real-Time PCR&quot;, &quot;required&quot;: false}
+      },
+      &quot;wholeGenomeSequencing&quot;: {
+        &quot;platform&quot;: {&quot;type&quot;: &quot;choice&quot;, &quot;label&quot;: &quot;Sequencing Platform&quot;, &quot;options&quot;: [&quot;ILLUMINA_MISEQ&quot;, &quot;ILLUMINA_NEXTSEQ&quot;, &quot;ILLUMINA_NOVASEQ&quot;, &quot;ONT_MINION&quot;, &quot;ONT_GRIDION&quot;, &quot;PACBIO_SEQUEL&quot;, &quot;ION_TORRENT&quot;, &quot;SANGER&quot;, &quot;OTHER&quot;], &quot;required&quot;: true},
+        &quot;analysisType&quot;: {&quot;type&quot;: &quot;multiselect&quot;, &quot;label&quot;: &quot;Analysis Type&quot;, &quot;options&quot;: [&quot;SPECIES_ID&quot;, &quot;MLST&quot;, &quot;CGMLST&quot;, &quot;WGMLST&quot;, &quot;AMR_GENES&quot;, &quot;VIRULENCE&quot;, &quot;PLASMID&quot;, &quot;SNP&quot;, &quot;PHYLOGENY&quot;, &quot;OUTBREAK&quot;, &quot;OTHER&quot;], &quot;required&quot;: false},
+        &quot;coverage&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Coverage (X)&quot;, &quot;required&quot;: false},
+        &quot;q30Score&quot;: {&quot;type&quot;: &quot;number&quot;, &quot;label&quot;: &quot;Q30 Score (%)&quot;, &quot;required&quot;: false},
+        &quot;speciesIdentified&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Species Identified&quot;, &quot;required&quot;: false},
+        &quot;mlstType&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;MLST Type&quot;, &quot;required&quot;: false},
+        &quot;amrGenes&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;AMR Genes Detected&quot;, &quot;required&quot;: false},
+        &quot;virulenceFactors&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Virulence Factors&quot;, &quot;required&quot;: false}
+      }
+    }
+  }
+}"/>
+            <column name="page_order" valueNumeric="5"/>
+            <column name="page_type" value="ASSAY_EXECUTION"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Bacteriology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <!-- Create workflow page template entry -->
+    <changeSet id="create-bacteriology-assay-test-execution-template" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE id = 305
+            </sqlCheck>
+        </preConditions>
+        <comment>Create workflow page template for Bacteriology Assay/Test Execution page</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" valueNumeric="305"/>
+            <column name="name" value="Assay/Test Execution"/>
+            <column name="display_key" value="bacteriology.assay.test.execution"/>
+            <column name="page_type" value="ASSAY_EXECUTION"/>
+            <column name="workflow_category" value="BACTERIOLOGY"/>
+            <column name="display_order" valueNumeric="5"/>
+            <column name="description" value="Comprehensive test execution including microscopy, culture isolation, biochemical identification, DST (disc diffusion, MIC, E-test), automated identification (VITEK, Phoenix, MALDI-TOF), and molecular techniques (PCR, WGS)."/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="default_content" value="BacteriologyAssayTestExecutionPage"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

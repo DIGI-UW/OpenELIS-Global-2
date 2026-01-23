@@ -1,0 +1,267 @@
+.audit-log-viewer .loading-container {
+  padding: 2rem;
+}
+
+.audit-log-viewer .cds--data-table {
+  margin-top: 0;
+}
+
+.expanded-audit-details {
+  padding: 1rem;
+  background: var(--cds-layer-01);
+}
+
+.expanded-audit-details h5 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--cds-text-primary);
+}
+
+.expanded-audit-details h5:first-child {
+  margin-top: 0;
+}
+
+.field-changes {
+  margin-top: 0.5rem;
+}
+
+.changes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.changes-table thead {
+  background: var(--cds-layer-02);
+}
+
+.changes-table th {
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--cds-border-subtle);
+}
+
+.changes-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  vertical-align: top;
+}
+
+.changes-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.changes-table tbody tr:hover {
+  background: var(--cds-layer-hover);
+}
+
+.changes-table td strong {
+  color: var(--cds-text-primary);
+  font-weight: 600;
+}
+
+.changes-table td em {
+  color: var(--cds-text-disabled);
+  font-style: normal;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .changes-table {
+    font-size: 0.75rem;
+  }
+
+  .changes-table th,
+  .changes-table td {
+    padding: 0.5rem;
+  }
+}
+
+/* Unified Audit History Styles */
+.unified-audit-history {
+  padding: 1rem 0;
+}
+
+.unified-audit-history .audit-statistics {
+  margin-bottom: 2rem;
+}
+
+.unified-audit-history .stat-card {
+  padding: 1rem;
+}
+
+.unified-audit-history .stat-label {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 400;
+}
+
+.unified-audit-history .stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+
+.unified-audit-history .stat-value.stat-green {
+  color: var(--cds-support-success);
+}
+
+.unified-audit-history .stat-value.stat-blue {
+  color: var(--cds-support-info);
+}
+
+.unified-audit-history .stat-value.stat-red {
+  color: var(--cds-support-error);
+}
+
+.unified-audit-history .audit-filters {
+  background: var(--cds-layer-01);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.unified-audit-history .loading-container {
+  padding: 2rem;
+}
+
+/* Ensure pagination is visible */
+.unified-audit-history .cds--pagination {
+  margin-top: 1rem;
+}
+
+/* Filter inputs spacing */
+.unified-audit-history .cds--date-picker {
+  margin-bottom: 0;
+}
+
+.unified-audit-history .cds--select {
+  margin-bottom: 0;
+}
+
+/* ========================================
+   ENHANCED AUDIT TRAIL UI IMPROVEMENTS
+   ======================================== */
+
+/* Change type highlighting */
+.changes-table tbody tr.change-added {
+  border-left: 3px solid var(--cds-support-success);
+  background: rgba(36, 161, 72, 0.05);
+}
+
+.changes-table tbody tr.change-removed {
+  border-left: 3px solid var(--cds-support-error);
+  background: rgba(218, 30, 40, 0.05);
+}
+
+.changes-table tbody tr.change-modified {
+  border-left: 3px solid var(--cds-support-info);
+  background: rgba(0, 114, 195, 0.05);
+}
+
+/* Value column styling */
+.changes-table td.old-value {
+  color: var(--cds-text-secondary);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8125rem;
+}
+
+.changes-table td.new-value {
+  color: var(--cds-text-primary);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* Empty value styling */
+.changes-table td em.empty-value {
+  color: var(--cds-text-disabled);
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
+/* No changes message */
+.no-changes-message {
+  padding: 1rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  background: var(--cds-layer-02);
+  border-radius: 4px;
+}
+
+/* Activity badges alignment */
+.unified-audit-history .cds--tag {
+  min-width: 80px;
+  justify-content: center;
+}
+
+/* Hover effects for change rows */
+.changes-table tbody tr.change-added:hover {
+  background: rgba(36, 161, 72, 0.1);
+}
+
+.changes-table tbody tr.change-removed:hover {
+  background: rgba(218, 30, 40, 0.1);
+}
+
+.changes-table tbody tr.change-modified:hover {
+  background: rgba(0, 114, 195, 0.1);
+}
+
+/* Add visual indicator for changes */
+.changes-table tbody tr.change-added td.new-value::before {
+  content: "+ ";
+  color: var(--cds-support-success);
+  font-weight: bold;
+}
+
+.changes-table tbody tr.change-removed td.old-value::before {
+  content: "- ";
+  color: var(--cds-support-error);
+  font-weight: bold;
+}
+
+.changes-table tbody tr.change-modified td.new-value::before {
+  content: "→ ";
+  color: var(--cds-support-info);
+  font-weight: bold;
+}
+
+/* Improved table header */
+.changes-table thead th {
+  background: var(--cds-layer-accent);
+  color: var(--cds-text-primary);
+  font-weight: 600;
+}
+
+/* Better spacing for expanded details */
+.expanded-audit-details {
+  padding: 1.5rem;
+  background: var(--cds-layer-01);
+  border-top: 1px solid var(--cds-border-subtle);
+}
+
+/* Add subtle animation for expanded rows */
+.field-changes {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

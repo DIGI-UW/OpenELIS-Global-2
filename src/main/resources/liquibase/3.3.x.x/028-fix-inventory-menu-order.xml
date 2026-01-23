@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="mherman22" id="inventory-011-fix-menu-order">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory';
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Fix inventory menu order to appear before Admin menu.
+            FRS AC-1: Inventory appears as top-level menu item before Admin.
+
+            Current menu order:
+            - Reports: 100
+            - Admin: 110
+            - Billing: 120
+            - Inventory: 127 (WRONG - should be before Admin)
+
+            New order:
+            - Reports: 100
+            - Inventory: 105 (NEW - before Admin)
+            - Admin: 110
+            - Billing: 120
+        </comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="presentation_order" value="105" />
+            <where>element_id='menu_inventory'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

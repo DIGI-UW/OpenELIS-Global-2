@@ -126,4 +126,16 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
         getBaseObjectDAO().insertAliquots(lastSampleItem, sampleItemsToInsert, analysisGroups);
         return true;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getChildSamples(SampleItem parent) {
+        if (parent == null || parent.getId() == null) {
+            return List.of();
+        }
+        Map<String, Object> criteria = new HashMap<>();
+        criteria.put("parentSampleItem.id", parent.getId());
+        criteria.put("voided", false);
+        return baseObjectDAO.getAllMatching(criteria);
+    }
 }

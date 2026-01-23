@@ -2,7 +2,10 @@ package org.openelisglobal.inventory.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import org.openelisglobal.common.log.LogEvent;
@@ -54,10 +57,77 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/all", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getAll() {
+    public ResponseEntity<List<InventoryItem>> getAll(@RequestParam(required = false) ItemType itemType,
+            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String projectName) {
         try {
-            List<InventoryItem> items = inventoryItemService.getAll();
+            List<InventoryItem> items;
+
+            if (itemType != null || isActive != null || projectName != null) {
+                // Use filtered approach
+                items = inventoryItemService.getAll();
+                items = items.stream().filter(item -> itemType == null || item.getItemType().equals(itemType))
+                        .filter(item -> isActive == null || item.isActive() == isActive)
+                        .filter(item -> projectName == null
+                                || (item.getProjectName() != null && item.getProjectName().equals(projectName)))
+                        .toList();
+            } else {
+                items = inventoryItemService.getAll();
+            }
+
             return ResponseEntity.ok(items);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get paginated inventory items with filtering and sorting
+     *
+     * @param limit     Maximum number of results per page (default: 20, max: 1000)
+     * @param offset    Number of results to skip (default: 0)
+     * @param sortBy    Field to sort by (default: name)
+     * @param sortOrder Sort direction: "asc" or "desc" (default: asc)
+     * @param itemType  Filter by item type: REAGENT, RDT, CARTRIDGE, HIV_KIT,
+     *                  SYPHILIS_KIT
+     * @param isActive  Filter by active status: true/false
+     * @param search    Search term for item name
+     * @return Paginated response with items and metadata
+     */
+    @GetMapping(value = "/paged", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getPagedItems(@RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder, @RequestParam(required = false) String itemType,
+            @RequestParam(required = false) Boolean isActive, @RequestParam(required = false) String search) {
+        try {
+            ItemType type = null;
+            if (itemType != null && !itemType.trim().isEmpty() && !itemType.equalsIgnoreCase("ALL")) {
+                try {
+                    type = ItemType.valueOf(itemType.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest().build();
+                }
+            }
+
+            List<InventoryItem> items = inventoryItemService.getPagedItems(limit, offset, sortBy, sortOrder, type,
+                    isActive, search);
+
+            Long totalRecords = inventoryItemService.getPagedItemsCount(type, isActive, search);
+
+            int currentPage = (offset / limit) + 1;
+            int totalPages = (int) Math.ceil((double) totalRecords / limit);
+            boolean hasMore = offset + limit < totalRecords;
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("items", items);
+            response.put("totalRecords", totalRecords);
+            response.put("limit", limit);
+            response.put("offset", offset);
+            response.put("currentPage", currentPage);
+            response.put("totalPages", totalPages);
+            response.put("hasMore", hasMore);
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -93,6 +163,18 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<List<InventoryItem>> getByCategory(@PathVariable String category) {
         try {
             List<InventoryItem> items = inventoryItemService.getByCategory(category);
+            return ResponseEntity.ok(items);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping(value = "/project/{projectName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<InventoryItem>> getByProject(@PathVariable String projectName) {
+        try {
+            List<InventoryItem> items = inventoryItemService.getAll().stream()
+                    .filter(item -> projectName.equals(item.getProjectName())).collect(Collectors.toList());
             return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -141,12 +223,12 @@ public class InventoryItemRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
             item.setSysUserId(sysUserId);
 
-            // Generate FHIR UUID if not provided
             if (item.getFhirUuid() == null) {
                 item.setFhirUuid(java.util.UUID.randomUUID());
             }
 
-            InventoryItem savedItem = inventoryItemService.save(item);
+            Long itemId = inventoryItemService.insert(item);
+            InventoryItem savedItem = inventoryItemService.get(itemId);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -158,30 +240,17 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<InventoryItem> update(@PathVariable String id, @Valid @RequestBody InventoryItem item,
             HttpServletRequest request) {
         try {
-            InventoryItem existingItem = inventoryItemService.get(Long.valueOf(id));
-            if (existingItem == null) {
+            if (inventoryItemService.get(Long.valueOf(id)) == null) {
                 return ResponseEntity.notFound().build();
             }
 
-            // Update only the fields that can be changed
-            existingItem.setName(item.getName());
-            existingItem.setItemType(item.getItemType());
-            existingItem.setCategory(item.getCategory());
-            existingItem.setManufacturer(item.getManufacturer());
-            existingItem.setUnits(item.getUnits());
-            existingItem.setLowStockThreshold(item.getLowStockThreshold());
-
-            // Type-specific fields
-            existingItem.setStabilityAfterOpening(item.getStabilityAfterOpening());
-            existingItem.setStorageRequirements(item.getStorageRequirements());
-            existingItem.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
-            existingItem.setTestsPerKit(item.getTestsPerKit());
+            item.setId(Long.valueOf(id));
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
-            existingItem.setSysUserId(sysUserId);
+            item.setSysUserId(sysUserId);
 
-            InventoryItem updatedItem = inventoryItemService.update(existingItem);
+            InventoryItem updatedItem = inventoryItemService.update(item);
             return ResponseEntity.ok(updatedItem);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -227,7 +296,5 @@ public class InventoryItemRestController extends BaseRestController {
             this.quantity = quantity;
             this.inStock = inStock;
         }
-
     }
-
 }

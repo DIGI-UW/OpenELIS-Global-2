@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="create-inventory-item-reference-table-entry" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'inventory_item'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating inventory_item reference table entry to enable audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="inventory_item" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='inventory_item'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-inventory-lot-reference-table-entry" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'inventory_lot'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating inventory_lot reference table entry to enable audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="inventory_lot" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='inventory_lot'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-inventory-storage-location-reference-table-entry" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'inventory_storage_location'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating inventory_storage_location reference table entry to enable audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="inventory_storage_location" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='inventory_storage_location'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-inventory-usage-reference-table-entry" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'inventory_usage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating inventory_usage reference table entry to enable audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="inventory_usage" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='inventory_usage'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-inventory-transaction-reference-table-entry" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'inventory_transaction'
+            </sqlCheck>
+        </preConditions>
+        <comment>Creating inventory_transaction reference table entry to enable audit trail tracking.</comment>
+        <insert tableName="reference_tables" schemaName="clinlims">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="inventory_transaction" />
+            <column name="keep_history" value="Y" />
+            <column name="is_hl7_encoded" value="N" />
+            <column name="lastupdated" valueComputed="${now}" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>name='inventory_transaction'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

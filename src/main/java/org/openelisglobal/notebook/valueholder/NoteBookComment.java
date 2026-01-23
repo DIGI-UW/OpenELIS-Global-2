@@ -86,5 +86,4 @@ public class NoteBookComment extends BaseObject<Integer> {
     public void setAuthor(SystemUser author) {
         this.author = author;
     }
-
 }

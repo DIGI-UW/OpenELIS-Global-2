@@ -1,6 +1,8 @@
 package org.openelisglobal.notebook.bean;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 
@@ -16,6 +18,14 @@ public class NoteBookDisplayBean {
     private Integer entriesCount;
     private Integer technicianId;
     private UUID questionnaireFhirUuid;
+    private Integer entryNumber;
+    private String notebookName;
+
+    // Project metadata fields
+    private String principalInvestigator;
+    private String fundingSource;
+    private BigDecimal budget;
+    private String projectTimeline;
 
     public String getTitle() {
         return title;
@@ -103,6 +113,64 @@ public class NoteBookDisplayBean {
 
     public void setTechnicianId(Integer technicianId) {
         this.technicianId = technicianId;
+    }
+
+    public Integer getEntryNumber() {
+        return entryNumber;
+    }
+
+    public void setEntryNumber(Integer entryNumber) {
+        this.entryNumber = entryNumber;
+    }
+
+    public String getNotebookName() {
+        return notebookName;
+    }
+
+    public void setNotebookName(String notebookName) {
+        this.notebookName = notebookName;
+    }
+
+    public String getPrincipalInvestigator() {
+        return principalInvestigator;
+    }
+
+    public void setPrincipalInvestigator(String principalInvestigator) {
+        this.principalInvestigator = principalInvestigator;
+    }
+
+    public String getFundingSource() {
+        return fundingSource;
+    }
+
+    public void setFundingSource(String fundingSource) {
+        this.fundingSource = fundingSource;
+    }
+
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
+    public void setBudget(BigDecimal budget) {
+        this.budget = budget;
+    }
+
+    public String getProjectTimeline() {
+        return projectTimeline;
+    }
+
+    public void setProjectTimeline(String projectTimeline) {
+        this.projectTimeline = projectTimeline;
+    }
+
+    private Set<String> allowedRoles;
+
+    public Set<String> getAllowedRoles() {
+        return allowedRoles;
+    }
+
+    public void setAllowedRoles(Set<String> allowedRoles) {
+        this.allowedRoles = allowedRoles;
     }
 
 }

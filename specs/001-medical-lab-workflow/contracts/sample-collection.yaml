@@ -1,0 +1,243 @@
+# Sample Collection API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Sample Collection
+
+openapi: 3.0.3
+info:
+  title: Sample Collection API
+  version: 1.0.0
+  description: API endpoints for sample collection workflow
+
+paths:
+  /rest/sample/collection:
+    post:
+      summary: Record sample collection
+      operationId: createSampleCollection
+      tags: [SampleCollection]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SampleCollectionForm"
+      responses:
+        "201":
+          description: Sample collection recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleCollectionResponse"
+        "400":
+          description: Invalid input
+        "404":
+          description: Patient or lab order not found
+
+    get:
+      summary: List pending collections
+      operationId: listPendingCollections
+      tags: [SampleCollection]
+      parameters:
+        - name: patientId
+          in: query
+          schema:
+            type: integer
+        - name: labOrderId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+      responses:
+        "200":
+          description: Collection list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingCollection"
+
+  /rest/sample/collection/{id}:
+    get:
+      summary: Get collection details
+      operationId: getCollection
+      tags: [SampleCollection]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Collection details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleCollectionResponse"
+        "404":
+          description: Collection not found
+
+    put:
+      summary: Update collection details
+      operationId: updateCollection
+      tags: [SampleCollection]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SampleCollectionForm"
+      responses:
+        "200":
+          description: Collection updated
+        "404":
+          description: Collection not found
+
+  /rest/sample/collection/barcode:
+    post:
+      summary: Generate barcode for sample
+      operationId: generateBarcode
+      tags: [SampleCollection]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sampleItemId]
+              properties:
+                sampleItemId:
+                  type: integer
+      responses:
+        "200":
+          description: Barcode generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  barcode:
+                    type: string
+                  barcodeImage:
+                    type: string
+                    format: byte
+
+components:
+  schemas:
+    SampleCollectionForm:
+      type: object
+      required: [patientId, labOrderId, sampleType, collectionTime, collectorId]
+      properties:
+        patientId:
+          type: integer
+        labOrderId:
+          type: integer
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        containerType:
+          type: string
+          maxLength: 50
+        collectionTime:
+          type: string
+          format: date-time
+        collectorId:
+          type: integer
+        collectionTemperature:
+          type: string
+          enum: [room_temp, refrigerated, frozen, na]
+        volume:
+          type: number
+          format: float
+        volumeUnit:
+          type: string
+          enum: [mL, uL]
+        notes:
+          type: string
+          maxLength: 500
+
+    SampleCollectionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sampleItemId:
+          type: integer
+        barcode:
+          type: string
+        patientId:
+          type: integer
+        patientName:
+          type: string
+        sampleType:
+          $ref: "#/components/schemas/SampleType"
+        containerType:
+          type: string
+        collectionTime:
+          type: string
+          format: date-time
+        collectorName:
+          type: string
+        status:
+          type: string
+          enum: [collected, in_transit, received, processed]
+        fhirUuid:
+          type: string
+          format: uuid
+
+    PendingCollection:
+      type: object
+      properties:
+        labOrderId:
+          type: integer
+        patientId:
+          type: integer
+        patientName:
+          type: string
+        requestedTests:
+          type: array
+          items:
+            type: string
+        requiredSampleTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SampleType"
+        priority:
+          type: string
+          enum: [STAT, ROUTINE]
+        scheduledDate:
+          type: string
+          format: date
+
+    SampleType:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - stool
+        - urine
+        - microbiology
+        - serology
+
+    Department:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - parasitology
+        - urinalysis
+        - serology
+        - microbiology

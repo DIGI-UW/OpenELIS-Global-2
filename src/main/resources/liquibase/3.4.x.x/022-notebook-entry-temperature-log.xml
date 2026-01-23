@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+    <!-- Create sequence for temperature log IDs -->
+    <changeSet id="3.4.x.x-create-temperature-log-sequence" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="notebook_entry_temperature_log_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for notebook_entry_temperature_log table</comment>
+        <createSequence sequenceName="notebook_entry_temperature_log_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- Create notebook_entry_temperature_log table -->
+    <changeSet id="3.4.x.x-create-temperature-log-table" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_entry_temperature_log" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create table for storing environmental monitoring temperature logs</comment>
+        <createTable tableName="notebook_entry_temperature_log" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="freezer_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_time" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="temperature_value" type="NUMERIC(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="temperature_unit" type="VARCHAR(5)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="checked_by" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="checked_date_time" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="notes" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="logged_by" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="logged_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign key constraint to notebook_entry -->
+    <changeSet id="3.4.x.x-temperature-log-fk-entry" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_temperature_log" schemaName="clinlims"/>
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_temp_log_entry" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from temperature_log to notebook_entry</comment>
+        <addForeignKeyConstraint
+            constraintName="fk_temp_log_entry"
+            baseTableSchemaName="clinlims"
+            baseTableName="notebook_entry_temperature_log"
+            baseColumnNames="notebook_entry_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Create index on notebook_entry_id for faster lookups -->
+    <changeSet id="3.4.x.x-temperature-log-idx-entry" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_temperature_log" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_temp_log_entry_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create index on notebook_entry_id for faster temperature log lookups</comment>
+        <createIndex indexName="idx_temp_log_entry_id" tableName="notebook_entry_temperature_log" schemaName="clinlims">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create index on freezer_id for filtering by device -->
+    <changeSet id="3.4.x.x-temperature-log-idx-freezer" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_temperature_log" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_temp_log_freezer_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create index on freezer_id for filtering temperature logs by device</comment>
+        <createIndex indexName="idx_temp_log_freezer_id" tableName="notebook_entry_temperature_log" schemaName="clinlims">
+            <column name="freezer_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create composite index on entry_id and checked_date_time for sorted queries -->
+    <changeSet id="3.4.x.x-temperature-log-idx-entry-date" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_temperature_log" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_temp_log_entry_date" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create composite index for entry ID and date for efficient sorted queries</comment>
+        <createIndex indexName="idx_temp_log_entry_date" tableName="notebook_entry_temperature_log" schemaName="clinlims">
+            <column name="notebook_entry_id"/>
+            <column name="checked_date_time" descending="true"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Fix column name: rename lastupdated to last_updated if needed -->
+    <changeSet id="3.4.x.x-temperature-log-fix-column-name" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_temperature_log" schemaName="clinlims"/>
+            <columnExists tableName="notebook_entry_temperature_log" columnName="lastupdated" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated for Hibernate compatibility</comment>
+        <renameColumn tableName="notebook_entry_temperature_log" schemaName="clinlims"
+            oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <!-- Add last_updated column if it doesn't exist -->
+    <changeSet id="3.4.x.x-temperature-log-add-last-updated" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_temperature_log" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_entry_temperature_log" columnName="last_updated" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add last_updated column if missing</comment>
+        <addColumn tableName="notebook_entry_temperature_log" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

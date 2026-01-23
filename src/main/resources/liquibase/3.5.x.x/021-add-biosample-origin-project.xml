@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- ADD ORIGIN_LAB AND PROJECT_ID TO BIO_SAMPLE TABLE        -->
+    <!-- These fields are needed for tracking sample provenance   -->
+    <!-- and project association in the biorepository             -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-origin-lab-to-bio-sample" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="bio_sample" schemaName="clinlims" columnName="origin_lab"/>
+            </not>
+        </preConditions>
+        <comment>Add origin_lab column to bio_sample table for tracking sample provenance</comment>
+
+        <addColumn tableName="bio_sample" schemaName="clinlims">
+            <column name="origin_lab" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="origin_lab"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-project-id-to-bio-sample" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="bio_sample" schemaName="clinlims" columnName="project_id"/>
+            </not>
+        </preConditions>
+        <comment>Add project_id column to bio_sample table for project/study association</comment>
+
+        <addColumn tableName="bio_sample" schemaName="clinlims">
+            <column name="project_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="bio_sample" schemaName="clinlims" columnName="project_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add index on project_id for efficient filtering -->
+    <changeSet id="add-bio-sample-project-id-index" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <columnExists tableName="bio_sample" schemaName="clinlims" columnName="project_id"/>
+            <not>
+                <indexExists indexName="idx_bio_sample_project_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add index on project_id for efficient project-based queries</comment>
+
+        <createIndex indexName="idx_bio_sample_project_id" tableName="bio_sample" schemaName="clinlims">
+            <column name="project_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_bio_sample_project_id" tableName="bio_sample" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

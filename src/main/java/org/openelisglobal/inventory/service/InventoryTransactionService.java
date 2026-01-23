@@ -8,24 +8,16 @@ import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 
 public interface InventoryTransactionService extends BaseObjectService<InventoryTransaction, Long> {
 
-    /**
-     * Get transactions by lot ID
-     */
+    /** Get transactions by lot ID */
     List<InventoryTransaction> getByLotId(Long lotId);
 
-    /**
-     * Get transactions by transaction type
-     */
+    /** Get transactions by transaction type */
     List<InventoryTransaction> getByTransactionType(TransactionType transactionType);
 
-    /**
-     * Get transactions within a date range
-     */
+    /** Get transactions within a date range */
     List<InventoryTransaction> getByDateRange(Timestamp startDate, Timestamp endDate);
 
-    /**
-     * Get transactions by reference (e.g., test result ID)
-     */
+    /** Get transactions by reference (e.g., test result ID) */
     List<InventoryTransaction> getByReference(Long referenceId, String referenceType);
 
     /**

@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- DOCUMENTATION_VERIFICATION TABLE -->
+    <!-- 7-point documentation verification checklist per sample -->
+    <!-- Tracks verification status for each checkpoint -->
+    <!-- ======================================================== -->
+
+    <changeSet id="create-doc-verification-sequence" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="documentation_verification_seq" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create sequence for documentation_verification table</comment>
+        <createSequence sequenceName="documentation_verification_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <rollback>
+            <dropSequence sequenceName="documentation_verification_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-doc-verification-table" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create documentation_verification table for 7-point verification checklist</comment>
+
+        <createTable tableName="documentation_verification" schemaName="clinlims">
+            <column name="id" type="NUMERIC(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="bio_sample_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- 7-Point Verification Checklist - Boolean checks -->
+            <!-- Points 1-2: Auto-verified (system validates against shipment/project data) -->
+            <column name="check_sample_identifiers" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_project_linkage" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Points 3-5: Manual verification -->
+            <column name="check_ethics_approval" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_biosafety_match" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_packaging_integrity" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Points 6-7: Conditional (N/A allowed with justification) -->
+            <column name="check_consent_record" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_mta_documented" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Status per checkpoint (VERIFIED, PENDING, N_A) -->
+            <column name="status_sample_identifiers" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="status_project_linkage" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="status_ethics_approval" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="status_consent_record" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="status_mta_documented" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="status_biosafety_match" type="VARCHAR(20)" defaultValue="PENDING"/>
+            <column name="status_packaging_integrity" type="VARCHAR(20)" defaultValue="PENDING"/>
+
+            <!-- N/A justifications for conditional items -->
+            <column name="na_justification_consent" type="TEXT"/>
+            <column name="na_justification_mta" type="TEXT"/>
+
+            <!-- Overall verification status -->
+            <column name="overall_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Verification metadata -->
+            <column name="verified_by_user_id" type="NUMERIC(10,0)"/>
+            <column name="verified_timestamp" type="TIMESTAMP"/>
+            <column name="verification_notes" type="TEXT"/>
+
+            <!-- Audit fields -->
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="documentation_verification" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Foreign Key Constraints -->
+    <changeSet id="add-doc-verification-fk-biosample" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <tableExists tableName="bio_sample" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_doc_verification_biosample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from documentation_verification.bio_sample_id to bio_sample</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_doc_verification_biosample"
+            baseTableSchemaName="clinlims"
+            baseTableName="documentation_verification"
+            baseColumnNames="bio_sample_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="bio_sample"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="documentation_verification"
+                constraintName="fk_doc_verification_biosample"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-doc-verification-fk-verified-by" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <tableExists tableName="system_user" schemaName="clinlims"/>
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_doc_verification_verified_by" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add foreign key from documentation_verification.verified_by_user_id to system_user</comment>
+
+        <addForeignKeyConstraint
+            constraintName="fk_doc_verification_verified_by"
+            baseTableSchemaName="clinlims"
+            baseTableName="documentation_verification"
+            baseColumnNames="verified_by_user_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="documentation_verification"
+                constraintName="fk_doc_verification_verified_by"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Unique constraint: one verification record per sample -->
+    <changeSet id="add-doc-verification-unique-sample" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="uq_doc_verification_biosample" schemaName="clinlims" tableName="documentation_verification"/>
+            </not>
+        </preConditions>
+        <comment>Add unique constraint for one verification per sample</comment>
+
+        <addUniqueConstraint
+            constraintName="uq_doc_verification_biosample"
+            schemaName="clinlims"
+            tableName="documentation_verification"
+            columnNames="bio_sample_id"/>
+
+        <rollback>
+            <dropUniqueConstraint
+                constraintName="uq_doc_verification_biosample"
+                schemaName="clinlims"
+                tableName="documentation_verification"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Indexes -->
+    <changeSet id="add-doc-verification-indexes" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+            <not>
+                <indexExists indexName="idx_doc_verification_biosample" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for documentation_verification table</comment>
+
+        <createIndex indexName="idx_doc_verification_biosample" tableName="documentation_verification" schemaName="clinlims">
+            <column name="bio_sample_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_doc_verification_overall_status" tableName="documentation_verification" schemaName="clinlims">
+            <column name="overall_status"/>
+        </createIndex>
+
+        <createIndex indexName="idx_doc_verification_verified_by" tableName="documentation_verification" schemaName="clinlims">
+            <column name="verified_by_user_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_doc_verification_biosample" tableName="documentation_verification" schemaName="clinlims"/>
+            <dropIndex indexName="idx_doc_verification_overall_status" tableName="documentation_verification" schemaName="clinlims"/>
+            <dropIndex indexName="idx_doc_verification_verified_by" tableName="documentation_verification" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Check Constraints -->
+    <changeSet id="add-doc-verification-overall-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraint for overall_status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_verification_overall_status
+            CHECK (overall_status IN ('PENDING', 'VERIFIED', 'QUARANTINE'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_verification_overall_status;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-doc-verification-item-status-check" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="documentation_verification" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Add check constraints for individual status values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_status_sample_identifiers
+            CHECK (status_sample_identifiers IN ('VERIFIED', 'PENDING', 'N_A'));
+
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_status_project_linkage
+            CHECK (status_project_linkage IN ('VERIFIED', 'PENDING', 'N_A'));
+
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_status_ethics_approval
+            CHECK (status_ethics_approval IN ('VERIFIED', 'PENDING', 'N_A'));
+
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_status_consent_record
+            CHECK (status_consent_record IN ('VERIFIED', 'PENDING', 'N_A'));
+
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_status_mta_documented
+            CHECK (status_mta_documented IN ('VERIFIED', 'PENDING', 'N_A'));
+
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_status_biosafety_match
+            CHECK (status_biosafety_match IN ('VERIFIED', 'PENDING', 'N_A'));
+
+            ALTER TABLE clinlims.documentation_verification
+            ADD CONSTRAINT chk_doc_status_packaging_integrity
+            CHECK (status_packaging_integrity IN ('VERIFIED', 'PENDING', 'N_A'));
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_status_sample_identifiers;
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_status_project_linkage;
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_status_ethics_approval;
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_status_consent_record;
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_status_mta_documented;
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_status_biosafety_match;
+                ALTER TABLE clinlims.documentation_verification DROP CONSTRAINT IF EXISTS chk_doc_status_packaging_integrity;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

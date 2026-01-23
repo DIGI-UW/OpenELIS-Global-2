@@ -1,7 +1,9 @@
 package org.openelisglobal.notebook.form;
 
+import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
@@ -12,13 +14,27 @@ public class NoteBookForm {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String title;
+
     private Integer type;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String objective;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String protocol;
+
+    // Project metadata fields
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String principalInvestigator;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String fundingSource;
+    private BigDecimal budget;
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String projectTimeline;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String content;
+
     private Integer technicianId;
     private Integer systemUserId;
     private NoteBookStatus status;
@@ -28,9 +44,13 @@ public class NoteBookForm {
     private List<NoteBookFileForm> files;
     private List<NoteBookCommentForm> comments;
     private List<Integer> analyzerIds;
+    private List<Long> inventoryInstrumentIds;
     private Integer templateId;
     private Boolean isTemplate;
     private java.util.UUID questionnaireFhirUuid;
+    private Set<String> organizationIds;
+    private Set<String> departmentIds;
+    private Set<String> allowedRoles;
 
     public String getTitle() {
         return title;
@@ -62,6 +82,38 @@ public class NoteBookForm {
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
+    }
+
+    public String getPrincipalInvestigator() {
+        return principalInvestigator;
+    }
+
+    public void setPrincipalInvestigator(String principalInvestigator) {
+        this.principalInvestigator = principalInvestigator;
+    }
+
+    public String getFundingSource() {
+        return fundingSource;
+    }
+
+    public void setFundingSource(String fundingSource) {
+        this.fundingSource = fundingSource;
+    }
+
+    public BigDecimal getBudget() {
+        return budget;
+    }
+
+    public void setBudget(BigDecimal budget) {
+        this.budget = budget;
+    }
+
+    public String getProjectTimeline() {
+        return projectTimeline;
+    }
+
+    public void setProjectTimeline(String projectTimeline) {
+        this.projectTimeline = projectTimeline;
     }
 
     public String getContent() {
@@ -136,6 +188,14 @@ public class NoteBookForm {
         this.analyzerIds = analyzerIds;
     }
 
+    public List<Long> getInventoryInstrumentIds() {
+        return inventoryInstrumentIds;
+    }
+
+    public void setInventoryInstrumentIds(List<Long> inventoryInstrumentIds) {
+        this.inventoryInstrumentIds = inventoryInstrumentIds;
+    }
+
     public NoteBookStatus getStatus() {
         return status;
     }
@@ -176,6 +236,30 @@ public class NoteBookForm {
         this.questionnaireFhirUuid = questionnaireFhirUuid;
     }
 
+    public Set<String> getOrganizationIds() {
+        return organizationIds;
+    }
+
+    public void setOrganizationIds(Set<String> organizationIds) {
+        this.organizationIds = organizationIds;
+    }
+
+    public Set<String> getDepartmentIds() {
+        return departmentIds;
+    }
+
+    public void setDepartmentIds(Set<String> departmentIds) {
+        this.departmentIds = departmentIds;
+    }
+
+    public Set<String> getAllowedRoles() {
+        return allowedRoles;
+    }
+
+    public void setAllowedRoles(Set<String> allowedRoles) {
+        this.allowedRoles = allowedRoles;
+    }
+
     public static class NoteBookFileForm extends NoteBookFile {
 
         private static final long serialVersionUID = 3142138533368581327L;
@@ -199,6 +283,7 @@ public class NoteBookForm {
 
     public static class NoteBookCommentForm {
         private Integer id;
+
         @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
         private String text;
 
@@ -218,5 +303,4 @@ public class NoteBookForm {
             this.text = text;
         }
     }
-
 }

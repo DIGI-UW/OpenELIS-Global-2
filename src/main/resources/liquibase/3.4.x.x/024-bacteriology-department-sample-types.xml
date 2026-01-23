@@ -1,0 +1,987 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- BACTERIOLOGY DEPARTMENT AND COMPREHENSIVE SAMPLE TYPES   -->
+    <!-- Creates:                                                  -->
+    <!-- 1. Bacteriology test_section (department)                -->
+    <!-- 2. Clinical samples (blood, urine, stool, body fluids)   -->
+    <!-- 3. Environmental samples (water, soil)                   -->
+    <!-- 4. Food and beverage samples                             -->
+    <!-- 5. Veterinary samples                                    -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- 1. CREATE BACTERIOLOGY DEPARTMENT (TEST_SECTION)         -->
+    <!-- ======================================================== -->
+    <changeSet id="create-bacteriology-localization-test-section" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE description = 'bacteriology test section' AND english = 'Bacteriology'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create localization entry for Bacteriology test section</comment>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="description" value="bacteriology test section"/>
+            <column name="english" value="Bacteriology"/>
+            <column name="french" value="Bacteriologie"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="create-bacteriology-test-section" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Bacteriology'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Bacteriology test section (department)</comment>
+        <insert tableName="test_section" schemaName="clinlims">
+            <column name="id" valueSequenceNext="test_section_seq"/>
+            <column name="name" value="Bacteriology"/>
+            <column name="description" value="Bacteriology Laboratory"/>
+            <column name="is_external" value="N"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="sort_order" value="2147483647"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'bacteriology test section' AND english = 'Bacteriology' LIMIT 1)"/>
+            <column name="display_key" value="testsection.Bacteriology"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 2. CLINICAL SAMPLES (HUMAN)                              -->
+    <!-- ======================================================== -->
+
+    <!-- Blood - may already exist -->
+    <changeSet id="add-bact-sample-type-blood" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'blood'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Blood"/>
+            <column name="french" value="Sang"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Blood"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Blood' AND description = 'sampleType name' ORDER BY id DESC LIMIT 1)"/>
+        </insert>
+    </changeSet>
+
+    <!-- Urine - may already exist -->
+    <changeSet id="add-bact-sample-type-urine" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'urine'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Urine"/>
+            <column name="french" value="Urine"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Urine"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Urine' AND description = 'sampleType name' ORDER BY id DESC LIMIT 1)"/>
+        </insert>
+    </changeSet>
+
+    <!-- Stool - may already exist -->
+    <changeSet id="add-bact-sample-type-stool" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'stool'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Stool"/>
+            <column name="french" value="Selles"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Stool"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Stool' AND description = 'sampleType name' ORDER BY id DESC LIMIT 1)"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 3. BODY FLUIDS                                           -->
+    <!-- ======================================================== -->
+
+    <!-- CSF (Cerebrospinal Fluid) -->
+    <changeSet id="add-bact-localization-csf" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'CSF (Cerebrospinal Fluid)' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="CSF (Cerebrospinal Fluid)"/>
+            <column name="french" value="LCR (Liquide cephalo-rachidien)"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-csf" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'csf (cerebrospinal fluid)'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="CSF (Cerebrospinal Fluid)"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'CSF (Cerebrospinal Fluid)' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Pleural Fluid -->
+    <changeSet id="add-bact-localization-pleural-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Pleural Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Pleural Fluid"/>
+            <column name="french" value="Liquide pleural"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-pleural-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'pleural fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Pleural Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Pleural Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Peritoneal Fluid -->
+    <changeSet id="add-bact-localization-peritoneal-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Peritoneal Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Peritoneal Fluid"/>
+            <column name="french" value="Liquide peritoneal"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-peritoneal-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'peritoneal fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Peritoneal Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Peritoneal Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Pericardial Fluid -->
+    <changeSet id="add-bact-localization-pericardial-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Pericardial Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Pericardial Fluid"/>
+            <column name="french" value="Liquide pericardique"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-pericardial-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'pericardial fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Pericardial Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Pericardial Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Amniotic Fluid -->
+    <changeSet id="add-bact-localization-amniotic-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Amniotic Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Amniotic Fluid"/>
+            <column name="french" value="Liquide amniotique"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-amniotic-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'amniotic fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Amniotic Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Amniotic Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Synovial Fluid -->
+    <changeSet id="add-bact-localization-synovial-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Synovial Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Synovial Fluid"/>
+            <column name="french" value="Liquide synovial"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-synovial-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'synovial fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Synovial Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Synovial Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Other Body Fluid -->
+    <changeSet id="add-bact-localization-other-body-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Other Body Fluid' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Other Body Fluid"/>
+            <column name="french" value="Autre liquide biologique"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-other-body-fluid" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'other body fluid'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Other Body Fluid"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Other Body Fluid' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 4. ISOLATES, SWABS, AND TISSUE                           -->
+    <!-- ======================================================== -->
+
+    <!-- Bacterial Isolate -->
+    <changeSet id="add-bact-localization-bacterial-isolate" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Bacterial Isolate' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Bacterial Isolate"/>
+            <column name="french" value="Isolat bacterien"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-bacterial-isolate" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'bacterial isolate'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Bacterial Isolate"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Bacterial Isolate' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Swab -->
+    <changeSet id="add-bact-localization-swab" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Swab' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Swab"/>
+            <column name="french" value="Ecouvillon"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-swab" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'swab'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Swab"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Swab' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Tissue Sample -->
+    <changeSet id="add-bact-localization-tissue-sample" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Tissue Sample' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Tissue Sample"/>
+            <column name="french" value="Echantillon de tissu"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-tissue-sample" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tissue sample'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tissue Sample"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Tissue Sample' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 5. ENVIRONMENTAL SAMPLES                                 -->
+    <!-- ======================================================== -->
+
+    <!-- Wastewater -->
+    <changeSet id="add-bact-localization-wastewater" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Wastewater' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Wastewater"/>
+            <column name="french" value="Eaux usees"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-wastewater" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'wastewater'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Wastewater"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Wastewater' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Tap Water -->
+    <changeSet id="add-bact-localization-tap-water" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Tap Water' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Tap Water"/>
+            <column name="french" value="Eau du robinet"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-tap-water" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'tap water'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Tap Water"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Tap Water' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Farm Water -->
+    <changeSet id="add-bact-localization-farm-water" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Farm Water' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Farm Water"/>
+            <column name="french" value="Eau de ferme"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-farm-water" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'farm water'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Farm Water"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Farm Water' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Soil -->
+    <changeSet id="add-bact-localization-soil" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Soil' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Soil"/>
+            <column name="french" value="Sol"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-soil" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'soil'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Soil"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Soil' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Other Environmental Sample -->
+    <changeSet id="add-bact-localization-other-environmental" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Other Environmental Sample' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Other Environmental Sample"/>
+            <column name="french" value="Autre echantillon environnemental"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-other-environmental" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'other environmental sample'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Other Environmental Sample"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Other Environmental Sample' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 6. FOOD AND BEVERAGE SAMPLES                             -->
+    <!-- ======================================================== -->
+
+    <!-- Vegetables -->
+    <changeSet id="add-bact-localization-vegetables" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Vegetables' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Vegetables"/>
+            <column name="french" value="Legumes"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-vegetables" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'vegetables'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Vegetables"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Vegetables' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Dry Foods -->
+    <changeSet id="add-bact-localization-dry-foods" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Dry Foods' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Dry Foods"/>
+            <column name="french" value="Aliments secs"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-dry-foods" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'dry foods'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Dry Foods"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Dry Foods' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Dairy Products -->
+    <changeSet id="add-bact-localization-dairy-products" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Dairy Products' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Dairy Products"/>
+            <column name="french" value="Produits laitiers"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-dairy-products" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'dairy products'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Dairy Products"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Dairy Products' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Poultry Products -->
+    <changeSet id="add-bact-localization-poultry-products" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Poultry Products' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Poultry Products"/>
+            <column name="french" value="Produits de volaille"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-poultry-products" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'poultry products'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Poultry Products"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Poultry Products' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Canned Foods -->
+    <changeSet id="add-bact-localization-canned-foods" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Canned Foods' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Canned Foods"/>
+            <column name="french" value="Conserves alimentaires"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-canned-foods" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'canned foods'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Canned Foods"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Canned Foods' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Fruits -->
+    <changeSet id="add-bact-localization-fruits" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Fruits' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Fruits"/>
+            <column name="french" value="Fruits"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-fruits" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'fruits'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Fruits"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Fruits' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Packed/Processed Foods -->
+    <changeSet id="add-bact-localization-packed-foods" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Packed/Processed Foods' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Packed/Processed Foods"/>
+            <column name="french" value="Aliments emballes/transformes"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-packed-foods" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'packed/processed foods'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Packed/Processed Foods"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Packed/Processed Foods' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Other Food Sample -->
+    <changeSet id="add-bact-localization-other-food" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Other Food Sample' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Other Food Sample"/>
+            <column name="french" value="Autre echantillon alimentaire"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-other-food" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'other food sample'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Other Food Sample"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Other Food Sample' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 7. VETERINARY SAMPLES                                    -->
+    <!-- ======================================================== -->
+
+    <!-- Animal Stool -->
+    <changeSet id="add-bact-localization-animal-stool" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Animal Stool' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Animal Stool"/>
+            <column name="french" value="Selles animales"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-animal-stool" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'animal stool'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Animal Stool"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Animal Stool' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Animal Tissue -->
+    <changeSet id="add-bact-localization-animal-tissue" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Animal Tissue' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Animal Tissue"/>
+            <column name="french" value="Tissu animal"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-animal-tissue" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'animal tissue'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Animal Tissue"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Animal Tissue' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+    <!-- Other Animal Specimen -->
+    <changeSet id="add-bact-localization-other-animal" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE english = 'Other Animal Specimen' AND description = 'sampleType name'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="localization" schemaName="clinlims">
+            <column name="id" valueSequenceNext="localization_seq"/>
+            <column name="description" value="sampleType name"/>
+            <column name="english" value="Other Animal Specimen"/>
+            <column name="french" value="Autre specimen animal"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="add-bact-sample-type-other-animal" author="openelis-bacteriology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.type_of_sample WHERE LOWER(description) = 'other animal specimen'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="type_of_sample" schemaName="clinlims">
+            <column name="id" valueSequenceNext="type_of_sample_seq"/>
+            <column name="description" value="Other Animal Specimen"/>
+            <column name="domain" value="H"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="is_active" value="Y"/>
+            <column name="name_localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE english = 'Other Animal Specimen' AND description = 'sampleType name')"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

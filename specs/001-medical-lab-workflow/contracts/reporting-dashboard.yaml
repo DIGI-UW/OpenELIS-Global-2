@@ -1,0 +1,628 @@
+# Reporting & Dashboard API Contract
+# Feature: 001-medical-lab-workflow
+# Module: Lab Dashboard, TAT Metrics, and Report Generation
+
+openapi: 3.0.3
+info:
+  title: Reporting & Dashboard API
+  version: 1.0.0
+  description: API endpoints for lab dashboard KPIs, TAT metrics, sample acceptance rates, and report generation
+
+paths:
+  /rest/medlab/dashboard/summary:
+    get:
+      summary: Get dashboard summary
+      operationId: getDashboardSummary
+      tags: [Dashboard]
+      parameters:
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /rest/medlab/dashboard/tat:
+    get:
+      summary: Get turnaround time metrics
+      operationId: getTATMetrics
+      tags: [Dashboard]
+      parameters:
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: testId
+          in: query
+          schema:
+            type: integer
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [STAT, ROUTINE, ALL]
+      responses:
+        "200":
+          description: TAT metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TATMetrics"
+
+  /rest/medlab/dashboard/acceptance-rate:
+    get:
+      summary: Get sample acceptance rate
+      operationId: getAcceptanceRate
+      tags: [Dashboard]
+      parameters:
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: sampleType
+          in: query
+          schema:
+            $ref: "#/components/schemas/SampleType"
+      responses:
+        "200":
+          description: Acceptance rate metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptanceRateMetrics"
+
+  /rest/medlab/dashboard/equipment-utilization:
+    get:
+      summary: Get equipment utilization metrics
+      operationId: getEquipmentUtilization
+      tags: [Dashboard]
+      parameters:
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: analyzerId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Equipment utilization metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipmentUtilizationMetrics"
+
+  /rest/medlab/dashboard/sample-utilization:
+    get:
+      summary: Get sample utilization report
+      operationId: getSampleUtilization
+      tags: [Dashboard]
+      parameters:
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sample utilization metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleUtilizationMetrics"
+
+  /rest/medlab/dashboard/qc-summary:
+    get:
+      summary: Get QC summary metrics
+      operationId: getQCSummary
+      tags: [Dashboard]
+      parameters:
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: department
+          in: query
+          schema:
+            $ref: "#/components/schemas/Department"
+      responses:
+        "200":
+          description: QC summary metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCSummaryMetrics"
+
+  /rest/medlab/report/patient/{patientId}:
+    get:
+      summary: Generate patient result report
+      operationId: generatePatientReport
+      tags: [Reporting]
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, csv, excel]
+            default: pdf
+      responses:
+        "200":
+          description: Patient report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Patient not found
+
+  /rest/medlab/report/sample/{sampleItemId}:
+    get:
+      summary: Generate sample result report
+      operationId: generateSampleReport
+      tags: [Reporting]
+      parameters:
+        - name: sampleItemId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, csv, excel]
+            default: pdf
+      responses:
+        "200":
+          description: Sample report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Sample not found
+
+  /rest/medlab/report/department:
+    get:
+      summary: Generate department activity report
+      operationId: generateDepartmentReport
+      tags: [Reporting]
+      parameters:
+        - name: department
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/Department"
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, csv, excel]
+            default: pdf
+      responses:
+        "200":
+          description: Department report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /rest/medlab/report/accreditation:
+    get:
+      summary: Generate accreditation compliance report
+      operationId: generateAccreditationReport
+      tags: [Reporting]
+      parameters:
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: standard
+          in: query
+          schema:
+            type: string
+            enum: [ISO15189, CAP, CLIA]
+      responses:
+        "200":
+          description: Accreditation report
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+components:
+  schemas:
+    DashboardSummary:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        samplesReceived:
+          type: integer
+        samplesProcessed:
+          type: integer
+        resultsEntered:
+          type: integer
+        resultsValidated:
+          type: integer
+        pendingValidation:
+          type: integer
+        qcRuns:
+          type: integer
+        qcFailures:
+          type: integer
+        avgTATMinutes:
+          type: integer
+        acceptanceRate:
+          type: number
+          format: float
+        byDepartment:
+          type: array
+          items:
+            type: object
+            properties:
+              department:
+                $ref: "#/components/schemas/Department"
+              samplesProcessed:
+                type: integer
+              resultsValidated:
+                type: integer
+              avgTATMinutes:
+                type: integer
+
+    TATMetrics:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            fromDate:
+              type: string
+              format: date
+            toDate:
+              type: string
+              format: date
+        totalSamples:
+          type: integer
+        averageTATMinutes:
+          type: integer
+        medianTATMinutes:
+          type: integer
+        percentile90TATMinutes:
+          type: integer
+        withinTargetPercent:
+          type: number
+          format: float
+        byTestType:
+          type: array
+          items:
+            type: object
+            properties:
+              testName:
+                type: string
+              targetTATMinutes:
+                type: integer
+              avgTATMinutes:
+                type: integer
+              sampleCount:
+                type: integer
+              withinTargetPercent:
+                type: number
+        tatTrend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              avgTATMinutes:
+                type: integer
+              sampleCount:
+                type: integer
+
+    AcceptanceRateMetrics:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            fromDate:
+              type: string
+              format: date
+            toDate:
+              type: string
+              format: date
+        totalReceived:
+          type: integer
+        totalAccepted:
+          type: integer
+        totalRejected:
+          type: integer
+        acceptanceRate:
+          type: number
+          format: float
+        bySampleType:
+          type: array
+          items:
+            type: object
+            properties:
+              sampleType:
+                $ref: "#/components/schemas/SampleType"
+              received:
+                type: integer
+              accepted:
+                type: integer
+              rejected:
+                type: integer
+              acceptanceRate:
+                type: number
+        rejectionReasons:
+          type: array
+          items:
+            type: object
+            properties:
+              reason:
+                type: string
+              count:
+                type: integer
+              percentage:
+                type: number
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              received:
+                type: integer
+              accepted:
+                type: integer
+              acceptanceRate:
+                type: number
+
+    EquipmentUtilizationMetrics:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            fromDate:
+              type: string
+              format: date
+            toDate:
+              type: string
+              format: date
+        byAnalyzer:
+          type: array
+          items:
+            type: object
+            properties:
+              analyzerId:
+                type: integer
+              analyzerName:
+                type: string
+              department:
+                $ref: "#/components/schemas/Department"
+              totalHours:
+                type: number
+              testingHours:
+                type: number
+              calibrationHours:
+                type: number
+              qcHours:
+                type: number
+              maintenanceHours:
+                type: number
+              samplesProcessed:
+                type: integer
+              errorCount:
+                type: integer
+              utilizationPercent:
+                type: number
+
+    SampleUtilizationMetrics:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            fromDate:
+              type: string
+              format: date
+            toDate:
+              type: string
+              format: date
+        totalSamples:
+          type: integer
+        testsPerSample:
+          type: number
+        aliquotsCreated:
+          type: integer
+        samplesDisposed:
+          type: integer
+        samplesBiobanked:
+          type: integer
+        bySampleType:
+          type: array
+          items:
+            type: object
+            properties:
+              sampleType:
+                $ref: "#/components/schemas/SampleType"
+              collected:
+                type: integer
+              tested:
+                type: integer
+              disposed:
+                type: integer
+              stored:
+                type: integer
+
+    QCSummaryMetrics:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            fromDate:
+              type: string
+              format: date
+            toDate:
+              type: string
+              format: date
+        totalQCRuns:
+          type: integer
+        passCount:
+          type: integer
+        failCount:
+          type: integer
+        passRate:
+          type: number
+          format: float
+        westgardViolations:
+          type: array
+          items:
+            type: object
+            properties:
+              rule:
+                type: string
+              count:
+                type: integer
+        byTest:
+          type: array
+          items:
+            type: object
+            properties:
+              testName:
+                type: string
+              qcRuns:
+                type: integer
+              passRate:
+                type: number
+              cvPercent:
+                type: number
+                description: Coefficient of variation
+
+    SampleType:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - stool
+        - urine
+        - microbiology
+        - serology
+
+    Department:
+      type: string
+      enum:
+        - chemistry
+        - hematology
+        - parasitology
+        - urinalysis
+        - serology
+        - microbiology

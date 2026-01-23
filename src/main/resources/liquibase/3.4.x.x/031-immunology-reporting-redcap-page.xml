@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 10: REPORTING & REDCAP INTEGRATION -->
+    <!-- Purpose: Finalize results and integrate with external systems -->
+    <!-- Who uses it: Lab manager, Data manager -->
+    <!-- Data Entered: -->
+    <!--   - Report Generation: Report type, Date range, Samples included -->
+    <!--   - External Integration: REDCap project, Upload confirmation, Validation status -->
+    <!-- System Actions: -->
+    <!--   - Final report generated -->
+    <!--   - Results archived -->
+    <!--   - Full audit trail maintained -->
+    <!-- ======================================================== -->
+    <changeSet id="create-immunology-page-10-reporting-redcap" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Immunology Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Immunology Laboratory' AND n.is_template = true AND np.page_order = 10
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Reporting and REDCap Integration page for Immunology Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Reporting &amp; REDCap Integration"/>
+            <column name="instructions" value="Finalize results and integrate with external systems. Generate final reports (summary, detailed, QC, statistical, or audit trail). Configure REDCap project settings and submit validated data. Archive completed samples with full audit trail. System generates reports, submits to REDCap, archives results, and maintains complete audit trail for regulatory compliance."/>
+            <column name="content" value="Reporting and REDCap Integration - External system integration and final reporting"/>
+            <column name="page_order" value="10"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Immunology Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Immunology Laboratory' AND is_template = true) AND page_order = 10</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for Immunology Reporting & REDCap Integration -->
+    <changeSet id="insert-immunology-reporting-redcap-workflow-template" author="openelis-immunology">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'IMMUNOLOGY' AND display_order = 10
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert Immunology Reporting and REDCap Integration workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="210"/>
+            <column name="name" value="Reporting &amp; REDCap Integration"/>
+            <column name="display_key" value="workflow.page.immunology.reportingRedcap"/>
+            <column name="description" value="Finalize results, generate reports, and integrate with external systems like REDCap"/>
+            <column name="default_instructions" value="Generate final reports (summary, detailed, QC, statistical, audit trail). Configure REDCap project settings and submit validated data. Archive completed samples with full audit trail for regulatory compliance."/>
+            <column name="default_content" value="Reporting and REDCap Integration - External system integration and final reporting"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="10"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="IMMUNOLOGY"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'IMMUNOLOGY' AND display_order = 10</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

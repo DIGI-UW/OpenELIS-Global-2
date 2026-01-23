@@ -1,0 +1,6 @@
+sampleId,sampleTypeId,containerType,customLabel,quantity,unitOfMeasure,collectionSource,collector,collectionDate,collectionTime,orderId,patientId,notes
+SAMP-001,Blood,vacutainer,PT001-DAY0-CBC,2.5,ml,Clinic A,Girma,2024-12-15,14:30,ORD-2024-001,PAT-123,
+SAMP-002,Urine,urine_cup,,1.0,ml,Clinic A,Girma,2024-12-15,15:00,ORD-2024-002,,Anonymous participant sample
+SAMP-003,Stool,stool_jar,STOOL-PARA-001,3.0,g,Field Site B,Anyne,2024-12-16,09:15,,,No linked order - anonymous
+SAMP-004,Blood,cryovial,CRYO-CHEM-042,1.5,ml,Lab Reception,Melat,2024-12-16,10:00,ORD-2024-003,PAT-456,Lipid panel
+SAMP-005,Serum,vacutainer,,2.0,ml,Mobile Unit,Kebede,2024-12-16,11:30,ORD-2024-004,PAT-789,Centrifuged on site

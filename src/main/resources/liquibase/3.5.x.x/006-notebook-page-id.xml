@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- ADD PAGE_ID COLUMN TO NOTEBOOK_PAGE TABLE -->
+    <!-- Stores the registry page identifier for component lookup -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-page-id-to-notebook-page" author="openelis-medlab">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_page" columnName="page_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add page_id column to notebook_page for registry component lookup</comment>
+
+        <addColumn tableName="notebook_page" schemaName="clinlims">
+            <column name="page_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="notebook_page" schemaName="clinlims" columnName="page_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,837 @@
+import React, { useState, useMemo } from "react";
+import {
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+  TableToolbar,
+  TableToolbarContent,
+  TableToolbarSearch,
+  TableContainer,
+  Pagination,
+  Tag,
+  OverflowMenu,
+  OverflowMenuItem,
+  Checkbox,
+  Dropdown,
+} from "@carbon/react";
+import {
+  CheckmarkFilled,
+  InProgress,
+  Pending,
+  Folder,
+  Document,
+} from "@carbon/react/icons";
+import { FormattedMessage, useIntl } from "react-intl";
+import "../workflow/NotebookWorkflow.css";
+
+/**
+ * SampleGrid - Displays samples in a DataTable with selection, filtering, and pagination.
+ *
+ * @param {Object} props
+ * @param {string} props.gridId - Unique identifier for this grid instance (required when multiple grids on same page)
+ * @param {Array} props.samples - Array of sample objects
+ * @param {Array} props.selectedIds - Array of selected sample IDs
+ * @param {function} props.onSelectionChange - Callback when selection changes
+ * @param {function} props.onSampleClick - Callback when a sample row is clicked
+ * @param {function} props.onStatusChange - Callback when sample status changes
+ * @param {boolean} props.showSelection - Whether to show selection checkboxes
+ * @param {string} props.statusFilter - Current status filter (ALL, PENDING, IN_PROGRESS, COMPLETED)
+ * @param {function} props.onStatusFilterChange - Callback when status filter changes
+ * @param {boolean} props.loading - Whether data is loading
+ * @param {boolean} props.showHierarchy - Whether to show hierarchy column
+ * @param {Array} props.additionalColumns - Additional columns to render [{key, header, render}]
+ * @param {Array} props.columns - Custom columns to override default headers [{key, header, render}]. If provided, replaces default columns.
+ */
+function SampleGrid({
+  gridId = "default",
+  samples = [],
+  selectedIds = [],
+  onSelectionChange,
+  onSampleClick,
+  onStatusChange,
+  showSelection = true,
+  statusFilter = "ALL",
+  onStatusFilterChange,
+  loading = false,
+  showHierarchy = false,
+  showPatient = false,
+  additionalColumns = [],
+  columns = null,
+}) {
+  console.log("🔧 SampleGrid VERSION: 2026-01-20-v2", {
+    gridId,
+    selectedIds,
+    onSelectionChange: !!onSelectionChange,
+    showSelection,
+    samplesCount: samples.length,
+  });
+  const intl = useIntl();
+
+  // Pagination state - default page size 10
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Status filter options
+  const statusOptions = [
+    {
+      id: "ALL",
+      text: intl.formatMessage({
+        id: "notebook.sample.filter.all",
+        defaultMessage: "All",
+      }),
+    },
+    {
+      id: "PENDING",
+      text: intl.formatMessage({
+        id: "notebook.sample.filter.pending",
+        defaultMessage: "Pending",
+      }),
+    },
+    {
+      id: "IN_PROGRESS",
+      text: intl.formatMessage({
+        id: "notebook.sample.filter.inProgress",
+        defaultMessage: "In Progress",
+      }),
+    },
+    {
+      id: "COMPLETED",
+      text: intl.formatMessage({
+        id: "notebook.sample.filter.completed",
+        defaultMessage: "Completed",
+      }),
+    },
+    {
+      id: "SKIPPED",
+      text: intl.formatMessage({
+        id: "notebook.sample.filter.skipped",
+        defaultMessage: "Skipped",
+      }),
+    },
+  ];
+
+  // Build hierarchical sort order so children appear after their parents
+  const sortedSamplesWithHierarchy = useMemo(() => {
+    if (!samples || samples.length === 0) return [];
+
+    // Create a map for quick lookup by ID
+    const sampleMap = new Map();
+    samples.forEach((s) => sampleMap.set(String(s.id), s));
+
+    // Build parent-to-children mapping
+    const childrenMap = new Map();
+    samples.forEach((s) => {
+      if (s.parentSampleItemId) {
+        const parentId = String(s.parentSampleItemId);
+        if (!childrenMap.has(parentId)) {
+          childrenMap.set(parentId, []);
+        }
+        childrenMap.get(parentId).push(s);
+      }
+    });
+
+    // Sort children by external ID for consistent ordering
+    childrenMap.forEach((children) => {
+      children.sort((a, b) =>
+        (a.externalId || "").localeCompare(b.externalId || ""),
+      );
+    });
+
+    // Recursively add sample and its descendants
+    const addWithDescendants = (sample, result) => {
+      result.push(sample);
+      const children = childrenMap.get(String(sample.id)) || [];
+      children.forEach((child) => addWithDescendants(child, result));
+    };
+
+    // Start with root samples (no parent) and build the sorted list
+    const result = [];
+    const rootSamples = samples
+      .filter((s) => !s.parentSampleItemId)
+      .sort((a, b) => (a.externalId || "").localeCompare(b.externalId || ""));
+
+    rootSamples.forEach((root) => addWithDescendants(root, result));
+
+    // Add any orphans (samples whose parent isn't in this list)
+    samples.forEach((s) => {
+      if (!result.includes(s)) {
+        result.push(s);
+      }
+    });
+
+    return result;
+  }, [samples]);
+
+  // Filter samples based on search and status
+  const filteredSamples = useMemo(() => {
+    let result = sortedSamplesWithHierarchy;
+
+    // Apply status filter (check both status and pageStatus for compatibility)
+    if (statusFilter && statusFilter !== "ALL") {
+      result = result.filter(
+        (s) => (s.status || s.pageStatus) === statusFilter,
+      );
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (s) =>
+          (s.externalId && s.externalId.toLowerCase().includes(term)) ||
+          (s.accessionNumber &&
+            s.accessionNumber.toLowerCase().includes(term)) ||
+          (s.sampleType && s.sampleType.toLowerCase().includes(term)) ||
+          (s.patientName && s.patientName.toLowerCase().includes(term)) ||
+          (s.firstName && s.firstName.toLowerCase().includes(term)) ||
+          (s.surname && s.surname.toLowerCase().includes(term)) ||
+          (s.sampleCategory && s.sampleCategory.toLowerCase().includes(term)) ||
+          (s.sourceFacility && s.sourceFacility.toLowerCase().includes(term)),
+      );
+    }
+
+    return result;
+  }, [sortedSamplesWithHierarchy, statusFilter, searchTerm]);
+
+  // Paginate
+  const paginatedSamples = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredSamples.slice(start, start + pageSize);
+  }, [filteredSamples, page, pageSize]);
+
+  // Handle pagination change
+  const handlePaginationChange = ({ page: newPage, pageSize: newPageSize }) => {
+    setPage(newPage);
+    setPageSize(newPageSize);
+  };
+
+  // Calculate selection state - must be before handlers that use them
+  const allSelected =
+    filteredSamples.length > 0 && selectedIds.length === filteredSamples.length;
+  const someSelected =
+    selectedIds.length > 0 && selectedIds.length < filteredSamples.length;
+
+  // Handle row selection - toggle based on current state
+  const handleSelectRow = (id) => {
+    console.log("🔵 handleSelectRow called", {
+      id,
+      idType: typeof id,
+      selectedIds,
+      selectedIdsTypes: selectedIds.map((sid) => typeof sid),
+      onSelectionChange: !!onSelectionChange,
+    });
+    if (onSelectionChange) {
+      const isCurrentlySelected = selectedIds.includes(id);
+      if (isCurrentlySelected) {
+        const newSelection = selectedIds.filter((sid) => sid !== id);
+        console.log("🔴 Deselecting, new selection:", newSelection);
+        onSelectionChange(newSelection);
+      } else {
+        const newSelection = [...selectedIds, id];
+        console.log("🟢 Selecting, new selection:", newSelection);
+        onSelectionChange(newSelection);
+      }
+    } else {
+      console.warn("⚠️ onSelectionChange is not provided!");
+    }
+  };
+
+  // Handle select all - toggle all based on current state
+  const handleSelectAll = () => {
+    if (onSelectionChange) {
+      // If all are selected, deselect all; otherwise select all
+      if (allSelected) {
+        onSelectionChange([]);
+      } else {
+        onSelectionChange(filteredSamples.map((s) => String(s.id)));
+      }
+    }
+  };
+
+  // Get status icon
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "COMPLETED":
+        return <CheckmarkFilled size={16} className="status-icon complete" />;
+      case "IN_PROGRESS":
+        return <InProgress size={16} className="status-icon in-progress" />;
+      case "SKIPPED":
+        return (
+          <Tag type="gray" size="sm">
+            Skipped
+          </Tag>
+        );
+      default:
+        return <Pending size={16} className="status-icon pending" />;
+    }
+  };
+
+  // Get status tag
+  const getStatusTag = (status) => {
+    switch (status) {
+      case "COMPLETED":
+        return (
+          <Tag type="green">
+            <FormattedMessage id="notebook.status.completed" />
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue">
+            <FormattedMessage id="notebook.status.inProgress" />
+          </Tag>
+        );
+      case "SKIPPED":
+        return (
+          <Tag type="gray">
+            <FormattedMessage id="notebook.status.skipped" />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray">
+            <FormattedMessage id="notebook.status.pending" />
+          </Tag>
+        );
+    }
+  };
+
+  // Table headers - use custom columns if provided, otherwise use defaults
+  const baseHeaders = columns
+    ? columns
+    : [
+        ...(showHierarchy
+          ? [
+              {
+                key: "hierarchy",
+                header: intl.formatMessage({
+                  id: "notebook.sample.hierarchy",
+                  defaultMessage: "Hierarchy",
+                }),
+              },
+            ]
+          : []),
+        {
+          key: "externalId",
+          header: intl.formatMessage({
+            id: "notebook.sample.externalId",
+            defaultMessage: "External ID",
+          }),
+        },
+        {
+          key: "accessionNumber",
+          header: intl.formatMessage({
+            id: "notebook.sample.accessionNumber",
+            defaultMessage: "Accession #",
+          }),
+        },
+        ...(showPatient
+          ? [
+              {
+                key: "patientName",
+                header: intl.formatMessage({
+                  id: "notebook.sample.patient",
+                  defaultMessage: "Patient",
+                }),
+              },
+            ]
+          : []),
+        {
+          key: "sampleType",
+          header: intl.formatMessage({
+            id: "notebook.sample.type",
+            defaultMessage: "Sample Type",
+          }),
+        },
+        {
+          key: "sampleCategory",
+          header: intl.formatMessage({
+            id: "notebook.sample.category",
+            defaultMessage: "Category",
+          }),
+        },
+        {
+          key: "sourceFacility",
+          header: intl.formatMessage({
+            id: "notebook.sample.sourceFacility",
+            defaultMessage: "Source",
+          }),
+        },
+        {
+          key: "collectionDate",
+          header: intl.formatMessage({
+            id: "notebook.sample.collectionDate",
+            defaultMessage: "Collection Date",
+          }),
+        },
+        {
+          key: "receivedDate",
+          header: intl.formatMessage({
+            id: "notebook.sample.receivedDate",
+            defaultMessage: "Received Date",
+          }),
+        },
+        {
+          key: "status",
+          header: intl.formatMessage({
+            id: "notebook.sample.status",
+            defaultMessage: "Status",
+          }),
+        },
+      ];
+
+  // Add additional column headers (always include additionalColumns)
+  const additionalHeaders = additionalColumns.map((col) => ({
+    key: col.key,
+    header: col.header,
+  }));
+
+  const headers = [
+    ...baseHeaders,
+    ...additionalHeaders,
+    { key: "actions", header: "" },
+  ];
+
+  // Store custom columns for rendering
+  const customColumns = columns || [];
+
+  // Render hierarchy cell with tree indicators
+  const renderHierarchyCell = (sample) => {
+    const nestingLevel = sample.nestingLevel || 0;
+    const nestingIndent = nestingLevel * 16;
+    const hasChildren = sample.hasChildren || sample.childAliquotCount > 0;
+
+    return (
+      <div style={{ display: "flex", alignItems: "center" }}>
+        {nestingLevel > 0 && (
+          <span
+            style={{ marginLeft: `${nestingIndent}px`, marginRight: "4px" }}
+          >
+            {"└─"}
+          </span>
+        )}
+        {hasChildren ? (
+          <Folder size={16} style={{ marginRight: "4px", color: "#0f62fe" }} />
+        ) : (
+          <Document
+            size={16}
+            style={{ marginRight: "4px", color: "#525252" }}
+          />
+        )}
+        {hasChildren && (
+          <span style={{ fontSize: "12px", color: "#525252" }}>
+            ({sample.childAliquotCount || 0})
+          </span>
+        )}
+        {nestingLevel > 0 && sample.parentExternalId && (
+          <span
+            style={{ fontSize: "11px", color: "#8d8d8d", marginLeft: "4px" }}
+          >
+            from {sample.parentExternalId}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  // Format date for display
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "-";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return date.toLocaleDateString();
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Format category for display with tag
+  const getCategoryTag = (category) => {
+    if (!category) return "-";
+    if (category === "Clinical diagnostic" || category === "Clinical") {
+      return (
+        <Tag type="blue" size="sm">
+          Clinical
+        </Tag>
+      );
+    }
+    if (category === "Research") {
+      return (
+        <Tag type="purple" size="sm">
+          Research
+        </Tag>
+      );
+    }
+    return category;
+  };
+
+  // Transform samples to rows
+  const rows = paginatedSamples.map((sample, index) => {
+    // Helper function to safely extract string value from any field
+    const safeString = (value, fallback = "-") => {
+      if (!value) return fallback;
+      if (typeof value === "string") return value;
+      if (typeof value === "number") return String(value);
+      if (typeof value === "object") {
+        return (
+          value.value ||
+          value.name ||
+          value.description ||
+          value.text ||
+          fallback
+        );
+      }
+      return String(value);
+    };
+
+    // Safely extract ID - MUST be a valid ID, never fallback to index
+    let safeId = String(sample.id || sample.sampleItemId || `sample-${index}`);
+
+    // Safely extract all fields
+    const safeSampleType = safeString(
+      sample.sampleType || sample.typeOfSample?.description,
+      "-",
+    );
+
+    return {
+      id: safeId,
+      externalId: safeString(sample.externalId),
+      accessionNumber: safeString(sample.accessionNumber),
+      patientName: safeString(sample.patientName || sample.data?.patientName),
+      sampleType: safeSampleType,
+      sampleCategory: safeString(sample.sampleCategory),
+      sourceFacility: safeString(sample.sourceFacility),
+      collectionDate: safeString(
+        sample.collectionDate || sample.collectionDateTime,
+      ),
+      receivedDate: safeString(sample.receivedDate || sample.receivedDateTime),
+      status: safeString(sample.status, "PENDING"),
+      _original: sample,
+    };
+  });
+
+  return (
+    <div className="sample-grid">
+      <TableContainer>
+        <TableToolbar>
+          <TableToolbarContent>
+            <TableToolbarSearch
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={intl.formatMessage({
+                id: "notebook.sample.search",
+                defaultMessage: "Search samples...",
+              })}
+            />
+            {onStatusFilterChange && (
+              <Dropdown
+                id="status-filter"
+                label={intl.formatMessage({
+                  id: "notebook.sample.filter.label",
+                  defaultMessage: "Status",
+                })}
+                items={statusOptions}
+                itemToString={(item) => (item ? item.text : "")}
+                selectedItem={statusOptions.find((o) => o.id === statusFilter)}
+                onChange={({ selectedItem }) =>
+                  onStatusFilterChange(selectedItem?.id || "ALL")
+                }
+                size="sm"
+              />
+            )}
+          </TableToolbarContent>
+        </TableToolbar>
+
+        <Table size="md">
+          <TableHead>
+            <TableRow>
+              {showSelection && (
+                <TableHeader className="cds--table-column-checkbox">
+                  <Checkbox
+                    id={`select-all-rows-${gridId}`}
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onChange={() => handleSelectAll()}
+                    labelText=""
+                    hideLabel
+                  />
+                </TableHeader>
+              )}
+              {headers.map((header) => (
+                <TableHeader key={header.key}>{header.header}</TableHeader>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={headers.length + (showSelection ? 1 : 0)}>
+                  <FormattedMessage
+                    id="loading.label"
+                    defaultMessage="Loading..."
+                  />
+                </TableCell>
+              </TableRow>
+            ) : rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={headers.length + (showSelection ? 1 : 0)}>
+                  <FormattedMessage
+                    id="notebook.sample.noSamples"
+                    defaultMessage="No samples found"
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  onClick={(e) => {
+                    // Only trigger row click if not clicking on checkbox or overflow menu
+                    if (
+                      !e.target.closest(".cds--checkbox") &&
+                      !e.target.closest(".cds--overflow-menu") &&
+                      !e.target.closest("input[type='checkbox']")
+                    ) {
+                      onSampleClick && onSampleClick(row._original);
+                    }
+                  }}
+                  className={selectedIds.includes(row.id) ? "selected" : ""}
+                >
+                  {showSelection && (
+                    <TableCell
+                      className="cds--table-column-checkbox"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        id={`select-row-${gridId}-${row.id}`}
+                        checked={selectedIds.includes(row.id)}
+                        onChange={() => handleSelectRow(row.id)}
+                        labelText=""
+                        hideLabel
+                      />
+                    </TableCell>
+                  )}
+                  {/* Render custom columns if provided */}
+                  {customColumns.length > 0 ? (
+                    <>
+                      {customColumns.map((col) => {
+                        // Always use render function if provided, otherwise safely extract value
+                        let cellValue;
+                        try {
+                          if (col.render) {
+                            cellValue = col.render(
+                              row._original[col.key],
+                              row._original,
+                            );
+                          } else {
+                            const rawValue =
+                              row._original[col.key] || row[col.key];
+                            // Use safeString helper to ensure we don't render objects
+                            const safeString = (value, fallback = "-") => {
+                              if (!value) return fallback;
+                              if (typeof value === "string") return value;
+                              if (typeof value === "number")
+                                return String(value);
+                              if (typeof value === "object") {
+                                return (
+                                  value.value ||
+                                  value.name ||
+                                  value.description ||
+                                  value.text ||
+                                  fallback
+                                );
+                              }
+                              return String(value);
+                            };
+                            cellValue = safeString(rawValue);
+                          }
+
+                          // Final safety check - if cellValue is still an object, stringify it
+                          if (
+                            cellValue &&
+                            typeof cellValue === "object" &&
+                            !React.isValidElement(cellValue)
+                          ) {
+                            console.error(
+                              "Column render returned an object:",
+                              col.key,
+                              cellValue,
+                            );
+                            cellValue = JSON.stringify(cellValue);
+                          }
+                        } catch (err) {
+                          console.error(
+                            "Error rendering column:",
+                            col.key,
+                            err,
+                          );
+                          cellValue = "-";
+                        }
+                        return <TableCell key={col.key}>{cellValue}</TableCell>;
+                      })}
+                      {/* Also render additional columns when using custom columns */}
+                      {additionalColumns.map((col) => (
+                        <TableCell key={col.key}>
+                          {col.render
+                            ? col.render(row._original[col.key], row._original)
+                            : row._original[col.key] || "-"}
+                        </TableCell>
+                      ))}
+                    </>
+                  ) : (
+                    /* Default column rendering */
+                    <>
+                      {showHierarchy && (
+                        <TableCell>
+                          {renderHierarchyCell(row._original)}
+                        </TableCell>
+                      )}
+                      <TableCell>{row.externalId}</TableCell>
+                      <TableCell>{row.accessionNumber}</TableCell>
+                      {showPatient && <TableCell>{row.patientName}</TableCell>}
+                      <TableCell>{row.sampleType}</TableCell>
+                      <TableCell>
+                        {getCategoryTag(row.sampleCategory)}
+                      </TableCell>
+                      <TableCell>{row.sourceFacility}</TableCell>
+                      <TableCell>{formatDate(row.collectionDate)}</TableCell>
+                      <TableCell>{formatDate(row.receivedDate)}</TableCell>
+                      <TableCell>
+                        {getStatusTag(row.status || row.pageStatus)}
+                      </TableCell>
+                      {additionalColumns.map((col) => {
+                        let cellValue;
+                        try {
+                          if (col.render) {
+                            cellValue = col.render(
+                              row._original[col.key],
+                              row._original,
+                            );
+                          } else {
+                            const rawValue = row._original[col.key];
+                            // Use safeString helper to ensure we don't render objects
+                            const safeString = (value, fallback = "-") => {
+                              if (!value) return fallback;
+                              if (typeof value === "string") return value;
+                              if (typeof value === "number")
+                                return String(value);
+                              if (typeof value === "object") {
+                                return (
+                                  value.value ||
+                                  value.name ||
+                                  value.description ||
+                                  value.text ||
+                                  fallback
+                                );
+                              }
+                              return String(value);
+                            };
+                            cellValue = safeString(rawValue);
+                          }
+
+                          // Final safety check - if cellValue is still an object, stringify it
+                          if (
+                            cellValue &&
+                            typeof cellValue === "object" &&
+                            !React.isValidElement(cellValue)
+                          ) {
+                            console.error(
+                              "Additional column render returned an object:",
+                              col.key,
+                              cellValue,
+                            );
+                            cellValue = JSON.stringify(cellValue);
+                          }
+                        } catch (err) {
+                          console.error(
+                            "Error rendering additional column:",
+                            col.key,
+                            err,
+                          );
+                          cellValue = "-";
+                        }
+                        return <TableCell key={col.key}>{cellValue}</TableCell>;
+                      })}
+                    </>
+                  )}
+                  <TableCell>
+                    <OverflowMenu
+                      flipped
+                      size="sm"
+                      ariaLabel={intl.formatMessage({
+                        id: "notebook.sample.actions",
+                        defaultMessage: "Sample actions",
+                      })}
+                    >
+                      <OverflowMenuItem
+                        itemText={intl.formatMessage({
+                          id: "notebook.sample.action.view",
+                          defaultMessage: "View Details",
+                        })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSampleClick && onSampleClick(row._original);
+                        }}
+                      />
+                      {onStatusChange && row.status !== "COMPLETED" && (
+                        <OverflowMenuItem
+                          itemText={intl.formatMessage({
+                            id: "notebook.sample.action.markComplete",
+                            defaultMessage: "Mark Complete",
+                          })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(row.id, "COMPLETED");
+                          }}
+                        />
+                      )}
+                      {onStatusChange && row.status !== "SKIPPED" && (
+                        <OverflowMenuItem
+                          itemText={intl.formatMessage({
+                            id: "notebook.sample.action.skip",
+                            defaultMessage: "Skip",
+                          })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onStatusChange(row.id, "SKIPPED");
+                          }}
+                        />
+                      )}
+                    </OverflowMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          pageSizes={[10, 25, 50, 100]}
+          totalItems={filteredSamples.length}
+          onChange={handlePaginationChange}
+        />
+      </TableContainer>
+
+      {/* Selection summary */}
+      {showSelection && selectedIds.length > 0 && (
+        <div className="selection-summary">
+          <FormattedMessage
+            id="notebook.sample.selected"
+            defaultMessage="{count} samples selected"
+            values={{ count: selectedIds.length }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default SampleGrid;

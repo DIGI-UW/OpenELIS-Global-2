@@ -1,0 +1,532 @@
+# Quality Control API Contract
+# Feature: 001-medical-lab-workflow
+# Module: QC Results, Westgard Rules, and Levey-Jennings Charts
+
+openapi: 3.0.3
+info:
+  title: Quality Control API
+  version: 1.0.0
+  description: API endpoints for QC results, Westgard rule validation, Levey-Jennings charting, and calibration
+
+paths:
+  /rest/medlab/qc:
+    post:
+      summary: Record QC result
+      operationId: createQCResult
+      tags: [QualityControl]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QCResultForm"
+      responses:
+        "201":
+          description: QC result recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCResultResponse"
+        "400":
+          description: Invalid input
+
+    get:
+      summary: List QC results
+      operationId: listQCResults
+      tags: [QualityControl]
+      parameters:
+        - name: testId
+          in: query
+          schema:
+            type: integer
+        - name: analyzerId
+          in: query
+          schema:
+            type: integer
+        - name: qcLevel
+          in: query
+          schema:
+            type: string
+            enum: [NORMAL, PATHOLOGIC]
+        - name: lotNumber
+          in: query
+          schema:
+            type: string
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: passOnly
+          in: query
+          schema:
+            type: boolean
+        - name: failOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: QC results list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QCResultResponse"
+
+  /rest/medlab/qc/{id}:
+    get:
+      summary: Get QC result details
+      operationId: getQCResult
+      tags: [QualityControl]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: QC result details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCResultResponse"
+        "404":
+          description: QC result not found
+
+    put:
+      summary: Update QC result (corrective action)
+      operationId: updateQCResult
+      tags: [QualityControl]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QCCorrectiveActionForm"
+      responses:
+        "200":
+          description: QC result updated
+        "404":
+          description: QC result not found
+
+  /rest/medlab/qc/levey-jennings/{testId}:
+    get:
+      summary: Get Levey-Jennings chart data
+      operationId: getLeveyJenningsData
+      tags: [QualityControl]
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: qcLevel
+          in: query
+          schema:
+            type: string
+            enum: [NORMAL, PATHOLOGIC]
+        - name: lotNumber
+          in: query
+          schema:
+            type: string
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            minimum: 7
+            maximum: 90
+      responses:
+        "200":
+          description: Levey-Jennings chart data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeveyJenningsData"
+
+  /rest/medlab/qc/westgard/evaluate:
+    post:
+      summary: Evaluate Westgard rules for QC results
+      operationId: evaluateWestgardRules
+      tags: [QualityControl]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [testId, qcLevel]
+              properties:
+                testId:
+                  type: integer
+                qcLevel:
+                  type: string
+                  enum: [NORMAL, PATHOLOGIC]
+                lotNumber:
+                  type: string
+                evaluationDays:
+                  type: integer
+                  default: 30
+      responses:
+        "200":
+          description: Westgard evaluation results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WestgardEvaluation"
+
+  /rest/medlab/qc/lots:
+    get:
+      summary: List QC control lots
+      operationId: listQCLots
+      tags: [QualityControl]
+      parameters:
+        - name: testId
+          in: query
+          schema:
+            type: integer
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: QC lots list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QCLotInfo"
+
+    post:
+      summary: Register new QC control lot
+      operationId: createQCLot
+      tags: [QualityControl]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QCLotForm"
+      responses:
+        "201":
+          description: QC lot registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCLotInfo"
+
+  /rest/medlab/qc/calibration:
+    post:
+      summary: Record calibration
+      operationId: recordCalibration
+      tags: [QualityControl]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalibrationForm"
+      responses:
+        "201":
+          description: Calibration recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QCResultResponse"
+
+components:
+  schemas:
+    QCResultForm:
+      type: object
+      required: [testId, qcLevel, lotNumber, targetValue, sdValue, resultValue, performedBy]
+      properties:
+        testId:
+          type: integer
+        analyzerId:
+          type: integer
+        qcLevel:
+          type: string
+          enum: [NORMAL, PATHOLOGIC]
+        lotNumber:
+          type: string
+          maxLength: 50
+        expiryDate:
+          type: string
+          format: date
+        targetValue:
+          type: number
+          format: double
+        sdValue:
+          type: number
+          format: double
+        acceptableRangeLow:
+          type: number
+          format: double
+        acceptableRangeHigh:
+          type: number
+          format: double
+        resultValue:
+          type: number
+          format: double
+        resultDate:
+          type: string
+          format: date
+        resultTime:
+          type: string
+          format: time
+        performedBy:
+          type: integer
+
+    QCResultResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        testId:
+          type: integer
+        testName:
+          type: string
+        analyzerId:
+          type: integer
+        analyzerName:
+          type: string
+        qcLevel:
+          type: string
+        lotNumber:
+          type: string
+        expiryDate:
+          type: string
+          format: date
+        targetValue:
+          type: number
+        sdValue:
+          type: number
+        acceptableRangeLow:
+          type: number
+        acceptableRangeHigh:
+          type: number
+        resultValue:
+          type: number
+        resultDate:
+          type: string
+          format: date
+        resultTime:
+          type: string
+          format: time
+        performedByName:
+          type: string
+        passFail:
+          type: string
+          enum: [PASS, FAIL]
+        zScore:
+          type: number
+          description: Number of standard deviations from mean
+        westgardRuleViolated:
+          type: string
+          description: "e.g., 1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10x"
+        correctiveAction:
+          type: string
+        actionTakenByName:
+          type: string
+        actionDate:
+          type: string
+          format: date-time
+        isCalibration:
+          type: boolean
+        fhirUuid:
+          type: string
+          format: uuid
+
+    QCCorrectiveActionForm:
+      type: object
+      required: [correctiveAction, actionTakenBy]
+      properties:
+        correctiveAction:
+          type: string
+          maxLength: 255
+        actionTakenBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 500
+
+    LeveyJenningsData:
+      type: object
+      properties:
+        testId:
+          type: integer
+        testName:
+          type: string
+        qcLevel:
+          type: string
+        lotNumber:
+          type: string
+        targetValue:
+          type: number
+        sdValue:
+          type: number
+        sd1High:
+          type: number
+        sd1Low:
+          type: number
+        sd2High:
+          type: number
+        sd2Low:
+          type: number
+        sd3High:
+          type: number
+        sd3Low:
+          type: number
+        dataPoints:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              time:
+                type: string
+                format: time
+              value:
+                type: number
+              zScore:
+                type: number
+              passFail:
+                type: string
+              westgardRule:
+                type: string
+
+    WestgardEvaluation:
+      type: object
+      properties:
+        testId:
+          type: integer
+        testName:
+          type: string
+        qcLevel:
+          type: string
+        lotNumber:
+          type: string
+        evaluationPeriod:
+          type: string
+        totalResults:
+          type: integer
+        passCount:
+          type: integer
+        failCount:
+          type: integer
+        ruleViolations:
+          type: array
+          items:
+            type: object
+            properties:
+              rule:
+                type: string
+                description: "1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10x"
+              ruleDescription:
+                type: string
+              violationCount:
+                type: integer
+              severity:
+                type: string
+                enum: [WARNING, REJECT]
+              lastViolationDate:
+                type: string
+                format: date
+        recommendation:
+          type: string
+          description: "System recommendation based on violations"
+
+    QCLotInfo:
+      type: object
+      properties:
+        lotNumber:
+          type: string
+        testId:
+          type: integer
+        testName:
+          type: string
+        qcLevel:
+          type: string
+        targetValue:
+          type: number
+        sdValue:
+          type: number
+        expiryDate:
+          type: string
+          format: date
+        active:
+          type: boolean
+        openedDate:
+          type: string
+          format: date
+        resultsCount:
+          type: integer
+
+    QCLotForm:
+      type: object
+      required: [lotNumber, testId, qcLevel, targetValue, sdValue, expiryDate]
+      properties:
+        lotNumber:
+          type: string
+          maxLength: 50
+        testId:
+          type: integer
+        qcLevel:
+          type: string
+          enum: [NORMAL, PATHOLOGIC]
+        targetValue:
+          type: number
+          format: double
+        sdValue:
+          type: number
+          format: double
+        expiryDate:
+          type: string
+          format: date
+        manufacturer:
+          type: string
+          maxLength: 100
+        openedDate:
+          type: string
+          format: date
+
+    CalibrationForm:
+      type: object
+      required: [testId, analyzerId, calibratorLot, targetValue, resultValue, performedBy]
+      properties:
+        testId:
+          type: integer
+        analyzerId:
+          type: integer
+        calibratorLot:
+          type: string
+          maxLength: 50
+        targetValue:
+          type: number
+          format: double
+        resultValue:
+          type: number
+          format: double
+        performedBy:
+          type: integer
+        notes:
+          type: string
+          maxLength: 500

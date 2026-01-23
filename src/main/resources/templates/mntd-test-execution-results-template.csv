@@ -1,0 +1,6 @@
+externalId,accessionNumber,testResult,ctValue,concentration,absorbance,runId,kitLot,operator,machineType,runCompleted,runIssues,notes
+Ach 21-FY001-001,MNTD-2024-001,Positive,25.5,150.2,0.450,RUN-001,LOT-2024-A,John Doe,PCR,YES,,Sample processed normally
+MNTD-ALQ-2025-0001,MNTD-2024-002,Negative,35.0,10.5,0.120,RUN-001,LOT-2024-A,John Doe,PCR,YES,,Sample processed normally
+Ach 21-FY001-002,MNTD-2024-003,Indeterminate,32.1,45.8,0.280,RUN-001,LOT-2024-A,John Doe,PCR,YES,Low signal detected,Requires repeat testing
+MNTD-ALQ-2025-0002,MNTD-2024-004,Positive,22.3,220.5,0.680,RUN-001,LOT-2024-A,John Doe,PCR,YES,,High viral load
+Ach 21-FY001-001,2025000081,Negative,38.5,5.2,0.085,RUN-001,LOT-2024-A,John Doe,PCR,YES,,Below detection limit

@@ -55,7 +55,10 @@ type MetricType =
   | "INCOMING_ORDERS"
   | "AVERAGE_TURN_AROUND_TIME"
   | "DELAYED_TURN_AROUND"
-  | "ORDERS_FOR_USER";
+  | "ORDERS_FOR_USER"
+  | "INVENTORY_LOW_STOCK"
+  | "INVENTORY_EXPIRING"
+  | "INVENTORY_EXPIRED";
 
 interface UserSessionDetails {
   userSessionDetails: any;
@@ -81,6 +84,12 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     incomigOrders: 0,
     averageTurnAroudTime: 0,
     delayedTurnAround: 0,
+  });
+
+  const [inventoryAlerts, setInventoryAlerts] = useState({
+    lowStockCount: 0,
+    expiringCount: 0,
+    expiredCount: 0,
   });
 
   const [timeMetrics, setTimeMetrics] = useState({
@@ -117,6 +126,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   useEffect(() => {
     getFromOpenElisServer("/rest/home-dashboard/metrics", loadCount);
+    getFromOpenElisServer(
+      "/rest/inventory/management/alerts",
+      loadInventoryAlerts,
+    );
 
     return () => {
       // This code runs when component is unmounted
@@ -196,6 +209,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     if (componentMounted.current) {
       setCounts(data);
       setLoading(false);
+    }
+  };
+
+  const loadInventoryAlerts = (data) => {
+    if (componentMounted.current) {
+      setInventoryAlerts({
+        lowStockCount: data.lowStockItems?.length || 0,
+        expiringCount: data.expiringLots?.length || 0,
+        expiredCount: data.expiredLots?.length || 0,
+      });
     }
   };
 
@@ -305,6 +328,24 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       type: "DELAYED_TURN_AROUND",
       value: counts.delayedTurnAround,
     },
+    {
+      title: <FormattedMessage id="dashboard.inventory.lowstock.label" />,
+      subTitle: <FormattedMessage id="dashboard.inventory.lowstock.subtitle" />,
+      type: "INVENTORY_LOW_STOCK",
+      value: inventoryAlerts.lowStockCount,
+    },
+    {
+      title: <FormattedMessage id="dashboard.inventory.expiring.label" />,
+      subTitle: <FormattedMessage id="dashboard.inventory.expiring.subtitle" />,
+      type: "INVENTORY_EXPIRING",
+      value: inventoryAlerts.expiringCount,
+    },
+    {
+      title: <FormattedMessage id="dashboard.inventory.expired.label" />,
+      subTitle: <FormattedMessage id="dashboard.inventory.expired.subtitle" />,
+      type: "INVENTORY_EXPIRED",
+      value: inventoryAlerts.expiredCount,
+    },
   ];
 
   const averageTimeTileList: Array<Tile> = [
@@ -360,6 +401,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   };
 
   const handleMaximizeClick = (tile) => {
+    // Handle inventory alert tiles by navigating to inventory dashboard
+    if (
+      tile.type === "INVENTORY_LOW_STOCK" ||
+      tile.type === "INVENTORY_EXPIRING" ||
+      tile.type === "INVENTORY_EXPIRED"
+    ) {
+      window.location.href = "/inventory";
+      return;
+    }
+
     if (
       testSections?.length > 0 ||
       hasRole(userSessionDetails, "Global Administrator")
@@ -502,30 +553,40 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       {notificationVisible === true ? <AlertDialog /> : ""}
       {selectedTile == null ? (
         <div className="home-dashboard-container">
-          {tileList.map((tile, index) => (
-            <ClickableTile
-              key={index}
-              className="dashboard-tile"
-              onClick={() => handleMaximizeClick(tile)}
-            >
-              <h3 className="tile-title">{tile.title}</h3>
-              <p className="tile-subtitle">{tile.subTitle}</p>
-              <p className="tile-value">{tile.value}</p>
+          {tileList.map((tile, index) => {
+            const isInventoryAlert =
+              tile.type === "INVENTORY_LOW_STOCK" ||
+              tile.type === "INVENTORY_EXPIRING" ||
+              tile.type === "INVENTORY_EXPIRED";
+            const tileClassName = isInventoryAlert
+              ? `dashboard-tile inventory-alert-tile ${tile.type === "INVENTORY_EXPIRED" ? "alert-critical" : tile.type === "INVENTORY_EXPIRING" ? "alert-warning" : "alert-info"}`
+              : "dashboard-tile";
 
-              <div className="tile-icon">
-                <div
-                  onClick={() => handleMaximizeClick(tile)}
-                  className="icon-wrapper"
-                >
-                  <Maximize
-                    id="maximizeIcon"
-                    size={20}
-                    className="clickable-icon"
-                  />
+            return (
+              <ClickableTile
+                key={index}
+                className={tileClassName}
+                onClick={() => handleMaximizeClick(tile)}
+              >
+                <h3 className="tile-title">{tile.title}</h3>
+                <p className="tile-subtitle">{tile.subTitle}</p>
+                <p className="tile-value">{tile.value}</p>
+
+                <div className="tile-icon">
+                  <div
+                    onClick={() => handleMaximizeClick(tile)}
+                    className="icon-wrapper"
+                  >
+                    <Maximize
+                      id="maximizeIcon"
+                      size={20}
+                      className="clickable-icon"
+                    />
+                  </div>
                 </div>
-              </div>
-            </ClickableTile>
-          ))}
+              </ClickableTile>
+            );
+          })}
         </div>
       ) : (
         <div className="dashboard-view">

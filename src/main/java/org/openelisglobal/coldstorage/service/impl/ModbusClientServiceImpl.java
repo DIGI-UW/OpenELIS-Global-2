@@ -148,24 +148,32 @@ public class ModbusClientServiceImpl implements ModbusClientService {
     }
 
     private int toStopBits(int stopBits) {
-        return switch (stopBits) {
-        case 2 -> SerialPort.TWO_STOP_BITS;
-        case 3 -> SerialPort.ONE_POINT_FIVE_STOP_BITS;
-        default -> SerialPort.ONE_STOP_BIT;
-        };
+        switch (stopBits) {
+        case 2:
+            return SerialPort.TWO_STOP_BITS;
+        case 3:
+            return SerialPort.ONE_POINT_FIVE_STOP_BITS;
+        default:
+            return SerialPort.ONE_STOP_BIT;
+        }
     }
 
     private int toParity(Freezer.Parity parity) {
         if (parity == null) {
             return SerialPort.NO_PARITY;
         }
-        return switch (parity) {
-        case EVEN -> SerialPort.EVEN_PARITY;
-        case ODD -> SerialPort.ODD_PARITY;
-        case MARK -> SerialPort.MARK_PARITY;
-        case SPACE -> SerialPort.SPACE_PARITY;
-        default -> SerialPort.NO_PARITY;
-        };
+        switch (parity) {
+        case EVEN:
+            return SerialPort.EVEN_PARITY;
+        case ODD:
+            return SerialPort.ODD_PARITY;
+        case MARK:
+            return SerialPort.MARK_PARITY;
+        case SPACE:
+            return SerialPort.SPACE_PARITY;
+        default:
+            return SerialPort.NO_PARITY;
+        }
     }
 
     private int defaultInteger(Integer value, int defaultValue) {

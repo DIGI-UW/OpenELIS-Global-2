@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- PAGE 9: DATA ANALYSIS & EXPORT -->
+    <!-- Purpose: Analyze validated data and prepare final outputs -->
+    <!-- Who uses it: Data manager, PI (Principal Investigator) -->
+    <!-- Data Entered: -->
+    <!--   - Analysis Details: Software used, Analyst name, Analysis date, Notes -->
+    <!--   - Validation Status: VALID, INVALID, INCONCLUSIVE -->
+    <!--   - Export Options: Format (Excel, CSV), Data type (raw, processed) -->
+    <!--   - Delivery: Recipient name, email -->
+    <!-- System Actions: -->
+    <!--   - Flag samples with validation status -->
+    <!--   - Export results to file -->
+    <!--   - Record delivery history -->
+    <!--   - Lock raw data (audit trail) -->
+    <!-- Leads to: Reporting & REDCap Integration Page -->
+    <!-- ======================================================== -->
+    <changeSet id="create-mntd-page-9-data-analysis" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND n.is_template = true AND np.page_order = 9
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Data Analysis and Export page for MNTD Laboratory notebook</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Data Analysis &amp; Export"/>
+            <column name="instructions" value="Analyze validated data and prepare final outputs. Record analysis details (software used, analyst name, analysis date, notes). Flag samples with validation status (VALID, INVALID, INCONCLUSIVE) with reason if not valid. Export results to Excel or CSV format (raw or processed data). Record result delivery to recipients. Lock raw data when analysis is complete to maintain audit trail. Send validated samples to Reporting page when ready."/>
+            <column name="content" value='{
+                "pageDescription": "Data Analysis and Export",
+                "dataPoints": {
+                    "analysisDetails": {
+                        "softwareUsed": {
+                            "type": "text",
+                            "label": "Software Used",
+                            "required": false
+                        },
+                        "analystName": {
+                            "type": "text",
+                            "label": "Analyst Name",
+                            "required": true
+                        },
+                        "analysisDate": {
+                            "type": "date",
+                            "label": "Analysis Date",
+                            "required": true
+                        },
+                        "analysisNotes": {
+                            "type": "text",
+                            "label": "Notes",
+                            "multiline": true,
+                            "required": false
+                        }
+                    },
+                    "validationStatus": {
+                        "status": {
+                            "type": "choice",
+                            "label": "Validation Status",
+                            "options": ["VALID", "INVALID", "INCONCLUSIVE"],
+                            "required": true
+                        },
+                        "reason": {
+                            "type": "text",
+                            "label": "Reason",
+                            "conditionalOn": "status != VALID",
+                            "required": false
+                        }
+                    },
+                    "exportOptions": {
+                        "exportFormat": {
+                            "type": "choice",
+                            "label": "Export Format",
+                            "options": ["Excel (XLSX)", "CSV"],
+                            "required": false
+                        },
+                        "dataType": {
+                            "type": "choice",
+                            "label": "Data Type",
+                            "options": ["Raw", "Processed"],
+                            "required": false
+                        }
+                    },
+                    "delivery": {
+                        "recipientName": {
+                            "type": "text",
+                            "label": "Recipient Name",
+                            "required": false
+                        },
+                        "recipientEmail": {
+                            "type": "text",
+                            "label": "Recipient Email",
+                            "required": false
+                        }
+                    }
+                },
+                "systemActions": [
+                    "Flag samples with validation status",
+                    "Export results to file",
+                    "Record delivery history",
+                    "Lock raw data (audit trail)",
+                    "Send validated samples to Reporting page"
+                ],
+                "bulkOperations": {
+                    "enabled": true,
+                    "applyToSelected": ["validationStatus", "analysisDetails"]
+                },
+                "nextPage": "Reporting and REDCap Integration"
+            }'/>
+            <column name="page_order" value="9"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Malaria and Neglected Tropical Disease (MNTD) Laboratory' AND is_template = true) AND page_order = 9</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Add workflow page template for MNTD Data Analysis & Export -->
+    <changeSet id="insert-mntd-data-analysis-workflow-template" author="openelis-mntd">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="workflow_page_template" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.workflow_page_template WHERE workflow_category = 'MNTD' AND display_order = 9
+            </sqlCheck>
+        </preConditions>
+        <comment>Insert MNTD Data Analysis and Export workflow page template</comment>
+
+        <insert tableName="workflow_page_template" schemaName="clinlims">
+            <column name="id" value="109"/>
+            <column name="name" value="Data Analysis &amp; Export"/>
+            <column name="display_key" value="workflow.page.mntd.dataAnalysis"/>
+            <column name="description" value="Analyze validated data, flag samples, export results, and prepare for reporting"/>
+            <column name="default_instructions" value="Record analysis details (software, analyst, date). Flag samples as VALID, INVALID, or INCONCLUSIVE. Export results to Excel or CSV. Record delivery to recipients. Lock raw data when complete."/>
+            <column name="default_content" value="Data Analysis and Export - Validation, export, and delivery"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="display_order" value="9"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="workflow_category" value="MNTD"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="workflow_page_template" schemaName="clinlims">
+                <where>workflow_category = 'MNTD' AND display_order = 9</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- NOTEBOOK ACCESS CONTROL FEATURE -->
+    <!-- Implements location-based access control for notebooks -->
+    <!-- - Templates can be assigned to multiple organizations -->
+    <!-- - Templates define which roles can create/edit entries -->
+    <!-- - Entries are tied to a primary organization (immutable) -->
+    <!-- - Entries inherit accessible organizations from template -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- 1. NOTEBOOK_ORGANIZATIONS junction table -->
+    <!-- Links notebook templates to organizations that can use them -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-organizations-table" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ORGANIZATIONS junction table for template-organization relationships.</comment>
+        <createTable tableName="notebook_organizations">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="organization_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey
+            tableName="notebook_organizations"
+            columnNames="notebook_id, organization_id"
+            constraintName="pk_notebook_organizations"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_organizations"
+            baseColumnNames="notebook_id"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            constraintName="fk_norg_notebook"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_organizations"
+            baseColumnNames="organization_id"
+            referencedTableName="organization"
+            referencedColumnNames="id"
+            constraintName="fk_norg_organization"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Index for querying notebooks by organization -->
+    <changeSet id="add-notebook-organizations-indexes" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for notebook_organizations table.</comment>
+        <createIndex tableName="notebook_organizations" indexName="idx_norg_notebook">
+            <column name="notebook_id"/>
+        </createIndex>
+        <createIndex tableName="notebook_organizations" indexName="idx_norg_organization">
+            <column name="organization_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 2. NOTEBOOK_ALLOWED_ROLES table -->
+    <!-- Defines which roles can create/edit entries for a template -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-allowed-roles-table" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_allowed_roles" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ALLOWED_ROLES table for template role restrictions.</comment>
+        <createTable tableName="notebook_allowed_roles">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey
+            tableName="notebook_allowed_roles"
+            columnNames="notebook_id, role"
+            constraintName="pk_notebook_allowed_roles"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_allowed_roles"
+            baseColumnNames="notebook_id"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            constraintName="fk_nar_notebook"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Index for querying roles by notebook -->
+    <changeSet id="add-notebook-allowed-roles-index" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_allowed_roles" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating index for notebook_allowed_roles table.</comment>
+        <createIndex tableName="notebook_allowed_roles" indexName="idx_nar_notebook">
+            <column name="notebook_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 3. Add organization_id to NOTEBOOK_ENTRY table -->
+    <!-- Primary organization for the entry (immutable after creation) -->
+    <!-- ======================================================== -->
+    <changeSet id="add-organization-to-notebook-entry" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="notebook_entry" columnName="organization_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Adding organization_id column to notebook_entry for primary location.</comment>
+        <addColumn tableName="notebook_entry">
+            <column name="organization_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry"
+            baseColumnNames="organization_id"
+            referencedTableName="organization"
+            referencedColumnNames="id"
+            constraintName="fk_ne_organization"/>
+    </changeSet>
+
+    <!-- Index for querying entries by organization -->
+    <changeSet id="add-notebook-entry-organization-index" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry" schemaName="clinlims"/>
+            <columnExists tableName="notebook_entry" columnName="organization_id" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating index for notebook_entry organization_id.</comment>
+        <createIndex tableName="notebook_entry" indexName="idx_ne_organization">
+            <column name="organization_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 4. NOTEBOOK_ENTRY_ORGANIZATIONS junction table -->
+    <!-- Organizations with access to an entry (inherited from template) -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-entry-organizations-table" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_entry_organizations" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_ENTRY_ORGANIZATIONS junction table for entry access control.</comment>
+        <createTable tableName="notebook_entry_organizations">
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="organization_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey
+            tableName="notebook_entry_organizations"
+            columnNames="notebook_entry_id, organization_id"
+            constraintName="pk_notebook_entry_organizations"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry_organizations"
+            baseColumnNames="notebook_entry_id"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"
+            constraintName="fk_neorg_notebook_entry"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_entry_organizations"
+            baseColumnNames="organization_id"
+            referencedTableName="organization"
+            referencedColumnNames="id"
+            constraintName="fk_neorg_organization"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Indexes for entry organizations -->
+    <changeSet id="add-notebook-entry-organizations-indexes" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_entry_organizations" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for notebook_entry_organizations table.</comment>
+        <createIndex tableName="notebook_entry_organizations" indexName="idx_neorg_entry">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+        <createIndex tableName="notebook_entry_organizations" indexName="idx_neorg_organization">
+            <column name="organization_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 5. NOTEBOOK_DEPARTMENTS junction table -->
+    <!-- Links notebook templates to departments (test sections) that can use them -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-departments-table" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_departments" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_DEPARTMENTS junction table for template-department relationships.</comment>
+        <createTable tableName="notebook_departments">
+            <column name="notebook_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_section_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey
+            tableName="notebook_departments"
+            columnNames="notebook_id, test_section_id"
+            constraintName="pk_notebook_departments"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_departments"
+            baseColumnNames="notebook_id"
+            referencedTableName="notebook"
+            referencedColumnNames="id"
+            constraintName="fk_ndept_notebook"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_departments"
+            baseColumnNames="test_section_id"
+            referencedTableName="test_section"
+            referencedColumnNames="id"
+            constraintName="fk_ndept_test_section"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Index for querying notebooks by department -->
+    <changeSet id="add-notebook-departments-indexes" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_departments" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating indexes for notebook_departments table.</comment>
+        <createIndex tableName="notebook_departments" indexName="idx_ndept_notebook">
+            <column name="notebook_id"/>
+        </createIndex>
+        <createIndex tableName="notebook_departments" indexName="idx_ndept_test_section">
+            <column name="test_section_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 6. Backfill existing templates with all active organizations -->
+    <!-- This ensures existing templates remain accessible to all users -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-notebook-organizations" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Backfill existing notebook templates with all active organizations for backward compatibility.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 7. Ensure MNTD notebook template has all active organizations -->
+    <!-- Handles case where MNTD template was added after initial backfill -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-mntd-notebook-organizations" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure MNTD Laboratory notebook has all active organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.title = 'MNTD Laboratory'
+              AND n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 8. Ensure Immunology notebook template has all active organizations -->
+    <!-- Handles case where Immunology template was added after initial backfill -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-immunology-notebook-organizations" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Ensure Immunology Laboratory notebook has all active organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.title = 'Immunology Laboratory'
+              AND n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 9. FINAL CATCH-ALL: Backfill ALL remaining templates organizations -->
+    <!-- This ensures ANY notebook template gets organizations assigned -->
+    <!-- ======================================================== -->
+    <changeSet id="backfill-all-notebook-organizations-final" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_organizations" schemaName="clinlims"/>
+            <tableExists tableName="notebook" schemaName="clinlims"/>
+            <tableExists tableName="organization" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Final catch-all: Ensure ALL notebook templates have organizations assigned.</comment>
+        <sql>
+            INSERT INTO clinlims.notebook_organizations (notebook_id, organization_id)
+            SELECT n.id, o.id
+            FROM clinlims.notebook n
+            CROSS JOIN clinlims.organization o
+            WHERE n.is_template = true
+              AND o.is_active = 'Y'
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.notebook_organizations no
+                  WHERE no.notebook_id = n.id AND no.organization_id = o.id
+              );
+        </sql>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- 10. NOTEBOOK_PAGE_ALLOWED_ROLES table -->
+    <!-- Defines which roles can view/edit specific pages within a notebook -->
+    <!-- Enables page-level access control for workflow steps -->
+    <!-- ======================================================== -->
+    <changeSet id="create-notebook-page-allowed-roles-table" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Creating NOTEBOOK_PAGE_ALLOWED_ROLES table for page-level role restrictions.</comment>
+        <createTable tableName="notebook_page_allowed_roles">
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey
+            tableName="notebook_page_allowed_roles"
+            columnNames="notebook_page_id, role"
+            constraintName="pk_notebook_page_allowed_roles"/>
+        <addForeignKeyConstraint
+            baseTableName="notebook_page_allowed_roles"
+            baseColumnNames="notebook_page_id"
+            referencedTableName="notebook_page"
+            referencedColumnNames="id"
+            constraintName="fk_npar_notebook_page"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Index for querying roles by notebook page -->
+    <changeSet id="add-notebook-page-allowed-roles-index" author="openelis-access-control">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="notebook_page_allowed_roles" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Creating index for notebook_page_allowed_roles table.</comment>
+        <createIndex tableName="notebook_page_allowed_roles" indexName="idx_npar_notebook_page">
+            <column name="notebook_page_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

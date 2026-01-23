@@ -1,0 +1,298 @@
+# Transport Packaging API Contract
+# Feature: 001-medical-lab-workflow
+# Module: IATA PI650 Transport Packaging Validation
+
+openapi: 3.0.3
+info:
+  title: Transport Packaging API
+  version: 1.0.0
+  description: API endpoints for IATA PI650 compliant transport packaging validation
+
+paths:
+  /rest/medlab/transport:
+    post:
+      summary: Record transport packaging validation
+      operationId: createTransportPackaging
+      tags: [TransportPackaging]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportPackagingForm"
+      responses:
+        "201":
+          description: Transport packaging recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportPackagingResponse"
+        "400":
+          description: Invalid input or non-compliant packaging
+
+    get:
+      summary: List transport shipments
+      operationId: listShipments
+      tags: [TransportPackaging]
+      parameters:
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: compliant
+          in: query
+          schema:
+            type: boolean
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [on_time, delayed]
+      responses:
+        "200":
+          description: Shipment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransportPackagingResponse"
+
+  /rest/medlab/transport/{id}:
+    get:
+      summary: Get transport packaging details
+      operationId: getTransportPackaging
+      tags: [TransportPackaging]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transport packaging details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportPackagingResponse"
+        "404":
+          description: Shipment not found
+
+    put:
+      summary: Update transport packaging
+      operationId: updateTransportPackaging
+      tags: [TransportPackaging]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportPackagingForm"
+      responses:
+        "200":
+          description: Transport packaging updated
+        "404":
+          description: Shipment not found
+
+  /rest/medlab/transport/{id}/samples:
+    get:
+      summary: Get samples in shipment
+      operationId: getShipmentSamples
+      tags: [TransportPackaging]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Samples in shipment
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShipmentSample"
+
+components:
+  schemas:
+    TransportPackagingForm:
+      type: object
+      required:
+        - shipmentId
+        - primaryContainerType
+        - primarySealStatus
+        - primaryBarcodePresent
+        - primaryAbsorbentPresent
+        - secondaryPackagingType
+        - secondaryIntegrity
+        - secondaryWatertight
+        - secondaryContainerCount
+        - secondaryInspectorId
+        - secondaryReceiptCondition
+        - tertiaryBoxType
+        - tertiaryLabelingStatus
+        - tertiaryArrivalCondition
+      properties:
+        shipmentId:
+          type: string
+          maxLength: 50
+        sampleItemIds:
+          type: array
+          items:
+            type: integer
+        # Primary packaging (specimen container)
+        primaryContainerType:
+          type: string
+          enum: [vacutainer, cryovial, urine_cup, stool_container, swab, other]
+        primarySealStatus:
+          type: string
+          enum: [intact, leaking, damaged]
+        primaryBarcodePresent:
+          type: boolean
+        primaryAbsorbentPresent:
+          type: boolean
+        # Secondary packaging
+        secondaryPackagingType:
+          type: string
+          enum: [biohazard_bag, canister, pouch, other]
+        secondaryIntegrity:
+          type: string
+          enum: [intact, torn, wet, leaking]
+        secondaryWatertight:
+          type: boolean
+        secondaryContainerCount:
+          type: integer
+          minimum: 1
+        secondaryInspectorId:
+          type: integer
+        secondaryReceiptCondition:
+          type: string
+          enum: [acceptable, rejected]
+        # Tertiary packaging (outer)
+        tertiaryBoxType:
+          type: string
+          enum: [insulated_shipper, rigid_box, cooler, other]
+        tertiaryLabelingStatus:
+          type: string
+          maxLength: 100
+          description: Comma-separated labels (biohazard, arrows, sender_receiver)
+        tertiaryTempLoggerId:
+          type: string
+          maxLength: 50
+        tertiaryCourierCompany:
+          type: string
+          maxLength: 100
+        tertiaryTrackingNumber:
+          type: string
+          maxLength: 50
+        tertiaryArrivalCondition:
+          type: string
+          enum: [intact, damaged]
+        # Transport details
+        collectionTemperature:
+          type: string
+          enum: [room_temp, frozen, na]
+        transportationStatus:
+          type: string
+          enum: [on_time, delayed]
+        receivedDate:
+          type: string
+          format: date-time
+
+    TransportPackagingResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        shipmentId:
+          type: string
+        receivedDate:
+          type: string
+          format: date-time
+        # Primary
+        primaryContainerType:
+          type: string
+        primarySealStatus:
+          type: string
+        primaryBarcodePresent:
+          type: boolean
+        primaryAbsorbentPresent:
+          type: boolean
+        primaryCompliant:
+          type: boolean
+        # Secondary
+        secondaryPackagingType:
+          type: string
+        secondaryIntegrity:
+          type: string
+        secondaryWatertight:
+          type: boolean
+        secondaryContainerCount:
+          type: integer
+        secondaryInspectorName:
+          type: string
+        secondaryInspectionTime:
+          type: string
+          format: date-time
+        secondaryReceiptCondition:
+          type: string
+        secondaryCompliant:
+          type: boolean
+        # Tertiary
+        tertiaryBoxType:
+          type: string
+        tertiaryLabelingStatus:
+          type: string
+        tertiaryTempLoggerId:
+          type: string
+        tertiaryCourierCompany:
+          type: string
+        tertiaryTrackingNumber:
+          type: string
+        tertiaryArrivalCondition:
+          type: string
+        tertiaryCompliant:
+          type: boolean
+        # Overall
+        iataPI650Compliant:
+          type: boolean
+        transportationStatus:
+          type: string
+        sampleCount:
+          type: integer
+        fhirUuid:
+          type: string
+          format: uuid
+
+    ShipmentSample:
+      type: object
+      properties:
+        sampleItemId:
+          type: integer
+        barcode:
+          type: string
+        patientName:
+          type: string
+        sampleType:
+          type: string
+        collectionTime:
+          type: string
+          format: date-time
+        qcStatus:
+          type: string
+          enum: [pending, ACCEPTED, REJECTED]

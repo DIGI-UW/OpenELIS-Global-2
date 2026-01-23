@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- ======================================================== -->
+    <!-- UPDATE VIROLOGY NOTEBOOK: REMOVE PAGES 2 & 3             -->
+    <!-- AND ADD NEW MEDIA PREPARATION PAGE                       -->
+    <!-- ======================================================== -->
+
+    <!-- ======================================================== -->
+    <!-- ADD NEW PAGE 2: MEDIA PREPARATION & QUALITY CONTROL      -->
+    <!-- Similar to Bacteriology Processing & QC Page              -->
+    <!-- ======================================================== -->
+    <changeSet id="create-virology-page-2-media-preparation" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.notebook_page np
+                JOIN clinlims.notebook n ON np.notebook_id = n.id
+                WHERE n.title = 'Virology and Vaccine Unit' AND n.is_template = true
+                AND np.page_order = 2
+                AND np.title = 'Media Preparation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create new Media Preparation and Quality Control page for Virology notebook (Page 2)</comment>
+
+        <insert tableName="notebook_page" schemaName="clinlims">
+            <column name="id" valueSequenceNext="notebook_page_seq"/>
+            <column name="title" value="Media Preparation"/>
+            <column name="instructions" value="Media Preparation - Notebook Page Requirements: Ensure full traceability of materials and equipment selected. Page Must Capture: 1) Media name and type (controlled vocabulary) - Select from predefined media types (DMEM, RPMI-1640, MEM, etc.). 2) Reagents used (each as a line item) with reagent metadata: Supplier, Lot number, Expiration date. 3) Equipment used (select from registered equipment list). System Requirements: Mandatory fields for lot number and expiry, Automatic expiry validation (warning if expired), Ability to attach supporting documents (COA, spec sheet), Time-stamped user signature. Outputs: Material usage log, Media preparation record ID (linked forward)."/>
+            <column name="content" value="Media Preparation and Quality Control - Comprehensive tracking of materials, reagents, and equipment used in media preparation with full LMIS traceability. Captures media type, reagent details (supplier, lot, expiry), equipment used, quality control parameters (pH, osmolality, sterility), and supporting documentation."/>
+            <column name="page_order" value="2"/>
+            <column name="completed" valueBoolean="false"/>
+            <column name="page_type" value="BULK_DATA_ENTRY"/>
+            <column name="notebook_id" valueComputed="(SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)"/>
+            <column name="last_updated" valueComputed="${now}"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="notebook_page" schemaName="clinlims">
+                <where>
+                    notebook_id = (SELECT id FROM clinlims.notebook WHERE title = 'Virology and Vaccine Unit' AND is_template = true)
+                    AND page_order = 2
+                    AND title = 'Media Preparation'
+                </where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION TRACKING TABLE                  -->
+    <!-- Stores media preparation records with full traceability  -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation"/>
+            </not>
+        </preConditions>
+        <comment>Create table to store virology media preparation records</comment>
+
+        <createTable tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_media_prep_notebook_entry"
+                             references="clinlims.notebook_entry(id)"/>
+            </column>
+            <column name="notebook_page_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_media_prep_notebook_page"
+                             references="clinlims.notebook_page(id)"/>
+            </column>
+            <column name="media_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media_name" type="VARCHAR(255)"/>
+            <column name="batch_id" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="preparation_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration_date" type="DATE"/>
+            <column name="volume" type="NUMERIC(10,2)"/>
+            <column name="volume_unit" type="VARCHAR(10)"/>
+            <column name="ph" type="NUMERIC(4,2)"/>
+            <column name="osmolality" type="NUMERIC(10,2)"/>
+            <column name="sterility_test" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints checkConstraint="sterility_test IN ('PENDING', 'PASS', 'FAIL')"/>
+            </column>
+            <column name="notes" type="TEXT"/>
+            <column name="prepared_by" type="VARCHAR(255)"/>
+            <column name="preparation_timestamp" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <createSequence sequenceName="virology_media_preparation_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <rollback>
+            <dropTable tableName="virology_media_preparation" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION REAGENTS TABLE                  -->
+    <!-- Stores reagent line items for each media preparation     -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-reagents-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_reagent"/>
+            </not>
+        </preConditions>
+        <comment>Create table to store reagents used in media preparation</comment>
+
+        <createTable tableName="virology_media_preparation_reagent" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_reagent_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="reagent_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reagent_category" type="VARCHAR(50)"/>
+            <column name="supplier" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="catalog_number" type="VARCHAR(100)"/>
+            <column name="lot_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="concentration" type="VARCHAR(100)"/>
+            <column name="volume" type="NUMERIC(10,2)"/>
+            <column name="volume_unit" type="VARCHAR(10)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <createSequence sequenceName="virology_media_preparation_reagent_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <rollback>
+            <dropTable tableName="virology_media_preparation_reagent" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_reagent_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION EQUIPMENT TABLE                 -->
+    <!-- Links equipment used in media preparation                -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-equipment-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_equipment"/>
+            </not>
+        </preConditions>
+        <comment>Create table to link equipment used in media preparation</comment>
+
+        <createTable tableName="virology_media_preparation_equipment" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_equipment_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="equipment_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="usage_notes" type="TEXT"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <createSequence sequenceName="virology_media_preparation_equipment_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <!-- Add unique constraint to prevent duplicate equipment entries -->
+        <addUniqueConstraint
+            schemaName="clinlims"
+            tableName="virology_media_preparation_equipment"
+            columnNames="media_preparation_id,equipment_id"
+            constraintName="uk_media_prep_equipment"/>
+
+        <rollback>
+            <dropTable tableName="virology_media_preparation_equipment" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_equipment_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION DOCUMENTS TABLE                 -->
+    <!-- Stores attached documents (COA, spec sheets, etc.)       -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-documents-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_document"/>
+            </not>
+        </preConditions>
+        <comment>Create table to store supporting documents for media preparation</comment>
+
+        <createTable tableName="virology_media_preparation_document" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_document_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="document_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="document_type" type="VARCHAR(50)">
+                <constraints checkConstraint="document_type IN ('COA', 'SPEC_SHEET', 'SOP', 'OTHER')"/>
+            </column>
+            <column name="file_path" type="VARCHAR(500)"/>
+            <column name="file_size" type="BIGINT"/>
+            <column name="mime_type" type="VARCHAR(100)"/>
+            <column name="uploaded_by" type="VARCHAR(255)"/>
+            <column name="upload_timestamp" type="TIMESTAMP" defaultValueComputed="${now}"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <createSequence sequenceName="virology_media_preparation_document_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <rollback>
+            <dropTable tableName="virology_media_preparation_document" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_document_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- CREATE MEDIA PREPARATION SAMPLE LINK TABLE               -->
+    <!-- Links samples to media preparation records               -->
+    <!-- ======================================================== -->
+    <changeSet id="create-media-preparation-sample-link-table" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="virology_media_preparation_sample"/>
+            </not>
+        </preConditions>
+        <comment>Create table to link samples to media preparation records</comment>
+
+        <createTable tableName="virology_media_preparation_sample" schemaName="clinlims">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="media_preparation_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_sample_media_prep"
+                             references="clinlims.virology_media_preparation(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="sample_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="fk_media_prep_sample"
+                             references="clinlims.sample(id)"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="${now}"/>
+        </createTable>
+
+        <createSequence sequenceName="virology_media_preparation_sample_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <!-- Add unique constraint to prevent duplicate sample links -->
+        <addUniqueConstraint
+            schemaName="clinlims"
+            tableName="virology_media_preparation_sample"
+            columnNames="media_preparation_id,sample_id"
+            constraintName="uk_media_prep_sample"/>
+
+        <rollback>
+            <dropTable tableName="virology_media_preparation_sample" schemaName="clinlims"/>
+            <dropSequence sequenceName="virology_media_preparation_sample_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+    <!-- ======================================================== -->
+    <!-- ADD STERILIZATION FIELDS TO MEDIA PREPARATION TABLE      -->
+    <!-- Captures sterilization method, parameters, and compliance-->
+    <!-- ======================================================== -->
+    <changeSet id="add-sterilization-fields-to-media-preparation" author="openelis-virology">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="virology_media_preparation" columnName="sterilization_method"/>
+            </not>
+        </preConditions>
+        <comment>Add sterilization tracking fields to media preparation table for compliance and QC</comment>
+
+        <!-- Sterilization method and equipment -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_method" type="VARCHAR(50)">
+                <constraints checkConstraint="sterilization_method IN ('STEAM_AUTOCLAVE', 'DRY_HEAT', 'FILTER_022', 'FILTER_010', 'GAMMA_RADIATION', 'UV_STERILIZATION', 'OTHER')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_equipment_id" type="INTEGER"/>
+        </addColumn>
+
+        <!-- Sterilization parameters -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_temperature" type="NUMERIC(6,2)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_temperature_unit" type="VARCHAR(10)" defaultValue="°C"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_time" type="NUMERIC(10,2)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_time_unit" type="VARCHAR(20)" defaultValue="minutes"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_pressure" type="NUMERIC(6,2)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_pressure_unit" type="VARCHAR(10)" defaultValue="PSI"/>
+        </addColumn>
+
+        <!-- Sterilization metadata -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_date" type="DATE"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_operator" type="VARCHAR(255)"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="biological_indicator" type="VARCHAR(50)">
+                <constraints checkConstraint="biological_indicator IN ('GEOBACILLUS', 'BACILLUS_ATROPHAEUS', 'NONE')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="bi_test_result" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints checkConstraint="bi_test_result IN ('PENDING', 'PASS', 'FAIL')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_notes" type="TEXT"/>
+        </addColumn>
+
+        <!-- Compliance flags -->
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="sterilization_pass_fail_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints checkConstraint="sterilization_pass_fail_status IN ('PENDING', 'PASS', 'FAIL')"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="out_of_range_flag" type="BOOLEAN" defaultValueBoolean="false"/>
+        </addColumn>
+
+        <addColumn tableName="virology_media_preparation" schemaName="clinlims">
+            <column name="out_of_range_reason" type="TEXT"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_method"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_equipment_id"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_temperature"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_temperature_unit"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_time"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_time_unit"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_pressure"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_pressure_unit"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_date"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_operator"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="biological_indicator"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="bi_test_result"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_notes"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="sterilization_pass_fail_status"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="out_of_range_flag"/>
+            <dropColumn tableName="virology_media_preparation" schemaName="clinlims" columnName="out_of_range_reason"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

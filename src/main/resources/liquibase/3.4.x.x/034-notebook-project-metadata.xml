@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add project metadata fields to notebook table -->
+    <!-- These fields are inherited by child instances from parent templates -->
+
+    <changeSet id="1" author="openelis">
+        <comment>Add principal investigator field to notebook</comment>
+        <addColumn tableName="notebook">
+            <column name="principal_investigator" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="2" author="openelis">
+        <comment>Add funding source field to notebook</comment>
+        <addColumn tableName="notebook">
+            <column name="funding_source" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="3" author="openelis">
+        <comment>Add budget field to notebook (currency precision)</comment>
+        <addColumn tableName="notebook">
+            <column name="budget" type="NUMERIC(15,2)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="4" author="openelis">
+        <comment>Add project timeline field to notebook</comment>
+        <addColumn tableName="notebook">
+            <column name="project_timeline" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
