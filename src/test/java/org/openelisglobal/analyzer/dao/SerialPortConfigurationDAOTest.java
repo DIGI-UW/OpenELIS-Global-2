@@ -5,18 +5,21 @@ import static org.junit.Assert.*;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.valueholder.FlowControl;
 import org.openelisglobal.analyzer.valueholder.Parity;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.StopBits;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * DAO tests for SerialPortConfigurationDAO
- * Task Reference: T024, M2
+ * DAO tests for SerialPortConfigurationDAO Task Reference: T024, M2
  * 
  * Tests persistence layer with real HQL query execution.
+ * 
+ * NOTE: These tests require analyzer records with IDs 1, 2, 3 to exist in the
+ * test database (via DBUnit fixtures or test setup). The foreign key constraint
+ * requires valid analyzer_id references.
  */
 public class SerialPortConfigurationDAOTest extends BaseWebContextSensitiveTest {
 

@@ -14,10 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service implementation for SerialPortConfiguration operations
- * Task Reference: T031, M2
+ * Service implementation for SerialPortConfiguration operations Task Reference:
+ * T031, M2
  * 
- * Manages serial port configurations and connection lifecycle using jSerialComm library.
+ * Manages serial port configurations and connection lifecycle using jSerialComm
+ * library.
  */
 @Service
 @Transactional
@@ -62,7 +63,7 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
     public boolean openConnection(String configId) {
         try {
             SerialPortConfiguration config = get(configId);
-            
+
             if (!config.getActive()) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "openConnection",
                         "Cannot open connection for inactive configuration: " + configId);
@@ -95,59 +96,60 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
             // Configure port parameters
             serialPort.setBaudRate(config.getBaudRate());
             serialPort.setNumDataBits(config.getDataBits());
-            
+
             // Map stop bits enum to jSerialComm constant
             int stopBitsValue;
             switch (config.getStopBits()) {
-                case ONE:
-                    stopBitsValue = SerialPort.ONE_STOP_BIT;
-                    break;
-                case ONE_POINT_FIVE:
-                    stopBitsValue = SerialPort.ONE_POINT_FIVE_STOP_BITS;
-                    break;
-                case TWO:
-                    stopBitsValue = SerialPort.TWO_STOP_BITS;
-                    break;
-                default:
-                    stopBitsValue = SerialPort.ONE_STOP_BIT;
+            case ONE:
+                stopBitsValue = SerialPort.ONE_STOP_BIT;
+                break;
+            case ONE_POINT_FIVE:
+                stopBitsValue = SerialPort.ONE_POINT_FIVE_STOP_BITS;
+                break;
+            case TWO:
+                stopBitsValue = SerialPort.TWO_STOP_BITS;
+                break;
+            default:
+                stopBitsValue = SerialPort.ONE_STOP_BIT;
             }
             serialPort.setNumStopBits(stopBitsValue);
 
             // Map parity enum to jSerialComm constant
             int parityValue;
             switch (config.getParity()) {
-                case NONE:
-                    parityValue = SerialPort.NO_PARITY;
-                    break;
-                case EVEN:
-                    parityValue = SerialPort.EVEN_PARITY;
-                    break;
-                case ODD:
-                    parityValue = SerialPort.ODD_PARITY;
-                    break;
-                case MARK:
-                    parityValue = SerialPort.MARK_PARITY;
-                    break;
-                case SPACE:
-                    parityValue = SerialPort.SPACE_PARITY;
-                    break;
-                default:
-                    parityValue = SerialPort.NO_PARITY;
+            case NONE:
+                parityValue = SerialPort.NO_PARITY;
+                break;
+            case EVEN:
+                parityValue = SerialPort.EVEN_PARITY;
+                break;
+            case ODD:
+                parityValue = SerialPort.ODD_PARITY;
+                break;
+            case MARK:
+                parityValue = SerialPort.MARK_PARITY;
+                break;
+            case SPACE:
+                parityValue = SerialPort.SPACE_PARITY;
+                break;
+            default:
+                parityValue = SerialPort.NO_PARITY;
             }
             serialPort.setParity(parityValue);
 
             // Map flow control enum to jSerialComm constants
             int flowControlValue = 0;
             switch (config.getFlowControl()) {
-                case NONE:
-                    flowControlValue = 0;
-                    break;
-                case RTS_CTS:
-                    flowControlValue = SerialPort.FLOW_CONTROL_RTS_ENABLED | SerialPort.FLOW_CONTROL_CTS_ENABLED;
-                    break;
-                case XON_XOFF:
-                    flowControlValue = SerialPort.FLOW_CONTROL_XONXOFF_IN_ENABLED | SerialPort.FLOW_CONTROL_XONXOFF_OUT_ENABLED;
-                    break;
+            case NONE:
+                flowControlValue = 0;
+                break;
+            case RTS_CTS:
+                flowControlValue = SerialPort.FLOW_CONTROL_RTS_ENABLED | SerialPort.FLOW_CONTROL_CTS_ENABLED;
+                break;
+            case XON_XOFF:
+                flowControlValue = SerialPort.FLOW_CONTROL_XONXOFF_IN_ENABLED
+                        | SerialPort.FLOW_CONTROL_XONXOFF_OUT_ENABLED;
+                break;
             }
             serialPort.setFlowControl(flowControlValue);
 
@@ -216,7 +218,7 @@ public class SerialPortServiceImpl extends BaseObjectServiceImpl<SerialPortConfi
         if (!connectionStatuses.containsKey(configId)) {
             return "DISCONNECTED";
         }
-        
+
         // Verify actual connection state
         if (isConnected(configId)) {
             return "CONNECTED";

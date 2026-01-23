@@ -19,9 +19,9 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.CustomFieldType;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
+import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
-import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 
 /**
  * Validates Hibernate ORM mappings WITHOUT requiring database connection. This

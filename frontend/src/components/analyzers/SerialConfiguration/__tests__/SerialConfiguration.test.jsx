@@ -45,10 +45,12 @@ describe("SerialConfiguration", () => {
     render(
       <IntlWrapper>
         <SerialConfiguration analyzerId={1} open={true} onClose={() => {}} />
-      </IntlWrapper>
+      </IntlWrapper>,
     );
 
-    expect(screen.getByText("Create Serial Port Configuration")).toBeInTheDocument();
+    expect(
+      screen.getByText("Create Serial Port Configuration"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Port Name")).toBeInTheDocument();
   });
 
@@ -67,11 +69,17 @@ describe("SerialConfiguration", () => {
 
     render(
       <IntlWrapper>
-        <SerialConfiguration configuration={config} open={true} onClose={() => {}} />
-      </IntlWrapper>
+        <SerialConfiguration
+          configuration={config}
+          open={true}
+          onClose={() => {}}
+        />
+      </IntlWrapper>,
     );
 
-    expect(screen.getByText("Edit Serial Port Configuration")).toBeInTheDocument();
+    expect(
+      screen.getByText("Edit Serial Port Configuration"),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue("/dev/ttyUSB0")).toBeInTheDocument();
   });
 
@@ -79,8 +87,13 @@ describe("SerialConfiguration", () => {
     const onSave = jest.fn();
     render(
       <IntlWrapper>
-        <SerialConfiguration analyzerId={1} open={true} onClose={() => {}} onSave={onSave} />
-      </IntlWrapper>
+        <SerialConfiguration
+          analyzerId={1}
+          open={true}
+          onClose={() => {}}
+          onSave={onSave}
+        />
+      </IntlWrapper>,
     );
 
     const saveButton = screen.getByText("Save");
@@ -93,19 +106,28 @@ describe("SerialConfiguration", () => {
   });
 
   it("calls createSerialPortConfiguration when saving new configuration", async () => {
-    serialService.createSerialPortConfiguration.mockImplementation((data, callback) => {
-      callback({ id: "NEW-CONFIG" });
-    });
+    serialService.createSerialPortConfiguration.mockImplementation(
+      (data, callback) => {
+        callback({ id: "NEW-CONFIG" });
+      },
+    );
 
     const onSave = jest.fn();
     render(
       <IntlWrapper>
-        <SerialConfiguration analyzerId={1} open={true} onClose={() => {}} onSave={onSave} />
-      </IntlWrapper>
+        <SerialConfiguration
+          analyzerId={1}
+          open={true}
+          onClose={() => {}}
+          onSave={onSave}
+        />
+      </IntlWrapper>,
     );
 
     // Fill form
-    fireEvent.change(screen.getByLabelText("Port Name"), { target: { value: "/dev/ttyUSB0" } });
+    fireEvent.change(screen.getByLabelText("Port Name"), {
+      target: { value: "/dev/ttyUSB0" },
+    });
 
     const saveButton = screen.getByText("Save");
     fireEvent.click(saveButton);

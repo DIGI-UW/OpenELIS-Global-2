@@ -35,7 +35,10 @@ export const getSerialPortConfiguration = (id, callback) => {
  * @param {Number} analyzerId - Analyzer ID
  * @param {Function} callback - Callback function (data) => void
  */
-export const getSerialPortConfigurationByAnalyzerId = (analyzerId, callback) => {
+export const getSerialPortConfigurationByAnalyzerId = (
+  analyzerId,
+  callback,
+) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/analyzer/${analyzerId}`;
   getFromOpenElisServer(endpoint, callback);
 };
@@ -46,7 +49,11 @@ export const getSerialPortConfigurationByAnalyzerId = (analyzerId, callback) => 
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const createSerialPortConfiguration = (configData, callback, extraParams) => {
+export const createSerialPortConfiguration = (
+  configData,
+  callback,
+  extraParams,
+) => {
   const endpoint = "/rest/analyzer/serial-port/configurations";
   const payload = JSON.stringify(configData);
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
@@ -59,10 +66,15 @@ export const createSerialPortConfiguration = (configData, callback, extraParams)
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const updateSerialPortConfiguration = (id, configData, callback, extraParams) => {
+export const updateSerialPortConfiguration = (
+  id,
+  configData,
+  callback,
+  extraParams,
+) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}`;
   const payload = JSON.stringify(configData);
-  
+
   // Use fetch for PUT request
   fetch(endpoint, {
     method: "PUT",
@@ -93,7 +105,7 @@ export const updateSerialPortConfiguration = (id, configData, callback, extraPar
  */
 export const deleteSerialPortConfiguration = (id, callback, extraParams) => {
   const endpoint = `/rest/analyzer/serial-port/configurations/${id}`;
-  
+
   fetch(endpoint, {
     method: "DELETE",
   })

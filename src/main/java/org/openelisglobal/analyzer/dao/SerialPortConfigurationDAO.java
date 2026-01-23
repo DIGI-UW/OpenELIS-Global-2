@@ -5,8 +5,7 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.dao.BaseDAO;
 
 /**
- * DAO interface for SerialPortConfiguration
- * Task Reference: T028, M2
+ * DAO interface for SerialPortConfiguration Task Reference: T028, M2
  */
 public interface SerialPortConfigurationDAO extends BaseDAO<SerialPortConfiguration, String> {
 

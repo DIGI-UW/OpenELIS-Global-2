@@ -22,13 +22,14 @@ import org.openelisglobal.plugin.AnalyzerImporterPlugin;
 import org.openelisglobal.spring.util.SpringContext;
 
 /**
- * SerialAnalyzerReader - Reads ASTM messages from RS232 serial port connections.
+ * SerialAnalyzerReader - Reads ASTM messages from RS232 serial port
+ * connections.
  * 
- * Task Reference: T032, M2
- * Feature: 011-madagascar-analyzer-integration
+ * Task Reference: T032, M2 Feature: 011-madagascar-analyzer-integration
  * 
  * Extends AnalyzerReader to support serial port communication for analyzers.
- * Reads ASTM messages from serial ports and processes them using existing plugin infrastructure.
+ * Reads ASTM messages from serial ports and processes them using existing
+ * plugin infrastructure.
  */
 public class SerialAnalyzerReader extends AnalyzerReader {
 
@@ -96,7 +97,8 @@ public class SerialAnalyzerReader extends AnalyzerReader {
             }
 
             // Get serial port from service (we need direct access for reading)
-            // Note: This is a limitation - we need to refactor SerialPortService to expose SerialPort
+            // Note: This is a limitation - we need to refactor SerialPortService to expose
+            // SerialPort
             // For now, we'll get it directly
             SerialPort port = SerialPort.getCommPort(config.getPortName());
             if (port == null || !port.isOpen()) {
@@ -231,7 +233,8 @@ public class SerialAnalyzerReader extends AnalyzerReader {
     }
 
     /**
-     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active mappings
+     * Wrap inserter with MappingAwareAnalyzerLineInserter if analyzer has active
+     * mappings
      */
     private AnalyzerLineInserter wrapInserterIfMappingsExist(AnalyzerLineInserter originalInserter) {
         try {
@@ -252,8 +255,7 @@ public class SerialAnalyzerReader extends AnalyzerReader {
             // Check if analyzer has active mappings
             MappingApplicationService mappingApplicationService = SpringContext
                     .getBean(MappingApplicationService.class);
-            if (mappingApplicationService != null
-                    && mappingApplicationService.hasActiveMappings(analyzer.getId())) {
+            if (mappingApplicationService != null && mappingApplicationService.hasActiveMappings(analyzer.getId())) {
                 // Analyzer has active mappings - wrap inserter
                 return new MappingAwareAnalyzerLineInserter(originalInserter, analyzer);
             }

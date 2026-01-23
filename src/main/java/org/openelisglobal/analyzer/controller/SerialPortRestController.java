@@ -17,10 +17,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for Serial Port Configuration management
- * Task Reference: T034, M2
+ * REST Controller for Serial Port Configuration management Task Reference:
+ * T034, M2
  * 
- * Handles CRUD operations for serial port configurations and connection management.
+ * Handles CRUD operations for serial port configurations and connection
+ * management.
  */
 @RestController
 @RequestMapping("/rest/analyzer/serial-port")
@@ -34,8 +35,8 @@ public class SerialPortRestController extends BaseRestController {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * GET /rest/analyzer/serial-port/configurations
-     * Retrieve all serial port configurations
+     * GET /rest/analyzer/serial-port/configurations Retrieve all serial port
+     * configurations
      */
     @GetMapping("/configurations")
     public ResponseEntity<Map<String, Object>> getAllConfigurations() {
@@ -53,8 +54,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/serial-port/configurations/{id}
-     * Retrieve serial port configuration by ID
+     * GET /rest/analyzer/serial-port/configurations/{id} Retrieve serial port
+     * configuration by ID
      */
     @GetMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> getConfiguration(@PathVariable String id) {
@@ -75,8 +76,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/serial-port/configurations/analyzer/{analyzerId}
-     * Retrieve serial port configuration by analyzer ID
+     * GET /rest/analyzer/serial-port/configurations/analyzer/{analyzerId} Retrieve
+     * serial port configuration by analyzer ID
      */
     @GetMapping("/configurations/analyzer/{analyzerId}")
     public ResponseEntity<Map<String, Object>> getConfigurationByAnalyzerId(@PathVariable Integer analyzerId) {
@@ -97,8 +98,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/serial-port/configurations
-     * Create a new serial port configuration
+     * POST /rest/analyzer/serial-port/configurations Create a new serial port
+     * configuration
      */
     @PostMapping("/configurations")
     public ResponseEntity<Map<String, Object>> createConfiguration(@RequestBody SerialPortConfiguration config) {
@@ -109,16 +110,14 @@ public class SerialPortRestController extends BaseRestController {
                         .body(createErrorResponse("Analyzer ID is required"));
             }
             if (config.getPortName() == null || config.getPortName().trim().isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(createErrorResponse("Port name is required"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(createErrorResponse("Port name is required"));
             }
 
             // Check if configuration already exists for this analyzer
             Optional<SerialPortConfiguration> existing = serialPortService.getByAnalyzerId(config.getAnalyzerId());
             if (existing.isPresent()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(createErrorResponse("Serial port configuration already exists for analyzer: "
-                                + config.getAnalyzerId()));
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(createErrorResponse(
+                        "Serial port configuration already exists for analyzer: " + config.getAnalyzerId()));
             }
 
             String id = serialPortService.insert(config);
@@ -138,8 +137,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * PUT /rest/analyzer/serial-port/configurations/{id}
-     * Update an existing serial port configuration
+     * PUT /rest/analyzer/serial-port/configurations/{id} Update an existing serial
+     * port configuration
      */
     @PutMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> updateConfiguration(@PathVariable String id,
@@ -152,7 +151,7 @@ public class SerialPortRestController extends BaseRestController {
             }
 
             SerialPortConfiguration existing = existingOpt.get();
-            
+
             // Update fields
             if (config.getPortName() != null) {
                 existing.setPortName(config.getPortName());
@@ -192,8 +191,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * DELETE /rest/analyzer/serial-port/configurations/{id}
-     * Delete a serial port configuration
+     * DELETE /rest/analyzer/serial-port/configurations/{id} Delete a serial port
+     * configuration
      */
     @DeleteMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> deleteConfiguration(@PathVariable String id) {
@@ -221,8 +220,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/serial-port/configurations/{id}/connect
-     * Open serial port connection
+     * POST /rest/analyzer/serial-port/configurations/{id}/connect Open serial port
+     * connection
      */
     @PostMapping("/configurations/{id}/connect")
     public ResponseEntity<Map<String, Object>> connect(@PathVariable String id) {
@@ -246,8 +245,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/serial-port/configurations/{id}/disconnect
-     * Close serial port connection
+     * POST /rest/analyzer/serial-port/configurations/{id}/disconnect Close serial
+     * port connection
      */
     @PostMapping("/configurations/{id}/disconnect")
     public ResponseEntity<Map<String, Object>> disconnect(@PathVariable String id) {
@@ -271,8 +270,8 @@ public class SerialPortRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/serial-port/configurations/{id}/status
-     * Get connection status
+     * GET /rest/analyzer/serial-port/configurations/{id}/status Get connection
+     * status
      */
     @GetMapping("/configurations/{id}/status")
     public ResponseEntity<Map<String, Object>> getStatus(@PathVariable String id) {
