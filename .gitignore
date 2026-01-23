@@ -63,3 +63,12 @@ volume/odoo/*
 # Generated test fixtures (derived from DBUnit XML, never commit)
 # These are generated on-the-fly during test runs from authoritative XML sources
 src/test/resources/testdata/*.generated.sql
+
+# Catalyst dev files
+projects/catalyst/.env
+projects/catalyst/logs/
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/

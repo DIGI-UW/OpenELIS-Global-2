@@ -15,6 +15,29 @@ questions and get SQL results.
 SQLGenAgent) → Python MCP Server (schema RAG) → Java Backend (OpenELIS
 integration + SQL execution) → React Frontend (Carbon chat UI)
 
+## M0.0 Foundation POC (current milestone)
+
+M0.0 validates the **core A2A loop** only: Gateway → RouterAgent → CatalystAgent
+→ MCP `get_schema` → LLM stub. There is **no OpenELIS backend** or UI
+integration yet.
+
+```bash
+# 1. Copy env template
+cp projects/catalyst/env.recommended projects/catalyst/.env
+
+# 2. Install Python deps (per component)
+cd projects/catalyst/catalyst-gateway && poetry install && cd ../..
+cd projects/catalyst/catalyst-agents && poetry install && cd ../..
+cd projects/catalyst/catalyst-mcp && poetry install && cd ../..
+
+# 3. Start services (local dev)
+cd projects/catalyst
+cd catalyst-gateway && poetry run honcho -f ../Procfile.dev start
+
+# 4. Run smoke tests
+./tests/run_tests.sh all
+```
+
 ## Prerequisites
 
 - [ ] OpenELIS development environment running

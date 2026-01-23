@@ -274,45 +274,16 @@ This delivers enhanced usability and workflow integration.
   Required providers for MVP: Google Gemini (Cloud), and LM Studio (Local via
   OpenAI-compatible API supporting OpenAI-compatible models).
 
-- **FR-020**: System MUST implement a simple multi-agent team using A2A
-  (Agent2Agent) protocol patterns based on med-agent-hub concepts:
-
-  - (a) **RouterAgent**: Orchestrates query flow, delegates to specialists
-  - (b) **Schema Agent**: RAG-based schema retrieval via MCP tools
-  - (c) **SQL Generator Agent**: Text-to-SQL generation using configured LLM
-  - (d) Each agent MUST have an Agent Card for discovery per A2A specification
-  - (e) System MUST support single-agent fallback mode for simpler deployments
-
-  **Note**: M0.0 validates the core A2A + MCP architecture with Router + single
-  CatalystAgent + MCP skeleton. M0.2 splits CatalystAgent into SchemaAgent +
-  SQLGenAgent. Full 3-agent team validated by end of M0.2.
-
-- **FR-018**: System MUST detect likely PHI/identifiers in user-submitted
-  questions. If the configured AI provider is externally-hosted, the system MUST
-  NOT send the question to that provider. The system must either (a) route the
-  request to an on-premises provider (if configured and healthy) or (b) block
-  the request and prompt the user to remove PHI and retry.
-
-  **Note**: FR-018 is implemented in M5 (Security Features milestone), not in
-  MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
-  adding security complexity.
-
 - **FR-008**: System MUST validate generated SQL before execution to prevent
   access to blocked tables (e.g., sys_user, login_user, user_role).
 
 - **FR-009**: System MUST estimate the number of rows a query will return before
-  execution and warn users if the estimate exceeds 10,000 rows.
+  execution and warn users if the estimate exceeds 10,000 rows. Estimation
+  method: M0.0-M0.2 uses placeholder (returns 0); M2+ uses PostgreSQL EXPLAIN to
+  estimate row count.
 
 - **FR-010**: System MUST log all generated SQL queries and their execution
   results for audit purposes, including user ID and timestamp.
-
-- **FR-019**: Audit records for query generation and execution MUST include
-  enough metadata to verify compliance without storing sensitive context. At
-  minimum, audit MUST capture: selected provider type (externally-hosted vs
-  on-premises), provider identifier, whether PHI/identifier gating triggered
-  (FR-018), and which schema tables were provided as context (by name). Audit
-  records MUST NOT store raw schema dumps/DDL sent to the model and MUST NOT
-  store PHI values.
 
 - **FR-011**: System MUST handle errors gracefully, providing user-friendly
   error messages without exposing technical implementation details.
@@ -323,19 +294,10 @@ This delivers enhanced usability and workflow integration.
   sys_user, login_user, user_role). Full row-level RBAC integration with
   OpenELIS permissions is deferred to Phase 2.
 
-- **FR-021**: System MUST restrict access to the Catalyst query endpoint
-  (`/rest/catalyst/query`) to users with privileged roles. For MVP, access is
-  limited to users with `Global Administrator` or `Reports` roles. This ensures
-  Catalyst does not become a backdoor bypassing existing OpenELIS permission and
-  data-partitioning rules. Users without these roles MUST receive a 403
-  Forbidden response.
-
-  **Note**: This leverages OpenELIS's existing RBAC infrastructure
-  (`UserRoleService.userInRole()`). Per-user row-level filtering within queries
-  is deferred to Phase 2.
-
 - **FR-014**: System MUST provide example queries or prompts to help users
-  understand how to phrase their questions effectively.
+  understand how to phrase their questions effectively. Minimum 3-5 example
+  queries covering: count queries, JOIN queries, aggregation queries, and date
+  filtering queries.
 
 - **FR-015**: System MUST support queries that require JOINs across multiple
   tables, aggregations (COUNT, SUM, AVG), and date filtering.
@@ -348,6 +310,50 @@ This delivers enhanced usability and workflow integration.
   **Note**: FR-016 is implemented in M5 (Security Features milestone), not in
   MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
   adding security complexity.
+
+- **FR-017**: (Reserved for future use)
+
+- **FR-018**: System MUST detect likely PHI/identifiers in user-submitted
+  questions. If the configured AI provider is externally-hosted, the system MUST
+  NOT send the question to that provider. The system must either (a) route the
+  request to an on-premises provider (if configured and healthy) or (b) block
+  the request and prompt the user to remove PHI and retry.
+
+  **Note**: FR-018 is implemented in M5 (Security Features milestone), not in
+  MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
+  adding security complexity.
+
+- **FR-019**: Audit records for query generation and execution MUST include
+  enough metadata to verify compliance without storing sensitive context. At
+  minimum, audit MUST capture: selected provider type (externally-hosted vs
+  on-premises), provider identifier, whether PHI/identifier gating triggered
+  (FR-018), and which schema tables were provided as context (by name). Audit
+  records MUST NOT store raw schema dumps/DDL sent to the model and MUST NOT
+  store PHI values.
+
+- **FR-020**: System MUST implement a simple multi-agent team using A2A
+  (Agent2Agent) protocol patterns based on med-agent-hub concepts:
+
+  - (a) **RouterAgent**: Orchestrates query flow, delegates to specialists
+  - (b) **SchemaAgent**: RAG-based schema retrieval via MCP tools
+  - (c) **SQLGenAgent**: Text-to-SQL generation using configured LLM
+  - (d) Each agent MUST have an Agent Card for discovery per A2A specification
+  - (e) System MUST support single-agent fallback mode for simpler deployments
+
+  **Note**: M0.0 validates the core A2A + MCP architecture with Router + single
+  CatalystAgent + MCP skeleton. M0.2 splits CatalystAgent into SchemaAgent +
+  SQLGenAgent. Full 3-agent team validated by end of M0.2.
+
+- **FR-021**: System MUST restrict access to the Catalyst query endpoint
+  (`/rest/catalyst/query`) to users with privileged roles. For MVP, access is
+  limited to users with `Global Administrator` or `Reports` roles. This ensures
+  Catalyst does not become a backdoor bypassing existing OpenELIS permission and
+  data-partitioning rules. Users without these roles MUST receive a 403
+  Forbidden response.
+
+  **Note**: This leverages OpenELIS's existing RBAC infrastructure
+  (`UserRoleService.userInRole()`). Per-user row-level filtering within queries
+  is deferred to Phase 2.
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 

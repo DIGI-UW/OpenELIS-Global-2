@@ -1,0 +1,21 @@
+{
+  "protocolVersions": ["0.3.0"],
+  "name": "CatalystRouterAgent",
+  "description": "Orchestrates Catalyst query flow and delegates to specialists",
+  "url": "http://catalyst-agents:8000",
+  "version": "0.0.1",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "orchestrate_query",
+      "name": "Orchestrate Query",
+      "description": "Route a natural language query to an agent",
+      "tags": ["router", "orchestration"]
+    }
+  ]
+}
