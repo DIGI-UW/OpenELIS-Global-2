@@ -9,7 +9,7 @@ import org.openelisglobal.analyzer.valueholder.FlowControl;
 import org.openelisglobal.analyzer.valueholder.Parity;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.analyzer.valueholder.StopBits;
-import org.openelisglobal.testutil.BaseWebContextSensitiveTest;
+import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -102,7 +102,8 @@ public class SerialPortConfigurationDAOTest extends BaseWebContextSensitiveTest 
         String id = serialPortConfigurationDAO.insert(testConfig);
 
         // Delete
-        serialPortConfigurationDAO.delete(id);
+        SerialPortConfiguration toDelete = serialPortConfigurationDAO.get(id).get();
+        serialPortConfigurationDAO.delete(toDelete);
 
         // Verify
         Optional<SerialPortConfiguration> deleted = serialPortConfigurationDAO.get(id);
