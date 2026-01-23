@@ -18,6 +18,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.analyzer.valueholder.CustomFieldType;
+import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzer.valueholder.QualitativeResultMapping;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
@@ -47,6 +48,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerConfiguration.class);
         configuration.addAnnotatedClass(AnalyzerError.class);
         configuration.addAnnotatedClass(CustomFieldType.class);
+        configuration.addAnnotatedClass(FileImportConfiguration.class);
         configuration.addAnnotatedClass(ValidationRuleConfiguration.class);
 
         // XML-mapped entities (analyzer data model uses XML-only to match legacy
@@ -97,6 +99,8 @@ public class HibernateMappingValidationTest {
                 sessionFactory.getMetamodel().entity(CustomFieldType.class));
         assertNotNull("ValidationRuleConfiguration should be registered",
                 sessionFactory.getMetamodel().entity(ValidationRuleConfiguration.class));
+        assertNotNull("FileImportConfiguration should be registered",
+                sessionFactory.getMetamodel().entity(FileImportConfiguration.class));
     }
 
     /**
@@ -107,7 +111,7 @@ public class HibernateMappingValidationTest {
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
         Class<?>[] entities = { AnalyzerConfiguration.class, AnalyzerField.class, AnalyzerFieldMapping.class,
                 QualitativeResultMapping.class, UnitMapping.class, AnalyzerError.class, CustomFieldType.class,
-                ValidationRuleConfiguration.class };
+                ValidationRuleConfiguration.class, FileImportConfiguration.class };
 
         for (Class<?> entityClass : entities) {
             validateNoGetterConflicts(entityClass);
