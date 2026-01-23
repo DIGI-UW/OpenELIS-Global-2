@@ -56,13 +56,14 @@ public interface FileImportService extends BaseObjectService<FileImportConfigura
     boolean moveToErrorDirectory(Path filePath, FileImportConfiguration configuration, String errorMessage);
 
     /**
-     * Check for duplicate results (sample ID + test + timestamp)
+     * Check for duplicate results (analyzer ID + sample ID + test + timestamp)
      * 
+     * @param analyzerId Analyzer ID from configuration
      * @param sampleId    Sample ID
      * @param testCode    Test code
      * @param testDate    Test date
      * @param testTime    Test time
      * @return true if duplicate exists, false otherwise
      */
-    boolean isDuplicate(String sampleId, String testCode, String testDate, String testTime);
+    boolean isDuplicate(Integer analyzerId, String sampleId, String testCode, String testDate, String testTime);
 }
