@@ -351,7 +351,7 @@ Foundation (April 2025).
 **Why for Catalyst MVP** (Updated 2026-01-21):
 
 - Validate standards-based multi-agent architecture early
-- Simple 3-agent team: Router → Schema Agent → SQL Generator
+- Simple 3-agent team: Router → SchemaAgent → SQLGenAgent
 - Agent Cards for discovery per A2A specification
 - Single-agent fallback mode for simpler deployments
 - Based on med-agent-hub patterns
