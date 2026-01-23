@@ -95,21 +95,39 @@ function OEHeader(props) {
           if (response.headerLogoUrl) {
             setHeaderLogoUrl(response.headerLogoUrl);
             // Increment version to force logo reload
-            setLogoVersion(prev => prev + 1);
+            setLogoVersion((prev) => prev + 1);
           }
 
           // Apply custom colors to header
           if (response.primaryColor) {
-            document.documentElement.style.setProperty('--cds-interactive-01', response.primaryColor);
-            document.documentElement.style.setProperty('--site-branding-primary', response.primaryColor);
+            document.documentElement.style.setProperty(
+              "--cds-interactive-01",
+              response.primaryColor,
+            );
+            document.documentElement.style.setProperty(
+              "--site-branding-primary",
+              response.primaryColor,
+            );
           }
           if (response.secondaryColor) {
-            document.documentElement.style.setProperty('--cds-interactive-02', response.secondaryColor);
-            document.documentElement.style.setProperty('--site-branding-secondary', response.secondaryColor);
+            document.documentElement.style.setProperty(
+              "--cds-interactive-02",
+              response.secondaryColor,
+            );
+            document.documentElement.style.setProperty(
+              "--site-branding-secondary",
+              response.secondaryColor,
+            );
           }
           if (response.accentColor) {
-            document.documentElement.style.setProperty('--cds-support-01', response.accentColor);
-            document.documentElement.style.setProperty('--site-branding-accent', response.accentColor);
+            document.documentElement.style.setProperty(
+              "--cds-support-01",
+              response.accentColor,
+            );
+            document.documentElement.style.setProperty(
+              "--site-branding-accent",
+              response.accentColor,
+            );
           }
         }
       });
@@ -125,9 +143,9 @@ function OEHeader(props) {
     const handleBrandingUpdate = () => {
       loadBranding();
     };
-    window.addEventListener('branding-updated', handleBrandingUpdate);
+    window.addEventListener("branding-updated", handleBrandingUpdate);
     return () => {
-      window.removeEventListener('branding-updated', handleBrandingUpdate);
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
     };
   }, [userSessionDetails.authenticated]);
 
@@ -222,10 +240,10 @@ function OEHeader(props) {
   const logo = () => {
     // Use custom header logo if available, otherwise use default
     // Add cache-busting parameter to prevent stale logo display after upload
-    const logoSrc = headerLogoUrl 
-      ? `../api${headerLogoUrl}?v=${logoVersion}` 
+    const logoSrc = headerLogoUrl
+      ? `../api${headerLogoUrl}?v=${logoVersion}`
       : `../images/openelis_logo.png`;
-    
+
     return (
       <>
         <picture>

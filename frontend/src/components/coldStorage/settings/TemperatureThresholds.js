@@ -10,7 +10,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl } from "react-intl";
-import { fetchDevices, updateDevice } from "../api";
+import { fetchDevices, updateDeviceThresholds } from "../api";
 import {
   AlertDialog,
   NotificationKinds,
@@ -83,18 +83,16 @@ function TemperatureThresholds({ intl }) {
     try {
       setSaving(true);
 
-      // Update each device with new thresholds
       for (const device of devices) {
         const deviceThresholds = thresholds[device.id];
         if (deviceThresholds) {
-          await updateDevice(device.id, {
-            ...device,
-            locationId: device.location?.id,
-            targetTemperature: deviceThresholds.targetTemperature,
-            warningThreshold: deviceThresholds.warningThreshold,
-            criticalThreshold: deviceThresholds.criticalThreshold,
-            pollingIntervalSeconds: deviceThresholds.pollInterval,
-          });
+          await updateDeviceThresholds(
+            device.id,
+            deviceThresholds.targetTemperature,
+            deviceThresholds.warningThreshold,
+            deviceThresholds.criticalThreshold,
+            deviceThresholds.pollInterval,
+          );
         }
       }
 

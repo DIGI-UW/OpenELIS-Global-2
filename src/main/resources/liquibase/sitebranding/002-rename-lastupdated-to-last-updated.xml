@@ -12,19 +12,18 @@
             <columnExists tableName="site_branding" columnName="lastupdated"/>
         </preConditions>
         <comment>Renaming lastupdated column to last_updated to match BaseObject column mapping</comment>
-        <renameColumn 
-            tableName="site_branding" 
-            oldColumnName="lastupdated" 
-            newColumnName="last_updated" 
+        <renameColumn
+            tableName="site_branding"
+            oldColumnName="lastupdated"
+            newColumnName="last_updated"
             columnDataType="TIMESTAMP"/>
-        
+
         <rollback>
-            <renameColumn 
-                tableName="site_branding" 
-                oldColumnName="last_updated" 
-                newColumnName="lastupdated" 
+            <renameColumn
+                tableName="site_branding"
+                oldColumnName="last_updated"
+                newColumnName="lastupdated"
                 columnDataType="TIMESTAMP"/>
         </rollback>
     </changeSet>
 </databaseChangeLog>
-

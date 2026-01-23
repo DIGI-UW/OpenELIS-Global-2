@@ -43,7 +43,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "provider.browse.title",
-    link: "/MasterListsPage#providerMenu",
+    link: "/MasterListsPage/providerMenu",
   },
 ];
 function ProviderMenu() {

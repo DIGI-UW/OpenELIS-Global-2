@@ -34,6 +34,11 @@ public class QuestionnaireConfigurationHandler implements DomainConfigurationHan
     }
 
     @Override
+    public int getLoadOrder() {
+        return 400; // Higher-level configuration, may depend on other entities
+    }
+
+    @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
             throw new IllegalStateException("FHIR store path is not configured. Cannot load questionnaires.");

@@ -104,8 +104,10 @@ const ModifyOrder = () => {
 
   const loadOrderValues = (data) => {
     if (componentMounted.current) {
-      data.sampleOrderItems.referringSiteName = "";
-      setOrderFormValues(data);
+      if (data.sampleOrderItems) {
+        data.sampleOrderItems.referringSiteName = "";
+        setOrderFormValues(data);
+      }
     }
   };
 
@@ -191,7 +193,15 @@ const ModifyOrder = () => {
                 return sampleItem.tests[i].id;
               })
               .join(",");
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+
+            // Extract storage location data if present
+            const storageLocation = sampleItem.sampleXML?.storageLocation;
+            const storageLocationId = storageLocation?.id || "";
+            const storageLocationType = storageLocation?.type || "";
+            const storagePositionCoordinate =
+              storageLocation?.positionCoordinate || "";
+
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)

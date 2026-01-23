@@ -141,7 +141,7 @@ const OrderEntryAdditionalQuestions = ({
 
   function setAdditionalQuestions(res, event) {
     console.debug(res);
-    if ("item" in res) {
+    if (res && "item" in res) {
       setQuestionnaire(res);
       var convertedQuestionnaireResponse = convertQuestionnaireToResponse(res);
       setQuestionnaireResponse(convertedQuestionnaireResponse);

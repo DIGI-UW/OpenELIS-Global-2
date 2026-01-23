@@ -43,7 +43,13 @@ import {
   Search,
   Layer,
 } from "@carbon/react";
-import { Launch, Subtract, ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import {
+  Launch,
+  Subtract,
+  ArrowLeft,
+  ArrowRight,
+  Checkmark,
+} from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -72,6 +78,15 @@ const NoteBookEntryForm = () => {
     EDIT: "EDIT",
   });
 
+  const TABS = Object.freeze({
+    ENTRY_DETAILS: 0,
+    METADATA: 1,
+    ATTACHMENTS: 2,
+    WORKFLOW: 3,
+    COMMENTS: 4,
+    AUDIT_TRAIL: 5,
+  });
+
   const intl = useIntl();
   const componentMounted = useRef(false);
   const [mode, setMode] = useState(MODES.CREATE);
@@ -93,7 +108,7 @@ const NoteBookEntryForm = () => {
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
   const [allPanels, setAllPanels] = useState([]);
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState(TABS.ENTRY_DETAILS);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [auditTrailItems, setAuditTrailItems] = useState([]);
@@ -732,7 +747,7 @@ const NoteBookEntryForm = () => {
         <Column lg={16} md={8} sm={4}>
           <br />
         </Column>
-        {selectedTab === 0 && (
+        {selectedTab === TABS.ENTRY_DETAILS && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -785,7 +800,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 1 && (
+        {selectedTab === TABS.METADATA && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={8} md={8} sm={4}>
@@ -972,7 +987,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 2 && (
+        {selectedTab === TABS.ATTACHMENTS && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -1033,7 +1048,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 3 && (
+        {selectedTab === TABS.WORKFLOW && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={2} md={2} sm={4}>
@@ -1248,7 +1263,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 4 && (
+        {selectedTab === TABS.COMMENTS && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -1271,9 +1286,16 @@ const NoteBookEntryForm = () => {
                 />
               </Column>
               <Column lg={4} md={8} sm={4}>
-                <Button onClick={handleAddComment} kind="primary" size="sm">
-                  <FormattedMessage id="notebook.comments.add.button" />
-                </Button>
+                <Button
+                  onClick={handleAddComment}
+                  kind="primary"
+                  size="sm"
+                  hasIconOnly
+                  renderIcon={Add}
+                  iconDescription={intl.formatMessage({
+                    id: "notebook.comments.add.button",
+                  })}
+                />
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <br />
@@ -1312,7 +1334,7 @@ const NoteBookEntryForm = () => {
             </Grid>
           </Column>
         )}
-        {selectedTab === 5 && (
+        {selectedTab === TABS.AUDIT_TRAIL && (
           <Column lg={16} md={8} sm={4}>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
@@ -1814,9 +1836,7 @@ const NoteBookEntryForm = () => {
               <Button
                 kind="primary"
                 disabled={
-                  isSubmitting ||
-                  noteBookData.status === "ARCHIVED" ||
-                  (mode === MODES.CREATE && !isFormValid())
+                  isSubmitting || (mode === MODES.CREATE && !isFormValid())
                 }
                 onClick={() => handleSubmit()}
               >

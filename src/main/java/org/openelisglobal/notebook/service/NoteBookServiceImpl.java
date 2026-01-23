@@ -213,7 +213,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setId(noteBook.getId());
             displayBean.setTitle(noteBook.getTitle());
             displayBean.setTags(noteBook.getTags());
-
+            displayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
             // Handle type - it's now a Dictionary entity
             if (noteBook.getType() != null) {
                 displayBean.setType(Integer.valueOf(noteBook.getType().getId()));
@@ -273,10 +273,20 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
             fullDisplayBean.setComments(noteBook.getComments());
             fullDisplayBean.setTechnicianName(noteBook.getTechnician().getDisplayName());
+            fullDisplayBean.setCreatorName(noteBook.getCreator().getDisplayName());
             fullDisplayBean.setTechnicianId(Integer.valueOf(noteBook.getTechnician().getId()));
             fullDisplayBean.setIsTemplate(noteBook.getIsTemplate());
             fullDisplayBean.setEntriesCount(noteBook.getEntries().size());
             fullDisplayBean.setQuestionnaireFhirUuid(noteBook.getQuestionnaireFhirUuid());
+
+            // If this is an instance (isTemplate=false), find and set the parent template
+            // ID
+            if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+                NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+                if (parentTemplate != null) {
+                    fullDisplayBean.setTemplateId(parentTemplate.getId());
+                }
+            }
 
             List<SampleDisplayBean> sampleDisplayBeans = new ArrayList<>();
 
@@ -290,15 +300,25 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         return fullDisplayBean;
     }
 
-    private SampleDisplayBean convertSampleToDisplayBean(SampleItem sampleItem) {
+    @Override
+    public SampleDisplayBean convertSampleToDisplayBean(SampleItem sampleItem) {
         SampleDisplayBean sampleDisplayBean = new SampleDisplayBean();
         sampleDisplayBean.setId(Integer.valueOf(sampleItem.getId()));
+        sampleDisplayBean.setSampleItemId(sampleItem.getId()); // Store SampleItem ID
         sampleDisplayBean
                 .setSampleType(typeOfSampleService.getNameForTypeOfSampleId(sampleItem.getTypeOfSample().getId()));
         sampleDisplayBean.setCollectionDate(DateUtil.convertTimestampToStringDate(sampleItem.getLastupdated()));
         sampleDisplayBean.setVoided(sampleItem.isVoided());
         sampleDisplayBean.setVoidReason(sampleItem.getVoidReason());
         sampleDisplayBean.setExternalId(sampleItem.getExternalId());
+
+        // Get accession number from parent Sample
+        if (sampleItem.getSample() != null) {
+            Sample sample = (Sample) sampleItem.getSample();
+            sampleDisplayBean.setAccessionNumber(sample.getAccessionNumber());
+            sampleDisplayBean.setSampleStatus(sample.getStatus());
+        }
+
         List<Analysis> analyses = analysisService.getAnalysesBySampleItem(sampleItem);
         List<ResultDisplayBean> resultsDisplayBeans = new ArrayList<>();
         for (Analysis analysis : analyses) {
@@ -306,7 +326,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             for (Result result : results) {
                 ResultDisplayBean resultDisplayBean = new ResultDisplayBean();
                 resultDisplayBean.setResult(resultService.getResultValue(result, true));
-                resultDisplayBean.setTest(result.getTestResult().getTest().getLocalizedName());
+                resultDisplayBean.setTest(analysis.getTest().getLocalizedName());
                 resultDisplayBean.setDateCreated(DateUtil.convertTimestampToStringDate(result.getLastupdated()));
                 resultsDisplayBeans.add(resultDisplayBean);
             }
@@ -346,6 +366,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         // Set sysUserId for audit trail tracking
         if (form.getSystemUserId() != null) {
             noteBook.setSysUserId(form.getSystemUserId().toString());
+            noteBook.setCreator(systemUserService.get(form.getSystemUserId().toString()));
         }
         if (noteBook.getId() == null) {
             noteBook.setDateCreated(new Date());

@@ -173,6 +173,11 @@ accessing any of these links, simply follow these steps:
 
          mvn verify -Dit.test=<packageName>.<TestClassName>
 
+    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
+    Flat XML datasets from `src/test/resources/testdata/` via
+    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
+    over inline SQL setup/cleanup to avoid test data pollution.
+
 1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
 
     > **Note:** Frontend checks will only pass successfully if your development
@@ -182,6 +187,37 @@ accessing any of these links, simply follow these steps:
         npm install
         npm run build
         npm run cy:run # this will run e2e testing same CI
+
+### AI-Assisted Development (SpecKit)
+
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+Spec-Driven Development (SDD). AI coding agents can use slash commands to create
+specifications, plans, and tasks.
+
+**Setup SpecKit Commands (single entry point):**
+
+```bash
+# Bash (Linux/macOS) - Install for all AI agents
+./.specify/scripts/bash/install-commands.sh
+
+# PowerShell (Windows) - Install for all AI agents
+.\.specify\scripts\powershell\install-commands.ps1
+```
+
+**Available Commands** (after installation):
+
+- `/speckit.specify` - Create feature specification
+- `/speckit.plan` - Generate implementation plan
+- `/speckit.tasks` - Generate task breakdown
+- `/speckit.implement` - Execute implementation
+- `/speckit.analyze` - Validate consistency
+
+**Reference Documentation:**
+
+- **AGENTS.md** - Comprehensive guide for AI coding agents (includes full setup
+  options)
+- **Constitution**: `.specify/memory/constitution.md` - Governance principles
+- **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
 
 ### Testing Resources
 

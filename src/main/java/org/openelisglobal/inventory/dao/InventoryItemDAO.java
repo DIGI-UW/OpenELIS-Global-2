@@ -1,41 +1,43 @@
-/**
- * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
- * you may not use this file except in compliance with the License. You may obtain a copy of the
- * License at http://www.mozilla.org/MPL/
- *
- * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
- * ANY KIND, either express or implied. See the License for the specific language governing rights
- * and limitations under the License.
- *
- * <p>The Original Code is OpenELIS code.
- *
- * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
- */
 package org.openelisglobal.inventory.dao;
 
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
-public interface InventoryItemDAO extends BaseDAO<InventoryItem, String> {
+public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
 
-    // public boolean insertData(InventoryItem InventoryItem) throws
-    // LIMSRuntimeException;
+    /**
+     * Get all active inventory items
+     */
+    List<InventoryItem> getAllActive() throws LIMSRuntimeException;
 
-    // public void deleteData(List<InventoryItem> results) throws
-    // LIMSRuntimeException;
+    /**
+     * Get inventory items by type
+     */
+    List<InventoryItem> getByItemType(ItemType itemType) throws LIMSRuntimeException;
 
-    public List<InventoryItem> getAllInventoryItems() throws LIMSRuntimeException;
+    /**
+     * Get inventory items by category
+     */
+    List<InventoryItem> getByCategory(String category) throws LIMSRuntimeException;
 
-    public InventoryItem readInventoryItem(String idString) throws LIMSRuntimeException;
+    /**
+     * Search inventory items by name (partial match)
+     */
+    List<InventoryItem> searchByName(String name) throws LIMSRuntimeException;
 
-    // public void getData(InventoryItem inventoryItem) throws LIMSRuntimeException;
+    /**
+     * Get inventory item by FHIR UUID
+     */
+    InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
 
-    // public void updateData(InventoryItem inventoryItem) throws
-    // LIMSRuntimeException;
+    /**
+     * Get items with low stock (total quantity < threshold) This requires joining
+     * with InventoryLot to calculate total stock
+     */
+    List<InventoryItem> getLowStockItems() throws LIMSRuntimeException;
 
-    // public InventoryItem getInventoryItemById(InventoryItem inventoryItem) throws
-    // LIMSRuntimeException;
-
+    List<ItemType> getAllItemTypes();
 }

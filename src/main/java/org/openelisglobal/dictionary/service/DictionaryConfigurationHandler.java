@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
@@ -43,6 +44,11 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     @Override
     public String getFileExtension() {
         return "csv";
+    }
+
+    @Override
+    public int getLoadOrder() {
+        return 300; // Independent higher-level configuration
     }
 
     @Override
@@ -89,6 +95,8 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
             }
         }
+
+        DisplayListService.getInstance().refreshLists();
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                 "Successfully loaded " + processedDictionaries.size() + " dictionaries from " + fileName);

@@ -9,14 +9,13 @@ import org.openelisglobal.sitebranding.valueholder.SiteBranding;
  * Task Reference: T012
  */
 public interface SiteBrandingDAO extends BaseDAO<SiteBranding, String> {
-    
+
     /**
-     * Get the single branding configuration record
-     * Since only one SiteBranding record should exist, this returns the first record found
-     * or null if none exists
+     * Get the single branding configuration record Since only one SiteBranding
+     * record should exist, this returns the first record found or null if none
+     * exists
      * 
      * @return SiteBranding entity or null if none exists
      */
     SiteBranding getBranding();
 }
-

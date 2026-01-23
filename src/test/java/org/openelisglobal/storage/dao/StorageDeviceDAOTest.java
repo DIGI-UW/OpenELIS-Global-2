@@ -54,7 +54,7 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
         jdbcTemplate.update(
                 "INSERT INTO storage_room (id, name, code, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testRoomId, "Test Room", "TEST-ROOM", true, 1);
+                testRoomId, "Test Room", "TSTRM-DEV", true, 1);
         testRoom = storageRoomDAO.get(testRoomId).orElse(null);
 
         // Create test devices
@@ -80,8 +80,11 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
 
     private void cleanTestData() {
         try {
-            jdbcTemplate.execute("DELETE FROM storage_device WHERE id IN (2001, 2002)");
-            jdbcTemplate.execute("DELETE FROM storage_room WHERE id = 2000");
+            // Delete by code to handle leftover records from previous test runs
+            // (ensures unique constraint violations don't occur)
+            jdbcTemplate.execute(
+                    "DELETE FROM storage_device WHERE code IN ('TEST-DEV1', 'TEST-DEV2') OR id IN (2001, 2002)");
+            jdbcTemplate.execute("DELETE FROM storage_room WHERE code = 'TSTRM-DEV' OR id = 2000");
         } catch (Exception e) {
             // Ignore cleanup errors
         }

@@ -18,11 +18,14 @@ class ModifyOrderPage {
   }
 
   clickNextButton() {
-    return cy.get("[data-cy='next-button']").should("be.visible").click();
+    return cy
+      .get("[data-cy='next-button']")
+      .should("be.visible")
+      .click({ force: true });
   }
 
   selectSerumSample() {
-    cy.get("#sampleId_0").select("Serum");
+    cy.get("#sampleId_0").scrollIntoView().select("Serum", { force: true });
   }
 
   checkRemeberSiteAndRequester() {

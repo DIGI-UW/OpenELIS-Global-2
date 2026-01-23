@@ -37,4 +37,3 @@ public class SiteBrandingDAOImpl extends BaseDAOImpl<SiteBranding, String> imple
         }
     }
 }
-

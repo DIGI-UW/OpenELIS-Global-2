@@ -1,5 +1,6 @@
 package org.openelisglobal.coldstorage.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
@@ -19,6 +20,9 @@ public interface FreezerService {
     Freezer createFreezer(Freezer freezer, Long roomId, String sysUserId);
 
     Freezer updateFreezer(Long id, Freezer updatedFreezer, Long roomId, String sysUserId);
+
+    Freezer updateThresholds(Long id, BigDecimal targetTemperature, BigDecimal warningThreshold,
+            BigDecimal criticalThreshold, Integer pollingIntervalSeconds, String sysUserId);
 
     void setDeviceStatus(Long id, Boolean active);
 

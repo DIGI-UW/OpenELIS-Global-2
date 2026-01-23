@@ -18,25 +18,27 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
   // Fetch help URLs on mount
   useEffect(() => {
     let isMounted = true;
-    
-    getFromOpenElisServer("/rest/properties", (properties, err) => {
-      // Only update state if component is still mounted
+
+    getFromOpenElisServer("/rest/properties", (properties) => {
       if (!isMounted) return;
-      
-      if (err) {
-        setError(err);
-        console.error("Failed to fetch help URLs:", err);
-      } else {
-        setHelpUrls({
-          manual: properties["org.openelisglobal.help.manual.url"] || "",
-          tutorials: properties["org.openelisglobal.help.tutorials.url"] || "",
-          "release-notes":
-            properties["org.openelisglobal.help.release-notes.url"] || "",
-        });
+
+      // The API helper calls the callback with `undefined` when the response is
+      // not JSON (e.g., auth redirect HTML). Treat that as "no configured help
+      // URLs" rather than crashing the entire app.
+      if (!properties || typeof properties !== "object") {
+        setHelpUrls({ manual: "", tutorials: "", "release-notes": "" });
+        setError(new Error("Help URL configuration unavailable"));
+        return;
       }
+
+      setHelpUrls({
+        manual: properties["org.openelisglobal.help.manual.url"] || "",
+        tutorials: properties["org.openelisglobal.help.tutorials.url"] || "",
+        "release-notes":
+          properties["org.openelisglobal.help.release-notes.url"] || "",
+      });
     });
-    
-    // Cleanup function to prevent state updates on unmounted component
+
     return () => {
       isMounted = false;
     };

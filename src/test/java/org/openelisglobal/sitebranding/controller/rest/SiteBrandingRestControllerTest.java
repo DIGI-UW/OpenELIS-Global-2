@@ -24,8 +24,8 @@ import org.springframework.mock.web.MockMultipartFile;
 /**
  * Integration tests for SiteBrandingRestController
  * 
- * Following TDD approach: Write tests BEFORE implementation
- * Tests based on contracts/site-branding-api.json specification
+ * Following TDD approach: Write tests BEFORE implementation Tests based on
+ * contracts/site-branding-api.json specification
  * 
  * Uses BaseWebContextSensitiveTest (legacy pattern) since project doesn't use
  * Spring Boot. Reference: Testing Roadmap > BaseWebContextSensitiveTest (Legacy
@@ -67,8 +67,8 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: GET /rest/site-branding/ - returns branding configuration
-     * Task Reference: T008
+     * Test: GET /rest/site-branding/ - returns branding configuration Task
+     * Reference: T008
      */
     @Test
     public void testGetBranding_WithAdminRole_ReturnsBranding() throws Exception {
@@ -85,43 +85,45 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Act: GET /rest/site-branding/
         // Then: Expect 200 OK with branding configuration
-        mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.primaryColor").value("#1d4ed8"))
                 .andExpect(jsonPath("$.secondaryColor").value("#64748b"))
                 .andExpect(jsonPath("$.accentColor").value("#0891b2"));
     }
 
     /**
-     * Test: GET /rest/site-branding/ - returns default branding if none exists
-     * Task Reference: T008
+     * Test: GET /rest/site-branding/ - returns default branding if none exists Task
+     * Reference: T008
      */
     @Test
     public void testGetBranding_WhenNoneExists_ReturnsDefaults() throws Exception {
         // Act: GET /rest/site-branding/ when no branding exists
         // Then: Expect 200 OK with default values
-        mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.primaryColor").value("#1d4ed8"))
                 .andExpect(jsonPath("$.secondaryColor").value("#64748b"))
                 .andExpect(jsonPath("$.accentColor").value("#0891b2"));
     }
 
     /**
-     * Test: GET /rest/site-branding/ - requires admin role
+     * Test: GET /rest/site-branding/ - accessible without authentication
+     *
+     * The GET endpoint is intentionally unauthenticated so that branding can be
+     * displayed on the login page before a user has logged in.
+     *
      * Task Reference: T008
      */
     @Test
-    public void testGetBranding_WithNonAdminRole_Returns403() throws Exception {
-        // Act: GET /rest/site-branding/ with non-admin role
-        // Then: Expect 403 Forbidden
-        mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
+    public void testGetBranding_WithoutAuthentication_Returns200() throws Exception {
+        // Act: GET /rest/site-branding/ without authentication
+        // Then: Expect 200 OK with default branding (no authentication required)
+        mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.primaryColor").exists());
     }
 
     /**
-     * Test: PUT /rest/site-branding/ - updates branding configuration
-     * Task Reference: T008
+     * Test: PUT /rest/site-branding/ - updates branding configuration Task
+     * Reference: T008
      */
     @Test
     public void testUpdateBranding_WithValidData_UpdatesConfiguration() throws Exception {
@@ -148,36 +150,50 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         // Act: PUT /rest/site-branding/
         // Then: Expect 200 OK with updated configuration
         mockMvc.perform(put("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.primaryColor").value("#ff0000"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.primaryColor").value("#ff0000"))
                 .andExpect(jsonPath("$.secondaryColor").value("#00ff00"))
                 .andExpect(jsonPath("$.accentColor").value("#0000ff"));
     }
 
     /**
-     * Test: PUT /rest/site-branding/ - validates color format
-     * Task Reference: T008
+     * Test: PUT /rest/site-branding/ - accepts any CSS color format Task Reference:
+     * T008
+     *
+     * Color validation is now permissive - any non-empty string is accepted. CSS
+     * handles invalid colors gracefully by ignoring them, so we allow named colors,
+     * rgb(), hsl(), and other formats.
      */
     @Test
-    public void testUpdateBranding_WithInvalidColor_Returns400() throws Exception {
-        // Arrange: Form with invalid color
+    public void testUpdateBranding_WithCssNamedColor_Returns200() throws Exception {
+        // Arrange: Create test branding first
+        SiteBranding branding = new SiteBranding();
+        branding.setPrimaryColor("#1d4ed8");
+        branding.setSecondaryColor("#64748b");
+        branding.setAccentColor("#0891b2");
+        branding.setColorMode("light");
+        branding.setUseHeaderLogoForLogin(false);
+        branding.setSysUserId("1");
+        siteBrandingService.saveBranding(branding);
+
+        // Arrange: Form with CSS named color (not hex)
         SiteBrandingForm form = new SiteBrandingForm();
-        form.setPrimaryColor("invalid-color");
-        form.setSecondaryColor("#64748b");
-        form.setAccentColor("#0891b2");
+        form.setPrimaryColor("rebeccapurple");
+        form.setSecondaryColor("slate");
+        form.setAccentColor("rgb(56, 178, 172)");
         form.setColorMode("light");
 
         String requestBody = objectMapper.writeValueAsString(form);
 
-        // Act: PUT /rest/site-branding/ with invalid color
-        // Then: Expect 400 Bad Request
+        // Act: PUT /rest/site-branding/ with CSS color names/functions
+        // Then: Expect 200 OK - CSS color formats are now accepted
         mockMvc.perform(put("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON).content(requestBody))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.primaryColor").value("rebeccapurple"))
+                .andExpect(jsonPath("$.secondaryColor").value("slate"))
+                .andExpect(jsonPath("$.accentColor").value("rgb(56, 178, 172)"));
     }
 
     /**
-     * Test: PUT /rest/site-branding/ - requires admin role
-     * Task Reference: T008
+     * Test: PUT /rest/site-branding/ - requires admin role Task Reference: T008
      */
     @Test
     public void testUpdateBranding_WithNonAdminRole_Returns403() throws Exception {
@@ -197,8 +213,8 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: POST /rest/site-branding/logo/header - upload header logo
-     * Task Reference: T027
+     * Test: POST /rest/site-branding/logo/header - upload header logo Task
+     * Reference: T027
      */
     @Test
     public void testUploadHeaderLogo_WithValidFile_Returns200() throws Exception {
@@ -213,25 +229,19 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         siteBrandingService.saveBranding(branding);
 
         // Arrange: Create mock MultipartFile (valid PNG, < 2MB)
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test-header-logo.png",
-                "image/png",
-                "fake png content".getBytes()
-        );
+        MockMultipartFile file = new MockMultipartFile("file", "test-header-logo.png", "image/png",
+                "fake png content".getBytes());
 
         // Act: POST /rest/site-branding/logo/header with file
         // Then: Expect 200 OK with logo URL
-        mockMvc.perform(multipart("/rest/site-branding/logo/header")
-                .file(file))
-                .andExpect(status().isOk())
+        mockMvc.perform(multipart("/rest/site-branding/logo/header").file(file)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.logoUrl").value("/rest/site-branding/logo/header"))
                 .andExpect(jsonPath("$.fileName").value("test-header-logo.png"));
     }
 
     /**
-     * Test: POST /rest/site-branding/logo/header - validates file format
-     * Task Reference: T027
+     * Test: POST /rest/site-branding/logo/header - validates file format Task
+     * Reference: T027
      */
     @Test
     public void testUploadHeaderLogo_WithInvalidFormat_Returns400() throws Exception {
@@ -242,24 +252,18 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         siteBrandingService.saveBranding(branding);
 
         // Arrange: Create mock MultipartFile with invalid format (TXT instead of image)
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test.txt",
-                "text/plain",
-                "invalid file content".getBytes()
-        );
+        MockMultipartFile file = new MockMultipartFile("file", "test.txt", "text/plain",
+                "invalid file content".getBytes());
 
         // Act: POST /rest/site-branding/logo/header with invalid file
         // Then: Expect 400 Bad Request
-        mockMvc.perform(multipart("/rest/site-branding/logo/header")
-                .file(file))
-                .andExpect(status().isBadRequest())
+        mockMvc.perform(multipart("/rest/site-branding/logo/header").file(file)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
 
     /**
-     * Test: POST /rest/site-branding/logo/header - validates file size
-     * Task Reference: T027
+     * Test: POST /rest/site-branding/logo/header - validates file size Task
+     * Reference: T027
      */
     @Test
     public void testUploadHeaderLogo_WithExcessiveSize_Returns400() throws Exception {
@@ -271,24 +275,17 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Arrange: Create mock MultipartFile exceeding 2MB limit
         byte[] largeContent = new byte[3 * 1024 * 1024]; // 3MB
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "large-image.png",
-                "image/png",
-                largeContent
-        );
+        MockMultipartFile file = new MockMultipartFile("file", "large-image.png", "image/png", largeContent);
 
         // Act: POST /rest/site-branding/logo/header with oversized file
         // Then: Expect 400 Bad Request
-        mockMvc.perform(multipart("/rest/site-branding/logo/header")
-                .file(file))
-                .andExpect(status().isBadRequest())
+        mockMvc.perform(multipart("/rest/site-branding/logo/header").file(file)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
 
     /**
-     * Test: GET /rest/site-branding/logo/header - serves logo file
-     * Task Reference: T034
+     * Test: GET /rest/site-branding/logo/header - serves logo file Task Reference:
+     * T034
      */
     @Test
     public void testGetHeaderLogo_WithExistingLogo_ReturnsFile() throws Exception {
@@ -306,8 +303,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Act: GET /rest/site-branding/logo/header
         // Then: Expect 200 OK with file content and caching headers
-        mockMvc.perform(get("/rest/site-branding/logo/header"))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/rest/site-branding/logo/header")).andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "public, max-age=3600"))
                 .andExpect(content().bytes("test image content".getBytes()));
 
@@ -316,8 +312,8 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: POST /rest/site-branding/logo/login - upload login logo
-     * Task Reference: T036
+     * Test: POST /rest/site-branding/logo/login - upload login logo Task Reference:
+     * T036
      */
     @Test
     public void testUploadLoginLogo_WithValidFile_Returns200() throws Exception {
@@ -328,25 +324,19 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         siteBrandingService.saveBranding(branding);
 
         // Arrange: Create mock MultipartFile (valid PNG, < 2MB)
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test-login-logo.png",
-                "image/png",
-                "fake png content".getBytes()
-        );
+        MockMultipartFile file = new MockMultipartFile("file", "test-login-logo.png", "image/png",
+                "fake png content".getBytes());
 
         // Act: POST /rest/site-branding/logo/login with file
         // Then: Expect 200 OK with logo URL
-        mockMvc.perform(multipart("/rest/site-branding/logo/login")
-                .file(file))
-                .andExpect(status().isOk())
+        mockMvc.perform(multipart("/rest/site-branding/logo/login").file(file)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.logoUrl").value("/rest/site-branding/logo/login"))
                 .andExpect(jsonPath("$.fileName").value("test-login-logo.png"));
     }
 
     /**
-     * Test: GET /rest/site-branding/logo/login - serves login logo file
-     * Task Reference: T036
+     * Test: GET /rest/site-branding/logo/login - serves login logo file Task
+     * Reference: T036
      */
     @Test
     public void testGetLoginLogo_WithExistingLogo_ReturnsFile() throws Exception {
@@ -364,8 +354,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Act: GET /rest/site-branding/logo/login
         // Then: Expect 200 OK with file content
-        mockMvc.perform(get("/rest/site-branding/logo/login"))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/rest/site-branding/logo/login")).andExpect(status().isOk())
                 .andExpect(content().bytes("test login image content".getBytes()));
 
         // Cleanup
@@ -373,8 +362,8 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: POST /rest/site-branding/logo/favicon - upload favicon
-     * Task Reference: T042
+     * Test: POST /rest/site-branding/logo/favicon - upload favicon Task Reference:
+     * T042
      */
     @Test
     public void testUploadFavicon_WithValidFile_Returns200() throws Exception {
@@ -385,25 +374,19 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         siteBrandingService.saveBranding(branding);
 
         // Arrange: Create mock MultipartFile (valid ICO, < 2MB)
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test-favicon.ico",
-                "image/x-icon",
-                "fake ico content".getBytes()
-        );
+        MockMultipartFile file = new MockMultipartFile("file", "test-favicon.ico", "image/x-icon",
+                "fake ico content".getBytes());
 
         // Act: POST /rest/site-branding/logo/favicon with file
         // Then: Expect 200 OK with logo URL
-        mockMvc.perform(multipart("/rest/site-branding/logo/favicon")
-                .file(file))
-                .andExpect(status().isOk())
+        mockMvc.perform(multipart("/rest/site-branding/logo/favicon").file(file)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.logoUrl").value("/rest/site-branding/logo/favicon"))
                 .andExpect(jsonPath("$.fileName").value("test-favicon.ico"));
     }
 
     /**
-     * Test: GET /rest/site-branding/logo/favicon - serves favicon file
-     * Task Reference: T042
+     * Test: GET /rest/site-branding/logo/favicon - serves favicon file Task
+     * Reference: T042
      */
     @Test
     public void testGetFavicon_WithExistingFavicon_ReturnsFile() throws Exception {
@@ -421,8 +404,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Act: GET /rest/site-branding/logo/favicon
         // Then: Expect 200 OK with file content
-        mockMvc.perform(get("/rest/site-branding/logo/favicon"))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/rest/site-branding/logo/favicon")).andExpect(status().isOk())
                 .andExpect(content().bytes("test favicon content".getBytes()));
 
         // Cleanup
@@ -430,8 +412,8 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: DELETE /rest/site-branding/logo/{type} - remove logo
-     * Task Reference: T060
+     * Test: DELETE /rest/site-branding/logo/{type} - remove logo Task Reference:
+     * T060
      */
     @Test
     public void testDeleteLogo_WithExistingLogo_Returns200() throws Exception {
@@ -448,8 +430,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Act: DELETE /rest/site-branding/logo/header
         // Then: Expect 200 OK, logo path set to null
-        mockMvc.perform(delete("/rest/site-branding/logo/header"))
-                .andExpect(status().isOk())
+        mockMvc.perform(delete("/rest/site-branding/logo/header")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.headerLogoUrl").isEmpty());
 
         // Verify file was deleted
@@ -457,8 +438,8 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     }
 
     /**
-     * Test: DELETE /rest/site-branding/logo/{type} - validates logo type
-     * Task Reference: T060
+     * Test: DELETE /rest/site-branding/logo/{type} - validates logo type Task
+     * Reference: T060
      */
     @Test
     public void testDeleteLogo_WithInvalidType_Returns400() throws Exception {
@@ -470,14 +451,13 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Act: DELETE /rest/site-branding/logo/invalid
         // Then: Expect 400 Bad Request
-        mockMvc.perform(delete("/rest/site-branding/logo/invalid"))
-                .andExpect(status().isBadRequest())
+        mockMvc.perform(delete("/rest/site-branding/logo/invalid")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
     }
 
     /**
-     * Test: POST /rest/site-branding/reset - reset all branding to defaults
-     * Task Reference: T065
+     * Test: POST /rest/site-branding/reset - reset all branding to defaults Task
+     * Reference: T065
      */
     @Test
     public void testResetBranding_ResetsAllToDefaults() throws Exception {
@@ -502,12 +482,11 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
         // Act: POST /rest/site-branding/reset
         // Then: Expect 200 OK, all logo paths set to null, colors reset to defaults
-        mockMvc.perform(post("/rest/site-branding/reset"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.headerLogoUrl").isEmpty())
-                .andExpect(jsonPath("$.loginLogoUrl").isEmpty())
-                .andExpect(jsonPath("$.faviconUrl").isEmpty())
-                .andExpect(jsonPath("$.primaryColor").value("#1d4ed8")) // Default primary color
+        mockMvc.perform(post("/rest/site-branding/reset")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.headerLogoUrl").isEmpty()).andExpect(jsonPath("$.loginLogoUrl").isEmpty())
+                .andExpect(jsonPath("$.faviconUrl").isEmpty()).andExpect(jsonPath("$.primaryColor").value("#1d4ed8")) // Default
+                                                                                                                      // primary
+                                                                                                                      // color
                 .andExpect(jsonPath("$.secondaryColor").value("#64748b")) // Default secondary color
                 .andExpect(jsonPath("$.accentColor").value("#0891b2")); // Default accent color
 
@@ -517,4 +496,3 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         assertFalse("Favicon file should be deleted", Files.exists(Paths.get(faviconPath)));
     }
 }
-

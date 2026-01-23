@@ -2,8 +2,8 @@ package org.openelisglobal.storage.service;
 
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -35,10 +35,10 @@ public interface StorageLocationService {
 
     List<StorageRack> getAllRacks();
 
-    // Position methods
-    List<StoragePosition> getPositionsByRack(Integer rackId);
+    // Box methods
+    List<StorageBox> getBoxesByRack(Integer rackId);
 
-    List<StoragePosition> getAllPositions();
+    List<StorageBox> getAllBoxes();
 
     // REST API methods - return fully prepared Maps with all relationship data
     List<Map<String, Object>> getRoomsForAPI();
@@ -48,6 +48,8 @@ public interface StorageLocationService {
     List<Map<String, Object>> getShelvesForAPI(Integer deviceId);
 
     List<Map<String, Object>> getRacksForAPI(Integer shelfId);
+
+    List<Map<String, Object>> getBoxesForAPI(Integer rackId);
 
     // Count methods
     int countOccupiedInDevice(Integer deviceId);
@@ -66,9 +68,9 @@ public interface StorageLocationService {
     Object get(Integer id, Class<?> entityClass);
 
     // Validation methods
-    boolean validateLocationActive(StoragePosition position);
+    boolean validateLocationActive(StorageBox box);
 
-    String buildHierarchicalPath(StoragePosition position);
+    String buildHierarchicalPath(StorageBox box);
 
     // Search methods
     /**
@@ -120,6 +122,17 @@ public interface StorageLocationService {
     Map<String, Object> getCascadeDeleteSummary(Object locationEntity);
 
     /**
+     * Check if a location can be moved to a new parent, and if samples exist
+     * downstream
+     * 
+     * @param locationEntity Location entity to check (Device, Shelf, or Rack)
+     * @param newParentId    ID of the new parent location
+     * @return Map containing: canMove (boolean), hasDownstreamSamples (boolean),
+     *         sampleCount (int), warning (String - optional warning message)
+     */
+    Map<String, Object> canMoveLocation(Object locationEntity, Integer newParentId);
+
+    /**
      * OGC-75: Delete location with cascade deletion of all child locations and
      * unassignment of all samples
      * 
@@ -128,4 +141,58 @@ public interface StorageLocationService {
      *                      StorageShelf, or StorageRack)
      */
     void deleteLocationWithCascade(Integer id, Class<?> locationClass);
+
+    // Deletion Validation Methods
+
+    /**
+     * Check if a Room can be deleted (no child devices).
+     *
+     * @param roomId Room ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteRoom(Integer roomId);
+
+    /**
+     * Check if a Device can be deleted (no child shelves).
+     *
+     * @param deviceId Device ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteDevice(Integer deviceId);
+
+    /**
+     * Check if a Shelf can be deleted (no child racks).
+     *
+     * @param shelfId Shelf ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteShelf(Integer shelfId);
+
+    /**
+     * Check if a Rack can be deleted (no assigned samples).
+     *
+     * @param rackId Rack ID to check
+     * @return DeletionValidationResult with success/error details
+     */
+    DeletionValidationResult canDeleteRack(Integer rackId);
+
+    /**
+     * Validate location name uniqueness within parent scope
+     *
+     * @param name         Location name to validate
+     * @param parentId     Parent ID (null for rooms)
+     * @param locationType One of: "room", "device", "shelf", "rack"
+     * @param excludeId    Existing ID to exclude (for updates)
+     * @return true if unique within scope, false otherwise
+     */
+    boolean isNameUniqueWithinParent(String name, Integer parentId, String locationType, Integer excludeId);
+
+    // Code uniqueness validation methods (added per spec FR-037l1)
+    boolean isCodeUniqueForRoom(String code, Integer excludeId);
+
+    boolean isCodeUniqueForDevice(String code, Integer excludeId);
+
+    boolean isCodeUniqueForShelf(String code, Integer excludeId);
+
+    boolean isCodeUniqueForRack(String code, Integer excludeId);
 }

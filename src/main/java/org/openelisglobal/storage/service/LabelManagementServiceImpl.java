@@ -169,7 +169,7 @@ public class LabelManagementServiceImpl implements LabelManagementService {
                 if (rack == null) {
                     return false;
                 }
-                // Code field is always ≤10 chars and required
+                // code field is always ≤10 chars and required
                 return rack.getCode() != null && !rack.getCode().trim().isEmpty();
             default:
                 return false;

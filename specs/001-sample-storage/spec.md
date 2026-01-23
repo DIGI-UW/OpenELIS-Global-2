@@ -227,7 +227,8 @@ information displayed for context and sorting/grouping capabilities.
 - Q: Which fields should be editable vs read-only in the Edit modal? → A: Code
   and Parent are read-only (only name/description/attributes editable, prevents
   structural changes). [NOTE: Superseded by Session 2025-11-16 - Code is now
-  editable in edit modal; Parent remains read-only]
+  editable in edit modal. Superseded by Session 2025-12-16 - Parent is now
+  editable with constraint warnings for downstream samples]
 
 ### Session 2025-11-06
 
@@ -918,6 +919,10 @@ reassigned. Export disposal records to verify compliance documentation.
 5. **Given** sample S-2025-001 was at position A5 before disposal, **When**
    disposal completes, **Then** position A5 becomes available for new sample
    assignment
+6. **Given** the dashboard shows Disposed counter at 0 before disposal, **When**
+   Sarah completes disposal of sample S-2025-001, **Then** the Disposed counter
+   increments to 1 immediately without requiring page refresh (per FR-057b,
+   FR-057c)
 
 ---
 
@@ -1044,8 +1049,8 @@ samples are assigned/moved/disposed.
    completes, **Then** CSV file contains only filtered data with all table
    columns plus metadata (within 10 seconds for 10,000 records)
 6. **Given** Maria assigns a new sample to Freezer Unit 1, **When** Dr. Johnson
-   refreshes the dashboard, **Then** Freezer Unit 1 occupancy increments
-   immediately (288/500, 58%)
+   views the dashboard, **Then** Freezer Unit 1 occupancy increments immediately
+   (288/500, 58%) without requiring page refresh (per FR-057b, FR-057c)
 
 ---
 
@@ -1584,18 +1589,22 @@ operations.
   - **Device**: Name (editable), Code (editable, ≤10 chars, auto-generated on
     create), Type (editable), Temperature setting (optional, editable), Capacity
     limit (optional, editable), Active/Inactive status (editable), Parent Room
-    (read-only)
+    (editable via dropdown, with constraint warning if samples exist downstream)
   - **Shelf**: Name (editable), Code (editable, ≤10 chars, auto-generated on
     create), Capacity limit (optional, editable), Active/Inactive status
-    (editable), Parent Device (read-only)
+    (editable), Parent Device (editable via dropdown, with constraint warning if
+    samples exist downstream)
   - **Rack**: Name (editable), Code (editable, ≤10 chars, auto-generated on
     create), Dimensions (rows, columns, editable), Position schema hint
     (optional, editable), Active/Inactive status (editable), Parent Shelf
-    (read-only)
+    (editable via dropdown, with constraint warning if samples exist downstream)
 - **FR-037l1**: Code field MUST be editable in Edit modal (see Session
   2025-11-16 for code/short-code simplification). Parent relationship fields
-  MUST be read-only in Edit modal to prevent structural changes that could break
-  references or hierarchy integrity
+  MUST be editable via dropdown selector in both Create and Edit modals. When
+  changing parent in Edit modal, system MUST check for downstream samples and
+  display warning if samples are assigned to child locations (similar to delete
+  constraint checking). User MUST acknowledge warning before saving parent
+  change.
 - **FR-037m**: Edit modal MUST validate code uniqueness within parent scope and
   parent-child relationships before saving
 - **FR-037n**: Edit modal MUST display Cancel and "Save Changes" buttons in
@@ -1770,6 +1779,11 @@ operations.
   matching subtle accent colors applied to corresponding tab labels/backgrounds
   (Rooms tab has blue accent, Devices tab has teal accent, Shelves tab has
   purple accent, Racks tab has orange accent) - tab coloring must be very subtle
+- **FR-057b**: Metric cards MUST update automatically when affected operations
+  complete (disposal updates Disposed counter, assignment updates Active
+  counter, etc.) without requiring page refresh
+- **FR-057c**: Metric card updates MUST be optimistic (update immediately after
+  successful API response) to provide instant user feedback
 - **FR-058**: Dashboard MUST provide 5 tabs: SampleItems | Rooms | Devices |
   Shelves | Racks. SampleItems tab displays SampleItem-level data (physical
   specimens), with parent Sample information displayed as secondary context and

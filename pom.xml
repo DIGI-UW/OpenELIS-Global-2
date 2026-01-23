@@ -16,7 +16,7 @@
         <minor.version>2</minor.version>
         <state.version>1</state.version>
         <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>0</fix.version>
+        <fix.version>2</fix.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -28,9 +28,14 @@
         <log4j.version>2.17.1</log4j.version>
         <springframework.version>6.2.2</springframework.version>
         <springsecurity.version>6.0.4</springsecurity.version>
-        <testContainersVersion>1.15.3</testContainersVersion>
+        <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.2</version>
+        </dependency>
         <dependency>
             <groupId>org.jsmpp</groupId>
             <artifactId>jsmpp</artifactId>
@@ -142,7 +147,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.9</version>
+            <version>3.18.0</version>
         </dependency>
         <dependency>
             <groupId>commons-beanutils</groupId>
@@ -258,7 +263,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.78</version>
+            <version>1.79</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
@@ -797,6 +802,9 @@
                 <version>2.43.0</version>
                 <configuration>
                     <pom>
+                        <includes>
+                            <include>pom.xml</include>
+                        </includes>
                         <sortPom>
                             <expandEmptyElements>false</expandEmptyElements>
                         </sortPom>
@@ -818,6 +826,8 @@
                             </includes>
                             <excludes>
                                 <exclude>.idea/**</exclude>
+                                <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -850,12 +860,16 @@
                             <!-- ignore build files -->
                             <excludes>
                                 <exclude>.idea/**</exclude>
+                                <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
                                 <exclude>bin/**</exclude>
                                 <exclude>tmp/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
+                                <exclude>tools/astm-http-bridge/**</exclude>
+                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                             </excludes>
@@ -871,7 +885,11 @@
                             </includes>
                             <excludes>
                                 <exclude>**/target/**</exclude>
+                                <exclude>.cursor/**</exclude>
+                                <exclude>.claude/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
+                                <exclude>tools/astm-http-bridge/**</exclude>
+                                <exclude>tools/astm-mock-server/**</exclude>
                                 <exclude>dataexport/**</exclude>
                                 <exclude>plugins/**</exclude>
                                 <exclude>frontend/**</exclude>

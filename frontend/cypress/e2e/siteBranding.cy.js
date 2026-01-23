@@ -72,21 +72,25 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    
+
     // Navigate through menu: Admin → General Configuration → Site Information → Site Branding
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteInfoMenu"]', { timeout: 10000 }).should("be.visible").click();
-    
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteInfoMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+
     // If Site Branding is a submenu item, click it
     // Otherwise, it may be accessible via a different path
     // This will need adjustment based on actual menu structure
 
     // Assert: Configuration page should load
     cy.wait("@getBranding").its("response.statusCode").should("eq", 200);
-    
+
     // Verify page title/heading is visible
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
-    
+
     // Verify branding options are visible (logos, colors)
     // These selectors will need adjustment based on actual component implementation
     cy.contains(/logo/i).should("be.visible");
@@ -103,8 +107,10 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Attempt to access site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+
     // Assert: Site Branding menu item should not be visible or should show access denied
     // This will need adjustment based on actual RBAC implementation
     cy.intercept("GET", "**/rest/site-branding/**", {
@@ -122,7 +128,9 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
    */
   it("should upload header logo and display it in application header", function () {
     // Arrange: Set up intercepts
-    cy.intercept("POST", "**/rest/site-branding/logo/header**").as("uploadLogo");
+    cy.intercept("POST", "**/rest/site-branding/logo/header**").as(
+      "uploadLogo",
+    );
     cy.intercept("GET", "**/rest/site-branding/**", {
       statusCode: 200,
       body: {
@@ -136,8 +144,12 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
@@ -149,7 +161,9 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
     // Navigate to home page and verify logo in header
     cy.visit("/");
     cy.get("#header-logo img", { timeout: 10000 }).should("be.visible");
-    cy.get("#header-logo img").should("have.attr", "src").and("include", "/rest/site-branding/logo/header");
+    cy.get("#header-logo img")
+      .should("have.attr", "src")
+      .and("include", "/rest/site-branding/logo/header");
   });
 
   /**
@@ -158,7 +172,9 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
    */
   it("should upload login logo and display it on login page", function () {
     // Arrange: Set up intercepts
-    cy.intercept("POST", "**/rest/site-branding/logo/login**").as("uploadLoginLogo");
+    cy.intercept("POST", "**/rest/site-branding/logo/login**").as(
+      "uploadLoginLogo",
+    );
     cy.intercept("GET", "**/rest/site-branding/**", {
       statusCode: 200,
       body: {
@@ -171,8 +187,12 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
@@ -181,12 +201,16 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
     // For now, this is a placeholder test structure
 
     // Log out and verify logo on login page
-    cy.get('[data-cy="logoutButton"]', { timeout: 10000 }).should("be.visible").click();
-    
+    cy.get('[data-cy="logoutButton"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+
     // Assert: Login logo should appear on login page
     cy.url().should("include", "/LoginPage");
     cy.get('img[alt="fullsize logo"]', { timeout: 10000 }).should("be.visible");
-    cy.get('img[alt="fullsize logo"]').should("have.attr", "src").and("include", "/rest/site-branding/logo/login");
+    cy.get('img[alt="fullsize logo"]')
+      .should("have.attr", "src")
+      .and("include", "/rest/site-branding/logo/login");
   });
 
   /**
@@ -206,20 +230,32 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Verify checkbox is checked
-    cy.contains(/use same logo as header/i, { timeout: 10000 }).should("be.visible");
-    cy.get('input[type="checkbox"][id="use-header-logo-for-login"]').should("be.checked");
+    cy.contains(/use same logo as header/i, { timeout: 10000 }).should(
+      "be.visible",
+    );
+    cy.get('input[type="checkbox"][id="use-header-logo-for-login"]').should(
+      "be.checked",
+    );
 
     // Log out and verify header logo appears on login page
-    cy.get('[data-cy="logoutButton"]', { timeout: 10000 }).should("be.visible").click();
-    
+    cy.get('[data-cy="logoutButton"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+
     // Assert: Header logo should appear on login page
     cy.url().should("include", "/LoginPage");
     cy.get('img[alt="fullsize logo"]', { timeout: 10000 }).should("be.visible");
-    cy.get('img[alt="fullsize logo"]').should("have.attr", "src").and("include", "/rest/site-branding/logo/header");
+    cy.get('img[alt="fullsize logo"]')
+      .should("have.attr", "src")
+      .and("include", "/rest/site-branding/logo/header");
   });
 
   /**
@@ -228,7 +264,9 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
    */
   it("should upload favicon and display it in browser tab", function () {
     // Arrange: Set up intercepts
-    cy.intercept("POST", "**/rest/site-branding/logo/favicon**").as("uploadFavicon");
+    cy.intercept("POST", "**/rest/site-branding/logo/favicon**").as(
+      "uploadFavicon",
+    );
     cy.intercept("GET", "**/rest/site-branding/**", {
       statusCode: 200,
       body: {
@@ -240,8 +278,12 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
@@ -251,7 +293,9 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Assert: Favicon should be updated in document head
     cy.get('link[rel="icon"]', { timeout: 10000 }).should("exist");
-    cy.get('link[rel="icon"]').should("have.attr", "href").and("include", "/rest/site-branding/logo/favicon");
+    cy.get('link[rel="icon"]')
+      .should("have.attr", "href")
+      .and("include", "/rest/site-branding/logo/favicon");
   });
 
   /**
@@ -273,18 +317,25 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
 
     // Set primary color
     cy.contains(/primary color/i, { timeout: 10000 }).should("be.visible");
-    const hexInput = cy.get('input[type="text"]').filter((el) => {
-      return el.value && el.value.startsWith('#');
-    }).first();
-    
+    const hexInput = cy
+      .get('input[type="text"]')
+      .filter((el) => {
+        return el.value && el.value.startsWith("#");
+      })
+      .first();
+
     hexInput.clear().type("#ff0000"); // Red color
 
     // Save changes
@@ -316,26 +367,36 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
 
     // Set secondary color
     cy.contains(/secondary color/i, { timeout: 10000 }).should("be.visible");
-    const secondaryHexInput = cy.get('input[type="text"]').filter((el) => {
-      return el.value && el.value.startsWith('#');
-    }).eq(1); // Second color input (after primary)
-    
+    const secondaryHexInput = cy
+      .get('input[type="text"]')
+      .filter((el) => {
+        return el.value && el.value.startsWith("#");
+      })
+      .eq(1); // Second color input (after primary)
+
     secondaryHexInput.clear().type("#00ff00"); // Green color
 
     // Set accent color
     cy.contains(/accent color/i, { timeout: 10000 }).should("be.visible");
-    const accentHexInput = cy.get('input[type="text"]').filter((el) => {
-      return el.value && el.value.startsWith('#');
-    }).eq(2); // Third color input (after secondary)
-    
+    const accentHexInput = cy
+      .get('input[type="text"]')
+      .filter((el) => {
+        return el.value && el.value.startsWith("#");
+      })
+      .eq(2); // Third color input (after secondary)
+
     accentHexInput.clear().type("#0000ff"); // Blue color
 
     // Save changes
@@ -355,7 +416,9 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
    */
   it("should remove logo and restore default logo", function () {
     // Arrange: Set up intercepts
-    cy.intercept("DELETE", "**/rest/site-branding/logo/header**").as("removeLogo");
+    cy.intercept("DELETE", "**/rest/site-branding/logo/header**").as(
+      "removeLogo",
+    );
     cy.intercept("GET", "**/rest/site-branding/**", {
       statusCode: 200,
       body: {
@@ -367,14 +430,20 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
 
     // Click remove logo button
-    cy.contains(/remove logo/i, { timeout: 10000 }).should("be.visible").click();
+    cy.contains(/remove logo/i, { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Confirm removal in modal
     cy.contains(/are you sure/i, { timeout: 10000 }).should("be.visible");
@@ -387,7 +456,9 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
     // Navigate to home page and verify default logo appears in header
     cy.visit("/");
     cy.get("#header-logo img", { timeout: 10000 }).should("be.visible");
-    cy.get("#header-logo img").should("have.attr", "src").and("include", "openelis_logo.png");
+    cy.get("#header-logo img")
+      .should("have.attr", "src")
+      .and("include", "openelis_logo.png");
   });
 
   /**
@@ -412,14 +483,20 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
 
     // Click reset button
-    cy.contains(/reset to default/i, { timeout: 10000 }).should("be.visible").click();
+    cy.contains(/reset to default/i, { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Confirm reset in modal
     cy.contains(/are you sure/i, { timeout: 10000 }).should("be.visible");
@@ -430,14 +507,24 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Assert: All branding should be reset to defaults
     // Verify colors are reset
-    cy.get("html").should("have.css", "--cds-interactive-01", "rgb(29, 78, 216)"); // #1d4ed8
-    cy.get("html").should("have.css", "--cds-interactive-02", "rgb(100, 116, 139)"); // #64748b
+    cy.get("html").should(
+      "have.css",
+      "--cds-interactive-01",
+      "rgb(29, 78, 216)",
+    ); // #1d4ed8
+    cy.get("html").should(
+      "have.css",
+      "--cds-interactive-02",
+      "rgb(100, 116, 139)",
+    ); // #64748b
     cy.get("html").should("have.css", "--cds-support-01", "rgb(8, 145, 178)"); // #0891b2
 
     // Verify default logo appears in header
     cy.visit("/");
     cy.get("#header-logo img", { timeout: 10000 }).should("be.visible");
-    cy.get("#header-logo img").should("have.attr", "src").and("include", "openelis_logo.png");
+    cy.get("#header-logo img")
+      .should("have.attr", "src")
+      .and("include", "openelis_logo.png");
   });
 
   /**
@@ -459,22 +546,31 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
 
     // Change primary color
     cy.contains(/primary color/i, { timeout: 10000 }).should("be.visible");
-    const hexInput = cy.get('input[type="text"]').filter((el) => {
-      return el.value && el.value.startsWith('#');
-    }).first();
-    
+    const hexInput = cy
+      .get('input[type="text"]')
+      .filter((el) => {
+        return el.value && el.value.startsWith("#");
+      })
+      .first();
+
     hexInput.clear().type("#ff0000"); // Red color
 
     // Save changes
-    cy.contains(/save changes/i, { timeout: 10000 }).should("be.visible").click();
+    cy.contains(/save changes/i, { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for save to complete
     cy.wait("@updateBranding").its("response.statusCode").should("eq", 200);
@@ -505,29 +601,42 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Navigate to site branding configuration
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Wait for page to load
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
 
     // Change primary color
     cy.contains(/primary color/i, { timeout: 10000 }).should("be.visible");
-    const hexInput = cy.get('input[type="text"]').filter((el) => {
-      return el.value && el.value.startsWith('#');
-    }).first();
-    
+    const hexInput = cy
+      .get('input[type="text"]')
+      .filter((el) => {
+        return el.value && el.value.startsWith("#");
+      })
+      .first();
+
     hexInput.clear().type("#ff0000"); // Red color
 
     // Verify unsaved changes warning appears
     cy.contains(/unsaved changes/i, { timeout: 10000 }).should("be.visible");
 
     // Click cancel
-    cy.contains(/cancel/i, { timeout: 10000 }).should("be.visible").click();
+    cy.contains(/cancel/i, { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     // Assert: Changes should be discarded, form should show original values
     // Color should revert to default
-    cy.get("html").should("have.css", "--cds-interactive-01", "rgb(29, 78, 216)"); // #1d4ed8
+    cy.get("html").should(
+      "have.css",
+      "--cds-interactive-01",
+      "rgb(29, 78, 216)",
+    ); // #1d4ed8
   });
 
   /**
@@ -550,19 +659,28 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Act: Configure branding
     cy.visit("/");
-    cy.get('[data-cy="adminMenu"]', { timeout: 10000 }).should("be.visible").click();
-    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 }).should("be.visible").click();
+    cy.get('[data-cy="adminMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
+    cy.get('[data-cy="siteBrandingMenu"]', { timeout: 10000 })
+      .should("be.visible")
+      .click();
 
     cy.contains(/site branding/i, { timeout: 10000 }).should("be.visible");
 
     // Change primary color and save
     cy.contains(/primary color/i, { timeout: 10000 }).should("be.visible");
-    const hexInput = cy.get('input[type="text"]').filter((el) => {
-      return el.value && el.value.startsWith('#');
-    }).first();
-    
+    const hexInput = cy
+      .get('input[type="text"]')
+      .filter((el) => {
+        return el.value && el.value.startsWith("#");
+      })
+      .first();
+
     hexInput.clear().type("#ff0000");
-    cy.contains(/save changes/i, { timeout: 10000 }).should("be.visible").click();
+    cy.contains(/save changes/i, { timeout: 10000 })
+      .should("be.visible")
+      .click();
     cy.wait("@updateBranding").its("response.statusCode").should("eq", 200);
 
     // Log out
@@ -573,7 +691,8 @@ describe("Site Branding - User Story 1: Access Site Branding Configuration", fun
 
     // Assert: Branding should persist
     cy.get("html").should("have.css", "--cds-interactive-01", "rgb(255, 0, 0)");
-    cy.get("#header-logo img").should("have.attr", "src").and("include", "/rest/site-branding/logo/header");
+    cy.get("#header-logo img")
+      .should("have.attr", "src")
+      .and("include", "/rest/site-branding/logo/header");
   });
 });
-

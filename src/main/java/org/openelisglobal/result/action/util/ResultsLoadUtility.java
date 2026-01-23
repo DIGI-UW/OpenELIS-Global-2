@@ -48,8 +48,6 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.note.service.NoteService;
@@ -118,7 +116,8 @@ public class ResultsLoadUtility {
     private List<Integer> analysisStatusList = new ArrayList<>();
     private List<Integer> sampleStatusList = new ArrayList<>();
 
-    private List<InventoryKitItem> activeKits;
+    // TODO: Re-enable after new inventory frontend integration
+    // private List<InventoryKitItem> activeKits;
 
     private Patient currentPatient;
 
@@ -212,7 +211,8 @@ public class ResultsLoadUtility {
     public List<TestResultItem> getGroupedTestsForSample(Sample sample, Patient patient) {
 
         reflexGroup = 1;
-        activeKits = null;
+        // TODO: Re-enable after new inventory frontend integration
+        // activeKits = null;
         samples = new ArrayList<>();
 
         if (sample != null) {
@@ -220,15 +220,18 @@ public class ResultsLoadUtility {
         }
 
         currentPatient = patient;
-        PersonService personService = SpringContext.getBean(PersonService.class);
-        personService.getData(patient.getPerson());
+        if (patient != null && patient.getPerson() != null) {
+            PersonService personService = SpringContext.getBean(PersonService.class);
+            personService.getData(patient.getPerson());
+        }
 
         return getGroupedTestsForSamples();
     }
 
     public List<TestResultItem> getGroupedTestsForPatient(Patient patient) {
         reflexGroup = 1;
-        activeKits = null;
+        // TODO: Re-enable after new inventory frontend integration
+        // activeKits = null;
         inventoryNeeded = false;
 
         currentPatient = patient;
@@ -282,7 +285,8 @@ public class ResultsLoadUtility {
     public List<TestResultItem> getGroupedTestsForAnalysisList(List<Analysis> filteredAnalysisList, boolean forwardSort)
             throws LIMSRuntimeException {
 
-        activeKits = null;
+        // TODO: Re-enable after new inventory frontend integration
+        // activeKits = null;
         inventoryNeeded = false;
         reflexGroup = 1;
 
@@ -665,7 +669,8 @@ public class ResultsLoadUtility {
             testKitInventoryId = testKit.getInventoryLocationId();
             testKitResult.setId(testKit.getResultId());
             resultService.getData(testKitResult);
-            testKitInactive = kitNotInActiveKitList(testKitInventoryId);
+            // TODO: Re-enable after new inventory frontend integration
+            // testKitInactive = kitNotInActiveKitList(testKitInventoryId);
         }
 
         String displayTestName = analysisService.getTestDisplayName(analysis);
@@ -726,6 +731,8 @@ public class ResultsLoadUtility {
         if (analysis.getSampleItem() != null && analysis.getSampleItem().getId() != null) {
             testItem.setSampleItemId(analysis.getSampleItem().getId());
         }
+        testItem.setSampleItemExternalId(
+                analysis.getSampleItem() != null ? analysis.getSampleItem().getExternalId() : null);
         testItem.setSequenceNumber(sequenceNumber);
         testItem.setReceivedDate(receivedDate);
         testItem.setTestName(displayTestName);
@@ -987,18 +994,19 @@ public class ResultsLoadUtility {
         return normal;
     }
 
-    private boolean kitNotInActiveKitList(String testKitId) {
-        List<InventoryKitItem> activeKits = getActiveKits();
-
-        for (InventoryKitItem kit : activeKits) {
-            // The locationID is the reference held in the DB
-            if (testKitId.equals(kit.getInventoryLocationId())) {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    // TODO: Re-enable after new inventory frontend integration
+    // private boolean kitNotInActiveKitList(String testKitId) {
+    // List<InventoryKitItem> activeKits = getActiveKits();
+    //
+    // for (InventoryKitItem kit : activeKits) {
+    // // The locationID is the reference held in the DB
+    // if (testKitId.equals(kit.getInventoryLocationId())) {
+    // return false;
+    // }
+    // }
+    //
+    // return true;
+    // }
 
     private String getCurrentDate() {
         if (GenericValidator.isBlankOrNull(currentDate)) {
@@ -1024,14 +1032,17 @@ public class ResultsLoadUtility {
         analysisStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
     }
 
-    private List<InventoryKitItem> getActiveKits() {
-        if (activeKits == null) {
-            InventoryUtility inventoryUtil = SpringContext.getBean(InventoryUtility.class);
-            activeKits = inventoryUtil.getExistingActiveInventory();
-        }
-
-        return activeKits;
-    }
+    // TODO: Re-enable after new inventory frontend integration
+    // TODO: Re-enable after new inventory frontend integration
+    // // private List<InventoryKitItem> getActiveKits() {
+    // if (activeKits == null) {
+    // InventoryUtility inventoryUtil =
+    // SpringContext.getBean(InventoryUtility.class);
+    // activeKits = inventoryUtil.getExistingActiveInventory();
+    // }
+    //
+    // return activeKits;
+    // }
 
     public void setLockCurrentResults(boolean lockCurrentResults) {
         this.lockCurrentResults = lockCurrentResults;

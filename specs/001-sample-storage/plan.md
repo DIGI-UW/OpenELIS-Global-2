@@ -249,10 +249,10 @@ src/main/java/org/openelisglobal/storage/
     └── StorageLocationFhirTransform.java - FHIR Location mapping
 
 src/main/resources/
-├── liquibase/storage/
-│   ├── 001-create-storage-tables.xml
+├── liquibase/3.3.x.x/
+│   ├── 001-create-storage-hierarchy-tables.xml
 │   ├── 002-create-assignment-tables.xml
-│   └── 003-add-fhir-uuid-columns.xml
+│   └── 003-create-indexes.xml
 └── hibernate/hbm/
     ├── StorageRoom.hbm.xml
     ├── StorageDevice.hbm.xml
@@ -1275,8 +1275,8 @@ simplified label printing (see Amendment 2025-11-16).
   (new)
 - `src/test/java/org/openelisglobal/storage/controller/LabelManagementRestControllerTest.java`
   (new)
-- `src/main/resources/liquibase/storage/004-create-print-history-table.xml`
-  (new)
+- `src/main/resources/liquibase/3.3.x.x/XXX-create-print-history-table.xml`
+  (new - use next available sequence number)
 
 **Frontend**:
 
@@ -1407,6 +1407,14 @@ stories.
   console log review)
 - Full test suite runs only in CI/CD pipeline
 - Code formatting enforced via pre-commit hooks
+- **Optimistic Update Pattern for Metric Cards** (OGC-144 fix): Dashboard metric
+  cards (Total Samples, Active, Disposed, Storage Locations) use optimistic
+  updates per FR-057b and FR-057c. After successful disposal, assignment, or
+  movement operations, the `refreshMetrics()` callback is invoked immediately to
+  update metric counts without requiring page refresh. Implementation uses
+  React's `useCallback` hook to memoize the refresh function and passes it as
+  props (`onDisposalSuccess`, `onAssignmentSuccess`) to child modal components.
+  This provides instant user feedback and improves perceived performance
 
 **Dependencies**: Requires all feature phases (5, 6, 7, 8, 9, 9.5, 10) to
 complete first.

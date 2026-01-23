@@ -13,7 +13,10 @@
  */
 package org.openelisglobal.sampleitem.valueholder;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
@@ -54,12 +57,44 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private boolean voided = false;
     private String voidReason;
 
+    // ========== Aliquoting Support Fields (Feature 001-sample-management)
+    // ==========
+    // These fields are mapped via SampleItem.hbm.xml
+
+    /**
+     * Remaining quantity available for aliquoting or testing. Decremented when
+     * creating aliquots. Cannot be negative. If null, the quantity field should be
+     * used as the remaining quantity (for legacy samples without aliquoting).
+     */
+    private BigDecimal remainingQuantity;
+
+    /**
+     * Parent sample item if this is an aliquot. NULL for original samples,
+     * references parent for aliquots. Enables recursive aliquoting (aliquots of
+     * aliquots).
+     */
+    private SampleItem parentSampleItem;
+
+    /**
+     * Child aliquots created from this sample item. Empty for aliquots that haven't
+     * been further divided. Enables querying sample hierarchy.
+     */
+    private List<SampleItem> childAliquots = new ArrayList<>();
+
+    /**
+     * Optimistic locking version for concurrency control during aliquoting.
+     * Prevents race conditions when multiple users aliquot the same sample
+     * concurrently. Mapped via hbm.xml as 'lastupdated' column.
+     */
+    private Timestamp version;
+
     public SampleItem() {
         super();
         typeOfSample = new ValueHolder();
         sourceOfSample = new ValueHolder();
         unitOfMeasure = new ValueHolder();
         sample = new ValueHolder();
+        childAliquots = new ArrayList<>();
     }
 
     public String getExternalId() {
@@ -256,5 +291,164 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setVoidReason(String voidReason) {
         this.voidReason = voidReason;
+    }
+
+    // ========== Aliquoting Getters/Setters (Feature 001-sample-management)
+    // ==========
+
+    public BigDecimal getRemainingQuantity() {
+        return remainingQuantity;
+    }
+
+    public void setRemainingQuantity(BigDecimal remainingQuantity) {
+        this.remainingQuantity = remainingQuantity;
+    }
+
+    /**
+     * Get the effective remaining quantity, falling back to quantity if
+     * remainingQuantity is null (for legacy samples).
+     *
+     * @return the remaining quantity, or quantity if remainingQuantity is null
+     */
+    public BigDecimal getEffectiveRemainingQuantity() {
+        if (remainingQuantity != null) {
+            return remainingQuantity;
+        }
+        // Fallback to quantity for legacy samples without remainingQuantity set
+        return quantity != null ? BigDecimal.valueOf(quantity) : null;
+    }
+
+    public SampleItem getParentSampleItem() {
+        return parentSampleItem;
+    }
+
+    public void setParentSampleItem(SampleItem parentSampleItem) {
+        this.parentSampleItem = parentSampleItem;
+    }
+
+    public List<SampleItem> getChildAliquots() {
+        return childAliquots;
+    }
+
+    public void setChildAliquots(List<SampleItem> childAliquots) {
+        this.childAliquots = childAliquots;
+    }
+
+    /**
+     * Add a child aliquot to this sample item. Helper method to maintain
+     * bidirectional relationship.
+     *
+     * @param aliquot the child aliquot to add
+     */
+    public void addChildAliquot(SampleItem aliquot) {
+        if (!childAliquots.contains(aliquot)) {
+            childAliquots.add(aliquot);
+            aliquot.setParentSampleItem(this);
+        }
+    }
+
+    /**
+     * Remove a child aliquot from this sample item. Helper method to maintain
+     * bidirectional relationship.
+     *
+     * @param aliquot the child aliquot to remove
+     */
+    public void removeChildAliquot(SampleItem aliquot) {
+        if (childAliquots.contains(aliquot)) {
+            childAliquots.remove(aliquot);
+            aliquot.setParentSampleItem(null);
+        }
+    }
+
+    // ========== Aliquoting Helper Methods (Feature 001-sample-management, T009)
+    // ==========
+
+    /**
+     * Check if this sample item has remaining quantity available for aliquoting.
+     * Falls back to quantity field for legacy samples.
+     *
+     * @return true if effective remaining quantity is not null and greater than
+     *         zero
+     */
+    public boolean hasRemainingQuantity() {
+        BigDecimal effective = getEffectiveRemainingQuantity();
+        return effective != null && effective.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    /**
+     * Check if this sample item is an aliquot (has a parent).
+     *
+     * @return true if this sample has a parent sample item
+     */
+    public boolean isAliquot() {
+        return parentSampleItem != null;
+    }
+
+    /**
+     * Check if the requested quantity can be aliquoted from this sample. Validates
+     * that sufficient remaining quantity exists. Falls back to quantity field for
+     * legacy samples.
+     *
+     * @param requestedQuantity the quantity to aliquot
+     * @return true if requested quantity is valid and does not exceed effective
+     *         remaining quantity
+     */
+    public boolean canAliquot(BigDecimal requestedQuantity) {
+        if (requestedQuantity == null || requestedQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+        BigDecimal effective = getEffectiveRemainingQuantity();
+        if (effective == null) {
+            return false;
+        }
+        return effective.compareTo(requestedQuantity) >= 0;
+    }
+
+    /**
+     * Decrement the remaining quantity by the specified amount. Used when creating
+     * aliquots to track volume dispensing.
+     *
+     * @param amount the quantity to subtract from remaining quantity
+     * @throws IllegalArgumentException if amount is null, negative, or exceeds
+     *                                  remaining quantity
+     */
+    public void decrementRemainingQuantity(BigDecimal amount) {
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount to decrement cannot be null");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Amount to decrement cannot be negative: " + amount);
+        }
+        // For legacy samples without remainingQuantity, initialize from original
+        // quantity
+        if (remainingQuantity == null) {
+            if (quantity != null) {
+                remainingQuantity = BigDecimal.valueOf(quantity);
+            } else {
+                throw new IllegalStateException(
+                        "Cannot decrement remaining quantity: neither remainingQuantity nor quantity is set");
+            }
+        }
+        if (remainingQuantity.compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Cannot decrement " + amount + " from remaining quantity "
+                    + remainingQuantity + ": insufficient quantity");
+        }
+        this.remainingQuantity = remainingQuantity.subtract(amount);
+    }
+
+    /**
+     * Calculate the nesting level of this sample item in the aliquot hierarchy.
+     * Original samples have level 0, their direct aliquots have level 1, etc.
+     *
+     * @return the nesting level (0 for original samples)
+     */
+    public int getNestingLevel() {
+        int level = 0;
+        SampleItem current = this.parentSampleItem;
+        while (current != null) {
+            level++;
+            current = current.getParentSampleItem();
+        }
+        return level;
     }
 }

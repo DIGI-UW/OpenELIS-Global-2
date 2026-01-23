@@ -205,3 +205,104 @@
 .storage-dashboard .cds--table-container {
   margin-top: 0;
 }
+
+/* Boxes tab */
+.boxes-tab .helper-text {
+  margin: 0.25rem 0 0.75rem 0;
+  color: var(--cds-text-secondary);
+}
+
+.rack-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+
+.rack-grid-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 0.35rem;
+}
+
+.rack-grid-cell {
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer-01);
+  padding: 0.5rem;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.rack-grid-cell.available {
+  border-color: var(--cds-border-subtle-01);
+  background: var(--cds-layer-01);
+}
+
+.rack-grid-cell.available:hover {
+  border-color: var(--cds-link-primary);
+  box-shadow: 0 0 0 1px var(--cds-link-primary);
+}
+
+.rack-grid-cell.occupied {
+  border-color: var(--cds-support-success);
+  background: rgba(36, 161, 72, 0.1); /* Green tint for occupied */
+  border-width: 2px;
+  cursor: not-allowed;
+}
+
+.rack-grid-cell.occupied .rack-grid-label {
+  color: var(--cds-support-success);
+  font-weight: 700;
+}
+
+.rack-grid-cell.occupied .rack-grid-status {
+  color: var(--cds-support-success);
+  font-weight: 600;
+}
+
+.rack-grid-cell.selected {
+  border-color: var(--cds-link-primary);
+  box-shadow: 0 0 0 2px var(--cds-focus);
+  background: rgba(0, 82, 204, 0.05); /* Blue tint for selected */
+}
+
+.rack-grid-cell.occupied:hover {
+  background: rgba(36, 161, 72, 0.18);
+}
+
+.rack-grid-label {
+  font-weight: 600;
+  color: var(--cds-text-primary);
+}
+
+.rack-grid-status {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+}
+
+.rack-grid-placeholder {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assign-box-tile .helper-text {
+  margin-bottom: 0.75rem;
+  color: var(--cds-text-secondary);
+}
+
+.assign-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

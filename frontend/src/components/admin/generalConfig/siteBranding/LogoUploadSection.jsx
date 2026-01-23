@@ -1,8 +1,8 @@
 /**
  * Logo Upload Section Component
- * 
+ *
  * Handles logo file upload with validation and preview
- * 
+ *
  * Task Reference: T032
  */
 
@@ -23,10 +23,10 @@ import { TrashCan } from "@carbon/icons-react";
 import { removeLogo } from "../../../../services/siteBrandingService";
 import { Modal } from "@carbon/react";
 
-function LogoUploadSection({ 
-  type, 
-  currentLogoUrl, 
-  onLogoUploaded, 
+function LogoUploadSection({
+  type,
+  currentLogoUrl,
+  onLogoUploaded,
   onLogoRemoved,
   useHeaderLogoForLogin = false,
   onUseHeaderLogoChange,
@@ -43,7 +43,12 @@ function LogoUploadSection({
     if (!selectedFile) return;
 
     // Validate file format
-    const allowedFormats = ["image/png", "image/svg+xml", "image/jpeg", "image/jpg"];
+    const allowedFormats = [
+      "image/png",
+      "image/svg+xml",
+      "image/jpeg",
+      "image/jpg",
+    ];
     if (!allowedFormats.includes(selectedFile.type)) {
       setError(intl.formatMessage({ id: "site.branding.file.format.error" }));
       return;
@@ -91,7 +96,7 @@ function LogoUploadSection({
         } else {
           setError(intl.formatMessage({ id: "site.branding.save.error" }));
         }
-      }
+      },
     );
   };
 
@@ -104,36 +109,33 @@ function LogoUploadSection({
     setShowRemoveConfirm(false);
     setError(null);
 
-    removeLogo(
-      type,
-      async (response, extraParams) => {
-        try {
-          const status = response.status || 200;
-          if (status === 200 || status === 204) {
-            // Parse response body if available
-            let responseData = null;
-            if (response.ok) {
-              try {
-                responseData = await response.json();
-              } catch (e) {
-                // Response might not have JSON body
-              }
+    removeLogo(type, async (response, extraParams) => {
+      try {
+        const status = response.status || 200;
+        if (status === 200 || status === 204) {
+          // Parse response body if available
+          let responseData = null;
+          if (response.ok) {
+            try {
+              responseData = await response.json();
+            } catch (e) {
+              // Response might not have JSON body
             }
-            
-            setFile(null);
-            setPreview(null);
-            if (onLogoRemoved) {
-              onLogoRemoved();
-            }
-          } else {
-            setError(intl.formatMessage({ id: "site.branding.error.remove" }));
           }
-        } catch (error) {
-          console.error("Error removing logo:", error);
+
+          setFile(null);
+          setPreview(null);
+          if (onLogoRemoved) {
+            onLogoRemoved();
+          }
+        } else {
           setError(intl.formatMessage({ id: "site.branding.error.remove" }));
         }
+      } catch (error) {
+        console.error("Error removing logo:", error);
+        setError(intl.formatMessage({ id: "site.branding.error.remove" }));
       }
-    );
+    });
   };
 
   const cancelRemove = () => {
@@ -193,7 +195,9 @@ function LogoUploadSection({
             <div style={{ marginBottom: "1rem" }}>
               <Checkbox
                 id="use-header-logo-for-login"
-                labelText={intl.formatMessage({ id: "site.branding.use.header.logo.for.login" })}
+                labelText={intl.formatMessage({
+                  id: "site.branding.use.header.logo.for.login",
+                })}
                 checked={useHeaderLogoForLogin}
                 onChange={(event) => {
                   if (onUseHeaderLogoChange) {
@@ -209,7 +213,11 @@ function LogoUploadSection({
               <img
                 src={preview}
                 alt={intl.formatMessage({ id: getTitleKey() })}
-                style={{ maxWidth: "200px", maxHeight: "100px", objectFit: "contain" }}
+                style={{
+                  maxWidth: "200px",
+                  maxHeight: "100px",
+                  objectFit: "contain",
+                }}
               />
               <Button
                 kind="danger"
@@ -226,8 +234,12 @@ function LogoUploadSection({
           {/* Hide file uploader when login logo uses header logo */}
           {!(type === "login" && useHeaderLogoForLogin) && (
             <FileUploader
-              buttonLabel={intl.formatMessage({ id: "site.branding.upload.logo" })}
-              iconDescription={intl.formatMessage({ id: "site.branding.upload.logo" })}
+              buttonLabel={intl.formatMessage({
+                id: "site.branding.upload.logo",
+              })}
+              iconDescription={intl.formatMessage({
+                id: "site.branding.upload.logo",
+              })}
               filenameStatus={file ? "complete" : undefined}
               accept={["image/png", "image/svg+xml", "image/jpeg", "image/jpg"]}
               multiple={false}
@@ -255,14 +267,24 @@ function LogoUploadSection({
           {/* Confirmation Modal for Logo Removal */}
           <Modal
             open={showRemoveConfirm}
-            modalHeading={intl.formatMessage({ id: "site.branding.confirm.remove" })}
-            primaryButtonText={intl.formatMessage({ id: "label.button.remove" })}
-            secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+            modalHeading={intl.formatMessage({
+              id: "site.branding.confirm.remove",
+            })}
+            primaryButtonText={intl.formatMessage({
+              id: "label.button.remove",
+            })}
+            secondaryButtonText={intl.formatMessage({
+              id: "label.button.cancel",
+            })}
             onRequestClose={cancelRemove}
             onRequestSubmit={confirmRemove}
             danger
           >
-            <p>{intl.formatMessage({ id: "site.branding.confirm.remove.message" })}</p>
+            <p>
+              {intl.formatMessage({
+                id: "site.branding.confirm.remove.message",
+              })}
+            </p>
           </Modal>
         </Column>
       </Grid>
@@ -271,4 +293,3 @@ function LogoUploadSection({
 }
 
 export default LogoUploadSection;
-

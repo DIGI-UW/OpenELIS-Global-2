@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -82,6 +83,15 @@ public class StorageDevice extends BaseObject<Integer> {
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
     @JoinColumn(name = "PARENT_ROOM_ID", nullable = false)
     private StorageRoom parentRoom;
+
+    @Column(name = "IP_ADDRESS", length = 45)
+    private String ipAddress;
+
+    @Column(name = "PORT")
+    private Integer port;
+
+    @Column(name = "COMMUNICATION_PROTOCOL", length = 20)
+    private String communicationProtocol;
 
     @Column(name = "SYS_USER_ID", nullable = false)
     private Integer sysUserId;
@@ -168,6 +178,30 @@ public class StorageDevice extends BaseObject<Integer> {
         this.parentRoom = parentRoom;
     }
 
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+    }
+
+    public Integer getPort() {
+        return port;
+    }
+
+    public void setPort(Integer port) {
+        this.port = port;
+    }
+
+    public String getCommunicationProtocol() {
+        return communicationProtocol;
+    }
+
+    public void setCommunicationProtocol(String communicationProtocol) {
+        this.communicationProtocol = communicationProtocol;
+    }
+
     public Integer getSysUserIdValue() {
         return sysUserId;
     }
@@ -194,10 +228,12 @@ public class StorageDevice extends BaseObject<Integer> {
     }
 
     // Helper methods for FHIR transform
+    @JsonIgnore
     public String getFhirUuidAsString() {
         return fhirUuid != null ? fhirUuid.toString() : null;
     }
 
+    @JsonIgnore
     public String getTypeAsString() {
         return type; // type is already a String
     }

@@ -33,7 +33,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.7.0) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.1) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -42,7 +42,8 @@ reporting, serving 30+ countries worldwide.
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
 - Branch strategy: `develop` (main development), `main` (production releases)
-- Feature branches: `{###-feature-name}` or `issue-{###}-{feature-name}`
+- Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
+  (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
 **Tech Stack:** Java 21 + Spring Framework 6.2.2 (Traditional Spring MVC)
 backend, React 17 + Carbon Design System frontend, PostgreSQL 14+ database, HAPI
@@ -216,9 +217,9 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (1147 lines, v1.7.0)
+> **Full Document:** `.specify/memory/constitution.md` (v1.8.1)
 
-The constitution defines 8 core principles that ALL code changes MUST follow:
+The constitution defines 9 core principles that ALL code changes MUST follow:
 
 ### I. Configuration-Driven Variation
 
@@ -381,8 +382,12 @@ production.
 
 **How:**
 
-- Schema migrations in `src/main/resources/liquibase/{module}/`
-- Changesets with unique IDs: `{module}-{sequence}-{description}`
+- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
+  `3.3.x.x/`)
+- Changesets with unique IDs: `{sequence}-{description}` (e.g.,
+  `023-storage-device-connectivity`)
+- All changesets MUST be placed inside versioned folders - NO module-specific
+  folders outside version directories
 - Use Liquibase XML format (NOT raw SQL unless necessary)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
@@ -436,6 +441,33 @@ hardcoded English text.
 - [ ] Sensitive data encrypted at rest (if applicable)
 - [ ] HTTPS endpoints only (NO HTTP for PHI)
 
+### IX. Spec-Driven Iteration (NEW in v1.8.0)
+
+**Rule:** Features requiring >3 days effort MUST be broken into Validation
+Milestones. Each Milestone = 1 Pull Request.
+
+**Why:** Large PRs create review bottlenecks, increase merge conflict risk, and
+delay feedback. Milestone-based delivery enables manageable code reviews.
+
+**How:**
+
+- Spec PR created first on `spec/{NNN}[-{jira}]-{name}` branch
+- Each milestone gets its own branch: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
+- Parallel milestones marked with `[P]` can be developed simultaneously
+- Sequential milestones must complete in order
+
+**Branch Naming Convention:**
+
+| Branch Type      | Pattern                                                    | Example                                               |
+| ---------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| Spec Branch      | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`               |
+| Milestone Branch | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db` |
+| Hotfix           | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                         |
+| Bugfix           | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                           |
+
+**Reference:**
+[GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
 ---
 
 ## Development Workflow
@@ -473,8 +505,49 @@ docker compose -f dev.docker-compose.yml up -d
 
 ### SpecKit Workflow (Specification-Driven Development)
 
-This project uses GitHub SpecKit for rigorous feature development. The workflow
-enforces constitution compliance at every stage.
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+rigorous feature development. The workflow enforces constitution compliance at
+every stage.
+
+**Setup (Required for AI Agents):**
+
+Before using SpecKit commands, install them to your AI agent's command
+directory. This is the **single entry point** for SpecKit setup:
+
+**Bash (Linux/macOS):**
+
+```bash
+# Install commands for all supported AI agents (Cursor + Claude Code)
+./.specify/scripts/bash/install-commands.sh
+
+# Or install for specific agent only
+./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
+./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+
+# Skip confirmation prompt (for automation/CI)
+./.specify/scripts/bash/install-commands.sh -y all
+```
+
+**PowerShell (Windows):**
+
+```powershell
+# Install commands for all supported AI agents
+.\.specify\scripts\powershell\install-commands.ps1
+
+# Or install for specific agent only
+.\.specify\scripts\powershell\install-commands.ps1 -Target cursor
+.\.specify\scripts\powershell\install-commands.ps1 -Target claude
+
+# Skip confirmation prompt
+.\.specify\scripts\powershell\install-commands.ps1 -Yes -Target all
+```
+
+This compiles command definitions from `.specify/core/commands/` (upstream
+SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
+directories (`.cursor/commands/`, `.claude/commands/`).
+
+**CI Validation:** The CI pipeline automatically validates that all 9 SpecKit
+commands compile correctly and contain valid paths.
 
 **Available Commands:**
 
@@ -488,6 +561,7 @@ enforces constitution compliance at every stage.
 - `/speckit.analyze` - Cross-artifact consistency analysis
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
+- `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
 
 **Standard Workflow:**
 
@@ -581,18 +655,36 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 
 ### Branch Strategy
 
+**Reference:** See Constitution Principle IX for complete conventions.
+
+**Primary Branches:**
+
 - **`develop`** - Main development branch (ALL PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches:** `{###-feature-name}` (e.g., `001-sample-storage`) or
-  `issue-{###}-{feature-name}`
-- **Hotfix branches:** `hotfix-{description}` (merged to develop + main)
 
-**Creating Feature Branch:**
+**Feature Development (Principle IX):**
+
+- **Spec branches:** `spec/{NNN}[-{jira}]-{name}` - Specification PRs
+- **Milestone branches:** `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Individual
+  PRs
+- **Hotfix branches:** `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
+- **Bugfix branches:** `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
+
+**Issue ID Format:** Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
+(`{###}`)
+
+**Creating Feature Branch (SDD Workflow):**
 
 ```bash
+# 1. Start with spec branch
 git checkout develop
 git pull --rebase upstream develop
-git checkout -b 001-new-feature
+git checkout -b spec/009-sidenav
+
+# 2. Create milestone branches (avoid Git ref prefix collisions by not nesting)
+git checkout -b feat/009-sidenav-m1-backend
+git checkout -b feat/009-sidenav-m2-frontend
 ```
 
 ### Pre-Commit Checklist
@@ -812,6 +904,14 @@ for comprehensive guide.
   `load-test-fixtures.sh`
 - **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
 - **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+
+**DBUnit datasets (MANDATORY for DB-backed tests):**
+
+- **Where**: `src/test/resources/testdata/*.xml`
+- **How**: Load via
+  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
+- **Rule**: Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test
+  data pollution and keep tests maintainable.
 
 **For detailed information**, see:
 
@@ -1646,7 +1746,8 @@ Before creating PR, verify ALL items:
 
 2. **Branch Naming:**
 
-   - Branch name matches: `issue-{###}-{feature-name}` or `{###-feature-name}`
+   - Branch name follows Constitution Principle IX (e.g.,
+     `spec/{NNN}[-{jira}]-{name}` or `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`)
 
 3. **Target Branch:**
 
@@ -1790,7 +1891,7 @@ Before creating PR, verify ALL items:
 - **IHE Lab Profiles:**
   https://wiki.ihe.net/index.php/Laboratory_Technical_Framework
 - **HAPI FHIR:** https://hapifhir.io/
-- **GitHub SpecKit:** https://github.com/anthropics/github-speckit
+- **GitHub SpecKit:** https://github.com/github/spec-kit
 
 ---
 
@@ -1840,6 +1941,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2025-11-09 **Constitution Version:** 1.7.0 **Maintained By:**
+**Last Updated:** 2025-12-04 **Constitution Version:** 1.8.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync
