@@ -137,8 +137,7 @@ public class FileImportServiceTest {
         boolean result = fileImportService.archiveFile(testFile, testConfig);
 
         assertTrue("Archive should succeed", result);
-        assertTrue("File should exist in archive directory",
-                Files.exists(archiveDir.resolve("test-archive.csv")));
+        assertTrue("File should exist in archive directory", Files.exists(archiveDir.resolve("test-archive.csv")));
         assertFalse("Original file should not exist", Files.exists(testFile));
     }
 
@@ -156,8 +155,7 @@ public class FileImportServiceTest {
 
         assertTrue("Archive should succeed and create directory", result);
         assertTrue("Archive directory should be created", Files.exists(archiveDir));
-        assertTrue("File should exist in archive directory",
-                Files.exists(archiveDir.resolve("test-create-dir.csv")));
+        assertTrue("File should exist in archive directory", Files.exists(archiveDir.resolve("test-create-dir.csv")));
     }
 
     @Test
@@ -209,8 +207,7 @@ public class FileImportServiceTest {
 
         assertTrue("Move should succeed and create directory", result);
         assertTrue("Error directory should be created", Files.exists(errorDir));
-        assertTrue("File should exist in error directory",
-                Files.exists(errorDir.resolve("test-create-error-dir.csv")));
+        assertTrue("File should exist in error directory", Files.exists(errorDir.resolve("test-create-error-dir.csv")));
     }
 
     @Test
@@ -226,15 +223,18 @@ public class FileImportServiceTest {
     @Test
     public void testProcessFile_WithValidFile_ProcessesFile() throws IOException {
         // Note: This test verifies the method structure, but full testing requires
-        // SpringContext for FileAnalyzerReader plugin matching (see FileAnalyzerReaderIntegrationTest)
+        // SpringContext for FileAnalyzerReader plugin matching (see
+        // FileAnalyzerReaderIntegrationTest)
         Path testFile = tempDir.resolve("test-process.csv");
         Files.write(testFile, "Sample_ID,Test_Code,Result\n12345-001,HB,12.5".getBytes());
 
-        // This will fail at FileAnalyzerReader.readStream() due to missing SpringContext,
+        // This will fail at FileAnalyzerReader.readStream() due to missing
+        // SpringContext,
         // but verifies the method structure and error handling
         boolean result = fileImportService.processFile(testFile, testConfig, "testUser");
 
-        // Method should return false when FileAnalyzerReader fails (no SpringContext in unit test)
+        // Method should return false when FileAnalyzerReader fails (no SpringContext in
+        // unit test)
         // Full integration test in FileAnalyzerReaderIntegrationTest
         assertFalse("Should return false when SpringContext not available in unit test", result);
     }

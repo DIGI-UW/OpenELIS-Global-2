@@ -65,7 +65,10 @@ describe("FileImportConfiguration", () => {
   test("testSubmitForm_WithValidData_CallsAPI", async () => {
     // Arrange
     createConfiguration.mockImplementation((data, callback) => {
-      callback({ id: "config-1", message: "Configuration created successfully" }, null);
+      callback(
+        { id: "config-1", message: "Configuration created successfully" },
+        null,
+      );
     });
 
     const onClose = jest.fn();
@@ -74,14 +77,22 @@ describe("FileImportConfiguration", () => {
     renderWithIntl(<FileImportConfiguration open={true} onClose={onClose} />);
 
     // Wait for form to render
-    await screen.findByTestId("file-import-configuration-form", {}, { timeout: 2000 });
+    await screen.findByTestId(
+      "file-import-configuration-form",
+      {},
+      { timeout: 2000 },
+    );
 
     // Fill in form fields using data-testid
-    const directoryInput = screen.getByTestId("file-import-configuration-directory-input");
+    const directoryInput = screen.getByTestId(
+      "file-import-configuration-directory-input",
+    );
     await userEvent.type(directoryInput, "/data/import", { delay: 0 });
 
     // Try to submit form (will fail validation because analyzerId is required)
-    const saveButton = screen.getByTestId("file-import-configuration-form-save-button");
+    const saveButton = screen.getByTestId(
+      "file-import-configuration-form-save-button",
+    );
     await userEvent.click(saveButton);
 
     // Assert: Verify API was NOT called because validation should fail
@@ -99,7 +110,11 @@ describe("FileImportConfiguration", () => {
     renderWithIntl(<FileImportConfiguration open={true} onClose={onClose} />);
 
     // Wait for form to render
-    await screen.findByTestId("file-import-configuration-form", {}, { timeout: 2000 });
+    await screen.findByTestId(
+      "file-import-configuration-form",
+      {},
+      { timeout: 2000 },
+    );
 
     // Enter invalid JSON in column mappings
     const columnMappingsInput = screen.getByTestId(
@@ -109,7 +124,9 @@ describe("FileImportConfiguration", () => {
     await userEvent.type(columnMappingsInput, "invalid json", { delay: 0 });
 
     // Try to submit (trigger validation)
-    const saveButton = screen.getByTestId("file-import-configuration-form-save-button");
+    const saveButton = screen.getByTestId(
+      "file-import-configuration-form-save-button",
+    );
     await userEvent.click(saveButton);
 
     // Assert: Verify error is displayed
@@ -126,20 +143,40 @@ describe("FileImportConfiguration", () => {
     renderWithIntl(<FileImportConfiguration open={true} onClose={onClose} />);
 
     // Wait for form to render
-    await screen.findByTestId("file-import-configuration-form", {}, { timeout: 2000 });
+    await screen.findByTestId(
+      "file-import-configuration-form",
+      {},
+      { timeout: 2000 },
+    );
 
     // Assert: Verify all form fields are present
-    expect(screen.getByTestId("file-import-configuration-analyzer-dropdown")).toBeInTheDocument();
-    expect(screen.getByTestId("file-import-configuration-directory-input")).toBeInTheDocument();
-    expect(screen.getByTestId("file-import-configuration-pattern-input")).toBeInTheDocument();
-    expect(screen.getByTestId("file-import-configuration-archive-input")).toBeInTheDocument();
-    expect(screen.getByTestId("file-import-configuration-error-input")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-analyzer-dropdown"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-directory-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-pattern-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-archive-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-error-input"),
+    ).toBeInTheDocument();
     expect(
       screen.getByTestId("file-import-configuration-column-mappings-input"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("file-import-configuration-delimiter-input")).toBeInTheDocument();
-    expect(screen.getByTestId("file-import-configuration-has-header-checkbox")).toBeInTheDocument();
-    expect(screen.getByTestId("file-import-configuration-active-checkbox")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-delimiter-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-has-header-checkbox"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("file-import-configuration-active-checkbox"),
+    ).toBeInTheDocument();
   });
 
   test("testEditMode_DisablesAnalyzerDropdown", async () => {
@@ -157,14 +194,24 @@ describe("FileImportConfiguration", () => {
 
     // Act: Render form in edit mode
     renderWithIntl(
-      <FileImportConfiguration configuration={configuration} open={true} onClose={onClose} />,
+      <FileImportConfiguration
+        configuration={configuration}
+        open={true}
+        onClose={onClose}
+      />,
     );
 
     // Wait for form to render
-    await screen.findByTestId("file-import-configuration-form", {}, { timeout: 2000 });
+    await screen.findByTestId(
+      "file-import-configuration-form",
+      {},
+      { timeout: 2000 },
+    );
 
     // Assert: Verify analyzer dropdown is disabled
-    const analyzerDropdown = screen.getByTestId("file-import-configuration-analyzer-dropdown");
+    const analyzerDropdown = screen.getByTestId(
+      "file-import-configuration-analyzer-dropdown",
+    );
     expect(analyzerDropdown).toHaveAttribute("disabled");
   });
 
@@ -175,9 +222,15 @@ describe("FileImportConfiguration", () => {
     // Act: Render form and click cancel
     renderWithIntl(<FileImportConfiguration open={true} onClose={onClose} />);
 
-    await screen.findByTestId("file-import-configuration-form", {}, { timeout: 2000 });
+    await screen.findByTestId(
+      "file-import-configuration-form",
+      {},
+      { timeout: 2000 },
+    );
 
-    const cancelButton = screen.getByTestId("file-import-configuration-form-cancel-button");
+    const cancelButton = screen.getByTestId(
+      "file-import-configuration-form-cancel-button",
+    );
     await userEvent.click(cancelButton);
 
     // Assert: Verify onClose was called

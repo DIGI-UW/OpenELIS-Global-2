@@ -25,12 +25,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * 
  * Task Reference: T048 (Integration Test)
  * 
- * Tests the complete FileAnalyzerReader workflow:
- * - CSV parsing with SpringContext available
- * - Plugin matching via PluginAnalyzerService
- * - Data insertion via AnalyzerLineInserter
+ * Tests the complete FileAnalyzerReader workflow: - CSV parsing with
+ * SpringContext available - Plugin matching via PluginAnalyzerService - Data
+ * insertion via AnalyzerLineInserter
  * 
- * Uses BaseWebContextSensitiveTest for full Spring context and database integration.
+ * Uses BaseWebContextSensitiveTest for full Spring context and database
+ * integration.
  */
 public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -118,8 +118,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV stream with SpringContext available
-     * Task Reference: T048
+     * Test: Read CSV stream with SpringContext available Task Reference: T048
      */
     @Test
     public void testReadStream_WithValidCSVAndSpringContext_ParsesSuccessfully() throws Exception {
@@ -135,7 +134,8 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
         // Assert: Should parse successfully (even if plugin matching fails)
         // The CSV parsing itself should succeed
         assertNotNull("Reader should be initialized", reader);
-        // Note: Plugin matching may fail if no matching plugin exists, but CSV parsing should succeed
+        // Note: Plugin matching may fail if no matching plugin exists, but CSV parsing
+        // should succeed
         String error = reader.getError();
         // Error might be about plugin matching, but CSV parsing should work
         assertTrue("Should parse CSV (error may be about plugin matching)",
@@ -143,8 +143,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV with header row uses column mappings
-     * Task Reference: T048
+     * Test: Read CSV with header row uses column mappings Task Reference: T048
      */
     @Test
     public void testReadStream_WithHeaderRow_UsesColumnMappings() throws Exception {
@@ -163,8 +162,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV without header uses direct column access
-     * Task Reference: T048
+     * Test: Read CSV without header uses direct column access Task Reference: T048
      */
     @Test
     public void testReadStream_WithNoHeader_UsesDirectColumns() throws Exception {
@@ -183,8 +181,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read CSV with custom delimiter
-     * Task Reference: T048
+     * Test: Read CSV with custom delimiter Task Reference: T048
      */
     @Test
     public void testReadStream_WithCustomDelimiter_ParsesCorrectly() throws Exception {
@@ -203,8 +200,7 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Read empty file returns false
-     * Task Reference: T048
+     * Test: Read empty file returns false Task Reference: T048
      */
     @Test
     public void testReadStream_WithEmptyFile_ReturnsFalse() throws Exception {
@@ -225,12 +221,12 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     /**
-     * Test: Insert analyzer data with SpringContext (if plugin matches)
-     * Task Reference: T048
+     * Test: Insert analyzer data with SpringContext (if plugin matches) Task
+     * Reference: T048
      * 
-     * Note: This test may fail if no matching plugin exists for the test data format.
-     * The test verifies the integration structure, but actual plugin matching depends
-     * on available plugins in the test environment.
+     * Note: This test may fail if no matching plugin exists for the test data
+     * format. The test verifies the integration structure, but actual plugin
+     * matching depends on available plugins in the test environment.
      */
     @Test
     public void testInsertAnalyzerData_WithSpringContext_ProcessesData() throws Exception {
@@ -254,7 +250,8 @@ public class FileAnalyzerReaderIntegrationTest extends BaseWebContextSensitiveTe
         boolean insertSuccess = reader.insertAnalyzerData("1");
 
         // Assert: Insert may succeed or fail depending on plugin availability
-        // The important thing is that SpringContext is available and the method executes
+        // The important thing is that SpringContext is available and the method
+        // executes
         assertNotNull("Reader should have processed insertion attempt", reader);
         // If insert fails, error should be set
         if (!insertSuccess) {

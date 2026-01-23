@@ -16,8 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for File Import Configuration management
- * Handles CRUD operations for file-based analyzer import configurations
+ * REST Controller for File Import Configuration management Handles CRUD
+ * operations for file-based analyzer import configurations
  */
 @RestController
 @RequestMapping("/rest/analyzer/file-import")
@@ -29,8 +29,8 @@ public class FileImportRestController extends BaseRestController {
     private FileImportService fileImportService;
 
     /**
-     * GET /rest/analyzer/file-import/configurations
-     * Retrieve all file import configurations
+     * GET /rest/analyzer/file-import/configurations Retrieve all file import
+     * configurations
      */
     @GetMapping("/configurations")
     public ResponseEntity<List<FileImportConfiguration>> getAllConfigurations(
@@ -50,8 +50,8 @@ public class FileImportRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/file-import/configurations/{id}
-     * Retrieve file import configuration by ID
+     * GET /rest/analyzer/file-import/configurations/{id} Retrieve file import
+     * configuration by ID
      */
     @GetMapping("/configurations/{id}")
     public ResponseEntity<FileImportConfiguration> getConfiguration(@PathVariable String id) {
@@ -68,8 +68,8 @@ public class FileImportRestController extends BaseRestController {
     }
 
     /**
-     * GET /rest/analyzer/file-import/configurations/analyzer/{analyzerId}
-     * Retrieve file import configuration by analyzer ID
+     * GET /rest/analyzer/file-import/configurations/analyzer/{analyzerId} Retrieve
+     * file import configuration by analyzer ID
      */
     @GetMapping("/configurations/analyzer/{analyzerId}")
     public ResponseEntity<FileImportConfiguration> getConfigurationByAnalyzerId(@PathVariable Integer analyzerId) {
@@ -86,8 +86,8 @@ public class FileImportRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/file-import/configurations
-     * Create new file import configuration
+     * POST /rest/analyzer/file-import/configurations Create new file import
+     * configuration
      */
     @PostMapping("/configurations")
     public ResponseEntity<Map<String, Object>> createConfiguration(@RequestBody FileImportConfiguration configuration) {
@@ -105,16 +105,18 @@ public class FileImportRestController extends BaseRestController {
             }
 
             // Check for duplicate analyzer ID
-            Optional<FileImportConfiguration> existing = fileImportService.getByAnalyzerId(configuration.getAnalyzerId());
+            Optional<FileImportConfiguration> existing = fileImportService
+                    .getByAnalyzerId(configuration.getAnalyzerId());
             if (existing.isPresent()) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", "File import configuration already exists for analyzer: " + configuration.getAnalyzerId());
+                error.put("error",
+                        "File import configuration already exists for analyzer: " + configuration.getAnalyzerId());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
             }
 
             configuration.setSysUserId("1"); // Default system user (should come from security context)
             String id = fileImportService.insert(configuration);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("id", id);
             response.put("message", "File import configuration created successfully");
@@ -128,8 +130,8 @@ public class FileImportRestController extends BaseRestController {
     }
 
     /**
-     * PUT /rest/analyzer/file-import/configurations/{id}
-     * Update file import configuration
+     * PUT /rest/analyzer/file-import/configurations/{id} Update file import
+     * configuration
      */
     @PutMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> updateConfiguration(@PathVariable String id,
@@ -165,8 +167,8 @@ public class FileImportRestController extends BaseRestController {
     }
 
     /**
-     * DELETE /rest/analyzer/file-import/configurations/{id}
-     * Delete file import configuration
+     * DELETE /rest/analyzer/file-import/configurations/{id} Delete file import
+     * configuration
      */
     @DeleteMapping("/configurations/{id}")
     public ResponseEntity<Map<String, Object>> deleteConfiguration(@PathVariable String id) {

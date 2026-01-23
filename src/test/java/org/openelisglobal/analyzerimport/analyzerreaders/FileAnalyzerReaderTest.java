@@ -58,17 +58,19 @@ public class FileAnalyzerReaderTest {
 
         boolean result = reader.readStream(stream);
 
-        // Note: This will return false if no plugin matches, but CSV parsing should succeed
-        // The actual plugin matching requires SpringContext and is tested in integration tests
+        // Note: This will return false if no plugin matches, but CSV parsing should
+        // succeed
+        // The actual plugin matching requires SpringContext and is tested in
+        // integration tests
         // Here we verify the CSV parsing doesn't throw exceptions
         assertNotNull("Reader should handle valid CSV", reader);
         // If no plugin matches, error will be set, but CSV parsing itself succeeded
         String error = reader.getError();
-        // Error might be about plugin matching or SpringContext, but not about CSV parsing
+        // Error might be about plugin matching or SpringContext, but not about CSV
+        // parsing
         // CSV parsing succeeded if we got here without exception
-        assertTrue("Should parse CSV without throwing exception", 
-                error == null || error.contains("plugin") || error.contains("analyzer") 
-                || error.contains("SpringContext") || error.contains("factory"));
+        assertTrue("Should parse CSV without throwing exception", error == null || error.contains("plugin")
+                || error.contains("analyzer") || error.contains("SpringContext") || error.contains("factory"));
     }
 
     @Test
@@ -129,7 +131,7 @@ public class FileAnalyzerReaderTest {
 
         assertFalse("Should return false for empty file", result);
         assertNotNull("Should have error message", reader.getError());
-        assertTrue("Error should mention empty file", 
+        assertTrue("Error should mention empty file",
                 reader.getError().contains("Empty") || reader.getError().contains("empty"));
     }
 

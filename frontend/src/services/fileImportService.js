@@ -73,7 +73,12 @@ export const createConfiguration = (configuration, callback, extraParams) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const updateConfiguration = (id, configuration, callback, extraParams) => {
+export const updateConfiguration = (
+  id,
+  configuration,
+  callback,
+  extraParams,
+) => {
   const endpoint = `/rest/analyzer/file-import/configurations/${id}`;
   const payload = JSON.stringify(configuration);
 
@@ -166,7 +171,10 @@ export const deleteConfiguration = (id, callback, extraParams) => {
         return;
       }
 
-      callback(responseData || { message: "Configuration deleted successfully" }, extraParams);
+      callback(
+        responseData || { message: "Configuration deleted successfully" },
+        extraParams,
+      );
     })
     .catch((error) => {
       console.error("deleteConfiguration error:", error);
