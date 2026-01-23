@@ -12,6 +12,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
@@ -26,12 +27,14 @@ import org.openelisglobal.spring.util.SpringContext;
 public class FileAnalyzerReader extends AnalyzerReader {
 
     private List<String> lines;
+    private List<Map<String, String>> parsedRecords; // Store parsed CSV records for duplicate checking
     private AnalyzerLineInserter inserter;
     private String error;
     private FileImportConfiguration configuration;
 
     public FileAnalyzerReader() {
         this.lines = new ArrayList<>();
+        this.parsedRecords = new ArrayList<>();
     }
 
     public FileAnalyzerReader(FileImportConfiguration configuration) {
@@ -44,6 +47,7 @@ public class FileAnalyzerReader extends AnalyzerReader {
         error = null;
         inserter = null;
         lines = new ArrayList<>();
+        parsedRecords = new ArrayList<>();
 
         if (configuration == null) {
             error = "FileImportConfiguration not provided";
@@ -68,6 +72,26 @@ public class FileAnalyzerReader extends AnalyzerReader {
                 Map<String, String> columnMappings = configuration.getColumnMappings();
 
                 for (CSVRecord record : parser) {
+                    // Store parsed record for duplicate checking
+                    Map<String, String> parsedRecord = new HashMap<>();
+                    if (configuration.getHasHeader() != null && configuration.getHasHeader()) {
+                        // Store all mapped columns
+                        for (Map.Entry<String, String> mapping : columnMappings.entrySet()) {
+                            String csvColumn = mapping.getKey();
+                            String value = record.get(csvColumn);
+                            if (value != null && !value.isEmpty()) {
+                                parsedRecord.put(mapping.getValue(), value); // Store with internal field name
+                                parsedRecord.put(csvColumn, value); // Also store with CSV column name
+                            }
+                        }
+                    } else {
+                        // No header - store by index
+                        for (int i = 0; i < record.size(); i++) {
+                            parsedRecord.put("column_" + i, record.get(i));
+                        }
+                    }
+                    parsedRecords.add(parsedRecord);
+
                     // Convert CSV record to line format expected by AnalyzerLineInserter
                     StringBuilder lineBuilder = new StringBuilder();
 
@@ -146,13 +170,84 @@ public class FileAnalyzerReader extends AnalyzerReader {
         if (inserter == null) {
             error = "Unable to understand which analyzer sent the file";
             return false;
-        } else {
-            boolean success = inserter.insert(lines, systemUserId);
-            if (!success) {
-                error = inserter.getError();
-            }
-            return success;
         }
+
+        // Check for duplicates before insertion (if configuration available)
+        if (configuration != null && configuration.getAnalyzerId() != null && !parsedRecords.isEmpty()) {
+            checkDuplicatesBeforeInsertion();
+        }
+
+        // Proceed with insertion (duplicates are handled by AnalyzerResultsServiceImpl)
+        boolean success = inserter.insert(lines, systemUserId);
+        if (!success) {
+            error = inserter.getError();
+        }
+        return success;
+    }
+
+    /**
+     * Check for duplicates before insertion and log warnings
+     */
+    private void checkDuplicatesBeforeInsertion() {
+        try {
+            FileImportService fileImportService = SpringContext.getBean(FileImportService.class);
+            if (fileImportService == null) {
+                return; // Service not available, skip duplicate checking
+            }
+
+            Map<String, String> columnMappings = configuration.getColumnMappings();
+            Integer analyzerId = configuration.getAnalyzerId();
+
+            for (Map<String, String> record : parsedRecords) {
+                // Extract sample ID, test code, date, and time from parsed record
+                String sampleId = extractField(record, columnMappings, "sampleId", "Sample_ID", "sample_id");
+                String testCode = extractField(record, columnMappings, "testCode", "Test_Code", "test_code");
+                String testDate = extractField(record, columnMappings, "testDate", "Date", "date");
+                String testTime = extractField(record, columnMappings, "testTime", "Time", "time");
+
+                if (sampleId != null && testCode != null) {
+                    // Check for duplicate
+                    boolean isDuplicate = fileImportService.isDuplicate(analyzerId, sampleId, testCode, testDate, testTime);
+                    if (isDuplicate) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "checkDuplicatesBeforeInsertion",
+                                "Duplicate result detected (will still be inserted): analyzer=" + analyzerId
+                                        + ", sample=" + sampleId + ", test=" + testCode
+                                        + (testDate != null ? ", date=" + testDate : "")
+                                        + (testTime != null ? ", time=" + testTime : ""));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Log error but don't fail insertion
+            LogEvent.logWarn(this.getClass().getSimpleName(), "checkDuplicatesBeforeInsertion",
+                    "Error checking duplicates before insertion: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Extract field value from parsed record using multiple possible field names
+     */
+    private String extractField(Map<String, String> record, Map<String, String> columnMappings,
+            String internalFieldName, String... possibleColumnNames) {
+        // Try internal field name first (from column mappings value)
+        if (record.containsKey(internalFieldName)) {
+            return record.get(internalFieldName);
+        }
+
+        // Try CSV column names
+        for (String columnName : possibleColumnNames) {
+            if (record.containsKey(columnName)) {
+                return record.get(columnName);
+            }
+            // Also try case-insensitive match
+            for (String key : record.keySet()) {
+                if (key.equalsIgnoreCase(columnName)) {
+                    return record.get(key);
+                }
+            }
+        }
+
+        return null;
     }
 
     @Override

@@ -1,14 +1,21 @@
 package org.openelisglobal.analyzer.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -23,6 +30,9 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Autowired
     private FileImportConfigurationDAO fileImportConfigurationDAO;
+
+    @Autowired
+    private AnalyzerResultsDAO analyzerResultsDAO;
 
     public FileImportServiceImpl() {
         super(FileImportConfiguration.class);
@@ -47,15 +57,38 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Override
     public boolean processFile(Path filePath, FileImportConfiguration configuration, String systemUserId) {
-        try {
-            // File processing will be handled by FileAnalyzerReader
-            // This method is a placeholder for future WatchService integration
+        try (InputStream fileStream = Files.newInputStream(filePath)) {
+            // Create FileAnalyzerReader with configuration
+            FileAnalyzerReader reader = new FileAnalyzerReader(configuration);
+
+            // Read and parse the file
+            boolean readSuccess = reader.readStream(fileStream);
+            if (!readSuccess) {
+                String error = reader.getError();
+                LogEvent.logError(this.getClass().getSimpleName(), "processFile",
+                        "Failed to read file " + filePath + ": " + error);
+                return false;
+            }
+
+            // Insert analyzer data
+            boolean insertSuccess = reader.insertAnalyzerData(systemUserId);
+            if (!insertSuccess) {
+                String error = reader.getError();
+                LogEvent.logError(this.getClass().getSimpleName(), "processFile",
+                        "Failed to insert analyzer data from file " + filePath + ": " + error);
+                return false;
+            }
+
             LogEvent.logInfo(this.getClass().getSimpleName(), "processFile",
-                    "Processing file: " + filePath + " for analyzer: " + configuration.getAnalyzerId());
+                    "Successfully processed file: " + filePath + " for analyzer: " + configuration.getAnalyzerId());
             return true;
+        } catch (IOException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "processFile",
+                    "IO error processing file " + filePath + ": " + e.getMessage());
+            return false;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "processFile",
-                    "Error processing file: " + filePath + ": " + e.getMessage());
+                    "Unexpected error processing file " + filePath + ": " + e.getMessage());
             return false;
         }
     }
@@ -114,13 +147,82 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isDuplicate(String sampleId, String testCode, String testDate, String testTime) {
-        // TODO: Implement duplicate detection by querying AnalyzerResults table
-        // This is a placeholder - actual implementation should check AnalyzerResults
-        // for matching sample ID, test code, and timestamp
-        LogEvent.logDebug(this.getClass().getSimpleName(), "isDuplicate",
-                "Checking duplicate for sample: " + sampleId + ", test: " + testCode + ", date: " + testDate
-                        + ", time: " + testTime);
-        return false;
+    public boolean isDuplicate(Integer analyzerId, String sampleId, String testCode, String testDate, String testTime) {
+        try {
+            // Construct a temporary AnalyzerResults object for duplicate checking
+            AnalyzerResults tempResult = new AnalyzerResults();
+            tempResult.setAnalyzerId(String.valueOf(analyzerId));
+            tempResult.setAccessionNumber(sampleId);
+            tempResult.setTestName(testCode);
+            
+            // Parse date and time to create completeDate
+            Timestamp completeDate = null;
+            if (testDate != null && !testDate.isEmpty()) {
+                try {
+                    String dateTimeString = testDate;
+                    if (testTime != null && !testTime.isEmpty()) {
+                        dateTimeString += " " + testTime;
+                    } else {
+                        dateTimeString += " 00:00:00";
+                    }
+                    // Try common date formats
+                    SimpleDateFormat[] formats = {
+                        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"),
+                        new SimpleDateFormat("yyyy-MM-dd HH:mm"),
+                        new SimpleDateFormat("MM/dd/yyyy HH:mm:ss"),
+                        new SimpleDateFormat("dd-MM-yyyy HH:mm:ss")
+                    };
+                    for (SimpleDateFormat format : formats) {
+                        try {
+                            completeDate = new Timestamp(format.parse(dateTimeString).getTime());
+                            break;
+                        } catch (ParseException e) {
+                            // Try next format
+                        }
+                    }
+                    if (completeDate == null) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "isDuplicate",
+                                "Could not parse date/time: " + dateTimeString);
+                    }
+                } catch (Exception e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "isDuplicate",
+                            "Error parsing date/time: " + e.getMessage());
+                }
+            }
+            tempResult.setCompleteDate(completeDate);
+
+            // Query for duplicates (analyzerId, accessionNumber, testName)
+            List<AnalyzerResults> duplicates = analyzerResultsDAO.getDuplicateResultByAccessionAndTest(tempResult);
+            
+            if (duplicates != null && !duplicates.isEmpty()) {
+                // Check if any duplicate has the same completeDate
+                if (completeDate != null) {
+                    for (AnalyzerResults duplicate : duplicates) {
+                        if (duplicate.getCompleteDate() != null
+                                && duplicate.getCompleteDate().equals(completeDate)) {
+                            LogEvent.logDebug(this.getClass().getSimpleName(), "isDuplicate",
+                                    "Found exact duplicate: analyzer=" + analyzerId + ", sample=" + sampleId 
+                                            + ", test=" + testCode + ", date=" + completeDate);
+                            return true;
+                        }
+                    }
+                    // If we have a date but no exact match, it's not a duplicate
+                    return false;
+                } else {
+                    // No date provided, consider it a duplicate if analyzerId, accessionNumber and testName match
+                    LogEvent.logDebug(this.getClass().getSimpleName(), "isDuplicate",
+                            "Found duplicate (no date check): analyzer=" + analyzerId + ", sample=" + sampleId 
+                                    + ", test=" + testCode);
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "isDuplicate",
+                    "Error checking duplicate for analyzer: " + analyzerId + ", sample: " + sampleId 
+                            + ", test: " + testCode + ": " + e.getMessage());
+            return false; // On error, don't block processing
+        }
     }
 }
