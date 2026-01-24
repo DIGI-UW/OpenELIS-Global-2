@@ -721,10 +721,10 @@ public class AnalyzerResultsController extends BaseController {
             AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
 
         Map<String, Object> response = new HashMap<>();
-        
+
         try {
             List<AnalyzerResultItem> resultItemList = form.getResultList();
-            
+
             if (resultItemList == null || resultItemList.isEmpty()) {
                 response.put("success", false);
                 response.put("message", "No results provided");
@@ -751,7 +751,7 @@ public class AnalyzerResultsController extends BaseController {
 
             analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
                     getSysUserId(request));
-            
+
             response.put("success", true);
             response.put("message", "Results saved successfully");
             response.put("count", actionableResults.size());
@@ -765,7 +765,7 @@ public class AnalyzerResultsController extends BaseController {
             response.put("success", false);
             response.put("message", "Unexpected error: " + e.getMessage());
         }
-        
+
         return response;
 
     }
@@ -1511,8 +1511,8 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     /**
-     * NEW ENDPOINTS FOR ANALYZER IMPORT REDESIGN
-     * Following SPEC requirements for QC-first workflow
+     * NEW ENDPOINTS FOR ANALYZER IMPORT REDESIGN Following SPEC requirements for
+     * QC-first workflow
      */
 
     /**
@@ -1523,87 +1523,89 @@ public class AnalyzerResultsController extends BaseController {
     @ResponseBody
     public Map<String, Object> getRunSettings(@RequestParam(required = false) String type, HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
-        
+
         if (GenericValidator.isBlankOrNull(type)) {
             return response;
         }
 
         String analyzerId = AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(type);
-        
+
         // Basic analyzer info
         response.put("analyzerId", analyzerId);
         response.put("analyzerName", type);
         response.put("analyzerStatus", "online"); // TODO: Implement actual status check
         response.put("analyzerQcStatus", "pass"); // TODO: Implement actual QC status check
-        
+
         // Reagent lots - placeholder for now
         // TODO: Implement actual reagent lot retrieval from inventory
         List<Map<String, Object>> reagentLots = new ArrayList<>();
         response.put("reagentLots", reagentLots);
-        
+
         return response;
     }
 
     /**
-     * Get QC history for analyzer
-     * Endpoint: GET /rest/AnalyzerResults/qcHistory?type={analyzerType}
+     * Get QC history for analyzer Endpoint: GET
+     * /rest/AnalyzerResults/qcHistory?type={analyzerType}
      */
     @RequestMapping(value = "/rest/AnalyzerResults/qcHistory", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
     @ResponseBody
     public Map<String, Object> getQcHistory(@RequestParam(required = false) String type, HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         List<Map<String, Object>> history = new ArrayList<>();
-        
+
         // TODO: Implement actual QC history retrieval
         // For now, return empty list
-        
+
         response.put("history", history);
         return response;
     }
 
     /**
-     * Get analyzer information
-     * Endpoint: GET /rest/AnalyzerResults/analyzerInfo?type={analyzerType}
+     * Get analyzer information Endpoint: GET
+     * /rest/AnalyzerResults/analyzerInfo?type={analyzerType}
      */
     @RequestMapping(value = "/rest/AnalyzerResults/analyzerInfo", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
     @ResponseBody
-    public Map<String, Object> getAnalyzerInfo(@RequestParam(required = false) String type, HttpServletRequest request) {
+    public Map<String, Object> getAnalyzerInfo(@RequestParam(required = false) String type,
+            HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
-        
+
         if (!GenericValidator.isBlankOrNull(type)) {
             response.put("name", type);
             response.put("status", "online");
             response.put("lastCalibration", DateUtil.getCurrentDateAsText());
         }
-        
+
         return response;
     }
 
     /**
-     * Get reagent status for analyzer
-     * Endpoint: GET /rest/AnalyzerResults/reagents?type={analyzerType}
+     * Get reagent status for analyzer Endpoint: GET
+     * /rest/AnalyzerResults/reagents?type={analyzerType}
      */
     @RequestMapping(value = "/rest/AnalyzerResults/reagents", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
     @ResponseBody
     public Map<String, Object> getReagents(@RequestParam(required = false) String type, HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
         List<Map<String, Object>> reagents = new ArrayList<>();
-        
+
         // TODO: Implement actual reagent status retrieval
-        
+
         response.put("reagents", reagents);
         return response;
     }
 
     /**
-     * Get detailed information for a specific result (for expandable row)
-     * Endpoint: GET /rest/AnalyzerResults/details?resultId={resultId}
+     * Get detailed information for a specific result (for expandable row) Endpoint:
+     * GET /rest/AnalyzerResults/details?resultId={resultId}
      */
     @RequestMapping(value = "/rest/AnalyzerResults/details", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
     @ResponseBody
-    public Map<String, Object> getResultDetails(@RequestParam(required = false) String resultId, HttpServletRequest request) {
+    public Map<String, Object> getResultDetails(@RequestParam(required = false) String resultId,
+            HttpServletRequest request) {
         Map<String, Object> response = new HashMap<>();
-        
+
         if (GenericValidator.isBlankOrNull(resultId)) {
             return response;
         }
@@ -1611,39 +1613,40 @@ public class AnalyzerResultsController extends BaseController {
         try {
             // Fetch previous results for delta check calculation
             List<Map<String, Object>> history = new ArrayList<>();
-            
+
             // TODO: Query actual previous results from database
             // Result currentResult = resultService.get(resultId);
             // if (currentResult != null && currentResult.getAnalysis() != null) {
-            //     Analysis analysis = currentResult.getAnalysis();
-            //     SampleItem sampleItem = analysis.getSampleItem();
-            //     Sample sample = sampleItem.getSample();
-            //     
-            //     // Find previous samples for same patient
-            //     if (sample != null) {
-            //         SampleHuman sampleHuman = sampleHumanService.getForSample(sample);
-            //         if (sampleHuman != null && sampleHuman.getPatientId() != null) {
-            //             // Get previous results for same test and patient
-            //             List<Result> previousResults = resultService.getResultsByPatientAndTest(
-            //                 sampleHuman.getPatientId(), 
-            //                 analysis.getTest().getId(),
-            //                 5  // limit to last 5
-            //             );
-            //             
-            //             for (Result prevResult : previousResults) {
-            //                 if (!prevResult.getId().equals(resultId)) {
-            //                     Map<String, Object> histEntry = new HashMap<>();
-            //                     histEntry.put("date", DateUtil.convertTimestampToStringDate(prevResult.getLastupdated()));
-            //                     histEntry.put("value", prevResult.getValue());
-            //                     histEntry.put("unit", analysis.getTest().getUnitOfMeasure());
-            //                     histEntry.put("interpretation", ""); // Add if available
-            //                     history.add(histEntry);
-            //                 }
-            //             }
-            //         }
-            //     }
+            // Analysis analysis = currentResult.getAnalysis();
+            // SampleItem sampleItem = analysis.getSampleItem();
+            // Sample sample = sampleItem.getSample();
+            //
+            // // Find previous samples for same patient
+            // if (sample != null) {
+            // SampleHuman sampleHuman = sampleHumanService.getForSample(sample);
+            // if (sampleHuman != null && sampleHuman.getPatientId() != null) {
+            // // Get previous results for same test and patient
+            // List<Result> previousResults = resultService.getResultsByPatientAndTest(
+            // sampleHuman.getPatientId(),
+            // analysis.getTest().getId(),
+            // 5 // limit to last 5
+            // );
+            //
+            // for (Result prevResult : previousResults) {
+            // if (!prevResult.getId().equals(resultId)) {
+            // Map<String, Object> histEntry = new HashMap<>();
+            // histEntry.put("date",
+            // DateUtil.convertTimestampToStringDate(prevResult.getLastupdated()));
+            // histEntry.put("value", prevResult.getValue());
+            // histEntry.put("unit", analysis.getTest().getUnitOfMeasure());
+            // histEntry.put("interpretation", ""); // Add if available
+            // history.add(histEntry);
             // }
-            
+            // }
+            // }
+            // }
+            // }
+
             response.put("history", history);
 
             // QC linkage data
@@ -1670,18 +1673,27 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     /**
-     * Get available reagent lots for analyzer (FIFO ordering)
+     * Get available reagent lots for analyzer (FIFO ordering).
      * Frontend needs: GET /rest/AnalyzerResults/availableReagentLots?type={type}
+     *
+     * @deprecated Since 3.3.0 - This endpoint returns mock data. Will be replaced with
+     *             actual inventory integration via InventoryService.getReagentLotsForAnalyzer().
+     *             Target removal: 4.0.0
      */
+    @Deprecated(since = "3.3.0", forRemoval = true)
     @RequestMapping(value = "/rest/AnalyzerResults/availableReagentLots", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public Map<String, Object> getAvailableReagentLots(@RequestParam(required = false) String type) {
         Map<String, Object> response = new HashMap<>();
         Map<String, List<Map<String, Object>>> reagents = new HashMap<>();
 
-        // Mock data - integrate with actual inventory system
+        LogEvent.logWarn(
+                this.getClass().getSimpleName(),
+                "getAvailableReagentLots",
+                "Using deprecated mock data endpoint. Integrate with inventory system.");
+
         List<Map<String, Object>> cbcReagents = new ArrayList<>();
-        
+
         Map<String, Object> lot1 = new HashMap<>();
         lot1.put("reagentId", "CBC_REAGENT_1");
         lot1.put("reagentName", "CBC Reagent Pack");
@@ -1709,26 +1721,27 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     /**
-     * Get detailed information for a specific analyzer result (on-demand fetch for expandable rows)
-     * Frontend needs: GET /rest/AnalyzerResults/{resultId}/details
+     * Get detailed information for a specific analyzer result (on-demand fetch for
+     * expandable rows) Frontend needs: GET /rest/AnalyzerResults/{resultId}/details
      * 
      * @param resultId The analyzer result ID
-     * @return AnalyzerResultDetailsDTO with previous results, QC data, reagents, run info
+     * @return AnalyzerResultDetailsDTO with previous results, QC data, reagents,
+     *         run info
      */
     @RequestMapping(value = "/rest/AnalyzerResults/{resultId}/details", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public org.openelisglobal.analyzerresults.bean.AnalyzerResultDetailsDTO getResultDetails(
             @org.springframework.web.bind.annotation.PathVariable String resultId) {
-        
-        org.openelisglobal.analyzerresults.service.AnalyzerResultDetailsService detailsService = 
-            SpringContext.getBean(org.openelisglobal.analyzerresults.service.AnalyzerResultDetailsService.class);
-        
+
+        org.openelisglobal.analyzerresults.service.AnalyzerResultDetailsService detailsService = SpringContext
+                .getBean(org.openelisglobal.analyzerresults.service.AnalyzerResultDetailsService.class);
+
         return detailsService.getResultDetails(resultId);
     }
 
     /**
-     * Request retest for analyzer results (when QC fails or results need re-analysis)
-     * Frontend needs: POST /rest/AnalyzerResults/retest
+     * Request retest for analyzer results (when QC fails or results need
+     * re-analysis) Frontend needs: POST /rest/AnalyzerResults/retest
      * 
      * @param retestRequest Request containing result IDs and reason
      * @return Response with success status and count
@@ -1738,7 +1751,7 @@ public class AnalyzerResultsController extends BaseController {
     public Map<String, Object> requestRetest(HttpServletRequest request,
             @jakarta.validation.Valid @RequestBody org.openelisglobal.analyzerresults.bean.AnalyzerRetestRequest retestRequest,
             BindingResult bindingResult) {
-        
+
         Map<String, Object> response = new HashMap<>();
 
         if (bindingResult.hasErrors()) {
@@ -1763,11 +1776,11 @@ public class AnalyzerResultsController extends BaseController {
                     // Mark for retest by deleting from analyzer_results table
                     // This will require re-import from analyzer
                     analyzerResultsService.delete(analyzerResult);
-                    
+
                     // Log the retest request
                     LogEvent.logInfo(this.getClass().getSimpleName(), "requestRetest",
                             "Analyzer result " + resultId + " marked for retest. Reason: " + retestRequest.getReason());
-                    
+
                     processedCount++;
                 }
             }
@@ -1786,8 +1799,8 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     /**
-     * Ignore (delete) analyzer results without saving
-     * Frontend needs: POST /rest/AnalyzerResults/ignore
+     * Ignore (delete) analyzer results without saving Frontend needs: POST
+     * /rest/AnalyzerResults/ignore
      * 
      * @param resultIds List of result IDs to ignore
      * @return Response with success status
@@ -1796,7 +1809,7 @@ public class AnalyzerResultsController extends BaseController {
     @ResponseBody
     public Map<String, Object> ignoreResults(HttpServletRequest request,
             @RequestBody Map<String, List<String>> requestBody) {
-        
+
         Map<String, Object> response = new HashMap<>();
 
         try {

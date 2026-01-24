@@ -1856,5 +1856,41 @@
 
   "analyzer.sidebar.qcHistory": "Recent QC History",
   "analyzer.sidebar.analyzerStatus": "Analyzer Status",
-  "analyzer.sidebar.reagentStatus": "Reagent Status"
+  "analyzer.sidebar.reagentStatus": "Reagent Status",
+
+  "error.qc.failed.cannot.save": "QC failure detected - Results cannot be accepted until non-conformity is resolved",
+  "warning.no.results.selected": "Please select results to import",
+  "success.results.saved": "Results imported successfully",
+  "error.save.results": "Error saving results",
+  "error.request.timeout": "Request timed out. Please try again.",
+  "error.network.failure": "Network error. Please check your connection and try again.",
+  "success.results.retest": "Results marked for retest",
+  "error.retest.results": "Error marking results for retest",
+  "success.results.ignored": "Results ignored",
+  "error.ignore.results": "Error ignoring results",
+  "warning.nc.creation.failed": "Failed to create non-conformity record. QC failure not tracked in system.",
+
+  "qc.panel.passed": "Quality Control Passed",
+  "qc.panel.failed": "Quality Control FAIL",
+  "qc.panel.nosamples": "No QC Samples Detected",
+  "qc.panel.manualverification": "Manual QC verification required before accepting patient results.",
+  "qc.panel.controlsevaluated": "{count} Controls Evaluated",
+
+  "non.conformity.alert.title": "Non-Conformity Alert",
+  "non.conformity.alert.message": "QC failure detected in this run. All {count} patient results have been marked as non-conforming and cannot be released until the non-conformity is resolved.",
+
+  "fifo.protocol.title": "FIFO Protocol",
+  "fifo.protocol.description": "First-In-First-Out: Select the oldest lot (received date) to maintain inventory rotation.",
+  "fifo.warning.nonfifo": "Not FIFO - Older lot available ({lotNumber})",
+  "fifo.modal.title": "Select Reagent Lots (FIFO Recommended)",
+  "fifo.modal.apply": "Apply to All Results",
+
+  "analyzer.result.interpretation.criticallow": "Critical Low",
+  "analyzer.result.interpretation.criticalhigh": "Critical High",
+  "analyzer.result.interpretation.high": "High",
+  "analyzer.result.interpretation.low": "Low",
+  "analyzer.result.interpretation.normal": "Normal",
+
+  "warning.fifo.violation": "FIFO protocol violation: This lot is not the oldest available. Please use older lots first or request supervisor override.",
+  "error.fetch.analyzer.data": "Failed to fetch analyzer data. Please try again."
 }

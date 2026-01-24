@@ -17,7 +17,6 @@ import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.validator.ValidationHelper;

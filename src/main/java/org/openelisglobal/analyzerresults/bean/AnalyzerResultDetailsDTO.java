@@ -13,10 +13,17 @@
  */
 package org.openelisglobal.analyzerresults.bean;
 
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * DTO for analyzer result details including previous results, QC data, reagent
+ * lots, and run info. Contains validation annotations to enforce data integrity
+ * (MAJ-006 fix).
+ */
 public class AnalyzerResultDetailsDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -30,10 +37,20 @@ public class AnalyzerResultDetailsDTO implements Serializable {
     public AnalyzerResultDetailsDTO() {
     }
 
+    /**
+     * Represents a previous result for delta check comparison. Contains validation
+     * for date format, value, and status.
+     */
     public static class PreviousResult implements Serializable {
         private static final long serialVersionUID = 1L;
+
+        @Pattern(regexp = "^\\d{2}/\\d{2}/\\d{4}$|^$", message = "Date must be in MM/dd/yyyy format")
         private String date;
+
+        @Size(max = 50, message = "Value must not exceed 50 characters")
         private String value;
+
+        @Pattern(regexp = "^(normal|abnormal|critical)?$", message = "Status must be normal, abnormal, or critical")
         private String status; // normal, abnormal, critical
 
         public PreviousResult() {
@@ -70,13 +87,28 @@ public class AnalyzerResultDetailsDTO implements Serializable {
         }
     }
 
+    /**
+     * Represents a QC result with validation for required fields.
+     */
     public static class QCResult implements Serializable {
         private static final long serialVersionUID = 1L;
+
+        @Pattern(regexp = "^(High|Normal|Low|Control)?$", message = "Level must be High, Normal, Low, or Control")
         private String level; // High, Normal, Low
+
+        @Size(max = 50, message = "Expected value must not exceed 50 characters")
         private String expected;
+
+        @Size(max = 50, message = "Actual value must not exceed 50 characters")
         private String actual;
+
+        @Pattern(regexp = "^(pass|fail)?$", message = "Status must be pass or fail")
         private String status; // pass, fail
+
+        @Size(max = 20, message = "CV must not exceed 20 characters")
         private String cv; // coefficient of variation
+
+        @Size(max = 20, message = "SD must not exceed 20 characters")
         private String sd; // standard deviation
 
         public QCResult() {
@@ -139,14 +171,30 @@ public class AnalyzerResultDetailsDTO implements Serializable {
         }
     }
 
+    /**
+     * Represents a reagent lot with FIFO tracking and expiration status.
+     */
     public static class ReagentLot implements Serializable {
         private static final long serialVersionUID = 1L;
+
+        @Size(max = 50, message = "ID must not exceed 50 characters")
         private String id;
+
+        @Size(max = 100, message = "Name must not exceed 100 characters")
         private String name;
+
+        @Size(max = 50, message = "Lot must not exceed 50 characters")
         private String lot;
+
+        @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$|^$", message = "Expires date must be in yyyy-MM-dd format")
         private String expires;
+
+        @Pattern(regexp = "^(ok|expiring-soon|expired)?$", message = "Status must be ok, expiring-soon, or expired")
         private String status; // ok, expiring-soon, expired
+
         private Integer fifoPosition; // 1 = first in line
+
+        @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$|^$", message = "Opened date must be in yyyy-MM-dd format")
         private String openedDate;
 
         public ReagentLot() {
@@ -216,13 +264,26 @@ public class AnalyzerResultDetailsDTO implements Serializable {
         }
     }
 
+    /**
+     * Represents run information including analyzer, operator, and QC status.
+     */
     public static class RunInfo implements Serializable {
         private static final long serialVersionUID = 1L;
+
+        @Size(max = 50, message = "Run ID must not exceed 50 characters")
         private String runId;
+
         private String runDate;
+
+        @Size(max = 100, message = "Analyzer name must not exceed 100 characters")
         private String analyzer;
+
+        @Size(max = 100, message = "Operator name must not exceed 100 characters")
         private String operator;
+
+        @Pattern(regexp = "^(pass|fail|pending|none)?$", message = "QC status must be pass, fail, pending, or none")
         private String qcStatus; // pass, fail, pending
+
         private Integer sampleCount;
         private Integer qcCount;
 
@@ -286,12 +347,24 @@ public class AnalyzerResultDetailsDTO implements Serializable {
         }
     }
 
+    /**
+     * Represents delta check information comparing current vs previous results.
+     */
     public static class DeltaCheck implements Serializable {
         private static final long serialVersionUID = 1L;
+
+        @Size(max = 50, message = "Previous value must not exceed 50 characters")
         private String previous;
+
+        @Size(max = 50, message = "Current value must not exceed 50 characters")
         private String current;
+
+        @Pattern(regexp = "^[+-]?\\d+\\.?\\d*%?$|^$", message = "Change must be a percentage format (e.g., +15.2%)")
         private String change; // e.g., "+15.2%"
+
+        @Size(max = 20, message = "Threshold must not exceed 20 characters")
         private String threshold; // e.g., "±20%"
+
         private boolean exceeded;
 
         public DeltaCheck() {

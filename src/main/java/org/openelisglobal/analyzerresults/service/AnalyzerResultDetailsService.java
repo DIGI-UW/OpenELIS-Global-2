@@ -13,9 +13,8 @@
  */
 package org.openelisglobal.analyzerresults.service;
 
-import org.openelisglobal.analyzerresults.bean.AnalyzerResultDetailsDTO;
-
 import java.util.List;
+import org.openelisglobal.analyzerresults.bean.AnalyzerResultDetailsDTO;
 
 public interface AnalyzerResultDetailsService {
 

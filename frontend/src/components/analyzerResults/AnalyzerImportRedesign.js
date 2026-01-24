@@ -43,6 +43,11 @@ import {
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
+import {
+  useAnalyzerResults,
+  useQcEvaluation,
+  useReagentLots,
+} from "./hooks";
 import "./AnalyzerImportRedesign.css";
 
 const AnalyzerImportRedesign = ({ analyzerType }) => {
@@ -50,29 +55,50 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const [loading, setLoading] = useState(false);
+  // Use custom hooks for state management
+  const {
+    loading,
+    results,
+    qcSamples,
+    runSettings,
+    qcHistory,
+    analyzerInfo,
+    reagentStatus,
+    fetchAllData,
+    updateResults,
+    updateQcSamples,
+    setRunSettings,
+  } = useAnalyzerResults(analyzerType);
+
+  const {
+    overallQcStatus,
+    nonConformityId,
+    setNonConformityId,
+    evaluateQcStatus,
+    computeQcEvaluation,
+  } = useQcEvaluation();
+
+  const {
+    selectedReagentLots,
+    availableReagentLots,
+    fifoWarnings,
+    showReagentModal,
+    setSelectedReagentLots,
+    setAvailableReagentLots,
+    setShowReagentModal,
+    setFifoWarnings,
+    handleReagentLotChange: handleReagentLotChangeHook,
+    isFifoLot,
+    clearFifoWarnings,
+  } = useReagentLots(false); // Not in strict FIFO mode by default
+
+  // Local UI state
   const [saving, setSaving] = useState(false);
-  const [results, setResults] = useState([]);
-  const [qcSamples, setQcSamples] = useState([]);
-  const [runSettings, setRunSettings] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedRows, setExpandedRows] = useState({});
   const [rowDetailsCache, setRowDetailsCache] = useState({});
-
   const [qcPanelExpanded, setQcPanelExpanded] = useState(true);
-  const [overallQcStatus, setOverallQcStatus] = useState("none");
-  const [nonConformityId, setNonConformityId] = useState(null);
-
-  const [qcHistory, setQcHistory] = useState([]);
-  const [analyzerInfo, setAnalyzerInfo] = useState(null);
-  const [reagentStatus, setReagentStatus] = useState([]);
-
-  const [showReagentModal, setShowReagentModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [selectedReagentLots, setSelectedReagentLots] = useState({});
-  const [availableReagentLots, setAvailableReagentLots] = useState({});
-  const [fifoWarnings, setFifoWarnings] = useState({});
 
   const formatResult = (value, significantDigits) => {
     const numValue = parseFloat(value);
@@ -88,82 +114,54 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     return numValue.toFixed(digits);
   };
 
+  // Fetch data on mount and when analyzerType changes
   useEffect(() => {
     if (analyzerType) {
-      fetchAnalyzerResults();
+      fetchAllData();
     }
-  }, [analyzerType]);
+  }, [analyzerType, fetchAllData]);
 
-  const fetchAnalyzerResults = useCallback(() => {
-    setLoading(true);
-    getFromOpenElisServer(
-      `/rest/AnalyzerResults?type=${analyzerType}`,
-      (response) => {
-        if (response) {
-          // Extract QC samples (control samples identified by isControl flag)
-          const qcSamplesList =
-            response.resultList?.filter((r) => r.isControl) || [];
-          const patientResults =
-            response.resultList?.filter((r) => !r.isControl) || [];
+  // Evaluate QC status when qcSamples change
+  useEffect(() => {
+    if (qcSamples && qcSamples.length > 0) {
+      const evaluation = evaluateQcStatus(qcSamples);
+      if (evaluation.anyFailed) {
+        // Mark all results as non-conforming when QC fails
+        updateResults((prev) => prev.map((r) => ({ ...r, nonConforming: true })));
+        createNonConformityRecord(evaluation.evaluatedSamples);
+      }
+    }
+  }, [qcSamples, evaluateQcStatus, updateResults]);
 
-          // Enrich patient results with computed fields
-          const enrichedResults = patientResults.map((result) =>
-            enrichResultWithComputedFields(result),
-          );
-
-          setQcSamples(qcSamplesList);
-          setResults(enrichedResults);
-
-          // Evaluate QC status
-          evaluateQcStatus(qcSamplesList);
-
-          // Fetch run settings and QA/QC sidebar data
-          fetchRunSettings();
-          fetchQcHistory();
-          fetchAnalyzerInfo();
-          fetchReagentStatus();
-        }
-        setLoading(false);
-      },
-    );
-  }, [analyzerType]);
-
+  // Helper functions for result enrichment (kept locally as they're specific to this component)
   const enrichResultWithComputedFields = (result) => {
     const enriched = { ...result };
-
     enriched.flags = computeFlags(result);
     enriched.interpretation = suggestInterpretation(result, enriched.flags);
     enriched.qcStatus = result.qcStatus || "none";
     enriched.patientName = result.patientName || "";
-
     return enriched;
   };
 
   const computeFlags = (result) => {
     const flags = [];
-
     if (!result.result || !result.normalRange) {
       return flags;
     }
-
     const rangeMatch = result.normalRange.match(
       /(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/,
     );
     if (!rangeMatch) {
       return flags;
     }
-
     const minRange = parseFloat(rangeMatch[1]);
     const maxRange = parseFloat(rangeMatch[2]);
     const resultValue = parseFloat(result.result);
-
     if (isNaN(resultValue)) {
       return flags;
     }
-
     const criticalLow = minRange - (maxRange - minRange) * 0.2;
     const criticalHigh = maxRange + (maxRange - minRange) * 0.2;
-
     if (resultValue < criticalLow || resultValue > criticalHigh) {
       flags.push("critical");
     } else if (resultValue < minRange) {
@@ -171,7 +169,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     } else if (resultValue > maxRange) {
       flags.push("above-normal");
     }
-
     if (result.previousResult && result.previousResult.value) {
       const deltaPercent = calculateDeltaPercent(
         resultValue,
@@ -181,7 +178,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         flags.push("delta-check");
       }
     }
-
     return flags;
   };
 
@@ -204,87 +200,13 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         },
       };
     }
-
     if (flags.includes("above-normal")) {
-      return {
-        suggested: {
-          label: "High",
-          color: "orange",
-        },
-      };
+      return { suggested: { label: "High", color: "orange" } };
     }
-
     if (flags.includes("below-normal")) {
-      return {
-        suggested: {
-          label: "Low",
-          color: "yellow",
-        },
-      };
+      return { suggested: { label: "Low", color: "yellow" } };
     }
-
-    return {
-      suggested: {
-        label: "Normal",
-        color: "green",
-      },
-    };
-  };
-
-  const evaluateQcStatus = (qcSamplesList) => {
-    if (!qcSamplesList || qcSamplesList.length === 0) {
-      setOverallQcStatus("none");
-      return;
-    }
-
-    const evaluatedQcSamples = qcSamplesList.map((qc) => {
-      const qcResult = evaluateQcSample(qc);
-      return { ...qc, ...qcResult };
-    });
-
-    setQcSamples(evaluatedQcSamples);
-
-    const anyFailed = evaluatedQcSamples.some((qc) => qc.qcStatus === "fail");
-    const allPassed = evaluatedQcSamples.every((qc) => qc.qcStatus === "pass");
-
-    if (anyFailed) {
-      setOverallQcStatus("fail");
-      setResults((prev) => prev.map((r) => ({ ...r, nonConforming: true })));
-      createNonConformityRecord(evaluatedQcSamples);
-    } else if (allPassed) {
-      setOverallQcStatus("pass");
-      setResults((prev) => prev.map((r) => ({ ...r, nonConforming: false })));
-    } else {
-      setOverallQcStatus("none");
-    }
-  };
-
-  const evaluateQcSample = (qc) => {
-    if (!qc.result || !qc.expectedRange) {
-      return { qcStatus: "none" };
-    }
-
-    const rangeMatch = qc.expectedRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
-    if (!rangeMatch) {
-      return { qcStatus: "none" };
-    }
-
-    const minExpected = parseFloat(rangeMatch[1]);
-    const maxExpected = parseFloat(rangeMatch[2]);
-    const resultValue = parseFloat(qc.result);
-
-    if (isNaN(resultValue)) {
-      return { qcStatus: "none" };
-    }
-
-    if (resultValue >= minExpected && resultValue <= maxExpected) {
-      return { qcStatus: "pass" };
-    } else {
-      return {
-        qcStatus: "fail",
-        failureReason: `Result ${resultValue} ${qc.unit || ""} is outside acceptable range ${qc.expectedRange}`,
-      };
-    }
+    return { suggested: { label: "Normal", color: "green" } };
   };
 
   const createNonConformityRecord = (failedQcSamples) => {
@@ -296,30 +218,11 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       affectedResultCount: results.length,
       status: "OPEN",
     };
-
     postToOpenElisServer(
       "/rest/non-conformities",
       JSON.stringify(ncPayload),
       (status) => {
         console.log("Non-conformity record created, status:", status);
-      },
-    );
-  };
-
-  const fetchRunSettings = () => {
-    getFromOpenElisServer(
-      `/rest/AnalyzerResults/runSettings?type=${analyzerType}`,
-      (response) => {
-        if (response) {
-          setRunSettings(response);
-          if (response.reagentLots) {
-            const selected = {};
-            response.reagentLots.forEach((lot) => {
-              selected[lot.reagentId] = lot.lotNumber;
-            });
-            setSelectedReagentLots(selected);
-          }
-        }
       },
     );
   };
@@ -330,39 +233,6 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       (response) => {
         if (response && response.reagents) {
           setAvailableReagentLots(response.reagents);
-        }
-      },
-    );
-  };
-
-  const fetchQcHistory = () => {
-    getFromOpenElisServer(
-      `/rest/AnalyzerResults/qcHistory?type=${analyzerType}`,
-      (response) => {
-        if (response) {
-          setQcHistory(response.history || []);
-        }
-      },
-    );
-  };
-
-  const fetchAnalyzerInfo = () => {
-    getFromOpenElisServer(
-      `/rest/AnalyzerResults/analyzerInfo?type=${analyzerType}`,
-      (response) => {
-        if (response) {
-          setAnalyzerInfo(response);
-        }
-      },
-    );
-  };
-
-  const fetchReagentStatus = () => {
-    getFromOpenElisServer(
-      `/rest/AnalyzerResults/reagents?type=${analyzerType}`,
-      (response) => {
-        if (response) {
-          setReagentStatus(response.reagents || []);
         }
       },
     );
@@ -481,7 +351,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
           setNotificationVisible(true);
 
           // Refresh data
-          fetchAnalyzerResults();
+          fetchAllData();
           setSelectedRows([]);
         } else {
           addNotification({
@@ -521,7 +391,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               "Results marked for retest",
           });
           setNotificationVisible(true);
-          fetchAnalyzerResults();
+          fetchAllData();
           setSelectedRows([]);
         }
       },
@@ -551,7 +421,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
               "Results ignored",
           });
           setNotificationVisible(true);
-          fetchAnalyzerResults();
+          fetchAllData();
           setSelectedRows([]);
         }
       },
@@ -559,7 +429,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
   };
 
   const handleRefresh = () => {
-    fetchAnalyzerResults();
+    fetchAllData();
   };
 
   const handleOpenReagentModal = () => {
@@ -567,31 +437,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
     setShowReagentModal(true);
   };
 
-  const isFifoLot = (reagentId, lotNumber) => {
-    const lots = availableReagentLots[reagentId];
-    if (!lots || lots.length === 0) return true;
-    // First lot in sorted list is FIFO
-    return lots[0].lotNumber === lotNumber;
-  };
-
+  // Use the hook's handleReagentLotChange wrapper
   const handleReagentLotChange = (reagentId, lotNumber, checked) => {
-    if (checked) {
-      setSelectedReagentLots((prev) => ({ ...prev, [reagentId]: lotNumber }));
-
-      // Check if non-FIFO lot selected
-      if (!isFifoLot(reagentId, lotNumber)) {
-        setFifoWarnings((prev) => ({
-          ...prev,
-          [reagentId]: `⚠️ Not FIFO - Older lot available (${availableReagentLots[reagentId][0].lotNumber})`,
-        }));
-      } else {
-        setFifoWarnings((prev) => {
-          const updated = { ...prev };
-          delete updated[reagentId];
-          return updated;
-        });
-      }
-    }
+    handleReagentLotChangeHook(reagentId, lotNumber, checked);
   };
 
   const handleApplyReagentLots = () => {
@@ -997,7 +845,7 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
         open={showReagentModal}
         onRequestClose={() => {
           setShowReagentModal(false);
-          setFifoWarnings({});
+          clearFifoWarnings();
         }}
         modalHeading="Select Reagent Lots (FIFO Recommended)"
         primaryButtonText="Apply to All Results"
