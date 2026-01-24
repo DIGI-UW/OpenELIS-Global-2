@@ -97,25 +97,25 @@ of P1 analyzers**, and **easy wins**. This plan follows a layered approach:
 
 ### Milestone Table
 
-| ID          | Branch Suffix           | Scope                                                      | User Stories | Verification                                                                           | Depends On    | Est. Days |
-| ----------- | ----------------------- | ---------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------- | ------------- | --------- |
-| **M1**      | m1-hl7-adapter          | HL7 v2.x protocol adapter (parser + generator)             | US-1         | Unit tests: ORU^R01 parsing, ORM^O01 generation; Integration: HL7 message round-trip   | -             | 3         |
-| **[P] M2**  | m2-serial-adapter       | RS232 serial communication adapter                         | US-3         | Unit tests: serial config, connection lifecycle; Integration: virtual serial port test | -             | 3         |
-| **[P] M3**  | m3-file-adapter         | File-based import adapter (directory watcher)              | US-4         | Unit tests: CSV parsing, file detection; Integration: file import round-trip           | -             | 2         |
-| **[P] M4**  | m4-simulator-multiprotocol | Multi-protocol simulator (HL7, RS232, File)             | US-9         | Simulator supports all protocols; 80%+ analyzer templates; CI/CD integration           | -             | 3         |
-| **M5**      | m5-mindray-validation   | Validate Mindray plugin (BC-5380, BS-360E, BC2000, BA-88A) | US-1, US-6   | 4 Mindray analyzers receive results via HL7/RS232                                      | M1, M2        | 3         |
-| **M6**      | m6-sysmex-validation    | Validate SysmexXN-L plugin                                 | US-1, US-6   | Sysmex XN Series receives results via HL7                                              | M1            | 1         |
-| **M7**      | m7-genexpert-validation | Validate GeneXpert plugins (3 variants)                    | US-6         | GeneXpert results via ASTM/HL7/File                                                    | M1, M3        | 2         |
-| **M8**      | m8-quantstudio-adapt    | Adapt QuantStudio3 plugin for QuantStudio 7 Flex           | US-4, US-6   | QuantStudio 7 Flex CSV import works                                                    | M3            | 2         |
-| **[P] M9**  | m9-plugin-pentra        | Build Horiba Pentra 60 plugin (ASTM/RS232)                 | US-3         | Pentra 60 results via RS232                                                            | M2            | 2         |
-| **[P] M10** | m10-plugin-micros       | Build Horiba Micros 60 plugin (ASTM/RS232)                 | US-3         | Micros 60 results via RS232                                                            | M2            | 2         |
-| **[P] M11** | m11-plugin-stago        | Build Stago STart 4 plugin (ASTM/HL7)                      | US-1, US-3   | Stago results via RS232/Network                                                        | M1, M2        | 2         |
-| **[P] M12** | m12-plugin-abbott       | Build Abbott Architect plugin (HL7)                        | US-1         | Abbott results via HL7                                                                 | M1            | 2         |
-| **[P] M13** | m13-plugin-fluorocycler | Build FluoroCycler XT plugin (File)                        | US-4         | FluoroCycler CSV import works                                                          | M3            | 2         |
-| **M14**     | m14-order-export        | Order export workflow (manual trigger)                     | US-2         | Orders export to analyzers; status tracking works                                      | M5-M13        | 4         |
-| **M15**     | m15-metadata-form       | Enhanced instrument metadata form                          | US-5         | Metadata form captures all fields; location history works                              | M14           | 3         |
-| **M16**     | m16-simulator-advanced  | Advanced simulator (QC, errors, stress testing)            | US-9         | QC results, error conditions, concurrent testing; CI/CD scenarios                      | M4            | 2         |
-| **M17**     | m17-e2e-validation      | E2E testing and Madagascar lab validation                  | All          | All 12 analyzers bidirectional; E2E tests pass                                         | M14, M15, M16 | 5         |
+| ID          | Branch Suffix              | Scope                                                      | User Stories | Verification                                                                           | Depends On    | Est. Days |
+| ----------- | -------------------------- | ---------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------- | ------------- | --------- |
+| **M1**      | m1-hl7-adapter             | HL7 v2.x protocol adapter (parser + generator)             | US-1         | Unit tests: ORU^R01 parsing, ORM^O01 generation; Integration: HL7 message round-trip   | -             | 3         |
+| **[P] M2**  | m2-serial-adapter          | RS232 serial communication adapter                         | US-3         | Unit tests: serial config, connection lifecycle; Integration: virtual serial port test | -             | 3         |
+| **[P] M3**  | m3-file-adapter            | File-based import adapter (directory watcher)              | US-4         | Unit tests: CSV parsing, file detection; Integration: file import round-trip           | -             | 2         |
+| **[P] M4**  | m4-simulator-multiprotocol | Multi-protocol simulator (HL7, RS232, File)                | US-9         | Simulator supports all protocols; 80%+ analyzer templates; CI/CD integration           | -             | 3         |
+| **M5**      | m5-mindray-validation      | Validate Mindray plugin (BC-5380, BS-360E, BC2000, BA-88A) | US-1, US-6   | 4 Mindray analyzers receive results via HL7/RS232                                      | M1, M2        | 3         |
+| **M6**      | m6-sysmex-validation       | Validate SysmexXN-L plugin                                 | US-1, US-6   | Sysmex XN Series receives results via HL7                                              | M1            | 1         |
+| **M7**      | m7-genexpert-validation    | Validate GeneXpert plugins (3 variants)                    | US-6         | GeneXpert results via ASTM/HL7/File                                                    | M1, M3        | 2         |
+| **M8**      | m8-quantstudio-adapt       | Adapt QuantStudio3 plugin for QuantStudio 7 Flex           | US-4, US-6   | QuantStudio 7 Flex CSV import works                                                    | M3            | 2         |
+| **[P] M9**  | m9-plugin-pentra           | Build Horiba Pentra 60 plugin (ASTM/RS232)                 | US-3         | Pentra 60 results via RS232                                                            | M2            | 2         |
+| **[P] M10** | m10-plugin-micros          | Build Horiba Micros 60 plugin (ASTM/RS232)                 | US-3         | Micros 60 results via RS232                                                            | M2            | 2         |
+| **[P] M11** | m11-plugin-stago           | Build Stago STart 4 plugin (ASTM/HL7)                      | US-1, US-3   | Stago results via RS232/Network                                                        | M1, M2        | 2         |
+| **[P] M12** | m12-plugin-abbott          | Build Abbott Architect plugin (HL7)                        | US-1         | Abbott results via HL7                                                                 | M1            | 2         |
+| **[P] M13** | m13-plugin-fluorocycler    | Build FluoroCycler XT plugin (File)                        | US-4         | FluoroCycler CSV import works                                                          | M3            | 2         |
+| **M14**     | m14-order-export           | Order export workflow (manual trigger)                     | US-2         | Orders export to analyzers; status tracking works                                      | M5-M13        | 4         |
+| **M15**     | m15-metadata-form          | Enhanced instrument metadata form                          | US-5         | Metadata form captures all fields; location history works                              | M14           | 3         |
+| **M16**     | m16-simulator-advanced     | Advanced simulator (QC, errors, stress testing)            | US-9         | QC results, error conditions, concurrent testing; CI/CD scenarios                      | M4            | 2         |
+| **M17**     | m17-e2e-validation         | E2E testing and Madagascar lab validation                  | All          | All 12 analyzers bidirectional; E2E tests pass                                         | M14, M15, M16 | 5         |
 
 **Total Estimated Duration**: 6 weeks (with parallel development on M2/M3/M4 and
 M9-M13)
@@ -208,10 +208,10 @@ met.
 
 **IMPORTANT**: This feature involves TWO separate tools with different purposes:
 
-| Tool | Location | Language | Purpose | When Used | Who Uses It |
-|------|----------|----------|---------|-----------|-------------|
-| **astm-http-bridge** | `tools/astm-http-bridge/` | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs |
-| **astm-mock-server** | `tools/astm-mock-server/` | Python 3 | **TESTING** simulator | Development/CI | Developers without physical hardware |
+| Tool                 | Location                  | Language              | Purpose                         | When Used              | Who Uses It                          |
+| -------------------- | ------------------------- | --------------------- | ------------------------------- | ---------------------- | ------------------------------------ |
+| **astm-http-bridge** | `tools/astm-http-bridge/` | Java 21 + Spring Boot | **PRODUCTION** protocol adapter | Deployed with OpenELIS | Physical analyzers in labs           |
+| **astm-mock-server** | `tools/astm-mock-server/` | Python 3              | **TESTING** simulator           | Development/CI         | Developers without physical hardware |
 
 ### astm-http-bridge (Production Adapter)
 
@@ -221,13 +221,15 @@ Physical Analyzer ←→ [astm-http-bridge] ←→ OpenELIS
 ```
 
 **Current capabilities**:
+
 - Bidirectional ASTM ↔ HTTP translation
 - LIS01-A and E1381-95 protocol support
 - TCP socket listeners for ASTM messages
 - HTTP forwarding to OpenELIS `/api/analyzer/astm`
 - Health monitoring via Spring Boot Actuator
 
-**Feature 011 does NOT modify astm-http-bridge** - it remains the production ASTM adapter.
+**Feature 011 does NOT modify astm-http-bridge** - it remains the production
+ASTM adapter.
 
 ### astm-mock-server (Testing Simulator)
 
@@ -237,12 +239,15 @@ Physical Analyzer ←→ [astm-http-bridge] ←→ OpenELIS
 ```
 
 **Current capabilities** (pre-Feature 011):
+
 - ASTM LIS2-A2 protocol simulation only
-- 35 test fields across 4 analyzer types (Hematology, Chemistry, Immunology, Microbiology)
+- 35 test fields across 4 analyzer types (Hematology, Chemistry, Immunology,
+  Microbiology)
 - Push mode, API mode, and TCP server mode
 - `fields.json` configuration for test templates
 
 **Feature 011 expansion** (M4 + M16):
+
 - HL7 v2.x protocol simulation
 - RS232 virtual serial port simulation (via socat)
 - File-based result generation (CSV/TXT)
@@ -592,8 +597,8 @@ MappingAwareAnalyzerLineInserter wrapper pattern.
 
 ### M4: Multi-Protocol Analyzer Simulator (3 days)
 
-**Scope**: Expand astm-mock-server (Python) to support HL7, RS232, and file-based
-protocols, covering 80%+ of 12 contract analyzers
+**Scope**: Expand astm-mock-server (Python) to support HL7, RS232, and
+file-based protocols, covering 80%+ of 12 contract analyzers
 
 **IMPORTANT**: This expands the Python **astm-mock-server** (testing simulator),
 NOT the Java astm-http-bridge (production adapter).
@@ -792,8 +797,8 @@ NOT the Java astm-http-bridge (production adapter).
 
 **Scope**: Advanced simulation features for production-ready CI/CD testing
 
-**Note**: M4 established the multi-protocol foundation (HL7, RS232, File handlers
-and analyzer templates). M16 adds advanced features.
+**Note**: M4 established the multi-protocol foundation (HL7, RS232, File
+handlers and analyzer templates). M16 adds advanced features.
 
 **Deliverables**:
 
@@ -867,5 +872,5 @@ These will be planned as separate features after contract deadline is met.
 
 **Plan Created**: 2026-01-22 | **Updated**: 2026-01-23 (remediation plan: tool
 architecture clarification, M4 multi-protocol expansion, M16 scope refinement)
-**Plan Author**: Claude Code with /speckit.plan
-**Next Step**: Run `/speckit.tasks` to generate task breakdown by milestone
+**Plan Author**: Claude Code with /speckit.plan **Next Step**: Run
+`/speckit.tasks` to generate task breakdown by milestone

@@ -299,18 +299,19 @@ works
 
 ## [P] M4: Multi-Protocol Analyzer Simulator (3 days)
 
-**Branch**: `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol`
-**Goal**: Expand astm-mock-server to support HL7, RS232, and file-based protocols
-**User Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: None
-(parallel with M1-M3)
+**Branch**:
+`feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` **Goal**:
+Expand astm-mock-server to support HL7, RS232, and file-based protocols **User
+Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: None (parallel
+with M1-M3)
 
-**Scope**: Extend astm-mock-server to cover 80%+ of 12 analyzers BEFORE milestone
-implementation, enabling developers to test M1-M3 adapters and M5-M13 plugins
-without physical hardware.
+**Scope**: Extend astm-mock-server to cover 80%+ of 12 analyzers BEFORE
+milestone implementation, enabling developers to test M1-M3 adapters and M5-M13
+plugins without physical hardware.
 
 **IMPORTANT**: This expands the **Python astm-mock-server** (testing simulator),
-NOT the Java astm-http-bridge (production adapter). See plan.md Tool Architecture
-section for distinction.
+NOT the Java astm-http-bridge (production adapter). See plan.md Tool
+Architecture section for distinction.
 
 **Acceptance Criteria**:
 
@@ -329,7 +330,8 @@ section for distinction.
       `demo/madagascar`
 - [ ] T068 [M4] Create `tools/astm-mock-server/protocols/` directory structure
 - [ ] T069 [M4] Create `tools/astm-mock-server/templates/` directory structure
-- [ ] T070 [M4] Add pyserial dependency to `tools/astm-mock-server/requirements.txt`
+- [ ] T070 [M4] Add pyserial dependency to
+      `tools/astm-mock-server/requirements.txt`
 
 ### Core Architecture for M4
 
@@ -391,7 +393,8 @@ section for distinction.
 - [ ] T092 [M4] Integration test: HL7 Simulator → OpenELIS reception
 - [ ] T093 [M4] Integration test: Serial Simulator → OpenELIS reception
 - [ ] T094 [M4] Integration test: File Simulator → OpenELIS import
-- [ ] T095 [M4] Update `tools/astm-mock-server/README.md` with multi-protocol usage
+- [ ] T095 [M4] Update `tools/astm-mock-server/README.md` with multi-protocol
+      usage
 
 ### Finalization for M4
 
@@ -973,11 +976,12 @@ export operational)
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m16-simulator-advanced`
 **Goal**: Advanced simulation features: QC results, error conditions, concurrent
-testing, stress testing **User Stories**: US-9 **Depends On**: M4 (multi-protocol
-simulator base)
+testing, stress testing **User Stories**: US-9 **Depends On**: M4
+(multi-protocol simulator base)
 
-**Note**: M4 established the multi-protocol foundation (HL7, RS232, File handlers
-and analyzer templates). M16 adds advanced features for production-ready testing.
+**Note**: M4 established the multi-protocol foundation (HL7, RS232, File
+handlers and analyzer templates). M16 adds advanced features for
+production-ready testing.
 
 **Acceptance Criteria**:
 
@@ -997,11 +1001,12 @@ and analyzer templates). M16 adds advanced features for production-ready testing
 
 - [ ] T247 [M16] Add QC result generation templates in
       `tools/astm-mock-server/templates/qc/`
-- [ ] T248 [M16] Add error condition templates (malformed, timeout, duplicate) in
-      `tools/astm-mock-server/templates/errors/`
+- [ ] T248 [M16] Add error condition templates (malformed, timeout, duplicate)
+      in `tools/astm-mock-server/templates/errors/`
 - [ ] T249 [M16] Implement concurrent multi-analyzer support in
       `tools/astm-mock-server/server.py`
-- [ ] T250 [M16] Implement test scenario orchestration (`/scenarios/{name}` endpoint)
+- [ ] T250 [M16] Implement test scenario orchestration (`/scenarios/{name}`
+      endpoint)
 - [ ] T251 [M16] Add stress testing mode (`--stress-test --count N`)
 
 ### CI/CD Integration for M16
@@ -1024,7 +1029,8 @@ and analyzer templates). M16 adds advanced features for production-ready testing
       `feat/011-madagascar-analyzer-integration-m16-simulator-advanced` →
       `demo/madagascar`
 
-**Checkpoint**: Simulator ready for production CI/CD with advanced testing capabilities
+**Checkpoint**: Simulator ready for production CI/CD with advanced testing
+capabilities
 
 ---
 
@@ -1172,17 +1178,17 @@ M16 can proceed in parallel **Week 5-6**: M17 after M14, M15, M16
 
 ## Post-Deadline Features (NOT IN TASK COUNT)
 
-The following requirements are **intentionally deferred** to post-contract-deadline
-(2026-02-28) per spec.md clarification:
+The following requirements are **intentionally deferred** to
+post-contract-deadline (2026-02-28) per spec.md clarification:
 
-| Requirement | User Story | Scope | Reason |
-|-------------|------------|-------|--------|
-| FR-019 to FR-021 | US-7 | GeneXpert Module Management | P3 priority, complex UI |
-| FR-022 to FR-024 | US-8 | Maintenance Tracking | P3 priority, non-essential |
-| POCT1A Protocol | - | Point-of-care devices | Out of contract scope |
+| Requirement      | User Story | Scope                       | Reason                     |
+| ---------------- | ---------- | --------------------------- | -------------------------- |
+| FR-019 to FR-021 | US-7       | GeneXpert Module Management | P3 priority, complex UI    |
+| FR-022 to FR-024 | US-8       | Maintenance Tracking        | P3 priority, non-essential |
+| POCT1A Protocol  | -          | Point-of-care devices       | Out of contract scope      |
 
-These will be planned as **separate features** after the contract deadline is met.
-No tasks are generated for these requirements in this document.
+These will be planned as **separate features** after the contract deadline is
+met. No tasks are generated for these requirements in this document.
 
 ---
 
@@ -1224,7 +1230,8 @@ No tasks are generated for these requirements in this document.
 
 ---
 
-**Tasks Generated**: 2026-01-22 | **Updated**: 2026-01-23 (remediation: M4 expanded,
-M5-M17 task IDs renumbered +20 to avoid collision, post-deadline section added)
-**Total Tasks**: 282 **Test Tasks**: 63 (22%) **Task ID Range**: T001-T278
-**Parallel Milestones**: M1-M4, M9-M13 **Contract Deadline**: 2026-02-28
+**Tasks Generated**: 2026-01-22 | **Updated**: 2026-01-23 (remediation: M4
+expanded, M5-M17 task IDs renumbered +20 to avoid collision, post-deadline
+section added) **Total Tasks**: 282 **Test Tasks**: 63 (22%) **Task ID Range**:
+T001-T278 **Parallel Milestones**: M1-M4, M9-M13 **Contract Deadline**:
+2026-02-28
