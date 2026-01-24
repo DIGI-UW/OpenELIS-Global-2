@@ -83,7 +83,20 @@ class PatientEntryPage {
   }
 
   clickSearchPatientButton() {
-    cy.getElement("#local_search").should("be.visible").click();
+    // Close sidebar if it's covering the button
+    cy.get("body").then(($body) => {
+      // Check if sidebar is expanded (Carbon uses aria-expanded or class)
+      const sidebarExpanded = $body.find(".cds--side-nav--expanded").length > 0;
+      if (sidebarExpanded) {
+        // Close sidebar by clicking menu button
+        cy.get("[data-cy='menuButton']").should("be.visible").click();
+        cy.wait(300); // Wait for sidebar animation
+      }
+    });
+    cy.getElement("#local_search")
+      .should("be.visible")
+      .scrollIntoView()
+      .click();
   }
 
   getExternalSearchButton() {

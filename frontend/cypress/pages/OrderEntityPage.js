@@ -46,6 +46,9 @@ class OrderEntityPage {
 
   referTest() {
     cy.contains("span", "Refer test to a reference lab").click();
+    // Wait for referral fields to render after checkbox is clicked
+    cy.get("#referralReasonId_0_1", { timeout: 10000 })
+      .should("be.visible");
   }
 
   selectInstitute() {
@@ -53,7 +56,9 @@ class OrderEntityPage {
   }
 
   selectReferralReason() {
-    cy.get("#referralReasonId_0_1").select("Test not performed");
+    cy.get("#referralReasonId_0_1")
+      .should("be.visible")
+      .select("Test not performed");
   }
   generateLabOrderNumber() {
     cy.get("[data-cy='generate-labNumber']").click();

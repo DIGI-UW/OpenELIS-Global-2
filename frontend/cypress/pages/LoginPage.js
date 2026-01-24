@@ -98,7 +98,8 @@ class LoginPage {
         this.signIn();
       }
     });
-    cy.wait(5000);
+    // Wait for authentication to complete - menuButton only appears when authenticated
+    cy.get("[data-cy='menuButton']", { timeout: 30000 }).should("be.visible");
     return new HomePage();
   }
 }

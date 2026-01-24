@@ -76,6 +76,8 @@ class HomePage {
   }
 
   openNavigationMenu() {
+    // Get element first, then click separately to avoid detachment issues
+    cy.get(this.selectors.menuButton, { timeout: 10000 }).should("be.visible");
     cy.get(this.selectors.menuButton).click();
   }
 
@@ -308,7 +310,9 @@ class HomePage {
 
   goToAdminPage() {
     this.openNavigationMenu();
-    cy.get(this.selectors.administrationNav).click();
+    cy.get(this.selectors.administrationNav, { timeout: 10000 })
+      .should("be.visible")
+      .click();
     this.closeNavigationMenu();
     return new AdminPage();
   }
