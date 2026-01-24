@@ -43,11 +43,7 @@ import {
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import {
-  useAnalyzerResults,
-  useQcEvaluation,
-  useReagentLots,
-} from "./hooks";
+import { useAnalyzerResults, useQcEvaluation, useReagentLots } from "./hooks";
 import "./AnalyzerImportRedesign.css";
 
 const AnalyzerImportRedesign = ({ analyzerType }) => {
@@ -127,7 +123,9 @@ const AnalyzerImportRedesign = ({ analyzerType }) => {
       const evaluation = evaluateQcStatus(qcSamples);
       if (evaluation.anyFailed) {
         // Mark all results as non-conforming when QC fails
-        updateResults((prev) => prev.map((r) => ({ ...r, nonConforming: true })));
+        updateResults((prev) =>
+          prev.map((r) => ({ ...r, nonConforming: true })),
+        );
         createNonConformityRecord(evaluation.evaluatedSamples);
       }
     }

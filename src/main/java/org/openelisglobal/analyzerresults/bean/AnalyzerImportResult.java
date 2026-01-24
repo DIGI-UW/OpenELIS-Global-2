@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Result object for analyzer import operations.
- * Provides structured response for import success/failure.
+ * Result object for analyzer import operations. Provides structured response
+ * for import success/failure.
  */
 public class AnalyzerImportResult implements Serializable {
 

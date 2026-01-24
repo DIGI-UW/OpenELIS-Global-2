@@ -134,7 +134,8 @@ public class AnalyzerResultDetailsServiceImpl implements AnalyzerResultDetailsSe
                     .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Finalized);
 
             // Use fallback implementation to get previous results
-            // TODO MAJ-005: Consider adding optimized query to ResultService for single database round-trip
+            // TODO MAJ-005: Consider adding optimized query to ResultService for single
+            // database round-trip
             return getPreviousResultsFallback(testId, sample, patient, finalizedStatusId);
 
         } catch (Exception e) {

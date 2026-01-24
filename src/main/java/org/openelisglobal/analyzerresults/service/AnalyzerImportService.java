@@ -5,8 +5,8 @@ import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.bean.AnalyzerImportResult;
 
 /**
- * Service interface for analyzer import business logic.
- * Extracts business logic from AnalyzerResultsController (REFACTOR-002).
+ * Service interface for analyzer import business logic. Extracts business logic
+ * from AnalyzerResultsController (REFACTOR-002).
  */
 public interface AnalyzerImportService {
 

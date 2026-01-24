@@ -1673,12 +1673,13 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     /**
-     * Get available reagent lots for analyzer (FIFO ordering).
-     * Frontend needs: GET /rest/AnalyzerResults/availableReagentLots?type={type}
+     * Get available reagent lots for analyzer (FIFO ordering). Frontend needs: GET
+     * /rest/AnalyzerResults/availableReagentLots?type={type}
      *
-     * @deprecated Since 3.3.0 - This endpoint returns mock data. Will be replaced with
-     *             actual inventory integration via InventoryService.getReagentLotsForAnalyzer().
-     *             Target removal: 4.0.0
+     * @deprecated Since 3.3.0 - This endpoint returns mock data. Will be replaced
+     *             with actual inventory integration via
+     *             InventoryService.getReagentLotsForAnalyzer(). Target removal:
+     *             4.0.0
      */
     @Deprecated(since = "3.3.0", forRemoval = true)
     @RequestMapping(value = "/rest/AnalyzerResults/availableReagentLots", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1687,9 +1688,7 @@ public class AnalyzerResultsController extends BaseController {
         Map<String, Object> response = new HashMap<>();
         Map<String, List<Map<String, Object>>> reagents = new HashMap<>();
 
-        LogEvent.logWarn(
-                this.getClass().getSimpleName(),
-                "getAvailableReagentLots",
+        LogEvent.logWarn(this.getClass().getSimpleName(), "getAvailableReagentLots",
                 "Using deprecated mock data endpoint. Integrate with inventory system.");
 
         List<Map<String, Object>> cbcReagents = new ArrayList<>();

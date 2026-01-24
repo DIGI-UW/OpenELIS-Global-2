@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service implementation for analyzer import business logic.
- * Extracts business logic from AnalyzerResultsController (REFACTOR-002).
+ * Service implementation for analyzer import business logic. Extracts business
+ * logic from AnalyzerResultsController (REFACTOR-002).
  */
 @Service
 public class AnalyzerImportServiceImpl implements AnalyzerImportService {
@@ -24,8 +24,7 @@ public class AnalyzerImportServiceImpl implements AnalyzerImportService {
 
     @Override
     @Transactional
-    public AnalyzerImportResult importResults(
-            List<AnalyzerResultItem> results, String analyzerType, String userId) {
+    public AnalyzerImportResult importResults(List<AnalyzerResultItem> results, String analyzerType, String userId) {
 
         if (results == null || results.isEmpty()) {
             return AnalyzerImportResult.validationFailure(List.of("No results provided"));
@@ -76,9 +75,7 @@ public class AnalyzerImportServiceImpl implements AnalyzerImportService {
                 }
             }
         } catch (NumberFormatException e) {
-            LogEvent.logWarn(
-                    this.getClass().getSimpleName(),
-                    "getSignificantDigitsForTest",
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getSignificantDigitsForTest",
                     "Invalid significant digits for test: " + testId);
         }
 
@@ -119,9 +116,7 @@ public class AnalyzerImportServiceImpl implements AnalyzerImportService {
                 errors.add("Result " + index + ": Missing accession number");
             }
 
-            if (GenericValidator.isBlankOrNull(item.getResult())
-                    && !item.getIsDeleted()
-                    && !item.getIsRejected()) {
+            if (GenericValidator.isBlankOrNull(item.getResult()) && !item.getIsDeleted() && !item.getIsRejected()) {
                 errors.add("Result " + index + ": Missing result value");
             }
 
