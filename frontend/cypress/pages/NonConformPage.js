@@ -25,7 +25,7 @@ class NonConform {
       proposedCorrectiveAction: "#text-area-corrective",
       dateCompleted: "#dateCompleted",
       actionTypeCheckbox: "#correctiveAction",
-      resolutionYes: "span:contains('Yes')",
+      resolutionYes: "[data-testid='nce-resolution-radio'] input#yes\\.option",
       dateCompleted0: ".cds--date-picker-input__wrapper > #dateCompleted-0",
       submitButton: "[data-testid='nce-submit-button']",
       radioTable: "table",

@@ -2056,5 +2056,11 @@
   "storage.code.change.acknowledge": "I understand and wish to proceed with the code change.",
   "storage.update.success": "Storage location updated successfully",
   "storage.dispose.success": "Sample disposed successfully",
-  "storage.dispose.error": "Failed to dispose sample"
+  "storage.dispose.error": "Failed to dispose sample",
+
+  "yes.option": "Yes",
+  "workplan.test.title": "Workplan By Test",
+  "workplan.panel.title": "Workplan By Panel",
+  "workplan.unit.title": "Workplan By Unit",
+  "workplan.priority.title": "Workplan By Priority"
 }
