@@ -248,8 +248,7 @@ public class AdHocReportServiceImpl implements AdHocReportService {
     }
 
     private boolean isCacheExpired() {
-        return statusNameCache == null
-                || (System.currentTimeMillis() - statusCacheTimestamp) > STATUS_CACHE_TTL_MS;
+        return statusNameCache == null || (System.currentTimeMillis() - statusCacheTimestamp) > STATUS_CACHE_TTL_MS;
     }
 
     private synchronized void refreshStatusCache() {
