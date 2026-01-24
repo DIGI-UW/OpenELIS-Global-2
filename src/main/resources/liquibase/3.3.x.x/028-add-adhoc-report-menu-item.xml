@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="oe-dev" id="adhoc-report-menu-item-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_reports_adhoc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Ad-Hoc Report menu item under Reports menu</comment>
+
+        <!-- First, find the parent Reports menu id -->
+        <sql>
+            INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, tool_tip_key, new_window, is_active, hide_in_old_ui)
+            SELECT
+                nextval('menu_seq'),
+                (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports'),
+                99,
+                'menu_reports_adhoc',
+                '/AdHocReport',
+                'banner.menu.adhoc.report',
+                'banner.menu.adhoc.report.tooltip',
+                false,
+                true,
+                true;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

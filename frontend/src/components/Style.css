@@ -533,3 +533,261 @@ button {
     width: 14rem;
   }
 }
+
+/* Ad-Hoc Report Builder Styles */
+.adhoc-report-container {
+  padding: 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.adhoc-report-header {
+  margin-bottom: 2rem;
+}
+
+.adhoc-report-header h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.adhoc-report-header p {
+  color: #525252;
+  font-size: 0.875rem;
+}
+
+.adhoc-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #161616;
+}
+
+.adhoc-section-description {
+  color: #525252;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.adhoc-field-selector {
+  margin-bottom: 2rem;
+}
+
+.adhoc-field-groups-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1rem;
+}
+
+.adhoc-field-group-tile {
+  min-height: 200px;
+}
+
+.adhoc-field-group-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #161616;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.adhoc-data-type-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.adhoc-data-type-string {
+  background-color: #d0e2ff;
+  color: #0043ce;
+}
+
+.adhoc-data-type-date,
+.adhoc-data-type-datetime {
+  background-color: #bae6ff;
+  color: #0072c3;
+}
+
+.adhoc-data-type-integer,
+.adhoc-data-type-decimal {
+  background-color: #d4bbff;
+  color: #6929c4;
+}
+
+.adhoc-data-type-boolean {
+  background-color: #a7f0ba;
+  color: #0e6027;
+}
+
+.adhoc-data-type-enum {
+  background-color: #ffd6e8;
+  color: #9f1853;
+}
+
+.adhoc-selected-fields-summary {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #f4f4f4;
+  border-radius: 0.25rem;
+}
+
+.adhoc-selected-count {
+  font-weight: 500;
+  color: #0f62fe;
+}
+
+.adhoc-filter-builder {
+  margin-bottom: 2rem;
+}
+
+.adhoc-filter-rows-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adhoc-filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto auto;
+  gap: 0.75rem;
+  align-items: flex-end;
+  padding: 1rem;
+  background-color: #f4f4f4;
+  border-radius: 0.25rem;
+}
+
+.adhoc-filter-row.has-range {
+  grid-template-columns: 1fr 1fr 1fr 1fr auto auto;
+}
+
+.adhoc-filter-row .field-select,
+.adhoc-filter-row .operator-select,
+.adhoc-filter-row .value-input {
+  min-width: 150px;
+}
+
+.adhoc-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.adhoc-no-filters-message {
+  padding: 1rem;
+  text-align: center;
+  color: #525252;
+  font-style: italic;
+  background-color: #f4f4f4;
+  border-radius: 0.25rem;
+}
+
+.adhoc-report-preview {
+  margin-bottom: 2rem;
+}
+
+.adhoc-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.adhoc-preview-info {
+  font-size: 0.875rem;
+  color: #525252;
+}
+
+.adhoc-preview-table-container {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.25rem;
+}
+
+.adhoc-preview-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  background-color: #f4f4f4;
+  border-radius: 0.25rem;
+}
+
+.adhoc-preview-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #525252;
+  background-color: #f4f4f4;
+  border-radius: 0.25rem;
+}
+
+.adhoc-report-actions {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 1rem;
+}
+
+.adhoc-report-actions .cds--btn {
+  min-width: 150px;
+}
+
+.adhoc-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.adhoc-error {
+  padding: 2rem;
+  text-align: center;
+  background-color: #fff1f1;
+  border: 1px solid #fa4d56;
+  border-radius: 0.25rem;
+  color: #da1e28;
+}
+
+.adhoc-error h3 {
+  margin-bottom: 1rem;
+}
+
+.adhoc-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.adhoc-step {
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .adhoc-field-groups-container {
+    grid-template-columns: 1fr;
+  }
+
+  .adhoc-filter-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .adhoc-filter-row.has-range {
+    grid-template-columns: 1fr;
+  }
+
+  .adhoc-report-actions {
+    flex-direction: column;
+  }
+
+  .adhoc-report-actions .cds--btn {
+    width: 100%;
+  }
+}

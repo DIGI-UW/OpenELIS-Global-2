@@ -56,6 +56,7 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import AdHocReport from "./components/reports/adhoc/Index";
 
 export default function App() {
   const defaultLocale =
@@ -629,6 +630,12 @@ export default function App() {
                   path="/AuditTrailReport"
                   exact
                   component={() => <AuditTrailReportIndex />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/AdHocReport"
+                  exact
+                  component={() => <AdHocReport />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

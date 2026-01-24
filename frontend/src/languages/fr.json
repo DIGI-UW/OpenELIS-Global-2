@@ -1892,6 +1892,8 @@
   "storage.error.name.duplicate": "Une entité de  type {entityType} portant ce nom existe déjà dans l'emplacement parent sélectionné.",
   "banner.menu.storage": "Stockage",
   "banner.menu.storage.tooltip": "Gestion du stockage des échantillons",
+  "banner.menu.adhoc.report": "Rapport Ad-Hoc",
+  "banner.menu.adhoc.report.tooltip": "Créer des rapports ad-hoc personnalisés",
   "barcode.scanOrType": "Scannez le code-barres ou saisissez l'emplacement",
   "barcode.scan": "Scanner le code-barres",
   "barcode.ready": "Prêt à scanner",

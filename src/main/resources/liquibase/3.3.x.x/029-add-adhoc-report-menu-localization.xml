@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="oe-dev" id="adhoc-report-menu-localization-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.localization WHERE description = 'banner.menu.adhoc.report'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds localization entries for Ad-Hoc Report menu item</comment>
+        <sql>
+            INSERT INTO clinlims.localization (id, description, english, french, lastupdated)
+            VALUES
+            (nextval('localization_seq'), 'banner.menu.adhoc.report', 'Ad-Hoc Report', 'Rapport Ad-Hoc', CURRENT_TIMESTAMP),
+            (nextval('localization_seq'), 'banner.menu.adhoc.report.tooltip', 'Create custom ad-hoc reports for Patient and Sample data', 'Créer des rapports ad-hoc personnalisés pour les données Patient et Échantillon', CURRENT_TIMESTAMP);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
