@@ -94,6 +94,7 @@ htmlcov/
 
 cypress-screenshots/
 cypress-videos/
+**/cypress/e2e-reports/**
 # Vendor documentation (too large for git - 100MB+ PDFs)
 specs/*/research/AnalyzerDocs/
 
