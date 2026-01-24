@@ -73,3 +73,5 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+
+**/cypress/e2e-reports/** 
