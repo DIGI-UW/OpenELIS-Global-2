@@ -1,0 +1,161 @@
+Running tests in custom order: [
+  'cypress/e2e/login.cy.js',
+  'cypress/e2e/home.cy.js',
+  'cypress/e2e/AdminE2E/organizationManagement.cy.js',
+  'cypress/e2e/AdminE2E/providerManagement.cy.js',
+  'cypress/e2e/patientEntry.cy.js',
+  'cypress/e2e/orderEntity.cy.js',
+  'cypress/e2e/AdminE2E/barcode.cy.js',
+  'cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js',
+  'cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js',
+  'cypress/e2e/AdminE2E/dictionaryMenu.cy.js',
+  'cypress/e2e/AdminE2E/generalConfigurations.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/notifyUser.cy.js',
+  'cypress/e2e/AdminE2E/programEntry.cy.js',
+  'cypress/e2e/AdminE2E/reflexTestsManagement.cy.js',
+  'cypress/e2e/AdminE2E/resultReportingConfig.cy.js',
+  'cypress/e2e/AdminE2E/testManagement.cy.js',
+  'cypress/e2e/AdminE2E/userManagement.cy.js',
+  'cypress/e2e/batchOrderEntry.cy.js',
+  'cypress/e2e/dashboard.cy.js',
+  'cypress/e2e/help.cy.js',
+  'cypress/e2e/labNumberManagement.cy.js',
+  'cypress/e2e/modifyOrder.cy.js',
+  'cypress/e2e/nonConform.cy.js',
+  'cypress/e2e/notebookWorkflow.cy.js',
+  'cypress/e2e/notebookWorkflowArchiving.cy.js',
+  'cypress/e2e/notebookWorkflowRouting.cy.js',
+  'cypress/e2e/notebookWorkflowStorage.cy.js',
+  'cypress/e2e/patientMerge.cy.js',
+  'cypress/e2e/report.cy.js',
+  'cypress/e2e/result.cy.js',
+  'cypress/e2e/storageAssignment.cy.js',
+  'cypress/e2e/storageBoxCRUD-integration.cy.js',
+  'cypress/e2e/storageBoxCRUD.cy.js',
+  'cypress/e2e/storageDashboard.cy.js',
+  'cypress/e2e/storageDashboardMetrics.cy.js',
+  'cypress/e2e/storageDisposal.cy.js',
+  'cypress/e2e/storageFilters.cy.js',
+  'cypress/e2e/storageLocationCRUD-integration.cy.js',
+  'cypress/e2e/storageLocationCRUD-smoke.cy.js',
+  'cypress/e2e/storageLocationCRUD.cy.js',
+  'cypress/e2e/storageLocationExpandableRows.cy.js',
+  'cypress/e2e/storageSamplesTable.cy.js',
+  'cypress/e2e/storageSearch.cy.js',
+  'cypress/e2e/storageViewStorage.cy.js',
+  'cypress/e2e/validation.cy.js',
+  'cypress/e2e/workplan.cy.js'
+]
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        12.17.4                                                                        │
+  │ Browser:        Chrome 144 (headless)                                                          │
+  │ Node Version:   v16.20.2 (/home/ubuntu/.nvm/versions/node/v16.20.2/bin/node)                   │
+  │ Specs:          2 found (AdminE2E/providerManagement.cy.js, patientEntry.cy.js)                │
+  │ Searched:       cypress/e2e/AdminE2E/providerManagement.cy.js, cypress/e2e/patientEntry.cy.js  │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  AdminE2E/providerManagement.cy.js                                               (1 of 2)
+
+
+  Provider Management
+    ✓ Navigate to Admin Page (20251ms)
+    Enter Provider
+      ✓ Navigate to Provider Management Page (524ms)
+      ✓ Enter First Provider details (6554ms)
+      ✓ Enter Second Provider details (5595ms)
+      ✓ Validate added Providers (1498ms)
+    Modify the first Provider
+      ✓ Select and Modify Provider (6840ms)
+      ✓ Validate Active Status (843ms)
+    Deactivate the second Provider
+      ✓ Select and Deactivate Provider (4143ms)
+      ✓ Validate Active Status (804ms)
+
+
+  9 passing (48s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        9                                                                                │
+  │ Passing:      9                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     47 seconds                                                                       │
+  │ Spec Ran:     AdminE2E/providerManagement.cy.js                                                │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  patientEntry.cy.js                                                              (2 of 2)
+
+
+  Add New Patient
+    1) User Visits Home Page and goes to Add Add|Modify Patient Page
+
+  0 passing (22s)
+  1 failing
+
+  1) Add New Patient
+       User Visits Home Page and goes to Add Add|Modify Patient Page:
+     AssertionError: Timed out retrying after 3000ms: Expected to find element: `[data-cy='menuButton']`, but never found it.
+      at HomePage.openNavigationMenu (webpack://openelis-global-react-app/./cypress/pages/HomePage.js:79:7)
+      at HomePage.goToPatientEntry (webpack://openelis-global-react-app/./cypress/pages/HomePage.js:106:9)
+      at Context.eval (webpack://openelis-global-react-app/./cypress/e2e/patientEntry.cy.js:14:27)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        15                                                                               │
+  │ Passing:      0                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      14                                                                               │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     21 seconds                                                                       │
+  │ Spec Ran:     patientEntry.cy.js                                                               │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  /home/ubuntu/OpenELIS-Global-2/frontend/cypress/screenshots/patientEntry.cy.js/A     (1280x581)
+     dd New Patient -- User Visits Home Page and goes to Add AddModify Patient Page (               
+     failed).png                                                                                    
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ ✔  AdminE2E/providerManagement.cy.js        00:47        9        9        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✖  patientEntry.cy.js                       00:21       15        -        1        -       14 │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    ✖  1 of 2 failed (50%)                      01:09       24        9        1        -       14  
+

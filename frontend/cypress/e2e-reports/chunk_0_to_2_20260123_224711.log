@@ -1,0 +1,142 @@
+Running tests in custom order: [
+  'cypress/e2e/login.cy.js',
+  'cypress/e2e/home.cy.js',
+  'cypress/e2e/AdminE2E/organizationManagement.cy.js',
+  'cypress/e2e/AdminE2E/providerManagement.cy.js',
+  'cypress/e2e/patientEntry.cy.js',
+  'cypress/e2e/orderEntity.cy.js',
+  'cypress/e2e/AdminE2E/barcode.cy.js',
+  'cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js',
+  'cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js',
+  'cypress/e2e/AdminE2E/dictionaryMenu.cy.js',
+  'cypress/e2e/AdminE2E/generalConfigurations.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/notifyUser.cy.js',
+  'cypress/e2e/AdminE2E/programEntry.cy.js',
+  'cypress/e2e/AdminE2E/reflexTestsManagement.cy.js',
+  'cypress/e2e/AdminE2E/resultReportingConfig.cy.js',
+  'cypress/e2e/AdminE2E/testManagement.cy.js',
+  'cypress/e2e/AdminE2E/userManagement.cy.js',
+  'cypress/e2e/batchOrderEntry.cy.js',
+  'cypress/e2e/dashboard.cy.js',
+  'cypress/e2e/help.cy.js',
+  'cypress/e2e/labNumberManagement.cy.js',
+  'cypress/e2e/modifyOrder.cy.js',
+  'cypress/e2e/nonConform.cy.js',
+  'cypress/e2e/notebookWorkflow.cy.js',
+  'cypress/e2e/notebookWorkflowArchiving.cy.js',
+  'cypress/e2e/notebookWorkflowRouting.cy.js',
+  'cypress/e2e/notebookWorkflowStorage.cy.js',
+  'cypress/e2e/patientMerge.cy.js',
+  'cypress/e2e/report.cy.js',
+  'cypress/e2e/result.cy.js',
+  'cypress/e2e/storageAssignment.cy.js',
+  'cypress/e2e/storageBoxCRUD-integration.cy.js',
+  'cypress/e2e/storageBoxCRUD.cy.js',
+  'cypress/e2e/storageDashboard.cy.js',
+  'cypress/e2e/storageDashboardMetrics.cy.js',
+  'cypress/e2e/storageDisposal.cy.js',
+  'cypress/e2e/storageFilters.cy.js',
+  'cypress/e2e/storageLocationCRUD-integration.cy.js',
+  'cypress/e2e/storageLocationCRUD-smoke.cy.js',
+  'cypress/e2e/storageLocationCRUD.cy.js',
+  'cypress/e2e/storageLocationExpandableRows.cy.js',
+  'cypress/e2e/storageSamplesTable.cy.js',
+  'cypress/e2e/storageSearch.cy.js',
+  'cypress/e2e/storageViewStorage.cy.js',
+  'cypress/e2e/validation.cy.js',
+  'cypress/e2e/workplan.cy.js'
+]
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        12.17.4                                                                        │
+  │ Browser:        Chrome 144 (headless)                                                          │
+  │ Node Version:   v16.20.2 (/home/ubuntu/.nvm/versions/node/v16.20.2/bin/node)                   │
+  │ Specs:          3 found (login.cy.js, home.cy.js, AdminE2E/organizationManagement.cy.js)       │
+  │ Searched:       cypress/e2e/login.cy.js, cypress/e2e/home.cy.js, cypress/e2e/AdminE2E/organiza │
+  │                 tionManagement.cy.js                                                           │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  login.cy.js                                                                     (1 of 3)
+
+
+  Login Test Cases
+    ✓ Tries to login without credentials (19988ms)
+    ✓ Fails to login with only username (14808ms)
+    ✓ Fails to login with only password (11924ms)
+    ✓ User changes from default credentials (23188ms)
+    ✓ Logs in with correct credentials (13964ms)
+    ✓ Resets the default credentials (24396ms)
+    ✓ User exits password reset (34341ms)
+    ✓ Validates user authentication (101917ms)
+
+
+  8 passing (4m)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        8                                                                                │
+  │ Passing:      8                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     4 minutes, 4 seconds                                                             │
+  │ Spec Ran:     login.cy.js                                                                      │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  home.cy.js                                                                      (2 of 3)
+
+
+  User interacts with the navigation bar
+    ✓ User searches for patient and closes search bar (19590ms)
+    ✓ User checks for notifications and closes it (445ms)
+    ✓ User interacts with the user icon (415ms)
+    ✓ User interacts with the help icon (385ms)
+
+  User navigates to different tiles
+    ✓ User navigates to the In Progress (198ms)
+    ✓ User navigates to Ready for Validation (382ms)
+    ✓ User navigates to Orders Completed Today (395ms)
+    ✓ User navigates to Partially Completed Today (351ms)
+    ✓ User navigates to Orders Entered By Users (366ms)
+    ✓ User navigates to Orders Rejected (374ms)
+    ✓ User navigates to UnPrinted Results (374ms)
+    ✓ User navigates to Electronic Orders (345ms)
+    ✓ User navigates to Average Turn Around time (302ms)
+    ✓ User navigates to Delayed Turn Around (346ms)
+
+
+  14 passing (26s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        14                                                                               │
+  │ Passing:      14                                                                               │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     25 seconds                                                                       │
+  │ Spec Ran:     home.cy.js                                                                       │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘

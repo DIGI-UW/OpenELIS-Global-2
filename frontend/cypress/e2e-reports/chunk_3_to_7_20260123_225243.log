@@ -1,0 +1,326 @@
+Running tests in custom order: [
+  'cypress/e2e/login.cy.js',
+  'cypress/e2e/home.cy.js',
+  'cypress/e2e/AdminE2E/organizationManagement.cy.js',
+  'cypress/e2e/AdminE2E/providerManagement.cy.js',
+  'cypress/e2e/patientEntry.cy.js',
+  'cypress/e2e/orderEntity.cy.js',
+  'cypress/e2e/AdminE2E/barcode.cy.js',
+  'cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js',
+  'cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js',
+  'cypress/e2e/AdminE2E/dictionaryMenu.cy.js',
+  'cypress/e2e/AdminE2E/generalConfigurations.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/billingMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/globalMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/nonConformMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/patientMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js',
+  'cypress/e2e/AdminE2E/notifyUser.cy.js',
+  'cypress/e2e/AdminE2E/programEntry.cy.js',
+  'cypress/e2e/AdminE2E/reflexTestsManagement.cy.js',
+  'cypress/e2e/AdminE2E/resultReportingConfig.cy.js',
+  'cypress/e2e/AdminE2E/testManagement.cy.js',
+  'cypress/e2e/AdminE2E/userManagement.cy.js',
+  'cypress/e2e/batchOrderEntry.cy.js',
+  'cypress/e2e/dashboard.cy.js',
+  'cypress/e2e/help.cy.js',
+  'cypress/e2e/labNumberManagement.cy.js',
+  'cypress/e2e/modifyOrder.cy.js',
+  'cypress/e2e/nonConform.cy.js',
+  'cypress/e2e/notebookWorkflow.cy.js',
+  'cypress/e2e/notebookWorkflowArchiving.cy.js',
+  'cypress/e2e/notebookWorkflowRouting.cy.js',
+  'cypress/e2e/notebookWorkflowStorage.cy.js',
+  'cypress/e2e/patientMerge.cy.js',
+  'cypress/e2e/report.cy.js',
+  'cypress/e2e/result.cy.js',
+  'cypress/e2e/storageAssignment.cy.js',
+  'cypress/e2e/storageBoxCRUD-integration.cy.js',
+  'cypress/e2e/storageBoxCRUD.cy.js',
+  'cypress/e2e/storageDashboard.cy.js',
+  'cypress/e2e/storageDashboardMetrics.cy.js',
+  'cypress/e2e/storageDisposal.cy.js',
+  'cypress/e2e/storageFilters.cy.js',
+  'cypress/e2e/storageLocationCRUD-integration.cy.js',
+  'cypress/e2e/storageLocationCRUD-smoke.cy.js',
+  'cypress/e2e/storageLocationCRUD.cy.js',
+  'cypress/e2e/storageLocationExpandableRows.cy.js',
+  'cypress/e2e/storageSamplesTable.cy.js',
+  'cypress/e2e/storageSearch.cy.js',
+  'cypress/e2e/storageViewStorage.cy.js',
+  'cypress/e2e/validation.cy.js',
+  'cypress/e2e/workplan.cy.js'
+]
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        12.17.4                                                                        │
+  │ Browser:        Chrome 144 (headless)                                                          │
+  │ Node Version:   v16.20.2 (/home/ubuntu/.nvm/versions/node/v16.20.2/bin/node)                   │
+  │ Specs:          5 found (AdminE2E/providerManagement.cy.js, patientEntry.cy.js, orderEntity.cy │
+  │                 .js, AdminE2E/barcode.cy.js, AdminE2E/batchTestReassignmentandCancelation.cy.j │
+  │                 s)                                                                             │
+  │ Searched:       cypress/e2e/AdminE2E/providerManagement.cy.js, cypress/e2e/patientEntry.cy.js, │
+  │                  cypress/e2e/orderEntity.cy.js, cypress/e2e/AdminE2E/barcode.cy.js, cypress/e2 │
+  │                 e/AdminE2E/batchTestReassignmentandCancelation.cy.js                           │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  AdminE2E/providerManagement.cy.js                                               (1 of 5)
+
+
+  Provider Management
+    ✓ Navigate to Admin Page (26856ms)
+    Enter Provider
+      ✓ Navigate to Provider Management Page (376ms)
+      ✓ Enter First Provider details (8728ms)
+      ✓ Enter Second Provider details (7562ms)
+      ✓ Validate added Providers (1761ms)
+    Modify the first Provider
+      ✓ Select and Modify Provider (6324ms)
+      ✓ Validate Active Status (1025ms)
+    Deactivate the second Provider
+      ✓ Select and Deactivate Provider (6909ms)
+      ✓ Validate Active Status (683ms)
+
+
+  9 passing (1m)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        9                                                                                │
+  │ Passing:      9                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     1 minute, 0 seconds                                                              │
+  │ Spec Ran:     AdminE2E/providerManagement.cy.js                                                │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  patientEntry.cy.js                                                              (2 of 5)
+
+
+  Add New Patient
+    ✓ User Visits Home Page and goes to Add Add|Modify Patient Page (24975ms)
+    ✓ Add|Modify Patient page should appear with search field (33ms)
+    ✓ External search button should be deactivated (34ms)
+    ✓ Navigate to create Patient tab (425ms)
+    ✓ Enter patient Information and clear (5105ms)
+    ✓ Clear new patient information (206ms)
+    ✓ Enter patient Information and save (4644ms)
+    ✓ Save new patient information button (8046ms)
+
+  Search Patient
+    ✓ Search patients By gender (8576ms)
+    ✓ Search Patient By FirstName only (9147ms)
+    ✓ Search Patient By LastName only (8764ms)
+    ✓ Search Patient By both Names (8307ms)
+    1) Search patient By Date Of Birth
+
+  12 passing (1m)
+  1 failing
+
+  1) Search Patient
+       Search patient By Date Of Birth:
+     CypressError: Timed out retrying after 3050ms: `cy.click()` failed because this element:
+
+`<button id="local_search" data-cy="searchPatientButton" tabindex="0" class="cds--btn cds--btn--tertiary" type="submit">Search</button>`
+
+is being covered by another element:
+
+`<a id="menu_administration_nav" href="/MasterListsPage" target="" class="cds--side-nav__link">...</a>`
+
+Fix this problem, or use {force: true} to disable error checking.
+
+https://on.cypress.io/element-cannot-be-interacted-with
+      at ensureIsDescendent (https://localhost/__cypress/runner/cypress_runner.js:111849:68)
+      at ensureDescendents (https://localhost/__cypress/runner/cypress_runner.js:111900:5)
+      at ensureDescendentsAndScroll (https://localhost/__cypress/runner/cypress_runner.js:111906:14)
+      at ensureElIsNotCovered (https://localhost/__cypress/runner/cypress_runner.js:112037:5)
+      at runAllChecks (https://localhost/__cypress/runner/cypress_runner.js:112217:52)
+      at retryActionability (https://localhost/__cypress/runner/cypress_runner.js:112254:16)
+      at tryCatcher (https://localhost/__cypress/runner/cypress_runner.js:1807:23)
+      at Promise.attempt.Promise.try (https://localhost/__cypress/runner/cypress_runner.js:4315:29)
+      at whenStable (https://localhost/__cypress/runner/cypress_runner.js:143192:68)
+      at <unknown> (https://localhost/__cypress/runner/cypress_runner.js:143133:14)
+      at tryCatcher (https://localhost/__cypress/runner/cypress_runner.js:1807:23)
+      at Promise._settlePromiseFromHandler (https://localhost/__cypress/runner/cypress_runner.js:1519:31)
+      at Promise._settlePromise (https://localhost/__cypress/runner/cypress_runner.js:1576:18)
+      at Promise._settlePromise0 (https://localhost/__cypress/runner/cypress_runner.js:1621:10)
+      at Promise._settlePromises (https://localhost/__cypress/runner/cypress_runner.js:1701:18)
+      at Promise._fulfill (https://localhost/__cypress/runner/cypress_runner.js:1645:18)
+      at <unknown> (https://localhost/__cypress/runner/cypress_runner.js:5450:46)
+  From Your Spec Code:
+      at PatientEntryPage.clickSearchPatientButton (webpack://openelis-global-react-app/./cypress/pages/PatientEntryPage.js:86:56)
+      at Context.eval (webpack://openelis-global-react-app/./cypress/e2e/patientEntry.cy.js:130:18)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        15                                                                               │
+  │ Passing:      12                                                                               │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      2                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     1 minute, 24 seconds                                                             │
+  │ Spec Ran:     patientEntry.cy.js                                                               │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  /home/ubuntu/OpenELIS-Global-2/frontend/cypress/screenshots/patientEntry.cy.js/S     (1280x581)
+     earch Patient -- Search patient By Date Of Birth (failed).png                                  
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  orderEntity.cy.js                                                               (3 of 5)
+
+
+  Order Entity
+    ✓ Navigate to Home Page then to Order entity Page  (24507ms)
+    ✓ Search patient in the search box (4180ms)
+    ✓ Navigate to program selection (729ms)
+    1) Select sample type
+
+  3 passing (35s)
+  1 failing
+
+  1) Order Entity
+       Select sample type:
+     AssertionError: Timed out retrying after 3000ms: Expected to find element: `#referralReasonId_0_1`, but never found it.
+      at OrderEntityPage.selectReferralReason (webpack://openelis-global-react-app/./cypress/pages/OrderEntityPage.js:56:7)
+      at Context.eval (webpack://openelis-global-react-app/./cypress/e2e/orderEntity.cy.js:57:20)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        8                                                                                │
+  │ Passing:      3                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      4                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     35 seconds                                                                       │
+  │ Spec Ran:     orderEntity.cy.js                                                                │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  /home/ubuntu/OpenELIS-Global-2/frontend/cypress/screenshots/orderEntity.cy.js/Or     (1280x581)
+     der Entity -- Select sample type (failed).png                                                  
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  AdminE2E/barcode.cy.js                                                          (4 of 5)
+
+
+  Barcode configuration
+    ✓ User Navigates to Barcode Config (25175ms)
+    ✓ User adjusts the Default Bar Code Labels (1155ms)
+    ✓ User sets Maximum Bar Code Labels (815ms)
+    ✓ User unchecks Optional Elements and Preprinted Bar Code Accession number (507ms)
+    ✓ User adjusts Dimensions Bar Code Label (3564ms)
+    ✓ Check the boxes (441ms)
+    ✓ Save Changes (264ms)
+    ✓ Navigate to Barcode Page (7118ms)
+    ✓ Add Site Name and Sample (1060ms)
+    ✓ Check Panels and Pre-Print Labels (899ms)
+    ✓ Add Accession Number and Submit (1006ms)
+
+
+  11 passing (42s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        11                                                                               │
+  │ Passing:      11                                                                               │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     42 seconds                                                                       │
+  │ Spec Ran:     AdminE2E/barcode.cy.js                                                           │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  AdminE2E/batchTestReassignmentandCancelation.cy.js                              (5 of 5)
+
+
+  Batch Test Reassignment and Canelation
+    ✓ Navigate to Batch Test Reassignment and Canelation Page (25499ms)
+    Enter Data and Cancel
+      ✓ Select Sample and Tests (1507ms)
+      ✓ Cancel Changes (5274ms)
+    Enter Data and Save
+      ✓ Select Sample and Tests (1531ms)
+      ✓ Save Changes (182ms)
+
+
+  5 passing (34s)
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        5                                                                                │
+  │ Passing:      5                                                                                │
+  │ Failing:      0                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  0                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     34 seconds                                                                       │
+  │ Spec Ran:     AdminE2E/batchTestReassignmentandCancelation.cy.js                               │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ ✔  AdminE2E/providerManagement.cy.js        01:00        9        9        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✖  patientEntry.cy.js                       01:24       15       12        1        -        2 │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✖  orderEntity.cy.js                        00:35        8        3        1        -        4 │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✔  AdminE2E/barcode.cy.js                   00:42       11       11        -        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ✔  AdminE2E/batchTestReassignmentandCa      00:34        5        5        -        -        - │
+  │    ncelation.cy.js                                                                             │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    ✖  2 of 5 failed (40%)                      04:17       48       40        2        -        6  
+
