@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.reports.adhoc.dto.AdHocReportDefinitionDTO;
 import org.openelisglobal.reports.adhoc.dto.AdHocReportResultDTO;
@@ -27,6 +28,8 @@ public class AdHocReportServiceImpl implements AdHocReportService {
 
     private static final int DEFAULT_LIMIT = 100;
     private static final int MAX_LIMIT = 10000;
+    private static final int PDF_PAGE_SIZE = 1000;
+    private static final long STATUS_CACHE_TTL_MS = TimeUnit.MINUTES.toMillis(30);
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     private static final SimpleDateFormat DATETIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
@@ -45,7 +48,8 @@ public class AdHocReportServiceImpl implements AdHocReportService {
     @Autowired
     private StatusOfSampleService statusOfSampleService;
 
-    private Map<String, String> statusNameCache = null;
+    private volatile Map<String, String> statusNameCache = null;
+    private volatile long statusCacheTimestamp = 0;
 
     @Override
     public AdHocReportResultDTO executeReport(AdHocReportDefinitionDTO definition) {
@@ -85,12 +89,55 @@ public class AdHocReportServiceImpl implements AdHocReportService {
     public byte[] generatePdfReport(AdHocReportDefinitionDTO definition) {
         validateReportDefinition(definition);
 
-        if (definition.getLimit() == null) {
-            definition.setLimit(MAX_LIMIT);
+        int requestedLimit = definition.getLimit() != null ? definition.getLimit() : MAX_LIMIT;
+        requestedLimit = Math.min(requestedLimit, MAX_LIMIT);
+
+        AdHocReportResultDTO fullReportData = new AdHocReportResultDTO();
+
+        for (String fieldId : definition.getSelectedFields()) {
+            ReportFieldDTO field = fieldDefinitionService.getFieldById(fieldId);
+            if (field != null) {
+                fullReportData.addColumn(field.getFieldId(), field.getDisplayName(), field.getDataType());
+            }
         }
 
-        AdHocReportResultDTO reportData = executeReport(definition);
-        return pdfGeneratorService.generatePdf(definition, reportData);
+        QueryResult countQueryResult = queryBuilderService.buildCountQuery(definition);
+        long totalCount = executeCountQuery(countQueryResult);
+        fullReportData.setTotalCount(totalCount);
+
+        List<List<Object>> allRows = new ArrayList<>();
+        int offset = definition.getOffset() != null ? definition.getOffset() : 0;
+        int remaining = requestedLimit;
+        int statusFieldIndex = findStatusFieldIndex(definition.getSelectedFields());
+
+        QueryResult queryResult = queryBuilderService.buildQuery(definition);
+
+        while (remaining > 0) {
+            int pageSize = Math.min(remaining, PDF_PAGE_SIZE);
+            List<List<Object>> pageRows = executeQuery(queryResult, pageSize, offset,
+                    definition.getSelectedFields().size(), statusFieldIndex);
+
+            if (pageRows.isEmpty()) {
+                break;
+            }
+
+            allRows.addAll(pageRows);
+            offset += pageRows.size();
+            remaining -= pageRows.size();
+
+            if (pageRows.size() < pageSize) {
+                break;
+            }
+        }
+
+        fullReportData.setRows(allRows);
+        fullReportData.setReturnedCount(allRows.size());
+        fullReportData.setHasMore(offset < totalCount);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
+                "Generated PDF with " + allRows.size() + " rows using pagination");
+
+        return pdfGeneratorService.generatePdf(definition, fullReportData);
     }
 
     @Override
@@ -192,20 +239,25 @@ public class AdHocReportServiceImpl implements AdHocReportService {
             return "";
         }
 
-        if (statusNameCache == null) {
-            initializeStatusCache();
+        if (isCacheExpired()) {
+            refreshStatusCache();
         }
 
         String statusName = statusNameCache.get(statusId);
         return statusName != null ? statusName : "Unknown (" + statusId + ")";
     }
 
-    private synchronized void initializeStatusCache() {
-        if (statusNameCache != null) {
+    private boolean isCacheExpired() {
+        return statusNameCache == null
+                || (System.currentTimeMillis() - statusCacheTimestamp) > STATUS_CACHE_TTL_MS;
+    }
+
+    private synchronized void refreshStatusCache() {
+        if (!isCacheExpired()) {
             return;
         }
 
-        statusNameCache = new HashMap<>();
+        Map<String, String> newCache = new HashMap<>();
         try {
             List<StatusOfSample> allStatuses = statusOfSampleService.getAllStatusOfSamples();
             for (StatusOfSample status : allStatuses) {
@@ -215,16 +267,22 @@ public class AdHocReportServiceImpl implements AdHocReportService {
                         displayName = status.getStatusType();
                     }
                     if (displayName != null && !displayName.isEmpty()) {
-                        statusNameCache.put(status.getId(), displayName);
+                        newCache.put(status.getId(), displayName);
                     }
                 }
             }
-            LogEvent.logInfo(this.getClass().getSimpleName(), "initializeStatusCache",
-                    "Loaded " + statusNameCache.size() + " status mappings");
+            statusNameCache = newCache;
+            statusCacheTimestamp = System.currentTimeMillis();
+            LogEvent.logInfo(this.getClass().getSimpleName(), "refreshStatusCache",
+                    "Refreshed status cache with " + newCache.size() + " mappings");
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "initializeStatusCache",
-                    "Error loading status cache: " + e.getMessage());
-            addFallbackStatusMappings();
+            LogEvent.logError(this.getClass().getSimpleName(), "refreshStatusCache",
+                    "Error refreshing status cache: " + e.getMessage());
+            if (statusNameCache == null) {
+                statusNameCache = new HashMap<>();
+                addFallbackStatusMappings();
+                statusCacheTimestamp = System.currentTimeMillis();
+            }
         }
     }
 
