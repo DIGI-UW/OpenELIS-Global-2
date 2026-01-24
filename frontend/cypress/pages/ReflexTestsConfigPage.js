@@ -58,7 +58,9 @@ class ReflexTestsConfigPage {
   }
 
   validateToggleStatus(value) {
-    cy.contains(this.selectors.validateToggle, value);
+    cy.get(this.selectors.validateToggle)
+      .should("be.visible")
+      .should("contain.text", value);
   }
 
   selectOverAllOptions(value) {

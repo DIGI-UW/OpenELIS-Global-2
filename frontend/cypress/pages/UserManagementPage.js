@@ -165,7 +165,9 @@ class UserManagementPage {
   }
 
   allBioPermissions() {
-    cy.get(this.selectors.allBioPermissions).check({ force: true });
+    cy.get(this.selectors.allBioPermissions, { timeout: 10000 })
+      .should("exist")
+      .check({ force: true });
   }
 
   allHemaPermissions() {

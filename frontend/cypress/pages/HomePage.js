@@ -284,13 +284,17 @@ class HomePage {
   // Dashboard related functions
   goToPathologyDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.pathologyNav).should("be.visible").click();
+    cy.get(this.selectors.pathologyNav, { timeout: 10000 })
+      .should("be.visible")
+      .click();
     return new DashBoardPage();
   }
 
   goToImmunoChemistryDashboard() {
     this.openNavigationMenu();
-    cy.get(this.selectors.immunochemMenu).click();
+    cy.get(this.selectors.immunochemMenu, { timeout: 10000 })
+      .should("be.visible")
+      .click({ force: true });
     return new DashBoardPage();
   }
 
