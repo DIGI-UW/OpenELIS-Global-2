@@ -1395,5 +1395,8 @@
   "patient.nationality.other": "Précisez Autre nationalité",
   "patient.photo.active.camera": "Cliquer pour activer la caméra",
   "storage.create.room.error": "Erreur lors de la création de la salle",
-  "storage.create.room.success": "Salle créée avec succès"
+  "storage.create.room.success": "Salle créée avec succès",
+  "storage.location.active": "Actif",
+  "storage.location.description": "Description",
+  "storage.location.name": "Nom de l'emplacement"
 }
