@@ -1740,3 +1740,16 @@
 .tradmed-extraction-page .sample-grid .cds--table-toolbar__search-container {
   padding: 0.25rem 0;
 }
+
+/* Status column - prevent text wrapping, keep horizontal */
+.tradmed-extraction-page .sample-grid .cds--tag {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tradmed-sample-creation-page .sample-grid .cds--tag {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
