@@ -195,11 +195,11 @@ function TraditionalMedicineExtractionPage({
                   plantPart: s.data?.plantPart,
                   collectionDate: s.data?.collectionDate,
                   intendedUse: s.data?.intendedUse,
-                  solventType: s.data?.solventType,
+                  solventType: s.data?.solvent,
                   extractionTechnique: s.data?.extractionTechnique,
                   filtrationMethod: s.data?.filtrationMethod,
                   concentrationMethod: s.data?.concentrationMethod,
-                  yieldPercent: s.data?.yieldPercent,
+                  yieldPercent: s.data?.extractYieldPercentage,
                   extractWeight: s.data?.extractWeight,
                 }))
               : [],
