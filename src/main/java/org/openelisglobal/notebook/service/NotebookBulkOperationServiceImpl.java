@@ -164,19 +164,19 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
 
             // Get all pages for this notebook and find the first page
             // First pages are typically those with lower page numbers/order
-            List<NoteBookPage> notebookPages = noteBookPageService.getByNotebook(currentPage.getNotebook());
+            List<NoteBookPage> notebookPages = noteBookPageService.getByNotebookId(currentPage.getNotebook().getId());
             if (notebookPages == null || notebookPages.isEmpty()) {
                 LogEvent.logDebug(this.getClass().getName(), "copyIdentificationFieldsFromFirstPage",
                         "No pages found for notebook");
                 return;
             }
 
-            // Get the first page (lowest pageNumber or order)
+            // Get the first page (lowest order)
             NoteBookPage firstPage = notebookPages.stream().min((p1, p2) -> {
-                // Compare by pageNumber if available, otherwise use natural order
-                Integer pn1 = p1.getPageNumber() != null ? p1.getPageNumber() : Integer.MAX_VALUE;
-                Integer pn2 = p2.getPageNumber() != null ? p2.getPageNumber() : Integer.MAX_VALUE;
-                return pn1.compareTo(pn2);
+                // Compare by page order if available
+                Integer order1 = p1.getOrder() != null ? p1.getOrder() : Integer.MAX_VALUE;
+                Integer order2 = p2.getOrder() != null ? p2.getOrder() : Integer.MAX_VALUE;
+                return order1.compareTo(order2);
             }).orElse(null);
 
             if (firstPage == null || firstPage.getId().equals(currentPage.getId())) {
