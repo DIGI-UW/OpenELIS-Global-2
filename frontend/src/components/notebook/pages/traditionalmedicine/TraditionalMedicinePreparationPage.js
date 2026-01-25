@@ -596,6 +596,20 @@ function TraditionalMedicinePreparationPage({
         </Button>
 
         <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={CheckmarkFilled}
+          onClick={handleMarkComplete}
+          disabled={selectedSampleIds.length === 0 || isCompleting || !hasRealPageId}
+        >
+          <FormattedMessage
+            id="notebook.tradmed.prep.markComplete"
+            defaultMessage="Mark Complete ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
           kind="ghost"
           size="sm"
           renderIcon={Renew}
@@ -661,41 +675,15 @@ function TraditionalMedicinePreparationPage({
       {/* Prepared Samples Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div>
-              <h5>
-                <FormattedMessage
-                  id="notebook.page.tradmed.prep.prepared.inProgress.title"
-                  defaultMessage="Prepared (Pending Completion)"
-                />
-                <Tag type="blue" size="sm" className="count-tag">
-                  {preparedInProgressSamples.length}
-                </Tag>
-              </h5>
-            </div>
-            {selectedSampleIds.length > 0 && (
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={CheckmarkFilled}
-                onClick={handleMarkComplete}
-                disabled={isCompleting || !hasRealPageId}
-              >
-                <FormattedMessage
-                  id="notebook.tradmed.prep.markComplete"
-                  defaultMessage="Mark Complete ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            )}
-          </div>
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.prep.prepared.inProgress.title"
+              defaultMessage="Prepared (Pending Completion)"
+            />
+            <Tag type="blue" size="sm" className="count-tag">
+              {preparedInProgressSamples.length}
+            </Tag>
+          </h5>
         </div>
         <div className="sample-grid-container">
           {!loading && preparedInProgressSamples.length === 0 ? (
