@@ -1263,7 +1263,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check for final storage pages by title
         if (title.contains("storage") || title.contains("inventory")) {
-            // Verify this is not bacteriology temporary storage by checking notebook type
+            // Verify this is not bacteriology or traditional medicine temporary storage by checking notebook type
             NoteBook notebook = page.getNotebook();
             if (notebook != null) {
                 Hibernate.initialize(notebook);
@@ -1280,6 +1280,15 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     }
                     // Early storage pages (order <= 5) in bacteriology are temporary storage
                     if (page.getOrder() != null && page.getOrder() <= 5) {
+                        return false;
+                    }
+                }
+                // For traditional medicine, "Sample Storage & Herbarium Placement" (order 3) is
+                // TEMPORARY storage - samples should proceed to "Sample Preparation for Analysis" (page 4)
+                // NOT skip to archiving. Only the final "Formulation of Medical Product" page or higher is final storage.
+                if (notebookTitle.contains("traditional medicine") || notebookTitle.contains("tmmrd")) {
+                    // Only pages after formulation (order > 7) are final storage pages
+                    if (page.getOrder() != null && page.getOrder() <= 7) {
                         return false;
                     }
                 }
