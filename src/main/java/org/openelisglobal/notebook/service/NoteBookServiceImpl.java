@@ -1285,8 +1285,10 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 }
                 // For traditional medicine, "Sample Storage & Herbarium Placement" (order 3) is
                 // TEMPORARY storage - samples should proceed to "Sample Preparation for Analysis" (page 4)
-                // NOT skip to archiving. Only the final "Formulation of Medical Product" page or higher is final storage.
-                if (notebookTitle.contains("traditional medicine") || notebookTitle.contains("tmmrd")) {
+                // NOT skip to archiving. Only the final page or higher is final storage.
+                // Check for "Traditional & Modern Medicine Research Lab" or "tmmrd"
+                if ((notebookTitle.contains("traditional") && notebookTitle.contains("medicine")) ||
+                    notebookTitle.contains("tmmrd")) {
                     // Only pages after formulation (order > 7) are final storage pages
                     if (page.getOrder() != null && page.getOrder() <= 7) {
                         return false;
