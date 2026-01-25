@@ -597,8 +597,17 @@ function TraditionalMedicineExtractionPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
+                { key: "solventType", header: "Solvent" },
+                { key: "extractionTechnique", header: "Technique" },
+                { key: "filtrationMethod", header: "Filtration" },
+                { key: "concentrationMethod", header: "Concentration" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -670,8 +679,19 @@ function TraditionalMedicineExtractionPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "solventType", header: "Solvent" },
+                { key: "extractionTechnique", header: "Technique" },
+                { key: "filtrationMethod", header: "Filtration" },
+                { key: "concentrationMethod", header: "Concentration" },
+                { key: "extractWeight", header: "Extract Weight (g)" },
+                { key: "yieldPercent", header: "Yield %" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -680,12 +700,6 @@ function TraditionalMedicineExtractionPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
-                { key: "solventType", header: "Solvent" },
-                { key: "extractionTechnique", header: "Technique" },
-                { key: "filtrationMethod", header: "Filtration" },
-                { key: "concentrationMethod", header: "Concentration" },
-                { key: "extractWeight", header: "Extract Weight (g)" },
-                { key: "yieldPercent", header: "Yield %" },
               ]}
             />
           )}
@@ -714,8 +728,19 @@ function TraditionalMedicineExtractionPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "solventType", header: "Solvent" },
+                { key: "extractionTechnique", header: "Technique" },
+                { key: "filtrationMethod", header: "Filtration" },
+                { key: "concentrationMethod", header: "Concentration" },
+                { key: "extractWeight", header: "Extract Weight (g)" },
+                { key: "yieldPercent", header: "Yield %" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -724,12 +749,6 @@ function TraditionalMedicineExtractionPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
-                { key: "solventType", header: "Solvent" },
-                { key: "extractionTechnique", header: "Technique" },
-                { key: "filtrationMethod", header: "Filtration" },
-                { key: "concentrationMethod", header: "Concentration" },
-                { key: "extractWeight", header: "Extract Weight (g)" },
-                { key: "yieldPercent", header: "Yield %" },
               ]}
             />
           </div>
