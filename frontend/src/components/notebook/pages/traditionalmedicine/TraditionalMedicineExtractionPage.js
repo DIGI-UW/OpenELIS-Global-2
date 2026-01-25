@@ -556,6 +556,22 @@ function TraditionalMedicineExtractionPage({
         </Button>
 
         <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={CheckmarkFilled}
+          onClick={handleMarkComplete}
+          disabled={
+            selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.tradmed.extract.markComplete"
+            defaultMessage="Mark Complete ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
           kind="ghost"
           size="sm"
           renderIcon={Renew}
@@ -626,47 +642,24 @@ function TraditionalMedicineExtractionPage({
         </div>
       </div>
 
-      {/* Extracted Samples Section - IN PROGRESS */}
+      {/* Extracted Samples Section - Combined (IN PROGRESS + COMPLETED) */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div>
-              <h5>
-                <FormattedMessage
-                  id="notebook.page.tradmed.extraction.extracted.inProgress.title"
-                  defaultMessage="Extracted (Pending Completion)"
-                />
-                <Tag type="blue" size="sm" className="count-tag">
-                  {extractedInProgressSamples.length}
-                </Tag>
-              </h5>
-            </div>
-            {selectedSampleIds.length > 0 && (
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={CheckmarkFilled}
-                onClick={handleMarkComplete}
-                disabled={isCompleting || !hasRealPageId}
-              >
-                <FormattedMessage
-                  id="notebook.tradmed.extract.markComplete"
-                  defaultMessage="Mark Complete ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            )}
-          </div>
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.extraction.extracted.title"
+              defaultMessage="Extracted Samples"
+            />
+            <Tag type="blue" size="sm" className="count-tag">
+              {extractedInProgressSamples.length +
+                extractedCompletedSamples.length}
+            </Tag>
+          </h5>
         </div>
         <div className="sample-grid-container">
-          {!loading && extractedInProgressSamples.length === 0 ? (
+          {!loading &&
+          extractedInProgressSamples.length === 0 &&
+          extractedCompletedSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -677,8 +670,12 @@ function TraditionalMedicineExtractionPage({
             </div>
           ) : (
             <SampleGrid
-              gridId="extracted-in-progress-samples"
-              samples={extractedInProgressSamples}
+              gridId="extracted-samples"
+              samples={[
+                ...extractedInProgressSamples,
+                ...extractedCompletedSamples,
+              ]}
+              selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               loading={loading}
               columns={[
@@ -709,55 +706,6 @@ function TraditionalMedicineExtractionPage({
           )}
         </div>
       </div>
-
-      {/* Extracted Samples Section - COMPLETED */}
-      {extractedCompletedSamples.length > 0 && (
-        <div className="sample-table-section">
-          <div className="table-section-header">
-            <h5>
-              <FormattedMessage
-                id="notebook.page.tradmed.extraction.extracted.completed.title"
-                defaultMessage="Extraction Completion Finalized"
-              />
-              <Tag type="green" size="sm" className="count-tag">
-                {extractedCompletedSamples.length}
-              </Tag>
-            </h5>
-          </div>
-          <div className="sample-grid-container">
-            <SampleGrid
-              gridId="extracted-completed-samples"
-              samples={extractedCompletedSamples}
-              showSelection={false}
-              loading={loading}
-              columns={[
-                { key: "accessionNumber", header: "Accession #" },
-                { key: "externalId", header: "Sample ID" },
-                { key: "localName", header: "Local Name" },
-                { key: "scientificName", header: "Scientific Name" },
-                { key: "sampleCategory", header: "Category" },
-                { key: "plantPart", header: "Plant Part" },
-                { key: "solventType", header: "Solvent" },
-                { key: "extractionTechnique", header: "Technique" },
-                { key: "filtrationMethod", header: "Filtration" },
-                { key: "concentrationMethod", header: "Concentration" },
-                { key: "extractWeight", header: "Extract Weight (g)" },
-                { key: "yieldPercent", header: "Yield %" },
-                { key: "collectionDate", header: "Collection Date" },
-                { key: "intendedUse", header: "Intended Use" },
-                {
-                  key: "status",
-                  header: intl.formatMessage({
-                    id: "notebook.tradmed.column.status",
-                    defaultMessage: "Status",
-                  }),
-                  render: (_value, sample) => renderStatus(sample),
-                },
-              ]}
-            />
-          </div>
-        </div>
-      )}
 
       <Modal
         open={extractionModalOpen}
