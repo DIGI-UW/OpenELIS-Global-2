@@ -157,9 +157,20 @@ function TraditionalMedicineAuthenticationPage({
       `/rest/notebook/page/${pageData.id}/samples`,
       (response) => {
         if (componentMounted.current) {
+          let samplesToProcess = [];
+
+          // Handle both array and object responses from API
+          if (response) {
+            if (Array.isArray(response)) {
+              samplesToProcess = response;
+            } else if (response.samples && Array.isArray(response.samples)) {
+              samplesToProcess = response.samples;
+            }
+          }
+
           setSamples(
-            response && Array.isArray(response)
-              ? response.map((s) => ({
+            samplesToProcess.length > 0
+              ? samplesToProcess.map((s) => ({
                   id: String(s.id || s.sampleItemId),
                   externalId: s.externalId,
                   accessionNumber: s.accessionNumber,
@@ -465,6 +476,50 @@ function TraditionalMedicineAuthenticationPage({
     );
   };
 
+  // Helper to render sample status - simple status display matching API response
+  const renderStatus = (sample) => {
+    const status = sample.status || "PENDING";
+
+    switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.tradmed.status.completed"
+              defaultMessage="Completed"
+            />
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm" renderIcon={Archive}>
+            <FormattedMessage
+              id="notebook.tradmed.status.inProgress"
+              defaultMessage="In Progress"
+            />
+          </Tag>
+        );
+      case "SKIPPED":
+        return (
+          <Tag type="gray" size="sm">
+            <FormattedMessage
+              id="notebook.tradmed.status.skipped"
+              defaultMessage="Skipped"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm" renderIcon={Pending}>
+            <FormattedMessage
+              id="notebook.tradmed.status.pending"
+              defaultMessage="Pending"
+            />
+          </Tag>
+        );
+    }
+  };
+
   return (
     <div className="tradmed-authentication-page">
       {/* Page Header */}
@@ -529,6 +584,22 @@ function TraditionalMedicineAuthenticationPage({
           />
         </Button>
 
+        {selectedSampleIds.length > 0 && authenticatedInProgressSamples.some(s => selectedSampleIds.includes(s.id)) && (
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={CheckmarkFilled}
+            onClick={handleMarkComplete}
+            disabled={isCompleting || !hasRealPageId}
+          >
+            <FormattedMessage
+              id="notebook.tradmed.auth.markComplete"
+              defaultMessage="Mark Complete ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        )}
+
         <Button
           kind="ghost"
           size="sm"
@@ -585,6 +656,14 @@ function TraditionalMedicineAuthenticationPage({
                 { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "authenticationMethodLabel", header: "Method" },
                 { key: "verifiedBy", header: "Verified By" },
                 { key: "verificationDate", header: "Date" },
@@ -602,47 +681,21 @@ function TraditionalMedicineAuthenticationPage({
       {/* Authenticated Samples Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div>
-              <h5>
-                <FormattedMessage
-                  id="notebook.page.tradmed.authentication.verified.inProgress.title"
-                  defaultMessage="Authenticated (Pending Completion)"
-                />
-                <Tag type="blue" size="sm" className="count-tag">
-                  {authenticatedInProgressSamples.length}
-                </Tag>
-              </h5>
-              <p className="table-section-description">
-                <FormattedMessage
-                  id="notebook.page.tradmed.authentication.verified.inProgress.description"
-                  defaultMessage="Samples that have been authenticated and verified, ready to be marked complete for progression to Stage 3 (Storage & Herbarium Placement)."
-                />
-              </p>
-            </div>
-            {selectedSampleIds.length > 0 && (
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={CheckmarkFilled}
-                onClick={handleMarkComplete}
-                disabled={isCompleting || !hasRealPageId}
-              >
-                <FormattedMessage
-                  id="notebook.tradmed.auth.markComplete"
-                  defaultMessage="Mark Complete ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            )}
-          </div>
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.authentication.verified.inProgress.title"
+              defaultMessage="Authenticated (Pending Completion)"
+            />
+            <Tag type="blue" size="sm" className="count-tag">
+              {authenticatedInProgressSamples.length}
+            </Tag>
+          </h5>
+          <p className="table-section-description">
+            <FormattedMessage
+              id="notebook.page.tradmed.authentication.verified.inProgress.description"
+              defaultMessage="Samples that have been authenticated and verified, ready to be marked complete for progression to Stage 3 (Storage & Herbarium Placement)."
+            />
+          </p>
         </div>
         <div className="sample-grid-container">
           {!loading && authenticatedInProgressSamples.length === 0 ? (
@@ -658,6 +711,7 @@ function TraditionalMedicineAuthenticationPage({
             <SampleGrid
               gridId="authenticated-in-progress-samples"
               samples={authenticatedInProgressSamples}
+              selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               loading={loading}
               columns={[
@@ -665,6 +719,14 @@ function TraditionalMedicineAuthenticationPage({
                 { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "authenticationMethodLabel", header: "Method" },
                 { key: "verifiedBy", header: "Verified By" },
                 { key: "verificationDate", header: "Date" },
@@ -710,6 +772,14 @@ function TraditionalMedicineAuthenticationPage({
                 { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "authenticationMethodLabel", header: "Method" },
                 { key: "verifiedBy", header: "Verified By" },
                 { key: "verificationDate", header: "Date" },

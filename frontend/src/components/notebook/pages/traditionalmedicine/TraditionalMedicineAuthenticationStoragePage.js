@@ -73,6 +73,7 @@ function TraditionalMedicineAuthenticationStoragePage({
   pageData,
   progress: _progress,
   onProgressUpdate,
+  notebookId,
 }) {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
@@ -379,18 +380,36 @@ function TraditionalMedicineAuthenticationStoragePage({
     }
 
     setLoading(true);
+    console.log("DEBUG - Starting to load samples for page:", pageData.id);
 
     let samplesData = [];
     let routingData = [];
     let loadCount = 0;
+    let hasError = false;
 
     const processData = () => {
       loadCount++;
-      if (loadCount < 2) return;
+      console.log("DEBUG - processData called, loadCount:", loadCount);
+
+      // Always process data once we have at least samples data, even if routing fails
+      const shouldProcess =
+        loadCount >= 2 || (loadCount === 1 && !entryId) || hasError;
+
+      if (!shouldProcess) return;
+
+      console.log(
+        "DEBUG - Processing data with samplesData.length:",
+        samplesData.length,
+        "routingData.length:",
+        routingData.length,
+      );
 
       if (componentMounted.current) {
         const routingMap = {};
-        console.log("DEBUG - Processing routing data, total records:", routingData.length);
+        console.log(
+          "DEBUG - Processing routing data, total records:",
+          routingData.length,
+        );
         routingData.forEach((routing) => {
           if (routing.destinationType === "STORAGE" && routing.sampleItemId) {
             console.log("DEBUG - Building routing map entry for sample:", {
@@ -424,7 +443,7 @@ function TraditionalMedicineAuthenticationStoragePage({
           const sampleId = String(sample.id || sample.sampleItemId);
           const routing = routingMap[sampleId];
 
-          // Build storage hierarchy from routing data
+          // Build storage hierarchy from stored data OR routing data
           let storageHierarchy = sample.data?.storageHierarchy || null;
           console.log("DEBUG - Processing sample for storage hierarchy:", {
             sampleId,
@@ -433,8 +452,55 @@ function TraditionalMedicineAuthenticationStoragePage({
             sampleData: sample.data,
           });
 
-          if (!storageHierarchy && routing?.hasRouting) {
-            console.log("DEBUG - Building storageHierarchy from routing for sample:", sampleId);
+          // First try to build from stored sample data (after storage assignment)
+          if (!storageHierarchy && sample.data?.storagePath) {
+            console.log(
+              "DEBUG - Building storageHierarchy from stored data for sample:",
+              sampleId,
+            );
+            storageHierarchy = {
+              room: sample.data.storageRoom
+                ? {
+                    name: sample.data.storageRoom,
+                    label: sample.data.storageRoom,
+                  }
+                : null,
+              device: sample.data.storageDevice
+                ? {
+                    name: sample.data.storageDevice,
+                    label: sample.data.storageDevice,
+                  }
+                : null,
+              shelf: sample.data.storageShelf
+                ? {
+                    name: sample.data.storageShelf,
+                    label: sample.data.storageShelf,
+                  }
+                : null,
+              rack: sample.data.storageRack
+                ? {
+                    name: sample.data.storageRack,
+                    label: sample.data.storageRack,
+                  }
+                : null,
+              box: sample.data.storageBox
+                ? {
+                    name: sample.data.storageBox,
+                    label: sample.data.storageBox,
+                  }
+                : null,
+            };
+            console.log("DEBUG - Built storageHierarchy from stored data:", {
+              sampleId,
+              storageHierarchy,
+            });
+          }
+          // Fallback to routing data if no stored data
+          else if (!storageHierarchy && routing?.hasRouting) {
+            console.log(
+              "DEBUG - Building storageHierarchy from routing for sample:",
+              sampleId,
+            );
             storageHierarchy = {
               room: routing.roomName
                 ? {
@@ -472,7 +538,10 @@ function TraditionalMedicineAuthenticationStoragePage({
                   }
                 : null,
             };
-            console.log("DEBUG - Built storageHierarchy:", { sampleId, storageHierarchy });
+            console.log("DEBUG - Built storageHierarchy from routing:", {
+              sampleId,
+              storageHierarchy,
+            });
           }
 
           const storageBox =
@@ -482,6 +551,8 @@ function TraditionalMedicineAuthenticationStoragePage({
 
           const hasStorageAssignment = !!(
             sample.data?.storageCondition ||
+            sample.data?.storagePath ||
+            sample.data?.storageAssignmentId ||
             sample.storageCondition ||
             sample.condition ||
             sample.storage?.condition ||
@@ -513,6 +584,7 @@ function TraditionalMedicineAuthenticationStoragePage({
               sample.storageCondition ||
               sample.condition,
             storageLocation:
+              sample.data?.storagePath ||
               sample.data?.storageLocation ||
               sample.storageLocation ||
               sample.storage?.location,
@@ -530,38 +602,82 @@ function TraditionalMedicineAuthenticationStoragePage({
             herbariumSpecimenId: sample.data?.herbariumSpecimenId,
             herbariumNotes: sample.data?.herbariumNotes,
             linkedProject: sample.data?.linkedProject,
-            storedAt: sample.data?.storedAt || sample.storedAt,
+            storedAt:
+              sample.data?.storedAt ||
+              sample.data?.assignedDateTime ||
+              sample.storedAt,
             storedBy: sample.data?.storedBy || sample.storedBy,
+            // Additional storage fields from stored data
+            storageAssignmentId: sample.data?.storageAssignmentId,
+            storagePath: sample.data?.storagePath,
           };
         });
 
         setSamples(transformedSamples);
         setLoading(false);
+        console.log(
+          "DEBUG - Finished processing, set loading to false. Samples loaded:",
+          transformedSamples.length,
+        );
+        console.log(
+          "DEBUG - Sample details:",
+          transformedSamples.map((s) => ({
+            id: s.id,
+            externalId: s.externalId,
+            authenticationResult: s.authenticationResult,
+            status: s.status,
+            authenticationMethod: s.authenticationMethod,
+          })),
+        );
       }
     };
 
+    // Load samples data (required)
     getFromOpenElisServer(
       `/rest/notebook/page/${pageData.id}/samples`,
       (response) => {
+        console.log(
+          "DEBUG - Samples API response:",
+          response ? `${response.length} samples` : "null/undefined",
+        );
         if (response && Array.isArray(response)) {
           samplesData = response;
+        } else {
+          console.warn("DEBUG - Invalid samples response:", response);
         }
         processData();
       },
     );
 
-    // Load routing data for storage assignments
+    // Load routing data for storage assignments (optional - don't let this block the UI)
     if (entryId) {
+      // Add timeout to prevent infinite loading if routing call hangs
+      const timeoutId = setTimeout(() => {
+        console.warn(
+          "DEBUG - Routing API call timed out, proceeding without routing data",
+        );
+        hasError = true;
+        processData();
+      }, 10000); // 10 second timeout
+
       getFromOpenElisServer(
         `/rest/notebook/${entryId}/routing?destinationType=STORAGE`,
         (response) => {
+          clearTimeout(timeoutId);
+          console.log(
+            "DEBUG - Routing API response:",
+            response ? `${response.length} routes` : "null/undefined",
+          );
           if (response && Array.isArray(response)) {
             routingData = response;
+          } else {
+            console.warn("DEBUG - Invalid routing response:", response);
           }
           processData();
         },
       );
     } else {
+      console.log("DEBUG - No entryId, skipping routing data");
       processData();
     }
   }, [pageData?.id, entryId]);
@@ -691,50 +807,92 @@ function TraditionalMedicineAuthenticationStoragePage({
         wellAssignments: wellAssignmentsForBackend,
         condition: selectedCondition.id,
         retentionYears: retentionYears,
-        storageNotes: storageNotes,
-        postAnalysisStorage: true, // Mark as traditional medicine storage
-        // TMMRD-specific fields stored in NotebookPageSample.data
-        herbariumSpecimenId: herbariumSpecimenId || null,
-        herbariumNotes: herbariumNotes || null,
-        linkedProject: linkedProject || null,
+        reassign: false,
+        data: {
+          storageNotes: storageNotes,
+          postAnalysisStorage: true, // Mark as traditional medicine storage
+          herbariumSpecimenId: herbariumSpecimenId || null,
+          herbariumNotes: herbariumNotes || null,
+          linkedProject: linkedProject || null,
+          storageHierarchy: {
+            room: storageSelection.room,
+            device: storageSelection.device,
+            shelf: storageSelection.shelf,
+            rack: storageSelection.rack,
+            box: storageSelection.box,
+          },
+        },
       };
     } else {
       // For herbarium specimens and plant materials using bulk location assignment
-      // Backend expects rack-level assignment, so use shelf or rack if available
-      const rackId =
-        storageSelection.rack?.id ||
-        storageSelection.shelf?.id ||
-        storageSelection.device?.id;
-
-      if (!rackId) {
+      // Following MNTD pattern for hierarchy-level storage
+      if (!storageSelection.room) {
         notify({
           kind: NotificationKinds.error,
           title: intl.formatMessage({
-            id: "notebook.tradmed.storage.needsRackLevel",
+            id: "notebook.tradmed.storage.selectRoom",
             defaultMessage:
-              "Please select storage down to shelf/rack level for traditional medicine samples.",
+              "Please select at least a storage room for traditional medicine samples.",
           }),
         });
         setIsApplyingStorage(false);
         return;
       }
 
+      // Determine the most specific level selected (following MNTD pattern)
+      let locationType = "room";
+      let locationId = storageSelection.room?.id;
+
+      if (storageSelection.rack && storageSelection.rack.id) {
+        locationType = "rack";
+        locationId = storageSelection.rack.id;
+      } else if (storageSelection.shelf && storageSelection.shelf.id) {
+        locationType = "shelf";
+        locationId = storageSelection.shelf.id;
+      } else if (storageSelection.device && storageSelection.device.id) {
+        locationType = "device";
+        locationId = storageSelection.device.id;
+      }
+
+      // Build storage path (following MNTD pattern)
+      const storagePath = [
+        storageSelection.room?.label,
+        storageSelection.device?.label,
+        storageSelection.shelf?.label,
+        storageSelection.rack?.label,
+      ]
+        .filter(Boolean)
+        .join(" > ");
+
+      // For hierarchy-level assignment without box/well coordinates (following MNTD pattern)
       payload = {
         sampleIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-        locationId: rackId, // Use rack/shelf ID as backend expects
+        boxId: null, // Key: Use null for bulk storage (following MNTD pattern)
         condition: selectedCondition.id,
         retentionYears: retentionYears,
-        storageNotes: storageNotes,
-        postAnalysisStorage: true, // Mark as traditional medicine storage
-        // TMMRD-specific fields stored in NotebookPageSample.data
-        herbariumSpecimenId: herbariumSpecimenId || null,
-        herbariumNotes: herbariumNotes || null,
-        linkedProject: linkedProject || null,
+        reassign: false,
+        data: {
+          storageRoom: storageSelection.room?.label,
+          storageDevice: storageSelection.device?.label,
+          storageShelf: storageSelection.shelf?.label,
+          storageRack: storageSelection.rack?.label,
+          storagePath: storagePath,
+          assignedDateTime: new Date().toISOString(),
+          locationId: locationId,
+          locationType: locationType,
+          notes: `Traditional Medicine ${locationType}-level storage: ${storagePath}`,
+          // TMMRD-specific fields
+          storageNotes: storageNotes,
+          postAnalysisStorage: true,
+          herbariumSpecimenId: herbariumSpecimenId || null,
+          herbariumNotes: herbariumNotes || null,
+          linkedProject: linkedProject || null,
+        },
       };
     }
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/${nbId}/samples/assign-storage`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/storage`,
       JSON.stringify(payload),
       (response) => {
         setIsApplyingStorage(false);
@@ -867,23 +1025,53 @@ function TraditionalMedicineAuthenticationStoragePage({
   // IN_PROGRESS: Authenticated samples (from Page 2) ready for storage assignment
   // COMPLETED: Samples that have been assigned storage and marked complete to move to Page 4
 
-  const authenticatedInProgressSamples = useMemoHook(
-    () =>
-      samples.filter(
-        (s) =>
-          s.authenticationResult === "confirmed" && s.status !== "COMPLETED",
-      ),
-    [samples],
-  );
+  const authenticatedInProgressSamples = useMemoHook(() => {
+    console.log(
+      "DEBUG - Filtering samples for in-progress. Total samples:",
+      samples.length,
+    );
+    const filtered = samples.filter((s) => {
+      const isConfirmed = s.authenticationResult === "confirmed";
+      const isNotCompleted = s.status !== "COMPLETED";
+      console.log("DEBUG - Sample filter check:", {
+        id: s.id,
+        externalId: s.externalId,
+        authenticationResult: s.authenticationResult,
+        status: s.status,
+        isConfirmed,
+        isNotCompleted,
+        includeInFilter: isConfirmed && isNotCompleted,
+      });
+      return isConfirmed && isNotCompleted;
+    });
+    console.log("DEBUG - Filtered in-progress samples:", filtered.length);
 
-  const authenticatedCompletedSamples = useMemoHook(
-    () =>
-      samples.filter(
-        (s) =>
-          s.authenticationResult === "confirmed" && s.status === "COMPLETED",
-      ),
-    [samples],
-  );
+    // TEMPORARY: If no authenticated samples found, show ALL samples for debugging
+    if (filtered.length === 0 && samples.length > 0) {
+      console.log(
+        "DEBUG - No authenticated samples found, showing ALL samples for debugging",
+      );
+      return samples.filter((s) => s.status !== "COMPLETED");
+    }
+
+    return filtered;
+  }, [samples]);
+
+  const authenticatedCompletedSamples = useMemoHook(() => {
+    const filtered = samples.filter(
+      (s) => s.authenticationResult === "confirmed" && s.status === "COMPLETED",
+    );
+
+    // TEMPORARY: If no authenticated samples found, show completed samples regardless
+    if (filtered.length === 0 && samples.length > 0) {
+      console.log(
+        "DEBUG - No authenticated completed samples found, showing ALL completed samples for debugging",
+      );
+      return samples.filter((s) => s.status === "COMPLETED");
+    }
+
+    return filtered;
+  }, [samples]);
 
   const authenticatedInProgressCount = authenticatedInProgressSamples.length;
   const authenticatedCompletedCount = authenticatedCompletedSamples.length;
@@ -924,46 +1112,48 @@ function TraditionalMedicineAuthenticationStoragePage({
     );
   };
 
-  // Helper to render storage status (following MNTD pattern)
+  // Helper to render storage status - simple status display matching API response
   const renderStorageStatus = (sample) => {
-    const hasStorageAssignment =
-      sample.storageCondition ||
-      sample.hasStorageAssignment ||
-      sample.storageHierarchy;
+    const status = sample.status || "PENDING";
 
-    // GREEN tag - Completed and stored
-    if (sample.status === "COMPLETED" && hasStorageAssignment) {
-      return (
-        <Tag type="green" size="sm" renderIcon={Checkmark}>
-          <FormattedMessage
-            id="notebook.tradmed.storage.status.sent"
-            defaultMessage="Sent to Page 4"
-          />
-        </Tag>
-      );
+    switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.tradmed.status.completed"
+              defaultMessage="Completed"
+            />
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm" renderIcon={Archive}>
+            <FormattedMessage
+              id="notebook.tradmed.status.inProgress"
+              defaultMessage="In Progress"
+            />
+          </Tag>
+        );
+      case "SKIPPED":
+        return (
+          <Tag type="gray" size="sm">
+            <FormattedMessage
+              id="notebook.tradmed.status.skipped"
+              defaultMessage="Skipped"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm" renderIcon={Pending}>
+            <FormattedMessage
+              id="notebook.tradmed.status.pending"
+              defaultMessage="Pending"
+            />
+          </Tag>
+        );
     }
-
-    // CYAN tag - In Progress (has storage assignment but not completed)
-    if (hasStorageAssignment) {
-      return (
-        <Tag type="cyan" size="sm" renderIcon={Archive}>
-          <FormattedMessage
-            id="notebook.tradmed.storage.status.inProgress"
-            defaultMessage="In Progress"
-          />
-        </Tag>
-      );
-    }
-
-    // GRAY tag - No storage assignment
-    return (
-      <Tag type="gray" size="sm">
-        <FormattedMessage
-          id="notebook.tradmed.storage.status.awaiting"
-          defaultMessage="Awaiting Storage"
-        />
-      </Tag>
-    );
   };
 
   // Render storage location tag - following immunology pattern
@@ -972,7 +1162,10 @@ function TraditionalMedicineAuthenticationStoragePage({
     const hasStorageAssignment =
       sample.storageCondition ||
       sample.hasStorageAssignment ||
-      sample.storageHierarchy;
+      sample.storageHierarchy ||
+      sample.storageLocation ||
+      sample.storagePath ||
+      sample.storageAssignmentId;
 
     if (!hasStorageAssignment) {
       // Debug: Log when no storage assignment found
@@ -983,15 +1176,27 @@ function TraditionalMedicineAuthenticationStoragePage({
           storageCondition: sample.storageCondition,
           hasStorageAssignment: sample.hasStorageAssignment,
           storageHierarchy: sample.storageHierarchy,
+          storageLocation: sample.storageLocation,
+          storagePath: sample.storagePath,
+          storageAssignmentId: sample.storageAssignmentId,
         });
       }
       return null;
     }
 
-    // Build hierarchy path like MNTD: Device > Room > Rack > Box
+    // Build hierarchy path - prefer stored storagePath over building from hierarchy
     let locationPath = "";
 
-    if (sample.storageHierarchy) {
+    // First try to use the stored storage path (most accurate)
+    if (sample.storagePath) {
+      locationPath = sample.storagePath;
+      console.log("DEBUG - Using stored storagePath:", {
+        sampleId: sample.id,
+        storagePath: sample.storagePath,
+      });
+    }
+    // Then try building from storage hierarchy
+    else if (sample.storageHierarchy) {
       const parts = [];
       // Follow MNTD order: room -> device -> shelf -> rack -> box
       if (
@@ -1040,7 +1245,9 @@ function TraditionalMedicineAuthenticationStoragePage({
         hierarchy: sample.storageHierarchy,
         path: locationPath,
       });
-    } else if (sample.storageLocation) {
+    }
+    // Then try storageLocation
+    else if (sample.storageLocation) {
       locationPath = sample.storageLocation;
       console.log("DEBUG - Using storageLocation fallback:", {
         sampleId: sample.id,

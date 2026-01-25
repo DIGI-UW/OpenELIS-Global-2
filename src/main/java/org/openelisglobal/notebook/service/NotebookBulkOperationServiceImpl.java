@@ -95,7 +95,12 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         nps.setSampleItemId(String.valueOf(sampleId));
                         nps.setStatus(Status.PENDING);
                         nps.setSysUserId(userId);
-                        nps.setData(new HashMap<>());
+
+                        // Initialize data with identification fields from first page if available
+                        Map<String, Object> initialData = new HashMap<>();
+                        copyIdentificationFieldsFromFirstPage(page, sampleId, initialData);
+                        nps.setData(initialData);
+
                         notebookPageSampleService.save(nps);
                         LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
                                 "Created missing NotebookPageSample for sampleId=" + sampleId + " on pageId=" + pageId);
@@ -130,6 +135,87 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         LogEvent.logInfo(this.getClass().getName(), "bulkApplyValues",
                 "Completed. Total updated: " + updatedCount + " of " + sampleIds.size());
         return updatedCount;
+    }
+
+    /**
+     * Copy identification fields from the first page (page 1) to initialize data
+     * for samples on subsequent pages. Identification fields (localName,
+     * scientificName, plantPart, etc.) originate from the first page and should be
+     * preserved across all workflow stages.
+     *
+     * @param currentPage the current notebook page
+     * @param sampleId    the sample item ID
+     * @param targetData  the data map to populate with identification fields
+     */
+    private void copyIdentificationFieldsFromFirstPage(NoteBookPage currentPage, Integer sampleId,
+            Map<String, Object> targetData) {
+        try {
+            // Identification fields that should flow from first page through all stages
+            String[] identificationFields = { "localName", "scientificName", "plantPart", "sourceType",
+                    "sampleCategory", "collectionDate", "collectedBy", "originLocation", "collectionSite",
+                    "intendedUse", "sampleCondition", "speciesIdentification" };
+
+            // Get the notebook from the current page
+            if (currentPage == null || currentPage.getNotebook() == null) {
+                LogEvent.logDebug(this.getClass().getName(), "copyIdentificationFieldsFromFirstPage",
+                        "Current page or notebook is null, cannot copy identification fields");
+                return;
+            }
+
+            // Get all pages for this notebook and find the first page
+            // First pages are typically those with lower page numbers/order
+            List<NoteBookPage> notebookPages = noteBookPageService.getByNotebook(currentPage.getNotebook());
+            if (notebookPages == null || notebookPages.isEmpty()) {
+                LogEvent.logDebug(this.getClass().getName(), "copyIdentificationFieldsFromFirstPage",
+                        "No pages found for notebook");
+                return;
+            }
+
+            // Get the first page (lowest pageNumber or order)
+            NoteBookPage firstPage = notebookPages.stream().min((p1, p2) -> {
+                // Compare by pageNumber if available, otherwise use natural order
+                Integer pn1 = p1.getPageNumber() != null ? p1.getPageNumber() : Integer.MAX_VALUE;
+                Integer pn2 = p2.getPageNumber() != null ? p2.getPageNumber() : Integer.MAX_VALUE;
+                return pn1.compareTo(pn2);
+            }).orElse(null);
+
+            if (firstPage == null || firstPage.getId().equals(currentPage.getId())) {
+                // Already on first page or no pages found
+                LogEvent.logDebug(this.getClass().getName(), "copyIdentificationFieldsFromFirstPage",
+                        "Already on first page or cannot determine first page, skipping copy");
+                return;
+            }
+
+            // Get the sample from the first page
+            NotebookPageSample firstPageSample = notebookPageSampleService.getByPageIdAndSampleItemId(firstPage.getId(),
+                    sampleId);
+            if (firstPageSample == null || firstPageSample.getData() == null) {
+                LogEvent.logDebug(this.getClass().getName(), "copyIdentificationFieldsFromFirstPage",
+                        "Sample not found on first page (pageId=" + firstPage.getId() + ", sampleId=" + sampleId + ")");
+                return;
+            }
+
+            // Copy identification fields from first page
+            Map<String, Object> firstPageData = firstPageSample.getData();
+            int copiedCount = 0;
+            for (String field : identificationFields) {
+                if (firstPageData.containsKey(field)) {
+                    targetData.put(field, firstPageData.get(field));
+                    copiedCount++;
+                }
+            }
+
+            if (copiedCount > 0) {
+                LogEvent.logInfo(this.getClass().getName(), "copyIdentificationFieldsFromFirstPage",
+                        "Copied " + copiedCount + " identification fields for sampleId=" + sampleId + " from pageId="
+                                + firstPage.getId() + " to pageId=" + currentPage.getId());
+            }
+
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getName(), "copyIdentificationFieldsFromFirstPage",
+                    "Error copying identification fields: " + e.getMessage());
+            // Continue without identification fields - they may be added later
+        }
     }
 
     /**

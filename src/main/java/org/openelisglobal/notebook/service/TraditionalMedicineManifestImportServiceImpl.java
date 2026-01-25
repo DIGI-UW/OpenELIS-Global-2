@@ -182,7 +182,8 @@ public class TraditionalMedicineManifestImportServiceImpl implements Traditional
             }
 
             // Validate source types
-            List<String> validSourceTypes = List.of("Plant material", "Other traditional medicine source", "Plant Extract");
+            List<String> validSourceTypes = List.of("Plant material", "Other traditional medicine source",
+                    "Plant Extract");
             if (row.sourceType() != null
                     && !validSourceTypes.stream().anyMatch(t -> t.equalsIgnoreCase(row.sourceType()))) {
                 errors.add(new ParseError(row.rowNumber(), "source_type", "Invalid source type: " + row.sourceType()
@@ -190,7 +191,8 @@ public class TraditionalMedicineManifestImportServiceImpl implements Traditional
             }
 
             // Validate plant parts if provided
-            List<String> validPlantParts = List.of("Root", "Leaf", "Stem", "Bark", "Flower", "Seed", "Whole plant", "Rhizome", "Multiple", "Whole organism", "Bee product");
+            List<String> validPlantParts = List.of("Root", "Leaf", "Stem", "Bark", "Flower", "Seed", "Whole plant",
+                    "Rhizome", "Multiple", "Whole organism", "Bee product");
             if (row.plantPart() != null && !row.plantPart().isBlank()
                     && !validPlantParts.stream().anyMatch(p -> p.equalsIgnoreCase(row.plantPart()))) {
                 errors.add(new ParseError(row.rowNumber(), "plant_part", "Invalid plant part: " + row.plantPart()

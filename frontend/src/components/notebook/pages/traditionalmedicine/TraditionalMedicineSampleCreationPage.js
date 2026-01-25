@@ -20,6 +20,7 @@ import {
   Pending,
   Edit,
   WarningAltFilled,
+  Archive,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useMemo } from "react";
@@ -435,6 +436,50 @@ function TraditionalMedicineSampleCreationPage({
 
   // Authentication status rendering moved to Stage 2 (TraditionalMedicineAuthenticationPage)
 
+  // Helper to render sample status - simple status display matching API response
+  const renderStatus = (sample) => {
+    const status = sample.status || "PENDING";
+
+    switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.tradmed.status.completed"
+              defaultMessage="Completed"
+            />
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm" renderIcon={Archive}>
+            <FormattedMessage
+              id="notebook.tradmed.status.inProgress"
+              defaultMessage="In Progress"
+            />
+          </Tag>
+        );
+      case "SKIPPED":
+        return (
+          <Tag type="gray" size="sm">
+            <FormattedMessage
+              id="notebook.tradmed.status.skipped"
+              defaultMessage="Skipped"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm" renderIcon={Pending}>
+            <FormattedMessage
+              id="notebook.tradmed.status.pending"
+              defaultMessage="Pending"
+            />
+          </Tag>
+        );
+    }
+  };
+
   return (
     <div className="tradmed-sample-creation-page">
       {/* Page Header */}
@@ -577,6 +622,14 @@ function TraditionalMedicineSampleCreationPage({
                 // Taxonomy - Species identification
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 // Source & Origin
                 { key: "sourceType", header: "Source Type" },
                 { key: "originLocation", header: "Origin" },
@@ -638,6 +691,14 @@ function TraditionalMedicineSampleCreationPage({
                 // Taxonomy - Species identification
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 // Source & Origin
                 { key: "sourceType", header: "Source Type" },
                 { key: "originLocation", header: "Origin" },

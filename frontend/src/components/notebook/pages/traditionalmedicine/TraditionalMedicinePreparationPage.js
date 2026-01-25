@@ -14,7 +14,6 @@ import {
   Tag,
   Modal,
   Dropdown,
-  TextInput,
   TextArea,
   Loading,
   NumberInput,
@@ -25,6 +24,7 @@ import {
   Pending,
   WarningAltFilled,
   Edit,
+  Archive,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
@@ -113,7 +113,13 @@ function TraditionalMedicinePreparationPage({
   const [weightAfter, setWeightAfter] = useState("");
   const [dryingTemperature, setDryingTemperature] = useState("");
   const [dryingDuration, setDryingDuration] = useState("");
+  const [freezeDryingTemperature, setFreezeDryingTemperature] = useState("");
+  const [freezeDryingVacuum, setFreezeDryingVacuum] = useState("");
+  const [freezeDryingSublimationTime, setFreezeDryingSublimationTime] =
+    useState("");
   const [prepNotes, setPrepNotes] = useState("");
+  const [operatorInfo, setOperatorInfo] = useState("");
+  const [preparedAtTime, setPreparedAtTime] = useState("");
 
   // Processing method options (per SRS)
   const processingMethodOptions = [
@@ -156,8 +162,19 @@ function TraditionalMedicinePreparationPage({
       `/rest/notebook/page/${pageData.id}/samples`,
       (response) => {
         if (componentMounted.current) {
-          if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
+          let samplesToProcess = [];
+
+          // Handle both array and object responses from API
+          if (response) {
+            if (Array.isArray(response)) {
+              samplesToProcess = response;
+            } else if (response.samples && Array.isArray(response.samples)) {
+              samplesToProcess = response.samples;
+            }
+          }
+
+          if (samplesToProcess.length > 0) {
+            const transformedSamples = samplesToProcess.map((sample) => ({
               id: String(sample.id || sample.sampleItemId),
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
@@ -200,7 +217,12 @@ function TraditionalMedicinePreparationPage({
     setWeightAfter("");
     setDryingTemperature("");
     setDryingDuration("");
+    setFreezeDryingTemperature("");
+    setFreezeDryingVacuum("");
+    setFreezeDryingSublimationTime("");
     setPrepNotes("");
+    setOperatorInfo("");
+    setPreparedAtTime("");
   }, []);
 
   const openPrepModal = useCallback(() => {
@@ -215,6 +237,10 @@ function TraditionalMedicinePreparationPage({
       return;
     }
     resetPrepForm();
+    // Auto-populate operator and date info
+    const now = new Date();
+    setPreparedAtTime(now.toLocaleString());
+    setOperatorInfo(`${new Date().toISOString().split("T")[0]} - Auto-logged`);
     setPreparationModalOpen(true);
   }, [selectedSampleIds, intl, resetPrepForm, notify]);
 
@@ -228,6 +254,21 @@ function TraditionalMedicinePreparationPage({
         }),
       });
       return;
+    }
+
+    if (weightBefore && weightAfter) {
+      const before = parseFloat(weightBefore);
+      const after = parseFloat(weightAfter);
+      if (after > before) {
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({
+            id: "notebook.page.tradmed.prep.error.weightAfterGreater",
+            defaultMessage: "Weight after drying cannot exceed weight before.",
+          }),
+        });
+        return;
+      }
     }
 
     if (!hasRealPageId) {
@@ -255,19 +296,26 @@ function TraditionalMedicinePreparationPage({
         : null;
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/tradmed/page/${pageData.id}/preparation`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
         sampleIds: sampleIds,
-        processingMethod: processingMethod.id,
-        processingMethodLabel: processingMethod.label,
-        dryingMethod: dryingMethod?.id || null,
-        dryingMethodLabel: dryingMethod?.label || null,
-        weightBefore: weightBefore || null,
-        weightAfter: weightAfter || null,
-        yieldPercent: yieldPercent,
-        dryingTemperature: dryingTemperature || null,
-        dryingDuration: dryingDuration || null,
-        prepNotes: prepNotes || null,
+        data: {
+          processingMethod: processingMethod.id,
+          processingMethodLabel: processingMethod.label,
+          dryingMethod: dryingMethod?.id || null,
+          dryingMethodLabel: dryingMethod?.label || null,
+          weightBefore: weightBefore || null,
+          weightAfter: weightAfter || null,
+          yieldPercent: yieldPercent,
+          dryingTemperature: dryingTemperature || null,
+          dryingDuration: dryingDuration || null,
+          freezeDryingTemperature: freezeDryingTemperature || null,
+          freezeDryingVacuum: freezeDryingVacuum || null,
+          freezeDryingSublimationTime: freezeDryingSublimationTime || null,
+          prepNotes: prepNotes || null,
+          preparedAt: preparedAtTime || null,
+          preparedBy: operatorInfo || null,
+        },
       }),
       (response) => {
         setIsApplyingPrep(false);
@@ -333,7 +381,12 @@ function TraditionalMedicinePreparationPage({
     weightAfter,
     dryingTemperature,
     dryingDuration,
+    freezeDryingTemperature,
+    freezeDryingVacuum,
+    freezeDryingSublimationTime,
     prepNotes,
+    operatorInfo,
+    preparedAtTime,
     hasRealPageId,
     pageData?.id,
     selectedSampleIds,
@@ -437,6 +490,50 @@ function TraditionalMedicinePreparationPage({
         {sample.yieldPercent}%
       </Tag>
     );
+  };
+
+  // Helper to render sample status - simple status display matching API response
+  const renderStatus = (sample) => {
+    const status = sample.status || "PENDING";
+
+    switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.tradmed.status.completed"
+              defaultMessage="Completed"
+            />
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm" renderIcon={Archive}>
+            <FormattedMessage
+              id="notebook.tradmed.status.inProgress"
+              defaultMessage="In Progress"
+            />
+          </Tag>
+        );
+      case "SKIPPED":
+        return (
+          <Tag type="gray" size="sm">
+            <FormattedMessage
+              id="notebook.tradmed.status.skipped"
+              defaultMessage="Skipped"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm" renderIcon={Pending}>
+            <FormattedMessage
+              id="notebook.tradmed.status.pending"
+              defaultMessage="Pending"
+            />
+          </Tag>
+        );
+    }
   };
 
   return (
@@ -547,6 +644,14 @@ function TraditionalMedicinePreparationPage({
                 { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
               ]}
             />
           )}
@@ -612,7 +717,17 @@ function TraditionalMedicinePreparationPage({
                 { key: "accessionNumber", header: "Accession #" },
                 { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "processingMethod", header: "Processing Method" },
+                { key: "dryingMethod", header: "Drying Method" },
                 { key: "weightBefore", header: "Weight Before (g)" },
                 { key: "weightAfter", header: "Weight After (g)" },
                 {
@@ -650,7 +765,17 @@ function TraditionalMedicinePreparationPage({
                 { key: "accessionNumber", header: "Accession #" },
                 { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "processingMethod", header: "Processing Method" },
+                { key: "dryingMethod", header: "Drying Method" },
                 { key: "weightBefore", header: "Weight Before (g)" },
                 { key: "weightAfter", header: "Weight After (g)" },
                 {
@@ -698,6 +823,17 @@ function TraditionalMedicinePreparationPage({
               values={{ count: selectedSampleIds.length }}
             />
           </p>
+          {preparedAtTime && (
+            <p style={{ fontSize: "0.875rem", color: "#525252" }}>
+              <strong>
+                <FormattedMessage
+                  id="notebook.page.tradmed.prep.modal.timestamp"
+                  defaultMessage="Timestamp:"
+                />
+              </strong>{" "}
+              {preparedAtTime}
+            </p>
+          )}
         </div>
 
         {isApplyingPrep && <Loading withOverlay={false} small />}
@@ -773,35 +909,100 @@ function TraditionalMedicinePreparationPage({
             />
           </Column>
 
-          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <NumberInput
-              id="drying-temp"
-              label={intl.formatMessage({
-                id: "notebook.page.tradmed.prep.modal.dryingTemp",
-                defaultMessage: "Drying Temperature (°C)",
-              })}
-              value={dryingTemperature}
-              onChange={(e) =>
-                setDryingTemperature(
-                  e.imaginaryTarget?.value || e.target?.value || "",
-                )
-              }
-              step={1}
-            />
-          </Column>
+          {dryingMethod?.id === "oven_drying" && (
+            <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+              <NumberInput
+                id="drying-temp"
+                label={intl.formatMessage({
+                  id: "notebook.page.tradmed.prep.modal.dryingTemp",
+                  defaultMessage: "Drying Temperature (°C)",
+                })}
+                value={dryingTemperature}
+                onChange={(e) =>
+                  setDryingTemperature(
+                    e.imaginaryTarget?.value || e.target?.value || "",
+                  )
+                }
+                step={1}
+              />
+            </Column>
+          )}
 
-          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
-            <TextInput
-              id="drying-duration"
-              labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.prep.modal.dryingDuration",
-                defaultMessage: "Drying Duration (hours)",
-              })}
-              value={dryingDuration}
-              onChange={(e) => setDryingDuration(e.target.value)}
-              placeholder="e.g., 24"
-            />
-          </Column>
+          {dryingMethod?.id === "oven_drying" && (
+            <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+              <NumberInput
+                id="drying-duration"
+                label={intl.formatMessage({
+                  id: "notebook.page.tradmed.prep.modal.dryingDuration",
+                  defaultMessage: "Drying Duration (hours)",
+                })}
+                value={dryingDuration}
+                onChange={(e) =>
+                  setDryingDuration(
+                    e.imaginaryTarget?.value || e.target?.value || "",
+                  )
+                }
+                step={0.5}
+              />
+            </Column>
+          )}
+
+          {dryingMethod?.id === "freeze_drying" && (
+            <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+              <NumberInput
+                id="freeze-drying-temp"
+                label={intl.formatMessage({
+                  id: "notebook.page.tradmed.prep.modal.freezeDryingTemp",
+                  defaultMessage: "Cooling Temperature (°C)",
+                })}
+                value={freezeDryingTemperature}
+                onChange={(e) =>
+                  setFreezeDryingTemperature(
+                    e.imaginaryTarget?.value || e.target?.value || "",
+                  )
+                }
+                step={1}
+              />
+            </Column>
+          )}
+
+          {dryingMethod?.id === "freeze_drying" && (
+            <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+              <NumberInput
+                id="freeze-drying-vacuum"
+                label={intl.formatMessage({
+                  id: "notebook.page.tradmed.prep.modal.freezeDryingVacuum",
+                  defaultMessage: "Vacuum Pressure (mBar)",
+                })}
+                value={freezeDryingVacuum}
+                onChange={(e) =>
+                  setFreezeDryingVacuum(
+                    e.imaginaryTarget?.value || e.target?.value || "",
+                  )
+                }
+                step={0.1}
+              />
+            </Column>
+          )}
+
+          {dryingMethod?.id === "freeze_drying" && (
+            <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+              <NumberInput
+                id="freeze-drying-sublimation"
+                label={intl.formatMessage({
+                  id: "notebook.page.tradmed.prep.modal.freezeDryingSublimation",
+                  defaultMessage: "Sublimation Time (hours)",
+                })}
+                value={freezeDryingSublimationTime}
+                onChange={(e) =>
+                  setFreezeDryingSublimationTime(
+                    e.imaginaryTarget?.value || e.target?.value || "",
+                  )
+                }
+                step={0.5}
+              />
+            </Column>
+          )}
 
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
             <TextArea

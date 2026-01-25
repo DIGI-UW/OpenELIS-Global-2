@@ -18,7 +18,13 @@ import {
   Loading,
   Checkbox,
 } from "@carbon/react";
-import { Renew, CheckmarkFilled, Edit } from "@carbon/react/icons";
+import {
+  Renew,
+  CheckmarkFilled,
+  Edit,
+  Archive,
+  Pending,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
@@ -141,9 +147,20 @@ function TraditionalMedicineAnalyticalPage({
       `/rest/notebook/page/${pageData.id}/samples`,
       (response) => {
         if (componentMounted.current) {
+          let samplesToProcess = [];
+
+          // Handle both array and object responses from API
+          if (response) {
+            if (Array.isArray(response)) {
+              samplesToProcess = response;
+            } else if (response.samples && Array.isArray(response.samples)) {
+              samplesToProcess = response.samples;
+            }
+          }
+
           setSamples(
-            response && Array.isArray(response)
-              ? response.map((s) => ({
+            samplesToProcess.length > 0
+              ? samplesToProcess.map((s) => ({
                   id: String(s.id || s.sampleItemId),
                   externalId: s.externalId,
                   accessionNumber: s.accessionNumber,
@@ -376,6 +393,50 @@ function TraditionalMedicineAnalyticalPage({
     [samples],
   );
 
+  // Helper to render sample status - simple status display matching API response
+  const renderStatus = (sample) => {
+    const status = sample.status || "PENDING";
+
+    switch (status.toUpperCase()) {
+      case "COMPLETED":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.tradmed.status.completed"
+              defaultMessage="Completed"
+            />
+          </Tag>
+        );
+      case "IN_PROGRESS":
+        return (
+          <Tag type="blue" size="sm" renderIcon={Archive}>
+            <FormattedMessage
+              id="notebook.tradmed.status.inProgress"
+              defaultMessage="In Progress"
+            />
+          </Tag>
+        );
+      case "SKIPPED":
+        return (
+          <Tag type="gray" size="sm">
+            <FormattedMessage
+              id="notebook.tradmed.status.skipped"
+              defaultMessage="Skipped"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm" renderIcon={Pending}>
+            <FormattedMessage
+              id="notebook.tradmed.status.pending"
+              defaultMessage="Pending"
+            />
+          </Tag>
+        );
+    }
+  };
+
   return (
     <div className="tradmed-analytical-page">
       <div className="page-section-header">
@@ -482,6 +543,14 @@ function TraditionalMedicineAnalyticalPage({
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
                 { key: "localName", header: "Local Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "externalId", header: "Sample ID" },
               ]}
             />
@@ -547,6 +616,14 @@ function TraditionalMedicineAnalyticalPage({
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
                 { key: "localName", header: "Local Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "selectedPath", header: "Pathway" },
                 { key: "fractionationMethod", header: "Fractionation" },
               ]}
@@ -578,6 +655,14 @@ function TraditionalMedicineAnalyticalPage({
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
                 { key: "localName", header: "Local Name" },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
+                },
                 { key: "selectedPath", header: "Pathway" },
                 { key: "fractionationMethod", header: "Fractionation" },
               ]}
