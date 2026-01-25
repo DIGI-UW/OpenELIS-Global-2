@@ -1689,9 +1689,10 @@
   font-size: 0.875rem;
 }
 
-/* Compact Table Styling for Extraction Page */
+/* Ultra-Compact Table Styling for Extraction Page */
 .tradmed-extraction-page .sample-grid .cds--data-table {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .tradmed-extraction-page .sample-grid .cds--table-row {
@@ -1699,18 +1700,21 @@
 }
 
 .tradmed-extraction-page .sample-grid .cds--table-head .cds--table-header-cell {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.7rem;
   font-weight: 600;
+  line-height: 1.1;
+  height: auto;
 }
 
 .tradmed-extraction-page .sample-grid .cds--table-body .cds--table-cell {
-  padding: 0.4rem 0.75rem;
+  padding: 0.25rem 0.5rem;
   height: auto;
   vertical-align: middle;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .tradmed-extraction-page .sample-grid .cds--table-body .cds--table-row:hover {
@@ -1722,8 +1726,17 @@
 }
 
 .tradmed-extraction-page .sample-grid .cds--tag {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
   height: auto;
-  min-height: 20px;
+  min-height: 16px;
+}
+
+/* Reduce spacing around table toolbar */
+.tradmed-extraction-page .sample-grid .cds--table-toolbar {
+  padding: 0.5rem 0;
+}
+
+.tradmed-extraction-page .sample-grid .cds--table-toolbar__search-container {
+  padding: 0.25rem 0;
 }
