@@ -600,7 +600,9 @@ function TraditionalMedicinePreparationPage({
           size="sm"
           renderIcon={CheckmarkFilled}
           onClick={handleMarkComplete}
-          disabled={selectedSampleIds.length === 0 || isCompleting || !hasRealPageId}
+          disabled={
+            selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+          }
         >
           <FormattedMessage
             id="notebook.tradmed.prep.markComplete"

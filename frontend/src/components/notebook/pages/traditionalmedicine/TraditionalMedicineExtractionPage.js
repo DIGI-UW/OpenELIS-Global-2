@@ -369,12 +369,10 @@ function TraditionalMedicineExtractionPage({
 
   // Handle marking extracted samples complete (moving to next page)
   const handleMarkComplete = useCallback(() => {
-    // Filter samples that can be marked complete: selected, extracted, and not already completed
+    // Filter samples that can be marked complete: selected and in extraction (IN_PROGRESS status)
+    // IN_PROGRESS status indicates extraction was recorded
     const samplesToComplete = samples.filter(
-      (s) =>
-        selectedSampleIds.includes(s.id) &&
-        s.solventType &&
-        s.status !== "COMPLETED",
+      (s) => selectedSampleIds.includes(s.id) && s.status === "IN_PROGRESS",
     );
 
     if (samplesToComplete.length === 0) {
@@ -383,7 +381,7 @@ function TraditionalMedicineExtractionPage({
         title: intl.formatMessage({
           id: "notebook.tradmed.extract.noEligibleSamples",
           defaultMessage:
-            "Selected samples must have extraction recorded before completing.",
+            "Selected samples must have extraction recorded (status: In Progress) before completing.",
         }),
       });
       return;

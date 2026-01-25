@@ -542,7 +542,13 @@ function TraditionalMedicineAnalyticalPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -551,7 +557,6 @@ function TraditionalMedicineAnalyticalPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
-                { key: "externalId", header: "Sample ID" },
               ]}
             />
           )}
@@ -615,7 +620,16 @@ function TraditionalMedicineAnalyticalPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "selectedPath", header: "Pathway" },
+                { key: "fractionationMethod", header: "Fractionation" },
+                { key: "analysisNotes", header: "Analysis Notes" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -624,8 +638,6 @@ function TraditionalMedicineAnalyticalPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
-                { key: "selectedPath", header: "Pathway" },
-                { key: "fractionationMethod", header: "Fractionation" },
               ]}
             />
           )}
@@ -654,7 +666,16 @@ function TraditionalMedicineAnalyticalPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "selectedPath", header: "Pathway" },
+                { key: "fractionationMethod", header: "Fractionation" },
+                { key: "analysisNotes", header: "Analysis Notes" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -663,8 +684,6 @@ function TraditionalMedicineAnalyticalPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
-                { key: "selectedPath", header: "Pathway" },
-                { key: "fractionationMethod", header: "Fractionation" },
               ]}
             />
           </div>

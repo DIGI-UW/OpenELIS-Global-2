@@ -584,21 +584,24 @@ function TraditionalMedicineAuthenticationPage({
           />
         </Button>
 
-        {selectedSampleIds.length > 0 && authenticatedInProgressSamples.some(s => selectedSampleIds.includes(s.id)) && (
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
-            disabled={isCompleting || !hasRealPageId}
-          >
-            <FormattedMessage
-              id="notebook.tradmed.auth.markComplete"
-              defaultMessage="Mark Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
-        )}
+        {selectedSampleIds.length > 0 &&
+          authenticatedInProgressSamples.some((s) =>
+            selectedSampleIds.includes(s.id),
+          ) && (
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={CheckmarkFilled}
+              onClick={handleMarkComplete}
+              disabled={isCompleting || !hasRealPageId}
+            >
+              <FormattedMessage
+                id="notebook.tradmed.auth.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          )}
 
         <Button
           kind="ghost"
