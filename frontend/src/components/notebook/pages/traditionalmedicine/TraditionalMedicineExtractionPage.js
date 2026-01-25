@@ -193,6 +193,8 @@ function TraditionalMedicineExtractionPage({
                   scientificName: s.data?.scientificName,
                   solventType: s.data?.solventType,
                   extractionTechnique: s.data?.extractionTechnique,
+                  filtrationMethod: s.data?.filtrationMethod,
+                  concentrationMethod: s.data?.concentrationMethod,
                   yieldPercent: s.data?.yieldPercent,
                   extractWeight: s.data?.extractWeight,
                 }))
@@ -680,6 +682,8 @@ function TraditionalMedicineExtractionPage({
                 },
                 { key: "solventType", header: "Solvent" },
                 { key: "extractionTechnique", header: "Technique" },
+                { key: "filtrationMethod", header: "Filtration" },
+                { key: "concentrationMethod", header: "Concentration" },
                 { key: "extractWeight", header: "Extract Weight (g)" },
                 { key: "yieldPercent", header: "Yield %" },
               ]}
@@ -722,6 +726,8 @@ function TraditionalMedicineExtractionPage({
                 },
                 { key: "solventType", header: "Solvent" },
                 { key: "extractionTechnique", header: "Technique" },
+                { key: "filtrationMethod", header: "Filtration" },
+                { key: "concentrationMethod", header: "Concentration" },
                 { key: "extractWeight", header: "Extract Weight (g)" },
                 { key: "yieldPercent", header: "Yield %" },
               ]}
