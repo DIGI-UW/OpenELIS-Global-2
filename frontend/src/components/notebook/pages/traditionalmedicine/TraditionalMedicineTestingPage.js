@@ -100,7 +100,6 @@ function TraditionalMedicineTestingPage({
   const [isApplying, setIsApplying] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  const [assignedTests, setAssignedTests] = useState([]);
   const [testAssignmentModal, setTestAssignmentModal] = useState(false);
   const [testResultsModal, setTestResultsModal] = useState(false);
   const [currentSampleForResults, setCurrentSampleForResults] = useState(null);
@@ -725,27 +724,31 @@ function TraditionalMedicineTestingPage({
       assignmentData.category,
     ).find((m) => m.id === assignmentData.methodology);
 
+    // Build assignedTests array for each sample - append new test to existing tests
+    // Get the existing assignedTests from the first selected sample (or use empty array if none)
+    const selectedSample = samples.find((s) => s.id === selectedSampleIds[0]);
+    const existingTests = selectedSample?.assignedTests || [];
+
+    const newTest = {
+      testId: assignmentData.specificTest,
+      testName: selectedTest?.text,
+      category: assignmentData.category,
+      subcategory: assignmentData.subcategory,
+      unit: selectedTest?.unit,
+      methodologyId: assignmentData.methodology,
+      methodology: selectedMethodology?.text,
+      expectedResults: assignmentData.expectedResults,
+      acceptanceCriteria: assignmentData.acceptanceCriteria,
+      status: "ASSIGNED",
+      assignedAt: new Date().toISOString(),
+    };
+
     postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
         sampleIds,
         data: {
-          assignedTests: [
-            ...assignedTests,
-            {
-              testId: assignmentData.specificTest,
-              testName: selectedTest?.text,
-              category: assignmentData.category,
-              subcategory: assignmentData.subcategory,
-              unit: selectedTest?.unit,
-              methodologyId: assignmentData.methodology,
-              methodology: selectedMethodology?.text,
-              expectedResults: assignmentData.expectedResults,
-              acceptanceCriteria: assignmentData.acceptanceCriteria,
-              status: "ASSIGNED",
-              assignedAt: new Date().toISOString(),
-            },
-          ],
+          assignedTests: [...existingTests, newTest],
         },
       }),
       (response) => {
@@ -779,7 +782,7 @@ function TraditionalMedicineTestingPage({
     );
   }, [
     assignmentData,
-    assignedTests,
+    samples,
     hasRealPageId,
     pageData?.id,
     selectedSampleIds,
