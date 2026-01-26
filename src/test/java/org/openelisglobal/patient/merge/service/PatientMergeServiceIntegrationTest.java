@@ -371,4 +371,51 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         assertFalse("Primary patient should NOT be marked as merged",
                 Boolean.TRUE.equals(primaryPatient.getIsMerged()));
     }
+
+    @Test
+    public void validateMerge_samePatient_shouldReturnError() {
+        PatientMergeRequestDTO request = new PatientMergeRequestDTO();
+        request.setPatient1Id(patient1.getId());
+        request.setPatient2Id(patient1.getId());
+        request.setPrimaryPatientId(patient1.getId());
+        request.setReason("Attempt merge same patient");
+        request.setConfirmed(true);
+
+        PatientMergeValidationResultDTO result = patientMergeService.validateMerge(request);
+        assertNotNull(result);
+        assertTrue("Expected validation error for merging same patient", result.getErrors().size() > 0);
+        boolean foundSameMsg = result.getErrors().stream()
+                .anyMatch(m -> m.toLowerCase().contains("same") || m.toLowerCase().contains("cannot merge"));
+        assertTrue("Expected 'same patient' validation message", foundSameMsg);
+    }
+
+    @Test
+    public void validateMerge_alreadyMergedSecondary_shouldReturnError() {
+        PatientMergeRequestDTO request = new PatientMergeRequestDTO();
+        request.setPatient1Id(patient1.getId());
+        request.setPatient2Id(patient2.getId());
+        request.setPrimaryPatientId(patient1.getId());
+        request.setReason("First merge for test");
+        request.setConfirmed(true);
+
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(request, "1");
+        assertNotNull(result);
+        assertTrue("Expected merge to succeed", result.isSuccess());
+
+        PatientMergeRequestDTO validateReq = new PatientMergeRequestDTO();
+        validateReq.setPatient1Id(patient1.getId());
+        validateReq.setPatient2Id(patient2.getId()); 
+        validateReq.setPrimaryPatientId(patient1.getId());
+        validateReq.setReason("Second merge attempt on already-merged patient");
+        validateReq.setConfirmed(true);
+
+        PatientMergeValidationResultDTO validateResult = patientMergeService.validateMerge(validateReq);
+        assertNotNull(validateResult);
+        assertTrue("Expected validation errors when merging an already-merged patient", validateResult.getErrors().size() > 0);
+
+        boolean foundAlreadyMsg = validateResult.getErrors().stream()
+                .anyMatch(m -> m.toLowerCase().contains("merged") || m.toLowerCase().contains("inactive"));
+        assertTrue("Expected 'already merged' or 'inactive' validation message", foundAlreadyMsg);
+    }
+
 }
