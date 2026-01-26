@@ -118,27 +118,11 @@ function TraditionalMedicineSampleCreationPage({
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Check if page has a real ID
   const hasRealPageId =
     pageData?.id && !String(pageData.id).startsWith("default-");
 
-  // Debug logging can be enabled if needed
-  // console.log("TMMRD Sample Creation Page - Permission Debug:", {
-  //   pagePermissionLevel,
-  //   canImportSamples,
-  //   canEditMetadata,
-  //   canSaveDataLocal,
-  //   canAuthenticateSamples,
-  //   hasRealPageId
-  // });
-
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  // Authentication is now handled on Stage 2 (dedicated Authentication page)
-
-  // Authentication options moved to Stage 2 (TraditionalMedicineAuthenticationPage)
-
-  // Notification callback
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, message }) => {
       setNotificationVisible(true);
@@ -147,7 +131,6 @@ function TraditionalMedicineSampleCreationPage({
     [addNotification, setNotificationVisible],
   );
 
-  // Bulk operations following bioanalytical pattern
   const bulkApplyMetadata = useCallback(
     async (sampleIds, data) => {
       if (!hasRealPageId) return false;
@@ -264,7 +247,6 @@ function TraditionalMedicineSampleCreationPage({
     [hasRealPageId, pageData?.id, notify, intl],
   );
 
-  // Load samples for this page
   const loadPageSamples = useCallback(() => {
     if (!pageData?.id) {
       setLoading(false);
@@ -288,14 +270,11 @@ function TraditionalMedicineSampleCreationPage({
               externalId: sample.externalId,
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType || sample.typeOfSample?.description,
-              // Collection date from manifest is stored in data JSON, fallback to sample level
               collectionDate:
                 sample.data?.collectionDate || sample.collectionDate,
               status: sample.pageStatus || sample.status || "PENDING",
-              // Sample arrival tracking
               receivedDate: sample.data?.receivedDate || sample.receivedDate,
               receivedBy: sample.data?.receivedBy,
-              // Traditional medicine specific fields from data JSON
               sampleCategory: sample.data?.sampleCategory,
               sourceType: sample.data?.sourceType,
               originLocation: sample.data?.originLocation,
@@ -308,7 +287,6 @@ function TraditionalMedicineSampleCreationPage({
               sampleCondition: sample.data?.sampleCondition,
               intendedUse: sample.data?.intendedUse,
               notes: sample.data?.notes,
-              // Authentication data (SRS requirement - logged on Page 1)
               authenticationMethod: sample.data?.authenticationMethod,
               authenticationMethodLabel: sample.data?.authenticationMethodLabel,
               authenticationResult: sample.data?.authenticationResult,
@@ -328,7 +306,6 @@ function TraditionalMedicineSampleCreationPage({
     );
   }, [pageData?.id]);
 
-  // Load samples on mount
   useEffect(() => {
     componentMounted.current = true;
     loadPageSamples();
@@ -336,7 +313,6 @@ function TraditionalMedicineSampleCreationPage({
     return () => {
       componentMounted.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId, pageData?.id]);
 
   const handleImportSuccess = useCallback(() => {
@@ -346,8 +322,6 @@ function TraditionalMedicineSampleCreationPage({
       onProgressUpdate();
     }
   }, [loadPageSamples, onProgressUpdate]);
-
-  // Authentication functionality moved to Stage 2 (TraditionalMedicineAuthenticationPage)
 
   const markAsRegistered = useCallback(() => {
     if (selectedSampleIds.length === 0) {

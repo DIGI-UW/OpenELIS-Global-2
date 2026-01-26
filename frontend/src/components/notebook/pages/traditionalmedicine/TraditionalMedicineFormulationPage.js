@@ -663,12 +663,12 @@ function TraditionalMedicineFormulationPage({
               defaultMessage="Formulated (Pending Completion)"
             />
             <Tag type="blue" size="sm" className="count-tag">
-              {formulatedInProgressSamples.length}
+              {pendingSamples.length}
             </Tag>
           </h5>
         </div>
         <div className="sample-grid-container">
-          {!loading && formulatedInProgressSamples.length === 0 ? (
+          {!loading && pendingSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -680,7 +680,7 @@ function TraditionalMedicineFormulationPage({
           ) : (
             <SampleGrid
               gridId="formulated-in-progress-samples"
-              samples={formulatedInProgressSamples}
+              samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               showSelection={true}
