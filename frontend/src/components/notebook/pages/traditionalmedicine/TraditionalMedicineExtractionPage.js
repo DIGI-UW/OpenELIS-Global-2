@@ -125,33 +125,33 @@ function TraditionalMedicineExtractionPage({
     useState(false);
 
   const solventOptions = [
-    { id: "ethanol", label: "Ethanol" },
-    { id: "methanol", label: "Methanol" },
-    { id: "water", label: "Water" },
-    { id: "hexane", label: "Hexane" },
-    { id: "chloroform", label: "Chloroform" },
-    { id: "acetone", label: "Acetone" },
-    { id: "other", label: "Other Solvent" },
+    { id: "ETHANOL", label: "Ethanol" },
+    { id: "METHANOL", label: "Methanol" },
+    { id: "WATER", label: "Water" },
+    { id: "HEXANE", label: "Hexane" },
+    { id: "CHLOROFORM", label: "Chloroform" },
+    { id: "ACETONE", label: "Acetone" },
+    { id: "OTHER", label: "Other Solvent" },
   ];
 
   const techniqueOptions = [
-    { id: "maceration", label: "Maceration" },
-    { id: "soxhlet", label: "Soxhlet Extraction" },
-    { id: "ultrasonic", label: "Ultrasonic Extraction" },
-    { id: "distillation", label: "Distillation" },
-    { id: "other", label: "Other Technique" },
+    { id: "MACERATION", label: "Maceration" },
+    { id: "SOXHLET", label: "Soxhlet Extraction" },
+    { id: "ULTRASONIC", label: "Ultrasonic Extraction" },
+    { id: "DISTILLATION", label: "Distillation" },
+    { id: "OTHER", label: "Other Technique" },
   ];
 
   const filtrationOptions = [
-    { id: "filter_paper", label: "Filter Paper" },
-    { id: "vacuum", label: "Vacuum Filtration" },
-    { id: "centrifugation", label: "Centrifugation" },
+    { id: "FILTER_PAPER", label: "Filter Paper" },
+    { id: "VACUUM", label: "Vacuum Filtration" },
+    { id: "CENTRIFUGATION", label: "Centrifugation" },
   ];
 
   const concentrationOptions = [
-    { id: "rotary_evaporator", label: "Rotary Evaporator" },
-    { id: "distillation", label: "Distillation" },
-    { id: "no_concentration", label: "No Concentration" },
+    { id: "ROTARY_EVAPORATOR", label: "Rotary Evaporator" },
+    { id: "DISTILLATION", label: "Distillation" },
+    { id: "NONE", label: "No Concentration" },
   ];
 
   // Notification callback
@@ -300,24 +300,20 @@ function TraditionalMedicineExtractionPage({
         solvent: solventType.id,
         extractionTechnique: extractionTechnique.id,
         materialWeight: plantMaterialWeight,
+        materialWeightUnit: "g",
         solventVolume,
+        solventVolumeUnit: "mL",
         extractionTemperature: extractionTemp,
-        extractionDurationMinutes: extractionDuration,
-        filtrationMethod: filtrationMethod?.id || null,
-        concentrationMethod: concentrationMethod?.id || null,
+        temperatureUnit: "C",
+        extractionDurationMinutes: Math.round(parseFloat(extractionDuration) * 60),
+        numberOfCycles: 1,
+        filtrationMethod: filtrationMethod?.id || "NONE",
+        concentrationMethod: concentrationMethod?.id || "NONE",
         extractWeight,
+        extractWeightUnit: "g",
+        extractAppearance: `${extractColor} with ${extractOdor} odor, ${extractConsistency} consistency`,
+        extractColor,
         notes: extractNotes,
-        // Extract Quality Assessment - SRS Section 5
-        extractQuality: {
-          color: extractColor,
-          odor: extractOdor,
-          consistency: extractConsistency,
-          contaminationFree: extractContaminationFree,
-          qcResult:
-            extractColor && extractConsistency && extractContaminationFree
-              ? "PASS"
-              : "PENDING",
-        },
       }),
       (response) => {
         setIsApplyingExtraction(false);
