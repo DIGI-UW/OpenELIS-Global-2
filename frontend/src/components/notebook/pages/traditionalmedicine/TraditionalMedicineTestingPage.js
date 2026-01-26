@@ -1202,26 +1202,97 @@ function TraditionalMedicineTestingPage({
                   render: (_value, sample) => (
                     <div>
                       {sample.assignedTests.map((test, idx) => (
-                        <div key={idx} style={{ marginBottom: "0.5rem" }}>
+                        <div key={idx} style={{ marginBottom: "1rem" }}>
+                          {/* Test Name - Primary Tag */}
                           <Tag
                             type={
-                              test.status === "COMPLETED" ? "green" : "blue"
+                              test.status === "COMPLETED"
+                                ? "green"
+                                : test.status === "IN_PROGRESS"
+                                  ? "blue"
+                                  : "gray"
                             }
                             size="sm"
-                            style={{ marginRight: "4px" }}
+                            style={{
+                              marginRight: "4px",
+                              marginBottom: "0.25rem",
+                            }}
                           >
                             {test.testName}
                             {test.status === "COMPLETED" && " ✓"}
                           </Tag>
+
+                          {/* Test Details Row 1: Category, Status, TestId */}
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              marginTop: "0.25rem",
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            {test.category && (
+                              <Tag type="purple" size="sm">
+                                {test.category}
+                              </Tag>
+                            )}
+                            {test.status && (
+                              <Tag
+                                type={
+                                  test.status === "COMPLETED"
+                                    ? "green"
+                                    : test.status === "IN_PROGRESS"
+                                      ? "blue"
+                                      : "gray"
+                                }
+                                size="sm"
+                              >
+                                {test.status}
+                              </Tag>
+                            )}
+                            {test.testId && (
+                              <Tag type="gray" size="sm">
+                                {test.testId}
+                              </Tag>
+                            )}
+                          </div>
+
+                          {/* Test Details Row 2: Methodology, MethodologyId */}
+                          {(test.methodology || test.methodologyId) && (
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: "0.25rem",
+                              }}
+                            >
+                              {test.methodology && (
+                                <Tag type="cyan" size="sm">
+                                  {test.methodology}
+                                </Tag>
+                              )}
+                              {test.methodologyId && (
+                                <Tag type="teal" size="sm">
+                                  {test.methodologyId}
+                                </Tag>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Test Result - Only show if completed with result */}
                           {test.status === "COMPLETED" && test.result && (
                             <div
                               style={{
                                 fontSize: "0.75rem",
                                 marginTop: "0.25rem",
                                 color: "var(--cds-text-secondary)",
+                                fontWeight: "500",
                               }}
                             >
-                              {test.result}
+                              <strong>Result:</strong> {test.result}
                               {test.resultValue &&
                                 ` (${test.resultValue}${test.resultUnit ? ` ${test.resultUnit}` : ""})`}
                             </div>
@@ -1293,26 +1364,97 @@ function TraditionalMedicineTestingPage({
                   render: (_value, sample) => (
                     <div>
                       {sample.assignedTests.map((test, idx) => (
-                        <div key={idx} style={{ marginBottom: "0.5rem" }}>
+                        <div key={idx} style={{ marginBottom: "1rem" }}>
+                          {/* Test Name - Primary Tag */}
                           <Tag
                             type={
-                              test.status === "COMPLETED" ? "green" : "blue"
+                              test.status === "COMPLETED"
+                                ? "green"
+                                : test.status === "IN_PROGRESS"
+                                  ? "blue"
+                                  : "gray"
                             }
                             size="sm"
-                            style={{ marginRight: "4px" }}
+                            style={{
+                              marginRight: "4px",
+                              marginBottom: "0.25rem",
+                            }}
                           >
                             {test.testName}
                             {test.status === "COMPLETED" && " ✓"}
                           </Tag>
+
+                          {/* Test Details Row 1: Category, Status, TestId */}
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              marginTop: "0.25rem",
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            {test.category && (
+                              <Tag type="purple" size="sm">
+                                {test.category}
+                              </Tag>
+                            )}
+                            {test.status && (
+                              <Tag
+                                type={
+                                  test.status === "COMPLETED"
+                                    ? "green"
+                                    : test.status === "IN_PROGRESS"
+                                      ? "blue"
+                                      : "gray"
+                                }
+                                size="sm"
+                              >
+                                {test.status}
+                              </Tag>
+                            )}
+                            {test.testId && (
+                              <Tag type="gray" size="sm">
+                                {test.testId}
+                              </Tag>
+                            )}
+                          </div>
+
+                          {/* Test Details Row 2: Methodology, MethodologyId */}
+                          {(test.methodology || test.methodologyId) && (
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: "0.25rem",
+                              }}
+                            >
+                              {test.methodology && (
+                                <Tag type="cyan" size="sm">
+                                  {test.methodology}
+                                </Tag>
+                              )}
+                              {test.methodologyId && (
+                                <Tag type="teal" size="sm">
+                                  {test.methodologyId}
+                                </Tag>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Test Result - Only show if completed with result */}
                           {test.status === "COMPLETED" && test.result && (
                             <div
                               style={{
                                 fontSize: "0.75rem",
                                 marginTop: "0.25rem",
                                 color: "var(--cds-text-secondary)",
+                                fontWeight: "500",
                               }}
                             >
-                              {test.result}
+                              <strong>Result:</strong> {test.result}
                               {test.resultValue &&
                                 ` (${test.resultValue}${test.resultUnit ? ` ${test.resultUnit}` : ""})`}
                             </div>
