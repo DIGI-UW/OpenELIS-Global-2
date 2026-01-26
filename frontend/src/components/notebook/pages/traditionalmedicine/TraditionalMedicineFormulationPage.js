@@ -158,9 +158,23 @@ function TraditionalMedicineFormulationPage({
                   externalId: s.externalId,
                   accessionNumber: s.accessionNumber,
                   status: s.pageStatus || s.status || "PENDING",
+                  // Identification
                   localName: s.data?.localName,
+                  scientificName: s.data?.scientificName,
+                  sampleCategory: s.data?.sampleCategory,
+                  plantPart: s.data?.plantPart,
+                  collectionDate: s.data?.collectionDate,
+                  // Extraction & Preparation data from previous pages
+                  extractYieldPercentage: s.data?.extractYieldPercentage,
+                  solventLabel: s.data?.solventLabel,
+                  dryingMethodLabel: s.data?.dryingMethodLabel,
+                  processingMethodLabel: s.data?.processingMethodLabel,
+                  // Formulation data from Page 7
                   formulationType: s.data?.formulationType,
                   batchNumber: s.data?.batchNumber,
+                  manufacturingDate: s.data?.manufacturingDate,
+                  ingredients: s.data?.ingredients,
+                  qcNotes: s.data?.qcNotes,
                 }))
               : [],
           );
@@ -507,6 +521,22 @@ function TraditionalMedicineFormulationPage({
         </Button>
 
         <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={CheckmarkFilled}
+          onClick={handleMarkComplete}
+          disabled={
+            selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.tradmed.formulation.markComplete"
+            defaultMessage="Mark Complete ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
           kind="ghost"
           size="sm"
           renderIcon={Renew}
@@ -552,7 +582,28 @@ function TraditionalMedicineFormulationPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                {
+                  key: "extractYieldPercentage",
+                  header: "Yield %",
+                },
+                {
+                  key: "solventLabel",
+                  header: "Solvent",
+                },
+                {
+                  key: "dryingMethodLabel",
+                  header: "Drying Method",
+                },
+                {
+                  key: "processingMethodLabel",
+                  header: "Processing",
+                },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -570,41 +621,15 @@ function TraditionalMedicineFormulationPage({
       {/* Formulated Products Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div>
-              <h5>
-                <FormattedMessage
-                  id="notebook.page.tradmed.formulation.formulated.inProgress.title"
-                  defaultMessage="Formulated (Pending Completion)"
-                />
-                <Tag type="blue" size="sm" className="count-tag">
-                  {formulatedInProgressSamples.length}
-                </Tag>
-              </h5>
-            </div>
-            {selectedSampleIds.length > 0 && (
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={CheckmarkFilled}
-                onClick={handleMarkComplete}
-                disabled={isCompleting || !hasRealPageId}
-              >
-                <FormattedMessage
-                  id="notebook.tradmed.formulation.markComplete"
-                  defaultMessage="Mark Complete ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            )}
-          </div>
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.formulation.formulated.inProgress.title"
+              defaultMessage="Formulated (Pending Completion)"
+            />
+            <Tag type="blue" size="sm" className="count-tag">
+              {formulatedInProgressSamples.length}
+            </Tag>
+          </h5>
         </div>
         <div className="sample-grid-container">
           {!loading && formulatedInProgressSamples.length === 0 ? (
@@ -620,11 +645,34 @@ function TraditionalMedicineFormulationPage({
             <SampleGrid
               gridId="formulated-in-progress-samples"
               samples={formulatedInProgressSamples}
+              selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                {
+                  key: "extractYieldPercentage",
+                  header: "Yield %",
+                },
+                {
+                  key: "solventLabel",
+                  header: "Solvent",
+                },
+                {
+                  key: "dryingMethodLabel",
+                  header: "Drying Method",
+                },
+                { key: "formulationType", header: "Formulation Type" },
+                { key: "batchNumber", header: "Batch #" },
+                { key: "manufacturingDate", header: "Manufacturing Date" },
+                { key: "ingredients", header: "Ingredients" },
+                { key: "qcNotes", header: "QC Notes" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -633,8 +681,6 @@ function TraditionalMedicineFormulationPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
-                { key: "formulationType", header: "Type" },
-                { key: "batchNumber", header: "Batch #" },
               ]}
             />
           )}
@@ -663,7 +709,28 @@ function TraditionalMedicineFormulationPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                {
+                  key: "extractYieldPercentage",
+                  header: "Yield %",
+                },
+                {
+                  key: "solventLabel",
+                  header: "Solvent",
+                },
+                {
+                  key: "dryingMethodLabel",
+                  header: "Drying Method",
+                },
+                { key: "formulationType", header: "Formulation Type" },
+                { key: "batchNumber", header: "Batch #" },
+                { key: "manufacturingDate", header: "Manufacturing Date" },
+                { key: "ingredients", header: "Ingredients" },
+                { key: "qcNotes", header: "QC Notes" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -672,8 +739,6 @@ function TraditionalMedicineFormulationPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
-                { key: "formulationType", header: "Type" },
-                { key: "batchNumber", header: "Batch #" },
               ]}
             />
           </div>
