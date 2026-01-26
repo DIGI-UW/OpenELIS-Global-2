@@ -111,6 +111,11 @@ function TraditionalMedicineTestingPage({
     methodology: "",
     expectedResults: "",
     acceptanceCriteria: "",
+    // Analytical QC - SRS Section 5: Analytical QC
+    controlsRun: false,
+    instrumentCalibrationDate: new Date().toISOString().split("T")[0],
+    methodValidation: false,
+    qcNotes: "",
   });
 
   const [testResultsData, setTestResultsData] = useState({
@@ -741,6 +746,17 @@ function TraditionalMedicineTestingPage({
       acceptanceCriteria: assignmentData.acceptanceCriteria,
       status: "ASSIGNED",
       assignedAt: new Date().toISOString(),
+      // Analytical QC - SRS Section 5
+      analyticalQC: {
+        controlsRun: assignmentData.controlsRun,
+        instrumentCalibrationDate: assignmentData.instrumentCalibrationDate,
+        methodValidation: assignmentData.methodValidation,
+        qcNotes: assignmentData.qcNotes,
+        qcResult:
+          assignmentData.controlsRun && assignmentData.instrumentCalibrationDate
+            ? "PREPARED"
+            : "PENDING",
+      },
     };
 
     postToOpenElisServerJsonResponse(
@@ -1861,6 +1877,132 @@ function TraditionalMedicineTestingPage({
               }
               rows={3}
               placeholder="Define pass/fail criteria and quality standards..."
+            />
+          </Column>
+
+          {/* Analytical QC Section - SRS Section 5: Analytical QC */}
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "var(--cds-layer-01)",
+                borderRadius: "4px",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <h5 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem" }}>
+                <FormattedMessage
+                  id="notebook.page.tradmed.testing.qc.title"
+                  defaultMessage="Analytical QC Requirements"
+                />
+              </h5>
+              <p
+                style={{
+                  margin: "0",
+                  fontSize: "0.75rem",
+                  color: "var(--cds-text-secondary)",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.testing.qc.description"
+                  defaultMessage="Controls, standards, instrument calibration, and method validation"
+                />
+              </p>
+            </div>
+          </Column>
+
+          {/* Controls and Standards Checkbox */}
+          <Column lg={8} md={4} sm={2}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <input
+                type="checkbox"
+                id="controlsRun"
+                checked={assignmentData.controlsRun}
+                onChange={(e) =>
+                  setAssignmentData((prev) => ({
+                    ...prev,
+                    controlsRun: e.target.checked,
+                  }))
+                }
+              />
+              <label
+                htmlFor="controlsRun"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.testing.qc.controls"
+                  defaultMessage="Controls & standards run"
+                />
+              </label>
+            </div>
+          </Column>
+
+          {/* Instrument Calibration Date */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <TextInput
+              id="instrumentCalibrationDate"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.testing.qc.calibration_date",
+                defaultMessage: "Instrument Calibration Date",
+              })}
+              type="date"
+              value={assignmentData.instrumentCalibrationDate}
+              onChange={(e) =>
+                setAssignmentData((prev) => ({
+                  ...prev,
+                  instrumentCalibrationDate: e.target.value,
+                }))
+              }
+            />
+          </Column>
+
+          {/* Method Validation Checkbox */}
+          <Column lg={8} md={4} sm={2}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <input
+                type="checkbox"
+                id="methodValidation"
+                checked={assignmentData.methodValidation}
+                onChange={(e) =>
+                  setAssignmentData((prev) => ({
+                    ...prev,
+                    methodValidation: e.target.checked,
+                  }))
+                }
+              />
+              <label
+                htmlFor="methodValidation"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.testing.qc.method_validation"
+                  defaultMessage="Method validation (if new method)"
+                />
+              </label>
+            </div>
+          </Column>
+
+          {/* QC Notes */}
+          <Column lg={16} md={16} sm={4}>
+            <TextArea
+              id="qcNotes"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.testing.qc.notes",
+                defaultMessage: "Analytical QC Notes",
+              })}
+              value={assignmentData.qcNotes}
+              onChange={(e) =>
+                setAssignmentData((prev) => ({
+                  ...prev,
+                  qcNotes: e.target.value,
+                }))
+              }
+              rows={2}
+              placeholder="Record any QC observations or issues..."
             />
           </Column>
         </Grid>

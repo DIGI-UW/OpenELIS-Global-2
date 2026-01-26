@@ -122,6 +122,18 @@ function TraditionalMedicineSampleCreationPage({
     pageData?.id && !String(pageData.id).startsWith("default-");
 
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [qcInspectionModalOpen, setQcInspectionModalOpen] = useState(false);
+  const [qcInspectionData, setQcInspectionData] = useState({
+    contaminationFree: false,
+    adequateCondition: false,
+    visualAppearance: "",
+    microbialCheck: false,
+    pesticideCheck: false,
+    moldCheck: false,
+    qcNotes: "",
+    inspectedBy: "",
+    inspectionDate: new Date().toISOString().split("T")[0],
+  });
 
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, message }) => {
@@ -391,6 +403,83 @@ function TraditionalMedicineSampleCreationPage({
     notify,
   ]);
 
+  // Plant Material QC Inspection handlers
+  const openQcInspectionModal = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.page.tradmed.error.noSelection",
+          defaultMessage: "Please select at least one sample.",
+        }),
+      });
+      return;
+    }
+    setQcInspectionModalOpen(true);
+  }, [selectedSampleIds, intl, notify]);
+
+  const resetQcInspectionForm = useCallback(() => {
+    setQcInspectionData({
+      contaminationFree: false,
+      adequateCondition: false,
+      visualAppearance: "",
+      microbialCheck: false,
+      pesticideCheck: false,
+      moldCheck: false,
+      qcNotes: "",
+      inspectedBy: "",
+      inspectionDate: new Date().toISOString().split("T")[0],
+    });
+  }, []);
+
+  const applyQcInspection = useCallback(async () => {
+    if (
+      !qcInspectionData.contaminationFree ||
+      !qcInspectionData.adequateCondition
+    ) {
+      notify({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({
+          id: "notebook.page.tradmed.qc.warning",
+          defaultMessage:
+            "QC checks not passed. Samples may be flagged for review.",
+        }),
+      });
+    }
+
+    const success = await bulkApplyMetadata(selectedSampleIds, {
+      qcInspection: {
+        contaminationFree: qcInspectionData.contaminationFree,
+        adequateCondition: qcInspectionData.adequateCondition,
+        visualAppearance: qcInspectionData.visualAppearance,
+        microbialCheck: qcInspectionData.microbialCheck,
+        pesticideCheck: qcInspectionData.pesticideCheck,
+        moldCheck: qcInspectionData.moldCheck,
+        qcNotes: qcInspectionData.qcNotes,
+        inspectedBy: qcInspectionData.inspectedBy,
+        inspectionDate: qcInspectionData.inspectionDate,
+        qcResult:
+          qcInspectionData.contaminationFree &&
+          qcInspectionData.adequateCondition
+            ? "PASS"
+            : "FAIL",
+      },
+    });
+
+    if (success) {
+      setQcInspectionModalOpen(false);
+      resetQcInspectionForm();
+      setSelectedSampleIds([]);
+    }
+  }, [
+    qcInspectionData,
+    selectedSampleIds,
+    bulkApplyMetadata,
+    resetQcInspectionForm,
+    intl,
+    notify,
+  ]);
+
   // Split samples: pending (not yet authenticated) vs registered (authenticated and ready for next stage)
   // Per SRS: Registration/advance to next stage happens after authentication is confirmed
   const pendingSamples = useMemo(
@@ -532,6 +621,20 @@ function TraditionalMedicineSampleCreationPage({
           <FormattedMessage
             id="notebook.page.tradmed.markAsRegistered"
             defaultMessage="Mark as Registered ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={Chemistry}
+          onClick={openQcInspectionModal}
+          disabled={!canEditMetadata || selectedSampleIds.length === 0}
+        >
+          <FormattedMessage
+            id="notebook.page.tradmed.qcInspection"
+            defaultMessage="QC Inspection ({count})"
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
@@ -709,6 +812,314 @@ function TraditionalMedicineSampleCreationPage({
         entryId={entryId}
         onImportSuccess={handleImportSuccess}
       />
+
+      {/* Plant Material QC Inspection Modal - SRS Section 5: Quality Control Parameters */}
+      <Modal
+        open={qcInspectionModalOpen}
+        onRequestClose={() => {
+          setQcInspectionModalOpen(false);
+          resetQcInspectionForm();
+        }}
+        onRequestSubmit={applyQcInspection}
+        modalHeading={intl.formatMessage({
+          id: "notebook.page.tradmed.qcInspection.title",
+          defaultMessage: "Plant Material QC Inspection",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "notebook.page.tradmed.qcInspection.apply",
+          defaultMessage: "Apply QC Inspection",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
+        size="lg"
+      >
+        <Grid narrow>
+          {/* QC Inspection Requirements from SRS Section 5 */}
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "var(--cds-layer-01)",
+                borderRadius: "4px",
+                marginBottom: "1rem",
+              }}
+            >
+              <h5 style={{ margin: "0 0 0.5rem 0" }}>
+                <FormattedMessage
+                  id="notebook.page.tradmed.qc.requirements"
+                  defaultMessage="Plant Material QC Requirements"
+                />
+              </h5>
+              <ul
+                style={{
+                  margin: "0.5rem 0",
+                  paddingLeft: "1.5rem",
+                  fontSize: "0.875rem",
+                }}
+              >
+                <li>
+                  <FormattedMessage
+                    id="notebook.page.tradmed.qc.correct_species"
+                    defaultMessage="Correct species (authenticated)"
+                  />
+                </li>
+                <li>
+                  <FormattedMessage
+                    id="notebook.page.tradmed.qc.free_contamination"
+                    defaultMessage="Free from contamination (microbial, pesticides)"
+                  />
+                </li>
+                <li>
+                  <FormattedMessage
+                    id="notebook.page.tradmed.qc.adequate_condition"
+                    defaultMessage="Adequate condition (not spoiled, moldy)"
+                  />
+                </li>
+              </ul>
+            </div>
+          </Column>
+
+          {/* Contamination-Free Checkbox */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <input
+                type="checkbox"
+                id="contaminationFree"
+                checked={qcInspectionData.contaminationFree}
+                onChange={(e) =>
+                  setQcInspectionData((prev) => ({
+                    ...prev,
+                    contaminationFree: e.target.checked,
+                  }))
+                }
+              />
+              <label
+                htmlFor="contaminationFree"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.qc.free_contamination"
+                  defaultMessage="Free from contamination"
+                />
+              </label>
+            </div>
+          </Column>
+
+          {/* Adequate Condition Checkbox */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <input
+                type="checkbox"
+                id="adequateCondition"
+                checked={qcInspectionData.adequateCondition}
+                onChange={(e) =>
+                  setQcInspectionData((prev) => ({
+                    ...prev,
+                    adequateCondition: e.target.checked,
+                  }))
+                }
+              />
+              <label
+                htmlFor="adequateCondition"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.qc.adequate_condition"
+                  defaultMessage="Adequate condition"
+                />
+              </label>
+            </div>
+          </Column>
+
+          {/* Visual Appearance Dropdown */}
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <Dropdown
+              id="visualAppearance"
+              titleText={intl.formatMessage({
+                id: "notebook.page.tradmed.qc.visual_appearance",
+                defaultMessage: "Visual Appearance",
+              })}
+              label="Select appearance..."
+              items={[
+                { id: "normal", text: "Normal/Good" },
+                { id: "discolored", text: "Discolored" },
+                { id: "moldy", text: "Moldy/Fungal Growth" },
+                { id: "insect_damage", text: "Insect Damage" },
+                { id: "damaged", text: "Physically Damaged" },
+              ]}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={
+                qcInspectionData.visualAppearance
+                  ? [
+                      { id: "normal", text: "Normal/Good" },
+                      { id: "discolored", text: "Discolored" },
+                      { id: "moldy", text: "Moldy/Fungal Growth" },
+                      { id: "insect_damage", text: "Insect Damage" },
+                      { id: "damaged", text: "Physically Damaged" },
+                    ].find((i) => i.id === qcInspectionData.visualAppearance) ||
+                    null
+                  : null
+              }
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  setQcInspectionData((prev) => ({
+                    ...prev,
+                    visualAppearance: selectedItem.id,
+                  }));
+                }
+              }}
+            />
+          </Column>
+
+          {/* Microbial Check */}
+          <Column lg={8} md={4} sm={2}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <input
+                type="checkbox"
+                id="microbialCheck"
+                checked={qcInspectionData.microbialCheck}
+                onChange={(e) =>
+                  setQcInspectionData((prev) => ({
+                    ...prev,
+                    microbialCheck: e.target.checked,
+                  }))
+                }
+              />
+              <label
+                htmlFor="microbialCheck"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.qc.microbial_check"
+                  defaultMessage="Microbial test required"
+                />
+              </label>
+            </div>
+          </Column>
+
+          {/* Pesticide Check */}
+          <Column lg={8} md={4} sm={2}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <input
+                type="checkbox"
+                id="pesticideCheck"
+                checked={qcInspectionData.pesticideCheck}
+                onChange={(e) =>
+                  setQcInspectionData((prev) => ({
+                    ...prev,
+                    pesticideCheck: e.target.checked,
+                  }))
+                }
+              />
+              <label
+                htmlFor="pesticideCheck"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.qc.pesticide_check"
+                  defaultMessage="Pesticide test required"
+                />
+              </label>
+            </div>
+          </Column>
+
+          {/* Mold Check */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <input
+                type="checkbox"
+                id="moldCheck"
+                checked={qcInspectionData.moldCheck}
+                onChange={(e) =>
+                  setQcInspectionData((prev) => ({
+                    ...prev,
+                    moldCheck: e.target.checked,
+                  }))
+                }
+              />
+              <label
+                htmlFor="moldCheck"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.qc.mold_check"
+                  defaultMessage="Mold test required"
+                />
+              </label>
+            </div>
+          </Column>
+
+          {/* Inspected By */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <TextInput
+              id="inspectedBy"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.qc.inspected_by",
+                defaultMessage: "Inspected By",
+              })}
+              value={qcInspectionData.inspectedBy}
+              onChange={(e) =>
+                setQcInspectionData((prev) => ({
+                  ...prev,
+                  inspectedBy: e.target.value,
+                }))
+              }
+              placeholder="Inspector name or ID"
+            />
+          </Column>
+
+          {/* Inspection Date */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <TextInput
+              id="inspectionDate"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.qc.inspection_date",
+                defaultMessage: "Inspection Date",
+              })}
+              type="date"
+              value={qcInspectionData.inspectionDate}
+              onChange={(e) =>
+                setQcInspectionData((prev) => ({
+                  ...prev,
+                  inspectionDate: e.target.value,
+                }))
+              }
+            />
+          </Column>
+
+          {/* QC Notes */}
+          <Column lg={16} md={16} sm={4}>
+            <TextArea
+              id="qcNotes"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.qc.notes",
+                defaultMessage: "QC Inspection Notes",
+              })}
+              value={qcInspectionData.qcNotes}
+              onChange={(e) =>
+                setQcInspectionData((prev) => ({
+                  ...prev,
+                  qcNotes: e.target.value,
+                }))
+              }
+              rows={3}
+              placeholder="Record any observations, anomalies, or special conditions..."
+            />
+          </Column>
+        </Grid>
+      </Modal>
 
       {/* Authentication Modal removed - now handled on Stage 2 (TraditionalMedicineAuthenticationPage) */}
     </div>

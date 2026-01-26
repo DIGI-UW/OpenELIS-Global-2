@@ -117,6 +117,13 @@ function TraditionalMedicineExtractionPage({
   const [extractWeight, setExtractWeight] = useState("");
   const [extractNotes, setExtractNotes] = useState("");
 
+  // Extract Quality Assessment - SRS Section 5: Extraction QC
+  const [extractColor, setExtractColor] = useState("");
+  const [extractOdor, setExtractOdor] = useState("");
+  const [extractConsistency, setExtractConsistency] = useState("");
+  const [extractContaminationFree, setExtractContaminationFree] =
+    useState(false);
+
   const solventOptions = [
     { id: "ethanol", label: "Ethanol" },
     { id: "methanol", label: "Methanol" },
@@ -229,6 +236,11 @@ function TraditionalMedicineExtractionPage({
     setConcentrationMethod(null);
     setExtractWeight("");
     setExtractNotes("");
+    // Reset QC fields
+    setExtractColor("");
+    setExtractOdor("");
+    setExtractConsistency("");
+    setExtractContaminationFree(false);
   }, []);
 
   const openModal = useCallback(() => {
@@ -295,6 +307,17 @@ function TraditionalMedicineExtractionPage({
         concentrationMethod: concentrationMethod?.id || null,
         extractWeight,
         notes: extractNotes,
+        // Extract Quality Assessment - SRS Section 5
+        extractQuality: {
+          color: extractColor,
+          odor: extractOdor,
+          consistency: extractConsistency,
+          contaminationFree: extractContaminationFree,
+          qcResult:
+            extractColor && extractConsistency && extractContaminationFree
+              ? "PASS"
+              : "PENDING",
+        },
       }),
       (response) => {
         setIsApplyingExtraction(false);
@@ -938,6 +961,183 @@ function TraditionalMedicineExtractionPage({
               onChange={(e) => setExtractNotes(e.target.value)}
               rows={2}
             />
+          </Column>
+
+          {/* Extract Quality Assessment - SRS Section 5: Extraction QC */}
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "var(--cds-layer-01)",
+                borderRadius: "4px",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <h5 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem" }}>
+                <FormattedMessage
+                  id="notebook.page.tradmed.extraction.qc.title"
+                  defaultMessage="Extract Quality Assessment"
+                />
+              </h5>
+              <p
+                style={{
+                  margin: "0",
+                  fontSize: "0.75rem",
+                  color: "var(--cds-text-secondary)",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.extraction.qc.description"
+                  defaultMessage="Assess extract quality: color, odor, consistency, and contamination"
+                />
+              </p>
+            </div>
+          </Column>
+
+          {/* Extract Color Dropdown */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <Dropdown
+              id="extractColor"
+              titleText={intl.formatMessage({
+                id: "notebook.page.tradmed.extraction.qc.color",
+                defaultMessage: "Extract Color",
+              })}
+              label="Select color..."
+              items={[
+                { id: "clear", text: "Clear" },
+                { id: "pale_yellow", text: "Pale Yellow" },
+                { id: "yellow", text: "Yellow" },
+                { id: "brown", text: "Brown" },
+                { id: "dark_brown", text: "Dark Brown" },
+                { id: "black", text: "Black" },
+                { id: "green", text: "Green" },
+                { id: "red", text: "Red" },
+                { id: "other", text: "Other" },
+              ]}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={
+                extractColor
+                  ? [
+                      { id: "clear", text: "Clear" },
+                      { id: "pale_yellow", text: "Pale Yellow" },
+                      { id: "yellow", text: "Yellow" },
+                      { id: "brown", text: "Brown" },
+                      { id: "dark_brown", text: "Dark Brown" },
+                      { id: "black", text: "Black" },
+                      { id: "green", text: "Green" },
+                      { id: "red", text: "Red" },
+                      { id: "other", text: "Other" },
+                    ].find((i) => i.id === extractColor) || null
+                  : null
+              }
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  setExtractColor(selectedItem.id);
+                }
+              }}
+            />
+          </Column>
+
+          {/* Extract Odor Dropdown */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <Dropdown
+              id="extractOdor"
+              titleText={intl.formatMessage({
+                id: "notebook.page.tradmed.extraction.qc.odor",
+                defaultMessage: "Extract Odor",
+              })}
+              label="Select odor..."
+              items={[
+                { id: "no_odor", text: "No Odor" },
+                { id: "mild", text: "Mild" },
+                { id: "aromatic", text: "Aromatic" },
+                { id: "strong", text: "Strong" },
+                { id: "unpleasant", text: "Unpleasant" },
+                { id: "musty", text: "Musty (Indicates Contamination)" },
+              ]}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={
+                extractOdor
+                  ? [
+                      { id: "no_odor", text: "No Odor" },
+                      { id: "mild", text: "Mild" },
+                      { id: "aromatic", text: "Aromatic" },
+                      { id: "strong", text: "Strong" },
+                      { id: "unpleasant", text: "Unpleasant" },
+                      { id: "musty", text: "Musty (Indicates Contamination)" },
+                    ].find((i) => i.id === extractOdor) || null
+                  : null
+              }
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  setExtractOdor(selectedItem.id);
+                }
+              }}
+            />
+          </Column>
+
+          {/* Extract Consistency Dropdown */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <Dropdown
+              id="extractConsistency"
+              titleText={intl.formatMessage({
+                id: "notebook.page.tradmed.extraction.qc.consistency",
+                defaultMessage: "Extract Consistency",
+              })}
+              label="Select consistency..."
+              items={[
+                { id: "liquid", text: "Liquid" },
+                { id: "syrup", text: "Syrupy" },
+                { id: "paste", text: "Paste" },
+                { id: "powder", text: "Powder" },
+                { id: "solid", text: "Solid/Cake" },
+              ]}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItem={
+                extractConsistency
+                  ? [
+                      { id: "liquid", text: "Liquid" },
+                      { id: "syrup", text: "Syrupy" },
+                      { id: "paste", text: "Paste" },
+                      { id: "powder", text: "Powder" },
+                      { id: "solid", text: "Solid/Cake" },
+                    ].find((i) => i.id === extractConsistency) || null
+                  : null
+              }
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  setExtractConsistency(selectedItem.id);
+                }
+              }}
+            />
+          </Column>
+
+          {/* Contamination-Free Checkbox */}
+          <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                marginTop: "1.5rem",
+              }}
+            >
+              <input
+                type="checkbox"
+                id="extractContaminationFree"
+                checked={extractContaminationFree}
+                onChange={(e) => setExtractContaminationFree(e.target.checked)}
+              />
+              <label
+                htmlFor="extractContaminationFree"
+                style={{ margin: "0", fontSize: "0.875rem" }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.extraction.qc.contamination_free"
+                  defaultMessage="Free from contamination"
+                />
+              </label>
+            </div>
           </Column>
         </Grid>
       </Modal>
