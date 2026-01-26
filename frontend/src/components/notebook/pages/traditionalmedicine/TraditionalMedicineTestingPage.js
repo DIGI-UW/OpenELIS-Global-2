@@ -1416,7 +1416,13 @@ function TraditionalMedicineTestingPage({
           id: "label.cancel",
           defaultMessage: "Cancel",
         })}
-        primaryButtonDisabled={isApplying || !assignmentData.specificTest}
+        primaryButtonDisabled={
+          isApplying ||
+          !assignmentData.specificTest ||
+          (assignmentData.category &&
+            getTMMRDMethodologies(assignmentData.category).length > 0 &&
+            !assignmentData.methodology)
+        }
         size="lg"
       >
         {isApplying && <Loading withOverlay={false} small />}
