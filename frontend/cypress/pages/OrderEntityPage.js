@@ -47,7 +47,8 @@ class OrderEntityPage {
   referTest() {
     cy.contains("span", "Refer test to a reference lab").click();
     // Wait for referral fields to render after checkbox is clicked
-    cy.get("#referralReasonId_0_1", { timeout: 10000 }).should("be.visible");
+    cy.get("#referralReasonId_0_1", { timeout: 10000 })
+      .should("be.visible");
   }
 
   selectInstitute() {

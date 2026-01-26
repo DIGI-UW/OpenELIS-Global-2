@@ -68,7 +68,6 @@ import {
 } from "../utils/Utils";
 import { Add, Json } from "@carbon/icons-react";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
-import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
@@ -119,6 +118,10 @@ const NoteBookEntryForm = () => {
   const [selectedTab, setSelectedTab] = useState(TABS.ENTRY_DETAILS);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [auditTrailItems, setAuditTrailItems] = useState([]);
+  const [auditTrailLoading, setAuditTrailLoading] = useState(false);
+  const [auditTrailPage, setAuditTrailPage] = useState(1);
+  const [auditTrailPageSize, setAuditTrailPageSize] = useState(10);
   const [sampleTypes, setSampleTypes] = useState([]);
   const [pageSampleTypeTests, setPageSampleTypeTests] = useState(
     sampleTypeTestsStructure,
@@ -254,6 +257,8 @@ const NoteBookEntryForm = () => {
       });
       // Reload data to get comments with proper id and author from backend
       getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
+      // Reload audit trail after save
+      loadAuditTrail(body.id);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -702,10 +707,55 @@ const NoteBookEntryForm = () => {
             },
           );
         }
+        // Load audit trail
+        loadAuditTrail(data.id);
         setLoading(false);
         setInitialMount(true);
       }
     }
+  };
+
+  const loadAuditTrail = (notebookId) => {
+    if (!notebookId) {
+      return;
+    }
+    setAuditTrailLoading(true);
+    getFromOpenElisServer(
+      "/rest/notebook/auditTrail?notebookId=" + notebookId,
+      (data) => {
+        if (data && data.log && Array.isArray(data.log)) {
+          const updatedAuditTrailItems = data.log.map((item, index) => {
+            // Format time from timestamp as "DD/MM/YYYY HH:MM"
+            let formattedTime = "-";
+            if (item.timeStamp) {
+              const date = new Date(item.timeStamp);
+              formattedTime = date.toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              });
+            }
+            return { ...item, id: index + 1, time: formattedTime };
+          });
+          setAuditTrailItems(updatedAuditTrailItems);
+        } else {
+          setAuditTrailItems([]);
+        }
+        setAuditTrailLoading(false);
+      },
+      () => {
+        setAuditTrailItems([]);
+        setAuditTrailLoading(false);
+      },
+    );
+  };
+
+  const handleAuditTrailPageChange = (pageInfo) => {
+    setAuditTrailPage(pageInfo.page);
+    setAuditTrailPageSize(pageInfo.pageSize);
   };
 
   useEffect(() => {
@@ -1715,10 +1765,142 @@ const NoteBookEntryForm = () => {
           </Column>
         )}
         {selectedTab === TABS.AUDIT_TRAIL && (
-          <NotebookAuditLogViewer
-            entityType="NOTEBOOK"
-            entityId={noteBookData.id}
-          />
+          <Column lg={16} md={8} sm={4}>
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={16} md={8} sm={4}>
+                <h5>
+                  <FormattedMessage id="notebook.auditTrail.title" />
+                </h5>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <br />
+              </Column>
+              {auditTrailLoading ? (
+                <Column lg={16} md={8} sm={4}>
+                  <Loading />
+                </Column>
+              ) : auditTrailItems.length === 0 ? (
+                <Column lg={16} md={8} sm={4}>
+                  <InlineNotification
+                    kind="info"
+                    title={intl.formatMessage({
+                      id: "notebook.auditTrail.none.title",
+                    })}
+                    subtitle={intl.formatMessage({
+                      id: "notebook.auditTrail.none.subtitle",
+                    })}
+                  />
+                </Column>
+              ) : (
+                <Column lg={16} md={8} sm={4}>
+                  <DataTable
+                    rows={auditTrailItems}
+                    headers={[
+                      {
+                        key: "user",
+                        header: intl.formatMessage({
+                          id: "audittrail.table.heading.user",
+                        }),
+                      },
+                      {
+                        key: "action",
+                        header: intl.formatMessage({
+                          id: "audittrail.table.heading.action",
+                        }),
+                      },
+                      {
+                        key: "time",
+                        header: intl.formatMessage({
+                          id: "audittrail.table.heading.time",
+                        }),
+                      },
+                    ]}
+                    isSortable
+                  >
+                    {({ rows, headers, getHeaderProps, getTableProps }) => (
+                      <TableContainer>
+                        <Table {...getTableProps()}>
+                          <TableHead>
+                            <TableRow>
+                              {headers.map((header) => (
+                                <TableHeader
+                                  key={header.key}
+                                  {...getHeaderProps({ header })}
+                                >
+                                  {header.header}
+                                </TableHeader>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {rows
+                              .slice((auditTrailPage - 1) * auditTrailPageSize)
+                              .slice(0, auditTrailPageSize)
+                              .map((row) => (
+                                <TableRow key={row.id}>
+                                  {row.cells.map((cell) => {
+                                    let cellValue = cell.value || "-";
+                                    // Translate action if it's a message code
+
+                                    if (cell.info.header === "action") {
+                                      cellValue = intl.formatMessage({
+                                        id: cellValue,
+                                      });
+                                    }
+                                    return (
+                                      <TableCell key={cell.id}>
+                                        {cellValue}
+                                      </TableCell>
+                                    );
+                                  })}
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    )}
+                  </DataTable>
+                  <Pagination
+                    onChange={handleAuditTrailPageChange}
+                    page={auditTrailPage}
+                    pageSize={auditTrailPageSize}
+                    pageSizes={[10, 30, 50, 100]}
+                    totalItems={auditTrailItems.length}
+                    forwardText={intl.formatMessage({
+                      id: "pagination.forward",
+                    })}
+                    backwardText={intl.formatMessage({
+                      id: "pagination.backward",
+                    })}
+                    itemRangeText={(min, max, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.item-range" },
+                        { min: min, max: max, total: total },
+                      )
+                    }
+                    itemsPerPageText={intl.formatMessage({
+                      id: "pagination.items-per-page",
+                    })}
+                    itemText={(min, max) =>
+                      intl.formatMessage(
+                        { id: "pagination.item" },
+                        { min: min, max: max },
+                      )
+                    }
+                    pageNumberText={intl.formatMessage({
+                      id: "pagination.page-number",
+                    })}
+                    pageRangeText={(_current, total) =>
+                      intl.formatMessage(
+                        { id: "pagination.page-range" },
+                        { total: total },
+                      )
+                    }
+                  />
+                </Column>
+              )}
+            </Grid>
+          </Column>
         )}
       </Grid>
       <Modal
