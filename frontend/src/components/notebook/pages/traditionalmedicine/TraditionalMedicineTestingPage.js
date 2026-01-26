@@ -346,6 +346,178 @@ function TraditionalMedicineTestingPage({
             unit: "mg/kg",
           },
         ];
+      case "MORPHOLOGICAL":
+        return [
+          {
+            id: "MORPHOLOGICAL_IDENTIFICATION",
+            text: "Plant Morphological Identification",
+            unit: "",
+          },
+          {
+            id: "MORPHOLOGICAL_COMPARISON",
+            text: "Morphological Comparison",
+            unit: "",
+          },
+        ];
+      case "MICROSCOPIC":
+        return [
+          {
+            id: "MICROSCOPIC_EXAMINATION",
+            text: "Microscopic Examination",
+            unit: "",
+          },
+          { id: "POWDER_MICROSCOPY", text: "Powder Microscopy", unit: "" },
+        ];
+      case "DNA_BARCODING":
+        return [
+          { id: "DNA_SEQUENCING", text: "DNA Sequencing", unit: "" },
+          {
+            id: "DNA_BARCODING_ANALYSIS",
+            text: "DNA Barcoding Analysis",
+            unit: "",
+          },
+        ];
+      case "PROTEIN_PROFILING":
+        return [
+          { id: "PROTEIN_ANALYSIS", text: "Protein Electrophoresis", unit: "" },
+          { id: "WESTERN_BLOT", text: "Western Blot", unit: "" },
+        ];
+      case "CHEMICAL_TESTS":
+        return [
+          { id: "ALKALOID_TEST", text: "Alkaloid Test", unit: "" },
+          { id: "FLAVONOID_TEST", text: "Flavonoid Test", unit: "" },
+          { id: "TANNIN_TEST", text: "Tannin Test", unit: "" },
+          { id: "SAPONIN_TEST", text: "Saponin Test", unit: "" },
+          { id: "TERPENOID_TEST", text: "Terpenoid Test", unit: "" },
+          { id: "GLYCOSIDE_TEST", text: "Glycoside Test", unit: "" },
+        ];
+      case "QUANTITATIVE":
+        return [
+          {
+            id: "HPLC_QUANTITATIVE",
+            text: "HPLC Quantitative Analysis",
+            unit: "mg/kg",
+          },
+          {
+            id: "GC_QUANTITATIVE",
+            text: "GC Quantitative Analysis",
+            unit: "mg/kg",
+          },
+        ];
+      case "SPECTROSCOPY":
+        return [
+          { id: "UV_VIS_SPEC", text: "UV-Visible Spectroscopy", unit: "" },
+          { id: "IR_SPEC", text: "Infrared Spectroscopy", unit: "" },
+          { id: "NMR_SPEC", text: "NMR Spectroscopy", unit: "" },
+        ];
+      case "MASS_SPECTROMETRY":
+        return [
+          { id: "GC_MS_ANALYSIS", text: "GC-MS Analysis", unit: "" },
+          { id: "LC_MS_ANALYSIS", text: "LC-MS Analysis", unit: "" },
+          { id: "MALDI_MS", text: "MALDI-MS Analysis", unit: "" },
+        ];
+      case "ANTI_INFLAMMATORY":
+        return [
+          {
+            id: "ANTI_INFLAMMATORY_ASSAY",
+            text: "Anti-inflammatory Assay",
+            unit: "% inhibition",
+          },
+          {
+            id: "CYTOKINE_MEASUREMENT",
+            text: "Cytokine Measurement",
+            unit: "ng/mL",
+          },
+        ];
+      case "ANTICANCER":
+        return [
+          {
+            id: "MTT_VIABILITY",
+            text: "MTT Cell Viability Assay",
+            unit: "% viability",
+          },
+          {
+            id: "APOPTOSIS_ASSAY",
+            text: "Apoptosis Assay",
+            unit: "% apoptotic",
+          },
+          {
+            id: "CELL_PROLIFERATION",
+            text: "Cell Proliferation Assay",
+            unit: "",
+          },
+        ];
+      case "CYTOTOXICITY":
+        return [
+          {
+            id: "CYTOTOXICITY_ASSAY",
+            text: "Cytotoxicity Assay",
+            unit: "IC50",
+          },
+          {
+            id: "VIABILITY_TEST",
+            text: "Cell Viability Test",
+            unit: "% viability",
+          },
+        ];
+      case "GENOTOXICITY":
+        return [
+          { id: "MICRONUCLEUS_TEST", text: "Micronucleus Test", unit: "" },
+          { id: "COMET_ASSAY", text: "Comet Assay (SCGE)", unit: "" },
+        ];
+      case "STABILITY":
+        return [
+          {
+            id: "ACCELERATED_STABILITY",
+            text: "Accelerated Stability Study",
+            unit: "",
+          },
+          {
+            id: "LONG_TERM_STABILITY",
+            text: "Long-term Stability Study",
+            unit: "",
+          },
+        ];
+      case "PURITY":
+        return [
+          { id: "HPLC_PURITY", text: "HPLC Purity Analysis", unit: "%" },
+          {
+            id: "RESIDUAL_SOLVENTS",
+            text: "Residual Solvents Analysis",
+            unit: "ppm",
+          },
+        ];
+      case "DEVELOPMENT":
+        return [
+          {
+            id: "FORMULATION_OPTIMIZATION",
+            text: "Formulation Optimization",
+            unit: "",
+          },
+          { id: "EXCIPIENT_SCREENING", text: "Excipient Screening", unit: "" },
+        ];
+      case "COMPATIBILITY":
+        return [
+          {
+            id: "EXCIPIENT_COMPATIBILITY",
+            text: "Excipient Compatibility Testing",
+            unit: "",
+          },
+          {
+            id: "STABILITY_INDICATION",
+            text: "Stability-Indicating Method",
+            unit: "",
+          },
+        ];
+      case "BIOAVAILABILITY":
+        return [
+          {
+            id: "BIOAVAILABILITY_STUDY",
+            text: "Bioavailability Study",
+            unit: "ng/mL",
+          },
+          { id: "DISSOLUTION_STUDY", text: "Dissolution Study", unit: "%" },
+        ];
       default:
         return [];
     }
