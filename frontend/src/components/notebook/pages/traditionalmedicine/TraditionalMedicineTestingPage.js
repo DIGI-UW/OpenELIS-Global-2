@@ -1199,7 +1199,7 @@ function TraditionalMedicineTestingPage({
                 {
                   key: "assignedTests",
                   header: "Assigned Tests",
-                  render: (sample) => (
+                  render: (_value, sample) => (
                     <div>
                       {sample.assignedTests.map((test, idx) => (
                         <div key={idx} style={{ marginBottom: "0.5rem" }}>
@@ -1234,7 +1234,7 @@ function TraditionalMedicineTestingPage({
                 {
                   key: "actions",
                   header: "Actions",
-                  render: (sample) => (
+                  render: (_value, sample) => (
                     <Button
                       kind="ghost"
                       size="sm"
@@ -1290,7 +1290,7 @@ function TraditionalMedicineTestingPage({
                 {
                   key: "assignedTests",
                   header: "Assigned Tests",
-                  render: (sample) => (
+                  render: (_value, sample) => (
                     <div>
                       {sample.assignedTests.map((test, idx) => (
                         <div key={idx} style={{ marginBottom: "0.5rem" }}>
