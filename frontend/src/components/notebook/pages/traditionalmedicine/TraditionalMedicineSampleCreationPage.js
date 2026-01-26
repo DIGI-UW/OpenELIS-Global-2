@@ -145,117 +145,138 @@ function TraditionalMedicineSampleCreationPage({
   );
 
   const bulkApplyMetadata = useCallback(
-    async (sampleIds, data) => {
-      if (!hasRealPageId) return false;
+    (sampleIds, data) => {
+      return new Promise((resolve) => {
+        if (!hasRealPageId) {
+          resolve(false);
+          return;
+        }
 
-      try {
-        const response = await postToOpenElisServerJsonResponse(
+        postToOpenElisServerJsonResponse(
           `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
           JSON.stringify({
             sampleIds: sampleIds.map((id) => parseInt(id, 10)),
             data: data,
           }),
+          (response) => {
+            if (response?.success) {
+              notify({
+                kind: NotificationKinds.success,
+                title: intl.formatMessage({
+                  id: "notification.bulk.apply.success",
+                }),
+                message: intl.formatMessage(
+                  { id: "notification.bulk.apply.samples.count" },
+                  { count: response.updatedCount },
+                ),
+              });
+              resolve(true);
+            } else if (response?.error) {
+              notify({
+                kind: NotificationKinds.error,
+                title: intl.formatMessage({
+                  id: "notification.bulk.apply.error",
+                }),
+                message:
+                  response.message || "Failed to apply metadata to samples",
+              });
+              resolve(false);
+            } else {
+              resolve(false);
+            }
+          },
         );
-
-        if (response.success) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({
-              id: "notification.bulk.apply.success",
-            }),
-            message: intl.formatMessage(
-              { id: "notification.bulk.apply.samples.count" },
-              { count: response.updatedCount },
-            ),
-          });
-          return true;
-        }
-        return false;
-      } catch (error) {
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({ id: "notification.bulk.apply.error" }),
-          message: error.message || "Failed to apply metadata to samples",
-        });
-        return false;
-      }
+      });
     },
     [hasRealPageId, pageData?.id, notify, intl],
   );
 
   const bulkAdvanceSamples = useCallback(
-    async (sampleIds, targetPageIndex = 2) => {
-      try {
-        const response = await postToOpenElisServerJsonResponse(
+    (sampleIds, targetPageIndex = 2) => {
+      return new Promise((resolve) => {
+        postToOpenElisServerJsonResponse(
           `/rest/notebook/${entryId}/samples/advance`,
           JSON.stringify({
             sampleIds: sampleIds.map((id) => parseInt(id, 10)),
             fromPageId: pageData.id,
             toPageIndex: targetPageIndex,
           }),
+          (response) => {
+            if (response?.success) {
+              notify({
+                kind: NotificationKinds.success,
+                title: intl.formatMessage({
+                  id: "notification.samples.advanced",
+                }),
+                message: intl.formatMessage(
+                  { id: "notification.samples.advanced.count" },
+                  { count: response.advancedCount, stage: targetPageIndex },
+                ),
+              });
+              resolve(true);
+            } else if (response?.error) {
+              notify({
+                kind: NotificationKinds.error,
+                title: intl.formatMessage({
+                  id: "notification.samples.advance.error",
+                }),
+                message:
+                  response.message || "Failed to advance samples to next stage",
+              });
+              resolve(false);
+            } else {
+              resolve(false);
+            }
+          },
         );
-
-        if (response.success) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({ id: "notification.samples.advanced" }),
-            message: intl.formatMessage(
-              { id: "notification.samples.advanced.count" },
-              { count: response.advancedCount, stage: targetPageIndex },
-            ),
-          });
-          return true;
-        }
-        return false;
-      } catch (error) {
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({
-            id: "notification.samples.advance.error",
-          }),
-          message: error.message || "Failed to advance samples to next stage",
-        });
-        return false;
-      }
+      });
     },
     [entryId, pageData?.id, notify, intl],
   );
 
   const markSamplesCompleted = useCallback(
-    async (sampleIds) => {
-      if (!hasRealPageId) return false;
+    (sampleIds) => {
+      return new Promise((resolve) => {
+        if (!hasRealPageId) {
+          resolve(false);
+          return;
+        }
 
-      try {
-        const response = await postToOpenElisServerJsonResponse(
+        postToOpenElisServerJsonResponse(
           `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
           JSON.stringify({
             sampleIds: sampleIds.map((id) => parseInt(id, 10)),
             status: "COMPLETED",
           }),
+          (response) => {
+            if (response?.success) {
+              notify({
+                kind: NotificationKinds.success,
+                title: intl.formatMessage({
+                  id: "notification.samples.completed",
+                }),
+                message: intl.formatMessage(
+                  { id: "notification.samples.completed.count" },
+                  { count: response.updatedCount },
+                ),
+              });
+              resolve(true);
+            } else if (response?.error) {
+              notify({
+                kind: NotificationKinds.error,
+                title: intl.formatMessage({
+                  id: "notification.samples.complete.error",
+                }),
+                message:
+                  response.message || "Failed to mark samples as completed",
+              });
+              resolve(false);
+            } else {
+              resolve(false);
+            }
+          },
         );
-
-        if (response.success) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({ id: "notification.samples.completed" }),
-            message: intl.formatMessage(
-              { id: "notification.samples.completed.count" },
-              { count: response.updatedCount },
-            ),
-          });
-          return true;
-        }
-        return false;
-      } catch (error) {
-        notify({
-          kind: NotificationKinds.error,
-          title: intl.formatMessage({
-            id: "notification.samples.complete.error",
-          }),
-          message: error.message || "Failed to mark samples as completed",
-        });
-        return false;
-      }
+      });
     },
     [hasRealPageId, pageData?.id, notify, intl],
   );
@@ -453,31 +474,45 @@ function TraditionalMedicineSampleCreationPage({
       return;
     }
 
-    const success = await bulkApplyMetadata(selectedSampleIds, {
-      qcInspection: {
-        contaminationFree: qcInspectionData.contaminationFree,
-        adequateCondition: qcInspectionData.adequateCondition,
-        visualAppearance: qcInspectionData.visualAppearance,
-        microbialCheck: qcInspectionData.microbialCheck,
-        pesticideCheck: qcInspectionData.pesticideCheck,
-        moldCheck: qcInspectionData.moldCheck,
-        qcNotes: qcInspectionData.qcNotes,
-        inspectedBy: qcInspectionData.inspectedBy,
-        inspectionDate: qcInspectionData.inspectionDate,
-        qcResult: qcInspectionData.qcResult, // Use the selected radio button value
-      },
-    });
+    try {
+      const success = await bulkApplyMetadata(selectedSampleIds, {
+        qcInspection: {
+          contaminationFree: qcInspectionData.contaminationFree,
+          adequateCondition: qcInspectionData.adequateCondition,
+          visualAppearance: qcInspectionData.visualAppearance,
+          microbialCheck: qcInspectionData.microbialCheck,
+          pesticideCheck: qcInspectionData.pesticideCheck,
+          moldCheck: qcInspectionData.moldCheck,
+          qcNotes: qcInspectionData.qcNotes,
+          inspectedBy: qcInspectionData.inspectedBy,
+          inspectionDate: qcInspectionData.inspectionDate,
+          qcResult: qcInspectionData.qcResult, // Use the selected radio button value
+        },
+      });
 
-    if (success) {
-      setQcInspectionModalOpen(false);
-      resetQcInspectionForm();
-      setSelectedSampleIds([]);
+      if (success) {
+        setQcInspectionModalOpen(false);
+        resetQcInspectionForm();
+        setSelectedSampleIds([]);
+        loadPageSamples(); // Refresh samples to show updated QC status
+      }
+    } catch (error) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.page.tradmed.qc.error.apply",
+          defaultMessage: "Failed to apply QC inspection",
+        }),
+        message:
+          error.message || "An error occurred while applying QC inspection",
+      });
     }
   }, [
     qcInspectionData,
     selectedSampleIds,
     bulkApplyMetadata,
     resetQcInspectionForm,
+    loadPageSamples,
     intl,
     notify,
   ]);
