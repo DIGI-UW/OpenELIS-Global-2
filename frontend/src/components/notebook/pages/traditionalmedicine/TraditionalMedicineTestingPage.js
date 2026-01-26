@@ -1043,7 +1043,9 @@ function TraditionalMedicineTestingPage({
                   defaultMessage="Tests Assigned"
                 />
               </span>
-              <span className="progress-value">{pendingSamples.length}</span>
+              <span className="progress-value">
+                {assignedCompletedSamples.length}
+              </span>
             </Tile>
           </div>
         </Column>

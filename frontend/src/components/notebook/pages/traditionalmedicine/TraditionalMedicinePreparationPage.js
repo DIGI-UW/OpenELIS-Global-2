@@ -571,7 +571,9 @@ function TraditionalMedicinePreparationPage({
                   defaultMessage="Prepared"
                 />
               </span>
-              <span className="progress-value">{unpreparedSamples.length}</span>
+              <span className="progress-value">
+                {preparedCompletedSamples.length}
+              </span>
             </Tile>
           </div>
         </Column>

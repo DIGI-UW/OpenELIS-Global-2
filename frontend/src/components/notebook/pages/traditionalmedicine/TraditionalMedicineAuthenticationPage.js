@@ -555,7 +555,9 @@ function TraditionalMedicineAuthenticationPage({
                   defaultMessage="Authenticated"
                 />
               </span>
-              <span className="progress-value">{pendingSamples.length}</span>
+              <span className="progress-value">
+                {authenticatedCompletedSamples.length}
+              </span>
             </Tile>
           </div>
         </Column>
