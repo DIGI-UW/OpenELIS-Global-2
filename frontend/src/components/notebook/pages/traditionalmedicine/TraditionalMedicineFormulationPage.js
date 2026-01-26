@@ -105,6 +105,14 @@ function TraditionalMedicineFormulationPage({
   const [batchNumber, setBatchNumber] = useState("");
   const [manufacturingDate, setManufacturingDate] = useState("");
   const [ingredients, setIngredients] = useState("");
+  const [manufacturingSteps, setManufacturingSteps] = useState("");
+  const [productSpecifications, setProductSpecifications] = useState("");
+  const [stabilityTesting, setStabilityTesting] = useState("");
+  const [microbialTesting, setMicrobialTesting] = useState("");
+  const [heavyMetalTesting, setHeavyMetalTesting] = useState("");
+  const [pesticidesTestingNotes, setPesticidesTestingNotes] = useState("");
+  const [activeConstituentQuantification, setActiveConstituentQuantification] =
+    useState("");
   const [qcNotes, setQcNotes] = useState("");
 
   const formulationOptions = [
@@ -174,6 +182,14 @@ function TraditionalMedicineFormulationPage({
                   batchNumber: s.data?.batchNumber,
                   manufacturingDate: s.data?.manufacturingDate,
                   ingredients: s.data?.ingredients,
+                  manufacturingSteps: s.data?.manufacturingSteps,
+                  productSpecifications: s.data?.productSpecifications,
+                  stabilityTesting: s.data?.stabilityTesting,
+                  microbialTesting: s.data?.microbialTesting,
+                  heavyMetalTesting: s.data?.heavyMetalTesting,
+                  pesticidesTestingNotes: s.data?.pesticidesTestingNotes,
+                  activeConstituentQuantification:
+                    s.data?.activeConstituentQuantification,
                   qcNotes: s.data?.qcNotes,
                 }))
               : [],
@@ -197,6 +213,13 @@ function TraditionalMedicineFormulationPage({
     setBatchNumber("");
     setManufacturingDate("");
     setIngredients("");
+    setManufacturingSteps("");
+    setProductSpecifications("");
+    setStabilityTesting("");
+    setMicrobialTesting("");
+    setHeavyMetalTesting("");
+    setPesticidesTestingNotes("");
+    setActiveConstituentQuantification("");
     setQcNotes("");
   }, []);
 
@@ -263,6 +286,13 @@ function TraditionalMedicineFormulationPage({
         batchNumber,
         manufacturingDate,
         ingredients,
+        manufacturingSteps,
+        productSpecifications,
+        stabilityTesting,
+        microbialTesting,
+        heavyMetalTesting,
+        pesticidesTestingNotes,
+        activeConstituentQuantification,
         qcNotes,
       }),
       (response) => {
@@ -322,6 +352,13 @@ function TraditionalMedicineFormulationPage({
     batchNumber,
     manufacturingDate,
     ingredients,
+    manufacturingSteps,
+    productSpecifications,
+    stabilityTesting,
+    microbialTesting,
+    heavyMetalTesting,
+    pesticidesTestingNotes,
+    activeConstituentQuantification,
     qcNotes,
     hasRealPageId,
     pageData?.id,
@@ -672,6 +709,19 @@ function TraditionalMedicineFormulationPage({
                 { key: "batchNumber", header: "Batch #" },
                 { key: "manufacturingDate", header: "Manufacturing Date" },
                 { key: "ingredients", header: "Ingredients" },
+                { key: "manufacturingSteps", header: "Manufacturing Steps" },
+                { key: "productSpecifications", header: "Product Specs" },
+                { key: "stabilityTesting", header: "Stability Testing" },
+                { key: "microbialTesting", header: "Microbial Testing" },
+                { key: "heavyMetalTesting", header: "Heavy Metal Testing" },
+                {
+                  key: "pesticidesTestingNotes",
+                  header: "Pesticide Residues",
+                },
+                {
+                  key: "activeConstituentQuantification",
+                  header: "Active Constituents",
+                },
                 { key: "qcNotes", header: "QC Notes" },
                 {
                   key: "status",
@@ -730,6 +780,19 @@ function TraditionalMedicineFormulationPage({
                 { key: "batchNumber", header: "Batch #" },
                 { key: "manufacturingDate", header: "Manufacturing Date" },
                 { key: "ingredients", header: "Ingredients" },
+                { key: "manufacturingSteps", header: "Manufacturing Steps" },
+                { key: "productSpecifications", header: "Product Specs" },
+                { key: "stabilityTesting", header: "Stability Testing" },
+                { key: "microbialTesting", header: "Microbial Testing" },
+                { key: "heavyMetalTesting", header: "Heavy Metal Testing" },
+                {
+                  key: "pesticidesTestingNotes",
+                  header: "Pesticide Residues",
+                },
+                {
+                  key: "activeConstituentQuantification",
+                  header: "Active Constituents",
+                },
                 { key: "qcNotes", header: "QC Notes" },
                 {
                   key: "status",
@@ -769,11 +832,12 @@ function TraditionalMedicineFormulationPage({
           defaultMessage: "Cancel",
         })}
         primaryButtonDisabled={isApplying}
-        size="md"
+        size="lg"
       >
         {isApplying && <Loading withOverlay={false} small />}
 
         <Grid narrow>
+          {/* Formulation Process Section */}
           <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
             <Dropdown
               id="formulation-type"
@@ -820,12 +884,125 @@ function TraditionalMedicineFormulationPage({
               id="ingredients"
               labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.formulation.modal.ingredients",
-                defaultMessage: "Ingredients & Concentrations",
+                defaultMessage: "Ingredients & Concentrations *",
               })}
               value={ingredients}
               onChange={(e) => setIngredients(e.target.value)}
               rows={2}
-              placeholder="List all ingredients with concentrations/quantities"
+              placeholder="List: Extract + excipients/carriers with quantities and concentrations"
+            />
+          </Column>
+
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="manufacturing-steps"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.manufacturingSteps",
+                defaultMessage: "Manufacturing Steps",
+              })}
+              value={manufacturingSteps}
+              onChange={(e) => setManufacturingSteps(e.target.value)}
+              rows={2}
+              placeholder="Document each manufacturing step in sequence"
+            />
+          </Column>
+
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="product-specifications"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.productSpecs",
+                defaultMessage: "Product Specifications",
+              })}
+              value={productSpecifications}
+              onChange={(e) => setProductSpecifications(e.target.value)}
+              rows={2}
+              placeholder="Physical properties, color, odor, appearance, etc."
+            />
+          </Column>
+
+          {/* Product Testing Section */}
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "0.5rem" }}>
+            <div
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                marginBottom: "0.5rem",
+              }}
+            >
+              Product Testing Results:
+            </div>
+          </Column>
+
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="stability-testing"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.stabilityTesting",
+                defaultMessage: "Stability Testing (Accelerated & Real-Time)",
+              })}
+              value={stabilityTesting}
+              onChange={(e) => setStabilityTesting(e.target.value)}
+              rows={2}
+              placeholder="Temperature, humidity, time conditions and results"
+            />
+          </Column>
+
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="microbial-testing"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.microbialTesting",
+                defaultMessage: "Microbial Contamination Testing",
+              })}
+              value={microbialTesting}
+              onChange={(e) => setMicrobialTesting(e.target.value)}
+              rows={2}
+              placeholder="Bacterial, fungal, yeast counts and results"
+            />
+          </Column>
+
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="heavy-metal-testing"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.heavyMetalTesting",
+                defaultMessage: "Heavy Metal Testing",
+              })}
+              value={heavyMetalTesting}
+              onChange={(e) => setHeavyMetalTesting(e.target.value)}
+              rows={2}
+              placeholder="Lead, cadmium, mercury, arsenic results (ICP-MS)"
+            />
+          </Column>
+
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="pesticides-testing"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.pesticidesTesting",
+                defaultMessage: "Pesticide Residue Testing (if applicable)",
+              })}
+              value={pesticidesTestingNotes}
+              onChange={(e) => setPesticidesTestingNotes(e.target.value)}
+              rows={2}
+              placeholder="Pesticide residues detected or results"
+            />
+          </Column>
+
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <TextArea
+              id="active-constituent-quantification"
+              labelText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.activeConstituent",
+                defaultMessage: "Active Constituent Quantification",
+              })}
+              value={activeConstituentQuantification}
+              onChange={(e) =>
+                setActiveConstituentQuantification(e.target.value)
+              }
+              rows={2}
+              placeholder="HPLC/other analytical results for active compounds"
             />
           </Column>
 
@@ -834,12 +1011,12 @@ function TraditionalMedicineFormulationPage({
               id="qc-notes"
               labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.formulation.modal.qcNotes",
-                defaultMessage: "QC Results & Notes",
+                defaultMessage: "General QC Notes & Documentation",
               })}
               value={qcNotes}
               onChange={(e) => setQcNotes(e.target.value)}
-              rows={3}
-              placeholder="Stability testing, microbial testing, heavy metals, etc."
+              rows={2}
+              placeholder="Summary of all QC results, batch records, and documentation status"
             />
           </Column>
         </Grid>
