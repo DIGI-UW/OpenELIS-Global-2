@@ -2,8 +2,10 @@
 #
 # Install SpecKit slash commands to AI agent directories
 #
-# This script syncs slash command definitions from the canonical source
-# (.specify/commands/) to AI-agent-specific directories, following the
+# This script compiles slash command definitions from:
+# - .specify/core/commands/ (upstream SpecKit)
+# - .specify/oe/commands/ (OpenELIS extensions)
+# into AI-agent-specific directories, following the
 # same pattern used by GitHub Spec-Kit (https://github.com/github/spec-kit)
 #
 # Supported AI Agents:
@@ -28,7 +30,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 REPO_ROOT=$(get_repo_root)
-SOURCE_DIR="$REPO_ROOT/.specify/commands"
+CORE_DIR="$REPO_ROOT/.specify/core/commands"
+OE_DIR="$REPO_ROOT/.specify/oe/commands"
 SKIP_CONFIRM=false
 TARGET="all"
 
@@ -51,14 +54,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate source
-if [[ ! -d "$SOURCE_DIR" ]]; then
-    echo "Error: Source commands not found at $SOURCE_DIR" >&2
-    echo "Run 'specify init' first or ensure .specify/commands/ exists" >&2
+if [[ ! -d "$CORE_DIR" ]]; then
+    echo "Error: Core commands not found at $CORE_DIR" >&2
+    echo "Ensure .specify/core/commands/ exists" >&2
     exit 1
 fi
 
-# Count commands to be installed
-CMD_COUNT=$(ls "$SOURCE_DIR"/speckit.*.md 2>/dev/null | wc -l)
+shopt -s nullglob
+CMD_FILES=("$CORE_DIR"/speckit.*.md)
+CMD_COUNT=${#CMD_FILES[@]}
 
 # Show warning and get confirmation
 show_warning() {
@@ -67,9 +71,12 @@ show_warning() {
     echo "╚══════════════════════════════════════════════════════════════════╝"
     echo ""
     echo "This script will OVERWRITE existing slash commands in your AI agent"
-    echo "directories with the latest versions from .specify/commands/"
+    echo "directories with the latest compiled versions from:"
+    echo "  - .specify/core/commands/"
+    echo "  - .specify/oe/commands/ (if present)"
     echo ""
-    echo "Source: $SOURCE_DIR"
+    echo "Core: $CORE_DIR"
+    echo "OE:   $OE_DIR"
     echo "Commands to install: $CMD_COUNT"
     echo ""
     echo "Target directories:"
@@ -103,10 +110,59 @@ install_commands() {
     echo "→ Installing to $name..."
     mkdir -p "$dir"
 
+    local inject_header=$'\n\n## OpenELIS-Specific Requirements\n\n'
+    local append_header=$'\n\n---\n\n## OpenELIS-Specific Requirements\n\n'
+
     local count=0
-    for f in "$SOURCE_DIR"/speckit.*.md; do
+    for f in "${CMD_FILES[@]}"; do
         [[ -f "$f" ]] || continue
-        cp "$f" "$dir/"
+        local base
+        base=$(basename "$f")
+
+        local core_content
+        core_content=$(<"$f")
+        # Path rewrites: upstream paths → project .specify/ paths
+        # Use placeholder to avoid double-rewrite of /templates/ → .specify/templates/ → .specify/.specify/templates/
+        core_content=${core_content//\/templates\//__SPECIFY_TEMPLATES__}
+        core_content=${core_content//templates\//.specify/templates/}
+        core_content=${core_content//__SPECIFY_TEMPLATES__/.specify/templates/}
+        core_content=${core_content//scripts\//.specify/scripts/}
+        core_content=${core_content//\/memory\//.specify/memory/}
+
+        local merged_content="$core_content"
+        local oe_file="$OE_DIR/$base"
+        if [[ -f "$oe_file" ]]; then
+            local oe_content
+            oe_content=$(<"$oe_file")
+
+            # Injection rules (preferred for commands where OE overrides core guidance):
+            # - tasks: inject before "## Task Generation Rules"
+            # - implement: inject before "## User Input"
+            if [[ "$base" == "speckit.tasks.md" ]]; then
+                local needle="## Task Generation Rules"
+                if [[ "$merged_content" == *"$needle"* ]]; then
+                    local before=${merged_content%%"$needle"*}
+                    local after=${merged_content#*"$needle"}
+                    merged_content="${before}${inject_header}${oe_content}"$'\n\n'"${needle}${after}"
+                else
+                    merged_content+="${append_header}${oe_content}"
+                fi
+            elif [[ "$base" == "speckit.implement.md" ]]; then
+                local needle="## User Input"
+                if [[ "$merged_content" == *"$needle"* ]]; then
+                    local before=${merged_content%%"$needle"*}
+                    local after=${merged_content#*"$needle"}
+                    merged_content="${before}${inject_header}${oe_content}"$'\n\n'"${needle}${after}"
+                else
+                    merged_content+="${append_header}${oe_content}"
+                fi
+            else
+                # Default: append OE extension at end.
+                merged_content+="${append_header}${oe_content}"
+            fi
+        fi
+
+        printf "%s" "$merged_content" > "$dir/$base"
         count=$((count + 1))
     done
 
@@ -128,6 +184,6 @@ esac
 
 echo ""
 echo "Commands installed! Available slash commands:"
-ls "$SOURCE_DIR"/speckit.*.md 2>/dev/null | xargs -I{} basename {} .md | sed 's/^/  \//'
+printf "%s\n" "${CMD_FILES[@]}" | xargs -I{} basename {} .md | sed 's/^/  \//'
 echo ""
 echo "To use: Type /<command> in your AI agent (e.g., /speckit.specify)"
