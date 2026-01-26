@@ -1032,7 +1032,7 @@ function TraditionalMedicineTestingPage({
         return (
           <Tag type="blue" size="sm">
             <FormattedMessage
-              id="notebook.page.tradmed.testing.qc.status.prepared",
+              id="notebook.page.tradmed.testing.qc.status.prepared"
               defaultMessage="QC Prepared"
             />
           </Tag>
@@ -1041,7 +1041,7 @@ function TraditionalMedicineTestingPage({
         return (
           <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
             <FormattedMessage
-              id="notebook.page.tradmed.testing.qc.status.pass",
+              id="notebook.page.tradmed.testing.qc.status.pass"
               defaultMessage="QC Pass"
             />
           </Tag>
@@ -1050,7 +1050,7 @@ function TraditionalMedicineTestingPage({
         return (
           <Tag type="red" size="sm" renderIcon={WarningAltFilled}>
             <FormattedMessage
-              id="notebook.page.tradmed.testing.qc.status.fail",
+              id="notebook.page.tradmed.testing.qc.status.fail"
               defaultMessage="QC Fail"
             />
           </Tag>
@@ -1059,7 +1059,7 @@ function TraditionalMedicineTestingPage({
         return (
           <Tag type="gray" size="sm">
             <FormattedMessage
-              id="notebook.page.tradmed.testing.qc.status.pending",
+              id="notebook.page.tradmed.testing.qc.status.pending"
               defaultMessage="QC Pending"
             />
           </Tag>

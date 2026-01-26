@@ -532,7 +532,7 @@ function TraditionalMedicineExtractionPage({
         return (
           <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
             <FormattedMessage
-              id="notebook.page.tradmed.extraction.qc.status.pass",
+              id="notebook.page.tradmed.extraction.qc.status.pass"
               defaultMessage="Extract QC Pass"
             />
           </Tag>
@@ -541,7 +541,7 @@ function TraditionalMedicineExtractionPage({
         return (
           <Tag type="red" size="sm" renderIcon={WarningAltFilled}>
             <FormattedMessage
-              id="notebook.page.tradmed.extraction.qc.status.fail",
+              id="notebook.page.tradmed.extraction.qc.status.fail"
               defaultMessage="Extract QC Fail"
             />
           </Tag>
@@ -550,7 +550,7 @@ function TraditionalMedicineExtractionPage({
         return (
           <Tag type="gray" size="sm">
             <FormattedMessage
-              id="notebook.page.tradmed.extraction.qc.status.pending",
+              id="notebook.page.tradmed.extraction.qc.status.pending"
               defaultMessage="Extract QC Pending"
             />
           </Tag>
