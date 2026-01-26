@@ -188,6 +188,72 @@ function TraditionalMedicineTestingPage({
     }
   };
 
+  const getTMMRDMethodologies = (categoryId) => {
+    switch (categoryId) {
+      case "BOTANICAL":
+        return [
+          { id: "MORPHOLOGICAL", text: "Morphological Observation" },
+          { id: "MICROSCOPIC", text: "Microscopic Examination" },
+          { id: "DNA_BARCODING", text: "DNA Barcoding" },
+          { id: "CHEMICAL_FINGERPRINT", text: "Chemical Fingerprinting" },
+        ];
+      case "PHYTOCHEMICAL":
+        return [
+          { id: "TLC", text: "TLC (Thin Layer Chromatography)" },
+          { id: "HPLC", text: "HPLC (High Performance Liquid Chromatography)" },
+          { id: "GC_MS", text: "GC-MS (Gas Chromatography-Mass Spectrometry)" },
+          {
+            id: "LC_MS",
+            text: "LC-MS (Liquid Chromatography-Mass Spectrometry)",
+          },
+          { id: "QUALITATIVE_TESTS", text: "Qualitative Chemical Tests" },
+        ];
+      case "ANALYTICAL":
+        return [
+          { id: "HPLC", text: "HPLC (High Performance Liquid Chromatography)" },
+          { id: "GC_MS", text: "GC-MS (Gas Chromatography-Mass Spectrometry)" },
+          {
+            id: "LC_MS",
+            text: "LC-MS (Liquid Chromatography-Mass Spectrometry)",
+          },
+          { id: "UV_VIS", text: "UV-Visible Spectroscopy" },
+          { id: "IR_SPECTROSCOPY", text: "Infrared Spectroscopy" },
+        ];
+      case "BIOLOGICAL":
+        return [
+          { id: "DISK_DIFFUSION", text: "Disk Diffusion" },
+          { id: "BROTH_MICRODILUTION", text: "Broth Microdilution" },
+          { id: "DPPH_ASSAY", text: "DPPH Assay" },
+          { id: "ABTS_ASSAY", text: "ABTS Assay" },
+          { id: "MTT_ASSAY", text: "MTT Cell Viability Assay" },
+        ];
+      case "SAFETY":
+        return [
+          { id: "IN_VITRO_CELL_CULTURE", text: "In Vitro Cell Culture" },
+          { id: "IN_VIVO_ANIMAL", text: "In Vivo Animal Study" },
+          { id: "MTT_ASSAY", text: "MTT Assay" },
+          { id: "LDH_ASSAY", text: "LDH Leakage Assay" },
+          { id: "AMES_TEST", text: "AMES Test" },
+        ];
+      case "PRODUCT_QC":
+        return [
+          { id: "ICP_MS", text: "ICP-MS (Heavy Metals)" },
+          { id: "HPLC", text: "HPLC (Purity Analysis)" },
+          { id: "MICROBIAL_CULTURE", text: "Microbial Culture" },
+          { id: "CHROMATOGRAPHY", text: "Chromatography" },
+        ];
+      case "FORMULATION":
+        return [
+          { id: "BLEND_HOMOGENEITY", text: "Blend Homogeneity Test" },
+          { id: "DISSOLUTION", text: "Dissolution Test" },
+          { id: "CONTENT_UNIFORMITY", text: "Content Uniformity" },
+          { id: "STABILITY_TESTING", text: "Stability Testing" },
+        ];
+      default:
+        return [];
+    }
+  };
+
   const getTMMRDSpecificTests = (subcategoryId) => {
     switch (subcategoryId) {
       case "TLC_SCREENING":
@@ -419,6 +485,7 @@ function TraditionalMedicineTestingPage({
       category: selectedItem?.id || "",
       subcategory: "", // Reset child selections
       specificTest: "",
+      methodology: "", // Reset methodology when category changes
     }));
   }, []);
 
@@ -449,6 +516,21 @@ function TraditionalMedicineTestingPage({
       return;
     }
 
+    if (
+      assignmentData.category &&
+      getTMMRDMethodologies(assignmentData.category).length > 0 &&
+      !assignmentData.methodology
+    ) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.page.tradmed.testing.error.methodologyRequired",
+          defaultMessage: "Please select a test methodology.",
+        }),
+      });
+      return;
+    }
+
     if (!hasRealPageId) {
       notify({
         kind: NotificationKinds.error,
@@ -467,6 +549,10 @@ function TraditionalMedicineTestingPage({
       (test) => test.id === assignmentData.specificTest,
     );
 
+    const selectedMethodology = getTMMRDMethodologies(
+      assignmentData.category,
+    ).find((m) => m.id === assignmentData.methodology);
+
     postToOpenElisServerJsonResponse(
       `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
@@ -480,7 +566,8 @@ function TraditionalMedicineTestingPage({
               category: assignmentData.category,
               subcategory: assignmentData.subcategory,
               unit: selectedTest?.unit,
-              methodology: assignmentData.methodology,
+              methodologyId: assignmentData.methodology,
+              methodology: selectedMethodology?.text,
               expectedResults: assignmentData.expectedResults,
               acceptanceCriteria: assignmentData.acceptanceCriteria,
               status: "ASSIGNED",
@@ -1397,22 +1484,30 @@ function TraditionalMedicineTestingPage({
           </Column>
 
           <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
-            <TextArea
-              id="methodology"
-              labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.testing.modal.methodology",
-                defaultMessage: "Test Methodology",
-              })}
-              value={assignmentData.methodology}
-              onChange={(e) =>
-                setAssignmentData((prev) => ({
-                  ...prev,
-                  methodology: e.target.value,
-                }))
-              }
-              rows={3}
-              placeholder="Specify the test methodology, protocols, or procedures to be followed..."
-            />
+            {assignmentData.category &&
+              getTMMRDMethodologies(assignmentData.category).length > 0 && (
+                <Dropdown
+                  id="test-methodology"
+                  titleText={intl.formatMessage({
+                    id: "notebook.page.tradmed.testing.modal.methodology",
+                    defaultMessage: "Test Methodology *",
+                  })}
+                  label="Select methodology..."
+                  items={getTMMRDMethodologies(assignmentData.category)}
+                  itemToString={(item) => (item ? item.text : "")}
+                  selectedItem={getTMMRDMethodologies(
+                    assignmentData.category,
+                  ).find((m) => m.id === assignmentData.methodology)}
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem) {
+                      setAssignmentData((prev) => ({
+                        ...prev,
+                        methodology: selectedItem.id,
+                      }));
+                    }
+                  }}
+                />
+              )}
           </Column>
 
           <Column lg={8} md={4} sm={2}>
