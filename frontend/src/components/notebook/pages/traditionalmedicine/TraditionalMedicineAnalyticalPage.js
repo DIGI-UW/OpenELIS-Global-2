@@ -240,9 +240,9 @@ function TraditionalMedicineAnalyticalPage({
 
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
 
-    // Use bulk endpoint to update pathway and analysis data directly into JSONB
+    // First, apply the analytical pathway data to JSONB using bulk apply endpoint
     postToOpenElisServer(
-      `/rest/notebook/bulk/page/${pageData.id}/samples`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
         sampleIds,
         data: {
@@ -251,28 +251,49 @@ function TraditionalMedicineAnalyticalPage({
           fractionationMethod: fractionationMethod?.id || null,
           analysisNotes,
         },
-        status: "IN_PROGRESS",
       }),
       (statusCode) => {
-        setIsApplying(false);
         if (statusCode === 200) {
-          notify({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage(
-              {
-                id: "notebook.page.tradmed.analytical.success",
-                defaultMessage: "Updated pathway for {count} sample(s).",
-              },
-              {
-                count: selectedSampleIds.length,
-              },
-            ),
-          });
-          setPathwayModalOpen(false);
-          setSelectedSampleIds([]);
-          loadPageSamples();
-          if (onProgressUpdate) onProgressUpdate();
+          // After data is saved, update the status to IN_PROGRESS
+          postToOpenElisServer(
+            `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+            JSON.stringify({
+              sampleIds,
+              status: "IN_PROGRESS",
+            }),
+            (statusCodeUpdate) => {
+              setIsApplying(false);
+              if (statusCodeUpdate === 200) {
+                notify({
+                  kind: NotificationKinds.success,
+                  title: intl.formatMessage(
+                    {
+                      id: "notebook.page.tradmed.analytical.success",
+                      defaultMessage: "Updated pathway for {count} sample(s).",
+                    },
+                    {
+                      count: selectedSampleIds.length,
+                    },
+                  ),
+                });
+                setPathwayModalOpen(false);
+                setSelectedSampleIds([]);
+                loadPageSamples();
+                if (onProgressUpdate) onProgressUpdate();
+              } else {
+                notify({
+                  kind: NotificationKinds.error,
+                  title: intl.formatMessage({
+                    id: "notebook.page.tradmed.error.statusUpdate",
+                    defaultMessage:
+                      "Pathway data saved but failed to update status.",
+                  }),
+                });
+              }
+            },
+          );
         } else {
+          setIsApplying(false);
           notify({
             kind: NotificationKinds.error,
             title: intl.formatMessage({
