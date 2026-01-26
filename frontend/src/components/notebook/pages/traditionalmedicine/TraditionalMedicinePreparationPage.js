@@ -701,7 +701,9 @@ function TraditionalMedicinePreparationPage({
             <SampleGrid
               gridId="prepared-in-progress-samples"
               samples={preparedInProgressSamples}
+              selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },

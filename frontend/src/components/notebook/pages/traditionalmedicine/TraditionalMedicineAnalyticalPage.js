@@ -166,8 +166,14 @@ function TraditionalMedicineAnalyticalPage({
                   accessionNumber: s.accessionNumber,
                   status: s.pageStatus || s.status || "PENDING",
                   localName: s.data?.localName,
+                  scientificName: s.data?.scientificName,
+                  sampleCategory: s.data?.sampleCategory,
+                  plantPart: s.data?.plantPart,
+                  collectionDate: s.data?.collectionDate,
+                  intendedUse: s.data?.intendedUse,
                   selectedPath: s.data?.selectedPath,
                   fractionationMethod: s.data?.fractionationMethod,
+                  analysisNotes: s.data?.analysisNotes,
                 }))
               : [],
           );
@@ -234,63 +240,45 @@ function TraditionalMedicineAnalyticalPage({
 
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
 
-    postToOpenElisServerJsonResponse(
-      `/rest/notebook/tradmed/page/${pageData.id}/analytical`,
+    // Use bulk endpoint to update pathway and analysis data directly into JSONB
+    postToOpenElisServer(
+      `/rest/notebook/bulk/page/${pageData.id}/samples`,
       JSON.stringify({
         sampleIds,
-        selectedPath: selectedPath.id,
-        selectedPathLabel: selectedPath.label,
-        fractionationMethod: fractionationMethod?.id || null,
-        analysisNotes,
+        data: {
+          selectedPath: selectedPath.id,
+          selectedPathLabel: selectedPath.label,
+          fractionationMethod: fractionationMethod?.id || null,
+          analysisNotes,
+        },
+        status: "IN_PROGRESS",
       }),
-      (response) => {
+      (statusCode) => {
         setIsApplying(false);
-        if (response?.success) {
-          // Update sample status using bulk endpoint after pathway assignment
-          postToOpenElisServer(
-            `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-            JSON.stringify({
-              sampleIds,
-              status: "IN_PROGRESS",
-            }),
-            (statusCode) => {
-              if (statusCode === 200) {
-                notify({
-                  kind: NotificationKinds.success,
-                  title:
-                    response.message ||
-                    intl.formatMessage(
-                      {
-                        id: "notebook.page.tradmed.analytical.success",
-                        defaultMessage:
-                          "Updated pathway for {count} sample(s).",
-                      },
-                      {
-                        count:
-                          response.updatedCount || selectedSampleIds.length,
-                      },
-                    ),
-                });
-                setPathwayModalOpen(false);
-                setSelectedSampleIds([]);
-                loadPageSamples();
-                if (onProgressUpdate) onProgressUpdate();
-              } else {
-                notify({
-                  kind: NotificationKinds.error,
-                  title: intl.formatMessage({
-                    id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage:
-                      "Pathway assigned but failed to update sample status.",
-                  }),
-                });
-              }
-            },
-          );
+        if (statusCode === 200) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage(
+              {
+                id: "notebook.page.tradmed.analytical.success",
+                defaultMessage: "Updated pathway for {count} sample(s).",
+              },
+              {
+                count: selectedSampleIds.length,
+              },
+            ),
+          });
+          setPathwayModalOpen(false);
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) onProgressUpdate();
         } else {
           notify({
             kind: NotificationKinds.error,
-            title: response?.error || "Operation failed",
+            title: intl.formatMessage({
+              id: "notebook.page.tradmed.error.pathwayUpdate",
+              defaultMessage: "Failed to update pathway for selected samples.",
+            }),
           });
         }
       },
@@ -508,6 +496,22 @@ function TraditionalMedicineAnalyticalPage({
             defaultMessage="Refresh"
           />
         </Button>
+
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={CheckmarkFilled}
+          onClick={handleMarkComplete}
+          disabled={
+            selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.tradmed.analytical.markComplete"
+            defaultMessage="Mark Complete ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
       </div>
 
       <div className="sample-table-section">
@@ -566,41 +570,15 @@ function TraditionalMedicineAnalyticalPage({
       {/* Assigned Pathway Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div>
-              <h5>
-                <FormattedMessage
-                  id="notebook.page.tradmed.analytical.assigned.inProgress.title"
-                  defaultMessage="Pathway Assigned (Pending Completion)"
-                />
-                <Tag type="blue" size="sm" className="count-tag">
-                  {processedInProgressSamples.length}
-                </Tag>
-              </h5>
-            </div>
-            {selectedSampleIds.length > 0 && (
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={CheckmarkFilled}
-                onClick={handleMarkComplete}
-                disabled={isCompleting || !hasRealPageId}
-              >
-                <FormattedMessage
-                  id="notebook.tradmed.analytical.markComplete"
-                  defaultMessage="Mark Complete ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            )}
-          </div>
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.analytical.assigned.inProgress.title"
+              defaultMessage="Pathway Assigned (Pending Completion)"
+            />
+            <Tag type="blue" size="sm" className="count-tag">
+              {processedInProgressSamples.length}
+            </Tag>
+          </h5>
         </div>
         <div className="sample-grid-container">
           {!loading && processedInProgressSamples.length === 0 ? (
@@ -616,7 +594,9 @@ function TraditionalMedicineAnalyticalPage({
             <SampleGrid
               gridId="assigned-in-progress-pathway"
               samples={processedInProgressSamples}
+              selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
