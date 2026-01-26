@@ -313,6 +313,11 @@ function TraditionalMedicineTestingPage({
                   accessionNumber: s.accessionNumber,
                   status: s.pageStatus || s.status || "PENDING",
                   localName: s.data?.localName,
+                  scientificName: s.data?.scientificName,
+                  sampleCategory: s.data?.sampleCategory,
+                  plantPart: s.data?.plantPart,
+                  collectionDate: s.data?.collectionDate,
+                  intendedUse: s.data?.intendedUse,
                   assignedTests: s.data?.assignedTests || [],
                   testingStatus:
                     s.data?.assignedTests?.length > 0 ? "ASSIGNED" : "PENDING",
@@ -683,6 +688,22 @@ function TraditionalMedicineTestingPage({
             defaultMessage="Refresh"
           />
         </Button>
+
+        <Button
+          kind="tertiary"
+          size="sm"
+          renderIcon={CheckmarkFilled}
+          onClick={handleMarkComplete}
+          disabled={
+            selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
+          }
+        >
+          <FormattedMessage
+            id="notebook.tradmed.testing.markComplete"
+            defaultMessage="Mark Complete ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
       </div>
 
       <div className="sample-table-section">
@@ -717,7 +738,13 @@ function TraditionalMedicineTestingPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -735,41 +762,15 @@ function TraditionalMedicineTestingPage({
       {/* Assigned Tests Section - IN PROGRESS */}
       <div className="sample-table-section">
         <div className="table-section-header">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div>
-              <h5>
-                <FormattedMessage
-                  id="notebook.page.tradmed.testing.assigned.inProgress.title"
-                  defaultMessage="Tests Assigned (Pending Completion)"
-                />
-                <Tag type="blue" size="sm" className="count-tag">
-                  {assignedInProgressSamples.length}
-                </Tag>
-              </h5>
-            </div>
-            {selectedSampleIds.length > 0 && (
-              <Button
-                kind="tertiary"
-                size="sm"
-                renderIcon={CheckmarkFilled}
-                onClick={handleMarkComplete}
-                disabled={isCompleting || !pageData?.id}
-              >
-                <FormattedMessage
-                  id="notebook.tradmed.testing.markComplete"
-                  defaultMessage="Mark Complete ({count})"
-                  values={{ count: selectedSampleIds.length }}
-                />
-              </Button>
-            )}
-          </div>
+          <h5>
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.assigned.inProgress.title"
+              defaultMessage="Tests Assigned (Pending Completion)"
+            />
+            <Tag type="blue" size="sm" className="count-tag">
+              {assignedInProgressSamples.length}
+            </Tag>
+          </h5>
         </div>
         <div className="sample-grid-container">
           {!loading && assignedInProgressSamples.length === 0 ? (
@@ -785,19 +786,19 @@ function TraditionalMedicineTestingPage({
             <SampleGrid
               gridId="assigned-in-progress-samples"
               samples={assignedInProgressSamples}
+              selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
+              showSelection={true}
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
-                {
-                  key: "status",
-                  header: intl.formatMessage({
-                    id: "notebook.tradmed.column.status",
-                    defaultMessage: "Status",
-                  }),
-                  render: (_value, sample) => renderStatus(sample),
-                },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "assignedTests",
                   header: "Assigned Tests",
@@ -815,6 +816,14 @@ function TraditionalMedicineTestingPage({
                       ))}
                     </div>
                   ),
+                },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
                 },
               ]}
             />
@@ -844,15 +853,13 @@ function TraditionalMedicineTestingPage({
               loading={loading}
               columns={[
                 { key: "accessionNumber", header: "Accession #" },
+                { key: "externalId", header: "Sample ID" },
                 { key: "localName", header: "Local Name" },
-                {
-                  key: "status",
-                  header: intl.formatMessage({
-                    id: "notebook.tradmed.column.status",
-                    defaultMessage: "Status",
-                  }),
-                  render: (_value, sample) => renderStatus(sample),
-                },
+                { key: "scientificName", header: "Scientific Name" },
+                { key: "sampleCategory", header: "Category" },
+                { key: "plantPart", header: "Plant Part" },
+                { key: "collectionDate", header: "Collection Date" },
+                { key: "intendedUse", header: "Intended Use" },
                 {
                   key: "assignedTests",
                   header: "Assigned Tests",
@@ -870,6 +877,14 @@ function TraditionalMedicineTestingPage({
                       ))}
                     </div>
                   ),
+                },
+                {
+                  key: "status",
+                  header: intl.formatMessage({
+                    id: "notebook.tradmed.column.status",
+                    defaultMessage: "Status",
+                  }),
+                  render: (_value, sample) => renderStatus(sample),
                 },
               ]}
             />
