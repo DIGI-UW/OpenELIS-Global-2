@@ -30,7 +30,7 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
+  postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import { usePermissions } from "../../../../hooks/usePermissions";
@@ -276,11 +276,11 @@ function TraditionalMedicineFormulationPage({
 
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
 
-    postToOpenElisServerJsonResponse(
+    postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
         sampleIds,
-        appendData: {
+        data: {
           formulationType: formulationType.id,
           formulationTypeLabel: formulationType.label,
           batchNumber,
@@ -295,34 +295,56 @@ function TraditionalMedicineFormulationPage({
           activeConstituentQuantification,
           qcNotes,
         },
-        status: "IN_PROGRESS",
       }),
-      (response) => {
-        setIsApplying(false);
-
-        if (response?.success) {
-          notify({
-            kind: NotificationKinds.success,
-            title:
-              response.message ||
-              intl.formatMessage(
-                {
-                  id: "notebook.page.tradmed.formulation.success",
-                  defaultMessage: "Recorded formulation for {count} sample(s).",
-                },
-                {
-                  count: response.updatedCount || selectedSampleIds.length,
-                },
-              ),
-          });
-          setFormulationModalOpen(false);
-          setSelectedSampleIds([]);
-          loadPageSamples();
-          if (onProgressUpdate) onProgressUpdate();
+      (statusCode) => {
+        if (statusCode === 200) {
+          // Update sample status using bulk endpoint after formulation
+          postToOpenElisServer(
+            `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
+            JSON.stringify({
+              sampleIds,
+              status: "IN_PROGRESS",
+            }),
+            (statusCodeUpdate) => {
+              setIsApplying(false);
+              if (statusCodeUpdate === 200) {
+                notify({
+                  kind: NotificationKinds.success,
+                  title: intl.formatMessage(
+                    {
+                      id: "notebook.page.tradmed.formulation.success",
+                      defaultMessage:
+                        "Recorded formulation for {count} sample(s).",
+                    },
+                    {
+                      count: selectedSampleIds.length,
+                    },
+                  ),
+                });
+                setFormulationModalOpen(false);
+                setSelectedSampleIds([]);
+                loadPageSamples();
+                if (onProgressUpdate) onProgressUpdate();
+              } else {
+                notify({
+                  kind: NotificationKinds.error,
+                  title: intl.formatMessage({
+                    id: "notebook.page.tradmed.error.statusUpdate",
+                    defaultMessage:
+                      "Formulation recorded but failed to update sample status.",
+                  }),
+                });
+              }
+            },
+          );
         } else {
+          setIsApplying(false);
           notify({
             kind: NotificationKinds.error,
-            title: response?.error || "Operation failed",
+            title: intl.formatMessage({
+              id: "notebook.page.tradmed.formulation.error.failed",
+              defaultMessage: "Failed to record formulation data.",
+            }),
           });
         }
       },
