@@ -26,7 +26,7 @@
         <hibernate-search.version>6.1.8.Final</hibernate-search.version>
         <postgresql.version>42.7.2</postgresql.version>
         <log4j.version>2.17.1</log4j.version>
-        <springframework.version>6.2.2</springframework.version>
+        <springframework.version>6.2.11</springframework.version>
         <springsecurity.version>6.0.4</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
@@ -142,7 +142,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.9</version>
+            <version>3.18.0</version>
         </dependency>
         <dependency>
             <groupId>commons-beanutils</groupId>
@@ -258,7 +258,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.78</version>
+            <version>1.79</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>

@@ -1,0 +1,24 @@
+[project]
+name = "catalyst-mcp"
+version = "0.0.1"
+description = "Catalyst MCP server (schema tools)"
+authors = [
+    {name = "OpenELIS Global Team", email = "team@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "fastapi>=0.115.2,<0.116.0",
+    "uvicorn[standard]>=0.34.0,<0.35.0",
+    "python-dotenv>=1.0.1,<2.0.0",
+    "mcp>=1.1.2,<2.0.0",
+    "psycopg2-binary>=2.9.9,<3.0.0",  # For M1+ PostgreSQL schema extraction
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0,<8.0.0",
+    "honcho>=1.1.0,<2.0.0",
+    "setuptools>=69.0.0,<79.0.0",
+    "pytest-asyncio==0.23.8",
+]
