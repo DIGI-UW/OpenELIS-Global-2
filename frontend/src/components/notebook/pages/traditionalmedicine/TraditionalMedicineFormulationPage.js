@@ -30,7 +30,6 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
@@ -278,67 +277,48 @@ function TraditionalMedicineFormulationPage({
     const sampleIds = selectedSampleIds.map((id) => parseInt(id, 10));
 
     postToOpenElisServerJsonResponse(
-      `/rest/notebook/tradmed/page/${pageData.id}/formulation`,
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
       JSON.stringify({
         sampleIds,
-        formulationType: formulationType.id,
-        formulationTypeLabel: formulationType.label,
-        batchNumber,
-        manufacturingDate,
-        ingredients,
-        manufacturingSteps,
-        productSpecifications,
-        stabilityTesting,
-        microbialTesting,
-        heavyMetalTesting,
-        pesticidesTestingNotes,
-        activeConstituentQuantification,
-        qcNotes,
+        appendData: {
+          formulationType: formulationType.id,
+          formulationTypeLabel: formulationType.label,
+          batchNumber,
+          manufacturingDate,
+          ingredients,
+          manufacturingSteps,
+          productSpecifications,
+          stabilityTesting,
+          microbialTesting,
+          heavyMetalTesting,
+          pesticidesTestingNotes,
+          activeConstituentQuantification,
+          qcNotes,
+        },
+        status: "IN_PROGRESS",
       }),
       (response) => {
         setIsApplying(false);
+
         if (response?.success) {
-          // Update sample status using bulk endpoint after formulation
-          postToOpenElisServer(
-            `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-            JSON.stringify({
-              sampleIds,
-              status: "IN_PROGRESS",
-            }),
-            (statusCode) => {
-              if (statusCode === 200) {
-                notify({
-                  kind: NotificationKinds.success,
-                  title:
-                    response.message ||
-                    intl.formatMessage(
-                      {
-                        id: "notebook.page.tradmed.formulation.success",
-                        defaultMessage:
-                          "Recorded formulation for {count} sample(s).",
-                      },
-                      {
-                        count:
-                          response.updatedCount || selectedSampleIds.length,
-                      },
-                    ),
-                });
-                setFormulationModalOpen(false);
-                setSelectedSampleIds([]);
-                loadPageSamples();
-                if (onProgressUpdate) onProgressUpdate();
-              } else {
-                notify({
-                  kind: NotificationKinds.error,
-                  title: intl.formatMessage({
-                    id: "notebook.page.tradmed.error.statusUpdate",
-                    defaultMessage:
-                      "Formulation recorded but failed to update sample status.",
-                  }),
-                });
-              }
-            },
-          );
+          notify({
+            kind: NotificationKinds.success,
+            title:
+              response.message ||
+              intl.formatMessage(
+                {
+                  id: "notebook.page.tradmed.formulation.success",
+                  defaultMessage: "Recorded formulation for {count} sample(s).",
+                },
+                {
+                  count: response.updatedCount || selectedSampleIds.length,
+                },
+              ),
+          });
+          setFormulationModalOpen(false);
+          setSelectedSampleIds([]);
+          loadPageSamples();
+          if (onProgressUpdate) onProgressUpdate();
         } else {
           notify({
             kind: NotificationKinds.error,
@@ -832,7 +812,7 @@ function TraditionalMedicineFormulationPage({
           defaultMessage: "Cancel",
         })}
         primaryButtonDisabled={isApplying}
-        size="lg"
+        size="md"
       >
         {isApplying && <Loading withOverlay={false} small />}
 
@@ -930,79 +910,156 @@ function TraditionalMedicineFormulationPage({
                 marginBottom: "0.5rem",
               }}
             >
-              Product Testing Results:
+              Product Testing:
             </div>
           </Column>
 
-          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
-            <TextArea
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+            <Dropdown
               id="stability-testing"
-              labelText={intl.formatMessage({
+              titleText={intl.formatMessage({
                 id: "notebook.page.tradmed.formulation.modal.stabilityTesting",
-                defaultMessage: "Stability Testing (Accelerated & Real-Time)",
+                defaultMessage: "Stability Testing",
               })}
-              value={stabilityTesting}
-              onChange={(e) => setStabilityTesting(e.target.value)}
-              rows={2}
-              placeholder="Temperature, humidity, time conditions and results"
+              label="Select..."
+              items={[
+                { id: "accelerated", label: "Accelerated Conditions" },
+                { id: "realtime", label: "Real-Time Conditions" },
+                { id: "both", label: "Both Accelerated & Real-Time" },
+                { id: "other", label: "Other" },
+              ]}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={
+                [
+                  { id: "accelerated", label: "Accelerated Conditions" },
+                  { id: "realtime", label: "Real-Time Conditions" },
+                  { id: "both", label: "Both Accelerated & Real-Time" },
+                  { id: "other", label: "Other" },
+                ].find((t) => t.id === stabilityTesting) || null
+              }
+              onChange={({ selectedItem }) =>
+                setStabilityTesting(selectedItem?.id || "")
+              }
             />
           </Column>
 
-          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
-            <TextArea
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+            <Dropdown
               id="microbial-testing"
-              labelText={intl.formatMessage({
+              titleText={intl.formatMessage({
                 id: "notebook.page.tradmed.formulation.modal.microbialTesting",
-                defaultMessage: "Microbial Contamination Testing",
+                defaultMessage: "Microbial Testing",
               })}
-              value={microbialTesting}
-              onChange={(e) => setMicrobialTesting(e.target.value)}
-              rows={2}
-              placeholder="Bacterial, fungal, yeast counts and results"
+              label="Select..."
+              items={[
+                { id: "aerobic", label: "Aerobic Bacteria" },
+                { id: "fungi", label: "Fungi" },
+                { id: "yeast", label: "Yeast" },
+                { id: "pathogens", label: "Pathogens (E. coli, Salmonella)" },
+                { id: "comprehensive", label: "Comprehensive Panel" },
+              ]}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={
+                [
+                  { id: "aerobic", label: "Aerobic Bacteria" },
+                  { id: "fungi", label: "Fungi" },
+                  { id: "yeast", label: "Yeast" },
+                  { id: "pathogens", label: "Pathogens (E. coli, Salmonella)" },
+                  { id: "comprehensive", label: "Comprehensive Panel" },
+                ].find((t) => t.id === microbialTesting) || null
+              }
+              onChange={({ selectedItem }) =>
+                setMicrobialTesting(selectedItem?.id || "")
+              }
             />
           </Column>
 
-          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
-            <TextArea
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+            <Dropdown
               id="heavy-metal-testing"
-              labelText={intl.formatMessage({
+              titleText={intl.formatMessage({
                 id: "notebook.page.tradmed.formulation.modal.heavyMetalTesting",
                 defaultMessage: "Heavy Metal Testing",
               })}
-              value={heavyMetalTesting}
-              onChange={(e) => setHeavyMetalTesting(e.target.value)}
-              rows={2}
-              placeholder="Lead, cadmium, mercury, arsenic results (ICP-MS)"
-            />
-          </Column>
-
-          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
-            <TextArea
-              id="pesticides-testing"
-              labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.formulation.modal.pesticidesTesting",
-                defaultMessage: "Pesticide Residue Testing (if applicable)",
-              })}
-              value={pesticidesTestingNotes}
-              onChange={(e) => setPesticidesTestingNotes(e.target.value)}
-              rows={2}
-              placeholder="Pesticide residues detected or results"
-            />
-          </Column>
-
-          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
-            <TextArea
-              id="active-constituent-quantification"
-              labelText={intl.formatMessage({
-                id: "notebook.page.tradmed.formulation.modal.activeConstituent",
-                defaultMessage: "Active Constituent Quantification",
-              })}
-              value={activeConstituentQuantification}
-              onChange={(e) =>
-                setActiveConstituentQuantification(e.target.value)
+              label="Select..."
+              items={[
+                { id: "pb", label: "Lead (Pb)" },
+                { id: "cd", label: "Cadmium (Cd)" },
+                { id: "hg", label: "Mercury (Hg)" },
+                { id: "as", label: "Arsenic (As)" },
+                { id: "comprehensive", label: "Comprehensive (ICP-MS)" },
+              ]}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={
+                [
+                  { id: "pb", label: "Lead (Pb)" },
+                  { id: "cd", label: "Cadmium (Cd)" },
+                  { id: "hg", label: "Mercury (Hg)" },
+                  { id: "as", label: "Arsenic (As)" },
+                  { id: "comprehensive", label: "Comprehensive (ICP-MS)" },
+                ].find((t) => t.id === heavyMetalTesting) || null
               }
-              rows={2}
-              placeholder="HPLC/other analytical results for active compounds"
+              onChange={({ selectedItem }) =>
+                setHeavyMetalTesting(selectedItem?.id || "")
+              }
+            />
+          </Column>
+
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+            <Dropdown
+              id="pesticides-testing"
+              titleText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.pesticidesTesting",
+                defaultMessage: "Pesticide Residues",
+              })}
+              label="Select..."
+              items={[
+                { id: "notdetected", label: "Not Detected" },
+                { id: "detected", label: "Detected" },
+                { id: "nottested", label: "Not Tested" },
+              ]}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={
+                [
+                  { id: "notdetected", label: "Not Detected" },
+                  { id: "detected", label: "Detected" },
+                  { id: "nottested", label: "Not Tested" },
+                ].find((t) => t.id === pesticidesTestingNotes) || null
+              }
+              onChange={({ selectedItem }) =>
+                setPesticidesTestingNotes(selectedItem?.id || "")
+              }
+            />
+          </Column>
+
+          <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+            <Dropdown
+              id="active-constituent-quantification"
+              titleText={intl.formatMessage({
+                id: "notebook.page.tradmed.formulation.modal.activeConstituent",
+                defaultMessage: "Analysis Method",
+              })}
+              label="Select..."
+              items={[
+                { id: "hplc", label: "HPLC" },
+                { id: "gcms", label: "GC-MS" },
+                { id: "uplc", label: "UPLC" },
+                { id: "lcms", label: "LC-MS/MS" },
+                { id: "other", label: "Other" },
+              ]}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={
+                [
+                  { id: "hplc", label: "HPLC" },
+                  { id: "gcms", label: "GC-MS" },
+                  { id: "uplc", label: "UPLC" },
+                  { id: "lcms", label: "LC-MS/MS" },
+                  { id: "other", label: "Other" },
+                ].find((t) => t.id === activeConstituentQuantification) || null
+              }
+              onChange={({ selectedItem }) =>
+                setActiveConstituentQuantification(selectedItem?.id || "")
+              }
             />
           </Column>
 
@@ -1011,11 +1068,11 @@ function TraditionalMedicineFormulationPage({
               id="qc-notes"
               labelText={intl.formatMessage({
                 id: "notebook.page.tradmed.formulation.modal.qcNotes",
-                defaultMessage: "General QC Notes & Documentation",
+                defaultMessage: "QC Results & Documentation",
               })}
               value={qcNotes}
               onChange={(e) => setQcNotes(e.target.value)}
-              rows={2}
+              rows={1}
               placeholder="Summary of all QC results, batch records, and documentation status"
             />
           </Column>
