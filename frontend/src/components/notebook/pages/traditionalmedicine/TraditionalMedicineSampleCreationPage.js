@@ -133,6 +133,7 @@ function TraditionalMedicineSampleCreationPage({
     qcNotes: "",
     inspectedBy: "",
     inspectionDate: new Date().toISOString().split("T")[0],
+    qcResult: "", // PASS or FAIL - set by inspector via radio buttons
   });
 
   const notify = useCallback(
@@ -307,6 +308,8 @@ function TraditionalMedicineSampleCreationPage({
               verificationDate: sample.data?.verificationDate,
               authenticationNotes: sample.data?.authenticationNotes,
               authenticatedAt: sample.data?.authenticatedAt,
+              // Include full data object for QC checking
+              data: sample.data || {},
             }));
             setSamples(transformedSamples);
           } else {
@@ -429,22 +432,25 @@ function TraditionalMedicineSampleCreationPage({
       qcNotes: "",
       inspectedBy: "",
       inspectionDate: new Date().toISOString().split("T")[0],
+      qcResult: "",
     });
   }, []);
 
   const applyQcInspection = useCallback(async () => {
-    if (
-      !qcInspectionData.contaminationFree ||
-      !qcInspectionData.adequateCondition
-    ) {
+    // Validate that QC Result is selected
+    if (!qcInspectionData.qcResult) {
       notify({
-        kind: NotificationKinds.warning,
+        kind: NotificationKinds.error,
         title: intl.formatMessage({
-          id: "notebook.page.tradmed.qc.warning",
-          defaultMessage:
-            "QC checks not passed. Samples may be flagged for review.",
+          id: "notebook.page.tradmed.qc.error.noResult",
+          defaultMessage: "QC Result required",
+        }),
+        message: intl.formatMessage({
+          id: "notebook.page.tradmed.qc.error.selectPassFail",
+          defaultMessage: "Please select Pass or Fail for QC inspection.",
         }),
       });
+      return;
     }
 
     const success = await bulkApplyMetadata(selectedSampleIds, {
@@ -458,11 +464,7 @@ function TraditionalMedicineSampleCreationPage({
         qcNotes: qcInspectionData.qcNotes,
         inspectedBy: qcInspectionData.inspectedBy,
         inspectionDate: qcInspectionData.inspectionDate,
-        qcResult:
-          qcInspectionData.contaminationFree &&
-          qcInspectionData.adequateCondition
-            ? "PASS"
-            : "FAIL",
+        qcResult: qcInspectionData.qcResult, // Use the selected radio button value
       },
     });
 
@@ -612,20 +614,6 @@ function TraditionalMedicineSampleCreationPage({
         </Button>
 
         <Button
-          kind="secondary"
-          size="sm"
-          renderIcon={Checkmark}
-          onClick={markAsRegistered}
-          disabled={!canSaveDataLocal || selectedSampleIds.length === 0}
-        >
-          <FormattedMessage
-            id="notebook.page.tradmed.markAsRegistered"
-            defaultMessage="Mark as Registered ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
-
-        <Button
           kind="tertiary"
           size="sm"
           renderIcon={Chemistry}
@@ -635,6 +623,27 @@ function TraditionalMedicineSampleCreationPage({
           <FormattedMessage
             id="notebook.page.tradmed.qcInspection"
             defaultMessage="QC Inspection ({count})"
+            values={{ count: selectedSampleIds.length }}
+          />
+        </Button>
+
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={Checkmark}
+          onClick={markAsRegistered}
+          disabled={
+            !canSaveDataLocal ||
+            selectedSampleIds.length === 0 ||
+            !selectedSampleIds.every((id) => {
+              const sample = samples.find((s) => s.id === id);
+              return sample?.data?.qcInspection?.qcResult === "PASS";
+            })
+          }
+        >
+          <FormattedMessage
+            id="notebook.page.tradmed.markAsRegistered"
+            defaultMessage="Mark as Registered ({count})"
             values={{ count: selectedSampleIds.length }}
           />
         </Button>
@@ -1117,6 +1126,99 @@ function TraditionalMedicineSampleCreationPage({
               rows={3}
               placeholder="Record any observations, anomalies, or special conditions..."
             />
+          </Column>
+
+          {/* QC Result Decision - Radio Buttons for Pass/Fail */}
+          <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+            <fieldset
+              style={{
+                border: "1px solid var(--cds-border-subtle)",
+                borderRadius: "4px",
+                padding: "1rem",
+                margin: "0",
+              }}
+            >
+              <legend
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                  padding: "0 0.5rem",
+                }}
+              >
+                <FormattedMessage
+                  id="notebook.page.tradmed.qc.result"
+                  defaultMessage="QC Inspection Result"
+                />
+              </legend>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "2rem",
+                  marginTop: "0.5rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    id="qcResultPass"
+                    name="qcResult"
+                    value="PASS"
+                    checked={qcInspectionData.qcResult === "PASS"}
+                    onChange={(e) =>
+                      setQcInspectionData((prev) => ({
+                        ...prev,
+                        qcResult: e.target.value,
+                      }))
+                    }
+                  />
+                  <label
+                    htmlFor="qcResultPass"
+                    style={{ margin: "0", fontSize: "0.875rem" }}
+                  >
+                    <FormattedMessage
+                      id="notebook.page.tradmed.qc.result.pass"
+                      defaultMessage="Pass"
+                    />
+                  </label>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    id="qcResultFail"
+                    name="qcResult"
+                    value="FAIL"
+                    checked={qcInspectionData.qcResult === "FAIL"}
+                    onChange={(e) =>
+                      setQcInspectionData((prev) => ({
+                        ...prev,
+                        qcResult: e.target.value,
+                      }))
+                    }
+                  />
+                  <label
+                    htmlFor="qcResultFail"
+                    style={{ margin: "0", fontSize: "0.875rem" }}
+                  >
+                    <FormattedMessage
+                      id="notebook.page.tradmed.qc.result.fail"
+                      defaultMessage="Fail"
+                    />
+                  </label>
+                </div>
+              </div>
+            </fieldset>
           </Column>
         </Grid>
       </Modal>
