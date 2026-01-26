@@ -1761,8 +1761,6 @@
   "configuration.panel.assign.explain": "Select tests to re-assign to a different panel by clicking the test name; they are displayed under their currently assigned panel.",
   "configuration.sampleType.assign.explain": "Select tests to re-assign to a different sample type by clicking the test name; they are displayed under their currently assigned sample type.",
   "configuration.testUnit.assign.new.unit": "Assign to test section",
-  "configuration.sampleType.assign.new.type": "Assign to sample type",
-  "configuration.sampleType.assign.new.type": "Assign to sample type",
 
   "analyzer.results.page.title": "Analyzer Results Import",
   "analyzer.results.loading": "Loading analyzer results...",
@@ -2059,6 +2057,7 @@
   "storage.dispose.error": "Failed to dispose sample",
 
   "yes.option": "Yes",
+  "workplan.print": "Print Workplan",
   "workplan.test.title": "Workplan By Test",
   "workplan.panel.title": "Workplan By Panel",
   "workplan.unit.title": "Workplan By Unit",
