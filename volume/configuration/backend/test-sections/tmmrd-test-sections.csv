@@ -1,8 +1,0 @@
-testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
-TMMRD_BOTANICAL,Botanical Authentication Department,Y,100,N,Botanical Authentication,Authentification Botanique
-TMMRD_PHYTOCHEM,Phytochemical Screening Department,Y,101,N,Phytochemical Screening,Criblage Phytochimique
-TMMRD_ANALYTICAL,Analytical Techniques Department,Y,102,N,Analytical Techniques,Techniques Analytiques
-TMMRD_BIOLOGICAL,Biological Activity Assays Department,Y,103,N,Biological Activity Assays,Essais d'Activité Biologique
-TMMRD_SAFETY,Safety & Toxicity Department,Y,104,N,Safety & Toxicity,Sécurité et Toxicité
-TMMRD_PRODUCT_QC,Product Quality Control Department,Y,105,N,Product Quality Control,Contrôle Qualité Produit
-TMMRD_FORMULATION,Formulation Development Department,Y,106,N,Formulation Development,Développement de Formulation
