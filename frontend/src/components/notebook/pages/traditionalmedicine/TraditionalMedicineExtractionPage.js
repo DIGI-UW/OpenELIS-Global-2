@@ -439,15 +439,20 @@ function TraditionalMedicineExtractionPage({
 
   // Filter samples by status - more reliable than checking solventType field
   const unpreparedSamples = useMemo(
-    () => samples.filter((s) => s.status === "PENDING"),
-    [samples],
-  );
-  const extractedInProgressSamples = useMemo(
-    () => samples.filter((s) => s.status === "IN_PROGRESS"),
+    () =>
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
     [samples],
   );
   const extractedCompletedSamples = useMemo(
     () => samples.filter((s) => s.status === "COMPLETED"),
+    [samples],
+  );
+
+  // Kept for grid sections - IN_PROGRESS only for "pending completion" section
+  const extractedInProgressSamples = useMemo(
+    () => samples.filter((s) => s.status === "IN_PROGRESS"),
     [samples],
   );
 
@@ -532,7 +537,7 @@ function TraditionalMedicineExtractionPage({
                 />
               </span>
               <span className="progress-value">
-                {extractedInProgressSamples.length}
+                {extractedCompletedSamples.length}
               </span>
             </Tile>
           </div>
