@@ -10386,5 +10386,14 @@
   "table.selectColumns": "Select columns to preview",
   "validation.resultColumnRequired": "Result Value column is required",
   "validation.duplicateColumns": "Cannot select the same column multiple times",
-  "notification.error.title": "Error"
+  "notification.error.title": "Error",
+  "notification.bulk.apply.success": "Metadata Applied",
+  "notification.bulk.apply.samples.count": "{count} samples updated successfully",
+  "notification.bulk.apply.error": "Failed to apply metadata",
+  "notification.samples.advanced": "Samples Advanced",
+  "notification.samples.advanced.count": "{count} samples advanced to stage {stage}",
+  "notification.samples.advance.error": "Failed to advance samples",
+  "notification.samples.completed": "Samples Completed",
+  "notification.samples.completed.count": "{count} samples marked as completed",
+  "notification.samples.complete.error": "Failed to mark samples as completed"
 }
