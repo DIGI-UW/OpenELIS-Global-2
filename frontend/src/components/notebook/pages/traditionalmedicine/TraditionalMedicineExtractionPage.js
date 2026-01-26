@@ -305,7 +305,9 @@ function TraditionalMedicineExtractionPage({
         solventVolumeUnit: "mL",
         extractionTemperature: extractionTemp,
         temperatureUnit: "C",
-        extractionDurationMinutes: Math.round(parseFloat(extractionDuration) * 60),
+        extractionDurationMinutes: Math.round(
+          parseFloat(extractionDuration) * 60,
+        ),
         numberOfCycles: 1,
         filtrationMethod: filtrationMethod?.id || "NONE",
         concentrationMethod: concentrationMethod?.id || "NONE",
@@ -327,25 +329,48 @@ function TraditionalMedicineExtractionPage({
             }),
             (statusCode) => {
               if (statusCode === 200) {
-                notify({
-                  kind: NotificationKinds.success,
-                  title:
-                    response.message ||
-                    intl.formatMessage(
-                      {
-                        id: "notebook.page.tradmed.extraction.success",
-                        defaultMessage: "Extracted {count} sample(s).",
+                // Apply QC metadata to store extract quality assessment
+                const qcResult =
+                  extractColor && extractConsistency && extractContaminationFree
+                    ? "PASS"
+                    : "PENDING";
+
+                postToOpenElisServerJsonResponse(
+                  `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+                  JSON.stringify({
+                    sampleIds,
+                    data: {
+                      extractQuality: {
+                        color: extractColor,
+                        odor: extractOdor,
+                        consistency: extractConsistency,
+                        contaminationFree: extractContaminationFree,
+                        qcResult,
                       },
-                      {
-                        count:
-                          response.updatedCount || selectedSampleIds.length,
-                      },
-                    ),
-                });
-                setExtractionModalOpen(false);
-                setSelectedSampleIds([]);
-                loadPageSamples();
-                if (onProgressUpdate) onProgressUpdate();
+                    },
+                  }),
+                  (qcResponse) => {
+                    notify({
+                      kind: NotificationKinds.success,
+                      title:
+                        response.message ||
+                        intl.formatMessage(
+                          {
+                            id: "notebook.page.tradmed.extraction.success",
+                            defaultMessage: "Extracted {count} sample(s).",
+                          },
+                          {
+                            count:
+                              response.updatedCount || selectedSampleIds.length,
+                          },
+                        ),
+                    });
+                    setExtractionModalOpen(false);
+                    setSelectedSampleIds([]);
+                    loadPageSamples();
+                    if (onProgressUpdate) onProgressUpdate();
+                  },
+                );
               } else {
                 notify({
                   kind: NotificationKinds.error,
@@ -377,6 +402,10 @@ function TraditionalMedicineExtractionPage({
     concentrationMethod,
     extractWeight,
     extractNotes,
+    extractColor,
+    extractOdor,
+    extractConsistency,
+    extractContaminationFree,
     hasRealPageId,
     pageData?.id,
     selectedSampleIds,
