@@ -397,13 +397,13 @@ function TraditionalMedicineFormulationPage({
 
     const sampleIds = samplesToComplete.map((s) => parseInt(s.id, 10));
 
-    postToOpenElisServerJsonResponse(
+    postToOpenElisServer(
       `/rest/notebook/bulk/page/${pageData.id}/samples/status`,
-      JSON.stringify({ sampleIds: sampleIds, status: "COMPLETED" }),
-      (response) => {
+      JSON.stringify({ sampleIds, status: "COMPLETED" }),
+      (statusCode) => {
         setIsCompleting(false);
 
-        if (response && response.success) {
+        if (statusCode === 200) {
           notify({
             kind: NotificationKinds.success,
             title: intl.formatMessage(
@@ -412,7 +412,7 @@ function TraditionalMedicineFormulationPage({
                 defaultMessage:
                   "Successfully marked {count} samples as complete.",
               },
-              { count: response.updatedCount || sampleIds.length },
+              { count: sampleIds.length },
             ),
           });
           setSelectedSampleIds([]);
@@ -423,12 +423,10 @@ function TraditionalMedicineFormulationPage({
         } else {
           notify({
             kind: NotificationKinds.error,
-            title:
-              response?.error ||
-              intl.formatMessage({
-                id: "notebook.tradmed.formulation.completeFailed",
-                defaultMessage: "Failed to mark samples complete.",
-              }),
+            title: intl.formatMessage({
+              id: "notebook.tradmed.formulation.completeFailed",
+              defaultMessage: "Failed to mark samples complete.",
+            }),
           });
         }
       },
