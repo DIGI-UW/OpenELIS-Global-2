@@ -368,10 +368,13 @@ function SampleGrid({
     header: col.header,
   }));
 
+  // Check if custom columns already include an "actions" column to avoid duplicates
+  const hasActionsColumn = columns && columns.some(col => col.key === "actions");
+
   const headers = [
     ...baseHeaders,
     ...additionalHeaders,
-    { key: "actions", header: "" },
+    ...(hasActionsColumn ? [] : [{ key: "actions", header: "" }]),
   ];
 
   // Store custom columns for rendering
@@ -736,51 +739,54 @@ function SampleGrid({
                       })}
                     </>
                   )}
-                  <TableCell>
-                    <OverflowMenu
-                      flipped
-                      size="sm"
-                      ariaLabel={intl.formatMessage({
-                        id: "notebook.sample.actions",
-                        defaultMessage: "Sample actions",
-                      })}
-                    >
-                      <OverflowMenuItem
-                        itemText={intl.formatMessage({
-                          id: "notebook.sample.action.view",
-                          defaultMessage: "View Details",
+                  {/* Only render default actions cell if custom columns don't already include one */}
+                  {!hasActionsColumn && (
+                    <TableCell>
+                      <OverflowMenu
+                        flipped
+                        size="sm"
+                        ariaLabel={intl.formatMessage({
+                          id: "notebook.sample.actions",
+                          defaultMessage: "Sample actions",
                         })}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSampleClick && onSampleClick(row._original);
-                        }}
-                      />
-                      {onStatusChange && row.status !== "COMPLETED" && (
+                      >
                         <OverflowMenuItem
                           itemText={intl.formatMessage({
-                            id: "notebook.sample.action.markComplete",
-                            defaultMessage: "Mark Complete",
+                            id: "notebook.sample.action.view",
+                            defaultMessage: "View Details",
                           })}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onStatusChange(row.id, "COMPLETED");
+                            onSampleClick && onSampleClick(row._original);
                           }}
                         />
-                      )}
-                      {onStatusChange && row.status !== "SKIPPED" && (
-                        <OverflowMenuItem
-                          itemText={intl.formatMessage({
-                            id: "notebook.sample.action.skip",
-                            defaultMessage: "Skip",
-                          })}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onStatusChange(row.id, "SKIPPED");
-                          }}
-                        />
-                      )}
-                    </OverflowMenu>
-                  </TableCell>
+                        {onStatusChange && row.status !== "COMPLETED" && (
+                          <OverflowMenuItem
+                            itemText={intl.formatMessage({
+                              id: "notebook.sample.action.markComplete",
+                              defaultMessage: "Mark Complete",
+                            })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusChange(row.id, "COMPLETED");
+                            }}
+                          />
+                        )}
+                        {onStatusChange && row.status !== "SKIPPED" && (
+                          <OverflowMenuItem
+                            itemText={intl.formatMessage({
+                              id: "notebook.sample.action.skip",
+                              defaultMessage: "Skip",
+                            })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusChange(row.id, "SKIPPED");
+                            }}
+                          />
+                        )}
+                      </OverflowMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
