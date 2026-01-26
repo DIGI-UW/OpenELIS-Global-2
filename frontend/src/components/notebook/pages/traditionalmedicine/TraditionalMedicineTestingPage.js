@@ -102,6 +102,9 @@ function TraditionalMedicineTestingPage({
 
   const [assignedTests, setAssignedTests] = useState([]);
   const [testAssignmentModal, setTestAssignmentModal] = useState(false);
+  const [testResultsModal, setTestResultsModal] = useState(false);
+  const [currentSampleForResults, setCurrentSampleForResults] = useState(null);
+
   const [assignmentData, setAssignmentData] = useState({
     category: "",
     subcategory: "",
@@ -109,6 +112,18 @@ function TraditionalMedicineTestingPage({
     methodology: "",
     expectedResults: "",
     acceptanceCriteria: "",
+  });
+
+  const [testResultsData, setTestResultsData] = useState({
+    testId: "",
+    testName: "",
+    category: "",
+    result: "",
+    resultValue: "",
+    resultUnit: "",
+    notes: "",
+    recordedBy: "",
+    recordedAt: "",
   });
 
   // TMMRD Test Catalog Hierarchy - Based on SRS Sections 4-5
@@ -349,6 +364,20 @@ function TraditionalMedicineTestingPage({
     });
   }, []);
 
+  const resetResultsForm = useCallback(() => {
+    setTestResultsData({
+      testId: "",
+      testName: "",
+      category: "",
+      result: "",
+      resultValue: "",
+      resultUnit: "",
+      notes: "",
+      recordedBy: "",
+      recordedAt: "",
+    });
+  }, []);
+
   const openTestAssignmentModal = useCallback(() => {
     if (selectedSampleIds.length === 0) {
       notify({
@@ -363,6 +392,26 @@ function TraditionalMedicineTestingPage({
     resetAssignmentForm();
     setTestAssignmentModal(true);
   }, [selectedSampleIds, intl, resetAssignmentForm, notify]);
+
+  const openTestResultsModal = useCallback(
+    (sample) => {
+      if (!sample || sample.assignedTests.length === 0) {
+        notify({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({
+            id: "notebook.page.tradmed.error.noTests",
+            defaultMessage:
+              "This sample has no assigned tests to record results for.",
+          }),
+        });
+        return;
+      }
+      setCurrentSampleForResults(sample);
+      resetResultsForm();
+      setTestResultsModal(true);
+    },
+    [intl, resetResultsForm, notify],
+  );
 
   const handleCategoryChange = useCallback(({ selectedItem }) => {
     setAssignmentData((prev) => ({
@@ -479,6 +528,92 @@ function TraditionalMedicineTestingPage({
     loadPageSamples,
     onProgressUpdate,
     notify,
+  ]);
+
+  const recordTestResults = useCallback(() => {
+    if (!testResultsData.result) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.page.tradmed.testing.error.resultRequired",
+          defaultMessage: "Please record a test result.",
+        }),
+      });
+      return;
+    }
+
+    if (!currentSampleForResults || !hasRealPageId) {
+      notify({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notebook.page.tradmed.error.noSample",
+          defaultMessage:
+            "Cannot record results: Sample not properly selected.",
+        }),
+      });
+      return;
+    }
+
+    setIsApplying(true);
+
+    const sampleId = parseInt(currentSampleForResults.id, 10);
+    const updatedTests = currentSampleForResults.assignedTests.map((test) => {
+      if (test.testId === testResultsData.testId) {
+        return {
+          ...test,
+          status: "COMPLETED",
+          result: testResultsData.result,
+          resultValue: testResultsData.resultValue,
+          resultUnit: testResultsData.resultUnit || test.unit,
+          notes: testResultsData.notes,
+          recordedBy: testResultsData.recordedBy,
+          recordedAt: new Date().toISOString(),
+        };
+      }
+      return test;
+    });
+
+    postToOpenElisServerJsonResponse(
+      `/rest/notebook/bulk/page/${pageData.id}/samples/apply`,
+      JSON.stringify({
+        sampleIds: [sampleId],
+        data: {
+          assignedTests: updatedTests,
+        },
+      }),
+      (response) => {
+        setIsApplying(false);
+        if (response?.success !== false) {
+          notify({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({
+              id: "notebook.page.tradmed.testing.resultRecordSuccess",
+              defaultMessage: "Test result recorded successfully.",
+            }),
+          });
+          setTestResultsModal(false);
+          resetResultsForm();
+          setCurrentSampleForResults(null);
+          loadPageSamples();
+          if (onProgressUpdate) onProgressUpdate();
+        } else {
+          notify({
+            kind: NotificationKinds.error,
+            title: response?.error || "Test result recording failed",
+          });
+        }
+      },
+    );
+  }, [
+    testResultsData,
+    currentSampleForResults,
+    hasRealPageId,
+    pageData?.id,
+    intl,
+    loadPageSamples,
+    onProgressUpdate,
+    notify,
+    resetResultsForm,
   ]);
 
   // Handle marking tested samples complete (moving to next page)
@@ -805,16 +940,46 @@ function TraditionalMedicineTestingPage({
                   render: (sample) => (
                     <div>
                       {sample.assignedTests.map((test, idx) => (
-                        <Tag
-                          key={idx}
-                          type="blue"
-                          size="sm"
-                          style={{ marginRight: "4px", marginBottom: "2px" }}
-                        >
-                          {test.testName}
-                        </Tag>
+                        <div key={idx} style={{ marginBottom: "0.5rem" }}>
+                          <Tag
+                            type={
+                              test.status === "COMPLETED" ? "green" : "blue"
+                            }
+                            size="sm"
+                            style={{ marginRight: "4px" }}
+                          >
+                            {test.testName}
+                            {test.status === "COMPLETED" && " ✓"}
+                          </Tag>
+                          {test.status === "COMPLETED" && test.result && (
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                color: "var(--cds-text-secondary)",
+                              }}
+                            >
+                              {test.result}
+                              {test.resultValue &&
+                                ` (${test.resultValue}${test.resultUnit ? ` ${test.resultUnit}` : ""})`}
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  render: (sample) => (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => openTestResultsModal(sample)}
+                    >
+                      Record Results
+                    </Button>
                   ),
                 },
                 {
@@ -866,14 +1031,31 @@ function TraditionalMedicineTestingPage({
                   render: (sample) => (
                     <div>
                       {sample.assignedTests.map((test, idx) => (
-                        <Tag
-                          key={idx}
-                          type="blue"
-                          size="sm"
-                          style={{ marginRight: "4px", marginBottom: "2px" }}
-                        >
-                          {test.testName}
-                        </Tag>
+                        <div key={idx} style={{ marginBottom: "0.5rem" }}>
+                          <Tag
+                            type={
+                              test.status === "COMPLETED" ? "green" : "blue"
+                            }
+                            size="sm"
+                            style={{ marginRight: "4px" }}
+                          >
+                            {test.testName}
+                            {test.status === "COMPLETED" && " ✓"}
+                          </Tag>
+                          {test.status === "COMPLETED" && test.result && (
+                            <div
+                              style={{
+                                fontSize: "0.75rem",
+                                marginTop: "0.25rem",
+                                color: "var(--cds-text-secondary)",
+                              }}
+                            >
+                              {test.result}
+                              {test.resultValue &&
+                                ` (${test.resultValue}${test.resultUnit ? ` ${test.resultUnit}` : ""})`}
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   ),
@@ -891,6 +1073,238 @@ function TraditionalMedicineTestingPage({
           </div>
         </div>
       )}
+
+      <Modal
+        open={testResultsModal}
+        onRequestClose={() => {
+          setTestResultsModal(false);
+          resetResultsForm();
+          setCurrentSampleForResults(null);
+        }}
+        onRequestSubmit={recordTestResults}
+        modalHeading={intl.formatMessage({
+          id: "notebook.page.tradmed.testing.modal.results.title",
+          defaultMessage: "Record Test Results",
+        })}
+        primaryButtonText={
+          isApplying
+            ? intl.formatMessage({
+                id: "label.recording",
+                defaultMessage: "Recording...",
+              })
+            : intl.formatMessage({
+                id: "notebook.page.tradmed.testing.modal.results.button",
+                defaultMessage: "Record Result",
+              })
+        }
+        secondaryButtonText={intl.formatMessage({
+          id: "label.cancel",
+          defaultMessage: "Cancel",
+        })}
+        primaryButtonDisabled={isApplying || !testResultsData.result}
+        size="lg"
+      >
+        {isApplying && <Loading withOverlay={false} small />}
+
+        {currentSampleForResults && (
+          <Grid narrow>
+            <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+              <div style={{ padding: "0.5rem 0", fontSize: "0.875rem" }}>
+                <strong>Sample:</strong>{" "}
+                {currentSampleForResults.accessionNumber} (
+                {currentSampleForResults.localName})
+              </div>
+            </Column>
+
+            {currentSampleForResults.assignedTests &&
+              currentSampleForResults.assignedTests.length > 0 && (
+                <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+                  <Dropdown
+                    id="test-to-record"
+                    titleText={intl.formatMessage({
+                      id: "notebook.page.tradmed.testing.modal.testToRecord",
+                      defaultMessage: "Test to Record Results For *",
+                    })}
+                    label="Select test..."
+                    items={currentSampleForResults.assignedTests}
+                    itemToString={(item) =>
+                      item ? `${item.testName} (${item.status})` : ""
+                    }
+                    selectedItem={
+                      currentSampleForResults.assignedTests.find(
+                        (t) => t.testId === testResultsData.testId,
+                      ) || null
+                    }
+                    onChange={({ selectedItem }) => {
+                      if (selectedItem) {
+                        setTestResultsData((prev) => ({
+                          ...prev,
+                          testId: selectedItem.testId,
+                          testName: selectedItem.testName,
+                          category: selectedItem.category,
+                        }));
+                      }
+                    }}
+                  />
+                </Column>
+              )}
+
+            {testResultsData.category && (
+              <>
+                <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+                  <Dropdown
+                    id="test-result"
+                    titleText={intl.formatMessage({
+                      id: "notebook.page.tradmed.testing.modal.result",
+                      defaultMessage: "Result *",
+                    })}
+                    label="Select result..."
+                    items={
+                      testResultsData.category === "PHYTOCHEMICAL"
+                        ? [
+                            { id: "POSITIVE", text: "Positive" },
+                            { id: "NEGATIVE", text: "Negative" },
+                            { id: "TRACE", text: "Trace" },
+                          ]
+                        : testResultsData.category === "SAFETY"
+                          ? [
+                              { id: "SAFE", text: "Safe" },
+                              { id: "UNSAFE", text: "Unsafe" },
+                              { id: "CONDITIONAL", text: "Conditional" },
+                            ]
+                          : testResultsData.category === "BIOLOGICAL"
+                            ? [
+                                { id: "ACTIVE", text: "Active" },
+                                { id: "INACTIVE", text: "Inactive" },
+                                { id: "PARTIAL", text: "Partial Activity" },
+                              ]
+                            : [
+                                { id: "PASS", text: "Pass" },
+                                { id: "FAIL", text: "Fail" },
+                                { id: "CONDITIONAL", text: "Conditional" },
+                              ]
+                    }
+                    itemToString={(item) => (item ? item.text : "")}
+                    selectedItem={
+                      testResultsData.category === "PHYTOCHEMICAL"
+                        ? [
+                            { id: "POSITIVE", text: "Positive" },
+                            { id: "NEGATIVE", text: "Negative" },
+                            { id: "TRACE", text: "Trace" },
+                          ].find((i) => i.id === testResultsData.result) || null
+                        : testResultsData.category === "SAFETY"
+                          ? [
+                              { id: "SAFE", text: "Safe" },
+                              { id: "UNSAFE", text: "Unsafe" },
+                              { id: "CONDITIONAL", text: "Conditional" },
+                            ].find((i) => i.id === testResultsData.result) ||
+                            null
+                          : testResultsData.category === "BIOLOGICAL"
+                            ? [
+                                { id: "ACTIVE", text: "Active" },
+                                { id: "INACTIVE", text: "Inactive" },
+                                { id: "PARTIAL", text: "Partial Activity" },
+                              ].find((i) => i.id === testResultsData.result) ||
+                              null
+                            : [
+                                { id: "PASS", text: "Pass" },
+                                { id: "FAIL", text: "Fail" },
+                                { id: "CONDITIONAL", text: "Conditional" },
+                              ].find((i) => i.id === testResultsData.result) ||
+                              null
+                    }
+                    onChange={({ selectedItem }) => {
+                      if (selectedItem) {
+                        setTestResultsData((prev) => ({
+                          ...prev,
+                          result: selectedItem.id,
+                        }));
+                      }
+                    }}
+                  />
+                </Column>
+
+                <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+                  <TextArea
+                    id="result-value"
+                    labelText={intl.formatMessage({
+                      id: "notebook.page.tradmed.testing.modal.resultValue",
+                      defaultMessage:
+                        "Result Value (e.g., LD50, IC50, Zone diameter)",
+                    })}
+                    value={testResultsData.resultValue}
+                    onChange={(e) =>
+                      setTestResultsData((prev) => ({
+                        ...prev,
+                        resultValue: e.target.value,
+                      }))
+                    }
+                    rows={2}
+                    placeholder="Enter numeric result value if applicable..."
+                  />
+                </Column>
+
+                <Column lg={8} md={8} sm={4} style={{ marginBottom: "1rem" }}>
+                  <TextArea
+                    id="result-unit"
+                    labelText={intl.formatMessage({
+                      id: "notebook.page.tradmed.testing.modal.resultUnit",
+                      defaultMessage: "Unit (e.g., mg/kg, IC50 μg/mL)",
+                    })}
+                    value={testResultsData.resultUnit}
+                    onChange={(e) =>
+                      setTestResultsData((prev) => ({
+                        ...prev,
+                        resultUnit: e.target.value,
+                      }))
+                    }
+                    rows={1}
+                    placeholder="Enter unit of measurement..."
+                  />
+                </Column>
+
+                <Column lg={16} md={16} sm={4} style={{ marginBottom: "1rem" }}>
+                  <TextArea
+                    id="result-notes"
+                    labelText={intl.formatMessage({
+                      id: "notebook.page.tradmed.testing.modal.resultNotes",
+                      defaultMessage: "Notes / Observations",
+                    })}
+                    value={testResultsData.notes}
+                    onChange={(e) =>
+                      setTestResultsData((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    placeholder="Record any observations, anomalies, or additional comments..."
+                  />
+                </Column>
+
+                <Column lg={8} md={4} sm={2} style={{ marginBottom: "1rem" }}>
+                  <TextArea
+                    id="recorded-by"
+                    labelText={intl.formatMessage({
+                      id: "notebook.page.tradmed.testing.modal.recordedBy",
+                      defaultMessage: "Recorded By",
+                    })}
+                    value={testResultsData.recordedBy}
+                    onChange={(e) =>
+                      setTestResultsData((prev) => ({
+                        ...prev,
+                        recordedBy: e.target.value,
+                      }))
+                    }
+                    rows={1}
+                    placeholder="Operator name/ID..."
+                  />
+                </Column>
+              </>
+            )}
+          </Grid>
+        )}
+      </Modal>
 
       <Modal
         open={testAssignmentModal}
