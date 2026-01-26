@@ -165,15 +165,37 @@ function TraditionalMedicineAnalyticalPage({
                   externalId: s.externalId,
                   accessionNumber: s.accessionNumber,
                   status: s.pageStatus || s.status || "PENDING",
+                  // Identification
                   localName: s.data?.localName,
                   scientificName: s.data?.scientificName,
                   sampleCategory: s.data?.sampleCategory,
                   plantPart: s.data?.plantPart,
                   collectionDate: s.data?.collectionDate,
+                  collectionSite: s.data?.collectionSite,
                   intendedUse: s.data?.intendedUse,
+                  // Extraction data
+                  extractWeight: s.data?.extractWeight,
+                  extractWeightUnit: s.data?.extractWeightUnit,
+                  extractYieldPercentage: s.data?.extractYieldPercentage,
+                  solvent: s.data?.solvent,
+                  solventLabel: s.data?.solventLabel,
+                  solventRatio: s.data?.solventRatio,
+                  solventVolume: s.data?.solventVolume,
+                  solventVolumeUnit: s.data?.solventVolumeUnit,
+                  dryingMethod: s.data?.dryingMethod,
+                  dryingMethodLabel: s.data?.dryingMethodLabel,
+                  concentrationMethod: s.data?.concentrationMethod,
+                  concentrationLabel: s.data?.concentrationLabel,
+                  // Preparation data
+                  processingMethod: s.data?.processingMethod,
+                  processingMethodLabel: s.data?.processingMethodLabel,
+                  // Analytical pathway
                   selectedPath: s.data?.selectedPath,
+                  selectedPathLabel: s.data?.selectedPathLabel,
                   fractionationMethod: s.data?.fractionationMethod,
                   analysisNotes: s.data?.analysisNotes,
+                  // Test results from Page 7
+                  assignedTests: s.data?.assignedTests || [],
                 }))
               : [],
           );
@@ -571,12 +593,59 @@ function TraditionalMedicineAnalyticalPage({
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
                 { key: "sampleCategory", header: "Category" },
-                { key: "selectedPath", header: "Pathway" },
-                { key: "fractionationMethod", header: "Fractionation" },
-                { key: "analysisNotes", header: "Analysis Notes" },
                 { key: "plantPart", header: "Plant Part" },
                 { key: "collectionDate", header: "Collection Date" },
+                { key: "collectionSite", header: "Collection Site" },
                 { key: "intendedUse", header: "Intended Use" },
+                {
+                  key: "extractWeight",
+                  header: "Extract Weight",
+                  render: (_value, sample) =>
+                    sample.extractWeight
+                      ? `${sample.extractWeight} ${sample.extractWeightUnit || "g"}`
+                      : "-",
+                },
+                {
+                  key: "extractYieldPercentage",
+                  header: "Yield %",
+                },
+                {
+                  key: "solventLabel",
+                  header: "Solvent",
+                },
+                {
+                  key: "concentrationLabel",
+                  header: "Concentration",
+                },
+                {
+                  key: "dryingMethodLabel",
+                  header: "Drying Method",
+                },
+                {
+                  key: "selectedPathLabel",
+                  header: "Assigned Pathway",
+                },
+                {
+                  key: "fractionationMethod",
+                  header: "Fractionation Method",
+                },
+                {
+                  key: "assignedTests",
+                  header: "Tests from Page 7",
+                  render: (_value, sample) => (
+                    <div>
+                      {sample.assignedTests &&
+                      sample.assignedTests.length > 0 ? (
+                        <Tag type="blue" size="sm">
+                          {sample.assignedTests.length} test(s)
+                        </Tag>
+                      ) : (
+                        "-"
+                      )}
+                    </div>
+                  ),
+                },
+                { key: "analysisNotes", header: "Analysis Notes" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -628,12 +697,59 @@ function TraditionalMedicineAnalyticalPage({
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
                 { key: "sampleCategory", header: "Category" },
-                { key: "selectedPath", header: "Pathway" },
-                { key: "fractionationMethod", header: "Fractionation" },
-                { key: "analysisNotes", header: "Analysis Notes" },
                 { key: "plantPart", header: "Plant Part" },
                 { key: "collectionDate", header: "Collection Date" },
+                { key: "collectionSite", header: "Collection Site" },
                 { key: "intendedUse", header: "Intended Use" },
+                {
+                  key: "extractWeight",
+                  header: "Extract Weight",
+                  render: (_value, sample) =>
+                    sample.extractWeight
+                      ? `${sample.extractWeight} ${sample.extractWeightUnit || "g"}`
+                      : "-",
+                },
+                {
+                  key: "extractYieldPercentage",
+                  header: "Yield %",
+                },
+                {
+                  key: "solventLabel",
+                  header: "Solvent",
+                },
+                {
+                  key: "concentrationLabel",
+                  header: "Concentration",
+                },
+                {
+                  key: "dryingMethodLabel",
+                  header: "Drying Method",
+                },
+                {
+                  key: "selectedPathLabel",
+                  header: "Assigned Pathway",
+                },
+                {
+                  key: "fractionationMethod",
+                  header: "Fractionation Method",
+                },
+                {
+                  key: "assignedTests",
+                  header: "Tests from Page 7",
+                  render: (_value, sample) => (
+                    <div>
+                      {sample.assignedTests &&
+                      sample.assignedTests.length > 0 ? (
+                        <Tag type="blue" size="sm">
+                          {sample.assignedTests.length} test(s)
+                        </Tag>
+                      ) : (
+                        "-"
+                      )}
+                    </div>
+                  ),
+                },
+                { key: "analysisNotes", header: "Analysis Notes" },
                 {
                   key: "status",
                   header: intl.formatMessage({
@@ -674,12 +790,59 @@ function TraditionalMedicineAnalyticalPage({
                 { key: "localName", header: "Local Name" },
                 { key: "scientificName", header: "Scientific Name" },
                 { key: "sampleCategory", header: "Category" },
-                { key: "selectedPath", header: "Pathway" },
-                { key: "fractionationMethod", header: "Fractionation" },
-                { key: "analysisNotes", header: "Analysis Notes" },
                 { key: "plantPart", header: "Plant Part" },
                 { key: "collectionDate", header: "Collection Date" },
+                { key: "collectionSite", header: "Collection Site" },
                 { key: "intendedUse", header: "Intended Use" },
+                {
+                  key: "extractWeight",
+                  header: "Extract Weight",
+                  render: (_value, sample) =>
+                    sample.extractWeight
+                      ? `${sample.extractWeight} ${sample.extractWeightUnit || "g"}`
+                      : "-",
+                },
+                {
+                  key: "extractYieldPercentage",
+                  header: "Yield %",
+                },
+                {
+                  key: "solventLabel",
+                  header: "Solvent",
+                },
+                {
+                  key: "concentrationLabel",
+                  header: "Concentration",
+                },
+                {
+                  key: "dryingMethodLabel",
+                  header: "Drying Method",
+                },
+                {
+                  key: "selectedPathLabel",
+                  header: "Assigned Pathway",
+                },
+                {
+                  key: "fractionationMethod",
+                  header: "Fractionation Method",
+                },
+                {
+                  key: "assignedTests",
+                  header: "Tests from Page 7",
+                  render: (_value, sample) => (
+                    <div>
+                      {sample.assignedTests &&
+                      sample.assignedTests.length > 0 ? (
+                        <Tag type="green" size="sm">
+                          {sample.assignedTests.length} test(s)
+                        </Tag>
+                      ) : (
+                        "-"
+                      )}
+                    </div>
+                  ),
+                },
+                { key: "analysisNotes", header: "Analysis Notes" },
                 {
                   key: "status",
                   header: intl.formatMessage({
