@@ -442,15 +442,14 @@ function TraditionalMedicineFormulationPage({
   ]);
 
   const pendingSamples = useMemo(
-    () => samples.filter((s) => !s.formulationType),
-    [samples],
-  );
-  const formulatedInProgressSamples = useMemo(
-    () => samples.filter((s) => s.formulationType && s.status !== "COMPLETED"),
+    () =>
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
     [samples],
   );
   const formulatedCompletedSamples = useMemo(
-    () => samples.filter((s) => s.formulationType && s.status === "COMPLETED"),
+    () => samples.filter((s) => s.status === "COMPLETED"),
     [samples],
   );
 
@@ -535,7 +534,7 @@ function TraditionalMedicineFormulationPage({
                 />
               </span>
               <span className="progress-value">
-                {formulatedInProgressSamples.length}
+                {formulatedCompletedSamples.length}
               </span>
             </Tile>
           </div>

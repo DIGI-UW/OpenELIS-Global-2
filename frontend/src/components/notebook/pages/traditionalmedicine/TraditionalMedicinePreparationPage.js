@@ -469,15 +469,14 @@ function TraditionalMedicinePreparationPage({
   ]);
 
   const unpreparedSamples = useMemo(
-    () => samples.filter((s) => !s.processingMethod),
-    [samples],
-  );
-  const preparedInProgressSamples = useMemo(
-    () => samples.filter((s) => s.processingMethod && s.status !== "COMPLETED"),
+    () =>
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
     [samples],
   );
   const preparedCompletedSamples = useMemo(
-    () => samples.filter((s) => s.processingMethod && s.status === "COMPLETED"),
+    () => samples.filter((s) => s.status === "COMPLETED"),
     [samples],
   );
 
@@ -572,9 +571,7 @@ function TraditionalMedicinePreparationPage({
                   defaultMessage="Prepared"
                 />
               </span>
-              <span className="progress-value">
-                {preparedInProgressSamples.length}
-              </span>
+              <span className="progress-value">{unpreparedSamples.length}</span>
             </Tile>
           </div>
         </Column>
@@ -683,12 +680,12 @@ function TraditionalMedicinePreparationPage({
               defaultMessage="Prepared (Pending Completion)"
             />
             <Tag type="blue" size="sm" className="count-tag">
-              {preparedInProgressSamples.length}
+              {unpreparedSamples.length}
             </Tag>
           </h5>
         </div>
         <div className="sample-grid-container">
-          {!loading && preparedInProgressSamples.length === 0 ? (
+          {!loading && unpreparedSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -700,7 +697,7 @@ function TraditionalMedicinePreparationPage({
           ) : (
             <SampleGrid
               gridId="prepared-in-progress-samples"
-              samples={preparedInProgressSamples}
+              samples={unpreparedSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               showSelection={true}

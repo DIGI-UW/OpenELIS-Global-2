@@ -412,15 +412,14 @@ function TraditionalMedicineAnalyticalPage({
   ]);
 
   const pendingSamples = useMemo(
-    () => samples.filter((s) => !s.selectedPath),
-    [samples],
-  );
-  const processedInProgressSamples = useMemo(
-    () => samples.filter((s) => s.selectedPath && s.status !== "COMPLETED"),
+    () =>
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
     [samples],
   );
   const processedCompletedSamples = useMemo(
-    () => samples.filter((s) => s.selectedPath && s.status === "COMPLETED"),
+    () => samples.filter((s) => s.status === "COMPLETED"),
     [samples],
   );
 
@@ -505,7 +504,7 @@ function TraditionalMedicineAnalyticalPage({
                 />
               </span>
               <span className="progress-value">
-                {processedInProgressSamples.length}
+                {processedCompletedSamples.length}
               </span>
             </Tile>
           </div>
@@ -669,12 +668,12 @@ function TraditionalMedicineAnalyticalPage({
               defaultMessage="Pathway Assigned (Pending Completion)"
             />
             <Tag type="blue" size="sm" className="count-tag">
-              {processedInProgressSamples.length}
+              {pendingSamples.length}
             </Tag>
           </h5>
         </div>
         <div className="sample-grid-container">
-          {!loading && processedInProgressSamples.length === 0 ? (
+          {!loading && pendingSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -686,7 +685,7 @@ function TraditionalMedicineAnalyticalPage({
           ) : (
             <SampleGrid
               gridId="assigned-in-progress-pathway"
-              samples={processedInProgressSamples}
+              samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               showSelection={true}

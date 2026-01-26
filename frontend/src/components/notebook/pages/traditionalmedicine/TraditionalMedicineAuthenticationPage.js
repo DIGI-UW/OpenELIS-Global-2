@@ -416,17 +416,14 @@ function TraditionalMedicineAuthenticationPage({
 
   // Split samples: pending authentication vs authenticated (IN_PROGRESS) vs authenticated (COMPLETED)
   const pendingSamples = useMemo(
-    () => samples.filter((s) => !s.authenticationMethod),
-    [samples],
-  );
-  const authenticatedInProgressSamples = useMemo(
     () =>
-      samples.filter((s) => s.authenticationMethod && s.status !== "COMPLETED"),
+      samples.filter(
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+      ),
     [samples],
   );
   const authenticatedCompletedSamples = useMemo(
-    () =>
-      samples.filter((s) => s.authenticationMethod && s.status === "COMPLETED"),
+    () => samples.filter((s) => s.status === "COMPLETED"),
     [samples],
   );
 
@@ -558,9 +555,7 @@ function TraditionalMedicineAuthenticationPage({
                   defaultMessage="Authenticated"
                 />
               </span>
-              <span className="progress-value">
-                {authenticatedInProgressSamples.length}
-              </span>
+              <span className="progress-value">{pendingSamples.length}</span>
             </Tile>
           </div>
         </Column>
@@ -585,9 +580,7 @@ function TraditionalMedicineAuthenticationPage({
         </Button>
 
         {selectedSampleIds.length > 0 &&
-          authenticatedInProgressSamples.some((s) =>
-            selectedSampleIds.includes(s.id),
-          ) && (
+          pendingSamples.some((s) => selectedSampleIds.includes(s.id)) && (
             <Button
               kind="tertiary"
               size="sm"
@@ -690,7 +683,7 @@ function TraditionalMedicineAuthenticationPage({
               defaultMessage="Authenticated (Pending Completion)"
             />
             <Tag type="blue" size="sm" className="count-tag">
-              {authenticatedInProgressSamples.length}
+              {pendingSamples.length}
             </Tag>
           </h5>
           <p className="table-section-description">
@@ -701,7 +694,7 @@ function TraditionalMedicineAuthenticationPage({
           </p>
         </div>
         <div className="sample-grid-container">
-          {!loading && authenticatedInProgressSamples.length === 0 ? (
+          {!loading && pendingSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -713,7 +706,7 @@ function TraditionalMedicineAuthenticationPage({
           ) : (
             <SampleGrid
               gridId="authenticated-in-progress-samples"
-              samples={authenticatedInProgressSamples}
+              samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               loading={loading}

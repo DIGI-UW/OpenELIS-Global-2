@@ -952,21 +952,14 @@ function TraditionalMedicineTestingPage({
   ]);
 
   const pendingSamples = useMemo(
-    () => samples.filter((s) => s.testingStatus === "PENDING"),
-    [samples],
-  );
-  const assignedInProgressSamples = useMemo(
     () =>
       samples.filter(
-        (s) => s.testingStatus === "ASSIGNED" && s.status !== "COMPLETED",
+        (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
       ),
     [samples],
   );
   const assignedCompletedSamples = useMemo(
-    () =>
-      samples.filter(
-        (s) => s.testingStatus === "ASSIGNED" && s.status === "COMPLETED",
-      ),
+    () => samples.filter((s) => s.status === "COMPLETED"),
     [samples],
   );
 
@@ -1050,9 +1043,7 @@ function TraditionalMedicineTestingPage({
                   defaultMessage="Tests Assigned"
                 />
               </span>
-              <span className="progress-value">
-                {assignedInProgressSamples.length}
-              </span>
+              <span className="progress-value">{pendingSamples.length}</span>
             </Tile>
           </div>
         </Column>
@@ -1165,12 +1156,12 @@ function TraditionalMedicineTestingPage({
               defaultMessage="Tests Assigned (Pending Completion)"
             />
             <Tag type="blue" size="sm" className="count-tag">
-              {assignedInProgressSamples.length}
+              {pendingSamples.length}
             </Tag>
           </h5>
         </div>
         <div className="sample-grid-container">
-          {!loading && assignedInProgressSamples.length === 0 ? (
+          {!loading && pendingSamples.length === 0 ? (
             <div className="empty-table-state">
               <p>
                 <FormattedMessage
@@ -1182,7 +1173,7 @@ function TraditionalMedicineTestingPage({
           ) : (
             <SampleGrid
               gridId="assigned-in-progress-samples"
-              samples={assignedInProgressSamples}
+              samples={pendingSamples}
               selectedIds={selectedSampleIds}
               onSelectionChange={setSelectedSampleIds}
               showSelection={true}
