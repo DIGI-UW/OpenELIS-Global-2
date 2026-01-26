@@ -1023,6 +1023,50 @@ function TraditionalMedicineTestingPage({
     }
   };
 
+  // Helper to render Analytical QC status
+  const renderAnalyticalQcStatus = (sample) => {
+    const qcResult = sample.data?.analyticalQC?.qcResult || "PENDING";
+
+    switch (qcResult.toUpperCase()) {
+      case "PREPARED":
+        return (
+          <Tag type="blue" size="sm">
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.qc.status.prepared",
+              defaultMessage="QC Prepared"
+            />
+          </Tag>
+        );
+      case "PASS":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.qc.status.pass",
+              defaultMessage="QC Pass"
+            />
+          </Tag>
+        );
+      case "FAIL":
+        return (
+          <Tag type="red" size="sm" renderIcon={WarningAltFilled}>
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.qc.status.fail",
+              defaultMessage="QC Fail"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm">
+            <FormattedMessage
+              id="notebook.page.tradmed.testing.qc.status.pending",
+              defaultMessage="QC Pending"
+            />
+          </Tag>
+        );
+    }
+  };
+
   return (
     <div className="tradmed-testing-page">
       <div className="page-section-header">
@@ -1158,6 +1202,14 @@ function TraditionalMedicineTestingPage({
                     defaultMessage: "Status",
                   }),
                   render: (_value, sample) => renderStatus(sample),
+                },
+                {
+                  key: "analyticalQC",
+                  header: intl.formatMessage({
+                    id: "notebook.page.tradmed.testing.column.qc",
+                    defaultMessage: "Analytical QC",
+                  }),
+                  render: (_value, sample) => renderAnalyticalQcStatus(sample),
                 },
               ]}
             />
@@ -1332,6 +1384,14 @@ function TraditionalMedicineTestingPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
+                {
+                  key: "analyticalQC",
+                  header: intl.formatMessage({
+                    id: "notebook.page.tradmed.testing.column.qc",
+                    defaultMessage: "Analytical QC",
+                  }),
+                  render: (_value, sample) => renderAnalyticalQcStatus(sample),
+                },
               ]}
             />
           )}
@@ -1480,6 +1540,14 @@ function TraditionalMedicineTestingPage({
                     defaultMessage: "Status",
                   }),
                   render: (_value, sample) => renderStatus(sample),
+                },
+                {
+                  key: "analyticalQC",
+                  header: intl.formatMessage({
+                    id: "notebook.page.tradmed.testing.column.qc",
+                    defaultMessage: "Analytical QC",
+                  }),
+                  render: (_value, sample) => renderAnalyticalQcStatus(sample),
                 },
               ]}
             />

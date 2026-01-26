@@ -580,6 +580,41 @@ function TraditionalMedicineSampleCreationPage({
     }
   };
 
+  // Helper to render QC inspection status
+  const renderQcInspectionStatus = (sample) => {
+    const qcResult = sample.data?.qcInspection?.qcResult || "PENDING";
+
+    switch (qcResult.toUpperCase()) {
+      case "PASS":
+        return (
+          <Tag type="green" size="sm" renderIcon={CheckmarkFilled}>
+            <FormattedMessage
+              id="notebook.page.tradmed.qc.status.pass",
+              defaultMessage="QC Pass"
+            />
+          </Tag>
+        );
+      case "FAIL":
+        return (
+          <Tag type="red" size="sm" renderIcon={WarningAltFilled}>
+            <FormattedMessage
+              id="notebook.page.tradmed.qc.status.fail",
+              defaultMessage="QC Fail"
+            />
+          </Tag>
+        );
+      default:
+        return (
+          <Tag type="gray" size="sm">
+            <FormattedMessage
+              id="notebook.page.tradmed.qc.status.pending",
+              defaultMessage="QC Pending"
+            />
+          </Tag>
+        );
+    }
+  };
+
   return (
     <div className="tradmed-sample-creation-page">
       {/* Page Header */}
@@ -751,6 +786,14 @@ function TraditionalMedicineSampleCreationPage({
                   }),
                   render: (_value, sample) => renderStatus(sample),
                 },
+                {
+                  key: "qcInspection",
+                  header: intl.formatMessage({
+                    id: "notebook.page.tradmed.column.qc",
+                    defaultMessage: "QC Inspection",
+                  }),
+                  render: (_value, sample) => renderQcInspectionStatus(sample),
+                },
                 // Source & Origin
                 { key: "sourceType", header: "Source Type" },
                 { key: "originLocation", header: "Origin" },
@@ -819,6 +862,14 @@ function TraditionalMedicineSampleCreationPage({
                     defaultMessage: "Status",
                   }),
                   render: (_value, sample) => renderStatus(sample),
+                },
+                {
+                  key: "qcInspection",
+                  header: intl.formatMessage({
+                    id: "notebook.page.tradmed.column.qc",
+                    defaultMessage: "QC Inspection",
+                  }),
+                  render: (_value, sample) => renderQcInspectionStatus(sample),
                 },
                 // Source & Origin
                 { key: "sourceType", header: "Source Type" },
