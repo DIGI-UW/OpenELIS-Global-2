@@ -347,7 +347,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         Patient mergedPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient2 : patient1;
 
         // Pre-merge FHIR validation: prevent partial merge
-      if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
+      if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId()) 
         || fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
 
        if (!fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
