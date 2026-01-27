@@ -87,6 +87,8 @@ jobs:
       - name: Run Frontend QA Workflow (Headless Chrome)
         run: npx cypress run --browser chrome --headless
         working-directory: frontend
+        env:
+          E2E_FAIL_FAST: true  # Stop on first failure (saves CI time)
 
       # Upload Cypress screenshots on failure for debugging
       - name: Upload Cypress screenshots on failure
