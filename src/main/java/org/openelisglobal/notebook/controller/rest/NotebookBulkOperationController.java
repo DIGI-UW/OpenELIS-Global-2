@@ -2787,6 +2787,104 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
+     * Upload gel electrophoresis image for PAGE 5
+     *
+     * @param pageId      the notebook page ID
+     * @param file        the gel image file
+     * @param httpRequest for getting user session
+     * @return response with file path and metadata
+     */
+    @PostMapping(value = "/page/{pageId}/samples/upload-gel-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> uploadGelImage(@PathVariable("pageId") Integer pageId,
+            @RequestParam("file") MultipartFile file, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            error.put("success", false);
+            return ResponseEntity.status(401).body(error);
+        }
+
+        if (file == null || file.isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "No file uploaded");
+            error.put("success", false);
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        try {
+            String fileName = file.getOriginalFilename();
+            if (fileName == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Invalid file name");
+                error.put("success", false);
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // Validate file type - only image files
+            String fileType = file.getContentType();
+            if (fileType == null || !fileType.startsWith("image/")) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Invalid file type. Only image files (PNG, JPG, TIFF) are allowed.");
+                error.put("success", false);
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // Validate file extension
+            String fileExtension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+            List<String> allowedExtensions = List.of("png", "jpg", "jpeg", "tiff", "tif");
+            if (!allowedExtensions.contains(fileExtension)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Invalid file extension. Allowed: PNG, JPG, JPEG, TIFF");
+                error.put("success", false);
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            // Create upload directory if it doesn't exist
+            String uploadDir = System.getProperty("user.dir") + "/uploads/gel_images/" + pageId;
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            // Generate unique file name
+            String fileId = UUID.randomUUID().toString();
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String savedFileName = timestamp + "_" + fileId + "_" + fileName;
+            Path filePath = uploadPath.resolve(savedFileName);
+
+            // Save file to disk
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Log upload event
+            LogEvent.logInfo(this.getClass().getSimpleName(), "uploadGelImage",
+                    "Gel image uploaded: " + fileName + " for page " + pageId);
+
+            // Return success response
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("fileId", fileId);
+            response.put("fileName", fileName);
+            response.put("fileSize", file.getSize());
+            response.put("filePath", "/uploads/gel_images/" + pageId + "/" + savedFileName);
+            response.put("uploadedAt", LocalDateTime.now().toString());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IOException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "uploadGelImage",
+                    "Error uploading gel image: " + e.getMessage());
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Failed to upload gel image: " + e.getMessage());
+            error.put("success", false);
+            return ResponseEntity.status(500).body(error);
+        }
+    }
+
+    /**
      * Process uploaded analytical data files and extract analytical results
      *
      * @param pageId      Page ID for the notebook page

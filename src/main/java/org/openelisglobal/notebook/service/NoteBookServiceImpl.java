@@ -1342,6 +1342,12 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                     // Samples should proceed to "Analytical Pathways" (page 6)
                     return false;
                 }
+                if (notebookTitle.contains("gbd") || notebookTitle.contains("genomics")
+                        || notebookTitle.contains("bioinformatics")) {
+                    // In GBD, order 5 is "Gel Electrophoresis", not storage
+                    // Samples should proceed to "Library Preparation" (page 6)
+                    return false;
+                }
             }
             return true;
         }

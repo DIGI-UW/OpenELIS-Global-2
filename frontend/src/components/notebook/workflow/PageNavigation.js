@@ -57,7 +57,7 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
   }, [pages, checkPageAccess]);
 
   const getProgressStatus = (pageId) => {
-    const progress = pageProgress[pageId];
+    const progress = pageProgress && pageProgress[pageId];
     if (!progress) {
       return "pending";
     }
@@ -71,7 +71,7 @@ function PageNavigation({ pages, activePage, onPageChange, pageProgress }) {
   };
 
   const getProgressPercentage = (pageId) => {
-    const progress = pageProgress[pageId];
+    const progress = pageProgress && pageProgress[pageId];
     if (!progress || progress.total === 0) {
       return 0;
     }
