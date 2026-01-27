@@ -23,7 +23,7 @@ protocol + MCP for tools).
    Generator Agent (text-to-SQL). Single-agent fallback mode for simpler
    deployments.
 2. **MCP for Tools**: Standalone Python MCP server for schema retrieval and SQL
-   pre-validation (validate_sql), callable by Schema Agent and SQLGen Agent via
+   pre-validation (validate_sql), callable by SchemaAgent and SQLGenAgent via
    MCP protocol.
 3. **Standards-First**: Validate A2A + MCP architecture early to enable future
    scaling without refactoring.
@@ -111,14 +111,19 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 
 ### Milestone Table
 
-| ID     | Branch Suffix    | Scope                                           | User Stories            | Verification                       | Depends On     |
-| ------ | ---------------- | ----------------------------------------------- | ----------------------- | ---------------------------------- | -------------- |
-| M0     | m0-foundation    | A2A Router + CatalystAgent + MCP skeleton       | US1 (partial), US2      | Router → Agent → MCP flow works    | -              |
-| [P] M1 | m1-rag-schema    | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | MCP tools with real schema work    | M0             |
-| [P] M2 | m2-backend-core  | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests pass, ORM test passes   | M0             |
-| [P] M3 | m3-frontend-chat | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly | -              |
-| M4     | m4-integration   | Wire agents + backend + frontend, basic E2E     | US1, US4                | Integration + basic E2E test pass  | M0, M1, M2, M3 |
-| M5     | m5-security      | Security features (PHI detection, RBAC, tokens) | US2                     | Security unit + integration tests  | M4             |
+| ID     | Branch Suffix           | Scope                                           | User Stories            | Verification                       | Depends On       |
+| ------ | ----------------------- | ----------------------------------------------- | ----------------------- | ---------------------------------- | ---------------- |
+| M0.0   | m0-foundation-poc       | Gateway + Router + CatalystAgent + MCP skeleton | US1 (partial), US2      | Router → Agent → MCP flow works    | -                |
+| M0.1   | m0-provider-switching   | LLM provider switching (Gemini + LM Studio)     | US3                     | Both providers work                | M0.0             |
+| M0.2   | m0-agent-specialization | Split into SchemaAgent + SQLGenAgent            | US1 (partial), US2      | Multi-agent flow works             | M0.1             |
+| [P] M1 | m1-rag-schema           | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | MCP tools with real schema work    | M0.2             |
+| [P] M2 | m2-backend-core         | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests pass, ORM test passes   | M0.2             |
+| [P] M3 | m3-frontend-chat        | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly | -                |
+| M4     | m4-integration          | Wire agents + backend + frontend, basic E2E     | US1, US4                | Integration + basic E2E test pass  | M0.2, M1, M2, M3 |
+| M5     | m5-security             | Security features (PHI detection, RBAC, tokens) | US2                     | Security unit + integration tests  | M4               |
+
+**Note**: M0 represents the foundational POC milestones (M0.0 → M0.1 → M0.2)
+that validate the A2A + MCP architecture before full feature implementation.
 
 **Legend**:
 
@@ -139,7 +144,8 @@ works end-to-end
   `/v1/chat/completions` endpoint, bridges to RouterAgent via A2A
 - RouterAgent (simple pass-through delegation, like med-agent-hub)
 - CatalystAgent (single "everything" agent combining schema + SQL generation)
-- MCP skeleton (1 hardcoded tool: `get_schema` returning 3-5 tables as string)
+- MCP skeleton (2 tools: `get_query_context` + `validate_sql` with table
+  allowlist enforcement, minimal non-PHI default profile)
 - Agent Cards for Router + CatalystAgent per A2A specification
 - Single LLM provider (LM Studio)
 - med-agent-hub-style project structure under `projects/catalyst/`
@@ -208,8 +214,9 @@ curl -X POST http://localhost:8000/v1/chat/completions \
   -d '{"model": "catalyst", "messages": [{"role": "user", "content": "How many samples today?"}]}' \
   → Gateway bridges to RouterAgent (A2A)
   → Router delegates to CatalystAgent (A2A)
-  → CatalystAgent calls MCP get_schema
+  → CatalystAgent calls MCP get_query_context (returns allowlisted schema)
   → CatalystAgent generates SQL via LLM
+  → MCP validate_sql checks SQL against allowlist
   → Returns OpenAI-compatible response with SQL
 ```
 
@@ -262,7 +269,7 @@ CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 
 - Split CatalystAgent into SchemaAgent + SQLGenAgent
 - RouterAgent delegates: query → SchemaAgent → SQLGenAgent → response
-- SchemaAgent calls MCP `get_schema` tool (still hardcoded)
+- SchemaAgent calls MCP `get_query_context` tool (still hardcoded/mocked)
 - SQLGenAgent receives schema context from SchemaAgent
 - Agent Cards for all 3 agents
 - Single-agent fallback mode (CatalystAgent still works)

@@ -1,0 +1,23 @@
+[project]
+name = "catalyst-gateway"
+version = "0.0.1"
+description = "Catalyst OpenAI-compatible gateway for A2A agents"
+authors = [
+    {name = "OpenELIS Global Team", email = "team@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "fastapi>=0.115.2,<0.116.0",
+    "uvicorn[standard]>=0.34.0,<0.35.0",
+    "httpx>=0.28.1,<0.29.0",
+    "python-dotenv>=1.0.1,<2.0.0",
+    "a2a-sdk[http-server]>=0.3.22,<0.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0,<8.0.0",
+    "honcho>=1.1.0,<2.0.0",
+    "setuptools>=69.0.0,<79.0.0",
+]
