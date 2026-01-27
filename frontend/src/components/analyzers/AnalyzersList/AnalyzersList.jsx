@@ -499,11 +499,13 @@ const AnalyzersList = () => {
                                     itemText={intl.formatMessage({
                                       id: "analyzer.action.fieldMappings",
                                     })}
-                                    onClick={() =>
-                                      history.push(
-                                        `/analyzers/${analyzer.id}/mappings`,
-                                      )
-                                    }
+                                    onClick={() => {
+                                      if (analyzer?.id) {
+                                        history.push(
+                                          `/analyzers/${analyzer.id}/mappings`,
+                                        );
+                                      }
+                                    }}
                                     data-testid={`analyzer-action-mappings-${row.id}`}
                                   />
                                   <OverflowMenuItem

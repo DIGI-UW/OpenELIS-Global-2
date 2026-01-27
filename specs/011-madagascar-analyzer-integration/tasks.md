@@ -180,13 +180,16 @@ working baseline before adding HL7, RS232, and File adapters.
 
 ### External Plugin Integration for M0
 
-**Critical**: Plugins are in external repo, must be pulled before M5-M8 validation.
+**Critical**: Plugins are in external repo, must be pulled before M5-M8
+validation.
 
 - [ ] T012 [M0] Clone openelisglobal-plugins repository from
       `https://github.com/DIGI-UW/openelisglobal-plugins`
-- [ ] T013 [M0] Configure plugin build path in project (add to `plugins/analyzers/`)
+- [ ] T013 [M0] Configure plugin build path in project (add to
+      `plugins/analyzers/`)
 - [ ] T014 [M0] Verify Mindray plugin loads and compiles
-- [ ] T015 [M0] Verify GeneXpert plugins (GeneXpert, GeneXpertHL7, GeneXpertFile) load
+- [ ] T015 [M0] Verify GeneXpert plugins (GeneXpert, GeneXpertHL7,
+      GeneXpertFile) load
 - [ ] T016 [M0] Verify QuantStudio3 and SysmexXN-L plugins load
 - [ ] T017 [M0] Document plugin integration steps in research.md
 
@@ -297,8 +300,8 @@ passthrough complexity.
 - [ ] T039 [M2] Create branch
       `feat/011-madagascar-analyzer-integration-m2-rs232-bridge` from
       `demo/madagascar`
-- [ ] T040 [M2] Add jSerialComm dependency to
-      `tools/astm-http-bridge/pom.xml` (com.fazecast:jSerialComm:2.10.4)
+- [ ] T040 [M2] Add jSerialComm dependency to `tools/astm-http-bridge/pom.xml`
+      (com.fazecast:jSerialComm:2.10.4)
 
 ### Tests for M2 (MANDATORY - Write FIRST)
 
@@ -756,7 +759,8 @@ Bridge) **Workstream**: C (RS232)
 ### Setup for M9
 
 - [ ] T165 [M9] Create branch
-      `feat/011-madagascar-analyzer-integration-m9-pentra` from `demo/madagascar`
+      `feat/011-madagascar-analyzer-integration-m9-pentra` from
+      `demo/madagascar`
 
 ### Tests for M9 (MANDATORY)
 
@@ -787,9 +791,9 @@ Bridge) **Workstream**: C (RS232)
 
 ## [P] M10: Horiba Micros 60 Plugin (2 days)
 
-**Branch**: `feat/011-madagascar-analyzer-integration-m10-micros` **Goal**: Build
-new Horiba Micros 60 plugin **User Stories**: US-3 **Depends On**: M2 (RS232
-Bridge) **Workstream**: C (RS232)
+**Branch**: `feat/011-madagascar-analyzer-integration-m10-micros` **Goal**:
+Build new Horiba Micros 60 plugin **User Stories**: US-3 **Depends On**: M2
+(RS232 Bridge) **Workstream**: C (RS232)
 
 **Analyzer**: Horiba ABX Micros 60 (ASTM over RS232) - Priority P1
 
@@ -837,7 +841,8 @@ M2 (RS232) **Workstream**: B, C
 ### Setup for M11
 
 - [ ] T185 [M11] Create branch
-      `feat/011-madagascar-analyzer-integration-m11-stago` from `demo/madagascar`
+      `feat/011-madagascar-analyzer-integration-m11-stago` from
+      `demo/madagascar`
 
 ### Tests for M11 (MANDATORY)
 
@@ -868,16 +873,17 @@ M2 (RS232) **Workstream**: B, C
 
 ## [P] M12: Abbott Architect Plugin (2 days)
 
-**Branch**: `feat/011-madagascar-analyzer-integration-m12-abbott` **Goal**: Build
-new Abbott Architect plugin **User Stories**: US-1 **Depends On**: M1 (HL7)
-**Workstream**: B (HL7)
+**Branch**: `feat/011-madagascar-analyzer-integration-m12-abbott` **Goal**:
+Build new Abbott Architect plugin **User Stories**: US-1 **Depends On**: M1
+(HL7) **Workstream**: B (HL7)
 
 **Analyzer**: Abbott Architect (HL7 over RS232/Network) - Priority P1
 
 ### Setup for M12
 
 - [ ] T195 [M12] Create branch
-      `feat/011-madagascar-analyzer-integration-m12-abbott` from `demo/madagascar`
+      `feat/011-madagascar-analyzer-integration-m12-abbott` from
+      `demo/madagascar`
 
 ### Tests for M12 (MANDATORY)
 
@@ -908,9 +914,9 @@ new Abbott Architect plugin **User Stories**: US-1 **Depends On**: M1 (HL7)
 
 ## [P] M13: Hain FluoroCycler XT Plugin (2 days)
 
-**Branch**: `feat/011-madagascar-analyzer-integration-m13-fluorocycler` **Goal**:
-Build new Hain FluoroCycler XT plugin **User Stories**: US-4 **Depends On**: M3
-(File) **Workstream**: D (File)
+**Branch**: `feat/011-madagascar-analyzer-integration-m13-fluorocycler`
+**Goal**: Build new Hain FluoroCycler XT plugin **User Stories**: US-4 **Depends
+On**: M3 (File) **Workstream**: D (File)
 
 **Analyzer**: Hain Lifescience FluoroCycler XT (File-based) - Priority P1
 
@@ -991,9 +997,9 @@ Stories**: US-1, US-6 **Depends On**: M5 (Mindray HL7) **Workstream**: B (HL7)
 
 ## M15: Order Export Workflow (3 days)
 
-**Branch**: `feat/011-madagascar-analyzer-integration-m15-order-export` **Goal**:
-Manual order export with status tracking **User Stories**: US-2 (Test Order
-Export to Analyzers) **Depends On**: M5-M14 (all analyzers operational)
+**Branch**: `feat/011-madagascar-analyzer-integration-m15-order-export`
+**Goal**: Manual order export with status tracking **User Stories**: US-2 (Test
+Order Export to Analyzers) **Depends On**: M5-M14 (all analyzers operational)
 **Workstream**: All
 
 **Acceptance Criteria**:
@@ -1039,7 +1045,8 @@ Export to Analyzers) **Depends On**: M5-M14 (all analyzers operational)
 - [ ] T236 [M15] Create OrderExportServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/OrderExportServiceImpl.java`
 - [ ] T237 [M15] Implement ASTM O-segment generation for order export
-- [ ] T238 [M15] Implement HL7 ORM^O01 generation (leverage M1 HL7MessageService)
+- [ ] T238 [M15] Implement HL7 ORM^O01 generation (leverage M1
+      HL7MessageService)
 - [ ] T239 [M15] Implement retry mechanism with exponential backoff
 - [ ] T240 [M15] Implement result matching (incoming results → exported orders)
 - [ ] T241 [M15] Create OrderExportRestController in
@@ -1184,8 +1191,8 @@ US-5 (Comprehensive Instrument Metadata Management) **Depends On**: M15
 
 - [ ] T284 [M17] Add QC result generation templates in
       `tools/astm-mock-server/templates/qc/`
-- [ ] T285 [M17] Add error condition templates (malformed, timeout, duplicate) in
-      `tools/astm-mock-server/templates/errors/`
+- [ ] T285 [M17] Add error condition templates (malformed, timeout, duplicate)
+      in `tools/astm-mock-server/templates/errors/`
 - [ ] T286 [M17] Implement concurrent multi-analyzer support in
       `tools/astm-mock-server/server.py`
 - [ ] T287 [M17] Implement test scenario orchestration (`/scenarios/{name}`
@@ -1284,45 +1291,50 @@ tests pass
 
 ### Milestone Dependencies
 
-| Milestone | Depends On    | Workstream             | Parallel Group          |
-| --------- | ------------- | ---------------------- | ----------------------- |
-| **M0**    | -             | A (ASTM - PRIORITY)    | ★ START HERE            |
-| M1        | M0            | B (HL7)                | Foundation (1-4)        |
-| M2        | M0            | C (RS232)              | Foundation (1-4)        |
-| M3        | M0            | D (File)               | Foundation (1-4)        |
-| M4        | M0            | E (Simulator)          | Foundation (1-4)        |
-| M5        | M1            | B (HL7)                | Plugin Validation       |
-| M6        | M2            | C (RS232)              | Plugin Validation       |
-| M7        | M0, M1, M3    | A, B, D                | Plugin Validation       |
-| M8        | M3            | D (File)               | Plugin Validation       |
-| M9        | M2            | C (RS232)              | New Plugins (9-13) [P]  |
-| M10       | M2            | C (RS232)              | New Plugins (9-13) [P]  |
-| M11       | M1, M2        | B, C                   | New Plugins (9-13) [P]  |
-| M12       | M1            | B (HL7)                | New Plugins (9-13) [P]  |
-| M13       | M3            | D (File)               | New Plugins (9-13) [P]  |
-| M14       | M5            | B (HL7)                | P2 Validation           |
-| M15       | M5-M14        | All                    | Integration             |
-| M16       | M15           | All                    | Integration             |
-| M17       | M4            | E (Simulator)          | Integration [P]         |
-| M18       | M15, M16, M17 | All                    | Final Validation        |
+| Milestone | Depends On    | Workstream          | Parallel Group         |
+| --------- | ------------- | ------------------- | ---------------------- |
+| **M0**    | -             | A (ASTM - PRIORITY) | ★ START HERE           |
+| M1        | M0            | B (HL7)             | Foundation (1-4)       |
+| M2        | M0            | C (RS232)           | Foundation (1-4)       |
+| M3        | M0            | D (File)            | Foundation (1-4)       |
+| M4        | M0            | E (Simulator)       | Foundation (1-4)       |
+| M5        | M1            | B (HL7)             | Plugin Validation      |
+| M6        | M2            | C (RS232)           | Plugin Validation      |
+| M7        | M0, M1, M3    | A, B, D             | Plugin Validation      |
+| M8        | M3            | D (File)            | Plugin Validation      |
+| M9        | M2            | C (RS232)           | New Plugins (9-13) [P] |
+| M10       | M2            | C (RS232)           | New Plugins (9-13) [P] |
+| M11       | M1, M2        | B, C                | New Plugins (9-13) [P] |
+| M12       | M1            | B (HL7)             | New Plugins (9-13) [P] |
+| M13       | M3            | D (File)            | New Plugins (9-13) [P] |
+| M14       | M5            | B (HL7)             | P2 Validation          |
+| M15       | M5-M14        | All                 | Integration            |
+| M16       | M15           | All                 | Integration            |
+| M17       | M4            | E (Simulator)       | Integration [P]        |
+| M18       | M15, M16, M17 | All                 | Final Validation       |
 
 ### Parallel Opportunities
 
 **Week 1**:
+
 - **M0 FIRST** (ASTM priority - 2 days)
 - Then M1, M2, M3, M4 can proceed in parallel (5 developers max)
 
 **Week 2**:
+
 - M5, M6, M7, M8 as dependencies complete
 
 **Week 2-3**:
+
 - M9, M10, M11, M12, M13 can all proceed in parallel (5 developers max)
 
 **Week 3-4**:
+
 - M14 after M5
 - M15 and M17 can proceed in parallel
 
 **Week 4-5**:
+
 - M16 after M15
 - M18 after M15, M16, M17
 
@@ -1356,24 +1368,24 @@ tests pass
 
 ### Incremental Delivery
 
-| Week | Milestones          | Cumulative Analyzers      |
-| ---- | ------------------- | ------------------------- |
-| 1    | M0, M1, M2, M3, M4  | 1 (GeneXpert ASTM)        |
-| 2    | M5, M6, M7, M8      | 7 analyzers               |
-| 3    | M9, M10, M11, M12   | 11 analyzers              |
-| 4    | M13, M14, M15       | 12 analyzers + export     |
-| 5    | M16, M17, M18       | + metadata + E2E validated|
+| Week | Milestones         | Cumulative Analyzers       |
+| ---- | ------------------ | -------------------------- |
+| 1    | M0, M1, M2, M3, M4 | 1 (GeneXpert ASTM)         |
+| 2    | M5, M6, M7, M8     | 7 analyzers                |
+| 3    | M9, M10, M11, M12  | 11 analyzers               |
+| 4    | M13, M14, M15      | 12 analyzers + export      |
+| 5    | M16, M17, M18      | + metadata + E2E validated |
 
 ### Parallel Team Strategy
 
 **With 4+ developers**:
 
-| Developer | Week 1         | Week 2-3           | Week 4-5 |
-| --------- | -------------- | ------------------ | -------- |
-| Dev A     | M0 → M1 (HL7)  | M5 → M14 → M15     | M18      |
-| Dev B     | M2 (RS232)     | M6, M9, M10        | M18      |
-| Dev C     | M3 (File)      | M7, M8, M11, M12   | M16      |
-| Dev D     | M4 (Simulator) | M13 → M17          | M18      |
+| Developer | Week 1         | Week 2-3         | Week 4-5 |
+| --------- | -------------- | ---------------- | -------- |
+| Dev A     | M0 → M1 (HL7)  | M5 → M14 → M15   | M18      |
+| Dev B     | M2 (RS232)     | M6, M9, M10      | M18      |
+| Dev C     | M3 (File)      | M7, M8, M11, M12 | M16      |
+| Dev D     | M4 (Simulator) | M13 → M17        | M18      |
 
 ---
 
@@ -1391,28 +1403,28 @@ The following are **intentionally deferred** to post-contract-deadline:
 
 ## Task Summary
 
-| Milestone  | Total Tasks | Test Tasks | Implementation Tasks |
-| ---------- | ----------- | ---------- | -------------------- |
-| **M0**     | 20          | 3          | 17                   |
-| M1         | 18          | 5          | 13                   |
-| M2         | 27          | 4          | 23                   |
-| M3         | 24          | 5          | 19                   |
-| M4         | 32          | 5          | 27                   |
-| M5         | 12          | 3          | 9                    |
-| M6         | 9           | 2          | 7                    |
-| M7         | 12          | 4          | 8                    |
-| M8         | 10          | 3          | 7                    |
-| M9         | 10          | 2          | 8                    |
-| M10        | 10          | 2          | 8                    |
-| M11        | 10          | 2          | 8                    |
-| M12        | 10          | 2          | 8                    |
-| M13        | 10          | 2          | 8                    |
-| M14        | 10          | 3          | 7                    |
-| M15        | 29          | 5          | 24                   |
-| M16        | 29          | 5          | 24                   |
-| M17        | 14          | 3          | 11                   |
-| M18        | 18          | 6          | 12                   |
-| **TOTAL**  | **314**     | **66**     | **248**              |
+| Milestone | Total Tasks | Test Tasks | Implementation Tasks |
+| --------- | ----------- | ---------- | -------------------- |
+| **M0**    | 20          | 3          | 17                   |
+| M1        | 18          | 5          | 13                   |
+| M2        | 27          | 4          | 23                   |
+| M3        | 24          | 5          | 19                   |
+| M4        | 32          | 5          | 27                   |
+| M5        | 12          | 3          | 9                    |
+| M6        | 9           | 2          | 7                    |
+| M7        | 12          | 4          | 8                    |
+| M8        | 10          | 3          | 7                    |
+| M9        | 10          | 2          | 8                    |
+| M10       | 10          | 2          | 8                    |
+| M11       | 10          | 2          | 8                    |
+| M12       | 10          | 2          | 8                    |
+| M13       | 10          | 2          | 8                    |
+| M14       | 10          | 3          | 7                    |
+| M15       | 29          | 5          | 24                   |
+| M16       | 29          | 5          | 24                   |
+| M17       | 14          | 3          | 11                   |
+| M18       | 18          | 6          | 12                   |
+| **TOTAL** | **314**     | **66**     | **248**              |
 
 ---
 
@@ -1431,8 +1443,7 @@ The following are **intentionally deferred** to post-contract-deadline:
 ---
 
 **Tasks Generated**: 2026-01-27 | **Updated**: Clarification session updates +
-remediation (external plugin tasks, liquibase renumbering)
-(M0 priority, RS232 via bridge, parallel workstreams) **Total Tasks**: 314
-**Test Tasks**: 66 (20%) **Task ID Range**: T001-T314 **Milestones**: 19 (M0-M18)
-**Parallel Milestones**: M1-M4 (after M0), M9-M13 **Contract Deadline**:
-2026-02-28
+remediation (external plugin tasks, liquibase renumbering) (M0 priority, RS232
+via bridge, parallel workstreams) **Total Tasks**: 314 **Test Tasks**: 66 (20%)
+**Task ID Range**: T001-T314 **Milestones**: 19 (M0-M18) **Parallel
+Milestones**: M1-M4 (after M0), M9-M13 **Contract Deadline**: 2026-02-28

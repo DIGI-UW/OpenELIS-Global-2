@@ -48,11 +48,34 @@ openelisglobal-plugins repository to reduce development effort by approximately
 
 ### Session 2026-01-27
 
-- Q: How should the spec reconcile conflicting priorities between contract requirements and Romain's internal list? → A: **Use Romain's priority for implementation order**. Analyzers marked "NOT ON ROMAIN'S LIST" (BC2000, Sysmex XN Series) deprioritized to P2 since they may not be deployed in Madagascar labs near-term. Contract compliance still required but implementation order follows real-world deployment priorities.
-- Q: Should the spec include additional high-priority analyzers from Romain's list beyond the 12 contract-minimum? → A: **Add as P3 stretch goals**. Attempt if time permits after P1/P2 complete. Includes Mindray variants (BC5300, BS-120/200/230), Bio-Rad CFX96, BioMérieux VIDAS, and other high-priority PCR thermocyclers from Romain's list.
-- Q: How should implementation handle protocol uncertainties for analyzers with unclear connectivity? → A: **Build flexible adapters supporting multiple protocols per analyzer**. Use the adapter pattern from Feature 004 architecture. Analyzers like Abbott Architect, Hain FluoroCycler XT, and others with uncertain protocols get multi-protocol adapter support (e.g., HL7 + RS232, or File + Network) to handle discovery during deployment.
-- Q: What validation level is required before contract go-live? → A: **Simulator validation sufficient for go-live**. All 12 analyzers validated via multi-protocol simulator; physical testing happens post-deployment in Madagascar labs. This accepts higher risk of in-field issues but meets the tight deadline. Simulator must provide comprehensive coverage including edge cases and error conditions.
-- Q: What RS232 deployment architecture should the spec require? → A: **Extend ASTM-HTTP Bridge to handle RS232 locally**. The bridge runs on a lab PC with USB-to-serial adapter, converts RS232→TCP, and forwards to OpenELIS server. This keeps architecture consistent with existing ASTM bridge pattern and avoids additional hardware costs beyond USB adapters.
+- Q: How should the spec reconcile conflicting priorities between contract
+  requirements and Romain's internal list? → A: **Use Romain's priority for
+  implementation order**. Analyzers marked "NOT ON ROMAIN'S LIST" (BC2000,
+  Sysmex XN Series) deprioritized to P2 since they may not be deployed in
+  Madagascar labs near-term. Contract compliance still required but
+  implementation order follows real-world deployment priorities.
+- Q: Should the spec include additional high-priority analyzers from Romain's
+  list beyond the 12 contract-minimum? → A: **Add as P3 stretch goals**. Attempt
+  if time permits after P1/P2 complete. Includes Mindray variants (BC5300,
+  BS-120/200/230), Bio-Rad CFX96, BioMérieux VIDAS, and other high-priority PCR
+  thermocyclers from Romain's list.
+- Q: How should implementation handle protocol uncertainties for analyzers with
+  unclear connectivity? → A: **Build flexible adapters supporting multiple
+  protocols per analyzer**. Use the adapter pattern from Feature 004
+  architecture. Analyzers like Abbott Architect, Hain FluoroCycler XT, and
+  others with uncertain protocols get multi-protocol adapter support (e.g.,
+  HL7 + RS232, or File + Network) to handle discovery during deployment.
+- Q: What validation level is required before contract go-live? → A: **Simulator
+  validation sufficient for go-live**. All 12 analyzers validated via
+  multi-protocol simulator; physical testing happens post-deployment in
+  Madagascar labs. This accepts higher risk of in-field issues but meets the
+  tight deadline. Simulator must provide comprehensive coverage including edge
+  cases and error conditions.
+- Q: What RS232 deployment architecture should the spec require? → A: **Extend
+  ASTM-HTTP Bridge to handle RS232 locally**. The bridge runs on a lab PC with
+  USB-to-serial adapter, converts RS232→TCP, and forwards to OpenELIS server.
+  This keeps architecture consistent with existing ASTM bridge pattern and
+  avoids additional hardware costs beyond USB adapters.
 
 ---
 
@@ -423,6 +446,7 @@ the simulated messages.
   priorities (P1 first, then P1-M, then P2):
 
   **P1 - High Priority (Romain's List - High)**:
+
   1. Cepheid GeneXpert (ASTM/HL7)
   2. Horiba ABX Micros 60 (ASTM over RS232)
   3. Thermo Fisher QuantStudio 7 Flex (File-based)
@@ -433,12 +457,11 @@ the simulated messages.
   8. Hain Lifescience FluoroCycler XT (File-based)
   9. Mindray BS-360E (HL7 over Network)
 
-  **P1-M - Moderate Priority (Romain's List - Moderate)**:
-  10. Stago STart 4 (ASTM/HL7 over RS232/Network)
+  **P1-M - Moderate Priority (Romain's List - Moderate)**: 10. Stago STart 4
+  (ASTM/HL7 over RS232/Network)
 
-  **P2 - Lower Priority (Not on Romain's List)**:
-  11. Mindray BC2000 (HL7 over Network)
-  12. Sysmex XN Series (HL7 over Network)
+  **P2 - Lower Priority (Not on Romain's List)**: 11. Mindray BC2000 (HL7 over
+  Network) 12. Sysmex XN Series (HL7 over Network)
 
 #### Analyzer/Protocol/Simulator Coverage Matrix
 
@@ -731,9 +754,10 @@ Ordered by implementation priority (Romain's deployment list):
    flexibility.
 
    > **⚠️ Abbott Note**: Research indicates Abbott m2000/Architect series may
-   > require vendor-provided middleware (Abbott AlinIQ) for HL7/ASTM integration.
-   > Verify with Madagascar lab whether middleware is deployed. If so, OpenELIS
-   > connects to middleware (standard HL7), not directly to analyzer.
+   > require vendor-provided middleware (Abbott AlinIQ) for HL7/ASTM
+   > integration. Verify with Madagascar lab whether middleware is deployed. If
+   > so, OpenELIS connects to middleware (standard HL7), not directly to
+   > analyzer.
 
 ---
 
@@ -761,10 +785,14 @@ replacing it:
 
 ## Target Analyzers Summary
 
-Priority assignment based on Romain's internal deployment list (Session 2026-01-27 clarification):
-- **P1 (High)**: Analyzers on Romain's list with high priority - immediate deployment expected
+Priority assignment based on Romain's internal deployment list (Session
+2026-01-27 clarification):
+
+- **P1 (High)**: Analyzers on Romain's list with high priority - immediate
+  deployment expected
 - **P1-M (Moderate)**: Analyzers on Romain's list with moderate priority
-- **P2**: Analyzers NOT on Romain's list or file-based - contract required but lower deployment urgency
+- **P2**: Analyzers NOT on Romain's list or file-based - contract required but
+  lower deployment urgency
 
 | #   | Analyzer             | Protocol   | Connectivity   | Plugin Status          | Romain Priority | Priority |
 | --- | -------------------- | ---------- | -------------- | ---------------------- | --------------- | -------- |
@@ -783,20 +811,21 @@ Priority assignment based on Romain's internal deployment list (Session 2026-01-
 
 ### P3 Stretch Goals (If Time Permits After Contract Requirements)
 
-Additional high-priority analyzers from Romain's list - attempt only after P1/P2 complete:
+Additional high-priority analyzers from Romain's list - attempt only after P1/P2
+complete:
 
-| #   | Analyzer                | Category        | Protocol      | Connectivity        | Plugin Status              | Notes                           |
-| --- | ----------------------- | --------------- | ------------- | ------------------- | -------------------------- | ------------------------------- |
-| 13  | Mindray BC5300          | Hematology      | HL7           | Network             | ⚠️ Likely Mindray plugin   | Similar to BC-5380              |
-| 14  | Mindray BS-120          | Chemistry       | HL7           | Network             | ⚠️ Likely Mindray plugin   | Similar to BS-360E              |
-| 15  | Mindray BS-200          | Chemistry       | RS232/LIS     | RS232               | ⚠️ Likely Mindray plugin   | RS232 bidirectional             |
-| 16  | Mindray BS-230          | Chemistry       | RS232/LIS     | RS232               | ⚠️ Likely Mindray plugin   | RS232 bidirectional             |
-| 17  | Bio-Rad CFX96           | Real-Time PCR   | File-based    | USB/Ethernet        | ❌ Build new               | PC-controlled, file export      |
-| 18  | BioMérieux VIDAS        | Immunoassay     | LIS Bidir     | Network             | ❌ Build new               | Protocol TBD                    |
-| 19  | Analytik Jena qTOWER3G  | Real-Time PCR   | File-based    | USB/PC              | ❌ Build new               | File-based export               |
-| 20  | Applied Biosystems QS5  | Real-Time PCR   | File-based    | Ethernet/USB/Wi-Fi  | ⚠️ Adapt QuantStudio3      | Similar to QS7 Flex             |
-| 21  | Bio-Rad C1000 Touch     | PCR Thermocycler| File-based    | USB/Ethernet        | ❌ Build new               | PC-controlled                   |
-| 22  | Finecare Plus FIA       | Immunoassay     | LIS/HIS       | PC                  | ❌ Build new               | Protocol TBD                    |
+| #   | Analyzer               | Category         | Protocol   | Connectivity       | Plugin Status            | Notes                      |
+| --- | ---------------------- | ---------------- | ---------- | ------------------ | ------------------------ | -------------------------- |
+| 13  | Mindray BC5300         | Hematology       | HL7        | Network            | ⚠️ Likely Mindray plugin | Similar to BC-5380         |
+| 14  | Mindray BS-120         | Chemistry        | HL7        | Network            | ⚠️ Likely Mindray plugin | Similar to BS-360E         |
+| 15  | Mindray BS-200         | Chemistry        | RS232/LIS  | RS232              | ⚠️ Likely Mindray plugin | RS232 bidirectional        |
+| 16  | Mindray BS-230         | Chemistry        | RS232/LIS  | RS232              | ⚠️ Likely Mindray plugin | RS232 bidirectional        |
+| 17  | Bio-Rad CFX96          | Real-Time PCR    | File-based | USB/Ethernet       | ❌ Build new             | PC-controlled, file export |
+| 18  | BioMérieux VIDAS       | Immunoassay      | LIS Bidir  | Network            | ❌ Build new             | Protocol TBD               |
+| 19  | Analytik Jena qTOWER3G | Real-Time PCR    | File-based | USB/PC             | ❌ Build new             | File-based export          |
+| 20  | Applied Biosystems QS5 | Real-Time PCR    | File-based | Ethernet/USB/Wi-Fi | ⚠️ Adapt QuantStudio3    | Similar to QS7 Flex        |
+| 21  | Bio-Rad C1000 Touch    | PCR Thermocycler | File-based | USB/Ethernet       | ❌ Build new             | PC-controlled              |
+| 22  | Finecare Plus FIA      | Immunoassay      | LIS/HIS    | PC                 | ❌ Build new             | Protocol TBD               |
 
 ---
 

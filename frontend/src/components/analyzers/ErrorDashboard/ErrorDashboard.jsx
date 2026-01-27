@@ -361,19 +361,19 @@ const ErrorDashboard = () => {
   ];
 
   // Format error data for table rows
-  const rows = filteredErrors.map((error) => {
+  const rows = filteredErrors.map((error, index) => {
     const isAcknowledged =
-      error.status === "ACKNOWLEDGED" || error.status === "acknowledged";
-    const severity = error.severity || "ERROR";
-    const errorType = error.errorType || "MAPPING";
+      error?.status === "ACKNOWLEDGED" || error?.status === "acknowledged";
+    const severity = error?.severity || "ERROR";
+    const errorType = error?.errorType || "MAPPING";
 
     // Truncate message
-    const message = error.errorMessage || error.message || "-";
+    const message = error?.errorMessage || error?.message || "-";
     const truncatedMessage =
       message.length > 50 ? `${message.substring(0, 50)}...` : message;
 
     return {
-      id: error.id,
+      id: error?.id ?? `temp-${index}`,
       timestamp: formatTimestamp(error.timestamp || error.createdDate),
       analyzer: error.analyzerName || error.analyzer?.name || "-",
       type: errorType,
@@ -647,7 +647,7 @@ const ErrorDashboard = () => {
                     {rows.map((row) => {
                       const error =
                         row._error ||
-                        filteredErrors.find((e) => e.id === row.id);
+                        filteredErrors.find((e) => e?.id === row?.id);
                       const isAcknowledged =
                         error?.status === "ACKNOWLEDGED" ||
                         error?.status === "acknowledged";
@@ -730,7 +730,7 @@ const ErrorDashboard = () => {
                                     onClick={() => handleViewDetails(error)}
                                     data-testid={`error-action-view-${row.id}`}
                                   />
-                                  {!isAcknowledged && (
+                                  {!isAcknowledged && error?.id && (
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
                                         id: "analyzer.errorDashboard.action.acknowledge",

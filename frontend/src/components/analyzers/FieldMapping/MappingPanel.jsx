@@ -75,6 +75,10 @@ const MappingPanel = ({
 
   // Handle save as draft
   const handleSaveAsDraft = () => {
+    if (!field?.id) {
+      console.warn("Cannot save as draft: field.id is undefined");
+      return;
+    }
     const mappingData = {
       analyzerFieldId: field.id,
       openelisFieldId: formData.openelisFieldId,
@@ -95,6 +99,10 @@ const MappingPanel = ({
 
   // Handle save and activate
   const handleSaveAndActivate = () => {
+    if (!field?.id) {
+      console.warn("Cannot save and activate: field.id is undefined");
+      return;
+    }
     const mappingData = {
       analyzerFieldId: field.id,
       openelisFieldId: formData.openelisFieldId,

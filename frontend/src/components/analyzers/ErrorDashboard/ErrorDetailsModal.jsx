@@ -86,7 +86,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
       <ModalHeader
         label={intl.formatMessage(
           { id: "analyzer.errorDetails.subtitle" },
-          { id: error.id },
+          { id: error?.id ?? "N/A" },
         )}
         title={intl.formatMessage({ id: "analyzer.errorDetails.title" })}
       />
@@ -97,7 +97,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
             <h3>
               {intl.formatMessage({ id: "analyzer.errorDetails.errorId" })}
             </h3>
-            <p>{error.id}</p>
+            <p>{error?.id ?? "N/A"}</p>
           </Column>
           <Column lg={8}>
             <h3>
