@@ -19,5 +19,5 @@ dependencies = [
 dev = [
     "pytest>=7.4.0,<8.0.0",
     "honcho>=1.1.0,<2.0.0",
-    "setuptools>=69.0.0,<70.0.0",
+    "setuptools>=69.0.0,<79.0.0",
 ]
