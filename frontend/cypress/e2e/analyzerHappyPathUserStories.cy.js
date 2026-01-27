@@ -27,14 +27,14 @@ const AUTH = {
  */
 before("Setup test analyzer", () => {
   // Wait for backend API to be available
-  cy.waitForBackend("/rest/analyzer/analyzers");
+  cy.waitForBackend("/api/OpenELIS-Global/rest/analyzer/analyzers");
 
   // Use cy.session() to cache and reuse basic auth session across tests
   cy.session("analyzer-tests-session", () => {
     // Establish session with basic auth by making an authenticated request
     cy.request({
       method: "GET",
-      url: "/rest/analyzer/analyzers",
+      url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
       auth: AUTH,
       failOnStatusCode: false,
     });
@@ -43,7 +43,7 @@ before("Setup test analyzer", () => {
   // Create test analyzer via API with basic auth
   cy.request({
     method: "POST",
-    url: "/rest/analyzer/analyzers",
+    url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
     auth: AUTH,
     body: {
       name: "E2E-Test-Analyzer-HappyPath",
@@ -104,7 +104,7 @@ after("Cleanup test analyzer", () => {
   if (testAnalyzerId) {
     cy.request({
       method: "DELETE",
-      url: `/rest/analyzer/analyzers/${testAnalyzerId}`,
+      url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
       auth: AUTH,
       failOnStatusCode: false,
     });

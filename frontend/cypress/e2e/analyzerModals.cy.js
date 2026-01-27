@@ -32,14 +32,14 @@ let testAnalyzerId = null;
 describe("Analyzer Modals - Open/Close", () => {
   before("Setup authentication and create test analyzer", () => {
     // Wait for backend API to be available
-    cy.waitForBackend("/rest/analyzer/analyzers");
+    cy.waitForBackend("/api/OpenELIS-Global/rest/analyzer/analyzers");
 
     // Use cy.session() to cache and reuse basic auth session across tests
     cy.session("analyzer-tests-session", () => {
       // Establish session with basic auth by making an authenticated request
       cy.request({
         method: "GET",
-        url: "/rest/analyzer/analyzers",
+        url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
         auth: AUTH,
         failOnStatusCode: false,
       });
@@ -48,7 +48,7 @@ describe("Analyzer Modals - Open/Close", () => {
     // Create test analyzer via API
     cy.request({
       method: "POST",
-      url: "/rest/analyzer/analyzers",
+      url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
       auth: AUTH,
       body: {
         name: "TEST-Modal-E2E",
@@ -70,7 +70,7 @@ describe("Analyzer Modals - Open/Close", () => {
     if (testAnalyzerId) {
       cy.request({
         method: "DELETE",
-        url: `/rest/analyzer/analyzers/${testAnalyzerId}`,
+        url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
         auth: AUTH,
         failOnStatusCode: false,
       });

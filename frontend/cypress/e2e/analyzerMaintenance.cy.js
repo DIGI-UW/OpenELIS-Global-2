@@ -39,14 +39,14 @@ const AUTH = {
  */
 before("Login and setup test analyzer with mappings", () => {
   // Wait for backend API to be available
-  cy.waitForBackend("/rest/analyzer/analyzers");
+  cy.waitForBackend("/api/OpenELIS-Global/rest/analyzer/analyzers");
 
   // Use cy.session() to cache and reuse basic auth session across tests
   cy.session("analyzer-tests-session", () => {
     // Establish session with basic auth by making an authenticated request
     cy.request({
       method: "GET",
-      url: "/rest/analyzer/analyzers",
+      url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
       auth: AUTH,
       failOnStatusCode: false,
     });
@@ -56,7 +56,7 @@ before("Login and setup test analyzer with mappings", () => {
   // Step 1: Create analyzer
   cy.request({
     method: "POST",
-    url: "/rest/analyzer/analyzers",
+    url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
     auth: AUTH,
     body: {
       name: "TEST-Maintenance-Analyzer-E2E",
@@ -77,7 +77,7 @@ before("Login and setup test analyzer with mappings", () => {
       // Check if analyzer 1001 exists, if not use the created analyzer
       cy.request({
         method: "GET",
-        url: "/rest/analyzer/analyzers/1001",
+        url: "/api/OpenELIS-Global/rest/analyzer/analyzers/1001",
         auth: AUTH,
         failOnStatusCode: false,
       }).then((checkResponse) => {
@@ -90,7 +90,7 @@ before("Login and setup test analyzer with mappings", () => {
           // Get the GLUCOSE field ID from fixture data
           cy.request({
             method: "GET",
-            url: "/rest/analyzer/analyzers/1001/fields",
+            url: "/api/OpenELIS-Global/rest/analyzer/analyzers/1001/fields",
             auth: AUTH,
             failOnStatusCode: false,
           }).then((fieldsResponse) => {
@@ -107,7 +107,7 @@ before("Login and setup test analyzer with mappings", () => {
                 // Step 3: Create draft mapping using fixture field
                 cy.request({
                   method: "POST",
-                  url: `/rest/analyzer/analyzers/1001/mappings`,
+                  url: `/api/OpenELIS-Global/rest/analyzer/analyzers/1001/mappings`,
                   auth: AUTH,
                   body: {
                     analyzerFieldId: fieldId,
@@ -146,7 +146,7 @@ after("Cleanup test analyzer", () => {
   if (testAnalyzerId) {
     cy.request({
       method: "DELETE",
-      url: `/rest/analyzer/analyzers/${testAnalyzerId}`,
+      url: `/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}`,
       auth: AUTH,
       failOnStatusCode: false,
     });
@@ -159,20 +159,24 @@ describe("Analyzer Maintenance - User Story 2", function () {
     cy.viewport(1025, 900); // Desktop viewport
 
     // Set up API intercepts BEFORE actions that trigger them (Constitution V.5)
-    cy.intercept("GET", "**/rest/analyzer/analyzers**").as("getAnalyzers");
-    cy.intercept("GET", "**/rest/analyzer/analyzers/**/mappings**").as(
-      "getMappings",
-    );
-    cy.intercept("PUT", "**/rest/analyzer/analyzers/**/mappings/**").as(
-      "updateMapping",
+    cy.intercept("GET", "**/api/OpenELIS-Global/rest/analyzer/analyzers**").as(
+      "getAnalyzers",
     );
     cy.intercept(
+      "GET",
+      "**/api/OpenELIS-Global/rest/analyzer/analyzers/**/mappings**",
+    ).as("getMappings");
+    cy.intercept(
+      "PUT",
+      "**/api/OpenELIS-Global/rest/analyzer/analyzers/**/mappings/**",
+    ).as("updateMapping");
+    cy.intercept(
       "POST",
-      "**/rest/analyzer/analyzers/**/mappings/**/activate**",
+      "**/api/OpenELIS-Global/rest/analyzer/analyzers/**/mappings/**/activate**",
     ).as("activateMapping");
     cy.intercept(
       "PUT",
-      "**/rest/analyzer/analyzers/**/mappings/**/disable**",
+      "**/api/OpenELIS-Global/rest/analyzer/analyzers/**/mappings/**/disable**",
     ).as("disableMapping");
   });
 
@@ -258,7 +262,7 @@ describe("Analyzer Maintenance - User Story 2", function () {
         // Set up intercept for update before clicking save
         cy.intercept(
           "PUT",
-          `**/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**`,
+          `**/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**`,
         ).as("updateMappingRequest");
 
         // Click save button
@@ -339,7 +343,7 @@ describe("Analyzer Maintenance - User Story 2", function () {
         // Set up intercept
         cy.intercept(
           "POST",
-          `**/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**/activate**`,
+          `**/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**/activate**`,
         ).as("activateMappingRequest");
 
         // If confirmation modal appears, confirm activation
@@ -449,7 +453,7 @@ describe("Analyzer Maintenance - User Story 2", function () {
             // Set up intercept for disable before confirming
             cy.intercept(
               "PUT",
-              `**/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**/disable**`,
+              `**/api/OpenELIS-Global/rest/analyzer/analyzers/${testAnalyzerId}/mappings/**/disable**`,
             ).as("disableMappingRequest");
 
             // Click "Disable Mapping" button (destructive style)

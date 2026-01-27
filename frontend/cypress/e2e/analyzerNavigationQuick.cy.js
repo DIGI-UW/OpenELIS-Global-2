@@ -14,14 +14,14 @@ const AUTH = {
 describe("Quick Analyzer Navigation", () => {
   before("Setup authentication", () => {
     // Wait for backend API to be available
-    cy.waitForBackend("/rest/analyzer/analyzers");
+    cy.waitForBackend("/api/OpenELIS-Global/rest/analyzer/analyzers");
 
     // Use cy.session() to cache and reuse basic auth session across tests
     cy.session("analyzer-tests-session", () => {
       // Establish session with basic auth by making an authenticated request
       cy.request({
         method: "GET",
-        url: "/rest/analyzer/analyzers",
+        url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
         auth: AUTH,
         failOnStatusCode: false,
       });
