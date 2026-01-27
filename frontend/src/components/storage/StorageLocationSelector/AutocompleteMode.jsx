@@ -13,16 +13,14 @@ const AutocompleteMode = ({ onLocationChange }) => {
 
   useEffect(() => {
     return () => {
-      if(debounceTimer.current){
+      if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
       }
     };
-
   }, []);
 
   const handleSearch = (inputValue) => {
-
-    if(debounceTimer.current){
+    if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
 
@@ -33,24 +31,20 @@ const AutocompleteMode = ({ onLocationChange }) => {
 
     debounceTimer.current = setTimeout(() => {
       fetch(`/rest/storage/devices/search?q=${encodeURIComponent(inputValue)}`)
-      .then((response) => response.json())
-      .then((data) => {
-        
-        const formattedResults = data.map((item) => ({
-          ...item,
-          hierarchicalPath: item.hierarchicalPath || item.name,
-        }));
-        
-        setSearchResults(formattedResults);
-      })
-      
-      .catch((error) => {
-        setSearchResults([]);
-      });
+        .then((response) => response.json())
+        .then((data) => {
+          const formattedResults = data.map((item) => ({
+            ...item,
+            hierarchicalPath: item.hierarchicalPath || item.name,
+          }));
 
+          setSearchResults(formattedResults);
+        })
+
+        .catch((error) => {
+          setSearchResults([]);
+        });
     }, 500);
-
-    
   };
 
   return (
