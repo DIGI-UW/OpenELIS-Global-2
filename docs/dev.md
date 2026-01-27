@@ -237,8 +237,8 @@ and security are not comprimised. Classes:
 - `ControllerSetup` – this class configures controllers globally, like trimming
   form strings of whitespace.
 - `DatabaseConfig` – this class configures the connection with the database
-- `HibernateConfig` – configures the entity manager and transaction manager
-  used by Hibernate.
+- `HibernateConfig` – configures the entity manager and transaction manager used
+  by Hibernate.
 
 ##
 
