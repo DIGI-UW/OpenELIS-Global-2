@@ -19,7 +19,7 @@ an OpenMRS module made for an implementation of OpenMRS deployed in Haiti called
 
 ![screen1](img/omrsoe2.png)
 
-## Intergration Between iSantéPlus and OPenELIS
+## Integration Between iSantéPlus and OPenELIS
 
 ### iSantéPlus
 
@@ -98,7 +98,7 @@ Start up the OpenELIS Update Task in `System Administration` →
     to the remote Fhir Server for OpenELIS to poll the orders
 
 6.  Start the OpenELIS Pull Task ,to start polling for Lab Results via the
-    Sheduler Interface  
+    Scheduler Interface  
     `System Administration` → `Advanced Administration` → `Scheduler` →
     `Manage Scheduler`
 
@@ -141,7 +141,7 @@ The FHIR based Lab Workflow is supported in OpenELIS 2.6 .
 
 4. Search for the Electronic Order ie  
     `Order` → `Electronic Orders` and then Complete the Order Note that the user
-   should have the right Lab Unit Priviledges to complete the Order ![screen1](img/eOrders.png)
+   should have the right Lab Unit Privileges to complete the Order ![screen1](img/eOrders.png)
 
 5. After Results are captured and Validated , OpenELIS sends back the results to
    OpenMRS as a Diagnostic Report with an Observation
