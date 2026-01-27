@@ -27,7 +27,7 @@ jest.mock("../../../../services/analyzerService", () => ({
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/extend-expect";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
@@ -120,7 +120,7 @@ describe("FileImportConfiguration", () => {
     const columnMappingsInput = screen.getByTestId(
       "file-import-configuration-column-mappings-input",
     );
-    await userEvent.clear(columnMappingsInput);
+    // Clear not needed - field starts empty
     await userEvent.type(columnMappingsInput, "invalid json", { delay: 0 });
 
     // Try to submit (trigger validation)
@@ -209,10 +209,13 @@ describe("FileImportConfiguration", () => {
     );
 
     // Assert: Verify analyzer dropdown is disabled
-    const analyzerDropdown = screen.getByTestId(
+    // In Carbon Dropdown, the disabled prop is applied to the toggle button inside the wrapper
+    const analyzerDropdownWrapper = screen.getByTestId(
       "file-import-configuration-analyzer-dropdown",
     );
-    expect(analyzerDropdown).toHaveAttribute("disabled");
+    // Find the button inside the dropdown (Carbon adds disabled to the button)
+    const dropdownButton = analyzerDropdownWrapper.querySelector("button");
+    expect(dropdownButton).toHaveAttribute("disabled");
   });
 
   test("testCancelButton_ClosesModal", async () => {
