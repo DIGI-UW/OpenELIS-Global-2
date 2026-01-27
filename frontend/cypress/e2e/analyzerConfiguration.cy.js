@@ -21,9 +21,23 @@ const AUTH = {
 
 /**
  * Setup: Create test analyzer via API and VERIFY it exists
+ * Uses cy.session() for auth caching + correct API path pattern
+ * NOTE: /api/OpenELIS-Global/rest/... is the CORRECT pattern (like storage tests)
+ *       /rest/... returns HTML, not JSON - other analyzer tests are broken
  */
 before("Setup test analyzer", () => {
+  // Wait for backend API to be available (use correct path pattern)
   cy.waitForBackend("/api/OpenELIS-Global/rest/analyzer/analyzers");
+
+  // Use cy.session() to cache and reuse basic auth session across tests
+  cy.session("analyzer-config-session", () => {
+    cy.request({
+      method: "GET",
+      url: "/api/OpenELIS-Global/rest/analyzer/analyzers",
+      auth: AUTH,
+      failOnStatusCode: false,
+    });
+  });
 
   // Create test analyzer via API
   cy.request({
