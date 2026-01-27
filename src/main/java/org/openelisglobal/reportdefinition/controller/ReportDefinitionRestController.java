@@ -68,29 +68,6 @@ public class ReportDefinitionRestController extends BaseRestController {
     }
 
     /**
-     * Get a specific report definition by ID.
-     *
-     * @param id report definition ID
-     * @return report definition form or 404 if not found
-     */
-    @GetMapping("/definitions/{id}")
-    public ResponseEntity<?> getDefinition(@PathVariable String id) {
-        try {
-            ReportDefinition definition = reportDefinitionService.get(id);
-            if (definition == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Report definition not found");
-            }
-            return ResponseEntity.ok(toForm(definition));
-        } catch (org.hibernate.ObjectNotFoundException e) {
-            logger.debug("Report definition not found for id: " + id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Report definition not found");
-        } catch (Exception e) {
-            logger.error("Error retrieving report definition with id: " + id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error retrieving report definition");
-        }
-    }
-
-    /**
      * Get all active report definitions.
      *
      * @return list of active report definitions
@@ -137,6 +114,29 @@ public class ReportDefinitionRestController extends BaseRestController {
     }
 
     /**
+     * Get a specific report definition by ID.
+     *
+     * @param id report definition ID
+     * @return report definition form or 404 if not found
+     */
+    @GetMapping("/definitions/{id}")
+    public ResponseEntity<?> getDefinition(@PathVariable String id) {
+        try {
+            ReportDefinition definition = reportDefinitionService.get(id);
+            if (definition == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Report definition not found");
+            }
+            return ResponseEntity.ok(toForm(definition));
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            logger.debug("Report definition not found for id: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Report definition not found");
+        } catch (Exception e) {
+            logger.error("Error retrieving report definition with id: " + id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error retrieving report definition");
+        }
+    }
+
+    /**
      * Convert ReportDefinition valueholder to ReportDefinitionForm for API
      * response.
      *
@@ -152,7 +152,7 @@ public class ReportDefinitionRestController extends BaseRestController {
         form.setDefinitionJson(definition.getDefinitionJson());
         form.setCreatedBy(definition.getCreatedBy());
         form.setCreatedDate(definition.getCreatedDate());
-        form.setLastModified(definition.getLastModified());
+        form.setLastupdated(definition.getLastupdated());
         form.setIsActive(definition.getIsActive());
         return form;
     }

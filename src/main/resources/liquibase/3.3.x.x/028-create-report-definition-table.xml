@@ -38,10 +38,10 @@
                 <constraints nullable="false"/>
             </column>
 
-            <!-- Audit Fields (Source of Truth) -->
+            <!-- Audit Fields (inherited from BaseObject: last_updated for @Version optimistic locking) -->
             <column name="created_by" type="VARCHAR(50)"/>
             <column name="created_date" type="TIMESTAMP"/>
-            <column name="last_modified" type="TIMESTAMP"/>
+            <column name="last_updated" type="TIMESTAMP"/>
 
             <!-- Status -->
             <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
@@ -59,8 +59,8 @@
         <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_is_active">
             <column name="is_active"/>
         </createIndex>
-        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_last_modified">
-            <column name="last_modified"/>
+        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_last_updated">
+            <column name="last_updated"/>
         </createIndex>
 
         <rollback>

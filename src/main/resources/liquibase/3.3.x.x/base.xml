@@ -33,7 +33,7 @@
 
 
   <!-- Generic Reporting Framework (reporting-framework) -->
-  <include relativeToChangelogFile="true" file="023-create-report-definition-table.xml"/>
+  <include relativeToChangelogFile="true" file="028-create-report-definition-table.xml"/>
 
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>

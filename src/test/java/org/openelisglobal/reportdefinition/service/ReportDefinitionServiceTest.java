@@ -27,6 +27,7 @@ public class ReportDefinitionServiceTest extends BaseWebContextSensitiveTest {
     private ReportDefinitionService reportDefinitionService;
 
     @Before
+    @Override
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/reportdefinition.xml");
     }

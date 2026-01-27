@@ -73,7 +73,7 @@ public class ReportDefinitionDAOImpl extends BaseDAOImpl<ReportDefinition, Strin
     @Override
     public List<ReportDefinition> getByCreatedBy(String userId) {
         try {
-            String hql = "FROM ReportDefinition r WHERE r.createdBy = :userId ORDER BY r.lastModified DESC, r.name";
+            String hql = "FROM ReportDefinition r WHERE r.createdBy = :userId ORDER BY r.lastupdated DESC, r.name";
             Query<ReportDefinition> query = entityManager.unwrap(Session.class).createQuery(hql,
                     ReportDefinition.class);
             query.setParameter("userId", userId);

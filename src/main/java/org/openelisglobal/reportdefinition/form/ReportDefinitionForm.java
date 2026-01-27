@@ -38,7 +38,7 @@ public class ReportDefinitionForm extends BaseForm {
 
     private Timestamp createdDate;
 
-    private Timestamp lastModified;
+    private Timestamp lastupdated;
 
     private Boolean isActive;
 
@@ -102,12 +102,12 @@ public class ReportDefinitionForm extends BaseForm {
         this.createdDate = createdDate;
     }
 
-    public Timestamp getLastModified() {
-        return lastModified;
+    public Timestamp getLastupdated() {
+        return lastupdated;
     }
 
-    public void setLastModified(Timestamp lastModified) {
-        this.lastModified = lastModified;
+    public void setLastupdated(Timestamp lastupdated) {
+        this.lastupdated = lastupdated;
     }
 
     public Boolean getIsActive() {

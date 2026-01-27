@@ -49,9 +49,6 @@ public class ReportDefinition extends BaseObject<String> {
     @Column(name = "created_date")
     private Timestamp createdDate;
 
-    @Column(name = "last_modified")
-    private Timestamp lastModified;
-
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
@@ -111,14 +108,6 @@ public class ReportDefinition extends BaseObject<String> {
 
     public void setCreatedDate(Timestamp createdDate) {
         this.createdDate = createdDate;
-    }
-
-    public Timestamp getLastModified() {
-        return lastModified;
-    }
-
-    public void setLastModified(Timestamp lastModified) {
-        this.lastModified = lastModified;
     }
 
     public Boolean getIsActive() {
