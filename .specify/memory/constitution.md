@@ -553,8 +553,15 @@ direct database access from controllers, NO business logic in DAOs.
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
      `@Table`, `@Id`, `@Column`, `@ManyToOne`, etc.)
-   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) - legacy XML mappings
-     exempt until refactored
+   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) for new domain
+     models.\n+\n+ **Legacy extension exception (global)**: Legacy XML-mapped
+     entities may be\n+ extended or integrated with when required for backward
+     compatibility.\n+ This exception is intended to support incremental
+     modernization in a\n+ large, mission-critical codebase.\n+\n+ - New
+     entities SHOULD be annotation-based.\n+ - If a change requires introducing
+     or extending XML mappings, the PR MUST\n+ document why, list the impacted
+     entities, and include an explicit\n+ migration plan to annotation-based
+     mappings.
    - Validation annotations on fields (`@NotNull`, `@Size`, etc.)
    - ID generation via `@GenericGenerator` with sequence name
    - `@PrePersist` hook for fhir_uuid generation
@@ -1026,11 +1033,6 @@ additional slashes) for sub-scoping like milestones.
   Confluence project
 - **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
 - **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
-
-**Note on Branch Naming**: Branch names use **lowercase** versions of Jira
-ticket IDs (e.g., `ogc-49` instead of `OGC-49`) for Git compatibility and
-readability. The Jira format itself remains uppercase (`OGC-{###}`), but branch
-names convert to lowercase.
 
 **SpecKit tooling note**:
 

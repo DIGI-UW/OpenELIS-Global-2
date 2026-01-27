@@ -5,7 +5,8 @@
     version="2.2">
 
     <persistence-unit
-        name="OpenELIS-Global-persistence-unit">
+        name="OpenELIS-Global-persistence-unit"
+        exclude-unlisted-classes="true">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <!-- converters -->
@@ -95,6 +96,12 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
 
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <!-- AnalyzerConfiguration, AnalyzerError, CustomFieldType: annotation-based -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
+
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
 
@@ -110,7 +117,6 @@
             <property
                 name="jakarta.persistence.schema-generation.database.action"
                 value="update" />
-
         </properties>
 
     </persistence-unit>
