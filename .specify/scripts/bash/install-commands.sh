@@ -129,6 +129,20 @@ install_commands() {
         core_content=${core_content//scripts\//.specify/scripts/}
         core_content=${core_content//\/memory\//.specify/memory/}
 
+        # Replace {SCRIPT} placeholder with actual script path from frontmatter
+        # Frontmatter format:
+        #   scripts:
+        #     sh: .specify/scripts/bash/check-prerequisites.sh --args
+        # Extract the sh: line value and substitute into {SCRIPT}
+        local script_path=""
+        if [[ "$core_content" =~ scripts:[[:space:]]*$'\n'[[:space:]]*sh:[[:space:]]*([^$'\n']+) ]]; then
+            script_path="${BASH_REMATCH[1]}"
+            # Trim leading/trailing whitespace
+            script_path="${script_path#"${script_path%%[![:space:]]*}"}"
+            script_path="${script_path%"${script_path##*[![:space:]]}"}"
+            core_content=${core_content//\{SCRIPT\}/$script_path}
+        fi
+
         local merged_content="$core_content"
         local oe_file="$OE_DIR/$base"
         if [[ -f "$oe_file" ]]; then

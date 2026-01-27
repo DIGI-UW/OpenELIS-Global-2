@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <!-- UnitMapping: Maps analyzer-reported units to OpenELIS canonical units
+        with optional conversion factors. XML-only mapping to match analyzer module
+        pattern. -->
+    <class name="org.openelisglobal.analyzer.valueholder.UnitMapping"
+        table="unit_mapping" optimistic-lock="version" dynamic-update="true">
+
+        <id name="id" type="java.lang.String">
+            <column name="id" length="36" />
+            <generator class="assigned" />
+        </id>
+        <version name="lastupdated" column="last_updated"
+            type="timestamp" access="field" />
+
+        <property name="analyzerFieldId" type="java.lang.String">
+            <column name="analyzer_field_id" not-null="true" length="36" />
+        </property>
+
+        <property name="analyzerUnit" type="java.lang.String">
+            <column name="analyzer_unit" not-null="true" length="50" />
+        </property>
+
+        <property name="openelisUnit" type="java.lang.String">
+            <column name="openelis_unit" not-null="true" length="50" />
+        </property>
+
+        <property name="conversionFactor" type="big_decimal">
+            <column name="conversion_factor" precision="10" scale="6" />
+        </property>
+
+        <property name="rejectIfMismatch" type="java.lang.Boolean">
+            <column name="reject_if_mismatch" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

@@ -1,0 +1,89 @@
+/**
+ * AnalyzerLayout Styles
+ * 
+ * Styles for the analyzer-specific layout that uses proper Carbon UI Shell structure.
+ */
+
+.analyzer-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header styling */
+.analyzer-header .header-logo {
+  display: flex;
+  align-items: center;
+}
+
+.analyzer-header .header-logo .logo {
+  height: 32px;
+  margin-right: 1rem;
+}
+
+.analyzer-header .header-banner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.analyzer-header .header-banner h5 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-on-color);
+}
+
+.analyzer-header .header-banner p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--cds-text-on-color-disabled);
+}
+
+/* Content area */
+.analyzer-content {
+  padding: 2rem;
+  background-color: var(--cds-background);
+  min-height: calc(100vh - 3rem); /* Account for header height */
+  transition: margin-left 0.11s cubic-bezier(0.2, 0, 1, 0.9);
+}
+
+/* Content pushing logic - wrapper div around Carbon Content */
+.content-expanded {
+  margin-left: 16rem !important; /* Width of expanded SideNav */
+  width: calc(100% - 16rem) !important;
+}
+
+.content-collapsed {
+  margin-left: 3rem !important; /* Width of collapsed SideNav (rail) */
+  width: calc(100% - 3rem) !important;
+}
+
+/* Override Carbon Content's default margin when inside our wrapper */
+.content-expanded .cds--content,
+.content-collapsed .cds--content {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+/* SideNav icons in menu items */
+.cds--side-nav__menu-item .cds--side-nav__link {
+  display: flex;
+  align-items: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1056px) {
+  .analyzer-header .header-banner {
+    display: none;
+  }
+
+  /* On smaller screens, SideNav overlays instead of pushes */
+  .content-expanded {
+    margin-left: 0;
+  }
+
+  .content-collapsed {
+    margin-left: 0;
+  }
+}
