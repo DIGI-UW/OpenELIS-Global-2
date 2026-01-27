@@ -5,8 +5,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -48,7 +50,7 @@ public class AnalyzerExperimentServiceImpl extends AuditableBaseObjectServiceImp
             return wellValues;
         }
         BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new ByteArrayInputStream(analyzerExperiment.getFile())));
+                new InputStreamReader(new ByteArrayInputStream(analyzerExperiment.getFile()), StandardCharsets.UTF_8));
         String[] columns = reader.readLine().split(",");
         while (reader.ready()) {
             String[] pair = reader.readLine().split(",");
@@ -67,16 +69,21 @@ public class AnalyzerExperimentServiceImpl extends AuditableBaseObjectServiceImp
 
     private byte[] generateCSV(Map<String, String> wellValues) throws LIMSException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        try (Writer writer = new PrintWriter(outputStream)) {
+        try {
+            outputStream.write(0xEF);
+            outputStream.write(0xBB);
+            outputStream.write(0xBF);
+            Writer writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
             writer.append("well").append(',').append("Sample Name").append('\n');
             List<Entry<String, String>> entries = wellValues.entrySet().stream().collect(Collectors.toList());
             Collections.sort(entries, new WellValueComparator());
             for (Entry<String, String> entry : entries) {
                 writer.append(entry.getKey()).append(',').append(entry.getValue()).append('\n');
             }
+            writer.flush();
         } catch (IOException e) {
             LogEvent.logError(e);
-            throw new LIMSException("could not generate the csv");
+            throw new LIMSException("could not generate csv");
         }
         return outputStream.toByteArray();
     }
