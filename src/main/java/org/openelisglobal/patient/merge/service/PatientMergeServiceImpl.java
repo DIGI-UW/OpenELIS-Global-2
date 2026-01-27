@@ -112,6 +112,8 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         if (Boolean.TRUE.equals(patient2.getIsMerged())) {
             result.addError("Patient 2 is already merged into patient " + patient2.getMergedIntoPatientId());
             return result;
+
+
         }
 
         // Validation 4: Check for circular references
@@ -318,14 +320,18 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
         return details;
     }
+    /
 
     /**
      * Executes the patient merge operation. Consolidates all data, marks merged
      * patient, and creates audit trail. Runs in single transaction with rollback on
      * failure.
      */
+
     @Override
-    public PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request, String sysUserId) {
+    @Transactional
+    public PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request, String sysUserId) 
+      {
         long startTime = System.currentTimeMillis();
 
         // Validation 1: Check confirmation
@@ -336,7 +342,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         // Validation 2: Fetch both patients
         Patient patient1 = patientDAO.getData(request.getPatient1Id());
         Patient patient2 = patientDAO.getData(request.getPatient2Id());
-
+   
         if (patient1 == null || patient2 == null) {
             return PatientMergeExecutionResultDTO.failure("Patient not found");
         }
@@ -344,6 +350,20 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         // Determine primary and merged patients
         Patient primaryPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient1 : patient2;
         Patient mergedPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient2 : patient1;
+
+        // Pre-merge FHIR validation: prevent partial merge
+      if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId()) 
+          
+
+        || fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
+   
+       if (!fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
+            || !fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
+        throw new FhirLocalPersistingException(
+                "FHIR resource missing for one or both patients. Merge aborted.");
+     }
+}
+ 
 
         // Mark merged patient as inactive
         mergedPatient.setIsMerged(true);
@@ -392,21 +412,23 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
         // FR-016, FR-017: Update FHIR Patient links if both patients have FHIR
         // resources
-        if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
-                && fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
-            try {
-                fhirPatientLinkService.updatePatientLinks(primaryPatient.getId(), mergedPatient.getId(),
-                        primaryPatient.getFhirUuidAsString(), mergedPatient.getFhirUuidAsString());
-                LogEvent.logInfo(this.getClass().getName(), "executeMerge",
-                        "Successfully updated FHIR Patient links for merge: " + primaryPatient.getId() + " <- "
-                                + mergedPatient.getId());
-            } catch (FhirLocalPersistingException e) {
-                // Log error but don't fail the entire merge if FHIR update fails
-                LogEvent.logError(this.getClass().getName(), "executeMerge",
-                        "FHIR link update failed but merge succeeded: " + e.getMessage());
-            }
-        }
+     
+if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
+        && fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
 
+    fhirPatientLinkService.updatePatientLinks(
+            primaryPatient.getId(),
+            mergedPatient.getId(),
+            primaryPatient.getFhirUuidAsString(),
+            mergedPatient.getFhirUuidAsString());
+
+    LogEvent.logInfo(this.getClass().getName(), "executeMerge",
+            "Successfully updated FHIR Patient links for merge: "
+                    + primaryPatient.getId() + " <- " + mergedPatient.getId());
+}
+
+
+        
         // Create data_summary JSONB for audit trail
         long duration = System.currentTimeMillis() - startTime;
         JsonNode dataSummary = createAuditDataSummary(consolidationResult, mergedDemoFields.size(), duration);
