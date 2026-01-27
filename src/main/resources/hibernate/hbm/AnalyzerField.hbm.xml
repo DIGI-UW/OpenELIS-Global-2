@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <!-- XML mapping for AnalyzerField - Complete mapping definition. IMPORTANT:
+        This mapping must come BEFORE AnalyzerFieldMapping.hbm.xml in hibernate.cfg.xml
+        to ensure table name is registered before it's referenced. -->
+    <class
+        name="org.openelisglobal.analyzer.valueholder.AnalyzerField"
+        table="analyzer_field" optimistic-lock="version" dynamic-update="true">
+        <id name="id" type="java.lang.String">
+            <column name="id" length="36" />
+            <generator class="assigned" />
+        </id>
+        <version name="lastupdated" column="last_updated"
+            type="timestamp" access="field" />
+
+        <!-- Many-to-one relationship to Analyzer (XML-mapped entity) -->
+        <many-to-one name="analyzer"
+            class="org.openelisglobal.analyzer.valueholder.Analyzer"
+            fetch="select">
+            <column name="analyzer_id" not-null="true" />
+        </many-to-one>
+
+        <property name="fieldName" type="java.lang.String">
+            <column name="field_name" length="255" not-null="true" />
+        </property>
+
+        <property name="astmRef" type="java.lang.String">
+            <column name="astm_ref" length="50" />
+        </property>
+
+        <!-- fieldType uses enum type: stored as VARCHAR in DB, FieldType enum
+            in Java -->
+        <property name="fieldType" column="field_type">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.analyzer.valueholder.AnalyzerField$FieldType</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+
+        <property name="unit" type="java.lang.String">
+            <column name="unit" length="50" />
+        </property>
+
+        <!-- Many-to-one relationship to CustomFieldType (annotation-based entity) -->
+        <many-to-one name="customFieldType"
+            class="org.openelisglobal.analyzer.valueholder.CustomFieldType"
+            fetch="select">
+            <column name="custom_field_type_id" />
+        </many-to-one>
+
+        <property name="isActive" type="java.lang.Boolean">
+            <column name="is_active" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>
