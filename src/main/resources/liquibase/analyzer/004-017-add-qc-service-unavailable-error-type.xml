@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add QC_SERVICE_UNAVAILABLE error type support -->
+    <!-- Issue U1 Remediation: FR-021 error handling enhancement -->
+    <!-- Updates check constraint to include QC_SERVICE_UNAVAILABLE -->
+    <changeSet id="analyzer-017-add-qc-service-unavailable-error-type" author="astm-analyzer-mapping-feature">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_error"/>
+        </preConditions>
+        <comment>Add QC_SERVICE_UNAVAILABLE error type support - update constraint to include new error type</comment>
+
+        <!-- Drop existing check constraint -->
+        <sql>
+            ALTER TABLE analyzer_error
+            DROP CONSTRAINT IF EXISTS chk_error_type;
+        </sql>
+
+        <!-- Recreate check constraint with QC_SERVICE_UNAVAILABLE included -->
+        <sql>
+            ALTER TABLE analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE', 'QC_SERVICE_UNAVAILABLE'));
+        </sql>
+
+        <rollback>
+            <!-- Drop new constraint -->
+            ALTER TABLE analyzer_error
+            DROP CONSTRAINT IF EXISTS chk_error_type;
+
+            <!-- Restore previous constraint (without QC_SERVICE_UNAVAILABLE) -->
+            ALTER TABLE analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE'));
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

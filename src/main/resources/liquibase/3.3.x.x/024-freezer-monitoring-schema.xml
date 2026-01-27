@@ -334,6 +334,11 @@
     </changeSet>
 
     <changeSet id="add-freezer-storage-device-fk" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="freezer" columnName="storage_device_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
         <comment>Link Freezer to StorageDevice as parent entity</comment>
 
         <addColumn schemaName="clinlims" tableName="freezer">

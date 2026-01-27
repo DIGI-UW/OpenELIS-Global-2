@@ -55,13 +55,15 @@ QC messages are reprocessed automatically.
 
 **Constitution Principle IX Compliance**: This feature exceeds 3 days effort and
 MUST be broken into Validation Milestones. Each milestone corresponds to a Pull
-Request targeting the specs branch (`spec/OGC-49-astm-analyzer-mapping`).
+Request. **Current state**: M1–M3 have been implemented; the remaining work is
+consolidated into M4 (integration/polish).
 
-| Milestone | Description             | User Stories  | Task Ranges                                             | Estimated Days | Dependencies | PR    |
-| --------- | ----------------------- | ------------- | ------------------------------------------------------- | -------------- | ------------ | ----- |
-| M1        | Backend core + database | US1, US2, US3 | T001-T011, T012-T047, T089-T103, T151a-T153c, T182-T196 | ~15            | None         | #2429 |
-| M2        | Frontend analyzers      | US1, US2, US3 | T010, T048-T088, T140, T174-T181                        | ~12            | M1           | #2430 |
-| M3        | Query bridge work       | FR-002        | T104-T105, T106-T107, T108-T109                         | ~5             | M1           | #2431 |
+| Milestone | Description             | User Stories/FRs | Status    | PR     |
+| --------- | ----------------------- | ---------------- | --------- | ------ |
+| M1        | Backend core + database | US1–US3          | Completed | #2429  |
+| M2        | Frontend analyzers      | US1–US3          | Completed | #2430  |
+| M3        | Query bridge work       | FR-002           | Completed | #2431  |
+| M4        | Integration + polish    | Cross-cutting    | Remaining | (this) |
 
 **Milestone Details**:
 
@@ -79,18 +81,24 @@ Request targeting the specs branch (`spec/OGC-49-astm-analyzer-mapping`).
   communication with ASTM-HTTP Bridge, query job management, field parsing from
   ASTM responses. Enables FR-002 (Query Analyzer functionality) to retrieve
   available fields from analyzers via bi-directional bridge communication.
+- **M4 (Integration + polish)**: Consolidate and validate cross-milestone
+  integration, CI stability, and documentation alignment. This includes:
+  persistence/config consistency, remaining polish tasks, and verification
+  checklists.
 
-**Branch Naming**: `feat/OGC-49-astm-analyzer-mapping/m{N}-{desc}` per
-Constitution Principle IX.
+**Branch Naming** (Constitution Principle IX):
+
+- Spec PR branch: `spec/004-ogc-49-astm-analyzer-mapping`
+- Milestone PR branches: `feat/004-ogc-49-astm-analyzer-mapping-m{N}-{desc}`
 
 ## Technical Context
 
 **Language/Version**: Java 21 LTS (backend), React 17 (frontend)  
 **Primary Dependencies**:
 
-- Backend: Spring Boot 3.x, Hibernate 6.x, HAPI FHIR R4 (v6.6.2), JPA
-  (jakarta.persistence), Liquibase 4.8.0, RestTemplate/WebClient (HTTP client
-  for ASTM-HTTP Bridge communication)
+- Backend: Spring Framework 6.2.2 (Traditional Spring MVC), Hibernate 6.x, HAPI
+  FHIR R4 (v6.6.2), JPA (jakarta.persistence), Liquibase 4.8.0,
+  RestTemplate/WebClient (HTTP client for ASTM-HTTP Bridge communication)
 - Frontend: @carbon/react v1.15.0, React Intl 5.20.12, Formik 2.2.9, SWR 2.0.3,
   React Router DOM 5.2.0
 - ASTM Protocol: ASTM-HTTP Bridge (bi-directional protocol translator), Existing
@@ -106,7 +114,8 @@ Constitution Principle IX.
 - FHIR: Resource validation against R4 profiles (if analyzer entities exposed
   externally)
 
-**Target Platform**: Web application (React frontend, Spring Boot backend)  
+**Target Platform**: Web application (React frontend, Java 21 + Spring Framework
+backend)  
 **Project Type**: Web application (frontend + backend)  
 **Performance Goals**:
 
@@ -117,8 +126,11 @@ Constitution Principle IX.
 
 **Constraints**:
 
-- MUST use annotation-based JPA mappings (NO XML mapping files per Constitution
-  IV)
+- New entities SHOULD be annotation-based JPA mappings; however, this feature
+  MAY use legacy Hibernate XML mappings (`.hbm.xml`) where required for analyzer
+  backward compatibility. Any XML-mapping usage MUST be explicitly documented
+  (impacted entities + rationale) and include a migration path to annotations
+  per Constitution Principle IV legacy extension exception.
 - MUST follow 5-layer architecture (Valueholder→DAO→Service→Controller→Form)
 - MUST use Carbon Design System exclusively (NO Bootstrap/Tailwind)
 - MUST internationalize all UI strings via React Intl
@@ -143,7 +155,7 @@ Constitution Principle IX.
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 Verify compliance with
-[OpenELIS Global 3.0 Constitution](../.specify/memory/constitution.md):
+[OpenELIS Global 2.0 Constitution](../.specify/memory/constitution.md):
 
 - [x] **Configuration-Driven**: No country-specific code branches planned
 
@@ -180,23 +192,15 @@ Verify compliance with
 - [x] **Layered Architecture**: Backend follows 5-layer pattern
       (Valueholder→DAO→Service→Controller→Form)
 
-  - **Valueholders use XML mappings for analyzer entities** (matching legacy
-    `Analyzer` entity pattern) - AnalyzerField, AnalyzerFieldMapping,
-    QualitativeResultMapping, UnitMapping use XML-only mappings (`*.hbm.xml`) to
-    avoid Hibernate relationship resolution issues when XML-mapped entities
-    reference annotation-based entities. This is an exception to the general
-    annotation-based approach, documented in `ANALYZER_XML_MAPPING_ANALYSIS.md`.
-    Legacy entities are exempt until refactored per Constitution IV.
-    - **NEW ENTITIES**: All new entities (AnalyzerField, AnalyzerFieldMapping,
-      etc.) MUST use annotation-based mappings exclusively
-    - **LEGACY EXCEPTION**: Legacy `Analyzer` entity uses XML mappings
-      (`src/main/resources/hibernate/hbm/Analyzer.hbm.xml`) and is exempt from
-      this rule until refactored per Constitution IV
-    - **IMPLICATIONS**: Queries that traverse relationships through XML-mapped
-      entities may require special patterns (see research.md "Querying Through
-      XML-Mapped Entities")
-    - **MIGRATION PATH**: Future refactoring of `Analyzer` entity to annotations
-      will eliminate this exception
+  - **Legacy model exception**: Some legacy entities remain XML-mapped (e.g. the
+    legacy `Analyzer` entity). This is allowed under the constitution’s legacy
+    model extension guidance.
+
+    - **Default**: New entities SHOULD be annotation-based.
+    - If compatibility requires XML mappings for new/extended models, the
+      exception MUST be documented and include an explicit migration path to
+      annotation-based mappings.
+
   - **Transaction management MUST be in service layer only** - NO
     `@Transactional` annotations on controller methods
   - **Data Compilation Rule**: Services MUST eagerly fetch ALL data needed for
@@ -272,7 +276,7 @@ specs/004-astm-analyzer-mapping/
 OpenELIS structure
 
 ```text
-# Backend (Java/Spring Boot)
+# Backend (Java/Spring Framework)
 src/main/java/org/openelisglobal/analyzer/
 ├── valueholder/          # JPA Entities (annotation-based)
 │   ├── AnalyzerField.java
