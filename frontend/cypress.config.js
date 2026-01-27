@@ -13,6 +13,13 @@ module.exports = defineConfig({
   video: false, // Disabled by default per Constitution V.5 (enable only for debugging specific failures)
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
+
+  // Env-controlled fail-fast: Stop on first test failure
+  // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
+  // Set E2E_FAIL_FAST=false or unset to run all tests (default)
+  // Usage: E2E_FAIL_FAST=true npm run cy:run
+  bail: process.env.E2E_FAIL_FAST === "true",
+
   env: {
     // Control whether test fixtures are cleaned up after tests
     // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing/debugging
