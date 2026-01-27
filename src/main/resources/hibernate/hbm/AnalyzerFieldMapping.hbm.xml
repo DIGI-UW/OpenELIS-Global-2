@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <!-- AnalyzerFieldMapping uses XML mapping to override BaseObject's @Version
+        field. This entity uses its own 'version' column for optimistic locking instead
+        of BaseObject's 'last_updated' version field. The BaseObject's lastupdated
+        field is mapped as a regular property (not a version) to avoid Hibernate's
+        single-version constraint. -->
+    <class
+        name="org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping"
+        table="analyzer_field_mapping" optimistic-lock="version"
+        dynamic-update="true">
+
+        <id name="id" type="java.lang.String">
+            <column name="id" length="36" />
+        </id>
+
+        <!-- Our own version column for optimistic locking (must come right after
+            id) -->
+        <version name="version" type="long" column="version" />
+
+        <!-- Override BaseObject's version field to be a regular property (not
+            @Version) -->
+        <property name="lastupdated" type="timestamp">
+            <column name="last_updated" not-null="true" />
+        </property>
+
+        <!-- Manual relationship management: Store foreign keys as properties instead
+            of many-to-one to avoid Hibernate's table name resolution issues when XML-mapped
+            entities reference annotation-based entities. Relationships are hydrated
+            manually in the service layer. -->
+        <property name="analyzerFieldId" type="java.lang.String">
+            <column name="analyzer_field_id" not-null="true" length="36" />
+        </property>
+
+        <!-- analyzerId uses LIMSStringNumberUserType: stored as INTEGER in DB,
+            String in Java (matches legacy Analyzer entity ID type) -->
+        <property name="analyzerId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="analyzer_id" not-null="true" />
+        </property>
+
+        <property name="openelisFieldId" type="java.lang.String">
+            <column name="openelis_field_id" length="36" not-null="true" />
+        </property>
+
+        <!-- openelisFieldType uses enum type: stored as VARCHAR in DB, OpenELISFieldType
+            enum in Java -->
+        <property name="openelisFieldType"
+            column="openelis_field_type">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping$OpenELISFieldType</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+
+        <!-- mappingType uses enum type: stored as VARCHAR in DB, MappingType enum
+            in Java -->
+        <property name="mappingType" column="mapping_type">
+            <type name="org.hibernate.type.EnumType">
+                <param name="enumClass">org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping$MappingType</param>
+                <param name="useNamed">true</param>
+            </type>
+        </property>
+
+        <property name="isRequired" type="java.lang.Boolean">
+            <column name="is_required" not-null="true" />
+        </property>
+
+        <property name="isActive" type="java.lang.Boolean">
+            <column name="is_active" not-null="true" />
+        </property>
+
+        <property name="specimenTypeConstraint"
+            type="java.lang.String">
+            <column name="specimen_type_constraint" length="50" />
+        </property>
+
+        <property name="panelConstraint" type="java.lang.String">
+            <column name="panel_constraint" length="50" />
+        </property>
+    </class>
+</hibernate-mapping>
