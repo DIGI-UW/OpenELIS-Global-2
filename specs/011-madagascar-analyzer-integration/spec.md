@@ -46,6 +46,14 @@ openelisglobal-plugins repository to reduce development effort by approximately
   Story 9, FR-025 through FR-030, SC-011 for simulator supporting ASTM, HL7
   v2.x, RS232, and file-based simulation for all 12 contract analyzers.
 
+### Session 2026-01-27
+
+- Q: How should the spec reconcile conflicting priorities between contract requirements and Romain's internal list? → A: **Use Romain's priority for implementation order**. Analyzers marked "NOT ON ROMAIN'S LIST" (BC2000, Sysmex XN Series) deprioritized to P2 since they may not be deployed in Madagascar labs near-term. Contract compliance still required but implementation order follows real-world deployment priorities.
+- Q: Should the spec include additional high-priority analyzers from Romain's list beyond the 12 contract-minimum? → A: **Add as P3 stretch goals**. Attempt if time permits after P1/P2 complete. Includes Mindray variants (BC5300, BS-120/200/230), Bio-Rad CFX96, BioMérieux VIDAS, and other high-priority PCR thermocyclers from Romain's list.
+- Q: How should implementation handle protocol uncertainties for analyzers with unclear connectivity? → A: **Build flexible adapters supporting multiple protocols per analyzer**. Use the adapter pattern from Feature 004 architecture. Analyzers like Abbott Architect, Hain FluoroCycler XT, and others with uncertain protocols get multi-protocol adapter support (e.g., HL7 + RS232, or File + Network) to handle discovery during deployment.
+- Q: What validation level is required before contract go-live? → A: **Simulator validation sufficient for go-live**. All 12 analyzers validated via multi-protocol simulator; physical testing happens post-deployment in Madagascar labs. This accepts higher risk of in-field issues but meets the tight deadline. Simulator must provide comprehensive coverage including edge cases and error conditions.
+- Q: What RS232 deployment architecture should the spec require? → A: **Extend ASTM-HTTP Bridge to handle RS232 locally**. The bridge runs on a lab PC with USB-to-serial adapter, converts RS232→TCP, and forwards to OpenELIS server. This keeps architecture consistent with existing ASTM bridge pattern and avoids additional hardware costs beyond USB adapters.
+
 ---
 
 ## User Scenarios & Testing _(mandatory)_
@@ -394,7 +402,9 @@ the simulated messages.
 - **FR-002**: System MUST support RS232 serial communication with configurable
   parameters (baud rate: 9600-115200, data bits: 7-8, parity: none/even/odd,
   stop bits: 1-2, flow control: none/RTS-CTS/XON-XOFF; defaults: 9600 baud, 8
-  data bits, no parity, 1 stop bit, no flow control).
+  data bits, no parity, 1 stop bit, no flow control). RS232 connectivity is
+  provided via the extended ASTM-HTTP Bridge running on a lab PC with
+  USB-to-serial adapter, converting RS232→TCP for forwarding to OpenELIS server.
 
 - **FR-003**: System MUST support file-based result import from configured
   directories with automatic file detection, parsing, and archival.
@@ -409,37 +419,45 @@ the simulated messages.
 #### Analyzer Coverage (Contract Critical - Deadline: 2026-02-28)
 
 - **FR-006**: System MUST support all 12 contract-required analyzers with
-  bidirectional communication:
+  bidirectional communication. Implementation order based on Romain's deployment
+  priorities (P1 first, then P1-M, then P2):
 
+  **P1 - High Priority (Romain's List - High)**:
   1. Cepheid GeneXpert (ASTM/HL7)
-  2. Hain Lifescience FluoroCycler XT (File-based)
+  2. Horiba ABX Micros 60 (ASTM over RS232)
   3. Thermo Fisher QuantStudio 7 Flex (File-based)
-  4. Horiba ABX Pentra 60 (ASTM over RS232)
-  5. Mindray BC-5380 (HL7 over Network)
-  6. Mindray BS-360E (HL7 over Network)
-  7. Stago STart 4 (ASTM/HL7 over RS232/Network)
-  8. Horiba ABX Micros 60 (ASTM over RS232)
-  9. Mindray BA-88A (RS232)
-  10. Mindray BC2000 (HL7 over Network)
-  11. Sysmex XN Series (HL7 over Network)
-  12. Abbott Architect (HL7 over RS232/Network)
+  4. Mindray BC-5380 (HL7 over Network)
+  5. Mindray BA-88A (RS232)
+  6. Horiba ABX Pentra 60 (ASTM over RS232)
+  7. Abbott Architect (HL7 over RS232/Network)
+  8. Hain Lifescience FluoroCycler XT (File-based)
+  9. Mindray BS-360E (HL7 over Network)
+
+  **P1-M - Moderate Priority (Romain's List - Moderate)**:
+  10. Stago STart 4 (ASTM/HL7 over RS232/Network)
+
+  **P2 - Lower Priority (Not on Romain's List)**:
+  11. Mindray BC2000 (HL7 over Network)
+  12. Sysmex XN Series (HL7 over Network)
 
 #### Analyzer/Protocol/Simulator Coverage Matrix
 
-| Analyzer             | Protocol      | Adapter (M1-M3)    | Simulator Template (M4/M16)                                 | Plugin Status                   |
-| -------------------- | ------------- | ------------------ | ----------------------------------------------------------- | ------------------------------- |
-| Mindray BC-5380      | HL7           | M1 (HL7Adapter)    | `mindray_bc5380.json`                                       | ✅ Existing (Mindray plugin)    |
-| Mindray BC2000       | HL7           | M1 (HL7Adapter)    | Shares BC-5380 template                                     | ✅ Existing (Mindray plugin)    |
-| Mindray BS-360E      | HL7           | M1 (HL7Adapter)    | `mindray_bs360e.json`                                       | ✅ Existing (Mindray plugin)    |
-| Mindray BA-88A       | RS232/ASTM    | M2 (SerialAdapter) | `mindray_ba88a.json`                                        | ✅ Existing (Mindray plugin)    |
-| Sysmex XN Series     | HL7           | M1 (HL7Adapter)    | `sysmex_xn.json`                                            | ✅ Existing (SysmexXN-L plugin) |
-| GeneXpert            | ASTM/HL7/File | Existing + M1 + M3 | `genexpert.json`                                            | ✅ Existing (3 variants)        |
-| Abbott Architect     | HL7/RS232     | M1 or M2           | `abbott_architect_hl7.json`, `abbott_architect_serial.json` | ❌ Build new (M12)              |
-| Stago STart 4        | ASTM/HL7      | M1 or Existing     | `stago_start4.json`                                         | ❌ Build new (M11)              |
-| Horiba Pentra 60     | RS232/ASTM    | M2 (SerialAdapter) | `horiba_pentra60.json`                                      | ❌ Build new (M9)               |
-| Horiba Micros 60     | RS232/ASTM    | M2 (SerialAdapter) | `horiba_micros60.json`                                      | ❌ Build new (M10)              |
-| QuantStudio 7 Flex   | File          | M3 (FileAdapter)   | `quantstudio7.json`                                         | ⚠️ Adapt QuantStudio3 (M8)      |
-| Hain FluoroCycler XT | File          | M3 (FileAdapter)   | `hain_fluorocycler.json`                                    | ❌ Build new (M13)              |
+Ordered by implementation priority (Romain's deployment list):
+
+| Analyzer             | Protocol      | Adapter (M1-M3)    | Simulator Template (M4/M16)                                 | Plugin Status                   | Priority |
+| -------------------- | ------------- | ------------------ | ----------------------------------------------------------- | ------------------------------- | -------- |
+| GeneXpert            | ASTM/HL7/File | Existing + M1 + M3 | `genexpert.json`                                            | ✅ Existing (3 variants)        | P1       |
+| Horiba Micros 60     | RS232/ASTM    | M2 (SerialAdapter) | `horiba_micros60.json`                                      | ❌ Build new (M10)              | P1       |
+| QuantStudio 7 Flex   | File          | M3 (FileAdapter)   | `quantstudio7.json`                                         | ⚠️ Adapt QuantStudio3 (M8)      | P1       |
+| Mindray BC-5380      | HL7           | M1 (HL7Adapter)    | `mindray_bc5380.json`                                       | ✅ Existing (Mindray plugin)    | P1       |
+| Mindray BA-88A       | RS232/ASTM    | M2 (SerialAdapter) | `mindray_ba88a.json`                                        | ✅ Existing (Mindray plugin)    | P1       |
+| Horiba Pentra 60     | RS232/ASTM    | M2 (SerialAdapter) | `horiba_pentra60.json`                                      | ❌ Build new (M9)               | P1       |
+| Abbott Architect     | HL7/RS232     | M1 or M2           | `abbott_architect_hl7.json`, `abbott_architect_serial.json` | ❌ Build new (M12)              | P1       |
+| Hain FluoroCycler XT | File          | M3 (FileAdapter)   | `hain_fluorocycler.json`                                    | ❌ Build new (M13)              | P1       |
+| Mindray BS-360E      | HL7           | M1 (HL7Adapter)    | `mindray_bs360e.json`                                       | ✅ Existing (Mindray plugin)    | P1       |
+| Stago STart 4        | ASTM/HL7      | M1 or Existing     | `stago_start4.json`                                         | ❌ Build new (M11)              | P1-M     |
+| Mindray BC2000       | HL7           | M1 (HL7Adapter)    | Shares BC-5380 template                                     | ✅ Existing (Mindray plugin)    | P2       |
+| Sysmex XN Series     | HL7           | M1 (HL7Adapter)    | `sysmex_xn.json`                                            | ✅ Existing (SysmexXN-L plugin) | P2       |
 
 - **FR-007**: System MUST integrate with existing analyzer plugins (Mindray,
   SysmexXN-L, GeneXpertHL7, GeneXpertFile, QuantStudio3) to leverage proven
@@ -623,8 +641,9 @@ the simulated messages.
   operating simultaneously without message misrouting or data corruption.
 
 - **SC-004**: Less than 5% of incoming analyzer messages generate mapping errors
-  after initial configuration is complete (measured across 1000+ messages in
-  production).
+  after initial configuration is complete. **Measurement window**: first 1000
+  messages OR first 7 calendar days of production operation, whichever comes
+  first. Excludes messages during initial configuration/tuning period.
 
 - **SC-005**: Laboratory technicians complete analyzer configuration
   (connection + basic mappings) in under 30 minutes for analyzers with existing
@@ -650,6 +669,12 @@ the simulated messages.
   developers to test integrations without physical analyzers (verified by CI/CD
   pipeline integration tests passing).
 
+- **SC-012**: Simulator validation covers all acceptance scenarios including:
+  normal result flow, error conditions, edge cases (duplicate results, unknown
+  patients, malformed messages), and bidirectional order export/acknowledgment.
+  Simulator-only validation is sufficient for contract go-live; physical
+  analyzer testing occurs post-deployment in Madagascar.
+
 ---
 
 ## Assumptions & Constraints
@@ -671,8 +696,10 @@ the simulated messages.
 4. **Feature 004 Stability**: The 004-astm-analyzer-mapping infrastructure is
    stable and provides a solid foundation for extending to new protocols.
 
-5. **Docker Serial Access**: Serial port pass-through to Docker containers is
-   supported on the deployment platform for RS232 communication.
+5. **RS232 via Bridge**: RS232 analyzers connect via the extended ASTM-HTTP
+   Bridge running on a lab PC. The bridge handles RS232→TCP conversion locally,
+   eliminating the need for Docker serial passthrough. Each lab requires a PC
+   with USB-to-serial adapter(s) running the bridge software.
 
 ### Constraints
 
@@ -691,9 +718,22 @@ the simulated messages.
    function. The new protocol adapters (HL7, RS232, File) must not break
    existing ASTM-based integrations.
 
-5. **Resource Availability**: Implementation depends on access to physical
-   analyzers for validation testing. Virtual/mock testing covers development but
-   final validation requires Madagascar laboratory hardware.
+5. **Resource Availability**: Physical analyzers are NOT available for
+   pre-deployment validation. Simulator validation is sufficient for go-live;
+   physical testing happens post-deployment in Madagascar laboratories. This
+   accepts higher risk of in-field issues but meets the contract deadline.
+
+6. **Multi-Protocol Flexibility**: Analyzers with uncertain protocol
+   specifications (Abbott Architect, Hain FluoroCycler XT, etc.) MUST be
+   implemented with flexible adapter support for multiple protocols (e.g., HL7 +
+   RS232, or File + Network). This enables protocol discovery during deployment
+   without code changes. The adapter pattern from Feature 004 provides this
+   flexibility.
+
+   > **⚠️ Abbott Note**: Research indicates Abbott m2000/Architect series may
+   > require vendor-provided middleware (Abbott AlinIQ) for HL7/ASTM integration.
+   > Verify with Madagascar lab whether middleware is deployed. If so, OpenELIS
+   > connects to middleware (standard HL7), not directly to analyzer.
 
 ---
 
@@ -721,20 +761,42 @@ replacing it:
 
 ## Target Analyzers Summary
 
-| #   | Analyzer             | Protocol   | Connectivity   | Plugin Status          | Priority |
-| --- | -------------------- | ---------- | -------------- | ---------------------- | -------- |
-| 1   | Cepheid GeneXpert    | ASTM/HL7   | Ethernet       | ✅ Exists (3 variants) | P1       |
-| 2   | Hain FluoroCycler XT | File-based | Local          | ❌ Build new           | P2       |
-| 3   | QuantStudio 7 Flex   | File-based | Ethernet/Local | ⚠️ Adapt QuantStudio3  | P2       |
-| 4   | Horiba Pentra 60     | ASTM/RS232 | RS232          | ❌ Build new           | P1       |
-| 5   | Mindray BC-5380      | HL7        | Ethernet       | ✅ Mindray plugin      | P1       |
-| 6   | Mindray BS-360E      | HL7        | Ethernet       | ✅ Mindray plugin      | P1       |
-| 7   | Stago STart 4        | ASTM/HL7   | RS232/Ethernet | ❌ Build new           | P1       |
-| 8   | Horiba Micros 60     | ASTM/RS232 | RS232          | ❌ Build new           | P1       |
-| 9   | Mindray BA-88A       | RS232      | RS232          | ✅ Mindray plugin      | P1       |
-| 10  | Mindray BC2000       | HL7        | Ethernet       | ✅ Mindray plugin      | P1       |
-| 11  | Sysmex XN Series     | HL7        | Ethernet       | ✅ SysmexXN-L plugin   | P1       |
-| 12  | Abbott Architect     | HL7/RS232  | RS232/Ethernet | ❌ Build new           | P1       |
+Priority assignment based on Romain's internal deployment list (Session 2026-01-27 clarification):
+- **P1 (High)**: Analyzers on Romain's list with high priority - immediate deployment expected
+- **P1-M (Moderate)**: Analyzers on Romain's list with moderate priority
+- **P2**: Analyzers NOT on Romain's list or file-based - contract required but lower deployment urgency
+
+| #   | Analyzer             | Protocol   | Connectivity   | Plugin Status          | Romain Priority | Priority |
+| --- | -------------------- | ---------- | -------------- | ---------------------- | --------------- | -------- |
+| 1   | Cepheid GeneXpert    | ASTM/HL7   | Ethernet       | ✅ Exists (3 variants) | High            | P1       |
+| 2   | Horiba Micros 60     | ASTM/RS232 | RS232          | ❌ Build new           | High            | P1       |
+| 3   | QuantStudio 7 Flex   | File-based | Ethernet/Local | ⚠️ Adapt QuantStudio3  | High            | P1       |
+| 4   | Mindray BC-5380      | HL7        | Ethernet       | ✅ Mindray plugin      | High            | P1       |
+| 5   | Mindray BA-88A       | RS232      | RS232          | ✅ Mindray plugin      | High            | P1       |
+| 6   | Horiba Pentra 60     | ASTM/RS232 | RS232          | ❌ Build new           | High            | P1       |
+| 7   | Abbott Architect     | HL7/RS232  | RS232/Ethernet | ❌ Build new           | High            | P1       |
+| 8   | Hain FluoroCycler XT | File-based | Local          | ❌ Build new           | High            | P1       |
+| 9   | Mindray BS-360E      | HL7        | Ethernet       | ✅ Mindray plugin      | High            | P1       |
+| 10  | Stago STart 4        | ASTM/HL7   | RS232/Ethernet | ❌ Build new           | Moderate        | P1-M     |
+| 11  | Mindray BC2000       | HL7        | Ethernet       | ✅ Mindray plugin      | Not on list     | P2       |
+| 12  | Sysmex XN Series     | HL7        | Ethernet       | ✅ SysmexXN-L plugin   | Not on list     | P2       |
+
+### P3 Stretch Goals (If Time Permits After Contract Requirements)
+
+Additional high-priority analyzers from Romain's list - attempt only after P1/P2 complete:
+
+| #   | Analyzer                | Category        | Protocol      | Connectivity        | Plugin Status              | Notes                           |
+| --- | ----------------------- | --------------- | ------------- | ------------------- | -------------------------- | ------------------------------- |
+| 13  | Mindray BC5300          | Hematology      | HL7           | Network             | ⚠️ Likely Mindray plugin   | Similar to BC-5380              |
+| 14  | Mindray BS-120          | Chemistry       | HL7           | Network             | ⚠️ Likely Mindray plugin   | Similar to BS-360E              |
+| 15  | Mindray BS-200          | Chemistry       | RS232/LIS     | RS232               | ⚠️ Likely Mindray plugin   | RS232 bidirectional             |
+| 16  | Mindray BS-230          | Chemistry       | RS232/LIS     | RS232               | ⚠️ Likely Mindray plugin   | RS232 bidirectional             |
+| 17  | Bio-Rad CFX96           | Real-Time PCR   | File-based    | USB/Ethernet        | ❌ Build new               | PC-controlled, file export      |
+| 18  | BioMérieux VIDAS        | Immunoassay     | LIS Bidir     | Network             | ❌ Build new               | Protocol TBD                    |
+| 19  | Analytik Jena qTOWER3G  | Real-Time PCR   | File-based    | USB/PC              | ❌ Build new               | File-based export               |
+| 20  | Applied Biosystems QS5  | Real-Time PCR   | File-based    | Ethernet/USB/Wi-Fi  | ⚠️ Adapt QuantStudio3      | Similar to QS7 Flex             |
+| 21  | Bio-Rad C1000 Touch     | PCR Thermocycler| File-based    | USB/Ethernet        | ❌ Build new               | PC-controlled                   |
+| 22  | Finecare Plus FIA       | Immunoassay     | LIS/HIS       | PC                  | ❌ Build new               | Protocol TBD                    |
 
 ---
 
