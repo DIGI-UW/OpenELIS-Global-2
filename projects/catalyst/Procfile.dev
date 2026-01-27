@@ -1,0 +1,4 @@
+gateway: cd catalyst-gateway && UVICORN_ENV_FILE=../.env uv run uvicorn src.gateway:app --host 0.0.0.0 --port ${GATEWAY_PORT:-8000} --reload --env-file ../.env >> ../logs/gateway.log 2>&1
+router: cd catalyst-agents && UVICORN_ENV_FILE=../.env uv run uvicorn src.agents.router_server:app --host 0.0.0.0 --port ${ROUTER_PORT:-9100} --reload --env-file ../.env >> ../logs/router.log 2>&1
+catalyst: cd catalyst-agents && UVICORN_ENV_FILE=../.env uv run uvicorn src.agents.catalyst_server:app --host 0.0.0.0 --port ${CATALYST_AGENT_PORT:-9101} --reload --env-file ../.env >> ../logs/catalyst.log 2>&1
+mcp: cd catalyst-mcp && MCP_HOST=0.0.0.0 MCP_PORT=${MCP_PORT:-9102} uv run python -m src.server >> ../logs/mcp.log 2>&1
