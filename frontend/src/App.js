@@ -274,7 +274,6 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/MasterListsPage"
-                  exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
