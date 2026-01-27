@@ -54,7 +54,7 @@
         <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
 
-        <!-- Inventory Management entities (004-remove-old-inventory) -->
+        <!-- Inventory Management entities -->
         <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
@@ -66,6 +66,14 @@
 
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <!-- AnalyzerConfiguration, AnalyzerError, CustomFieldType: annotation-based (no XML entity refs) -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerConfiguration</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
+        <!-- AnalyzerField, AnalyzerFieldMapping, QualitativeResultMapping, UnitMapping: XML-only in hibernate.cfg.xml
+             (NOT registered here - matches legacy Analyzer entity pattern) -->
 
         <properties>
             <property name="hibernate.cfg_xml_file"

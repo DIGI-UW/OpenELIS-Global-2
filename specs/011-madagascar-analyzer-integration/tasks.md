@@ -1,0 +1,1449 @@
+# Tasks: Madagascar Analyzer Integration
+
+**Feature**: 011-madagascar-analyzer-integration **Input**: Design documents
+from `/specs/011-madagascar-analyzer-integration/` **Prerequisites**: plan.md
+(required), spec.md (required), data-model.md, contracts/, research.md,
+quickstart.md **Contract Deadline**: 2026-02-28 (32 days from plan update)
+
+**Organization**: Tasks are grouped by **Milestone** per Constitution Principle
+IX. Each milestone = 1 PR.
+
+**Tests**: **MANDATORY** per Constitution Principle V (TDD). Tests appear before
+implementation tasks.
+
+---
+
+## Format: `[ID] [P?] [M#] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies on incomplete
+  tasks)
+- **[M#]**: Which milestone this task belongs to (M0, M1, M2, etc.)
+- Include exact file paths in descriptions
+
+---
+
+## Parallel Workstreams Overview
+
+Per clarification session (2026-01-27), the implementation follows **5 parallel
+workstreams** with **ASTM-over-TCP finalization as PRIORITY**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PARALLEL WORKSTREAMS                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ★ Workstream A: ASTM-over-TCP Finalization (PRIORITY - existing infra)    │
+│  ────────────────────────────────────────────────────────────────────────   │
+│  M0 → Stabilize existing ASTM bridge + GeneXpert validation                 │
+│                                                                             │
+│  Workstream B: HL7 Adapter + Plugins                                        │
+│  ────────────────────────────────────────────────────────────────────────   │
+│  M1 → M5 → M6 → M12 → M14 (HL7 adapter, then Mindray/Sysmex/Abbott)        │
+│                                                                             │
+│  Workstream C: RS232 via ASTM-HTTP Bridge + Plugins                         │
+│  ────────────────────────────────────────────────────────────────────────   │
+│  M2 → M6 → M9 → M10 → M11 (Bridge extension, then Horiba/Stago)            │
+│                                                                             │
+│  Workstream D: File Adapter + Plugins                                       │
+│  ────────────────────────────────────────────────────────────────────────   │
+│  M3 → M7 → M8 → M13 (File adapter, then GeneXpert-File/QS7/Hain)           │
+│                                                                             │
+│  Workstream E: Simulator Development                                        │
+│  ────────────────────────────────────────────────────────────────────────   │
+│  M4 → M17 (Multi-protocol simulator base → Advanced features)               │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Milestone Dependency Graph
+
+```
+                          ★ PRIORITY
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │ M0: ASTM Stabil │  ← Start HERE (Workstream A)
+                    │    (2 days)     │
+                    └────────┬────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│[P] M1: HL7   │   │[P] M2: RS232 │   │[P] M3: File  │   │[P] M4: Simul │
+│ Adapter (3d) │   │ Bridge (3d)  │   │ Adapter (2d) │   │  Base (3d)   │
+└──────┬───────┘   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘
+       │                  │                  │                  │
+       │   Workstream B   │   Workstream C   │   Workstream D   │
+       ▼                  ▼                  ▼                  │
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐         │
+│ M5: Mindray  │   │ M6: Mindray  │   │ M7: GeneXpert│         │
+│  HL7 (2d)    │   │ Serial (1d)  │   │  Multi (2d)  │         │
+└──────┬───────┘   └──────────────┘   └──────┬───────┘         │
+       │                  │                  │                  │
+       ▼                  ▼                  ▼                  │
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐         │
+│[P] M9-M12    │   │[P] M9-M11    │   │ M8: QS7 (2d) │         │
+│ New Plugins  │   │ Horiba/Stago │   │ M13: Hain    │         │
+└──────┬───────┘   └──────┬───────┘   └──────┬───────┘         │
+       │                  │                  │                  │
+       └──────────────────┼──────────────────┘                  │
+                          │                                     │
+                          ▼                                     ▼
+                 ┌──────────────┐                      ┌──────────────┐
+                 │ M14: P2 Val  │                      │ M17: Simul   │
+                 │    (1d)      │                      │  Adv (2d)    │
+                 └──────┬───────┘                      └──────┬───────┘
+                        │                                     │
+                        ▼                                     │
+                 ┌──────────────┐                              │
+                 │ M15: Order   │                              │
+                 │ Export (3d)  │                              │
+                 └──────┬───────┘                              │
+                        │                                     │
+                        ▼                                     │
+                 ┌──────────────┐                              │
+                 │ M16: Metadata│                              │
+                 │  Form (2d)   │                              │
+                 └──────┬───────┘                              │
+                        │                                     │
+                        └─────────────────┬───────────────────┘
+                                          │
+                                          ▼
+                                 ┌──────────────┐
+                                 │ M18: E2E Val │
+                                 │    (3d)      │
+                                 └──────────────┘
+```
+
+**Parallel Opportunities**:
+
+- **Week 1**: M0 FIRST (ASTM priority), then M1, M2, M3, M4 can proceed in
+  parallel (5 parallel tracks)
+- **Week 2**: M5, M6, M7, M8 as dependencies complete
+- **Week 2-3**: M9, M10, M11, M12, M13 can proceed in parallel once M1/M2/M3
+  complete
+- **Week 4**: M14, M15, M17 can proceed in parallel
+- **Week 5**: M16 after M15; M18 after all complete
+
+---
+
+## ★ M0: ASTM Bridge Stabilization (2 days) - PRIORITY
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m0-astm-stabilize`
+**Goal**: Stabilize existing ASTM-over-TCP infrastructure; validate GeneXpert
+ASTM variant **User Stories**: US-6 **Depends On**: None (FOUNDATION - START
+HERE) **Workstream**: A (ASTM - PRIORITY)
+
+**Why Priority**: The existing ASTM infrastructure from Feature 004 is the
+foundation for all other protocols. Stabilizing this first ensures we have a
+working baseline before adding HL7, RS232, and File adapters.
+
+**Acceptance Criteria**:
+
+1. ASTM-HTTP bridge handles messages reliably (no dropped frames)
+2. GeneXpert ASTM plugin validated with simulator
+3. Field mappings work correctly with existing infrastructure
+4. Error dashboard captures and displays ASTM-specific issues
+5. Integration tests pass with >90% reliability
+
+### Setup for M0
+
+- [ ] T001 [M0] Create branch
+      `feat/011-madagascar-analyzer-integration-m0-astm-stabilize` from
+      `demo/madagascar`
+- [ ] T002 [M0] Verify astm-http-bridge repository is accessible and builds
+      (`tools/astm-http-bridge/`)
+
+### Tests for M0 (MANDATORY - Write FIRST)
+
+- [ ] T003 [P] [M0] Integration test for ASTM bridge stability in
+      `src/test/java/org/openelisglobal/analyzer/astm/ASTMBridgeStabilityTest.java`
+- [ ] T004 [P] [M0] Integration test for GeneXpert ASTM in
+      `src/test/java/org/openelisglobal/analyzer/genexpert/GeneXpertASTMIntegrationTest.java`
+- [ ] T005 [P] [M0] Create ASTM test fixtures in
+      `src/test/resources/testdata/astm/genexpert-astm-result.txt`
+
+### Implementation for M0
+
+- [ ] T006 [M0] Verify ASTM-HTTP bridge configuration is correct in
+      `tools/astm-http-bridge/src/main/resources/application.yml`
+- [ ] T007 [M0] Add connection retry logic to bridge if missing
+- [ ] T008 [M0] Validate GeneXpert ASTM plugin parses messages correctly
+- [ ] T009 [M0] Test field mappings with existing Feature 004 infrastructure
+- [ ] T010 [M0] Verify error dashboard captures ASTM errors (unmapped fields,
+      protocol errors)
+- [ ] T011 [M0] Document ASTM bridge deployment and configuration in
+      `docs/astm-bridge-setup.md`
+
+### External Plugin Integration for M0
+
+**Critical**: Plugins are in external repo, must be pulled before M5-M8
+validation.
+
+- [ ] T012 [M0] Clone openelisglobal-plugins repository from
+      `https://github.com/DIGI-UW/openelisglobal-plugins`
+- [ ] T013 [M0] Configure plugin build path in project (add to
+      `plugins/analyzers/`)
+- [ ] T014 [M0] Verify Mindray plugin loads and compiles
+- [ ] T015 [M0] Verify GeneXpert plugins (GeneXpert, GeneXpertHL7,
+      GeneXpertFile) load
+- [ ] T016 [M0] Verify QuantStudio3 and SysmexXN-L plugins load
+- [ ] T017 [M0] Document plugin integration steps in research.md
+
+### Finalization for M0
+
+- [ ] T018 [M0] Verify all integration tests pass with simulator
+- [ ] T019 [M0] Run Spotless formatting (`mvn spotless:apply`)
+- [ ] T020 [M0] Create PR
+      `feat/011-madagascar-analyzer-integration-m0-astm-stabilize` →
+      `demo/madagascar`
+
+**Checkpoint**: ASTM infrastructure stable, GeneXpert ASTM works end-to-end
+
+---
+
+## [P] M1: HL7 v2.x Protocol Adapter (3 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m1-hl7-adapter` **Goal**:
+Parse HL7 ORU^R01 results and generate HL7 ORM^O01 orders **User Stories**: US-1
+(HL7 Analyzer Results Import) **Depends On**: M0 (ASTM stable) **Workstream**: B
+(HL7)
+
+**Acceptance Criteria**:
+
+1. HL7 ORU^R01 messages parse correctly (patient ID, test codes, results)
+2. HL7 ORM^O01 messages generate correctly for order export
+3. MSH segment sender ID extracted for analyzer identification
+4. Unmapped fields create error records in dashboard
+5. Unit test coverage >80%
+
+### Setup for M1
+
+- [ ] T021 [M1] Create branch
+      `feat/011-madagascar-analyzer-integration-m1-hl7-adapter` from
+      `demo/madagascar`
+- [ ] T022 [M1] Add HAPI HL7 v2 dependency to `pom.xml`
+      (ca.uhn.hapi:hapi-base:2.4, ca.uhn.hapi:hapi-structures-v251:2.4)
+
+### Tests for M1 (MANDATORY - Write FIRST, ensure they FAIL)
+
+- [ ] T023 [P] [M1] Unit test for HL7MessageService in
+      `src/test/java/org/openelisglobal/analyzer/service/HL7MessageServiceTest.java`
+- [ ] T024 [P] [M1] Unit test for HL7AnalyzerReader in
+      `src/test/java/org/openelisglobal/analyzerimport/analyzerreaders/HL7AnalyzerReaderTest.java`
+- [ ] T025 [P] [M1] Create test HL7 message fixtures in
+      `src/test/resources/testdata/hl7/mindray-cbc-result.hl7`
+- [ ] T026 [P] [M1] Create test HL7 message fixtures in
+      `src/test/resources/testdata/hl7/sysmex-result.hl7`
+- [ ] T027 [P] [M1] Create test HL7 ORM^O01 expected output in
+      `src/test/resources/testdata/hl7/expected-order.hl7`
+
+### Implementation for M1
+
+- [ ] T028 [M1] Create HL7AnalyzerReader in
+      `src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/HL7AnalyzerReader.java`
+      (extends AnalyzerReader, uses HAPI PipeParser)
+- [ ] T029 [M1] Create HL7MessageService interface in
+      `src/main/java/org/openelisglobal/analyzer/service/HL7MessageService.java`
+- [ ] T030 [M1] Create HL7MessageServiceImpl in
+      `src/main/java/org/openelisglobal/analyzer/service/HL7MessageServiceImpl.java`
+      (ORU^R01 parsing, ORM^O01 generation)
+- [ ] T031 [M1] Implement field extraction for ORU^R01 (PID segment → patient,
+      OBR segment → test, OBX segment → results)
+- [ ] T032 [M1] Implement MSH segment parsing for analyzer identification
+      (sending application, sending facility)
+- [ ] T033 [M1] Create MappingAwareHL7AnalyzerLineInserter wrapper in
+      `src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/MappingAwareHL7AnalyzerLineInserter.java`
+- [ ] T034 [M1] Integrate with existing FieldMappingService for test code
+      mapping
+- [ ] T035 [M1] Add i18n keys for HL7-related messages in
+      `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
+
+### Finalization for M1
+
+- [ ] T036 [M1] Verify all unit tests pass (`mvn test -Dtest="*HL7*"`)
+- [ ] T037 [M1] Run Spotless formatting (`mvn spotless:apply`)
+- [ ] T038 [M1] Create PR
+      `feat/011-madagascar-analyzer-integration-m1-hl7-adapter` →
+      `demo/madagascar`
+
+**Checkpoint**: HL7 parsing and generation unit tests pass with >80% coverage
+
+---
+
+## [P] M2: RS232 Bridge Extension (3 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m2-rs232-bridge` **Goal**:
+Extend ASTM-HTTP Bridge to handle RS232→TCP conversion locally **User Stories**:
+US-3 (RS232 Serial Analyzer Connection) **Depends On**: M0 (ASTM stable)
+**Workstream**: C (RS232)
+
+**IMPORTANT**: Per clarification session (2026-01-27), RS232 connectivity is
+provided via the **extended ASTM-HTTP Bridge** running on a lab PC with
+USB-to-serial adapter. The bridge converts RS232→ASTM→HTTP for forwarding to
+OpenELIS server. This keeps architecture consistent and avoids Docker serial
+passthrough complexity.
+
+**Acceptance Criteria**:
+
+1. ASTM-HTTP bridge accepts RS232 connections via USB-serial adapter
+2. Serial data converted to ASTM frames correctly
+3. Messages forwarded to OpenELIS via existing HTTP endpoint
+4. Configuration supports baud rate, parity, stop bits, flow control
+5. Virtual serial port tests pass (socat)
+
+### Setup for M2
+
+- [ ] T039 [M2] Create branch
+      `feat/011-madagascar-analyzer-integration-m2-rs232-bridge` from
+      `demo/madagascar`
+- [ ] T040 [M2] Add jSerialComm dependency to `tools/astm-http-bridge/pom.xml`
+      (com.fazecast:jSerialComm:2.10.4)
+
+### Tests for M2 (MANDATORY - Write FIRST)
+
+- [ ] T041 [P] [M2] Unit test for SerialPortListener in
+      `tools/astm-http-bridge/src/test/java/serial/SerialPortListenerTest.java`
+- [ ] T042 [P] [M2] Unit test for SerialToAstmTranslator in
+      `tools/astm-http-bridge/src/test/java/serial/SerialToAstmTranslatorTest.java`
+- [ ] T043 [P] [M2] Integration test with virtual serial port (socat) in
+      `tools/astm-http-bridge/src/test/java/serial/VirtualSerialIntegrationTest.java`
+- [ ] T044 [P] [M2] Create test serial data fixtures in
+      `tools/astm-http-bridge/src/test/resources/serial-test-data/`
+
+### Implementation for M2 (in astm-http-bridge)
+
+- [ ] T045 [M2] Create SerialPortListener in
+      `tools/astm-http-bridge/src/main/java/.../serial/SerialPortListener.java`
+      (jSerialComm integration)
+- [ ] T046 [M2] Create SerialPortConfiguration in
+      `tools/astm-http-bridge/src/main/java/.../serial/SerialPortConfiguration.java`
+- [ ] T047 [M2] Create SerialToAstmTranslator in
+      `tools/astm-http-bridge/src/main/java/.../serial/SerialToAstmTranslator.java`
+      (RS232→ASTM frame conversion)
+- [ ] T048 [M2] Add serial port configuration to application.yml
+- [ ] T049 [M2] Implement connection status tracking with event callbacks
+- [ ] T050 [M2] Implement graceful handling of cable disconnection
+- [ ] T051 [M2] Add health check endpoint for serial port status
+- [ ] T052 [M2] Document bridge deployment with USB-serial adapter in
+      `tools/astm-http-bridge/docs/RS232_SETUP.md`
+
+### OpenELIS Configuration UI for M2
+
+- [ ] T053 [M2] Create Liquibase changeset
+      `src/main/resources/liquibase/3.8.x.x/011-001-create-serial-port-configuration-table.xml`
+- [ ] T054 [M2] Create SerialPortConfiguration entity in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/SerialPortConfiguration.java`
+- [ ] T055 [M2] Create StopBits, Parity, FlowControl enums in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/`
+- [ ] T056 [M2] Create SerialPortConfigurationDAO interface and impl in
+      `src/main/java/org/openelisglobal/analyzer/dao/`
+- [ ] T057 [M2] Create SerialPortService interface and impl in
+      `src/main/java/org/openelisglobal/analyzer/service/`
+- [ ] T058 [M2] Add serial port REST endpoints in
+      `src/main/java/org/openelisglobal/analyzer/controller/SerialPortRestController.java`
+- [ ] T059 [P] [M2] Add i18n keys for serial config messages in
+      `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
+
+### Frontend for M2
+
+- [ ] T060 [P] [M2] Jest unit test for SerialConfiguration in
+      `frontend/src/components/analyzers/SerialConfiguration/__tests__/SerialConfiguration.test.jsx`
+- [ ] T061 [M2] Create SerialConfiguration React component in
+      `frontend/src/components/analyzers/SerialConfiguration/SerialConfiguration.jsx`
+- [ ] T062 [M2] Create serialService.js API client in
+      `frontend/src/services/serialService.js`
+
+### Finalization for M2
+
+- [ ] T063 [M2] Verify all unit tests pass
+- [ ] T064 [M2] Run Spotless formatting (`mvn spotless:apply`) and frontend
+      formatting (`cd frontend && npm run format`)
+- [ ] T065 [M2] Create PR
+      `feat/011-madagascar-analyzer-integration-m2-rs232-bridge` →
+      `demo/madagascar`
+
+**Checkpoint**: ASTM-HTTP bridge handles RS232→TCP, virtual serial tests pass
+
+---
+
+## [P] M3: File-Based Import Adapter (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m3-file-adapter` **Goal**:
+Directory watcher and CSV/TXT file parsing **User Stories**: US-4 (File-Based
+PCR Thermocycler Integration) **Depends On**: M0 (ASTM stable) **Workstream**: D
+(File)
+
+**Acceptance Criteria**:
+
+1. Files detected within 60 seconds of creation
+2. CSV rows mapped to results via configured column mappings
+3. Processed files moved to archive directory
+4. Malformed files moved to error directory with log entry
+5. Duplicate detection warns before creating new results
+
+### Setup for M3
+
+- [ ] T066 [M3] Create branch
+      `feat/011-madagascar-analyzer-integration-m3-file-adapter` from
+      `demo/madagascar`
+- [ ] T067 [M3] Add Apache Commons CSV dependency to `pom.xml`
+      (org.apache.commons:commons-csv:1.10.0) if not present
+- [ ] T068 [M3] Create Liquibase changeset
+      `src/main/resources/liquibase/3.8.x.x/011-002-create-file-import-configuration-table.xml`
+
+### Tests for M3 (MANDATORY - Write FIRST)
+
+- [ ] T069 [P] [M3] ORM validation test for FileImportConfiguration in
+      `src/test/java/org/openelisglobal/analyzer/HibernateMappingValidationTest.java`
+- [ ] T070 [P] [M3] Unit test for FileImportService in
+      `src/test/java/org/openelisglobal/analyzer/service/FileImportServiceTest.java`
+- [ ] T071 [P] [M3] Unit test for FileAnalyzerReader in
+      `src/test/java/org/openelisglobal/analyzerimport/analyzerreaders/FileAnalyzerReaderTest.java`
+- [ ] T072 [P] [M3] Create test CSV fixtures in
+      `src/test/resources/testdata/files/quantstudio-results.csv`
+- [ ] T073 [P] [M3] Create malformed CSV fixture in
+      `src/test/resources/testdata/files/malformed-results.csv`
+
+### Implementation for M3
+
+- [ ] T074 [M3] Create FileImportConfiguration entity in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/FileImportConfiguration.java`
+- [ ] T075 [M3] Create FileImportConfigurationDAO in
+      `src/main/java/org/openelisglobal/analyzer/dao/FileImportConfigurationDAO.java`
+      and `FileImportConfigurationDAOImpl.java`
+- [ ] T076 [M3] Create FileImportService interface in
+      `src/main/java/org/openelisglobal/analyzer/service/FileImportService.java`
+- [ ] T077 [M3] Create FileImportServiceImpl in
+      `src/main/java/org/openelisglobal/analyzer/service/FileImportServiceImpl.java`
+      (WatchService integration)
+- [ ] T078 [M3] Create FileAnalyzerReader in
+      `src/main/java/org/openelisglobal/analyzerimport/analyzerreaders/FileAnalyzerReader.java`
+      (CSV parsing with Commons CSV)
+- [ ] T079 [M3] Implement file archival (move to archive directory on success)
+- [ ] T080 [M3] Implement error handling (move to error directory on failure
+      with log)
+- [ ] T081 [M3] Implement duplicate detection (sample ID + test + timestamp)
+- [ ] T082 [M3] Add file import REST endpoints in
+      `src/main/java/org/openelisglobal/analyzer/controller/FileImportRestController.java`
+- [ ] T083 [P] [M3] Add i18n keys for file import messages in
+      `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
+
+### Frontend for M3
+
+- [ ] T084 [P] [M3] Jest unit test for FileImportConfiguration in
+      `frontend/src/components/analyzers/FileImportConfiguration/__tests__/FileImportConfiguration.test.jsx`
+- [ ] T085 [M3] Create FileImportConfiguration React component in
+      `frontend/src/components/analyzers/FileImportConfiguration/FileImportConfiguration.jsx`
+- [ ] T086 [M3] Create fileImportService.js API client in
+      `frontend/src/services/fileImportService.js`
+
+### Finalization for M3
+
+- [ ] T087 [M3] Verify all unit tests pass
+- [ ] T088 [M3] Run Spotless and frontend formatting
+- [ ] T089 [M3] Create PR
+      `feat/011-madagascar-analyzer-integration-m3-file-adapter` →
+      `demo/madagascar`
+
+**Checkpoint**: File detection + CSV parsing tests pass, archive/error workflow
+works
+
+---
+
+## [P] M4: Multi-Protocol Analyzer Simulator (3 days)
+
+**Branch**:
+`feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` **Goal**:
+Expand astm-mock-server to support HL7, RS232, and file-based protocols **User
+Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: M0 (ASTM
+stable) **Workstream**: E (Simulator)
+
+**Scope**: Extend astm-mock-server to cover 80%+ of 12 analyzers BEFORE
+milestone implementation, enabling developers to test M1-M3 adapters and M5-M13
+plugins without physical hardware.
+
+**IMPORTANT**: This expands the **Python astm-mock-server** (testing simulator),
+NOT the Java astm-http-bridge (production adapter). See plan.md Tool
+Architecture section for distinction.
+
+**Acceptance Criteria**:
+
+1. Protocol abstraction layer supports ASTM, HL7, RS232, and File protocols
+2. Simulator generates valid HL7 ORU^R01 messages
+3. Virtual serial port simulation via socat (Linux)
+4. File-based result generation (CSV/TXT)
+5. Templates for majority of 12 contract analyzers
+6. HTTP API mode for CI/CD integration
+7. Messages received and processed correctly by OpenELIS
+
+### Setup for M4
+
+- [ ] T090 [M4] Create branch
+      `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` from
+      `demo/madagascar`
+- [ ] T091 [M4] Create `tools/astm-mock-server/protocols/` directory structure
+- [ ] T092 [M4] Create `tools/astm-mock-server/templates/` directory structure
+- [ ] T093 [M4] Add pyserial dependency to
+      `tools/astm-mock-server/requirements.txt`
+
+### Core Architecture for M4
+
+- [ ] T094 [M4] Create protocol abstraction layer base class in
+      `tools/astm-mock-server/protocols/__init__.py` and
+      `tools/astm-mock-server/protocols/base_handler.py`
+- [ ] T095 [M4] Refactor existing ASTM code into ASTMHandler in
+      `tools/astm-mock-server/protocols/astm_handler.py`
+- [ ] T096 [M4] Create template schema in
+      `tools/astm-mock-server/templates/schema.json`
+
+### HL7 Protocol Implementation (Priority 1 - enables M5-M7, M11-M12)
+
+- [ ] T097 [M4] Implement HL7Handler with ORU^R01 generation in
+      `tools/astm-mock-server/protocols/hl7_handler.py`
+- [ ] T098 [M4] Create Mindray BC-5380 template in
+      `tools/astm-mock-server/templates/mindray_bc5380.json`
+- [ ] T099 [M4] Create Sysmex XN template in
+      `tools/astm-mock-server/templates/sysmex_xn.json`
+- [ ] T100 [M4] Create Abbott Architect HL7 template in
+      `tools/astm-mock-server/templates/abbott_architect_hl7.json`
+- [ ] T101 [M4] Add HL7 HTTP endpoint `/simulate/hl7/{analyzer}` for CI/CD
+
+### RS232 Protocol Implementation (Priority 2 - enables M5, M9-M11)
+
+- [ ] T102 [M4] Implement SerialHandler with virtual serial ports (socat) in
+      `tools/astm-mock-server/protocols/serial_handler.py`
+- [ ] T103 [M4] Create Horiba Pentra 60 template in
+      `tools/astm-mock-server/templates/horiba_pentra60.json`
+- [ ] T104 [M4] Create Horiba Micros 60 template in
+      `tools/astm-mock-server/templates/horiba_micros60.json`
+- [ ] T105 [M4] Add serial simulation mode (`--serial-port` flag)
+
+### File Protocol Implementation (Priority 3 - enables M8, M13)
+
+- [ ] T106 [M4] Implement FileHandler with CSV/TXT generation in
+      `tools/astm-mock-server/protocols/file_handler.py`
+- [ ] T107 [M4] Create QuantStudio 7 Flex template in
+      `tools/astm-mock-server/templates/quantstudio7.json`
+- [ ] T108 [M4] Create Hain FluoroCycler XT template in
+      `tools/astm-mock-server/templates/hain_fluorocycler.json`
+- [ ] T109 [M4] Add file generation mode (`--generate-files` flag)
+
+### Additional Analyzer Templates
+
+- [ ] T110 [M4] Create Mindray BS-360E template in
+      `tools/astm-mock-server/templates/mindray_bs360e.json`
+- [ ] T111 [M4] Create Mindray BA-88A template in
+      `tools/astm-mock-server/templates/mindray_ba88a.json`
+- [ ] T112 [M4] Create GeneXpert template in
+      `tools/astm-mock-server/templates/genexpert.json`
+- [ ] T113 [M4] Create Stago STart 4 template in
+      `tools/astm-mock-server/templates/stago_start4.json`
+
+### Testing & Documentation for M4
+
+- [ ] T114 [P] [M4] Unit tests for all protocol handlers in
+      `tools/astm-mock-server/test_protocols.py`
+- [ ] T115 [M4] Integration test: HL7 Simulator → OpenELIS reception
+- [ ] T116 [M4] Integration test: Serial Simulator → OpenELIS reception
+- [ ] T117 [M4] Integration test: File Simulator → OpenELIS import
+- [ ] T118 [M4] Update `tools/astm-mock-server/README.md` with multi-protocol
+      usage
+
+### Finalization for M4
+
+- [ ] T119 [M4] Verify all protocol handlers generate valid messages
+- [ ] T120 [M4] Verify backward compatibility with existing ASTM mode
+- [ ] T121 [M4] Create PR
+      `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` →
+      `demo/madagascar`
+
+**Checkpoint**: Multi-protocol simulator covers 80%+ of 12 analyzers, enabling
+CI/CD testing without physical hardware
+
+---
+
+## M5: Mindray HL7 Plugin Validation (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m5-mindray-hl7` **Goal**:
+Validate existing Mindray plugin with HL7 analyzers (BC-5380, BS-360E) **User
+Stories**: US-1, US-6 **Depends On**: M1 (HL7 Adapter) **Workstream**: B (HL7)
+
+**Analyzers**: Mindray BC-5380, BS-360E (HL7 over Network) - Priority P1
+
+**Acceptance Criteria**:
+
+1. BC-5380 receives results via HL7 (simulator)
+2. BS-360E receives results via HL7 (simulator)
+3. Field mappings work with plugin + mapping system
+
+### Setup for M5
+
+- [ ] T122 [M5] Create branch
+      `feat/011-madagascar-analyzer-integration-m5-mindray-hl7` from
+      `demo/madagascar`
+- [ ] T123 [M5] Ensure M1 is merged to `demo/madagascar`
+
+### Tests for M5 (MANDATORY)
+
+- [ ] T124 [P] [M5] Integration test for Mindray BC-5380 HL7 in
+      `src/test/java/org/openelisglobal/analyzer/mindray/MindrayBC5380IntegrationTest.java`
+- [ ] T125 [P] [M5] Integration test for Mindray BS-360E HL7 in
+      `src/test/java/org/openelisglobal/analyzer/mindray/MindrayBS360EIntegrationTest.java`
+- [ ] T126 [P] [M5] Create HL7 test fixtures for BC-5380, BS-360E in
+      `src/test/resources/testdata/hl7/mindray/`
+
+### Implementation for M5
+
+- [ ] T127 [M5] Verify existing Mindray plugin compatibility with
+      HL7AnalyzerReader
+- [ ] T128 [M5] Create MappingAwareMindrayAnalyzerLineInserter wrapper if needed
+- [ ] T129 [M5] Validate field mappings for BC-5380, BS-360E
+- [ ] T130 [M5] Document Mindray HL7 plugin integration
+
+### Finalization for M5
+
+- [ ] T131 [M5] Verify all integration tests pass
+- [ ] T132 [M5] Run Spotless formatting
+- [ ] T133 [M5] Create PR
+      `feat/011-madagascar-analyzer-integration-m5-mindray-hl7` →
+      `demo/madagascar`
+
+**Checkpoint**: Mindray BC-5380, BS-360E receive results via HL7
+
+---
+
+## M6: Mindray Serial Plugin Validation (1 day)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m6-mindray-serial`
+**Goal**: Validate Mindray BA-88A via RS232 bridge **User Stories**: US-3, US-6
+**Depends On**: M2 (RS232 Bridge) **Workstream**: C (RS232)
+
+**Analyzer**: Mindray BA-88A (RS232/ASTM) - Priority P1
+
+**Acceptance Criteria**:
+
+1. BA-88A receives results via RS232 bridge (virtual serial)
+2. Field mappings work with existing Mindray plugin
+3. Connection status properly tracked
+
+### Setup for M6
+
+- [ ] T134 [M6] Create branch
+      `feat/011-madagascar-analyzer-integration-m6-mindray-serial` from
+      `demo/madagascar`
+
+### Tests for M6 (MANDATORY)
+
+- [ ] T135 [M6] Integration test for Mindray BA-88A RS232 in
+      `src/test/java/org/openelisglobal/analyzer/mindray/MindrayBA88AIntegrationTest.java`
+- [ ] T136 [M6] Create ASTM test fixtures for BA-88A in
+      `src/test/resources/testdata/astm/mindray-ba88a-result.txt`
+
+### Implementation for M6
+
+- [ ] T137 [M6] Configure RS232 parameters for BA-88A in bridge
+- [ ] T138 [M6] Verify existing Mindray plugin handles BA-88A format
+- [ ] T139 [M6] Validate field mappings for BA-88A
+- [ ] T140 [M6] Document BA-88A RS232 configuration
+
+### Finalization for M6
+
+- [ ] T141 [M6] Verify integration tests pass
+- [ ] T142 [M6] Create PR
+      `feat/011-madagascar-analyzer-integration-m6-mindray-serial` →
+      `demo/madagascar`
+
+**Checkpoint**: BA-88A receives results via RS232 bridge
+
+---
+
+## M7: GeneXpert Multi-Protocol Validation (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m7-genexpert-multi`
+**Goal**: Validate all 3 GeneXpert plugin variants (ASTM, HL7, File) **User
+Stories**: US-6 **Depends On**: M0, M1, M3 **Workstream**: A, B, D
+
+**Analyzer**: Cepheid GeneXpert (ASTM/HL7/File variants) - Priority P1
+
+### Setup for M7
+
+- [ ] T143 [M7] Create branch
+      `feat/011-madagascar-analyzer-integration-m7-genexpert-multi` from
+      `demo/madagascar`
+
+### Tests for M7 (MANDATORY)
+
+- [ ] T144 [P] [M7] Integration test for GeneXpert HL7 in
+      `src/test/java/org/openelisglobal/analyzer/genexpert/GeneXpertHL7IntegrationTest.java`
+- [ ] T145 [P] [M7] Integration test for GeneXpert File in
+      `src/test/java/org/openelisglobal/analyzer/genexpert/GeneXpertFileIntegrationTest.java`
+- [ ] T146 [P] [M7] Create HL7 test fixture in
+      `src/test/resources/testdata/hl7/genexpert-result.hl7`
+- [ ] T147 [P] [M7] Create file test fixture in
+      `src/test/resources/testdata/files/genexpert-results.csv`
+
+### Implementation for M7
+
+- [ ] T148 [M7] Verify GeneXpert ASTM plugin works (confirmed in M0)
+- [ ] T149 [M7] Verify GeneXpertHL7 plugin with HL7AnalyzerReader
+- [ ] T150 [M7] Verify GeneXpertFile plugin with FileAnalyzerReader
+- [ ] T151 [M7] Test all 3 variants can coexist (different configurations)
+- [ ] T152 [M7] Document GeneXpert multi-protocol support
+
+### Finalization for M7
+
+- [ ] T153 [M7] Verify all integration tests pass
+- [ ] T154 [M7] Create PR
+      `feat/011-madagascar-analyzer-integration-m7-genexpert-multi` →
+      `demo/madagascar`
+
+**Checkpoint**: GeneXpert works via ASTM, HL7, and File
+
+---
+
+## M8: QuantStudio 7 Flex Adaptation (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m8-quantstudio` **Goal**:
+Adapt QuantStudio3 plugin for QuantStudio 7 Flex **User Stories**: US-4, US-6
+**Depends On**: M3 (File Adapter) **Workstream**: D (File)
+
+**Analyzer**: Thermo Fisher QuantStudio 7 Flex (File-based) - Priority P1
+
+### Setup for M8
+
+- [ ] T155 [M8] Create branch
+      `feat/011-madagascar-analyzer-integration-m8-quantstudio` from
+      `demo/madagascar`
+
+### Tests for M8 (MANDATORY)
+
+- [ ] T156 [M8] Integration test for QuantStudio 7 Flex in
+      `src/test/java/org/openelisglobal/analyzer/quantstudio/QuantStudio7FlexIntegrationTest.java`
+- [ ] T157 [M8] Create CSV test fixture for QuantStudio 7 Flex format in
+      `src/test/resources/testdata/files/quantstudio7-flex-results.csv`
+- [ ] T158 [M8] Backward compatibility test for QuantStudio 3 in
+      `src/test/java/org/openelisglobal/analyzer/quantstudio/QuantStudio3BackwardCompatTest.java`
+
+### Implementation for M8
+
+- [ ] T159 [M8] Analyze QuantStudio 7 Flex CSV format differences from
+      QuantStudio 3
+- [ ] T160 [M8] Modify QuantStudio plugin or create FileImportConfiguration for
+      column differences
+- [ ] T161 [M8] Ensure backward compatibility with QuantStudio 3
+- [ ] T162 [M8] Document QuantStudio adaptation
+
+### Finalization for M8
+
+- [ ] T163 [M8] Verify all integration tests pass
+- [ ] T164 [M8] Create PR
+      `feat/011-madagascar-analyzer-integration-m8-quantstudio` →
+      `demo/madagascar`
+
+**Checkpoint**: QuantStudio 7 Flex and QuantStudio 3 both work
+
+---
+
+## [P] M9: Horiba Pentra 60 Plugin (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m9-pentra` **Goal**: Build
+new Horiba Pentra 60 plugin **User Stories**: US-3 **Depends On**: M2 (RS232
+Bridge) **Workstream**: C (RS232)
+
+**Analyzer**: Horiba ABX Pentra 60 (ASTM over RS232) - Priority P1
+
+### Setup for M9
+
+- [ ] T165 [M9] Create branch
+      `feat/011-madagascar-analyzer-integration-m9-pentra` from
+      `demo/madagascar`
+
+### Tests for M9 (MANDATORY)
+
+- [ ] T166 [P] [M9] Unit test for Pentra60AnalyzerLineInserter in
+      `src/test/java/org/openelisglobal/analyzer/pentra/Pentra60AnalyzerLineInserterTest.java`
+- [ ] T167 [P] [M9] Create ASTM test fixtures for Pentra 60 in
+      `src/test/resources/testdata/astm/pentra60-results.txt`
+
+### Implementation for M9
+
+- [ ] T168 [M9] Create Pentra60Analyzer plugin class in
+      `src/main/java/org/openelisglobal/analyzer/pentra/Pentra60Analyzer.java`
+- [ ] T169 [M9] Create Pentra60AnalyzerLineInserter in
+      `src/main/java/org/openelisglobal/analyzer/pentra/Pentra60AnalyzerLineInserter.java`
+- [ ] T170 [M9] Implement ASTM message parsing for Pentra 60 format
+- [ ] T171 [M9] Integrate with MappingAware wrapper pattern
+- [ ] T172 [M9] Document Pentra 60 plugin and RS232 bridge configuration
+
+### Finalization for M9
+
+- [ ] T173 [M9] Verify unit tests pass
+- [ ] T174 [M9] Create PR `feat/011-madagascar-analyzer-integration-m9-pentra` →
+      `demo/madagascar`
+
+**Checkpoint**: Pentra 60 results import via RS232 bridge
+
+---
+
+## [P] M10: Horiba Micros 60 Plugin (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m10-micros` **Goal**:
+Build new Horiba Micros 60 plugin **User Stories**: US-3 **Depends On**: M2
+(RS232 Bridge) **Workstream**: C (RS232)
+
+**Analyzer**: Horiba ABX Micros 60 (ASTM over RS232) - Priority P1
+
+### Setup for M10
+
+- [ ] T175 [M10] Create branch
+      `feat/011-madagascar-analyzer-integration-m10-micros` from
+      `demo/madagascar`
+
+### Tests for M10 (MANDATORY)
+
+- [ ] T176 [P] [M10] Unit test for Micros60AnalyzerLineInserter in
+      `src/test/java/org/openelisglobal/analyzer/micros/Micros60AnalyzerLineInserterTest.java`
+- [ ] T177 [P] [M10] Create ASTM test fixtures for Micros 60 in
+      `src/test/resources/testdata/astm/micros60-results.txt`
+
+### Implementation for M10
+
+- [ ] T178 [M10] Create Micros60Analyzer plugin class in
+      `src/main/java/org/openelisglobal/analyzer/micros/Micros60Analyzer.java`
+- [ ] T179 [M10] Create Micros60AnalyzerLineInserter in
+      `src/main/java/org/openelisglobal/analyzer/micros/Micros60AnalyzerLineInserter.java`
+- [ ] T180 [M10] Implement ASTM message parsing for Micros 60 format
+- [ ] T181 [M10] Integrate with MappingAware wrapper pattern
+- [ ] T182 [M10] Document Micros 60 plugin
+
+### Finalization for M10
+
+- [ ] T183 [M10] Verify unit tests pass
+- [ ] T184 [M10] Create PR `feat/011-madagascar-analyzer-integration-m10-micros`
+      → `demo/madagascar`
+
+**Checkpoint**: Micros 60 results import via RS232 bridge
+
+---
+
+## [P] M11: Stago STart 4 Plugin (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m11-stago` **Goal**: Build
+new Stago STart 4 plugin **User Stories**: US-1, US-3 **Depends On**: M1 (HL7),
+M2 (RS232) **Workstream**: B, C
+
+**Analyzer**: Stago STart 4 (ASTM/HL7 over RS232/Network) - Priority P1-M
+
+### Setup for M11
+
+- [ ] T185 [M11] Create branch
+      `feat/011-madagascar-analyzer-integration-m11-stago` from
+      `demo/madagascar`
+
+### Tests for M11 (MANDATORY)
+
+- [ ] T186 [P] [M11] Unit test for StagoSTart4AnalyzerLineInserter in
+      `src/test/java/org/openelisglobal/analyzer/stago/StagoSTart4AnalyzerLineInserterTest.java`
+- [ ] T187 [P] [M11] Create test fixtures for Stago in
+      `src/test/resources/testdata/stago/`
+
+### Implementation for M11
+
+- [ ] T188 [M11] Create StagoSTart4Analyzer plugin class in
+      `src/main/java/org/openelisglobal/analyzer/stago/StagoSTart4Analyzer.java`
+- [ ] T189 [M11] Create StagoSTart4AnalyzerLineInserter in
+      `src/main/java/org/openelisglobal/analyzer/stago/StagoSTart4AnalyzerLineInserter.java`
+- [ ] T190 [M11] Support both ASTM (RS232) and HL7 (Network) modes
+- [ ] T191 [M11] Integrate with MappingAware wrapper pattern
+- [ ] T192 [M11] Document Stago plugin with dual-protocol support
+
+### Finalization for M11
+
+- [ ] T193 [M11] Verify unit tests pass
+- [ ] T194 [M11] Create PR `feat/011-madagascar-analyzer-integration-m11-stago`
+      → `demo/madagascar`
+
+**Checkpoint**: Stago STart 4 works via RS232 or Network
+
+---
+
+## [P] M12: Abbott Architect Plugin (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m12-abbott` **Goal**:
+Build new Abbott Architect plugin **User Stories**: US-1 **Depends On**: M1
+(HL7) **Workstream**: B (HL7)
+
+**Analyzer**: Abbott Architect (HL7 over RS232/Network) - Priority P1
+
+### Setup for M12
+
+- [ ] T195 [M12] Create branch
+      `feat/011-madagascar-analyzer-integration-m12-abbott` from
+      `demo/madagascar`
+
+### Tests for M12 (MANDATORY)
+
+- [ ] T196 [P] [M12] Unit test for AbbottArchitectAnalyzerLineInserter in
+      `src/test/java/org/openelisglobal/analyzer/abbott/AbbottArchitectAnalyzerLineInserterTest.java`
+- [ ] T197 [P] [M12] Create HL7 test fixtures for Abbott Architect in
+      `src/test/resources/testdata/hl7/abbott-architect-result.hl7`
+
+### Implementation for M12
+
+- [ ] T198 [M12] Create AbbottArchitectAnalyzer plugin class in
+      `src/main/java/org/openelisglobal/analyzer/abbott/AbbottArchitectAnalyzer.java`
+- [ ] T199 [M12] Create AbbottArchitectAnalyzerLineInserter in
+      `src/main/java/org/openelisglobal/analyzer/abbott/AbbottArchitectAnalyzerLineInserter.java`
+- [ ] T200 [M12] Implement HL7 message parsing for Abbott format
+- [ ] T201 [M12] Integrate with MappingAware wrapper pattern
+- [ ] T202 [M12] Document Abbott plugin
+
+### Finalization for M12
+
+- [ ] T203 [M12] Verify unit tests pass
+- [ ] T204 [M12] Create PR `feat/011-madagascar-analyzer-integration-m12-abbott`
+      → `demo/madagascar`
+
+**Checkpoint**: Abbott Architect results import via HL7
+
+---
+
+## [P] M13: Hain FluoroCycler XT Plugin (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m13-fluorocycler`
+**Goal**: Build new Hain FluoroCycler XT plugin **User Stories**: US-4 **Depends
+On**: M3 (File) **Workstream**: D (File)
+
+**Analyzer**: Hain Lifescience FluoroCycler XT (File-based) - Priority P1
+
+### Setup for M13
+
+- [ ] T205 [M13] Create branch
+      `feat/011-madagascar-analyzer-integration-m13-fluorocycler` from
+      `demo/madagascar`
+
+### Tests for M13 (MANDATORY)
+
+- [ ] T206 [P] [M13] Unit test for FluoroCyclerXTAnalyzerLineInserter in
+      `src/test/java/org/openelisglobal/analyzer/fluorocycler/FluoroCyclerXTAnalyzerLineInserterTest.java`
+- [ ] T207 [P] [M13] Create CSV test fixtures for FluoroCycler in
+      `src/test/resources/testdata/files/fluorocycler-results.csv`
+
+### Implementation for M13
+
+- [ ] T208 [M13] Create FluoroCyclerXTAnalyzer plugin class in
+      `src/main/java/org/openelisglobal/analyzer/fluorocycler/FluoroCyclerXTAnalyzer.java`
+- [ ] T209 [M13] Create FluoroCyclerXTAnalyzerLineInserter in
+      `src/main/java/org/openelisglobal/analyzer/fluorocycler/FluoroCyclerXTAnalyzerLineInserter.java`
+- [ ] T210 [M13] Implement CSV parsing for FluoroCycler format
+- [ ] T211 [M13] Integrate with FileAnalyzerReader
+- [ ] T212 [M13] Document FluoroCycler plugin
+
+### Finalization for M13
+
+- [ ] T213 [M13] Verify unit tests pass
+- [ ] T214 [M13] Create PR
+      `feat/011-madagascar-analyzer-integration-m13-fluorocycler` →
+      `demo/madagascar`
+
+**Checkpoint**: FluoroCycler XT CSV import works
+
+---
+
+## M14: P2 Analyzer Validation (1 day)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m14-p2-validation`
+**Goal**: Validate P2 analyzers (BC2000, Sysmex XN) with existing plugins **User
+Stories**: US-1, US-6 **Depends On**: M5 (Mindray HL7) **Workstream**: B (HL7)
+
+**Analyzers**: Mindray BC2000, Sysmex XN Series (HL7 over Network) - Priority P2
+
+### Setup for M14
+
+- [ ] T215 [M14] Create branch
+      `feat/011-madagascar-analyzer-integration-m14-p2-validation` from
+      `demo/madagascar`
+
+### Tests for M14 (MANDATORY)
+
+- [ ] T216 [P] [M14] Integration test for Mindray BC2000 in
+      `src/test/java/org/openelisglobal/analyzer/mindray/MindrayBC2000IntegrationTest.java`
+- [ ] T217 [P] [M14] Integration test for Sysmex XN in
+      `src/test/java/org/openelisglobal/analyzer/sysmex/SysmexXNIntegrationTest.java`
+- [ ] T218 [P] [M14] Create HL7 test fixtures in
+      `src/test/resources/testdata/hl7/sysmex-xn-result.hl7`
+
+### Implementation for M14
+
+- [ ] T219 [M14] Verify Mindray plugin handles BC2000 (shares BC-5380 config)
+- [ ] T220 [M14] Verify SysmexXN-L plugin compatibility with HL7AnalyzerReader
+- [ ] T221 [M14] Test override mappings take precedence over plugin defaults
+- [ ] T222 [M14] Document P2 analyzer integration
+
+### Finalization for M14
+
+- [ ] T223 [M14] Verify integration tests pass
+- [ ] T224 [M14] Create PR
+      `feat/011-madagascar-analyzer-integration-m14-p2-validation` →
+      `demo/madagascar`
+
+**Checkpoint**: All 12 analyzers receive results
+
+---
+
+## M15: Order Export Workflow (3 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m15-order-export`
+**Goal**: Manual order export with status tracking **User Stories**: US-2 (Test
+Order Export to Analyzers) **Depends On**: M5-M14 (all analyzers operational)
+**Workstream**: All
+
+**Acceptance Criteria**:
+
+1. Users can select pending orders and trigger export
+2. Orders sent via appropriate protocol (ASTM/HL7)
+3. Status tracked: pending → sent → acknowledged → results_received
+4. Retry mechanism (3 attempts, exponential backoff)
+5. Results automatically matched to exported orders
+6. UI displays export status per analyzer
+
+### Setup for M15
+
+- [ ] T225 [M15] Create branch
+      `feat/011-madagascar-analyzer-integration-m15-order-export` from
+      `demo/madagascar`
+- [ ] T226 [M15] Create Liquibase changeset
+      `src/main/resources/liquibase/3.8.x.x/011-003-create-order-export-table.xml`
+
+### Tests for M15 (MANDATORY)
+
+- [ ] T227 [P] [M15] ORM validation test for OrderExport in
+      `src/test/java/org/openelisglobal/analyzer/HibernateMappingValidationTest.java`
+- [ ] T228 [P] [M15] Unit test for OrderExportService in
+      `src/test/java/org/openelisglobal/analyzer/service/OrderExportServiceTest.java`
+- [ ] T229 [P] [M15] Unit test for OrderExportDAO in
+      `src/test/java/org/openelisglobal/analyzer/dao/OrderExportDAOTest.java`
+- [ ] T230 [P] [M15] Controller test for OrderExportRestController in
+      `src/test/java/org/openelisglobal/analyzer/controller/OrderExportRestControllerTest.java`
+- [ ] T231 [P] [M15] Create DBUnit test fixture in
+      `src/test/resources/testdata/order-export.xml`
+
+### Backend Implementation for M15
+
+- [ ] T232 [M15] Create OrderExport entity in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/OrderExport.java`
+- [ ] T233 [M15] Create OrderExportStatus and MessageType enums in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/`
+- [ ] T234 [M15] Create OrderExportDAO interface and impl in
+      `src/main/java/org/openelisglobal/analyzer/dao/`
+- [ ] T235 [M15] Create OrderExportService interface in
+      `src/main/java/org/openelisglobal/analyzer/service/OrderExportService.java`
+- [ ] T236 [M15] Create OrderExportServiceImpl in
+      `src/main/java/org/openelisglobal/analyzer/service/OrderExportServiceImpl.java`
+- [ ] T237 [M15] Implement ASTM O-segment generation for order export
+- [ ] T238 [M15] Implement HL7 ORM^O01 generation (leverage M1
+      HL7MessageService)
+- [ ] T239 [M15] Implement retry mechanism with exponential backoff
+- [ ] T240 [M15] Implement result matching (incoming results → exported orders)
+- [ ] T241 [M15] Create OrderExportRestController in
+      `src/main/java/org/openelisglobal/analyzer/controller/OrderExportRestController.java`
+- [ ] T242 [M15] Implement RBAC permission check (LAB_SUPERVISOR role minimum)
+- [ ] T243 [M15] Add audit trail logging for order export actions
+- [ ] T244 [P] [M15] Add i18n keys for order export messages in
+      `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
+
+### Frontend Implementation for M15
+
+- [ ] T245 [P] [M15] Jest unit test for OrderExportList in
+      `frontend/src/components/analyzers/OrderExport/__tests__/OrderExportList.test.jsx`
+- [ ] T246 [P] [M15] Jest unit test for OrderExportModal in
+      `frontend/src/components/analyzers/OrderExport/__tests__/OrderExportModal.test.jsx`
+- [ ] T247 [M15] Create OrderExportList React component in
+      `frontend/src/components/analyzers/OrderExport/OrderExportList.jsx`
+- [ ] T248 [M15] Create OrderExportModal React component in
+      `frontend/src/components/analyzers/OrderExport/OrderExportModal.jsx`
+- [ ] T249 [M15] Create orderExportService.js API client in
+      `frontend/src/services/orderExportService.js`
+- [ ] T250 [M15] Integrate OrderExport components into analyzer dashboard
+
+### Finalization for M15
+
+- [ ] T251 [M15] Verify all unit and integration tests pass
+- [ ] T252 [M15] Run Spotless and frontend formatting
+- [ ] T253 [M15] Create PR
+      `feat/011-madagascar-analyzer-integration-m15-order-export` →
+      `demo/madagascar`
+
+**Checkpoint**: Order export UI works, orders sent to analyzers, status tracked
+
+---
+
+## M16: Enhanced Instrument Metadata Form (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m16-metadata-form`
+**Goal**: Comprehensive metadata capture and location history **User Stories**:
+US-5 (Comprehensive Instrument Metadata Management) **Depends On**: M15
+**Workstream**: All
+
+**Acceptance Criteria**:
+
+1. Form captures all required metadata fields
+2. Location linked to existing facility hierarchy
+3. Location history preserved on relocation
+4. Calibration due date warning displayed
+5. Validation prevents incomplete registrations
+
+### Setup for M16
+
+- [ ] T254 [M16] Create branch
+      `feat/011-madagascar-analyzer-integration-m16-metadata-form` from
+      `demo/madagascar`
+- [ ] T255 [M16] Create Liquibase changeset
+      `src/main/resources/liquibase/3.8.x.x/011-004-create-instrument-metadata-table.xml`
+- [ ] T256 [M16] Create Liquibase changeset
+      `src/main/resources/liquibase/3.8.x.x/011-005-create-instrument-location-history-table.xml`
+
+### Tests for M16 (MANDATORY)
+
+- [ ] T257 [P] [M16] ORM validation test for InstrumentMetadata in
+      `src/test/java/org/openelisglobal/analyzer/HibernateMappingValidationTest.java`
+- [ ] T258 [P] [M16] ORM validation test for InstrumentLocationHistory
+- [ ] T259 [P] [M16] Unit test for InstrumentMetadataService in
+      `src/test/java/org/openelisglobal/analyzer/service/InstrumentMetadataServiceTest.java`
+- [ ] T260 [P] [M16] Controller test for InstrumentMetadataRestController in
+      `src/test/java/org/openelisglobal/analyzer/controller/InstrumentMetadataRestControllerTest.java`
+- [ ] T261 [P] [M16] Create DBUnit test fixtures in
+      `src/test/resources/testdata/instrument-metadata.xml`
+
+### Backend Implementation for M16
+
+- [ ] T262 [M16] Create InstrumentMetadata entity in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/InstrumentMetadata.java`
+- [ ] T263 [M16] Create InstrumentLocationHistory entity in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/InstrumentLocationHistory.java`
+- [ ] T264 [M16] Create ServiceStatus enum in
+      `src/main/java/org/openelisglobal/analyzer/valueholder/ServiceStatus.java`
+- [ ] T265 [M16] Create InstrumentMetadataDAO interface and impl in
+      `src/main/java/org/openelisglobal/analyzer/dao/`
+- [ ] T266 [M16] Create InstrumentLocationHistoryDAO interface and impl
+- [ ] T267 [M16] Create InstrumentMetadataService interface in
+      `src/main/java/org/openelisglobal/analyzer/service/InstrumentMetadataService.java`
+- [ ] T268 [M16] Create InstrumentMetadataServiceImpl with relocation logic
+- [ ] T269 [M16] Implement calibration due date warning calculation
+- [ ] T270 [M16] Create InstrumentMetadataRestController in
+      `src/main/java/org/openelisglobal/analyzer/controller/InstrumentMetadataRestController.java`
+- [ ] T271 [M16] Implement RBAC permission check (LAB_SUPERVISOR role minimum)
+- [ ] T272 [M16] Add audit trail logging for instrument metadata changes
+- [ ] T273 [P] [M16] Add i18n keys for metadata form in
+      `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
+
+### Frontend Implementation for M16
+
+- [ ] T274 [P] [M16] Jest unit test for InstrumentMetadataForm in
+      `frontend/src/components/analyzers/InstrumentMetadata/__tests__/InstrumentMetadataForm.test.jsx`
+- [ ] T275 [M16] Create InstrumentMetadataForm React component in
+      `frontend/src/components/analyzers/InstrumentMetadata/InstrumentMetadataForm.jsx`
+- [ ] T276 [M16] Implement Organization/Location picker (reuse existing
+      components)
+- [ ] T277 [M16] Implement location history display
+- [ ] T278 [M16] Implement calibration due date warning display
+- [ ] T279 [M16] Create instrumentMetadataService.js API client in
+      `frontend/src/services/instrumentMetadataService.js`
+
+### Finalization for M16
+
+- [ ] T280 [M16] Verify all tests pass
+- [ ] T281 [M16] Run Spotless and frontend formatting
+- [ ] T282 [M16] Create PR
+      `feat/011-madagascar-analyzer-integration-m16-metadata-form` →
+      `demo/madagascar`
+
+**Checkpoint**: Metadata form captures all fields, location history works
+
+---
+
+## M17: Advanced Simulator Features (2 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m17-simulator-advanced`
+**Goal**: Advanced simulation: QC results, error conditions, concurrent testing
+**User Stories**: US-9 **Depends On**: M4 (Simulator Base) **Workstream**: E
+(Simulator)
+
+**Acceptance Criteria**:
+
+1. QC result generation for all analyzer types
+2. Error condition simulation (malformed, timeouts, duplicates)
+3. Concurrent multi-analyzer simulation (5+ simultaneous)
+4. Stress testing capability (1000+ messages)
+5. Test scenario orchestration via HTTP API
+
+### Setup for M17
+
+- [ ] T283 [M17] Create branch
+      `feat/011-madagascar-analyzer-integration-m17-simulator-advanced` from
+      `demo/madagascar`
+
+### Advanced Features for M17
+
+- [ ] T284 [M17] Add QC result generation templates in
+      `tools/astm-mock-server/templates/qc/`
+- [ ] T285 [M17] Add error condition templates (malformed, timeout, duplicate)
+      in `tools/astm-mock-server/templates/errors/`
+- [ ] T286 [M17] Implement concurrent multi-analyzer support in
+      `tools/astm-mock-server/server.py`
+- [ ] T287 [M17] Implement test scenario orchestration (`/scenarios/{name}`
+      endpoint)
+- [ ] T288 [M17] Add stress testing mode (`--stress-test --count N`)
+
+### CI/CD Integration for M17
+
+- [ ] T289 [M17] Update Docker configuration for CI/CD integration
+- [ ] T290 [M17] Create GitHub Actions workflow for simulator-based tests
+- [ ] T291 [M17] Document CI/CD integration in
+      `tools/astm-mock-server/docs/CI_CD_INTEGRATION.md`
+
+### Testing for M17
+
+- [ ] T292 [M17] Test concurrent simulation with 5+ analyzers
+- [ ] T293 [M17] Test stress scenario with 1000+ messages
+- [ ] T294 [M17] Verify all 12 analyzer templates work end-to-end
+
+### Finalization for M17
+
+- [ ] T295 [M17] Verify all advanced features work
+- [ ] T296 [M17] Create PR
+      `feat/011-madagascar-analyzer-integration-m17-simulator-advanced` →
+      `demo/madagascar`
+
+**Checkpoint**: Simulator ready for production CI/CD with advanced testing
+
+---
+
+## M18: E2E Validation (3 days)
+
+**Branch**: `feat/011-madagascar-analyzer-integration-m18-e2e-validation`
+**Goal**: Comprehensive E2E testing and production validation **User Stories**:
+All **Depends On**: M15, M16, M17 **Workstream**: All
+
+**Acceptance Criteria**:
+
+1. All 12 analyzers receive results within 60 seconds
+2. All 12 analyzers receive orders via export
+3. 5+ analyzers operate simultaneously without issues
+4. <5% mapping errors after initial configuration
+5. E2E tests pass in CI/CD pipeline
+6. Simulator-only validation sufficient per clarification session
+
+### Setup for M18
+
+- [ ] T297 [M18] Create branch
+      `feat/011-madagascar-analyzer-integration-m18-e2e-validation` from
+      `demo/madagascar`
+
+### Cypress E2E Tests for M18 (MANDATORY)
+
+- [ ] T298 [P] [M18] E2E test for HL7 analyzer integration in
+      `frontend/cypress/e2e/hl7AnalyzerIntegration.cy.js`
+- [ ] T299 [P] [M18] E2E test for serial analyzer integration in
+      `frontend/cypress/e2e/serialAnalyzerIntegration.cy.js`
+- [ ] T300 [P] [M18] E2E test for file import integration in
+      `frontend/cypress/e2e/fileImportIntegration.cy.js`
+- [ ] T301 [P] [M18] E2E test for order export in
+      `frontend/cypress/e2e/orderExport.cy.js`
+- [ ] T302 [P] [M18] E2E test for instrument metadata form in
+      `frontend/cypress/e2e/instrumentMetadata.cy.js`
+- [ ] T303 [M18] Create Cypress fixtures for E2E tests in
+      `frontend/cypress/fixtures/analyzers/`
+
+### Integration Testing for M18
+
+- [ ] T304 [M18] Performance test: 5+ concurrent analyzers via simulator
+- [ ] T305 [M18] Stress test: 1000+ messages through system
+- [ ] T306 [M18] Verify message routing with multiple simultaneous analyzers
+
+### Documentation for M18
+
+- [ ] T307 [M18] Create user training materials in `docs/madagascar-training/`
+- [ ] T308 [M18] Document configuration guide for each analyzer type
+- [ ] T309 [M18] Create deployment checklist for Madagascar labs
+
+### Finalization for M18
+
+- [ ] T310 [M18] Verify all E2E tests pass
+- [ ] T311 [M18] Verify all 12 analyzers bidirectional
+- [ ] T312 [M18] Run full test suite
+      (`mvn verify && cd frontend && npm run cy:run`)
+- [ ] T313 [M18] Create PR
+      `feat/011-madagascar-analyzer-integration-m18-e2e-validation` →
+      `demo/madagascar`
+- [ ] T314 [M18] After approval, create final PR `demo/madagascar` → `develop`
+
+**Checkpoint**: Contract requirements met - 12 analyzers bidirectional, E2E
+tests pass
+
+---
+
+## Dependencies & Execution Order
+
+### Milestone Dependencies
+
+| Milestone | Depends On    | Workstream          | Parallel Group         |
+| --------- | ------------- | ------------------- | ---------------------- |
+| **M0**    | -             | A (ASTM - PRIORITY) | ★ START HERE           |
+| M1        | M0            | B (HL7)             | Foundation (1-4)       |
+| M2        | M0            | C (RS232)           | Foundation (1-4)       |
+| M3        | M0            | D (File)            | Foundation (1-4)       |
+| M4        | M0            | E (Simulator)       | Foundation (1-4)       |
+| M5        | M1            | B (HL7)             | Plugin Validation      |
+| M6        | M2            | C (RS232)           | Plugin Validation      |
+| M7        | M0, M1, M3    | A, B, D             | Plugin Validation      |
+| M8        | M3            | D (File)            | Plugin Validation      |
+| M9        | M2            | C (RS232)           | New Plugins (9-13) [P] |
+| M10       | M2            | C (RS232)           | New Plugins (9-13) [P] |
+| M11       | M1, M2        | B, C                | New Plugins (9-13) [P] |
+| M12       | M1            | B (HL7)             | New Plugins (9-13) [P] |
+| M13       | M3            | D (File)            | New Plugins (9-13) [P] |
+| M14       | M5            | B (HL7)             | P2 Validation          |
+| M15       | M5-M14        | All                 | Integration            |
+| M16       | M15           | All                 | Integration            |
+| M17       | M4            | E (Simulator)       | Integration [P]        |
+| M18       | M15, M16, M17 | All                 | Final Validation       |
+
+### Parallel Opportunities
+
+**Week 1**:
+
+- **M0 FIRST** (ASTM priority - 2 days)
+- Then M1, M2, M3, M4 can proceed in parallel (5 developers max)
+
+**Week 2**:
+
+- M5, M6, M7, M8 as dependencies complete
+
+**Week 2-3**:
+
+- M9, M10, M11, M12, M13 can all proceed in parallel (5 developers max)
+
+**Week 3-4**:
+
+- M14 after M5
+- M15 and M17 can proceed in parallel
+
+**Week 4-5**:
+
+- M16 after M15
+- M18 after M15, M16, M17
+
+### Within Each Milestone
+
+- Branch creation MUST be first task
+- Tests MUST be written and FAIL before implementation (TDD)
+- Implementation follows Red-Green-Refactor
+- PR creation MUST be last task
+- Spotless/formatting MUST run before PR
+
+---
+
+## Implementation Strategy
+
+### ASTM-First Strategy (Per Clarification)
+
+1. **M0**: Stabilize existing ASTM infrastructure (PRIORITY)
+2. **M1-M4**: Build adapters in parallel once M0 complete
+3. **M5-M13**: Validate/build plugins by Romain's priority (P1 first)
+4. **M14**: P2 analyzers last
+5. **M15-M18**: Integration and validation
+
+### MVP First (M0 + M1-M5)
+
+1. Complete M0: ASTM Stabilization (PRIORITY)
+2. Complete M1-M4 in parallel: Protocol Adapters
+3. Complete M5: Mindray HL7 (4 analyzers working)
+4. **STOP and VALIDATE**: 5+ analyzers receive results
+5. Deploy to staging for early testing
+
+### Incremental Delivery
+
+| Week | Milestones         | Cumulative Analyzers       |
+| ---- | ------------------ | -------------------------- |
+| 1    | M0, M1, M2, M3, M4 | 1 (GeneXpert ASTM)         |
+| 2    | M5, M6, M7, M8     | 7 analyzers                |
+| 3    | M9, M10, M11, M12  | 11 analyzers               |
+| 4    | M13, M14, M15      | 12 analyzers + export      |
+| 5    | M16, M17, M18      | + metadata + E2E validated |
+
+### Parallel Team Strategy
+
+**With 4+ developers**:
+
+| Developer | Week 1         | Week 2-3         | Week 4-5 |
+| --------- | -------------- | ---------------- | -------- |
+| Dev A     | M0 → M1 (HL7)  | M5 → M14 → M15   | M18      |
+| Dev B     | M2 (RS232)     | M6, M9, M10      | M18      |
+| Dev C     | M3 (File)      | M7, M8, M11, M12 | M16      |
+| Dev D     | M4 (Simulator) | M13 → M17        | M18      |
+
+---
+
+## Post-Deadline Features (NOT IN TASK COUNT)
+
+The following are **intentionally deferred** to post-contract-deadline:
+
+| Requirement      | User Story | Scope                       | Reason                     |
+| ---------------- | ---------- | --------------------------- | -------------------------- |
+| FR-019 to FR-021 | US-7       | GeneXpert Module Management | P3 priority, complex UI    |
+| FR-022 to FR-024 | US-8       | Maintenance Tracking        | P3 priority, non-essential |
+| POCT1A Protocol  | -          | Point-of-care devices       | Out of contract scope      |
+
+---
+
+## Task Summary
+
+| Milestone | Total Tasks | Test Tasks | Implementation Tasks |
+| --------- | ----------- | ---------- | -------------------- |
+| **M0**    | 20          | 3          | 17                   |
+| M1        | 18          | 5          | 13                   |
+| M2        | 27          | 4          | 23                   |
+| M3        | 24          | 5          | 19                   |
+| M4        | 32          | 5          | 27                   |
+| M5        | 12          | 3          | 9                    |
+| M6        | 9           | 2          | 7                    |
+| M7        | 12          | 4          | 8                    |
+| M8        | 10          | 3          | 7                    |
+| M9        | 10          | 2          | 8                    |
+| M10       | 10          | 2          | 8                    |
+| M11       | 10          | 2          | 8                    |
+| M12       | 10          | 2          | 8                    |
+| M13       | 10          | 2          | 8                    |
+| M14       | 10          | 3          | 7                    |
+| M15       | 29          | 5          | 24                   |
+| M16       | 29          | 5          | 24                   |
+| M17       | 14          | 3          | 11                   |
+| M18       | 18          | 6          | 12                   |
+| **TOTAL** | **314**     | **66**     | **248**              |
+
+---
+
+## Notes
+
+- **[P]** = Can run in parallel (different files, no incomplete dependencies)
+- **[M#]** = Milestone tag for traceability
+- **★ M0** = PRIORITY - Start here per clarification session
+- Tests are MANDATORY per Constitution Principle V
+- Each milestone = 1 PR per Constitution Principle IX
+- Run `mvn spotless:apply` and `cd frontend && npm run format` before every PR
+- Use BOTH flags when skipping tests: `-DskipTests -Dmaven.test.skip=true`
+- Run E2E tests individually during development:
+  `npm run cy:run -- --spec "cypress/e2e/{test}.cy.js"`
+
+---
+
+**Tasks Generated**: 2026-01-27 | **Updated**: Clarification session updates +
+remediation (external plugin tasks, liquibase renumbering) (M0 priority, RS232
+via bridge, parallel workstreams) **Total Tasks**: 314 **Test Tasks**: 66 (20%)
+**Task ID Range**: T001-T314 **Milestones**: 19 (M0-M18) **Parallel
+Milestones**: M1-M4 (after M0), M9-M13 **Contract Deadline**: 2026-02-28

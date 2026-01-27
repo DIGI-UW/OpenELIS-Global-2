@@ -326,7 +326,8 @@ All verification checklist items should pass:
 - ✅ Stores fields in AnalyzerField entity
 - ✅ Background job executes asynchronously
 - ✅ Job status updates progress with logs
-- ✅ Reads timeout from SystemConfiguration
+- ✅ Reads timeout from SiteInformation (`clinlims.site_information` key
+  `analyzer.query.timeout`)
 - ✅ Handles connection errors gracefully
 - ✅ Integration test verifies actual ASTM query execution
 - ✅ Manual test: Query analyzer 1000 and verify fields appear in UI
