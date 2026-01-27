@@ -4,15 +4,48 @@ import { format } from "date-fns";
 import { ConfigurationContext } from "../layout/Layout";
 
 const CustomDatePicker = (props) => {
+  const [isInvalid, setIsInvalid] = useState(false);
   const [currentDate, setCurrentDate] = useState(
     props.value ? props.value : "",
   );
   const { configurationProperties } = useContext(ConfigurationContext);
+
   function handleDatePickerChange(e) {
-    let date = new Date(e[0]);
+    const selectedDate = e[0];
+
+    if (!selectedDate) {
+      setIsInvalid(false);
+      if (props.isInvalidExternal) props.isInvalidExternal(false);
+      props.onChange("");
+      return;
+    }
+
+    const dateObj = new Date(selectedDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (props.disallowFutureDate && dateObj > today) {
+      setIsInvalid(true);
+      if (props.isInvalidExternal) props.isInvalidExternal(true);
+
+      const formatDate = format(
+        dateObj,
+        configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+          ? "dd/MM/yyyy"
+          : "MM/dd/yyyy",
+      );
+      setCurrentDate(formatDate);
+      props.onChange(formatDate);
+
+      return;
+    }
+
+    setIsInvalid(false);
+    if (props.isInvalidExternal) props.isInvalidExternal(false);
+
     const formatDate = format(
-      new Date(date),
-      configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
+      dateObj,
+      configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
         ? "dd/MM/yyyy"
         : "MM/dd/yyyy",
     );
@@ -23,26 +56,64 @@ const CustomDatePicker = (props) => {
   function handleInputChange(e) {
     const inputValue = e.target.value;
 
+    if (inputValue === "") {
+      setIsInvalid(false);
+      if (props.isInvalidExternal) props.isInvalidExternal(false);
+      setCurrentDate("");
+      props.onChange("");
+      return;
+    }
+
     const isFrenchLocale =
       configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR";
+
     const partialDateRegex = isFrenchLocale
       ? /^(\d{0,2})(\/(\d{0,2})(\/(\d{0,4})?)?)?$/
       : /^(\d{0,2})(\/(\d{0,2})(\/(\d{0,4})?)?)?$/;
 
-    const fullDateRegex = isFrenchLocale
-      ? /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/
-      : /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
-
     if (partialDateRegex.test(inputValue)) {
       e.target.value = inputValue;
+
+      const parts = inputValue.split("/");
+      if (parts.length === 3 && parts[2].length === 4) {
+        const day = isFrenchLocale ? parseInt(parts[0]) : parseInt(parts[1]);
+        const month = isFrenchLocale ? parseInt(parts[1]) : parseInt(parts[0]);
+        const year = parseInt(parts[2]);
+
+        const dateObj = new Date(year, month - 1, day);
+
+        if (
+          dateObj.getDate() === day &&
+          dateObj.getMonth() === month - 1 &&
+          dateObj.getFullYear() === year
+        ) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          if (props.disallowFutureDate && dateObj > today) {
+            setIsInvalid(true);
+            if (props.isInvalidExternal) props.isInvalidExternal(false);
+            setCurrentDate("");
+            props.onChange("");
+            e.target.value = "";
+          } else {
+            setIsInvalid(false);
+            if (props.isInvalidExternal) props.isInvalidExternal(false);
+            setCurrentDate(inputValue);
+            props.onChange(inputValue);
+          }
+        } else {
+          setIsInvalid(true);
+          if (props.isInvalidExternal) props.isInvalidExternal(false);
+          setCurrentDate("");
+          props.onChange("");
+          e.target.value = "";
+        }
+      }
     } else {
-      e.target.value = ""; // Clear invalid input
+      e.target.value = "";
     }
   }
-
-  useEffect(() => {
-    props.onChange(currentDate);
-  }, [currentDate]);
 
   useEffect(() => {
     if (props.updateStateValue) {
@@ -52,6 +123,20 @@ const CustomDatePicker = (props) => {
 
   return (
     <>
+      <style>
+        {`
+          /* Targets the error exclamation icon specifically */
+          .cds--text-input__invalid-icon,
+          .cds--date-picker__input--invalid ~ svg {
+            display: none !important;
+          }
+
+          /* Adjust padding so text doesn't look centered where the icon used to be */
+          .cds--text-input.cds--text-input--invalid {
+            padding-right: 1rem !important;
+          }
+        `}
+      </style>
       <DatePicker
         id={props.id}
         dateFormat={
@@ -93,8 +178,14 @@ const CustomDatePicker = (props) => {
           }
           type="text"
           labelText={props.labelText}
-          invalid={props.invalid}
-          invalidText={props.invalidText}
+          invalid={isInvalid}
+          invalidText={
+            isInvalid
+              ? props.disallowFutureDate
+                ? "Collection date cannot be in the future"
+                : "Please enter a valid date"
+              : ""
+          }
           disabled={props.disabled}
           onChange={handleInputChange}
         />
