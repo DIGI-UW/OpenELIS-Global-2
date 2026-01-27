@@ -674,7 +674,7 @@ function NoteBookDashBoard() {
                           kind="secondary"
                           size="sm"
                           disabled={
-                            userSessionDetails.userId != entry.technicianId
+                            userSessionDetails.userId !== entry.technicianId
                           }
                           onClick={() => openNoteBookInstanceView(entry.id)}
                         >
@@ -683,12 +683,12 @@ function NoteBookDashBoard() {
                         </Button>
                       </Column>
                       <Column lg={8} md={8} sm={4}>
-                        {entry.status != "ARCHIVED" && (
+                        {entry.status !== "ARCHIVED" && (
                           <Button
                             kind="primary"
                             size="sm"
                             disabled={
-                              userSessionDetails.userId != entry.technicianId
+                              userSessionDetails.userId !== entry.technicianId
                             }
                             onClick={() => openNoteBookInstanceEdit(entry.id)}
                           >
