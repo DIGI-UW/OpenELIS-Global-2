@@ -80,7 +80,9 @@ jobs:
         run: docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600
 
       - name: Load test fixtures into database
-        run: docker compose -f build.docker-compose.yml exec -T oe.openelis.org bash -c "cd /src/test/resources && ./load-test-fixtures.sh"
+        run: |
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims < src/test/resources/e2e-foundational-data.sql
+          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims < src/test/resources/analyzer-test-data.sql
 
       - name: Run Frontend QA Workflow (Headless Chrome)
         run: npx cypress run --browser chrome --headless
