@@ -4,7 +4,9 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import "@testing-library/jest-dom/extend-expect";
 import { IntlProvider } from "react-intl";
 import SerialConfiguration from "../SerialConfiguration";
 import * as serialService from "../../../../services/serialService";
@@ -36,6 +38,7 @@ const messages = {
   "button.saving": "Saving...",
   "serial.config.validation.analyzerId.required": "Analyzer ID is required",
   "serial.config.validation.portName.required": "Port name is required",
+  "serial.config.form.legend": "Serial Port Settings",
 };
 
 const IntlWrapper = ({ children }) => (
