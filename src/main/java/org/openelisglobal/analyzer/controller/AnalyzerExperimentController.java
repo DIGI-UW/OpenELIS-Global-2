@@ -37,6 +37,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
+@SessionAttributes("form")
 public class AnalyzerExperimentController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "id", "filename", "wellValues", "analyzerId",
