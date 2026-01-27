@@ -38,7 +38,7 @@ public class SiteBrandingConfigurationHandlerTest {
         testBranding.setId("TEST-001");
         testBranding.setPrimaryColor("#1d4ed8");
         testBranding.setSecondaryColor("#64748b");
-        testBranding.setAccentColor("#0891b2");
+        testBranding.setHeaderColor("#112233");
         testBranding.setColorMode("light");
         testBranding.setUseHeaderLogoForLogin(false);
 
@@ -63,8 +63,8 @@ public class SiteBrandingConfigurationHandlerTest {
 
     @Test
     public void testProcessConfiguration_WithColors() throws Exception {
-        String yaml = "siteBranding:\n" + "  colors:\n" + "    primary: \"#1a365d\"\n" + "    secondary: \"slate\"\n"
-                + "    accent: \"rgb(56, 178, 172)\"\n";
+        String yaml = "siteBranding:\n" + "  colors:\n" + "    header: \"rgb(56, 178, 172)\"\n"
+                + "    primary: \"#1a365d\"\n" + "    secondary: \"slate\"\n";
 
         InputStream inputStream = new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8));
 
@@ -75,9 +75,9 @@ public class SiteBrandingConfigurationHandlerTest {
         verify(siteBrandingService, times(1)).saveBranding(any(SiteBranding.class));
 
         // Verify colors were updated on the branding object
+        assertEquals("rgb(56, 178, 172)", testBranding.getHeaderColor());
         assertEquals("#1a365d", testBranding.getPrimaryColor());
         assertEquals("slate", testBranding.getSecondaryColor());
-        assertEquals("rgb(56, 178, 172)", testBranding.getAccentColor());
     }
 
     @Test
@@ -140,7 +140,7 @@ public class SiteBrandingConfigurationHandlerTest {
         assertEquals("navy", testBranding.getPrimaryColor());
         // Other colors should remain at their original values from setUp()
         assertEquals("#64748b", testBranding.getSecondaryColor());
-        assertEquals("#0891b2", testBranding.getAccentColor());
+        assertEquals("#112233", testBranding.getHeaderColor());
     }
 
 }

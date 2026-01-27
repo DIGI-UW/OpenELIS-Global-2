@@ -1,8 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
-// Import branding styles globally to ensure colors apply application-wide
-import "./components/admin/generalConfig/siteBranding/BrandingStyles.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import * as ServiceWorker from "./serviceWorkerRegistration";

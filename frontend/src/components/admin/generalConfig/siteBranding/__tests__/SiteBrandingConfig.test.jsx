@@ -99,7 +99,7 @@ describe("SiteBrandingConfig", () => {
       id: "test-id",
       primaryColor: "#1d4ed8",
       secondaryColor: "#64748b",
-      accentColor: "#0891b2",
+      headerColor: "#295785",
       colorMode: "light",
       useHeaderLogoForLogin: false,
     };
@@ -129,7 +129,7 @@ describe("SiteBrandingConfig", () => {
       id: "test-id",
       primaryColor: "#ff0000",
       secondaryColor: "#00ff00",
-      accentColor: "#0000ff",
+      headerColor: "#0000ff",
       colorMode: "light",
       useHeaderLogoForLogin: false,
     };
@@ -204,7 +204,7 @@ describe("SiteBrandingConfig", () => {
       id: "test-id",
       primaryColor: "#1d4ed8",
       secondaryColor: "#64748b",
-      accentColor: "#0891b2",
+      headerColor: "#295785",
     };
 
     getFromOpenElisServer.mockImplementation((url, callback) => {
@@ -274,7 +274,7 @@ describe("SiteBrandingConfig", () => {
       id: "test-id",
       primaryColor: "#1d4ed8",
       secondaryColor: "#64748b",
-      accentColor: "#0891b2",
+      headerColor: "#295785",
     };
 
     getFromOpenElisServer.mockImplementation((url, callback) => {

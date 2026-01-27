@@ -44,7 +44,7 @@ import {
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
-import { getBranding } from "../../services/siteBrandingService";
+import { getBranding } from "../utils/BrandingUtils";
 
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -86,62 +86,27 @@ function OEHeader(props) {
       : console.log("User not authenticated, not getting menu");
   }, [userSessionDetails.authenticated]);
 
-  // Load branding configuration for header logo and colors
-  // Task Reference: T085 - Apply branding to header component
-  const loadBranding = () => {
+  // Load branding configuration for header logo
+  // Colors are handled by App.js
+  const loadHeaderLogo = () => {
     if (userSessionDetails.authenticated) {
       getBranding((response) => {
-        if (response) {
-          if (response.headerLogoUrl) {
-            setHeaderLogoUrl(response.headerLogoUrl);
-            // Increment version to force logo reload
-            setLogoVersion((prev) => prev + 1);
-          }
-
-          // Apply custom colors to header
-          if (response.primaryColor) {
-            document.documentElement.style.setProperty(
-              "--cds-interactive-01",
-              response.primaryColor,
-            );
-            document.documentElement.style.setProperty(
-              "--site-branding-primary",
-              response.primaryColor,
-            );
-          }
-          if (response.secondaryColor) {
-            document.documentElement.style.setProperty(
-              "--cds-interactive-02",
-              response.secondaryColor,
-            );
-            document.documentElement.style.setProperty(
-              "--site-branding-secondary",
-              response.secondaryColor,
-            );
-          }
-          if (response.accentColor) {
-            document.documentElement.style.setProperty(
-              "--cds-support-01",
-              response.accentColor,
-            );
-            document.documentElement.style.setProperty(
-              "--site-branding-accent",
-              response.accentColor,
-            );
-          }
+        if (response && response.headerLogoUrl) {
+          setHeaderLogoUrl(response.headerLogoUrl);
+          setLogoVersion((prev) => prev + 1);
         }
       });
     }
   };
 
   useEffect(() => {
-    loadBranding();
+    loadHeaderLogo();
   }, [userSessionDetails.authenticated]);
 
-  // Listen for branding update events to refresh logo and colors
+  // Listen for branding update events to refresh logo
   useEffect(() => {
     const handleBrandingUpdate = () => {
-      loadBranding();
+      loadHeaderLogo();
     };
     window.addEventListener("branding-updated", handleBrandingUpdate);
     return () => {

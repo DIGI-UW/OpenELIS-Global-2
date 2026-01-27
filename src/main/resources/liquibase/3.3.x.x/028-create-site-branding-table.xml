@@ -5,8 +5,8 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Site Branding Table (001-site-branding) -->
-    <changeSet id="001-create-site-branding-table" author="openelis">
+    <!-- Site Branding Table for white labeling / site branding feature (001-site-branding) -->
+    <changeSet id="028-create-site-branding-table" author="openelis">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="site_branding"/>
@@ -23,13 +23,16 @@
                 <constraints nullable="false"/>
             </column>
             <column name="favicon_path" type="VARCHAR(500)"/>
-            <column name="primary_color" type="VARCHAR(7)" defaultValue="'#1d4ed8'">
+            <!-- Header color for the application header bar - defaults to OpenELIS brand color -->
+            <column name="header_color" type="VARCHAR(50)" defaultValue="'#295785'">
                 <constraints nullable="false"/>
             </column>
-            <column name="secondary_color" type="VARCHAR(7)" defaultValue="'#64748b'">
+            <!-- Primary color for buttons, links, focus states - defaults to Carbon interactive-01 -->
+            <column name="primary_color" type="VARCHAR(50)" defaultValue="'#0f62fe'">
                 <constraints nullable="false"/>
             </column>
-            <column name="accent_color" type="VARCHAR(7)" defaultValue="'#0891b2'">
+            <!-- Secondary color for secondary buttons - defaults to Carbon interactive-02 -->
+            <column name="secondary_color" type="VARCHAR(50)" defaultValue="'#393939'">
                 <constraints nullable="false"/>
             </column>
             <column name="color_mode" type="VARCHAR(10)" defaultValue="'light'">

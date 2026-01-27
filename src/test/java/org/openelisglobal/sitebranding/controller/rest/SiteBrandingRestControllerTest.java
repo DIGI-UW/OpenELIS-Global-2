@@ -77,7 +77,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         branding.setId("TEST-001");
         branding.setPrimaryColor("#1d4ed8");
         branding.setSecondaryColor("#64748b");
-        branding.setAccentColor("#0891b2");
+        branding.setHeaderColor("#0891b2");
         branding.setColorMode("light");
         branding.setUseHeaderLogoForLogin(false);
         branding.setSysUserId("1");
@@ -88,7 +88,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.primaryColor").value("#1d4ed8"))
                 .andExpect(jsonPath("$.secondaryColor").value("#64748b"))
-                .andExpect(jsonPath("$.accentColor").value("#0891b2"));
+                .andExpect(jsonPath("$.headerColor").value("#0891b2"));
     }
 
     /**
@@ -100,9 +100,9 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         // Act: GET /rest/site-branding/ when no branding exists
         // Then: Expect 200 OK with default values
         mockMvc.perform(get("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.primaryColor").value("#1d4ed8"))
-                .andExpect(jsonPath("$.secondaryColor").value("#64748b"))
-                .andExpect(jsonPath("$.accentColor").value("#0891b2"));
+                .andExpect(jsonPath("$.primaryColor").value("#0f62fe"))
+                .andExpect(jsonPath("$.secondaryColor").value("#393939"))
+                .andExpect(jsonPath("$.headerColor").value("#295785"));
     }
 
     /**
@@ -131,7 +131,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         SiteBranding branding = new SiteBranding();
         branding.setPrimaryColor("#1d4ed8");
         branding.setSecondaryColor("#64748b");
-        branding.setAccentColor("#0891b2");
+        branding.setHeaderColor("#0891b2");
         branding.setColorMode("light");
         branding.setUseHeaderLogoForLogin(false);
         branding.setSysUserId("1");
@@ -141,7 +141,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         SiteBrandingForm form = new SiteBrandingForm();
         form.setPrimaryColor("#ff0000");
         form.setSecondaryColor("#00ff00");
-        form.setAccentColor("#0000ff");
+        form.setHeaderColor("#0000ff");
         form.setColorMode("light");
         form.setUseHeaderLogoForLogin(false);
 
@@ -152,7 +152,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         mockMvc.perform(put("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.primaryColor").value("#ff0000"))
                 .andExpect(jsonPath("$.secondaryColor").value("#00ff00"))
-                .andExpect(jsonPath("$.accentColor").value("#0000ff"));
+                .andExpect(jsonPath("$.headerColor").value("#0000ff"));
     }
 
     /**
@@ -169,7 +169,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         SiteBranding branding = new SiteBranding();
         branding.setPrimaryColor("#1d4ed8");
         branding.setSecondaryColor("#64748b");
-        branding.setAccentColor("#0891b2");
+        branding.setHeaderColor("#0891b2");
         branding.setColorMode("light");
         branding.setUseHeaderLogoForLogin(false);
         branding.setSysUserId("1");
@@ -179,7 +179,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         SiteBrandingForm form = new SiteBrandingForm();
         form.setPrimaryColor("rebeccapurple");
         form.setSecondaryColor("slate");
-        form.setAccentColor("rgb(56, 178, 172)");
+        form.setHeaderColor("rgb(56, 178, 172)");
         form.setColorMode("light");
 
         String requestBody = objectMapper.writeValueAsString(form);
@@ -189,7 +189,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         mockMvc.perform(put("/rest/site-branding/").contentType(MediaType.APPLICATION_JSON).content(requestBody))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.primaryColor").value("rebeccapurple"))
                 .andExpect(jsonPath("$.secondaryColor").value("slate"))
-                .andExpect(jsonPath("$.accentColor").value("rgb(56, 178, 172)"));
+                .andExpect(jsonPath("$.headerColor").value("rgb(56, 178, 172)"));
     }
 
     /**
@@ -201,7 +201,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         SiteBrandingForm form = new SiteBrandingForm();
         form.setPrimaryColor("#ff0000");
         form.setSecondaryColor("#00ff00");
-        form.setAccentColor("#0000ff");
+        form.setHeaderColor("#0000ff");
         form.setColorMode("light");
 
         String requestBody = objectMapper.writeValueAsString(form);
@@ -222,7 +222,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         SiteBranding branding = new SiteBranding();
         branding.setPrimaryColor("#1d4ed8");
         branding.setSecondaryColor("#64748b");
-        branding.setAccentColor("#0891b2");
+        branding.setHeaderColor("#0891b2");
         branding.setColorMode("light");
         branding.setUseHeaderLogoForLogin(false);
         branding.setSysUserId("1");
@@ -476,7 +476,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         branding.setFaviconPath(faviconPath);
         branding.setPrimaryColor("#ff0000");
         branding.setSecondaryColor("#00ff00");
-        branding.setAccentColor("#0000ff");
+        branding.setHeaderColor("#0000ff");
         branding.setSysUserId("1");
         siteBrandingService.saveBranding(branding);
 
@@ -484,11 +484,11 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         // Then: Expect 200 OK, all logo paths set to null, colors reset to defaults
         mockMvc.perform(post("/rest/site-branding/reset")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.headerLogoUrl").isEmpty()).andExpect(jsonPath("$.loginLogoUrl").isEmpty())
-                .andExpect(jsonPath("$.faviconUrl").isEmpty()).andExpect(jsonPath("$.primaryColor").value("#1d4ed8")) // Default
-                                                                                                                      // primary
-                                                                                                                      // color
-                .andExpect(jsonPath("$.secondaryColor").value("#64748b")) // Default secondary color
-                .andExpect(jsonPath("$.accentColor").value("#0891b2")); // Default accent color
+                .andExpect(jsonPath("$.faviconUrl").isEmpty()).andExpect(jsonPath("$.headerColor").value("#295785")) // Default
+                                                                                                                     // header
+                                                                                                                     // color
+                .andExpect(jsonPath("$.primaryColor").value("#0f62fe")) // Default primary color
+                .andExpect(jsonPath("$.secondaryColor").value("#393939")); // Default secondary color
 
         // Verify files were deleted
         assertFalse("Header logo file should be deleted", Files.exists(Paths.get(headerPath)));

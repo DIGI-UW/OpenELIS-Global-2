@@ -1,7 +1,5 @@
 /**
- * API client for Site Branding endpoints
- *
- * Task Reference: T022
+ * Site branding utilities and API functions.
  */
 
 import {
@@ -9,7 +7,11 @@ import {
   postToOpenElisServer,
   putToOpenElisServerFullResponse,
   deleteFromOpenElisServerFullResponse,
-} from "../components/utils/Utils";
+} from "./Utils";
+
+// =============================================================================
+// API Functions
+// =============================================================================
 
 /**
  * Get current branding configuration
@@ -98,4 +100,67 @@ export const resetBranding = (callback, extraParams) => {
     callback,
     extraParams,
   );
+};
+
+// =============================================================================
+// DOM Utility Functions
+// =============================================================================
+
+/**
+ * Apply branding colors to the document root element.
+ * Sets CSS custom properties that Carbon components will use.
+ * @param {Object} branding - Branding configuration object
+ */
+export const applyBrandingColors = (branding) => {
+  if (!branding) return;
+
+  const root = document.documentElement;
+
+  if (branding.headerColor) {
+    root.style.setProperty("--site-branding-header", branding.headerColor);
+  }
+  if (branding.primaryColor) {
+    root.style.setProperty("--cds-interactive-01", branding.primaryColor);
+  }
+  if (branding.secondaryColor) {
+    root.style.setProperty("--cds-interactive-02", branding.secondaryColor);
+  }
+};
+
+/**
+ * Update the document favicon.
+ * @param {String} faviconUrl - URL path to the favicon
+ */
+export const applyFavicon = (faviconUrl) => {
+  if (!faviconUrl) return;
+
+  // Remove existing favicon links
+  const existingLinks = document.querySelectorAll('link[rel*="icon"]');
+  existingLinks.forEach((link) => link.remove());
+
+  // Add new favicon link
+  const link = document.createElement("link");
+  link.rel = "icon";
+  link.type = "image/x-icon";
+  link.href = `../api${faviconUrl}`;
+  document.head.appendChild(link);
+};
+
+/**
+ * Fetch branding configuration and apply it to the DOM.
+ * Applies colors and favicon.
+ * @param {Function} callback - Optional callback after branding is applied
+ */
+export const loadAndApplyBranding = (callback) => {
+  getBranding((response) => {
+    if (response) {
+      applyBrandingColors(response);
+      if (response.faviconUrl) {
+        applyFavicon(response.faviconUrl);
+      }
+    }
+    if (callback) {
+      callback(response);
+    }
+  });
 };

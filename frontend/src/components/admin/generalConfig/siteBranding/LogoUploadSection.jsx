@@ -20,7 +20,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerFormData } from "../../../../components/utils/Utils";
 import { TrashCan } from "@carbon/icons-react";
-import { removeLogo } from "../../../../services/siteBrandingService";
+import { removeLogo } from "../../../utils/BrandingUtils";
 import { Modal } from "@carbon/react";
 
 function LogoUploadSection({

@@ -66,9 +66,9 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                 logger.info("Default branding created: id={}", branding.getId());
             } else {
                 logger.debug(
-                        "Retrieved branding from database: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                        branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(),
-                        branding.getAccentColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
+                        "Retrieved branding from database: id={}, headerColor={}, primaryColor={}, secondaryColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                        branding.getId(), branding.getHeaderColor(), branding.getPrimaryColor(),
+                        branding.getSecondaryColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
             }
             return branding;
         } catch (Exception e) {
@@ -81,8 +81,8 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
     @Override
     public SiteBranding saveBranding(SiteBranding branding) {
         logger.debug(
-                "saveBranding() called with branding id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(), branding.getAccentColor(),
+                "saveBranding() called with branding id={}, headerColor={}, primaryColor={}, secondaryColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                branding.getId(), branding.getHeaderColor(), branding.getPrimaryColor(), branding.getSecondaryColor(),
                 branding.getColorMode(), branding.getUseHeaderLogoForLogin());
 
         try {
@@ -126,8 +126,8 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                 if (branding.getSecondaryColor() != null) {
                     existingBranding.setSecondaryColor(branding.getSecondaryColor());
                 }
-                if (branding.getAccentColor() != null) {
-                    existingBranding.setAccentColor(branding.getAccentColor());
+                if (branding.getHeaderColor() != null) {
+                    existingBranding.setHeaderColor(branding.getHeaderColor());
                 }
                 if (branding.getColorMode() != null) {
                     existingBranding.setColorMode(branding.getColorMode());
@@ -208,11 +208,11 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
                     String.format("Secondary color changed: %s -> %s by user: %s", existing.getSecondaryColor(),
                             updated.getSecondaryColor(), updated.getSysUserId()));
         }
-        if (existing.getAccentColor() != null && updated.getAccentColor() != null
-                && !existing.getAccentColor().equals(updated.getAccentColor())) {
+        if (existing.getHeaderColor() != null && updated.getHeaderColor() != null
+                && !existing.getHeaderColor().equals(updated.getHeaderColor())) {
             LogEvent.logInfo("SiteBrandingService", "saveBranding",
-                    String.format("Accent color changed: %s -> %s by user: %s", existing.getAccentColor(),
-                            updated.getAccentColor(), updated.getSysUserId()));
+                    String.format("Header color changed: %s -> %s by user: %s", existing.getHeaderColor(),
+                            updated.getHeaderColor(), updated.getSysUserId()));
         }
     }
 
@@ -223,9 +223,9 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
      */
     private SiteBranding createDefaultBranding() {
         SiteBranding branding = new SiteBranding();
-        branding.setPrimaryColor("#1d4ed8");
-        branding.setSecondaryColor("#64748b");
-        branding.setAccentColor("#0891b2");
+        branding.setHeaderColor("#295785");
+        branding.setPrimaryColor("#0f62fe");
+        branding.setSecondaryColor("#393939");
         branding.setColorMode("light");
         branding.setUseHeaderLogoForLogin(false);
         branding.setLastupdatedFields();
@@ -508,9 +508,9 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         branding.setLoginLogoPath(null);
         branding.setFaviconPath(null);
         branding.setUseHeaderLogoForLogin(false);
-        branding.setPrimaryColor("#1d4ed8");
-        branding.setSecondaryColor("#64748b");
-        branding.setAccentColor("#0891b2");
+        branding.setHeaderColor("#295785");
+        branding.setPrimaryColor("#0f62fe");
+        branding.setSecondaryColor("#393939");
         branding.setColorMode("light");
 
         // Save branding

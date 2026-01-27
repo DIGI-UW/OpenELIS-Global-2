@@ -79,13 +79,13 @@ public class SiteBrandingRestController extends BaseRestController {
         try {
             SiteBranding branding = siteBrandingService.getBranding();
             logger.debug(
-                    "Retrieved branding: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                    "Retrieved branding: id={}, primaryColor={}, secondaryColor={}, headerColor={}, colorMode={}, useHeaderLogoForLogin={}",
                     branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(),
-                    branding.getAccentColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
+                    branding.getHeaderColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
             SiteBrandingForm form = entityToForm(branding);
             logger.debug(
-                    "Returning branding form: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}, headerLogoUrl={}, loginLogoUrl={}, faviconUrl={}",
-                    form.getId(), form.getPrimaryColor(), form.getSecondaryColor(), form.getAccentColor(),
+                    "Returning branding form: id={}, primaryColor={}, secondaryColor={}, headerColor={}, colorMode={}, useHeaderLogoForLogin={}, headerLogoUrl={}, loginLogoUrl={}, faviconUrl={}",
+                    form.getId(), form.getPrimaryColor(), form.getSecondaryColor(), form.getHeaderColor(),
                     form.getColorMode(), form.getUseHeaderLogoForLogin(), form.getHeaderLogoUrl(),
                     form.getLoginLogoUrl(), form.getFaviconUrl());
             return ResponseEntity.ok(form);
@@ -103,17 +103,17 @@ public class SiteBrandingRestController extends BaseRestController {
     public ResponseEntity<?> updateBranding(@Valid @RequestBody SiteBrandingForm form, HttpServletRequest request) {
         logger.info("PUT /rest/site-branding/ - Update request received");
         logger.debug(
-                "Incoming form data: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                form.getId(), form.getPrimaryColor(), form.getSecondaryColor(), form.getAccentColor(),
+                "Incoming form data: id={}, primaryColor={}, secondaryColor={}, headerColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                form.getId(), form.getPrimaryColor(), form.getSecondaryColor(), form.getHeaderColor(),
                 form.getColorMode(), form.getUseHeaderLogoForLogin());
 
         try {
             // Get existing branding or create new
             SiteBranding branding = siteBrandingService.getBranding();
             logger.debug(
-                    "Existing branding before update: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                    "Existing branding before update: id={}, primaryColor={}, secondaryColor={}, headerColor={}, colorMode={}, useHeaderLogoForLogin={}",
                     branding.getId(), branding.getPrimaryColor(), branding.getSecondaryColor(),
-                    branding.getAccentColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
+                    branding.getHeaderColor(), branding.getColorMode(), branding.getUseHeaderLogoForLogin());
 
             // Update fields from form (only if not null and not empty)
             boolean changed = false;
@@ -133,11 +133,11 @@ public class SiteBrandingRestController extends BaseRestController {
                     changed = true;
                 }
             }
-            if (form.getAccentColor() != null && !form.getAccentColor().trim().isEmpty()) {
-                String newColor = form.getAccentColor().trim();
-                if (!newColor.equals(branding.getAccentColor())) {
-                    logger.debug("Updating accentColor: {} -> {}", branding.getAccentColor(), newColor);
-                    branding.setAccentColor(newColor);
+            if (form.getHeaderColor() != null && !form.getHeaderColor().trim().isEmpty()) {
+                String newColor = form.getHeaderColor().trim();
+                if (!newColor.equals(branding.getHeaderColor())) {
+                    logger.debug("Updating headerColor: {} -> {}", branding.getHeaderColor(), newColor);
+                    branding.setHeaderColor(newColor);
                     changed = true;
                 }
             }
@@ -174,15 +174,15 @@ public class SiteBrandingRestController extends BaseRestController {
             logger.debug("Calling siteBrandingService.saveBranding() with branding id={}", branding.getId());
             SiteBranding saved = siteBrandingService.saveBranding(branding);
             logger.info(
-                    "Branding saved successfully: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
-                    saved.getId(), saved.getPrimaryColor(), saved.getSecondaryColor(), saved.getAccentColor(),
+                    "Branding saved successfully: id={}, primaryColor={}, secondaryColor={}, headerColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                    saved.getId(), saved.getPrimaryColor(), saved.getSecondaryColor(), saved.getHeaderColor(),
                     saved.getColorMode(), saved.getUseHeaderLogoForLogin());
 
             SiteBrandingForm response = entityToForm(saved);
             logger.debug(
-                    "Returning response: id={}, primaryColor={}, secondaryColor={}, accentColor={}, colorMode={}, useHeaderLogoForLogin={}",
+                    "Returning response: id={}, primaryColor={}, secondaryColor={}, headerColor={}, colorMode={}, useHeaderLogoForLogin={}",
                     response.getId(), response.getPrimaryColor(), response.getSecondaryColor(),
-                    response.getAccentColor(), response.getColorMode(), response.getUseHeaderLogoForLogin());
+                    response.getHeaderColor(), response.getColorMode(), response.getUseHeaderLogoForLogin());
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
             logger.error("LIMSRuntimeException updating branding configuration: {}", e.getMessage(), e);
@@ -209,7 +209,7 @@ public class SiteBrandingRestController extends BaseRestController {
         form.setFaviconUrl(branding.getFaviconPath() != null ? "/rest/site-branding/logo/favicon" : null);
         form.setPrimaryColor(branding.getPrimaryColor());
         form.setSecondaryColor(branding.getSecondaryColor());
-        form.setAccentColor(branding.getAccentColor());
+        form.setHeaderColor(branding.getHeaderColor());
         form.setColorMode(branding.getColorMode());
 
         if (branding.getLastupdated() != null) {

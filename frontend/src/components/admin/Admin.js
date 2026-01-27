@@ -281,7 +281,10 @@ function Admin() {
             >
               <FormattedMessage id="sidenav.label.admin.formEntry.siteInfoconfig" />
             </SideNavMenuItem>
-            <SideNavMenuItem data-cy="siteBrandingMenu" href="#SiteBrandingMenu">
+            <SideNavMenuItem
+              data-cy="siteBrandingMenu"
+              href="#SiteBrandingMenu"
+            >
               <FormattedMessage id="sidenav.label.admin.formEntry.siteBranding" />
             </SideNavMenuItem>
             <SideNavMenuItem

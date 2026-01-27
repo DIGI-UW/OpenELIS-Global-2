@@ -19,14 +19,14 @@ public class SiteBrandingForm {
 
     private String faviconUrl;
 
+    @Size(max = 50, message = "Header color must not exceed 50 characters")
+    private String headerColor;
+
     @Size(max = 50, message = "Primary color must not exceed 50 characters")
     private String primaryColor;
 
     @Size(max = 50, message = "Secondary color must not exceed 50 characters")
     private String secondaryColor;
-
-    @Size(max = 50, message = "Accent color must not exceed 50 characters")
-    private String accentColor;
 
     @Size(max = 10, message = "Color mode must not exceed 10 characters")
     private String colorMode;
@@ -93,12 +93,12 @@ public class SiteBrandingForm {
         this.secondaryColor = secondaryColor;
     }
 
-    public String getAccentColor() {
-        return accentColor;
+    public String getHeaderColor() {
+        return headerColor;
     }
 
-    public void setAccentColor(String accentColor) {
-        this.accentColor = accentColor;
+    public void setHeaderColor(String headerColor) {
+        this.headerColor = headerColor;
     }
 
     public String getColorMode() {

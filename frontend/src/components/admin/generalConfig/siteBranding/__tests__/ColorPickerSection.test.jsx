@@ -152,7 +152,7 @@ describe("ColorPickerSection", () => {
   });
 
   /**
-   * Test: Secondary and accent color configuration
+   * Test: Secondary color configuration
    * Task Reference: T055
    */
   test("renders secondary color picker", () => {
@@ -169,19 +169,19 @@ describe("ColorPickerSection", () => {
   });
 
   /**
-   * Test: Accent color configuration
+   * Test: Header color configuration
    * Task Reference: T055
    */
-  test("renders accent color picker", () => {
+  test("renders header color picker", () => {
     renderWithIntl(
       <ColorPickerSection
-        label="Accent Color"
-        value="#0891b2"
+        label="Header Color"
+        value="#295785"
         onChange={jest.fn()}
       />,
     );
 
-    expect(screen.getByLabelText(/accent color/i)).toBeInTheDocument();
-    expect(screen.getByDisplayValue("#0891b2")).toBeInTheDocument();
+    expect(screen.getByLabelText(/header color/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("#295785")).toBeInTheDocument();
   });
 });

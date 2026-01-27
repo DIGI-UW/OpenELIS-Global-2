@@ -38,14 +38,20 @@ public class SiteBranding extends BaseObject<String> {
     @Column(name = "favicon_path", length = 500)
     private String faviconPath;
 
+    /** Header bar background color - defaults to OpenELIS brand color */
+    @Column(name = "header_color", length = 50, nullable = false)
+    private String headerColor = "#295785";
+
+    /**
+     * Primary interactive color for buttons, links, focus states - defaults to
+     * Carbon interactive-01
+     */
     @Column(name = "primary_color", length = 50, nullable = false)
-    private String primaryColor = "#1d4ed8";
+    private String primaryColor = "#0f62fe";
 
+    /** Secondary color for secondary buttons - defaults to Carbon interactive-02 */
     @Column(name = "secondary_color", length = 50, nullable = false)
-    private String secondaryColor = "#64748b";
-
-    @Column(name = "accent_color", length = 50, nullable = false)
-    private String accentColor = "#0891b2";
+    private String secondaryColor = "#393939";
 
     @Column(name = "color_mode", length = 10, nullable = false)
     private String colorMode = "light";
@@ -112,12 +118,12 @@ public class SiteBranding extends BaseObject<String> {
         this.secondaryColor = secondaryColor;
     }
 
-    public String getAccentColor() {
-        return accentColor;
+    public String getHeaderColor() {
+        return headerColor;
     }
 
-    public void setAccentColor(String accentColor) {
-        this.accentColor = accentColor;
+    public void setHeaderColor(String headerColor) {
+        this.headerColor = headerColor;
     }
 
     public String getColorMode() {

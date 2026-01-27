@@ -74,7 +74,7 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
         // Arrange: Insert test branding
         String testId = "TEST-001";
         jdbcTemplate.update(
-                "INSERT INTO site_branding (id, primary_color, secondary_color, accent_color, color_mode, use_header_logo_for_login, sys_user_id, last_updated) "
+                "INSERT INTO site_branding (id, primary_color, secondary_color, header_color, color_mode, use_header_logo_for_login, sys_user_id, last_updated) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
                 testId, "#1d4ed8", "#64748b", "#0891b2", "light", false, 1);
 
@@ -96,7 +96,7 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
         SiteBranding branding = new SiteBranding();
         branding.setPrimaryColor("#ff0000");
         branding.setSecondaryColor("#00ff00");
-        branding.setAccentColor("#0000ff");
+        branding.setHeaderColor("#0000ff");
         branding.setColorMode("light");
         branding.setUseHeaderLogoForLogin(false);
         branding.setSysUserId("1");
@@ -119,7 +119,7 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
         // Arrange: Insert test branding
         String testId = "TEST-002";
         jdbcTemplate.update(
-                "INSERT INTO site_branding (id, primary_color, secondary_color, accent_color, color_mode, use_header_logo_for_login, sys_user_id, last_updated) "
+                "INSERT INTO site_branding (id, primary_color, secondary_color, header_color, color_mode, use_header_logo_for_login, sys_user_id, last_updated) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
                 testId, "#1d4ed8", "#64748b", "#0891b2", "light", false, 1);
 

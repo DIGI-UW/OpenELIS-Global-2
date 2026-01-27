@@ -40,9 +40,9 @@ import org.yaml.snakeyaml.Yaml;
  *   favicon: "branding/custom-favicon.png"
  *   colorMode: "light"
  *   colors:
- *     primary: "#1a365d"
- *     secondary: "slate"
- *     accent: "rgb(56, 178, 172)"
+ *     header: "#295785"
+ *     primary: "#0f62fe"
+ *     secondary: "#393939"
  * </pre>
  *
  * Logo file paths are relative to the configuration directory. Files are copied
@@ -126,8 +126,8 @@ public class SiteBrandingConfigurationHandler implements DomainConfigurationHand
                 if (colors.containsKey("secondary") && colors.get("secondary") != null) {
                     branding.setSecondaryColor(colors.get("secondary").toString().trim());
                 }
-                if (colors.containsKey("accent") && colors.get("accent") != null) {
-                    branding.setAccentColor(colors.get("accent").toString().trim());
+                if (colors.containsKey("header") && colors.get("header") != null) {
+                    branding.setHeaderColor(colors.get("header").toString().trim());
                 }
             }
         }

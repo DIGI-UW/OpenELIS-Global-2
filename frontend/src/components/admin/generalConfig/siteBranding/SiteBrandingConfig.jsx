@@ -21,7 +21,7 @@ import {
   getBranding,
   updateBranding,
   resetBranding,
-} from "../../../../services/siteBrandingService";
+} from "../../../utils/BrandingUtils";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   AlertDialog,
@@ -77,9 +77,9 @@ function SiteBrandingConfig() {
       } else {
         // Handle error - use default values
         const defaultBranding = {
-          primaryColor: "#1d4ed8",
-          secondaryColor: "#64748b",
-          accentColor: "#0891b2",
+          headerColor: "#295785",
+          primaryColor: "#0f62fe",
+          secondaryColor: "#393939",
           colorMode: "light",
           useHeaderLogoForLogin: false,
         };
@@ -118,9 +118,9 @@ function SiteBrandingConfig() {
       if (!obj) return {};
       return {
         id: obj.id || null,
+        headerColor: (obj.headerColor || "").trim().toLowerCase(),
         primaryColor: (obj.primaryColor || "").trim().toLowerCase(),
         secondaryColor: (obj.secondaryColor || "").trim().toLowerCase(),
-        accentColor: (obj.accentColor || "").trim().toLowerCase(),
         colorMode: (obj.colorMode || "").trim().toLowerCase(),
         useHeaderLogoForLogin: Boolean(obj.useHeaderLogoForLogin),
       };
@@ -172,11 +172,18 @@ function SiteBrandingConfig() {
     const root = document.documentElement;
 
     console.debug("Applying branding colors to DOM:", {
+      header: brandingData.headerColor,
       primary: brandingData.primaryColor,
       secondary: brandingData.secondaryColor,
-      accent: brandingData.accentColor,
     });
 
+    if (brandingData.headerColor) {
+      root.style.setProperty(
+        "--site-branding-header",
+        brandingData.headerColor,
+      );
+      console.debug("Set --site-branding-header to:", brandingData.headerColor);
+    }
     if (brandingData.primaryColor) {
       root.style.setProperty("--cds-interactive-01", brandingData.primaryColor);
       root.style.setProperty(
@@ -200,17 +207,6 @@ function SiteBrandingConfig() {
       console.debug(
         "Set --cds-interactive-02 and --site-branding-secondary to:",
         brandingData.secondaryColor,
-      );
-    }
-    if (brandingData.accentColor) {
-      root.style.setProperty("--cds-support-01", brandingData.accentColor);
-      root.style.setProperty(
-        "--site-branding-accent",
-        brandingData.accentColor,
-      );
-      console.debug(
-        "Set --cds-support-01 and --site-branding-accent to:",
-        brandingData.accentColor,
       );
     }
 
@@ -255,21 +251,21 @@ function SiteBrandingConfig() {
     // Task Reference: T097 - Disable form during save operation
     setIsSaving(true);
 
-    // Prepare data for sending - ensure colors are always valid hex codes
+    // Prepare data for sending - ensure colors are always valid
     // Exclude logo URLs as they are managed separately via upload endpoints
     // Colors must be provided as database requires NOT NULL
     const dataToSend = {
       id: branding.id,
-      primaryColor: branding.primaryColor?.trim() || "#1d4ed8",
-      secondaryColor: branding.secondaryColor?.trim() || "#64748b",
-      accentColor: branding.accentColor?.trim() || "#0891b2",
+      headerColor: branding.headerColor?.trim() || "#295785",
+      primaryColor: branding.primaryColor?.trim() || "#0f62fe",
+      secondaryColor: branding.secondaryColor?.trim() || "#393939",
       colorMode: branding.colorMode?.trim() || "light",
       useHeaderLogoForLogin: branding.useHeaderLogoForLogin || false,
       // Do not include headerLogoUrl, loginLogoUrl, or faviconUrl
       // These are managed via separate logo upload endpoints
     };
 
-    // Task Reference: T072 - Call siteBrandingService.updateBranding() with form data
+    // Save branding configuration to server
     updateBranding(dataToSend, (status, errorMessage, responseData) => {
       setIsSaving(false);
       if (status === 200 || status === 201) {
@@ -285,9 +281,9 @@ function SiteBrandingConfig() {
         // Use responseData if available and complete, otherwise reload from server
         if (
           responseData &&
+          responseData.headerColor &&
           responseData.primaryColor &&
-          responseData.secondaryColor &&
-          responseData.accentColor
+          responseData.secondaryColor
         ) {
           console.debug("Response data is complete:", responseData);
           setBranding(responseData);
@@ -364,28 +360,24 @@ function SiteBrandingConfig() {
 
         // Reset CSS custom properties to defaults
         document.documentElement.style.setProperty(
+          "--site-branding-header",
+          "#295785",
+        );
+        document.documentElement.style.setProperty(
           "--cds-interactive-01",
-          "#1d4ed8",
+          "#0f62fe",
         );
         document.documentElement.style.setProperty(
           "--cds-interactive-02",
-          "#64748b",
-        );
-        document.documentElement.style.setProperty(
-          "--cds-support-01",
-          "#0891b2",
+          "#393939",
         );
         document.documentElement.style.setProperty(
           "--site-branding-primary",
-          "#1d4ed8",
+          "#0f62fe",
         );
         document.documentElement.style.setProperty(
           "--site-branding-secondary",
-          "#64748b",
-        );
-        document.documentElement.style.setProperty(
-          "--site-branding-accent",
-          "#0891b2",
+          "#393939",
         );
 
         // Reset favicon
@@ -516,11 +508,31 @@ function SiteBrandingConfig() {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <ColorPickerSection
+            label={intl.formatMessage({ id: "site.branding.header.color" })}
+            description={intl.formatMessage({
+              id: "site.branding.header.color.description",
+            })}
+            value={branding?.headerColor || "#295785"}
+            onChange={(color) => {
+              setBranding((prev) => ({ ...prev, headerColor: color }));
+              // Apply color immediately for preview
+              document.documentElement.style.setProperty(
+                "--site-branding-header",
+                color,
+              );
+            }}
+          />
+        </Column>
+      </Grid>
+
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <ColorPickerSection
             label={intl.formatMessage({ id: "site.branding.primary.color" })}
             description={intl.formatMessage({
               id: "site.branding.primary.color.description",
             })}
-            value={branding?.primaryColor || "#1d4ed8"}
+            value={branding?.primaryColor || "#0f62fe"}
             onChange={(color) => {
               setBranding((prev) => ({ ...prev, primaryColor: color }));
               // Apply color immediately for preview
@@ -544,7 +556,7 @@ function SiteBrandingConfig() {
             description={intl.formatMessage({
               id: "site.branding.secondary.color.description",
             })}
-            value={branding?.secondaryColor || "#64748b"}
+            value={branding?.secondaryColor || "#393939"}
             onChange={(color) => {
               setBranding((prev) => ({ ...prev, secondaryColor: color }));
               // Apply color immediately for preview
@@ -554,30 +566,6 @@ function SiteBrandingConfig() {
               );
               document.documentElement.style.setProperty(
                 "--site-branding-secondary",
-                color,
-              );
-            }}
-          />
-        </Column>
-      </Grid>
-
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <ColorPickerSection
-            label={intl.formatMessage({ id: "site.branding.accent.color" })}
-            description={intl.formatMessage({
-              id: "site.branding.accent.color.description",
-            })}
-            value={branding?.accentColor || "#0891b2"}
-            onChange={(color) => {
-              setBranding((prev) => ({ ...prev, accentColor: color }));
-              // Apply color immediately for preview
-              document.documentElement.style.setProperty(
-                "--cds-support-01",
-                color,
-              );
-              document.documentElement.style.setProperty(
-                "--site-branding-accent",
                 color,
               );
             }}
