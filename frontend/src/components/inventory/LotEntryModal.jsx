@@ -38,7 +38,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   const [items, setItems] = useState([]);
   const [locations, setLocations] = useState([]);
-
+  const [itemsLoading, setItemsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -81,9 +81,23 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   }, [lot]);
 
   const fetchItems = async () => {
+    setItemsLoading(true);
     try {
       const allItems = await InventoryItemAPI.getAll({ isActive: true });
-      const validItems = Array.isArray(allItems) ? allItems : [];
+      console.log("LotEntryModal: fetchItems response:", allItems);
+
+      let validItems = [];
+      if (Array.isArray(allItems)) {
+        validItems = allItems;
+      } else if (allItems && Array.isArray(allItems.items)) {
+        validItems = allItems.items;
+      } else {
+        console.warn(
+          "LotEntryModal: Unexpected items response format",
+          allItems,
+        );
+      }
+
       setItems(
         validItems.map((item) => ({
           id: item.id,
@@ -91,9 +105,15 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           item: item,
         })),
       );
+      if (validItems.length === 0) {
+        console.warn("LotEntryModal: No items found in response");
+      }
     } catch (err) {
       console.error("Error fetching items:", err);
+      setError("Failed to load catalog items: " + err.message);
       setItems([]);
+    } finally {
+      setItemsLoading(false);
     }
   };
 
@@ -121,12 +141,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   };
 
   const handleChange = (field, value) => {
-    setFormData((prev) => {
-      if (prev[field] === value) {
-        return prev;
-      }
-      return { ...prev, [field]: value };
-    });
+    setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
   };
 
@@ -197,7 +212,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   return (
     <>
       <Modal
-        open={open}
+        open={open && !locationModalOpen}
         onRequestClose={onClose}
         onRequestSubmit={handleSave}
         modalHeading={intl.formatMessage({
@@ -207,6 +222,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
         primaryButtonDisabled={saving}
         size="md"
+        hasScrollingContent
       >
         <Stack gap={5}>
           {error && (
@@ -216,7 +232,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <Dropdown
             id="inventoryItem"
             titleText={<FormattedMessage id="lot.selectItem" />}
-            label="Select catalog item"
+            label={itemsLoading ? "Loading..." : (items.length === 0 ? "No catalog items available" : "Select catalog item")}
             items={items}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
@@ -225,10 +241,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
                 : null
             }
             onChange={({ selectedItem }) =>
-              handleChange("inventoryItem", selectedItem.item)
+              handleChange("inventoryItem", selectedItem?.item)
             }
             required
-            disabled={isEdit}
+            disabled={isEdit || itemsLoading}
+            warn={!itemsLoading && items.length === 0}
+            warnText="No catalog items found. Please create catalog items first."
           />
 
           <TextInput
@@ -307,7 +325,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
                   : null
               }
               onChange={({ selectedItem }) =>
-                handleChange("storageLocation", selectedItem.location)
+                handleChange("storageLocation", selectedItem?.location)
               }
               required
             />

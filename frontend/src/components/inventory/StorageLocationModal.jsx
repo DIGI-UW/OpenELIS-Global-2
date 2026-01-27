@@ -1,6 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Modal,
+  ComposedModal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
   TextInput,
   TextArea,
   Dropdown,
@@ -18,13 +22,29 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
     locationCode: "",
     locationType: "ROOM",
     description: "",
-    temperatureMin: "",
-    temperatureMax: "",
+    temperatureMin: -80,
+    temperatureMax: -20,
     parentLocation: null,
   });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        name: "",
+        locationCode: "",
+        locationType: "ROOM",
+        description: "",
+        temperatureMin: -80,
+        temperatureMax: -20,
+        parentLocation: null,
+      });
+      setError(null);
+    }
+  }, [open]);
 
   const locationTypes = [
     { id: "ROOM", text: "Room" },
@@ -35,8 +55,8 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
     { id: "CABINET", text: "Cabinet" },
   ];
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleFieldChange = (fieldName, fieldValue) => {
+    setFormData((prev) => ({ ...prev, [fieldName]: fieldValue }));
     setError(null);
   };
 
@@ -88,17 +108,6 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
       };
 
       const newLocation = await StorageLocationAPI.create(payload);
-
-      setFormData({
-        name: "",
-        locationCode: "",
-        locationType: "ROOM",
-        description: "",
-        temperatureMin: "",
-        temperatureMax: "",
-        parentLocation: null,
-      });
-
       onSave(newLocation);
     } catch (err) {
       console.error("Error creating storage location:", err);
@@ -108,124 +117,126 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
     }
   };
 
-  const handleCancel = () => {
-    setFormData({
-      name: "",
-      locationCode: "",
-      locationType: "ROOM",
-      description: "",
-      temperatureMin: "",
-      temperatureMax: "",
-      parentLocation: null,
-    });
-    setError(null);
-    onClose();
-  };
-
   return (
-    <Modal
+    <ComposedModal
       open={open}
-      onRequestClose={handleCancel}
-      onRequestSubmit={handleSubmit}
-      modalHeading={intl.formatMessage({
-        id: "storage.location.add.title",
-      })}
-      primaryButtonText={intl.formatMessage({ id: "button.save" })}
-      secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-      primaryButtonDisabled={saving}
+      onClose={onClose}
       size="md"
+      SelectorPrimaryFocus="#name"
+      preventCloseOnClickOutside
     >
-      <Stack gap={5}>
-        <TextInput
-          id="name"
-          labelText={
-            <>
-              {intl.formatMessage({ id: "storage.location.name" })}
-              <span style={{ color: "#da1e28" }}> *</span>
-            </>
-          }
-          placeholder="e.g., Cold Storage Room 1"
-          value={formData.name}
-          onChange={(e) => handleChange("name", e.target.value)}
-          invalid={error && !formData.name?.trim()}
-        />
-
-        <TextInput
-          id="locationCode"
-          labelText={intl.formatMessage({ id: "storage.location.code" })}
-          placeholder="e.g., ROOM-001 (optional)"
-          value={formData.locationCode}
-          onChange={(e) => handleChange("locationCode", e.target.value)}
-        />
-
-        <Dropdown
-          id="locationType"
-          titleText={
-            <>
-              {intl.formatMessage({ id: "storage.location.type" })}
-              <span style={{ color: "#da1e28" }}> *</span>
-            </>
-          }
-          label="Select location type"
-          items={locationTypes}
-          itemToString={(item) => (item ? item.text : "")}
-          selectedItem={locationTypes.find(
-            (t) => t.id === formData.locationType,
-          )}
-          onChange={({ selectedItem }) =>
-            handleChange("locationType", selectedItem?.id)
-          }
-        />
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "1rem",
-          }}
-        >
-          <NumberInput
-            id="temperatureMin"
-            label={intl.formatMessage({ id: "storage.location.tempMin" })}
-            value={formData.temperatureMin}
-            onChange={(e) => handleChange("temperatureMin", e.target.value)}
-            min={-200}
-            max={200}
-            placeholder="-80"
-            helperText="°C"
-            allowEmpty
+      <ModalHeader
+        title={intl.formatMessage({ id: "storage.location.add.title" })}
+      />
+      <ModalBody>
+        <Stack gap={5}>
+          <TextInput
+            // id="name"
+            id="storage-location-name"
+            autoFocus
+            labelText={
+              <>
+                {intl.formatMessage({ id: "storage.location.name" })}
+                <span style={{ color: "#da1e28" }}> *</span>
+              </>
+            }
+            placeholder="e.g., Cold Storage Room 1"
+            value={formData.name}
+            onChange={(e) => handleFieldChange("name", e.target.value)}
+            invalid={error && !formData.name?.trim()}
           />
-          <NumberInput
-            id="temperatureMax"
-            label={intl.formatMessage({ id: "storage.location.tempMax" })}
-            value={formData.temperatureMax}
-            onChange={(e) => handleChange("temperatureMax", e.target.value)}
-            min={-200}
-            max={200}
-            placeholder="-20"
-            helperText="°C"
-            allowEmpty
+
+          <TextInput
+            // id="locationCode"
+            id="storage-location-code"
+            labelText={intl.formatMessage({ id: "storage.location.code" })}
+            placeholder="e.g., ROOM-001 (optional)"
+            value={formData.locationCode}
+            onChange={(e) => handleFieldChange("locationCode", e.target.value)}
           />
-        </div>
 
-        <TextArea
-          id="description"
-          labelText={intl.formatMessage({
-            id: "storage.location.description",
-          })}
-          placeholder="Optional description or notes"
-          value={formData.description}
-          onChange={(e) => handleChange("description", e.target.value)}
-          rows={3}
-        />
+          <Dropdown
+            // id="locationType"
+            id="storage-location-type"
+            titleText={
+              <>
+                {intl.formatMessage({ id: "storage.location.type" })}
+                <span style={{ color: "#da1e28" }}> *</span>
+              </>
+            }
+            label="Select location type"
+            items={locationTypes}
+            itemToString={(item) => (item ? item.text : "")}
+            selectedItem={locationTypes.find(
+              (t) => t.id === formData.locationType,
+            )}
+            onChange={({ selectedItem }) =>
+              handleFieldChange("locationType", selectedItem?.id)
+            }
+          />
 
-        {error && (
-          <div className="error-message" style={{ color: "#da1e28" }}>
-            {error}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1rem",
+            }}
+          >
+            <NumberInput
+              id="storage-location-temp-min"
+              label={intl.formatMessage({ id: "storage.location.tempMin" })}
+              value={formData.temperatureMin}
+              onChange={(e, { value }) =>
+                handleFieldChange("temperatureMin", value)
+              }
+              min={-200}
+              max={200}
+              placeholder="-80"
+              helperText="°C"
+              allowEmpty
+            />
+            <NumberInput
+              id="storage-location-temp-max"
+              label={intl.formatMessage({ id: "storage.location.tempMax" })}
+              value={formData.temperatureMax}
+              onChange={(e, { value }) =>
+                handleFieldChange("temperatureMax", value)
+              }
+              min={-200}
+              max={200}
+              placeholder="-20"
+              helperText="°C"
+              allowEmpty
+            />
           </div>
-        )}
-      </Stack>
-    </Modal>
+
+          <TextArea
+            id="storage-location-description"
+            labelText={intl.formatMessage({
+              id: "storage.location.description",
+            })}
+            placeholder="Optional description or notes"
+            value={formData.description}
+            onChange={(e) => handleFieldChange("description", e.target.value)}
+            rows={3}
+          />
+
+          {error && (
+            <div className="error-message" style={{ color: "#da1e28" }}>
+              {error}
+            </div>
+          )}
+        </Stack>
+      </ModalBody>
+      <ModalFooter>
+        <Button kind="secondary" onClick={onClose}>
+          {intl.formatMessage({ id: "button.cancel" })}
+        </Button>
+        <Button kind="primary" onClick={handleSubmit} disabled={saving}>
+          {intl.formatMessage({ id: "button.save" })}
+        </Button>
+      </ModalFooter>
+    </ComposedModal>
   );
 };
 

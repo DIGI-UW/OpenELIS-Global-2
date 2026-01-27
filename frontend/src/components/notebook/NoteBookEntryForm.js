@@ -673,11 +673,21 @@ const NoteBookEntryForm = () => {
     setAuditTrailPage(pageInfo.page);
     setAuditTrailPageSize(pageInfo.pageSize);
   };
-
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
-    getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", setTypes);
+    getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", (data) => {
+      console.log("NoteBookEntryForm: NOTEBOOK_EXPT_TYPE response:", data);
+      const validTypes = Array.isArray(data)
+        ? data
+        : data && Array.isArray(data.items)
+          ? data.items
+          : [];
+      if (validTypes.length === 0 && data) {
+        console.warn("NoteBookEntryForm: Received data but couldn't extract items", data);
+      }
+      setTypes(validTypes);
+    });
     getFromOpenElisServer("/rest/displayList/ANALYZER_LIST", setAnalyzerList);
     getFromOpenElisServer("/rest/displayList/ALL_TESTS", setAllTests);
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
@@ -688,7 +698,6 @@ const NoteBookEntryForm = () => {
       componentMounted.current = false;
     };
   }, []);
-
   useEffect(() => {
     if (!notebookid) {
       setMode(MODES.CREATE);

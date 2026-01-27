@@ -552,6 +552,11 @@ function GenericSampleResults({
                   rawValue !== undefined ? rawValue : e.target.value;
                 setAccessionNumber(value);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
             />
           </Column>
           <Column lg={2} md={2} sm={2}>
