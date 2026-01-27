@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+
+    <status_of_sample id="1"
+        description="Sample Description 1" code="1" status_type="SampleType1"
+        lastupdated="2025-03-18" name="Status 1"
+        display_key="sample_display_key_1" is_active="Y" />
+    <status_of_sample id="3"
+        description="Sample Description 2" code="1" status_type="SampleType2"
+        lastupdated="2025-03-18" name="Status 2"
+        display_key="sample_display_key_2" is_active="Y" />
+
+    <qa_event id="301" name="QA Event 1"
+        description="Quality Assurance Event 1" is_billable="Y"
+        reporting_sequence="1"
+        reporting_text="QA event for reporting purposes." is_holdable="N"
+        lastupdated="2025-04-14 12:00:00" display_key="QA_EVENT_1" />
+    <qa_event id="302" name="QA Event 2"
+        description="Quality Assurance Event 2" is_billable="N"
+        reporting_sequence="2" reporting_text="Another QA event for testing."
+        is_holdable="Y" lastupdated="2025-04-14 12:30:00"
+        display_key="QA_EVENT_2" />
+
+    <sample id="401" accession_number="12345"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="402" accession_number="13333"
+        received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample_item id="601" sort_order="1" status_id="1"
+        collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="602" sort_order="12" status_id="1"
+        collection_date="2023-11-16 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="603" sort_order="24" status_id="3"
+        collection_date="2023-11-16 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <sample_qaevent id="1" qa_event_id="301" sample_id="401"
+        completed_date="2025-03-01" lastupdated="2024-06-25 09:00:00"
+        sampleitem_id="601" entered_date="2025-06-25 09:30:00" />
+
+    <sample_qaevent id="2" qa_event_id="302" sample_id="402"
+        completed_date="2025-03-10" lastupdated="2025-06-25 10:15:00"
+        sampleitem_id="602" entered_date="2025-06-25 10:45:00" />
+
+    <sample_qaevent id="3" qa_event_id="302" sample_id="402"
+        completed_date="2025-03-20" lastupdated="2024-06-25 09:00:00"
+        sampleitem_id="603" entered_date="2025-06-25 12:00:00" />
+
+</dataset>

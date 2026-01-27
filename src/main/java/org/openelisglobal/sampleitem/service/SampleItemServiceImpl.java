@@ -1,7 +1,9 @@
 package org.openelisglobal.sampleitem.service;
 
 import jakarta.annotation.PostConstruct;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -55,7 +57,12 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
     @Override
     @Transactional(readOnly = true)
     public List<SampleItem> getSampleItemsBySampleId(String id) {
-        return baseObjectDAO.getAllMatching("sample.id", id);
+
+        Map<String, Object> criteria = new HashMap<>();
+        criteria.put("sample.id", id);
+        criteria.put("voided", false);
+
+        return baseObjectDAO.getAllMatching(criteria);
     }
 
     @Override
@@ -105,5 +112,18 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
     public String getTypeOfSampleId(SampleItem sampleItem) {
         sampleItem = get(sampleItem.getId());
         return sampleItem.getTypeOfSampleId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleItem> getSampleItemsByExternalID(String externalId) {
+        return getBaseObjectDAO().getSampleItemsByExternalID(externalId);
+    }
+
+    @Override
+    public boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
+            List<List<String>> analysisGroups) {
+        getBaseObjectDAO().insertAliquots(lastSampleItem, sampleItemsToInsert, analysisGroups);
+        return true;
     }
 }

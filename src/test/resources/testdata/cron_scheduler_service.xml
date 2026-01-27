@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dataset>
+    <!-- System Users -->
+    <system_user id="1" login_name="admin" last_name="Admin"
+        first_name="System" is_active="Y" is_employee="Y" />
+
+    <system_user id="2" login_name="scheduler_user"
+        last_name="Scheduler" first_name="Test" is_active="Y" is_employee="Y" />
+
+    <!-- Reference Tables Entry for QUARTZ_CRON_SCHEDULER -->
+    <reference_tables id="203"
+        name="QUARTZ_CRON_SCHEDULER" is_hl7_encoded="N" keep_history="N" />
+
+    <!-- Active Cron Schedulers -->
+    <quartz_cron_scheduler id="100"
+        cron_statement="0 0 2 * * ?" last_run="2024-01-01 02:00:00"
+        active="true" run_if_past="true" name="Send Site Indicators"
+        job_name="sendSiteIndicators"
+        display_key="schedule.name.sendSiteIndicators"
+        description_key="schedule.description.sendSiteIndicators" />
+
+    <quartz_cron_scheduler id="101"
+        cron_statement="0 30 3 * * ?" last_run="2024-01-02 03:30:00"
+        active="true" run_if_past="true" name="Gather Site Indicators"
+        job_name="gatherSiteIndicators"
+        display_key="schedule.name.gatherSiteIndicators"
+        description_key="schedule.description.gatherSiteIndicators" />
+
+    <quartz_cron_scheduler id="102"
+        cron_statement="0 0 1 * * ?" last_run="2024-01-03 01:00:00"
+        active="true" run_if_past="false" name="Daily Backup Job"
+        job_name="dailyBackupJob" display_key="schedule.name.dailyBackup"
+        description_key="schedule.description.dailyBackup" />
+
+    <!-- Inactive Cron Scheduler -->
+    <quartz_cron_scheduler id="103"
+        cron_statement="0 0 4 * * ?" last_run="2024-01-04 04:00:00"
+        active="false" run_if_past="true" name="Inactive Test Job"
+        job_name="inactiveTestJob" display_key="schedule.name.inactiveTest"
+        description_key="schedule.description.inactiveTest" />
+
+    <!-- Cron Scheduler with 'never' statement (should not run) -->
+    <quartz_cron_scheduler id="104"
+        cron_statement="never" active="true" run_if_past="true"
+        name="Never Run Job" job_name="neverRunJob"
+        display_key="schedule.name.neverRun"
+        description_key="schedule.description.neverRun" />
+
+    <!-- Cron Scheduler for malaria surveillance -->
+    <quartz_cron_scheduler id="105"
+        cron_statement="0 0 0 * * ?" last_run="2024-01-05 00:00:00"
+        active="true" run_if_past="true" name="Malaria Surveillance Report"
+        job_name="sendMalariaSurviellanceReport"
+        display_key="schedule.name.malariaSurveillance"
+        description_key="schedule.description.malariaSurveillance" />
+
+    <!-- Cron Scheduler without last_run (never executed) -->
+    <quartz_cron_scheduler id="106"
+        cron_statement="0 15 2 * * ?" active="true" run_if_past="true"
+        name="New Job Never Run" job_name="newJobNeverRun"
+        display_key="schedule.name.newJob"
+        description_key="schedule.description.newJob" />
+
+    <!-- Cron Scheduler for testing update scenarios -->
+    <quartz_cron_scheduler id="107"
+        cron_statement="0 45 5 * * ?" last_run="2024-01-06 05:45:00"
+        active="true" run_if_past="true" name="Update Test Job"
+        job_name="updateTestJob" display_key="schedule.name.updateTest"
+        description_key="schedule.description.updateTest" />
+</dataset>

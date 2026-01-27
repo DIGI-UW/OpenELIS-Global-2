@@ -10,6 +10,7 @@ public class ResultSelectListForm extends BaseForm {
 
     private String nameEnglish;
     private String nameFrench;
+    private String loincCode;
 
     private boolean normal;
 
@@ -85,5 +86,13 @@ public class ResultSelectListForm extends BaseForm {
 
     public void setTestDictionary(Map<String, List<IdValuePair>> testDictionary) {
         this.testDictionary = testDictionary;
+    }
+
+    public String getLoincCode() {
+        return loincCode;
+    }
+
+    public void setLoincCode(String loincCode) {
+        this.loincCode = loincCode;
     }
 }

@@ -125,6 +125,10 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
       return item.id === eOrderId;
     });
 
+    const hasRealizedStatus = row.cells.some(
+      (cell) => cell.info?.header === "status" && cell.value === "Realized",
+    );
+
     return (
       <>
         <div className="formInlineDiv">
@@ -140,6 +144,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
             onKeyPress={(e) => {
               handleKeyPress(e, index);
             }}
+            disabled={hasRealizedStatus}
             labelText={intl.formatMessage({ id: "sample.label.labnumber" })}
             id="labNo"
             helperText={
@@ -147,6 +152,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
                 <FormattedMessage id="label.order.scan.text" />{" "}
                 <Link
                   href="#"
+                  disabled={hasRealizedStatus}
                   onClick={(e) => {
                     handleLabNoGeneration(e, index);
                   }}
@@ -164,6 +170,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
               label={intl.formatMessage({ id: "eorder.button.editOrder" })}
               hasIconOnly={true}
               renderIcon={Edit}
+              disabled={hasRealizedStatus}
               iconDescription={intl.formatMessage({
                 id: "eorder.button.editOrder",
               })}
@@ -177,6 +184,7 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
               label={intl.formatMessage({ id: "eorder.button.enterOrder" })}
               hasIconOnly={true}
               renderIcon={TaskAdd}
+              disabled={hasRealizedStatus}
               iconDescription={intl.formatMessage({
                 id: "eorder.button.enterOrder",
               })}

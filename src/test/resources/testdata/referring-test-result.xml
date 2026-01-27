@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <sample_item id="501" sort_order="1"
+        source_other="Left Arm" quantity="5.0"
+        lastupdated="2024-07-01 08:30:00" external_id="EXT-001"
+        collection_date="2024-07-01 08:00:00 " status_id="1"
+        collector="Dr. A. Smith" />
+
+    <sample_item id="502" sort_order="2"
+        source_other="Right Arm" quantity="3.5"
+        lastupdated="2024-07-02 09:15:00" external_id="EXT-002"
+        collection_date="2024-07-02 09:00:00 " status_id="2"
+        collector="Nurse B. Lee" />
+
+    <sample_item id="503" sort_order="3"
+        source_other="Articles" quantity="5.78"
+        lastupdated="2024-07-03 10:00:00" external_id="3"
+        collection_date="2023-07-03 10:00:00" status_id="3"
+        collector="Dr. Kelly Darkly" />
+
+    <referring_test_result id="1"
+        sample_item_id="501" test_name="Hemoglobin" result_value="13.5 g/dL"
+        lastupdated="2024-07-01 08:00:00 " />
+
+    <referring_test_result id="2"
+        sample_item_id="502" test_name="WBC Count" result_value="6.8 x10^3/uL"
+        lastupdated="2024-07-02 09:15:00 " />
+
+    <referring_test_result id="3"
+        sample_item_id="503" test_name="Malaria" result_value="Negative"
+        lastupdated="2024-07-03 10:30:00 " />
+
+    <referring_test_result id="4"
+        sample_item_id="503" test_name="Typhoid" result_value="34.23"
+        lastupdated="2024-07-04 11:45:00 " />
+    <referring_test_result id="4"
+        sample_item_id="503" test_name="Malaria" result_value="Negative"
+        lastupdated="2024-07-03 10:30:00 " />
+    <referring_test_result id="5"
+        sample_item_id="503" test_name="Malaria" result_value="Negative"
+        lastupdated="2024-07-03 10:30:00 " />
+</dataset>

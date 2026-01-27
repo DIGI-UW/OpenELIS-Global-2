@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="1" description="whole blood"
+        english="Blood" french="sang" />
+
+    <system_role id="501" name="Global Administrator"
+        description="Change tests panels etc." is_grouping_role="false"
+        display_key="role.maintenance" active="1" editable="false" />
+    <system_role id="502" name="Reception"
+        description="Attendee of personnel." is_grouping_role="false"
+        display_key="role.intake" active="1" editable="false" />
+    <system_role id="503" name="Inventory mgr"
+        description="tracks inventory." is_grouping_role="false"
+        display_key="role.inventory" active="1" editable="false" />
+
+    <type_of_sample id="1506" description="blood tests"
+        domain="H" lastupdated="2024-06-19 19:45:00" local_abbrev="simplest"
+        is_active="true" sort_order="3" name_localization_id="1"
+        display_key="sample.type.Sang" />
+
+</dataset>

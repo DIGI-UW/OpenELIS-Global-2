@@ -275,7 +275,7 @@ const EOrderSearch = ({
         </Column>
       )}
       <Column lg={16} md={8} sm={4}>
-        {loading && <Loading description="Loading Orders..." />}
+        {loading && <Loading description="Loading Orders..." small={true} />}
       </Column>
 
       <>

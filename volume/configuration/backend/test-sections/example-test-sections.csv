@@ -1,0 +1,11 @@
+testSectionName,description,isActive,sortOrder,isExternal,englishName,frenchName
+Hematology,Hematology Department,Y,1,N,Hematology,Hématologie
+Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie
+Serology,Serology Department,Y,3,N,Serology,Sérologie
+Parasitology,Parasitology Department,Y,4,N,Parasitology,Parasitologie
+Urinalysis,Urinalysis Department,Y,5,N,Urinalysis,Analyse Urinaire
+Microbiology,Microbiology Department,Y,6,N,Microbiology,Microbiologie
+Immunology,Immunology Department,Y,7,N,Immunology,Immunologie
+Molecular Biology,Molecular Biology Department,Y,8,N,Molecular Biology,Biologie Moléculaire
+Cytology,Cytology Department,Y,9,N,Cytology,Cytologie
+Histopathology,Histopathology Department,Y,10,N,Histopathology,Histopathologie

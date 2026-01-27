@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <sample_item id="601" sort_order="1" status_id="1"
+        collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="602" sort_order="12" status_id="1"
+        collection_date="2023-11-16 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="603" sort_order="24" status_id="3"
+        collection_date="2023-11-16 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <nc_event id="1001" name="Sample Mislabeling"
+        name_of_reporter="Dr. Jane Doe" report_date="2025-04-15"
+        nce_number="1744721660206" date_of_event="2025-04-14"
+        lab_order_number="DEV01250000000000008" prescriber_name="JOHN , SMITH"
+        site="UE - AMBASSADE DES USA"
+        description="Sample was mislabeled at accessioning desk."
+        suspected_causes="Human error during sample reception."
+        proposed_action="Retrain staff on accession procedures."
+        laboratory_component="3" severity_score="5" color_code="RED"
+        corrective_action="Sample re-collection and staff training."
+        control_action="Double-check label against order form."
+        comments="Incident detected early, no patient harm." effective="YES"
+        signature="Jane Doe" date_completed="2025-04-16" status="Resolved"
+        discussion_date="2025-04-17 13:00:00.0" />
+
+    <nc_event id="1002" name="Reagent Expiry Overlooked"
+        name_of_reporter="Mr. John Tester" report_date="2025-04-10"
+        nce_number="1744721660205" date_of_event="2025-04-09"
+        lab_order_number="DEV01250000000000002" prescriber_name="ALI , ALICE"
+        site="UE - AMBASSADE DES USA"
+        description="Expired reagent was used for testing."
+        suspected_causes="Inventory tracking failure."
+        proposed_action="Introduce reagent expiry alarms in LIS."
+        laboratory_component="4" severity_score="4" color_code="ORANGE"
+        corrective_action="Retest all affected samples."
+        control_action="Implement expiry checks before use."
+        comments="Issue addressed quickly, no impact on results."
+        effective="YES" signature="John Tester" date_completed="2025-04-12"
+        status="Closed" discussion_date="2025-04-13 13:00:00.0" />
+
+    <nc_event id="1003" name="Instrument Calibration Error"
+        name_of_reporter="Dr. Lee" report_date="2025-03-30"
+        nce_number="1744721660208" date_of_event="2025-03-29"
+        lab_order_number="DEV01250000000000003" prescriber_name="KIM , YUN"
+        site="UE - AMBASSADE DES USA" reporting_unit_id="3"
+        description="Analyzer produced out-of-range values due to missed calibration."
+        suspected_causes="Calibration schedule not followed."
+        proposed_action="Automate calibration reminders."
+        laboratory_component="5" nce_category_id="3" severity_score="3"
+        color_code="YELLOW"
+        corrective_action="Recalibrate instrument and repeat tests."
+        control_action="Enforce pre-run calibration verification."
+        comments="Error identified post-run, corrective action completed."
+        effective="YES" signature="Dr. Lee" date_completed="2025-04-01"
+        nce_type_id="3" status="Resolved"
+        discussion_date="2025-04-02 13:00:00.0" />
+
+    <nce_specimen id="1" nce_id="1001" sample_item_id="602" />
+    <nce_specimen id="2" nce_id="1002" sample_item_id="602" />
+    <nce_specimen id="3" nce_id="1003" sample_item_id="603" />
+    <nce_specimen id="4" nce_id="1002" sample_item_id="601" />
+    <nce_specimen id="5" nce_id="1002" sample_item_id="601" />
+</dataset>

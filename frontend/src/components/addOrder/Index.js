@@ -57,16 +57,11 @@ const Index = () => {
 
   let SampleTypes = [];
   let sampleTypeMap = {};
-  let initializePanelTests = false;
-  let allTestsMap = {};
-  let panelTestsMap = {};
-  let crossTestSampleTypeTestIdMap = {};
-  let sampleTypeTestIdMap = {};
+  let CrossPanels = [];
+  let CrossTests = [];
   let sampleTypeOrder;
   let crossSampleTypeMap = {};
   let crossSampleTypeOrderMap = {};
-  let CrossPanels = [];
-  let CrossTests = [];
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -100,7 +95,9 @@ const Index = () => {
 
   const getLabOrder = (orderNumber, success, failure) => {
     if (!failure) {
-      failure = () => {};
+      failure = () => {
+        // Default failure handler - no-op
+      };
     }
 
     fetch(
@@ -232,7 +229,7 @@ const Index = () => {
 
   const parsePatient = (newOrderFormValues, patient) => {
     newOrderFormValues.patientProperties = {
-      ...orderFormValues.patientProperties,
+      ...newOrderFormValues.patientProperties,
       guid: patient.guid,
     };
   };
@@ -241,7 +238,7 @@ const Index = () => {
     const providerId = requester.personId;
     if (providerId) {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerId: providerId,
       };
       getFromOpenElisServer(
@@ -251,7 +248,8 @@ const Index = () => {
             ...orderFormValues,
             sampleOrderItems: {
               ...orderFormValues.sampleOrderItems,
-              providerId: providerId,
+              providerId: data.id,
+              providerPersonId: data.person.id,
               providerFirstName: data.person.firstName,
               providerLastName: data.person.lastName,
               providerWorkPhone: data.person.workPhone,
@@ -263,7 +261,7 @@ const Index = () => {
       );
     } else {
       newOrderFormValues.sampleOrderItems = {
-        ...orderFormValues.sampleOrderItems,
+        ...newOrderFormValues.sampleOrderItems,
         providerFirstName: requester.firstName,
         providerLastName: requester.lastName,
         providerWorkPhone: requester.phone,
@@ -275,23 +273,27 @@ const Index = () => {
 
   const parseRequestingOrg = (newOrderFormValues, requestingOrg) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: requestingOrg.id,
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + requestingOrg.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 
   const parseLocation = (newOrderFormValues, location) => {
     newOrderFormValues.sampleOrderItems = {
-      ...orderFormValues.sampleOrderItems,
+      ...newOrderFormValues.sampleOrderItems,
       referringSiteId: location.id,
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + location.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 
@@ -486,6 +488,8 @@ const Index = () => {
       sampleXML: {
         collectionDate: "",
         collector: "",
+        quantity: "",
+        uom: "",
         rejected: false,
         rejectionReason: "",
         collectionTime: "",
@@ -663,7 +667,14 @@ const Index = () => {
                 })
                 .join(",");
             }
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+            // Extract storage location data if present
+            const storageLocation = sampleItem.sampleXML?.storageLocation;
+            const storageLocationId = storageLocation?.id || "";
+            const storageLocationType = storageLocation?.type || "";
+            const storagePositionCoordinate =
+              storageLocation?.positionCoordinate || "";
+
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)

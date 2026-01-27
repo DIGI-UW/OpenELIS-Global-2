@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
 import org.json.simple.JSONArray;
@@ -64,6 +65,7 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -101,16 +103,24 @@ public class TestModifyEntryRestController extends BaseController {
     }
 
     @GetMapping(value = "/TestModifyEntry")
-    public TestModifyEntryForm showTestModifyEntry(HttpServletRequest request) {
+    public TestModifyEntryForm showTestModifyEntry(
+            @RequestParam(value = "sampleType", required = false) String sampleTypeParam,
+            @RequestParam(value = "testSection", required = false) String testSectionParam,
+            HttpServletRequest request) {
 
         TestModifyEntryForm form = new TestModifyEntryForm();
-        setupDisplayItems(form);
+        setupDisplayItems(form, sampleTypeParam, testSectionParam);
 
         // return findForward(FWD_SUCCESS, form);
         return form;
+
     }
 
     private void setupDisplayItems(TestModifyEntryForm form) {
+        setupDisplayItems(form, null, null);
+    }
+
+    private void setupDisplayItems(TestModifyEntryForm form, String sampleTypeParam, String testSectionParam) {
 
         List<IdValuePair> allSampleTypesList = new ArrayList<>();
         allSampleTypesList.addAll(DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE));
@@ -124,22 +134,30 @@ public class TestModifyEntryRestController extends BaseController {
         form.setAgeRangeList(SpringContext.getBean(ResultLimitService.class).getPredefinedAgeRanges());
         form.setDictionaryList(DisplayListService.getInstance().getList(ListType.DICTIONARY_TEST_RESULTS));
         form.setGroupedDictionaryList(createGroupedDictionaryList());
-        form.setTestList(DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS));
+        // form.setTestList(DisplayListService.getInstance().getFreshList(DisplayListService.ListType.ALL_TESTS));
 
-        // gnr: ALL_TESTS calls getActiveTests, this could be a way to enable
-        // maintenance of inactive tests
-        // form.setTestListInactive( DisplayListService.getInstance().getList(
-        // DisplayListService.ListType.ALL_TESTS_INACTIVE )
-        // );
-
-        List<TestCatalogBean> testCatBeanList = createTestCatBeanList();
+        // Only include testCatBeanList when a filter is applied to avoid returning the
+        // full catalogue on initial page load
+        List<TestCatalogBean> testCatBeanList = new ArrayList<>();
+        if (StringUtils.isBlank(sampleTypeParam) && StringUtils.isBlank(testSectionParam)) {
+            testCatBeanList = new ArrayList<>();
+        } else {
+            testCatBeanList = createTestCatBeanList(sampleTypeParam, testSectionParam);
+        }
         form.setTestCatBeanList(testCatBeanList);
     }
 
-    private List<TestCatalogBean> createTestCatBeanList() {
+    private List<TestCatalogBean> createTestCatBeanList(String sampleTypeParam, String testSectionParam) {
         List<TestCatalogBean> beanList = new ArrayList<>();
 
         List<Test> testList = testService.getAllTests(false);
+
+        // Apply server-side filtering if parameters are provided
+        if (StringUtils.isNotBlank(sampleTypeParam)) {
+            testList = filterTestsBySampleType(testList, sampleTypeParam);
+        } else if (StringUtils.isNotBlank(testSectionParam)) {
+            testList = filterTestsByTestSection(testList, testSectionParam);
+        }
 
         for (Test test : testList) {
 
@@ -158,10 +176,13 @@ public class TestModifyEntryRestController extends BaseController {
             bean.setResultType(resultType);
             TypeOfSample typeOfSample = testService.getTypeOfSample(test);
             bean.setSampleType(typeOfSample != null ? typeOfSample.getLocalizedName() : "n/a");
-            bean.setOrderable(test.getOrderable() ? "Orderable" : "Not orderable");
-            bean.setNotifyResults(test.isNotifyResults());
+            Boolean orderable = test.getOrderable();
+            bean.setOrderable(orderable != null && orderable ? "Orderable" : "Not orderable");
+            Boolean notifyResults = test.isNotifyResults();
+            bean.setNotifyResults(notifyResults != null ? notifyResults : false);
             bean.setInLabOnly(test.isInLabOnly());
-            bean.setAntimicrobialResistance(test.getAntimicrobialResistance());
+            Boolean antimicrobialResistance = test.getAntimicrobialResistance();
+            bean.setAntimicrobialResistance(antimicrobialResistance != null ? antimicrobialResistance : false);
             bean.setLoinc(test.getLoinc());
             bean.setActive(test.isActive() ? "Active" : "Not active");
             bean.setUom(testService.getUOM(test, false));
@@ -442,7 +463,8 @@ public class TestModifyEntryRestController extends BaseController {
             // saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            // return form;
+
         }
         String currentUserId = getSysUserId(request);
         String changeList = form.getJsonWad();
@@ -452,7 +474,7 @@ public class TestModifyEntryRestController extends BaseController {
         try {
             obj = (JSONObject) parser.parse(changeList);
         } catch (ParseException e) {
-            LogEvent.logError(e.getMessage(), e);
+            LogEvent.logError(e);
         }
 
         TestAddParams testAddParams = extractTestAddParms(obj, parser);
@@ -466,13 +488,13 @@ public class TestModifyEntryRestController extends BaseController {
             testModifyService.updateTestSets(testSets, testAddParams, nameLocalization, reportingNameLocalization,
                     currentUserId);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
             result.reject("error.hibernate.exception");
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
             return form;
         } catch (Exception e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
             result.reject("error.exception");
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
@@ -684,20 +706,19 @@ public class TestModifyEntryRestController extends BaseController {
             testAddParams.inLabOnly = (String) obj.get("inLabOnly");
             testAddParams.antimicrobialResistance = (String) obj.get("antimicrobialResistance");
             if (TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId)) {
-                testAddParams.lowValid = (String) obj.get("lowValid");
-                testAddParams.highValid = (String) obj.get("highValid");
-                testAddParams.lowReportingRange = (String) obj.get("lowReportingRange");
-                testAddParams.highReportingRange = (String) obj.get("highReportingRange");
-                testAddParams.lowCritical = (String) obj.get("lowCritical");
-                testAddParams.highCritical = (String) obj.get("highCritical");
-                testAddParams.significantDigits = (String) obj.get("significantDigits");
+                testAddParams.lowValid = obj.get("lowValid").toString();
+                testAddParams.highValid = obj.get("highValid").toString();
+                testAddParams.lowReportingRange = obj.get("lowReportingRange").toString();
+                testAddParams.highReportingRange = obj.get("highReportingRange").toString();
+                testAddParams.lowCritical = obj.get("lowCritical").toString();
+                testAddParams.highCritical = obj.get("highCritical").toString();
+                testAddParams.significantDigits = obj.get("significantDigits").toString();
                 extractLimits(obj, parser, testAddParams);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVarientById(testAddParams.resultTypeId)) {
-                String dictionary = (String) obj.get("dictionary");
-                JSONArray dictionaryArray = (JSONArray) parser.parse(dictionary);
+                JSONArray dictionaryArray = (JSONArray) obj.get("dictionary");
                 for (int i = 0; i < dictionaryArray.size(); i++) {
                     DictionaryParams params = testModifyEntryController.new DictionaryParams();
-                    params.dictionaryId = (String) ((JSONObject) dictionaryArray.get(i)).get("value");
+                    params.dictionaryId = (String) ((JSONObject) dictionaryArray.get(i)).get("id");
                     params.isQuantifiable = "Y".equals(((JSONObject) dictionaryArray.get(i)).get("qualified"));
                     params.isDefault = params.dictionaryId.equals(obj.get("defaultTestResult"));
                     testAddParams.dictionaryParamList.add(params);
@@ -705,7 +726,7 @@ public class TestModifyEntryRestController extends BaseController {
             }
 
         } catch (ParseException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
         }
 
         return testAddParams;
@@ -714,20 +735,24 @@ public class TestModifyEntryRestController extends BaseController {
     private void extractLimits(JSONObject obj, JSONParser parser, TestAddParams testAddParams) throws ParseException {
         String lowAge = "0";
         if (obj.containsKey("resultLimits")) {
-            String limits = (String) obj.get("resultLimits");
-            JSONArray limitArray = (JSONArray) parser.parse(limits);
+            JSONArray limitArray = (JSONArray) obj.get("resultLimits");
+            String globalLowCritical = obj.get("lowCritical").toString();
+            String globalHighCritical = obj.get("highCritical").toString();
+            String globalLowReporting = obj.get("lowReportingRange").toString();
+            String globalHighReporting = obj.get("highReportingRange").toString();
+            String globalReportingRange = globalLowReporting + " - " + globalHighReporting;
             for (int i = 0; i < limitArray.size(); i++) {
                 ResultLimitParams params = testModifyEntryController.new ResultLimitParams();
                 Boolean gender = (Boolean) ((JSONObject) limitArray.get(i)).get("gender");
                 if (gender) {
                     params.gender = "M";
                 }
-                String highAge = (String) (((JSONObject) limitArray.get(i)).get("highAgeRange"));
-                params.displayRange = (String) (((JSONObject) limitArray.get(i)).get("reportingRange"));
-                params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormal"));
-                params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormal"));
-                params.lowCritical = (String) (((JSONObject) limitArray.get(i)).get("lowCritical"));
-                params.highCritical = (String) (((JSONObject) limitArray.get(i)).get("highCritical"));
+                String highAge = (((JSONObject) limitArray.get(i)).get("highAgeRange")).toString();
+                params.displayRange = globalReportingRange;
+                params.lowNormalLimit = (((JSONObject) limitArray.get(i)).get("lowNormal")).toString();
+                params.highNormalLimit = (((JSONObject) limitArray.get(i)).get("highNormal")).toString();
+                params.lowCritical = globalLowCritical;
+                params.highCritical = globalHighCritical;
                 params.lowAge = lowAge;
                 params.highAge = highAge;
                 testAddParams.limits.add(params);
@@ -735,8 +760,8 @@ public class TestModifyEntryRestController extends BaseController {
                 if (gender) {
                     params = testModifyEntryController.new ResultLimitParams();
                     params.gender = "F";
-                    params.lowNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("lowNormalFemale"));
-                    params.highNormalLimit = (String) (((JSONObject) limitArray.get(i)).get("highNormalFemale"));
+                    params.lowNormalLimit = (((JSONObject) limitArray.get(i)).get("lowNormalFemale")).toString();
+                    params.highNormalLimit = (((JSONObject) limitArray.get(i)).get("highNormalFemale")).toString();
                     params.lowAge = lowAge;
                     params.highAge = highAge;
                     testAddParams.limits.add(params);
@@ -748,8 +773,7 @@ public class TestModifyEntryRestController extends BaseController {
     }
 
     private void extractPanels(JSONObject obj, JSONParser parser, TestAddParams testAddParams) throws ParseException {
-        String panels = (String) obj.get("panels");
-        JSONArray panelArray = (JSONArray) parser.parse(panels);
+        JSONArray panelArray = (JSONArray) obj.get("panels");
 
         for (int i = 0; i < panelArray.size(); i++) {
             testAddParams.panelList.add((String) (((JSONObject) panelArray.get(i)).get("id")));
@@ -758,8 +782,7 @@ public class TestModifyEntryRestController extends BaseController {
 
     private void extractSampleTypes(JSONObject obj, JSONParser parser, TestAddParams testAddParams)
             throws ParseException {
-        String sampleTypes = (String) obj.get("sampleTypes");
-        JSONArray sampleTypeArray = (JSONArray) parser.parse(sampleTypes);
+        JSONArray sampleTypeArray = (JSONArray) obj.get("sampleTypes");
 
         for (int i = 0; i < sampleTypeArray.size(); i++) {
             SampleTypeListAndTestOrder sampleTypeTests = testModifyEntryController.new SampleTypeListAndTestOrder();
@@ -771,6 +794,32 @@ public class TestModifyEntryRestController extends BaseController {
             }
             testAddParams.sampleList.add(sampleTypeTests);
         }
+    }
+
+    private List<Test> filterTestsBySampleType(List<Test> testList, String sampleTypeId) {
+        List<Test> filteredTests = new ArrayList<>();
+        for (Test test : testList) {
+            List<TypeOfSample> sampleTypesForTest = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+            if (sampleTypesForTest != null) {
+                boolean testMatchesSampleType = sampleTypesForTest.stream()
+                        .anyMatch(sampleType -> sampleTypeId.equals(sampleType.getId()));
+                if (testMatchesSampleType) {
+                    filteredTests.add(test);
+                }
+            }
+        }
+        return filteredTests;
+    }
+
+    private List<Test> filterTestsByTestSection(List<Test> testList, String testSectionId) {
+        List<Test> filteredTests = new ArrayList<>();
+        for (Test test : testList) {
+            TestSection testSection = test.getTestSection();
+            if (testSection != null && testSectionId.equals(testSection.getId())) {
+                filteredTests.add(test);
+            }
+        }
+        return filteredTests;
     }
 
     @Override

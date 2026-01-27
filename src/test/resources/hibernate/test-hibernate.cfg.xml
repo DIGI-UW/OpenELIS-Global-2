@@ -51,6 +51,7 @@
         <mapping resource="hibernate/hbm/Person.hbm.xml" />
         <mapping resource="hibernate/hbm/Program.hbm.xml" />
         <mapping resource="hibernate/hbm/Project.hbm.xml" />
+        <mapping resource="hibernate/hbm/ProjectOrganization.hbm.xml" />
         <mapping resource="hibernate/hbm/Provider.hbm.xml" />
         <mapping resource="hibernate/hbm/QaEvent.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferenceTables.hbm.xml" />
@@ -97,9 +98,6 @@
         <mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryItem.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryLocation.hbm.xml" />
-        <mapping resource="hibernate/hbm/InventoryReceipt.hbm.xml" />
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
@@ -160,6 +158,10 @@
         <mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
         <mapping resource="hibernate/hbm/Report.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
+
+        <!-- Sample Storage Management mappings (001-sample-storage) -->
+        <!-- Moved to annotation-based mappings (JPA) - entities registered in
+            test-persistence.xml -->
     </session-factory>
 
 </hibernate-configuration>

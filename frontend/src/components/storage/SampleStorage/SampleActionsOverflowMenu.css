@@ -1,0 +1,80 @@
+/* SampleActionsOverflowMenu styling - match ghost button appearance */
+.sample-actions-overflow-menu {
+  /* Override Carbon's default blue color to match ghost button style */
+}
+
+/* Target the trigger button (the ⋮ button) */
+.sample-actions-overflow-menu button.cds--overflow-menu__trigger,
+.sample-actions-overflow-menu .cds--overflow-menu__trigger {
+  color: var(--cds-text-secondary, #525252) !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.sample-actions-overflow-menu button.cds--overflow-menu__trigger:hover,
+.sample-actions-overflow-menu .cds--overflow-menu__trigger:hover {
+  background-color: var(--cds-layer-hover-01, #f4f4f4) !important;
+  color: var(--cds-text-primary, #161616) !important;
+}
+
+.sample-actions-overflow-menu button.cds--overflow-menu__trigger:focus,
+.sample-actions-overflow-menu .cds--overflow-menu__trigger:focus {
+  outline: 2px solid var(--cds-focus, #0f62fe) !important;
+  outline-offset: -2px !important;
+}
+
+/* Target the icon inside the trigger button */
+.sample-actions-overflow-menu .cds--overflow-menu__trigger svg {
+  fill: var(--cds-text-secondary, #525252) !important;
+}
+
+.sample-actions-overflow-menu .cds--overflow-menu__trigger:hover svg {
+  fill: var(--cds-text-primary, #161616) !important;
+}
+
+/* Target the dropdown menu (ul) - remove blue background */
+/* Note: OverflowMenu renders dropdown in a portal, so we target by aria-label */
+ul.cds--overflow-menu-options[aria-label*="Sample actions"] {
+  background-color: var(--cds-layer-01, #ffffff) !important;
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Target menu item buttons - remove blue hover/focus */
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__btn {
+  color: var(--cds-text-primary, #161616) !important;
+  background-color: transparent !important;
+}
+
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__btn:hover {
+  background-color: var(--cds-layer-hover-01, #f4f4f4) !important;
+  color: var(--cds-text-primary, #161616) !important;
+}
+
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__btn:focus {
+  outline: 2px solid var(--cds-focus, #0f62fe) !important;
+  outline-offset: -2px !important;
+  background-color: var(--cds-layer-hover-01, #f4f4f4) !important;
+}
+
+/* Target disabled menu item */
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__option--disabled
+  .cds--overflow-menu-options__btn {
+  color: var(--cds-text-disabled, #c6c6c6) !important;
+  cursor: not-allowed !important;
+}
+
+/* Remove any blue background from menu items */
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__option {
+  background-color: transparent !important;
+}
+
+ul.cds--overflow-menu-options[aria-label*="Sample actions"]
+  .cds--overflow-menu-options__option:hover {
+  background-color: transparent !important;
+}

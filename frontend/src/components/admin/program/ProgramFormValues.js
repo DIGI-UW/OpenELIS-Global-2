@@ -5,6 +5,6 @@ export default {
     id: "",
     questionnaireUUID: "",
   },
-  additionalOrderEntryQuestions: "",
+  additionalOrderEntryQuestions: '{"resourceType":"Questionnaire"}',
   testSectionId: "",
 };

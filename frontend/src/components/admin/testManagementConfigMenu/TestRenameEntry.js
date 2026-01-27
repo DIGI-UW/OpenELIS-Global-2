@@ -1,4 +1,10 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import {
   Heading,
   Button,
@@ -20,17 +26,18 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import SearchTestNames from "./SearchTestNames";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "label.testName",
-    link: "/MasterListsPage#TestRenameEntry",
+    link: "/MasterListsPage/TestRenameEntry",
   },
 ];
 
@@ -50,6 +57,7 @@ function TestRenameEntry() {
   const [testNamePost, setTestNamesPost] = useState({});
   const [testNamesShow, setTestNamesShow] = useState([]);
   const [selectedTest, setSelectedTest] = useState({});
+  const [filteredTests, setFilteredTests] = useState(testNamesShow);
   const [testNamesLangs, setTestNamesLangs] = useState({
     name: { english: "", french: "" },
     reportingName: { english: "", french: "" },
@@ -76,6 +84,10 @@ function TestRenameEntry() {
       setTestNamesShow(res?.testList);
     }
   };
+
+  const handleFilter = useCallback((filtered) => {
+    setFilteredTests(filtered);
+  }, []);
 
   useEffect(() => {
     if (selectedTest && selectedTest.id) {
@@ -171,21 +183,32 @@ function TestRenameEntry() {
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <div className="orderLegendBody">
           <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
+            <Column lg={8} md={4} sm={2}>
               <Section>
                 <Heading>
                   <FormattedMessage id="label.testName" />
                 </Heading>
               </Section>
             </Column>
+            <Column lg={8} md={4} sm={2}>
+              <Section>
+                <Heading>
+                  <SearchTestNames
+                    testNames={testNamesShow}
+                    onFilter={handleFilter}
+                  />
+                </Heading>
+              </Section>
+            </Column>
           </Grid>
+
           <br />
           <hr />
           <br />
           <br />
           {testNamesShow ? (
             <Grid fullWidth={true}>
-              {testNamesShow.map((test, index) => (
+              {filteredTests.map((test, index) => (
                 <Column
                   key={index}
                   lg={4}

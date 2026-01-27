@@ -1,0 +1,29 @@
+[
+  {
+    "username": "clear",
+    "defaultAdmin": "admin",
+    "password": "adminADMIN!!",
+    "fName": "Deen",
+    "lName": "Dean",
+    "passwordExpiryDate": "01/01/2035",
+    "userTimeout": "500"
+  },
+  {
+    "username": "wil",
+    "password": "Password**",
+    "fName": "Willy",
+    "lName": "Warren",
+    "passwordExpiryDate": "02/02/2032",
+    "bioChem": "Biochemistry",
+    "hematology": "Hematology",
+    "seroImmuno": "Serology-Immunology",
+    "immunology": "Immunology",
+    "molecularBio": "Molecular Biology",
+    "cyto": "Cytology",
+    "serology": "Serology",
+    "viro": "Virology",
+    "patho": "Pathology",
+    "immunoHisto": "Immunohistochemistry",
+    "userTimeout": "450"
+  }
+]

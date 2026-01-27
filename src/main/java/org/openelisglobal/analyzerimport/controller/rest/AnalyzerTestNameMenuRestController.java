@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.action.beans.NamedAnalyzerTestMapping;
@@ -87,8 +88,18 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
             }
         }
 
+        String analyzerId = request.getParameter("analyzerId");
         List<NamedAnalyzerTestMapping> mappedTestNameList = new ArrayList<>();
-        List<String> analyzerList = AnalyzerTestNameCache.getInstance().getAnalyzerNames();
+        List<String> analyzerList = new ArrayList<>();
+        if (StringUtils.isNotBlank(analyzerId)) {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null) {
+                analyzerList.add(analyzer.getName());
+            }
+        } else {
+            analyzerList = AnalyzerTestNameCache.getInstance().getAnalyzerNames();
+        }
+
         Analyzer analyzer = new Analyzer();
 
         for (String analyzerName : analyzerList) {

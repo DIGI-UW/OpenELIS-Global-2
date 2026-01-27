@@ -1,7 +1,7 @@
 import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import Avatar from "react-avatar";
+import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 
 const PatientHeader = (props) => {
   const {
@@ -36,19 +36,14 @@ const PatientHeader = (props) => {
               <div className={className}>
                 <Grid>
                   <Column lg={1} md={2} sm={1}>
-                    <Avatar
-                      alt={"Patient avatar"}
-                      color="rgba(0,0,0,0)"
-                      name={
+                    <AsyncAvatar
+                      patientId={String(id)}
+                      hasPhoto={true}
+                      patientName={
                         patientName ? patientName : lastName + " " + firstName
                       }
-                      src={""}
-                      size="56"
-                      textSizeRatio={1}
-                      style={{
-                        backgroundImage: `url('/images/patient-background.svg')`,
-                        backgroundRepeat: "round",
-                      }}
+                      size={56}
+                      gender={gender}
                     />
                   </Column>
                   <Column lg={15} md={5} sm={3}>
@@ -98,17 +93,16 @@ const PatientHeader = (props) => {
                         </Tag>
                       )}
                       {orderDate && (
-                        <>
-                          <Tag size="lg" type="blue" style={tagStyle}>
-                            <FormattedMessage id="sample.label.orderdate" /> :{" "}
-                            <strong>{orderDate}</strong>
-                          </Tag>
-
-                          <Tag size="lg" type="blue" style={tagStyle}>
-                            <FormattedMessage id="sample.label.requester" />:{" "}
-                            <strong>{requester}</strong>
-                          </Tag>
-                        </>
+                        <Tag size="lg" type="blue" style={tagStyle}>
+                          <FormattedMessage id="sample.label.orderdate" /> :{" "}
+                          <strong>{orderDate}</strong>
+                        </Tag>
+                      )}
+                      {requester && (
+                        <Tag size="lg" type="blue" style={tagStyle}>
+                          <FormattedMessage id="sample.label.requester" />:{" "}
+                          <strong>{requester}</strong>
+                        </Tag>
                       )}
                       {referringFacility && (
                         <>
@@ -131,17 +125,11 @@ const PatientHeader = (props) => {
               <div className={className}>
                 <Grid>
                   <Column lg={4} md={2} sm={1}>
-                    <Avatar
-                      alt={"Patient avatar"}
-                      color="rgba(0,0,0,0)"
-                      name={"!"}
-                      src={""}
-                      size="56"
-                      textSizeRatio={2}
-                      style={{
-                        backgroundImage: `url('/images/patient-background.svg')`,
-                        backgroundRepeat: "round",
-                      }}
+                    <AsyncAvatar
+                      patientId={null}
+                      hasPhoto={false}
+                      patientName={"!"}
+                      size={56}
                     />
                   </Column>
                   <Column lg={8}>

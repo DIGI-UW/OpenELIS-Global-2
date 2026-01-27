@@ -1,0 +1,8 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode
+Sample Type,H Whole Blood,WB,Y,1,26881-3
+Sample Type,H Serum,SER,Y,2,26882-1
+Sample Type,H Plasma,PLS,Y,3,26883-9
+Sample Type,H Urine,UR,Y,4,26884-7
+Sample Type,H Saliva,SAL,Y,5,
+Sample Type,H Tissue,TIS,Y,6,
+NoteBook Experiment Type,PCR,PCR-Note,Y,7,

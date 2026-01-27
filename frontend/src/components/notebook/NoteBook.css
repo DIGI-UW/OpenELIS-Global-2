@@ -1,0 +1,40 @@
+.notebook-dashboard-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.notebook-dashboard-tile {
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f4f4f4;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.notebook-tile-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-tile-buttons {
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.notebook-tile-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.notebook-tile-subtitle {
+  color: #666;
+}
+
+.notebook-tile-value {
+  margin-top: 10px;
+  font-size: 1.5rem;
+  font-weight: bold;
+}

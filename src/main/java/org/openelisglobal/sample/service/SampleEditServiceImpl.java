@@ -48,18 +48,23 @@ import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.userrole.service.UserRoleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SampleEditServiceImpl implements SampleEditService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SampleEditServiceImpl.class);
 
     private static final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
     private static final String CANCELED_TEST_STATUS_ID;
@@ -103,6 +108,8 @@ public class SampleEditServiceImpl implements SampleEditService {
     UserRoleService userRoleService;
     @Autowired
     NoteService noteService;
+    @Autowired
+    private SampleStorageService sampleStorageService;
 
     @Transactional
     @Override
@@ -291,6 +298,8 @@ public class SampleEditServiceImpl implements SampleEditService {
         if (orderArtifacts.getDeletableSampleOrganizationRequester() != null) {
             sampleRequesterService.delete(orderArtifacts.getDeletableSampleOrganizationRequester());
         }
+
+        persistSampleStorageLocation(addedSamples);
 
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", patient.getId());
@@ -515,6 +524,44 @@ public class SampleEditServiceImpl implements SampleEditService {
             orderArtifacts.getProvider().setPerson(orderArtifacts.getProviderPerson());
 
             providerService.save(orderArtifacts.getProvider());
+        }
+    }
+
+    private void persistSampleStorageLocation(List<SampleTestCollection> addedSamples) {
+        for (SampleTestCollection sampleTestCollection : addedSamples) {
+            // Check if storage location was specified for this sample item
+            String storageLocationId = sampleTestCollection.storageLocationId;
+            String storageLocationType = sampleTestCollection.storageLocationType;
+            String storagePositionCoordinate = sampleTestCollection.storagePositionCoordinate;
+
+            // Skip if no storage location specified
+            if (storageLocationId == null || storageLocationId.trim().isEmpty() || storageLocationType == null
+                    || storageLocationType.trim().isEmpty()) {
+                continue;
+            }
+
+            SampleItem sampleItem = sampleTestCollection.item;
+            if (sampleItem == null || sampleItem.getId() == null) {
+                logger.warn("Cannot assign storage location - SampleItem not persisted yet");
+                continue;
+            }
+
+            try {
+                String sampleItemId = sampleItem.getId();
+
+                logger.info("Assigning storage location for SampleItem {}: locationId={}, locationType={}",
+                        sampleItemId, storageLocationId, storageLocationType);
+
+                sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                        storagePositionCoordinate, "Auto-assigned on order creation");
+
+                logger.info("Successfully assigned storage location for SampleItem {}", sampleItemId);
+
+            } catch (Exception e) {
+                // Log error but don't fail the entire order creation
+                logger.error("Failed to assign storage location for SampleItem {}: {}", sampleItem.getId(),
+                        e.getMessage(), e);
+            }
         }
     }
 }

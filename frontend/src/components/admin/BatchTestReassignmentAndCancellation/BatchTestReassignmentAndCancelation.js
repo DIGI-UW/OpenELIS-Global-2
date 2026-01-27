@@ -4,18 +4,11 @@ import {
   Column,
   Section,
   Heading,
-  Form,
-  TextInput,
-  UnorderedList,
-  ListItem,
-  RadioButton,
   Button,
   Loading,
   Select,
   SelectItem,
-  PasswordInput,
   Checkbox,
-  FormGroup,
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
@@ -30,7 +23,6 @@ import {
 } from "../../layout/Layout.js";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 
@@ -39,14 +31,13 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "configuration.batch.test.reassignment",
-    link: "/MasterListsPage#batchTestReassignment",
+    link: "/MasterListsPage/batchTestReassignment",
   },
 ];
 
 function BatchTestReassignmentAndCancelation() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { configurationProperties } = useContext(ConfigurationContext);
 
   const componentMounted = useRef(false);
   const intl = useIntl();
@@ -799,6 +790,7 @@ function BatchTestReassignmentAndCancelation() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <Button
+                data-cy="okButton"
                 disabled={saveButton}
                 onClick={() => {
                   setChangesToShow(true);
@@ -812,10 +804,11 @@ function BatchTestReassignmentAndCancelation() {
                 <FormattedMessage id="label.button.ok" />
               </Button>{" "}
               <Button
+                data-cy="cancelButton"
                 onClick={() => {
                   resetToDefault();
                   window.location.assign(
-                    "/MasterListsPage#batchTestReassignment",
+                    "/MasterListsPage/batchTestReassignment",
                   );
                 }}
                 kind="tertiary"
@@ -1024,7 +1017,7 @@ function BatchTestReassignmentAndCancelation() {
                   <Button
                     onClick={() =>
                       window.location.assign(
-                        "/MasterListsPage#batchTestReassignment",
+                        "/MasterListsPage/batchTestReassignment",
                       )
                     }
                     kind="tertiary"

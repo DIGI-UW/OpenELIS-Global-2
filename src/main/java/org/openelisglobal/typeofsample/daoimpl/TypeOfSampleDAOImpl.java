@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
@@ -409,5 +410,33 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             handleException(e, "getSampleTypeFromTest");
         }
         return null;
+    }
+
+    @Override
+    public TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale) {
+        String sql;
+        if (Locale.ENGLISH.equals(locale)) {
+            sql = "from TypeOfSample t where t.localization.english = :testName";
+        } else {
+            sql = "from TypeOfSample t where t.localization.french = :testName";
+        }
+        try {
+            Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
+            query.setParameter("testName", typeOfSampleName);
+
+            List<TypeOfSample> list = query.list();
+            TypeOfSample t = null;
+
+            if (!list.isEmpty()) {
+                t = list.get(0);
+            }
+
+            return t;
+
+        } catch (RuntimeException e) {
+            // bugzilla 2154
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Test getTestByName()", e);
+        }
     }
 }

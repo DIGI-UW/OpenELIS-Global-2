@@ -33,7 +33,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.labNumber",
-    link: "/MasterListsPage#labNumber",
+    link: "/MasterListsPage/labNumber",
   },
 ];
 function LabNumberManagement() {

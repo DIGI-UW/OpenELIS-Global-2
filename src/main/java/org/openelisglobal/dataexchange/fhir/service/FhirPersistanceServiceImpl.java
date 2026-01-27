@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
@@ -66,7 +67,9 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
 
     @PostConstruct
     public void init() {
-        localFhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
+        if (StringUtils.isNotBlank(fhirConfig.getLocalFhirStorePath())) {
+            localFhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
+        }
     }
 
     @Override

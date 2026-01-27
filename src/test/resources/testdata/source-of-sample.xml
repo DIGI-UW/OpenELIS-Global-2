@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <source_of_sample id="1" description="Blood"
+        domain="P" lastupdated="2025-07-15 10:30:00" />
+
+    <source_of_sample id="2" description="Urine"
+        domain="P" lastupdated="2025-07-15 10:31:00" />
+
+    <source_of_sample id="3" description="Saliva"
+        domain="H" lastupdated="2025-07-15 10:32:00" />
+
+    <source_of_sample id="4" description="Tissue Biopsy"
+        domain="H" lastupdated="2025-07-15 10:33:00" />
+
+    <source_of_sample id="5" description="Stool"
+        domain="P" lastupdated="2025-07-15 10:31:00" />
+</dataset>

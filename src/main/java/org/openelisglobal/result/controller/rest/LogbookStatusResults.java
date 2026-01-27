@@ -12,8 +12,6 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.form.StatusResultsForm;
 import org.openelisglobal.sample.service.SampleService;
@@ -31,7 +29,9 @@ public class LogbookStatusResults {
 
     private final SampleItemService sampleItemService;
 
-    private final InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
+    // TODO: Re-enable after new inventory frontend integration
+    // private final InventoryUtility inventoryUtility =
+    // SpringContext.getBean(InventoryUtility.class);
 
     private static final boolean REVERSE_SORT_ORDER = false;
 
@@ -119,7 +119,13 @@ public class LogbookStatusResults {
 
     private List<Analysis> getAnalysisForCollectionDate(String collectionDate) {
         Date date = DateUtil.convertStringDateToSqlDate(collectionDate);
-        return analysisService.getAnalysisCollectedOnExcludedByStatusId(date, excludedStatusIds);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForCollectionDate",
+                "Searching for collectionDate: " + collectionDate + ", converted to: " + date + ", excludedStatusIds: "
+                        + excludedStatusIds);
+        List<Analysis> analyses = analysisService.getAnalysisCollectedOnExcludedByStatusId(date, excludedStatusIds);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForCollectionDate",
+                "Found " + (analyses != null ? analyses.size() : 0) + " analyses");
+        return analyses;
     }
 
     private List<Analysis> blendLists(List<Analysis> masterList, List<Analysis> newList) {
@@ -147,9 +153,15 @@ public class LogbookStatusResults {
     }
 
     private List<Analysis> getAnalysisForRecievedDate(String recievedDate) {
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForRecievedDate",
+                "Searching for receivedDate: " + recievedDate);
         List<Sample> sampleList = sampleService.getSamplesReceivedOn(recievedDate);
-
-        return getAnalysisListForSampleItems(sampleList);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForRecievedDate",
+                "Found " + (sampleList != null ? sampleList.size() : 0) + " samples");
+        List<Analysis> analyses = getAnalysisListForSampleItems(sampleList);
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getAnalysisForRecievedDate",
+                "Found " + (analyses != null ? analyses.size() : 0) + " analyses");
+        return analyses;
     }
 
     private List<Analysis> getAnalysisListForSampleItems(List<Sample> sampleList) {
@@ -186,12 +198,17 @@ public class LogbookStatusResults {
     private void addInventory(StatusResultsForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
-        form.setInventoryItems(list);
+        // TODO: Re-enable after new inventory frontend integration
+        // TODO: Re-enable after new inventory frontend integration
+        // // List<InventoryKitItem> list =
+        // inventoryUtility.getExistingActiveInventory();
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(list);
     }
 
     private void addEmptyInventoryList(StatusResultsForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        form.setInventoryItems(new ArrayList<InventoryKitItem>());
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(new ArrayList<InventoryKitItem>());
     }
 }

@@ -57,6 +57,7 @@ function DictionaryManagement() {
   const [dictionaryEntry, setDictionaryEntry] = useState("");
   const [localAbbreviation, setLocalAbbreviation] = useState("");
   const [isActive, setIsActive] = useState("");
+  const [loincCode, setLoincCode] = useState("");
 
   const [fromRecordCount, setFromRecordCount] = useState("1");
   const [toRecordCount, setToRecordCount] = useState("");
@@ -155,6 +156,7 @@ function DictionaryManagement() {
             dictEntry: item.dictEntry,
             localAbbreviation: item.localAbbreviation,
             isActive: item.isActive,
+            loincCode: item.loincCode || "",
             categoryName: item.dictionaryCategory
               ? item.dictionaryCategory.categoryName
               : "not available",
@@ -201,6 +203,7 @@ function DictionaryManagement() {
             dictEntry: item.dictEntry,
             localAbbreviation: item.localAbbreviation,
             isActive: item.isActive,
+            loincCode: item.loincCode || "",
             categoryName: item.dictionaryCategory
               ? item.dictionaryCategory.categoryName
               : "not available",
@@ -237,6 +240,8 @@ function DictionaryManagement() {
     dictEntry: dictionaryEntry,
     localAbbreviation: localAbbreviation,
     isActive: isActive.id,
+    loincCode: loincCode.trim() || null,
+    dirtyFormFields: "",
   };
 
   async function displayStatus(res) {
@@ -293,6 +298,7 @@ function DictionaryManagement() {
       dictEntry: dictionaryEntry,
       localAbbreviation: localAbbreviation,
       isActive: isActive.id,
+      loincCode: loincCode.trim() || null,
       dirtyFormFields: dirtyFields,
     };
 
@@ -338,7 +344,11 @@ function DictionaryManagement() {
         </TableCell>
       );
     }
-    return <TableCell key={cell.id}>{cell.value}</TableCell>;
+    return (
+      <TableCell key={cell.id} data-cy={`cell-${cell.info.header}-${row.id}`}>
+        {cell.value}
+      </TableCell>
+    );
   };
 
   const handleDictionaryMenuItems = (res) => {
@@ -348,6 +358,7 @@ function DictionaryManagement() {
       setDictionaryEntry(res.dictEntry);
       setIsActive(yesOrNo.find((item) => item.id === res.isActive));
       setLocalAbbreviation(res.localAbbreviation);
+      setLoincCode(res.loincCode || "");
     }
   };
 
@@ -364,6 +375,7 @@ function DictionaryManagement() {
         setDictionaryEntry(selectedItem.dictEntry);
         setLocalAbbreviation(selectedItem.localAbbreviation);
         setIsActive(yesOrNo.find((item) => item.id === selectedItem.isActive));
+        setLoincCode(selectedItem.loincCode);
         setOpen(true);
         setEditMode(false);
       }
@@ -428,7 +440,7 @@ function DictionaryManagement() {
           { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
           {
             label: "dictionary.label.modify",
-            link: "/MasterListsPage#DictionaryManagement",
+            link: "/MasterListsPage/DictionaryMenu",
           },
         ]}
       />
@@ -498,6 +510,7 @@ function DictionaryManagement() {
                     id="dictNumber"
                     labelText="Dictionary Number"
                     disabled
+                    value={dictionaryNumber}
                     onChange={(e) => setDictionaryNumber(e.target.value)}
                     style={{
                       marginBottom: "1rem",
@@ -553,6 +566,20 @@ function DictionaryManagement() {
                       marginBottom: "1rem",
                     }}
                   />
+
+                  <TextInput
+                    id="loincCode"
+                    labelText="LOINC Code"
+                    value={loincCode}
+                    onChange={(e) => setLoincCode(e.target.value)}
+                    // invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
+                    // invalidText={
+                    //   <FormattedMessage id="dictionary.loincCode.invalid" />
+                    // }
+                    style={{
+                      marginBottom: "1rem",
+                    }}
+                  />
                 </Modal>
                 <Button
                   data-cy="deactivateButton"
@@ -564,6 +591,7 @@ function DictionaryManagement() {
                   <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.deactivate" />
                 </Button>
               </Column>
+
               <Column
                 lg={16}
                 md={8}
@@ -638,12 +666,7 @@ function DictionaryManagement() {
                   id: "search.by.dictionary.entry",
                 })}
                 onChange={handlePanelSearchChange}
-                value={(() => {
-                  if (panelSearchTerm) {
-                    return panelSearchTerm;
-                  }
-                  return "";
-                })()}
+                value={panelSearchTerm || ""}
               ></Search>
             </Section>
           </Column>
@@ -692,6 +715,11 @@ function DictionaryManagement() {
                   header: intl.formatMessage({
                     id: "dictionary.category.isActive",
                   }),
+                },
+
+                {
+                  key: "loincCode",
+                  header: "LOINC",
                 },
               ]}
               isSortable

@@ -1,0 +1,18 @@
+node_modules/
+dist/
+build/
+coverage/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+# Ignore generated and vendor content
+node_modules/
+dist/
+build/
+public/
+coverage/
+reports/
+**/*.min.js
+*.log
+
+
