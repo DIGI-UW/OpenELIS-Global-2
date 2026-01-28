@@ -5,6 +5,7 @@ import { Heading, Grid, Column, Section } from "@carbon/react";
 import SearchPatientForm from "./SearchPatientForm";
 import { useState, useEffect, useRef } from "react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { navigateTo } from "../utils/Navigation";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -30,7 +31,7 @@ const PatientHistory = () => {
 
   const openPatientResults = (patientId) => {
     if (patientId) {
-      window.location.href = "/PatientResults/" + patientId;
+      navigateTo("/PatientResults/") + patientId;
     }
   };
 

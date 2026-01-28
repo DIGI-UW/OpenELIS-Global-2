@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -8,12 +8,12 @@ import messages from "../../../languages/en.json";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
 // Mock the API utilities
-const mockGetFromOpenElisServer = jest.fn();
+const mockGetFromOpenElisServerV2 = jest.fn();
 const mockPostToOpenElisServer = jest.fn();
 
 jest.mock("../../utils/Utils", () => ({
   ...jest.requireActual("../../utils/Utils"),
-  getFromOpenElisServer: (...args) => mockGetFromOpenElisServer(...args),
+  getFromOpenElisServerV2: (...args) => mockGetFromOpenElisServerV2(...args),
   postToOpenElisServer: (...args) => mockPostToOpenElisServer(...args),
 }));
 
@@ -53,7 +53,7 @@ describe("DeleteLocationModal", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetFromOpenElisServer.mockClear();
+    mockGetFromOpenElisServerV2.mockClear();
     mockPostToOpenElisServer.mockClear();
     global.fetch = jest.fn();
   });
@@ -63,17 +63,13 @@ describe("DeleteLocationModal", () => {
    */
   test("testDeleteModal_WithConstraints_ShowsError", async () => {
     // Mock constraint check - simulate 409 Conflict response
-    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
-      setTimeout(() => {
-        callback({
-          status: 409,
-          data: {
-            error: "Cannot delete room",
-            message:
-              "Cannot delete Room 'Main Laboratory' because it contains 8 device(s)",
-          },
-        });
-      }, 0);
+    mockGetFromOpenElisServerV2.mockResolvedValue({
+      status: 409,
+      data: {
+        error: "Cannot delete room",
+        message:
+          "Cannot delete Room 'Main Laboratory' because it contains 8 device(s)",
+      },
     });
 
     // Use non-admin user to test error message display
@@ -109,13 +105,9 @@ describe("DeleteLocationModal", () => {
    */
   test("testDeleteModal_NoConstraints_ShowsConfirmation", async () => {
     // Mock constraint check - no constraints (200 OK or no error)
-    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
-      setTimeout(() => {
-        callback({
-          status: 200,
-          data: { canDelete: true },
-        });
-      }, 0);
+    mockGetFromOpenElisServerV2.mockResolvedValue({
+      status: 200,
+      data: { canDelete: true },
     });
 
     renderWithIntl(
@@ -145,13 +137,9 @@ describe("DeleteLocationModal", () => {
    * T107: Test confirm button disabled until user confirms
    */
   test("testDeleteModal_ConfirmationRequired", async () => {
-    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
-      setTimeout(() => {
-        callback({
-          status: 200,
-          data: { canDelete: true },
-        });
-      }, 0);
+    mockGetFromOpenElisServerV2.mockResolvedValue({
+      status: 200,
+      data: { canDelete: true },
     });
 
     renderWithIntl(
@@ -164,9 +152,9 @@ describe("DeleteLocationModal", () => {
       />,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const confirmButton = screen.getByTestId("delete-location-confirm-button");
+    const confirmButton = await screen.findByTestId(
+      "delete-location-confirm-button",
+    );
     expect(confirmButton.disabled).toBe(true);
 
     // Check the confirmation checkbox
@@ -177,22 +165,20 @@ describe("DeleteLocationModal", () => {
     fireEvent.click(checkboxInput);
 
     // Now confirm button should be enabled
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const enabledButton = screen.getByTestId("delete-location-confirm-button");
-    expect(enabledButton.disabled).toBe(false);
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("delete-location-confirm-button").disabled,
+      ).toBe(false);
+    });
   });
 
   /**
    * T107: Test delete button calls DELETE endpoint
    */
   test("testDeleteModal_DeleteCallsAPI", async () => {
-    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
-      setTimeout(() => {
-        callback({
-          status: 200,
-          data: { canDelete: true },
-        });
-      }, 0);
+    mockGetFromOpenElisServerV2.mockResolvedValue({
+      status: 200,
+      data: { canDelete: true },
     });
 
     // Mock fetch for DELETE request
@@ -214,37 +200,32 @@ describe("DeleteLocationModal", () => {
       />,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const checkbox = screen.getByTestId(
+    const checkbox = await screen.findByTestId(
       "delete-location-confirmation-checkbox",
     );
     const checkboxInput = checkbox.querySelector("input") || checkbox;
     fireEvent.click(checkboxInput);
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const confirmButton = screen.getByTestId("delete-location-confirm-button");
+    const confirmButton = await screen.findByTestId(
+      "delete-location-confirm-button",
+    );
     fireEvent.click(confirmButton);
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await waitFor(() => {
+      expect(mockOnDelete).toHaveBeenCalled();
+    });
 
     // Note: The component uses fetch directly, not postToOpenElisServer
     // So we need to mock fetch instead
-    expect(mockOnDelete).toHaveBeenCalled();
   });
 
   /**
    * T107: Test cancel button closes modal without deleting
    */
   test("testDeleteModal_CancelClosesModal", async () => {
-    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
-      setTimeout(() => {
-        callback({
-          status: 200,
-          data: { canDelete: true },
-        });
-      }, 0);
+    mockGetFromOpenElisServerV2.mockResolvedValue({
+      status: 200,
+      data: { canDelete: true },
     });
 
     renderWithIntl(
@@ -257,9 +238,9 @@ describe("DeleteLocationModal", () => {
       />,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const cancelButton = screen.getByTestId("delete-location-cancel-button");
+    const cancelButton = await screen.findByTestId(
+      "delete-location-cancel-button",
+    );
     fireEvent.click(cancelButton);
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -278,14 +259,12 @@ describe("DeleteLocationModal", () => {
     };
 
     let capturedEndpoint = null;
-    mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
+    mockGetFromOpenElisServerV2.mockImplementation((endpoint) => {
       capturedEndpoint = endpoint;
-      setTimeout(() => {
-        callback({
-          status: 200,
-          data: { canDelete: true },
-        });
-      }, 0);
+      return Promise.resolve({
+        status: 200,
+        data: { canDelete: true },
+      });
     });
 
     renderWithIntl(
@@ -298,7 +277,7 @@ describe("DeleteLocationModal", () => {
       />,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await screen.findByTestId("delete-location-confirmation-checkbox");
 
     // Verify endpoint uses "shelves" not "shelfs"
     expect(capturedEndpoint).toBe("/rest/storage/shelves/20/can-delete");
@@ -326,14 +305,12 @@ describe("DeleteLocationModal", () => {
         type: type,
       };
 
-      mockGetFromOpenElisServer.mockImplementation((endpoint, callback) => {
+      mockGetFromOpenElisServerV2.mockImplementation((endpoint) => {
         capturedEndpoint = endpoint;
-        setTimeout(() => {
-          callback({
-            status: 200,
-            data: { canDelete: true },
-          });
-        }, 0);
+        return Promise.resolve({
+          status: 200,
+          data: { canDelete: true },
+        });
       });
 
       renderWithIntl(
@@ -346,9 +323,12 @@ describe("DeleteLocationModal", () => {
         />,
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await screen.findByTestId("delete-location-confirmation-checkbox");
 
       expect(capturedEndpoint).toBe(`/rest/storage/${expected}/1/can-delete`);
+
+      // Prevent multiple modal instances from accumulating across loop iterations
+      cleanup();
     }
   });
 });

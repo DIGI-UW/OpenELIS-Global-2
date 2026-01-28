@@ -1,8 +1,7 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
-import { ConfigurationContext } from "../layout/Layout";
 
 const PatientHeader = (props) => {
   const {
@@ -15,7 +14,6 @@ const PatientHeader = (props) => {
     patientName = null,
     subjectNumber = null,
     nationalId = null,
-    primaryPhone = null,
     accesionNumber = null,
     orderDate = null,
     referringFacility = null,
@@ -25,7 +23,6 @@ const PatientHeader = (props) => {
     className = "patient-header",
   } = props;
   const intl = useIntl();
-  const { configurationProperties } = useContext(ConfigurationContext);
 
   const tagStyle = {
     fontSize: "0.8rem",
@@ -81,17 +78,6 @@ const PatientHeader = (props) => {
                         <Tag size="lg" type="blue" style={tagStyle}>
                           <FormattedMessage id="patient.natioanalid" /> :{" "}
                           <strong>{nationalId}</strong>
-                        </Tag>
-                      )}
-                      {primaryPhone && (
-                        <Tag size="lg" type="blue" style={tagStyle}>
-                          <FormattedMessage
-                            id="patient.label.primaryphone"
-                            defaultMessage="Primary phone"
-                            values={{ PHONE_FORMAT: "" }}
-                          />
-                          {": "}
-                          <strong>{primaryPhone}</strong>
                         </Tag>
                       )}
                       {subjectNumber && (

@@ -44,6 +44,7 @@ import {
 import SlideOverNotifications from "../notifications/SlideOverNotifications";
 import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
+import { getFullPath, navigateTo } from "../utils/Navigation";
 function OEHeader(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
@@ -77,8 +78,8 @@ function OEHeader(props) {
   useEffect(() => {
     userSessionDetails.authenticated
       ? getFromOpenElisServer("/rest/menu", (res) => {
-          handleMenuItems("menu", res);
-        })
+        handleMenuItems("menu", res);
+      })
       : console.log("User not authenticated, not getting menu");
   }, [userSessionDetails.authenticated]);
 
@@ -176,7 +177,7 @@ function OEHeader(props) {
         <picture>
           <img
             className="logo"
-            src={`../images/openelis_logo.png`}
+            src={getFullPath("/images/openelis_logo.png")}
             alt="logo"
           />
         </picture>
@@ -204,9 +205,9 @@ function OEHeader(props) {
                 })}
                 key={"menu_" + index + "_" + level}
                 defaultExpanded={menuItem.expanded}
-                // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
-                //   setMenuItemExpanded(e, menuItem, path);
-                // }}
+              // onClick={(e) => { // not supported yet, but if it becomes so we can simplify the functionality here by having this here and not have a span around it
+              //   setMenuItemExpanded(e, menuItem, path);
+              // }}
               >
                 <span
                   onClick={(e) => {
@@ -232,7 +233,7 @@ function OEHeader(props) {
           <span key={path} id={menuItem.menu.elementId}>
             <SideNavMenuItem
               id={menuItem.menu.elementId + "_nav"}
-              href={menuItem.menu.actionURL}
+              href={getFullPath(menuItem.menu.actionURL)}
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
               className="top-level-menu-item"
             >
@@ -249,7 +250,7 @@ function OEHeader(props) {
           >
             <SideNavMenuItem
               className="reduced-padding-nav-menu-item"
-              href={menuItem.menu.actionURL}
+              href={getFullPath(menuItem.menu.actionURL)}
               target={menuItem.menu.openInNewWindow ? "_blank" : ""}
               style={{ width: "100%" }}
               rel="noreferrer"
@@ -315,7 +316,7 @@ function OEHeader(props) {
           if (menuItem.menu.openInNewWindow) {
             window.open(menuItem.menu.actionURL);
           } else {
-            window.location.href = menuItem.menu.actionURL;
+            navigateTo(menuItem.menu.actionURL);
           }
         }}
       >
@@ -358,7 +359,7 @@ function OEHeader(props) {
             if (menuItem.menu.openInNewWindow) {
               window.open(menuItem.menu.actionURL);
             } else {
-              window.location.href = menuItem.menu.actionURL;
+              navigateTo(menuItem.menu.actionURL);
             }
           }}
         >
@@ -445,7 +446,7 @@ function OEHeader(props) {
                       isCollapsible={true}
                     />
                   )}
-                  <HeaderName href="/" prefix="" style={{ padding: "0px" }}>
+                  <HeaderName href={getFullPath("/")} prefix="" style={{ padding: "0px" }}>
                     <span id="header-logo">{logo()}</span>
                     <div className="banner">
                       <h5>{configurationProperties?.BANNER_TEXT}</h5>

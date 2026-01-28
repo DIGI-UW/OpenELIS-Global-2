@@ -21,6 +21,7 @@ import { Formik } from "formik";
 import * as Yup from "yup";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import { NotificationContext } from "./layout/Layout";
+import { navigateTo } from "./utils/Navigation";
 
 function ChangePassword() {
   const intl = useIntl();
@@ -51,7 +52,7 @@ function ChangePassword() {
           });
           setNotificationVisible(true);
           setTimeout(() => {
-            window.location.href = "/login";
+            navigateTo("/login");
           }, 2000);
         } else {
           addNotification({
@@ -232,7 +233,7 @@ function ChangePassword() {
                         invalid={
                           formik.touched.confirmPassword &&
                           formik.values.newPassword !==
-                            formik.values.confirmPassword
+                          formik.values.confirmPassword
                         }
                       />
                       <Stack orientation="horizontal">
@@ -252,7 +253,7 @@ function ChangePassword() {
                           data-cy="exitPasswordReset"
                           kind="secondary"
                           onClick={() => {
-                            window.location.href = "/";
+                            navigateTo("/");
                           }}
                         >
                           <FormattedMessage id="label.button.exit" />

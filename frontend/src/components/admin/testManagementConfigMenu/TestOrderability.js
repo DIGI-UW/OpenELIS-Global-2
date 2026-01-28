@@ -20,6 +20,7 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import { assignTo } from "../../utils/Navigation.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -353,7 +354,7 @@ function TestOrderability() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign("/MasterListsPage/TestOrderability")
+                  assignTo("/MasterListsPage/TestOrderability")
                 }
                 kind="tertiary"
                 type="button"
@@ -364,7 +365,7 @@ function TestOrderability() {
           </Grid>
           <br />
           {changedTestOrderabilityData?.orderableTestList &&
-          changedTestOrderabilityData?.orderableTestList.length > 0 ? (
+            changedTestOrderabilityData?.orderableTestList.length > 0 ? (
             <Grid fullWidth={true}>
               {changedTestOrderabilityData?.orderableTestList?.map((sample) => (
                 <>
@@ -399,15 +400,15 @@ function TestOrderability() {
                           onChange={(_, { checked }) => {
                             checked
                               ? handleActiveTestsCheckboxChange(
-                                  test,
-                                  sample.sampleType.id,
-                                  checked,
-                                )
+                                test,
+                                sample.sampleType.id,
+                                checked,
+                              )
                               : handleInactiveTestsCheckboxChange(
-                                  test,
-                                  sample.sampleType.id,
-                                  checked,
-                                );
+                                test,
+                                sample.sampleType.id,
+                                checked,
+                              );
                           }}
                         />
                       </Column>
@@ -435,7 +436,7 @@ function TestOrderability() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign("/MasterListsPage/TestOrderability")
+                  assignTo("/MasterListsPage/TestOrderability")
                 }
                 kind="tertiary"
                 type="button"

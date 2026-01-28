@@ -12,6 +12,8 @@ import si from "./si.json";
 import siLK from "./si_LK.json";
 import ta from "./ta.json";
 import taLK from "./ta_LK.json";
+import amET from "./am_ET.json";
+import sw from "./sw.json";
 
 export const languages = {
   en: { label: "English", messages: en },
@@ -28,4 +30,6 @@ export const languages = {
   "si-LK": { label: "සිංහල (Sri Lanka)", messages: siLK },
   ta: { label: "தமிழ்", messages: ta }, // Tamil
   "ta-LK": { label: "தமிழ் (Sri Lanka)", messages: taLK },
+  sw: { label: "Swahili", messages: sw },
+  "am-ET": { label: "Amharic", messages: amET },
 };

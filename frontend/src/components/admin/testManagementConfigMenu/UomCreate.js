@@ -20,6 +20,7 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import { replaceWith } from "../../utils/Navigation.js";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -209,9 +210,7 @@ function UomCreate() {
                 <FormattedMessage id="next.action.button" />
               </Button>{" "}
               <Button
-                onClick={() =>
-                  window.location.replace("/MasterListsPage/UomManagement")
-                }
+                onClick={() => replaceWith("/MasterListsPage/UomManagement")}
                 kind="tertiary"
                 type="button"
               >
@@ -250,7 +249,7 @@ function UomCreate() {
             )}
           </Grid>
         </div>
-      </div>
+      </div >
 
       <Modal
         open={isConfirmModalOpen}

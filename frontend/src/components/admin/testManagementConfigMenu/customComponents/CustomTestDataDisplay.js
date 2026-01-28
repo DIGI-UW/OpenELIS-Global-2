@@ -197,18 +197,6 @@ export const CustomTestDataDisplay = ({ testToDisplay }) => {
         <Section>
           <Section>
             <Section>
-              <FormattedMessage id="field.price" /> :{" "}
-              {testToDisplay.price !== undefined && testToDisplay.price !== null
-                ? testToDisplay.price
-                : "-"}
-            </Section>
-          </Section>
-        </Section>
-      </Column>
-      <Column lg={4} md={4} sm={4}>
-        <Section>
-          <Section>
-            <Section>
               <FormattedMessage id="field.significantDigits" /> :{" "}
               {testToDisplay.significantDigits}
             </Section>

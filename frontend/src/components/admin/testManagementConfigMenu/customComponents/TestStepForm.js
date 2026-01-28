@@ -29,7 +29,12 @@ import { getFromOpenElisServer } from "../../../utils/Utils.js";
 import { NotificationContext } from "../../../layout/Layout.js";
 import { extractAgeRangeParts } from "./TestFormData.js";
 
-export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
+export const TestStepForm = ({
+  initialData,
+  mode = "add",
+  postCall,
+  cancelCall,
+}) => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -539,6 +544,7 @@ export const TestStepForm = ({ initialData, mode = "add", postCall }) => {
       setLabUnitList={setLabUnitList}
       selectedLabUnitId={selectedLabUnitList}
       setSelectedLabUnitList={setSelectedLabUnitList}
+      cancelCall={cancelCall}
     />,
     <StepTwoTestPanelAndUom
       key="step-2"
@@ -698,6 +704,7 @@ export const StepOneTestNameAndTestSection = ({
   setLabUnitList,
   selectedLabUnitId,
   setSelectedLabUnitList,
+  cancelCall,
 }) => {
   const handleSubmit = (values) => {
     handleNextStep(values, true);
@@ -898,7 +905,11 @@ export const StepOneTestNameAndTestSection = ({
                   </Button>{" "}
                   <Button
                     onClick={() => {
-                      window.location.reload();
+                      if (cancelCall) {
+                        cancelCall();
+                      } else {
+                        window.location.reload();
+                      }
                     }}
                     kind="tertiary"
                     type="button"
@@ -1164,11 +1175,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
           resultType: Yup.string()
             .notOneOf(["0", ""], "Please select a valid Result Type")
             .required("Result Type is required"),
-          price: Yup.string().test(
-            "is-valid-price",
-            "Price must be a number with up to 2 decimal places",
-            (value) => !value || /^[0-9]+(\.[0-9]{1,2})?$/.test(value),
-          ),
           // loinc: Yup.string().matches(
           //   /^(?!-)(?:\d+-)*\d+$/,
           //   "Loinc must contain only numbers",
@@ -1284,21 +1290,6 @@ export const StepThreeTestResultTypeAndLoinc = ({
                       }}
                       invalid={touched.loinc && !!errors.loinc}
                       invalidText={touched.loinc && errors.loinc}
-                    />
-                  </div>
-                  <br />
-                  <div>
-                    <FormattedMessage id="field.price" />
-                    <br />
-                    <TextInput
-                      labelText=""
-                      id="price"
-                      name="price"
-                      value={values.price}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      invalid={touched.price && !!errors.price}
-                      invalidText={touched.price && errors.price}
                     />
                   </div>
                   <br />

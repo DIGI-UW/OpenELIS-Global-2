@@ -42,6 +42,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import CustomCheckBox from "../../common/CustomCheckBox.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import { getFullPath } from "../../utils/Navigation";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -85,7 +86,7 @@ function UomManagement() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
-                <ClickableTile href="/MasterListsPage/UomCreate" id="UomCreate">
+                <ClickableTile href={getFullPath("/MasterListsPage/UomCreate")} id="UomCreate">
                   <FormattedMessage id="configuration.uom.create" />
                 </ClickableTile>
               </UnorderedList>

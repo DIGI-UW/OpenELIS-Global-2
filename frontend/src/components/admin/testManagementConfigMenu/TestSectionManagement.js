@@ -42,6 +42,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import CustomCheckBox from "../../common/CustomCheckBox.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import { getFullPath } from "../../utils/Navigation";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -87,20 +88,20 @@ function TestSectionManagement() {
               <UnorderedList>
                 <ClickableTile
                   id="TestSectionCreate"
-                  href="/MasterListsPage/TestSectionCreate"
+                  href={getFullPath("/MasterListsPage/TestSectionCreate")}
                 >
                   <FormattedMessage id="configuration.testUnit.create" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
                   id="TestSectionOrder"
-                  href="/MasterListsPage/TestSectionOrder"
+                  href={getFullPath("/MasterListsPage/TestSectionOrder")}
                 >
                   <FormattedMessage id="configuration.testUnit.order" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestSectionTestAssign"
+                  href={getFullPath("/MasterListsPage/TestSectionTestAssign")}
                   id="TestSectionTestAssign"
                 >
                   <FormattedMessage id="configuration.panel.assign" />

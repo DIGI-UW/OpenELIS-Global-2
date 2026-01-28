@@ -66,9 +66,9 @@
          AJP  Connector: /docs/config/ajp.html
          Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
     -->
-          <!-- <Connector port="8080" protocol="HTTP/1.1"
+          <Connector port="8080" protocol="HTTP/1.1"
                connectionTimeout="20000"
-               redirectPort="8443" /> -->
+               redirectPort="8443" />
           <!-- A "Connector" using the shared thread pool-->
           <!--
     <Connector executor="tomcatThreadPool"
@@ -87,10 +87,10 @@
           <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
                maxThreads="150" SSLEnabled="true">
                <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-               <SSLHostConfig truststoreFile="${oe.ssl.truststorepath}"
-                    truststorePassword="${oe.ssl.truststorepassword}" truststoreType="PKCS12">
-                    <Certificate certificateKeystoreFile="${oe.ssl.keystorepath}"
-                         certificateKeystorePassword="${oe.ssl.keystorepassword}"
+               <SSLHostConfig truststoreFile="/etc/openelis-global/truststore"
+                    truststorePassword="tspass" truststoreType="PKCS12">
+                    <Certificate certificateKeystoreFile="/etc/openelis-global/keystore"
+                         certificateKeystorePassword="kspass"
                          certificateKeystoreType="PKCS12"
                          type="RSA" />
                </SSLHostConfig>
@@ -138,9 +138,9 @@
                <Host name="localhost" appBase="webapps"
                     unpackWARs="true" autoDeploy="true">
 
-                    <Context docBase="ROOT" path="/api" />
+                    <Context docBase="ROOT" path="/openelis/api" />
                     <Context docBase="OpenELIS-Global"
-                         path="/api/OpenELIS-Global/" logEffectiveWebXml="true">
+                         path="/openelis/api/OpenELIS-Global/" logEffectiveWebXml="true">
                          <Resources cacheMaxSize="102400" />
                          <Resource auth="Container"
                               driverClassName="org.postgresql.Driver" maxTotal="20" maxIdle="10"

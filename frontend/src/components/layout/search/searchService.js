@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import { navigateTo } from "../../utils/Navigation";
 
 export const fetchPatientData = async (query, callback) => {
   const [firstName, lastName] = query.split(" ");
@@ -9,7 +10,6 @@ export const fetchPatientData = async (query, callback) => {
     dateOfBirth: query,
     nationalID: query,
     subjectNumber: query,
-    phoneNumber: query,
   };
 
   const createEndpoint = (param, value) =>
@@ -54,7 +54,7 @@ export const fetchPatientData = async (query, callback) => {
 
 export const openPatientResults = (patientId) => {
   if (patientId) {
-    window.location.href = "/PatientResults/" + patientId;
+    navigateTo("/PatientResults/") + patientId;
   }
 };
 
@@ -155,7 +155,6 @@ export const useAutocomplete = (props) => {
 
   return {
     textValue,
-    setTextValue,
     activeSuggestion,
     filteredSuggestions,
     showSuggestions,

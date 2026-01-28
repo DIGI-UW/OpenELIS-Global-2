@@ -20,6 +20,7 @@ import "./index.scss";
 import RedirectOldUI from "./RedirectOldUI";
 import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
+import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import AddOrder from "./components/addOrder/Index";
@@ -52,23 +53,23 @@ import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
 import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import ProgramDashboard from "./components/program/programDashboard.jsx";
+import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
-import LabDashboard from "./components/home/LabDashboard.tsx";
+import { getFullPath, navigateTo } from "./components/utils/Navigation";
 
 export default function App() {
-  let i18nConfig = {
-    locale: navigator.language.split(/[-_]/)[0],
-    defaultLocale: "en",
-    messages: languages["en"].messages,
-  };
-
   const defaultLocale =
     localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
+
+  const initialLocale = languages[defaultLocale] ? defaultLocale : "en";
+
+  const [locale, setLocale] = useState(initialLocale);
+  const [messages, setMessages] = useState(languages[initialLocale].messages);
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
     useState(false);
-  const [locale, setLocale] = useState("en");
 
   useEffect(() => {
     getUserSessionDetails();
@@ -113,7 +114,7 @@ export default function App() {
               {
                 label: "OK",
                 onClick: () => {
-                  window.location.href = window.location.origin;
+                  navigateTo("/");
                 },
               },
             ],
@@ -128,10 +129,6 @@ export default function App() {
     setErrorLoadingSessionDetails(true);
     return userSessionDetails;
   };
-
-  i18nConfig.locale = languages[defaultLocale] ? defaultLocale : "en";
-
-  i18nConfig.messages = languages[i18nConfig.locale].messages;
 
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
@@ -158,7 +155,7 @@ export default function App() {
           newWindow.document.write(html);
           newWindow.document.close();
           getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          navigateTo(config.loginRedirect);
         })
         .catch((error) => {
           console.error(error);
@@ -175,7 +172,7 @@ export default function App() {
         .then((response) => response.status)
         .then(() => {
           getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          navigateTo(config.loginRedirect);
         })
         .catch((error) => {
           console.error(error);
@@ -187,17 +184,20 @@ export default function App() {
     if (!languages[lang]) {
       lang = "en";
     }
-    i18nConfig.messages = languages[lang].messages;
-    i18nConfig.locale = lang;
-    localStorage.setItem("locale", lang);
     setLocale(lang);
+    setMessages(languages[lang].messages);
+    localStorage.setItem("locale", lang);
   };
 
   const changeLanguageBackend = async (lang) => {
     if (userSessionDetails.authenticated) {
-      getFromOpenElisServer("/Home?lang=" + lang, () => {});
+      getFromOpenElisServer("/Home?lang=" + lang, () => {
+        // Language changed on backend
+      });
     } else {
-      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {});
+      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {
+        // Language changed on backend
+      });
     }
   };
 
@@ -219,10 +219,10 @@ export default function App() {
 
   return (
     <IntlProvider
-      locale={i18nConfig.locale}
-      key={i18nConfig.locale}
-      defaultLocale={i18nConfig.defaultLocale}
-      messages={i18nConfig.messages}
+      locale={locale}
+      key={locale}
+      defaultLocale="en"
+      messages={messages}
     >
       <UserSessionDetailsContext.Provider
         value={{
@@ -234,7 +234,7 @@ export default function App() {
         }}
       >
         <>
-          <Router>
+          <Router basename="/openelis">
             <Layout onChangeLanguage={onChangeLanguage}>
               <Switch>
                 <Route path="/login" exact component={() => <Login />} />
@@ -250,12 +250,6 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/"
-                  exact
-                  component={() => <LabDashboard />}
-                  role=""
-                />
-                <SecureRoute
-                  path="/HomeDashboard"
                   exact
                   component={() => <Home />}
                   role=""
@@ -293,7 +287,7 @@ export default function App() {
                 <SecureRoute
                   path="/Dashboard"
                   exact
-                  component={() => <LabDashboard />}
+                  component={() => <Home />}
                   role=""
                 />
                 <SecureRoute
@@ -340,41 +334,53 @@ export default function App() {
                   exact
                   component={() => <CytologyDashboard />}
                   role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/genericProgram"
+                  exact
+                  component={() => <ProgramDashboard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/programView/:programSampleId"
+                  exact
+                  component={() => <ProgramCaseView />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  component={() => <FreezerMonitoringDashboard />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
-                  role={Roles.RECEPTION}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
@@ -503,6 +509,12 @@ export default function App() {
                   exact
                   component={() => <PatientHistory />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientMerge"
+                  exact
+                  component={() => <PatientMerge />}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/Aliquot"

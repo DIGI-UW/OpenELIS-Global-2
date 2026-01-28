@@ -9,6 +9,7 @@ import ReferredOut from "./ReferredOut";
 import ReportByDate from "../common/ReportByDate";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AuditTrailReport from "../auditTrailReport/AuditTrailReport";
+import { navigateTo } from "../../utils/Navigation";
 
 export const RoutineReports = (props) => {
   const { type, report } = props;
@@ -110,7 +111,7 @@ const RoutineIndex = () => {
     if (paramType && paramReport) {
       setIsLoading(false);
     } else {
-      window.location.href = "/RoutineReports";
+      navigateTo("/RoutineReports");
     }
   }, []);
 

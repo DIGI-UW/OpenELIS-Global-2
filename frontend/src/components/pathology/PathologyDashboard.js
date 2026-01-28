@@ -32,6 +32,7 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { navigateTo } from "../utils/Navigation";
 
 function PathologyDashboard() {
   const componentMounted = useRef(false);
@@ -99,7 +100,7 @@ function PathologyDashboard() {
   const assignCurrentUserAsPathologist = (event, pathologySampleId) => {
     postToOpenElisServerFullResponse(
       "/rest/pathology/assignPathologist?pathologySampleId=" +
-        pathologySampleId,
+      pathologySampleId,
       {},
       refreshItems,
     );
@@ -186,7 +187,7 @@ function PathologyDashboard() {
   const getSelectedValue = () => {
     const selectedValue =
       filters.statuses.length === inProgressStatuses.length &&
-      filters.statuses.every((status) => inProgressStatuses.includes(status.id))
+        filters.statuses.every((status) => inProgressStatuses.includes(status.id))
         ? "IN_PROGRESS"
         : filters.statuses.length > 1
           ? "All"
@@ -216,7 +217,7 @@ function PathologyDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/PathologyCaseView/" + id;
+    navigateTo("/PathologyCaseView/" + id);
   };
 
   useEffect(() => {

@@ -22,6 +22,7 @@ import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
+import { navigateTo } from "../utils/Navigation";
 
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
@@ -131,7 +132,7 @@ const AnalyserResults = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/AnalyzerResults?type=" + props.type;
+      navigateTo("/AnalyzerResults?type=") + props.type;
     }
     addNotification({
       kind: kind,

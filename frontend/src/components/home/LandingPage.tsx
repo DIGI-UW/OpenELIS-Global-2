@@ -12,6 +12,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { navigateTo } from "../utils/Navigation";
 
 const LandingPage: React.FC = () => {
   const intl = useIntl();
@@ -41,8 +42,11 @@ const LandingPage: React.FC = () => {
     ) {
       const refererUrl = document.referrer;
       if (refererUrl.endsWith("/landing")) {
-        window.location.href = "/";
+        navigateTo("/");
       } else {
+        // If it's a full internal URL, navigateTo might not be appropriate if it has the origin
+        // But if it's external, window.location.href is correct.
+        // For refererUrl, we can just keep it or try to make it relative.
         window.location.href = refererUrl;
       }
     }
@@ -77,13 +81,13 @@ const LandingPage: React.FC = () => {
     }
     const refererUrl = document.referrer;
     if (refererUrl.endsWith("/landing")) {
-      window.location.href = "/";
+      navigateTo("/");
     } else {
       window.location.href = refererUrl;
     }
   };
 
-  const handlePostLabUbit = (status) => {};
+  const handlePostLabUbit = (status) => { };
 
   return (
     <Grid
@@ -149,9 +153,8 @@ const LandingPage: React.FC = () => {
               {filteredDepartments?.map((dept) => (
                 <div
                   key={dept.id}
-                  className={`department-item ${
-                    selectedDepartment === dept.id ? "selected" : ""
-                  }`}
+                  className={`department-item ${selectedDepartment === dept.id ? "selected" : ""
+                    }`}
                   style={{
                     padding: "0.75rem",
                     cursor: "pointer",

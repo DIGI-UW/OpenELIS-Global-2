@@ -32,6 +32,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import "./../pathology/PathologyDashboard.css";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { navigateTo } from "../utils/Navigation";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
@@ -131,7 +132,7 @@ function ImmunohistochemistryDashboard() {
   ) => {
     postToOpenElisServerFullResponse(
       "/rest/immunohistochemistry/assignTechnician?immunohistochemistrySampleId=" +
-        immunohistochemistrySampleId,
+      immunohistochemistrySampleId,
       {},
       refreshItems,
     );
@@ -143,7 +144,7 @@ function ImmunohistochemistryDashboard() {
   ) => {
     postToOpenElisServerFullResponse(
       "/rest/immunohistochemistry/assignPathologist?immunohistochemistrySampleId=" +
-        immunohistochemistrySampleId,
+      immunohistochemistrySampleId,
       {},
       refreshItems,
     );
@@ -237,7 +238,7 @@ function ImmunohistochemistryDashboard() {
   };
 
   const openCaseView = (id) => {
-    window.location.href = "/ImmunohistochemistryCaseView/" + id;
+    navigateTo("/ImmunohistochemistryCaseView/" + id);
   };
 
   useEffect(() => {

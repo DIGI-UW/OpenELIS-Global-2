@@ -30,10 +30,6 @@ const RenameModelBox = ({
   langPost,
   selectedItem,
   hasFrench,
-  showPrice = false,
-  priceValue = "",
-  onPriceChange,
-  priceError = false,
 }) => {
   return (
     <>
@@ -154,28 +150,6 @@ const RenameModelBox = ({
                     required
                     invalid={inputError}
                     invalidText={<FormattedMessage id="required.invalidtext" />}
-                  />
-                </>
-              )}
-              {showPrice && (
-                <>
-                  <br />
-                  <br />
-                  <FormattedMessage id="field.price" /> : {lang?.price || ""}
-                  <br />
-                  <br />
-                  <TextInput
-                    id={`price`}
-                    labelText=""
-                    hideLabel
-                    value={priceValue || ""}
-                    onChange={(e) => {
-                      if (onPriceChange) {
-                        onPriceChange(e);
-                      }
-                    }}
-                    invalid={priceError}
-                    invalidText="Price must be a number with up to 2 decimal places"
                   />
                 </>
               )}

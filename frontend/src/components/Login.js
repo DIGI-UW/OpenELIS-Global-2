@@ -20,6 +20,7 @@ import { Formik } from "formik";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
+import { navigateTo } from "./utils/Navigation";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -65,7 +66,7 @@ function Login(props) {
 
   useEffect(() => {
     if (userSessionDetails.authenticated) {
-      window.location.href = "/";
+      navigateTo("/");
     }
   }, [userSessionDetails]);
 
@@ -113,7 +114,7 @@ function Login(props) {
         // get json response here
         let data = await response.json();
         if (response.status === 200) {
-          window.location.href = "/";
+          navigateTo("/");
         } else {
           addNotification({
             title: props.intl.formatMessage({
@@ -286,7 +287,7 @@ function Login(props) {
                                 data-cy="changePassword"
                                 type="button"
                                 onClick={() => {
-                                  window.location.href = "/ChangePasswordLogin";
+                                  navigateTo("/ChangePasswordLogin");
                                 }}
                               >
                                 <FormattedMessage id="label.button.changepassword" />
@@ -296,7 +297,7 @@ function Login(props) {
                         )}
                         {configurationProperties?.useSaml == "true" &&
                           configurationProperties?.useSamlLoginPage !==
-                            "false" && (
+                          "false" && (
                             <Button
                               type="button"
                               renderIcon={HardwareSecurityModule}

@@ -42,6 +42,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import CustomCheckBox from "../../common/CustomCheckBox.js";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
+import { getFullPath } from "../../utils/Navigation";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -96,7 +97,7 @@ function TestManagementConfigMenu() {
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
                 <ClickableTile
-                  href="/MasterListsPage/TestRenameEntry"
+                  href={getFullPath("/MasterListsPage/TestRenameEntry")}
                   id="TestRenameEntry"
                 >
                   <FormattedMessage id="configuration.test.rename" />
@@ -108,7 +109,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/PanelRenameEntry"
+                  href={getFullPath("/MasterListsPage/PanelRenameEntry")}
                   id="PanelRenameEntry"
                 >
                   <FormattedMessage id="configuration.panel.rename" />
@@ -120,7 +121,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/SampleTypeRenameEntry"
+                  href={getFullPath("/MasterListsPage/SampleTypeRenameEntry")}
                   id="SampleTypeRenameEntry"
                 >
                   <FormattedMessage id="configuration.type.rename" />
@@ -132,7 +133,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestSectionRenameEntry"
+                  href={getFullPath("/MasterListsPage/TestSectionRenameEntry")}
                   id="TestSectionRenameEntry"
                 >
                   <FormattedMessage id="configuration.testSection.rename" />
@@ -144,7 +145,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/UomRenameEntry"
+                  href={getFullPath("/MasterListsPage/UomRenameEntry")}
                   id="UomRenameEntry"
                 >
                   <FormattedMessage id="configuration.uom.rename" />
@@ -156,7 +157,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/SelectListRenameEntry"
+                  href={getFullPath("/MasterListsPage/SelectListRenameEntry")}
                   id="SelectListRenameEntry"
                 >
                   <FormattedMessage id="configuration.selectList.rename" />
@@ -168,7 +169,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/MethodRenameEntry"
+                  href={getFullPath("/MasterListsPage/MethodRenameEntry")}
                   id="MethodRenameEntry"
                 >
                   <FormattedMessage id="configuration.method.rename" />
@@ -204,7 +205,7 @@ function TestManagementConfigMenu() {
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
                 <ClickableTile
-                  href="/MasterListsPage/TestCatalog"
+                  href={getFullPath("/MasterListsPage/TestCatalog")}
                   id="TestCatalog"
                 >
                   <FormattedMessage id="configuration.test.catalog" />
@@ -216,7 +217,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/MethodManagement"
+                  href={getFullPath("/MasterListsPage/MethodManagement")}
                   id="MethodManagement"
                 >
                   <FormattedMessage id="configuration.method" />
@@ -227,7 +228,7 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile href="/MasterListsPage/TestAdd" id="TestAdd">
+                <ClickableTile href={getFullPath("/MasterListsPage/TestAdd")} id="TestAdd">
                   <FormattedMessage id="configuration.test.add" />
                   <UnorderedList nested>
                     <ListItem>
@@ -237,7 +238,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestModifyEntry"
+                  href={getFullPath("/MasterListsPage/TestModifyEntry")}
                   id="TestModifyEntry"
                 >
                   <FormattedMessage id="configuration.test.modify" />
@@ -249,7 +250,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestActivation"
+                  href={getFullPath("/MasterListsPage/TestActivation")}
                   id="TestActivation"
                 >
                   <FormattedMessage id="configuration.test.activate" />
@@ -261,7 +262,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestOrderability"
+                  href={getFullPath("/MasterListsPage/TestOrderability")}
                   id="TestOrderability"
                 >
                   <FormattedMessage id="configuration.test.orderable" />
@@ -273,7 +274,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/TestSectionManagement"
+                  href={getFullPath("/MasterListsPage/TestSectionManagement")}
                   id="TestSectionManagement"
                 >
                   <FormattedMessage id="configuration.testUnit.manage" />
@@ -285,7 +286,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/SampleTypeManagement"
+                  href={getFullPath("/MasterListsPage/SampleTypeManagement")}
                   id="SampleTypeManagement"
                 >
                   <FormattedMessage id="configuration.sampleType.manage" />
@@ -297,7 +298,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/UomManagement"
+                  href={getFullPath("/MasterListsPage/UomManagement")}
                   id="UomManagement"
                 >
                   <FormattedMessage id="configuration.uom.manage" />
@@ -309,7 +310,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/PanelManagement"
+                  href={getFullPath("/MasterListsPage/PanelManagement")}
                   id="PanelManagement"
                 >
                   <FormattedMessage id="configuration.panel.manage" />
@@ -321,7 +322,7 @@ function TestManagementConfigMenu() {
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/ResultSelectListAdd"
+                  href={getFullPath("/MasterListsPage/ResultSelectListAdd")}
                   id="ResultSelectListAdd"
                 >
                   <FormattedMessage id="configuration.selectList.add" />
@@ -335,12 +336,12 @@ function TestManagementConfigMenu() {
                   </UnorderedList>
                 </ClickableTile>
                 <br />
-                <ClickableTile href="/MasterListsPage/reflex" id="reflex">
+                <ClickableTile href={getFullPath("/MasterListsPage/reflex")} id="reflex">
                   <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage/calculatedValue"
+                  href={getFullPath("/MasterListsPage/calculatedValue")}
                   id="calculatedValue"
                 >
                   <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
