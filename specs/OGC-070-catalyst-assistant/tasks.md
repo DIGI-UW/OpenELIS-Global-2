@@ -271,27 +271,27 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T028 [P] [M0.2] Write pytest test for SQLGenAgent (receives schema
+- [x] T028 [P] [M0.2] Write pytest test for SQLGenAgent (receives schema
       context) in `projects/catalyst/catalyst-agents/tests/test_sqlgen_agent.py`
 
 ### M0.2.4: SQLGenAgent Implementation
 
-- [ ] T029 [M0.2] Implement SQLGenAgent executor in
+- [x] T029 [M0.2] Implement SQLGenAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/sqlgen_executor.py`
       (receives schema from SchemaAgent, generates SQL via LLM)
-- [ ] T030 [M0.2] Implement SQLGenAgent server in
+- [x] T030 [M0.2] Implement SQLGenAgent server in
       `projects/catalyst/catalyst-agents/src/agents/sqlgen_server.py` with
       FastAPI + A2A SDK
-- [ ] T031 [M0.2] Create SQLGenAgent card at
+- [x] T031 [M0.2] Create SQLGenAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/sqlgen.json` per A2A
       spec
 
 ### M0.2.5: RouterAgent Update
 
-- [ ] T032 [M0.2] Update RouterAgent executor in
+- [x] T032 [M0.2] Update RouterAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/router_executor.py` to
       orchestrate: query → SchemaAgent → SQLGenAgent → response
-- [ ] T033 [M0.2] Update RouterAgent card at
+- [x] T033 [M0.2] Update RouterAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/router.json` to
       reference SchemaAgent + SQLGenAgent
 
@@ -299,22 +299,23 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T034 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
+- [x] T034 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
       SQLGenAgent flow in
       `projects/catalyst/catalyst-agents/tests/test_multi_agent_flow.py`
 
 ### M0.2.7: Single-Agent Fallback
 
-- [ ] T035 [M0.2] Add single-agent fallback mode to RouterAgent (direct to
+- [x] T035 [M0.2] Add single-agent fallback mode to RouterAgent (direct to
       CatalystAgent when `mode=single`)
-- [ ] T036 [P] [M0.2] Write pytest test for single-agent fallback in
+- [x] T036 [P] [M0.2] Write pytest test for single-agent fallback in
       `projects/catalyst/catalyst-agents/tests/test_fallback_mode.py`
 
 ### M0.2.8: Verification & PR
 
-- [ ] T037 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
+- [x] T037 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
       flow works, verify fallback mode works, create PR
       `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
+      **Status**: All 14 agent tests pass. Multi-agent flow (Router → SchemaAgent → SQLGenAgent) verified. Single-agent fallback mode verified. Ready for PR creation (manual step).
 
 ### M0.2.9: Model Evaluation (FR-022, NFR-001)
 
