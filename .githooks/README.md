@@ -2,8 +2,8 @@
 
 ## Auto-Format Hook
 
-A simple pre-commit hook that automatically formats code before commits to
-prevent CI failures.
+A pre-commit hook that automatically formats **staged files only** before commits
+to prevent CI failures.
 
 ### Setup (One-Time)
 
@@ -34,8 +34,8 @@ Formatted files are automatically re-staged.
 
 - ✅ Never forget to format
 - ✅ No CI failures from formatting
-- ✅ Fast (only formats staged files)
-- ✅ Non-intrusive (silently formats)
+- ✅ Fast (formats staged files only, not entire codebase)
+- ✅ Non-intrusive (silently formats and re-stages)
 
 ### Disable Temporarily
 
