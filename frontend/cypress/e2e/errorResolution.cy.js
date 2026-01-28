@@ -359,6 +359,23 @@ describe("Error Resolution - User Story 3", function () {
       "be.visible",
     );
 
+    // If Edit button is visible (field has existing mapping), click it to enter edit mode
+    // MappingPanel starts in VIEW mode when mapping exists (editMode = !mapping)
+    // OpenELISFieldSelector only renders in EDIT mode
+    cy.get('[data-testid="mapping-panel"]').then(($panel) => {
+      const $editButton = $panel.find(
+        '[data-testid="mapping-panel-edit-button"]',
+      );
+      if ($editButton.length > 0) {
+        cy.log("Field has existing mapping - clicking Edit to enter edit mode");
+        cy.wrap($editButton).click();
+      } else {
+        cy.log(
+          "Field has no existing mapping - already in edit mode (create mode)",
+        );
+      }
+    });
+
     // Check if OpenELIS field selector exists and has data
     // The OpenELISFieldSelector uses mock data filtered by fieldType
     // Mock fields: Glucose (NUMERIC), HIV (QUALITATIVE), Hemoglobin (NUMERIC)
@@ -582,12 +599,15 @@ describe("Error Resolution - User Story 3", function () {
         let hasUnacknowledged = false;
 
         // Check each row for unacknowledged status
+        // IMPORTANT: Use exact match or check for "unacknowledged" first
+        // "Unacknowledged" contains "acknowledged" as substring, so simple includes() fails
         $rows.each((index, row) => {
           const $row = Cypress.$(row);
           const $status = $row.find('[data-testid^="error-status-"]');
           if ($status.length > 0) {
             const statusText = $status.text().toLowerCase();
-            if (!statusText.includes("acknowledged")) {
+            // Check for "unacknowledged" first (more specific), then "acknowledged"
+            if (statusText.includes("unacknowledged")) {
               hasUnacknowledged = true;
               return false; // Break loop
             }
@@ -598,16 +618,29 @@ describe("Error Resolution - User Story 3", function () {
           cy.log(
             "All errors are already acknowledged - verify button click does nothing",
           );
-          // Button is always enabled, but clicking should do nothing (function returns early)
-          cy.get('[data-testid="acknowledge-all-button"]')
-            .should("be.visible")
-            .click();
 
-          // Wait a moment to ensure no API call is made
-          cy.wait(1000);
+          // Get current count of batchAcknowledge API calls BEFORE clicking button
+          cy.get("@batchAcknowledge.all").then((calls) => {
+            const initialCallCount = calls ? calls.length : 0;
+            cy.log(`Initial batchAcknowledge call count: ${initialCallCount}`);
 
-          // Verify no batch acknowledge API call was made
-          cy.get("@batchAcknowledge.all").should("have.length", 0);
+            // Button is always enabled, but clicking should do nothing (function returns early)
+            cy.get('[data-testid="acknowledge-all-button"]')
+              .should("be.visible")
+              .click();
+
+            // Wait a moment to ensure no NEW API call is made
+            cy.wait(1000);
+
+            // Verify no NEW batch acknowledge API call was made after clicking
+            cy.get("@batchAcknowledge.all").then((newCalls) => {
+              const newCallCount = newCalls ? newCalls.length : 0;
+              expect(newCallCount).to.equal(
+                initialCallCount,
+                "No new batch acknowledge API call should be made when all errors are already acknowledged",
+              );
+            });
+          });
 
           // Verify all errors remain acknowledged
           cy.get('[data-testid="error-table-container"]')
