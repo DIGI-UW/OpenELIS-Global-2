@@ -32,11 +32,11 @@ works—a learned simulator that can:
 Recent comprehensive surveys identify three essential subsystems for true world
 models:
 
-| Pillar                | Function                                      | OpenELIS Application                           |
-| --------------------- | --------------------------------------------- | ---------------------------------------------- |
-| **Generative Heart**  | Produces world states                         | Simulates sample/analysis/result states        |
-| **Interactive Loop**  | Closes action-perception cycle in real-time   | Responds to user actions, workflow events      |
-| **Persistent Memory** | Sustains coherence over long horizons         | Tracks sample lifecycle, patient history       |
+| Pillar                | Function                                    | OpenELIS Application                      |
+| --------------------- | ------------------------------------------- | ----------------------------------------- |
+| **Generative Heart**  | Produces world states                       | Simulates sample/analysis/result states   |
+| **Interactive Loop**  | Closes action-perception cycle in real-time | Responds to user actions, workflow events |
+| **Persistent Memory** | Sustains coherence over long horizons       | Tracks sample lifecycle, patient history  |
 
 ### Key Insights from Leading Researchers
 
@@ -47,11 +47,11 @@ occur?"
 
 **Schmidhuber's Influence**: Learning environment simulators that understand
 underlying mechanisms, not just surface patterns. For OpenELIS: understanding
-*why* reflex tests trigger, not just *that* they trigger.
+_why_ reflex tests trigger, not just _that_ they trigger.
 
 **Meta's CWM (Code World Model)**: Trained on execution traces, not just static
-code. For OpenELIS: learning from actual workflow traces (sample entry →
-results → validation → reporting).
+code. For OpenELIS: learning from actual workflow traces (sample entry → results
+→ validation → reporting).
 
 ### Key Research References
 
@@ -273,13 +273,13 @@ class OpenELISWorldModel:
 
 ### Data Sources from OpenELIS
 
-| Data Source                        | What It Provides              | World Model Use              |
-| ---------------------------------- | ----------------------------- | ---------------------------- |
-| **Audit logs** (`sys_user_id`, `lastupdated`) | Who did what, when | Action sequence learning     |
-| **Status transitions**             | State changes over time       | Dynamics learning            |
-| **Reflex test triggers**           | Causal chains                 | Emergent behavior learning   |
-| **Sample → Result timelines**      | End-to-end workflows          | Trajectory learning          |
-| **Error/rejection events**         | Exception handling            | Edge case learning           |
+| Data Source                                   | What It Provides        | World Model Use            |
+| --------------------------------------------- | ----------------------- | -------------------------- |
+| **Audit logs** (`sys_user_id`, `lastupdated`) | Who did what, when      | Action sequence learning   |
+| **Status transitions**                        | State changes over time | Dynamics learning          |
+| **Reflex test triggers**                      | Causal chains           | Emergent behavior learning |
+| **Sample → Result timelines**                 | End-to-end workflows    | Trajectory learning        |
+| **Error/rejection events**                    | Exception handling      | Edge case learning         |
 
 ### Training Approach (Meta CWM-Inspired)
 
@@ -544,21 +544,21 @@ Integration Points:
 
 ### Healthcare-Specific Challenges
 
-| Challenge                  | Mitigation                                                      |
-| -------------------------- | --------------------------------------------------------------- |
-| **Patient privacy**        | World model operates on anonymized trajectories; no PHI in model weights |
-| **Regulatory compliance**  | Audit all predictions; human-in-the-loop for decisions          |
-| **High-stakes decisions**  | Confidence calibration; uncertainty quantification              |
-| **Rare events**            | Synthetic data augmentation for edge cases                      |
+| Challenge                 | Mitigation                                                               |
+| ------------------------- | ------------------------------------------------------------------------ |
+| **Patient privacy**       | World model operates on anonymized trajectories; no PHI in model weights |
+| **Regulatory compliance** | Audit all predictions; human-in-the-loop for decisions                   |
+| **High-stakes decisions** | Confidence calibration; uncertainty quantification                       |
+| **Rare events**           | Synthetic data augmentation for edge cases                               |
 
 ### Technical Challenges
 
-| Challenge                                     | Approach                                            |
-| --------------------------------------------- | --------------------------------------------------- |
-| **Long horizons** (samples can span weeks)    | Memory-augmented models per 2026 research           |
-| **Partial observability**                     | Latent state inference; probabilistic predictions   |
-| **Non-stationarity** (lab practices change)   | Continual learning; drift detection                 |
-| **Multi-site variation**                      | Configuration-driven model variants (Constitution Principle I) |
+| Challenge                                   | Approach                                                       |
+| ------------------------------------------- | -------------------------------------------------------------- |
+| **Long horizons** (samples can span weeks)  | Memory-augmented models per 2026 research                      |
+| **Partial observability**                   | Latent state inference; probabilistic predictions              |
+| **Non-stationarity** (lab practices change) | Continual learning; drift detection                            |
+| **Multi-site variation**                    | Configuration-driven model variants (Constitution Principle I) |
 
 ---
 
@@ -566,12 +566,12 @@ Integration Points:
 
 The Catalyst assistant and world model are complementary:
 
-| Capability       | Catalyst (Current)            | World Model (Future)          |
-| ---------------- | ----------------------------- | ----------------------------- |
-| **Query type**   | SQL generation from NL        | Workflow reasoning from NL    |
-| **Time scope**   | Point-in-time queries         | Temporal predictions          |
-| **Reasoning**    | Schema-grounded               | Causally-grounded             |
-| **Output**       | Database results              | Predictions + explanations    |
+| Capability     | Catalyst (Current)     | World Model (Future)       |
+| -------------- | ---------------------- | -------------------------- |
+| **Query type** | SQL generation from NL | Workflow reasoning from NL |
+| **Time scope** | Point-in-time queries  | Temporal predictions       |
+| **Reasoning**  | Schema-grounded        | Causally-grounded          |
+| **Output**     | Database results       | Predictions + explanations |
 
 **Integration Path**:
 

@@ -33,6 +33,16 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 
 ---
 
+## General Tasks (Throughout Project)
+
+- [ ] T000 [ALL] Update documentation throughout project lifecycle: (a) Keep
+      spec.md, plan.md, tasks.md synchronized as implementation progresses, (b)
+      Document architecture decisions in plan.md when deviating from initial
+      design, (c) Update README and deployment docs in post-MVP phase. This is
+      an ongoing task spanning all milestones.
+
+---
+
 ## Milestone 0.0: Foundation POC (Estimate: 2-3 days)
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-foundation-poc`  
@@ -310,14 +320,16 @@ fallback works
 
 - [ ] T037a [P] [M0.2] Create golden query dataset in
       `projects/catalyst/tests/fixtures/golden_queries.json` with 26 OpenELIS
-      questions (research.md Section 13)
+      natural language queries (research.md Section 13). This dataset is used by
+      M0.2.9 tasks T037b-T037f for model evaluation.
 - [ ] T037b [M0.2] Run balanced scorecard evaluation on Tier A Orchestrator
       candidates (Llama 3.1 8B, Gemma 2 9B) — document results in
       `projects/catalyst/docs/model-evaluation-m0.2.md`
 - [ ] T037c [M0.2] Run balanced scorecard evaluation on Tier A SQLGen candidates
       (CodeLlama 13B, Llama 3.1 8B fallback) — document results
-- [ ] T037d [M0.2] Write trajectory validation tests per research.md Section 14.2
-      in `projects/catalyst/catalyst-agents/tests/test_trajectory_validation.py`
+- [ ] T037d [M0.2] Write trajectory validation tests per research.md Section
+      14.2 in
+      `projects/catalyst/catalyst-agents/tests/test_trajectory_validation.py`
 - [ ] T037e [M0.2] Run balanced scorecard evaluation on Tier B SQLGen candidates
       (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available — document results
       in `projects/catalyst/docs/model-evaluation-m0.2.md` (Tier B section)
@@ -325,6 +337,12 @@ fallback works
       `projects/catalyst/docs/model-evaluation-m0.2.md` (when Tier B hardware
       unavailable, document skip rationale; NFR-001 satisfied by Tier A + Tier B
       task presence)
+- [ ] T037g [P] [M0.2] Create comprehensive golden query dataset file
+      `projects/catalyst/tests/fixtures/golden_queries.json` with 26+ robust
+      queries including metadata fields for LLM validation toolkit compatibility
+      (ragas, promptfoo, langfuse). Each query MUST include: natural_language,
+      expected_sql, context, difficulty, tables_involved, expected_row_count,
+      explanation (FR-022). File format must be JSON array of query objects.
 
 ### M0.2 Sign-off Checklist
 
@@ -333,10 +351,14 @@ fallback works
 - [ ] Single-agent fallback: CatalystAgent works when SchemaAgent/SQLGenAgent
       unavailable
 - [ ] Both LLM providers work with multi-agent flow
-- [ ] **Trajectory validation**: Router → SchemaAgent → SQLGenAgent order verified
+- [ ] **Trajectory validation**: Router → SchemaAgent → SQLGenAgent order
+      verified
+- [ ] **Golden query dataset**: 26+ comprehensive OpenELIS natural language
+      queries created in `projects/catalyst/tests/fixtures/golden_queries.json`
+      with full metadata (FR-022)
 - [ ] **Model evaluation**: At least one Tier A config evaluated using scorecard
-- [ ] **Tier B evaluation**: Tier B SQLGen scorecard run when 40GB+ GPU available;
-      otherwise procedure/skip documented (NFR-001)
+- [ ] **Tier B evaluation**: Tier B SQLGen scorecard run when 40GB+ GPU
+      available; otherwise procedure/skip documented (NFR-001)
 - [ ] **Deterministic guards**: 100% pass rate on non-ambiguous queries (18/18)
 
 ---
@@ -392,6 +414,10 @@ support via accurate schema metadata)
 - [ ] T046 [M1] Implement PostgreSQL schema extractor in
       `projects/catalyst/catalyst-mcp/src/tools/db/schema_extractor.py` (extract
       table DDL, columns, relationships)
+- [ ] T046a [P] [M1] Write pytest tests for ConfigParser class in
+      `projects/catalyst/catalyst-mcp/tests/test_config_parser.py` (TDD -
+      MANDATORY). Test database URL parsing, environment variable substitution,
+      and error handling for malformed config files.
 
 ### M1.4: RAG Implementation
 
@@ -425,10 +451,10 @@ support via accurate schema metadata)
       `projects/catalyst/tests/fixtures/golden_queries.json` with expected
       tables per query (for Recall@K measurement)
 - [ ] T053c [M1] Implement Recall@K calculation in
-      `projects/catalyst/catalyst-mcp/tests/test_retrieval_metrics.py`
-      (target: Recall@5 >= 80%)
-- [ ] T053ca [M1] Implement HitRate@K calculation in same file
-      (target: HitRate@5 >= 90%)
+      `projects/catalyst/catalyst-mcp/tests/test_retrieval_metrics.py` (target:
+      Recall@5 >= 80%)
+- [ ] T053ca [M1] Implement HitRate@K calculation in same file (target:
+      HitRate@5 >= 90%)
 - [ ] T053cb [M1] Implement groundedness check: verify generated SQL only
       references tables/columns in provided schema context
 - [ ] T053d [M1] Implement SQL execution accuracy test in
@@ -484,7 +510,8 @@ support via accurate schema metadata)
 - [ ] `validate_sql` correctly validates/rejects SQL
 - [ ] **Recall@5 >= 80%** on golden query set (18+ correct table retrievals)
 - [ ] **HitRate@5 >= 90%** on golden query set
-- [ ] **Groundedness**: No hallucinated tables in generated SQL for validation queries
+- [ ] **Groundedness**: No hallucinated tables in generated SQL for validation
+      queries
 - [ ] MCP Streamable HTTP conformance: protocol version header + session ID
 
 ---
@@ -501,8 +528,11 @@ RouterAgent
 conversion via agents), FR-005 (read-only SQL execution), FR-008 (blocked table
 validation), FR-009 (row estimation), FR-010 (audit logging - partial), FR-013
 (table-level access control)  
-**Note**: Security features (PHI detection, confirmation tokens, role-based
-endpoint access) deferred to M5
+**Note**: Security features (PHI detection [FR-018], confirmation tokens
+[FR-016], role-based endpoint access [FR-020]) deferred to M5 **Architecture
+Note**: This milestone uses **classic Hibernate DAOs** with manual
+SessionFactory calls (Constitution IV). **No Spring Data JPA repositories** -
+use GenericDAO pattern consistent with existing OpenELIS codebase.
 
 ### M2.1: Branch Setup & Package Structure
 
@@ -569,6 +599,11 @@ endpoint access) deferred to M5
 - [ ] T067a [M2] Implement row estimation using EXPLAIN in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       (FR-009)
+- [ ] T067b [M2] **FR-009 Row Estimation (Deferred from M0-M1)**: Implement row
+      estimation functionality using EXPLAIN queries when read-only database
+      access is available (configured in T070-T071). This task DEPENDS ON
+      successful read-only connection setup. Verify EXPLAIN output parsing
+      returns accurate row counts.
 - [ ] T068 [M2] Implement SQL guardrails in
       `src/main/java/org/openelisglobal/catalyst/guardrails/SQLGuardrails.java`
       (blocked tables, SQL validation - NO PHI detection, deferred to M5)
@@ -601,15 +636,17 @@ endpoint access) deferred to M5
 
 ### M2.8: Database Schema
 
-- [ ] T074 [M2] Create Liquibase changeset in
+- [ ] T074 [M2] Create Liquibase changeset for CatalystQuery table without
+      security fields (phi_gated, confirmation_token added in M5) (Constitution
+      VI). **4-Step Liquibase Procedure**: 1. Create directory:
+      `src/main/resources/liquibase/3.4.x.x/` 2. Create changeset file:
       `src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml`
-      for CatalystQuery table without security fields (phi_gated,
-      confirmation_token added in M5) (Constitution VI). When implementing: (1)
-      create folder `src/main/resources/liquibase/3.4.x.x/`, (2) add the
-      changeset file there, (3) create `3.4.x.x/base.xml` that includes it (e.g.
-      `<include relativeToChangelogFile="true" file="001-catalyst-create-audit-table.xml"/>`),
-      (4) add `<include file="liquibase/3.4.x.x/base.xml" />` to
-      `src/main/resources/liquibase/base-changelog.xml` after 3.3.x.x.
+      with table definition 3. Create version aggregator:
+      `src/main/resources/liquibase/3.4.x.x/base.xml` with content:
+      `xml <include relativeToChangelogFile="true" file="001-catalyst-create-audit-table.xml"/> ` 4.
+      Register in master changelog:
+      `src/main/resources/liquibase/base-changelog.xml` by adding AFTER 3.3.x.x:
+      `xml <include file="liquibase/3.4.x.x/base.xml" /> `
 
 ### M2.9: Forms (DTOs)
 
@@ -646,7 +683,8 @@ endpoint access) deferred to M5
 - [ ] CatalystGatewayClient integration test: calls Gateway, receives SQL
 - [ ] SQL guardrails test: blocked tables/DDL rejected (100% rejection rate)
 - [ ] Audit logging: CatalystQuery records created for each query
-- [ ] Read-only DB connection verified (INSERT/UPDATE fails with permission denied)
+- [ ] Read-only DB connection verified (INSERT/UPDATE fails with permission
+      denied)
 - [ ] @Transactional annotations ONLY in service layer (manual code review)
 - [ ] Row estimation (EXPLAIN-based) works for sample queries
 
@@ -712,6 +750,10 @@ translations
 - [ ] T093b [M3] Add example prompts i18n keys to
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
       (FR-014)
+- [ ] T093c [POST-MVP] Polish example prompts with user-tested, domain-expert
+      validated queries. MVP uses basic placeholder examples from research.md
+      for functional testing only. Polished, production-ready examples deferred
+      to post-MVP (FR-014).
 
 ### M3.4: Internationalization (Constitution VII - MANDATORY)
 
@@ -768,7 +810,8 @@ to M5 to allow independent testing
       M0.2, M1, M2, M3 first)
 - [ ] T103 [M4] Implement CatalystRestController in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
-      with @RestController and /rest/catalyst/query endpoint
+      with @RestController and /rest/catalyst/query endpoint (NO
+      @Transactional - see T103a verification, Constitution IV)
 - [ ] T103a [M4] Verify CatalystRestController has NO @Transactional annotations
       (Constitution Principle IV - transaction boundaries in services ONLY). Add
       verification comment in controller class or test assertion in
