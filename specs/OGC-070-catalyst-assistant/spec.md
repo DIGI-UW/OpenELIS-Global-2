@@ -321,9 +321,15 @@ This delivers enhanced usability and workflow integration.
   access to blocked tables (e.g., sys_user, login_user, user_role).
 
 - **FR-009**: System MUST estimate the number of rows a query will return before
-  execution and warn users if the estimate exceeds 10,000 rows. **Implementation
-  deferred to M2** when read-only database access is available. Estimation uses
-  PostgreSQL EXPLAIN to calculate row count.
+  execution and warn users if the estimate exceeds 10,000 rows.
+
+  **Implementation (defense-in-depth)**:
+  - M0.0-M0.2: Placeholder returns 0 (no estimation)
+  - M1+: MCP `validate_sql` tool performs EXPLAIN-based estimation (agent
+    pre-validation)
+  - M2+: Java `SQLGuardrails` re-validates estimation (defense-in-depth)
+
+  Both layers use PostgreSQL EXPLAIN to estimate row count.
 
 - **FR-010**: System MUST log all generated SQL queries and their execution
   results for audit purposes, including user ID and timestamp.
@@ -337,11 +343,14 @@ This delivers enhanced usability and workflow integration.
   sys_user, login_user, user_role). Full row-level RBAC integration with
   OpenELIS permissions is deferred to Phase 2.
 
-- **FR-014**: System SHOULD provide example queries or prompts to help users
-  understand how to phrase their questions effectively. UI displays 3-5 simple
-  representative examples covering: count queries, JOIN queries, aggregation
-  queries, and date filtering queries. **Final examples deferred to post-MVP**
-  pending user testing; MVP may use placeholder examples.
+- **FR-014**: System MUST provide example queries or prompts to help users
+  understand how to phrase their questions effectively. Examples are served from
+  the frontend (no backend endpoint required). Minimum 5 example queries:
+  1. Count: "How many samples were entered today?"
+  2. JOIN: "Show all HIV test results from last week"
+  3. Aggregation: "What is the average turnaround time for malaria tests?"
+  4. Date filter: "List samples collected in January 2026"
+  5. Status: "How many tests are pending validation?"
 
 - **FR-015**: System MUST support queries that require JOINs across multiple
   tables, aggregations (COUNT, SUM, AVG), and date filtering.
@@ -549,8 +558,10 @@ principles for this feature:_
   prevented from being sent to externally-hosted AI providers (verified via
   audit logs).
 
-- **SC-007**: System provides helpful error messages that guide users to
-  rephrase queries when SQL generation fails.
+- **SC-007**: System provides error messages that:
+  - Include suggested query reformulation when SQL generation fails
+  - Do NOT expose technical implementation details (stack traces, raw SQL errors)
+  - Are internationalized (en/fr minimum per Constitution VII)
 
 - **SC-008**: Users can export query results in CSV or JSON format.
 

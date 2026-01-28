@@ -51,6 +51,9 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 **FR Coverage**: FR-020 (A2A multi-agent architecture - partial), FR-003 (MCP
 schema retrieval - skeleton)
 
+**Note**: 24 tasks for 2-3 day estimate reflects granular TDD breakdown. Actual
+time may vary; adjust future milestone estimates based on M0.0 velocity.
+
 ### M0.0.1: Branch Setup & Project Structure (med-agent-hub style)
 
 - [x] T001 [M0.0] Create milestone branch
@@ -171,7 +174,7 @@ schema retrieval - skeleton)
 - [x] T018 [M0.0] Run pytest to verify all M0.0 tests pass, verify curl to
       Router returns SQL, create PR
       `feat/OGC-070-catalyst-assistant-m0-foundation-poc` → `develop`
-      **Status**: All M0.0 tests pass (6/6 tests: gateway, mcp, catalyst agent,
+      **Status**: All M0.0 tests pass (6/6 tests: gateway, mcp, CatalystAgent,
       router, integration). Integration tests validate full Gateway →
       RouterAgent → CatalystAgent → MCP flow. Ready for PR creation (manual
       step).
@@ -185,7 +188,7 @@ schema retrieval - skeleton)
 
 ---
 
-## Milestone 0.1: Provider Switching (Estimate: 0.5 days)
+## Milestone 0.1: Provider Switching (Estimate: 1 day)
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-provider-switching`  
 **Goal**: Prove same agent works with local AND cloud providers  
@@ -599,12 +602,8 @@ use GenericDAO pattern consistent with existing OpenELIS codebase.
       with @Service and @Transactional
 - [ ] T067a [M2] Implement row estimation using EXPLAIN in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
-      (FR-009)
-- [ ] T067b [M2] **FR-009 Row Estimation (Deferred from M0-M1)**: Implement row
-      estimation functionality using EXPLAIN queries when read-only database
-      access is available (configured in T070-T071). This task DEPENDS ON
-      successful read-only connection setup. Verify EXPLAIN output parsing
-      returns accurate row counts.
+      (FR-009). **Note**: This mirrors M1's MCP `validate_sql` estimation for
+      defense-in-depth. Depends on M1 for EXPLAIN pattern reference.
 - [ ] T068 [M2] Implement SQL guardrails in
       `src/main/java/org/openelisglobal/catalyst/guardrails/SQLGuardrails.java`
       (blocked tables, SQL validation - NO PHI detection, deferred to M5)
@@ -747,7 +746,8 @@ translations
       `frontend/src/components/catalyst/SQLPreview.jsx` with Carbon CodeSnippet
 - [ ] T093a [M3] Implement example prompts display in
       `frontend/src/components/catalyst/CatalystSidebar.jsx` with Carbon
-      components (FR-014)
+      components (FR-014). Examples are hardcoded in frontend; no backend
+      endpoint needed.
 - [ ] T093b [M3] Add example prompts i18n keys to
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
       (FR-014)
