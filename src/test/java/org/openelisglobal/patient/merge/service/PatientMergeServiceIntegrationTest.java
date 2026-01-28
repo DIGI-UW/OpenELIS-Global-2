@@ -42,6 +42,7 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
 
     @Before
     public void setUp() throws Exception {
+        System.setProperty("test.environment", "true");
         // Load standard system user dataset (includes admin user)
         executeDataSetWithStateManagement("testdata/system-user.xml");
 
@@ -269,7 +270,7 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
 
     /**
      * Test: Patient merge with FHIR UUIDs - verify database merge works. Note: FHIR
-     * integration is not tested in integration tests (no FHIR server available).
+     * validation is skipped in integration tests (no FHIR server available).
      */
     @Test
     public void testMergeExecution_WithFhirUuids_ShouldCompleteSuccessfully() {
