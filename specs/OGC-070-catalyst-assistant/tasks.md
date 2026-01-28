@@ -251,19 +251,19 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T024 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP
+- [x] T024 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP
       get_query_context) in
       `projects/catalyst/catalyst-agents/tests/test_schema_agent.py`
 
 ### M0.2.2: SchemaAgent Implementation
 
-- [ ] T025 [M0.2] Implement SchemaAgent executor in
+- [x] T025 [M0.2] Implement SchemaAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/schema_executor.py` (calls
       MCP get_query_context, returns schema context)
-- [ ] T026 [M0.2] Implement SchemaAgent server in
+- [x] T026 [M0.2] Implement SchemaAgent server in
       `projects/catalyst/catalyst-agents/src/agents/schema_server.py` with
       FastAPI + A2A SDK
-- [ ] T027 [M0.2] Create SchemaAgent card at
+- [x] T027 [M0.2] Create SchemaAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/schema.json` per A2A
       spec
 
