@@ -93,8 +93,8 @@ sign-off checklist.
 
 **Expected output**
 
-- `test_provider_e2e.sh` and `test_multiagent_e2e.sh` print `PASS: ...` and
-  exit 0 when the Gateway is up and returns a valid completion (e.g. SQL or
+- `test_provider_e2e.sh` and `test_multiagent_e2e.sh` print `PASS: ...` and exit
+  0 when the Gateway is up and returns a valid completion (e.g. SQL or
   structured content).
 - If the Gateway is unreachable, scripts exit 1 and instruct you to start
   services first.

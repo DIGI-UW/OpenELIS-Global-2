@@ -192,9 +192,9 @@ schema retrieval - skeleton)
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [x] T019 [P] [M0.1] Write pytest tests for provider switching (FR-007):
-      - Integration tests in `test_catalyst_agent.py` (provider selection logic)
-      - Unit tests in `test_llm_clients.py` (HTTP/API implementation verification)
+- [x] T019 [P] [M0.1] Write pytest tests for provider switching (FR-007): -
+      Integration tests in `test_catalyst_agent.py` (provider selection logic) -
+      Unit tests in `test_llm_clients.py` (HTTP/API implementation verification)
 
 ### M0.1.2: Provider Implementation
 
@@ -212,16 +212,16 @@ schema retrieval - skeleton)
 - [x] T023 [M0.1] Run pytest to verify all provider tests pass, test with each
       provider (LM Studio and Gemini), create PR
       `feat/OGC-070-catalyst-assistant-m0-provider-switching` → `develop`
-      **Status**: All tests pass:
-      - 9 unit tests in `test_llm_clients.py` (verify HTTP/API implementation)
-      - 3 integration tests in `test_catalyst_agent.py` (verify provider switching logic)
-      - Total: 12 provider-related tests passing
-      Provider switching verified for both LM Studio and Gemini. Ready for PR
-      creation (manual step).
+      **Status**: All tests pass: - 9 unit tests in `test_llm_clients.py`
+      (verify HTTP/API implementation) - 3 integration tests in
+      `test_catalyst_agent.py` (verify provider switching logic) - Total: 12
+      provider-related tests passing Provider switching verified for both LM
+      Studio and Gemini. Ready for PR creation (manual step).
 
 ### M0.1 Sign-off Checklist
 
-- [x] All pytest unit tests pass (`./tests/run_tests.sh all`) — **Verified**: gateway (1), mcp (8), agents (17) = 26 tests passed
+- [x] All pytest unit tests pass (`./tests/run_tests.sh all`) — **Verified**:
+      gateway (1), mcp (8), agents (17) = 26 tests passed
 - [ ] LM Studio E2E: Query returns SQL (LM Studio running)
 - [ ] Gemini E2E: Query returns SQL (GEMINI_API_KEY set)
 - [ ] Provider switching works: same query returns SQL from both providers
@@ -309,7 +309,8 @@ fallback works
 
 - [ ] All pytest unit tests pass
 - [ ] Multi-agent flow E2E: Query routed through SchemaAgent → SQLGenAgent
-- [ ] Single-agent fallback: CatalystAgent works when SchemaAgent/SQLGenAgent unavailable
+- [ ] Single-agent fallback: CatalystAgent works when SchemaAgent/SQLGenAgent
+      unavailable
 - [ ] Both LLM providers work with multi-agent flow
 
 ---
@@ -450,8 +451,10 @@ support via accurate schema metadata)
 - [ ] MCP connects to PostgreSQL and extracts schema
 - [ ] `get_relevant_tables` returns correct tables for sample queries
 - [ ] `validate_sql` correctly validates/rejects SQL
-- [ ] Evaluation harness: Recall@K runs and is reported (target threshold TBD in future phase)
-- [ ] Evaluation harness: Execution accuracy runs and is reported (target threshold TBD in future phase)
+- [ ] Evaluation harness: Recall@K runs and is reported (target threshold TBD in
+      future phase)
+- [ ] Evaluation harness: Execution accuracy runs and is reported (target
+      threshold TBD in future phase)
 
 ---
 
@@ -468,7 +471,7 @@ conversion via agents), FR-005 (read-only SQL execution), FR-008 (blocked table
 validation), FR-009 (row estimation), FR-010 (audit logging - partial), FR-013
 (table-level access control)  
 **Note**: Security features (PHI detection, confirmation tokens, role-based
-      endpoint access) deferred to M5
+endpoint access) deferred to M5
 
 ### M2.1: Branch Setup & Package Structure
 
@@ -570,12 +573,11 @@ validation), FR-009 (row estimation), FR-010 (audit logging - partial), FR-013
 - [ ] T074 [M2] Create Liquibase changeset in
       `src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml`
       for CatalystQuery table without security fields (phi_gated,
-      confirmation_token added in M5) (Constitution VI). When implementing:
-      (1) create folder `src/main/resources/liquibase/3.4.x.x/`, (2) add the
-      changeset file there, (3) create `3.4.x.x/base.xml` that includes it
-      (e.g. `<include relativeToChangelogFile="true"
-      file="001-catalyst-create-audit-table.xml"/>`), (4) add
-      `<include file="liquibase/3.4.x.x/base.xml" />` to
+      confirmation_token added in M5) (Constitution VI). When implementing: (1)
+      create folder `src/main/resources/liquibase/3.4.x.x/`, (2) add the
+      changeset file there, (3) create `3.4.x.x/base.xml` that includes it (e.g.
+      `<include relativeToChangelogFile="true" file="001-catalyst-create-audit-table.xml"/>`),
+      (4) add `<include file="liquibase/3.4.x.x/base.xml" />` to
       `src/main/resources/liquibase/base-changelog.xml` after 3.3.x.x.
 
 ### M2.9: Forms (DTOs)
@@ -601,9 +603,8 @@ validation), FR-009 (row estimation), FR-010 (audit logging - partial), FR-013
       verify when CatalystRestController is created in M4.
 - [ ] T081b [M2] Add verification checkpoint: when CatalystRestController is
       implemented in M4 (T103), confirm it has no `@Transactional` annotations
-      (Constitution Principle IV – transactions in services only). M4 task
-      T103a already requires this; treat T081b as the M2 reminder/checklist
-      entry.
+      (Constitution Principle IV – transactions in services only). M4 task T103a
+      already requires this; treat T081b as the M2 reminder/checklist entry.
 - [ ] T082 [M2] Create PR `feat/OGC-070-catalyst-assistant-m2-backend-core` →
       `develop`
 
@@ -796,7 +797,8 @@ to M5 to allow independent testing
 ### M4 Sign-off Checklist
 
 - [ ] All component tests pass (Java + Python + React)
-- [ ] Full stack starts: `docker compose -f dev.docker-compose.yml up` + Python services
+- [ ] Full stack starts: `docker compose -f dev.docker-compose.yml up` + Python
+      services
 - [ ] Cypress E2E: Basic query returns results
 - [ ] Cypress E2E: JOIN query returns results (FR-015)
 - [ ] Cypress E2E: Aggregation query returns results (FR-015)
