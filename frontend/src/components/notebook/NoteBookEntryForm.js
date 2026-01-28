@@ -677,7 +677,6 @@ const NoteBookEntryForm = () => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_STATUS", setStatuses);
     getFromOpenElisServer("/rest/displayList/NOTEBOOK_EXPT_TYPE", (data) => {
-      console.log("NoteBookEntryForm: NOTEBOOK_EXPT_TYPE response:", data);
       const validTypes = Array.isArray(data)
         ? data
         : data && Array.isArray(data.items)

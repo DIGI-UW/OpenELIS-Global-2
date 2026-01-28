@@ -122,7 +122,7 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
       open={open}
       onClose={onClose}
       size="md"
-      SelectorPrimaryFocus="#name"
+      SelectorPrimaryFocus="#storage-location-name"
       preventCloseOnClickOutside
     >
       <ModalHeader
@@ -131,7 +131,6 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
       <ModalBody>
         <Stack gap={5}>
           <TextInput
-            // id="name"
             id="storage-location-name"
             autoFocus
             labelText={
@@ -147,7 +146,6 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
           />
 
           <TextInput
-            // id="locationCode"
             id="storage-location-code"
             labelText={intl.formatMessage({ id: "storage.location.code" })}
             placeholder="e.g., ROOM-001 (optional)"
@@ -156,7 +154,6 @@ const StorageLocationModal = ({ open, onClose, onSave }) => {
           />
 
           <Dropdown
-            // id="locationType"
             id="storage-location-type"
             titleText={
               <>
