@@ -35,6 +35,9 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
     @Autowired
     private PersonService personService;
 
+    @Autowired
+    private FhirPersistanceService fhirPersistenceService;
+
     private Patient patient1;
     private Patient patient2;
     private Person person1;
@@ -273,12 +276,12 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
      * should be invoked (though actual FHIR updates require FHIR server).
      *
      * This test verifies: 1. Database merge completes successfully 2. Patients with
-     * FHIR UUIDs trigger FHIR integration path 3. Merge succeeds even if FHIR store
-     * is not available (graceful degradation)
+     * FHIR UUIDs trigger FHIR integration path 3. Merge succeeds because FHIR
+     * resources are properly created in test setup
      */
     @Test
     public void testMergeExecution_WithFhirUuids_ShouldCompleteSuccessfully() {
-        // Arrange - Add FHIR UUIDs to both patients (simulating FHIR-enabled patients)
+        // Arrange - Add FHIR UUIDs to both patients
         UUID patient1FhirUuid = UUID.randomUUID();
         UUID patient2FhirUuid = UUID.randomUUID();
 
@@ -287,6 +290,15 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
 
         patient2.setFhirUuid(patient2FhirUuid);
         patientDAO.update(patient2);
+
+        // Create minimal FHIR Patient resources in the FHIR store
+        org.hl7.fhir.r4.model.Patient fhirPatient1 = new org.hl7.fhir.r4.model.Patient();
+        fhirPatient1.addIdentifier().setSystem("urn:uuid").setValue(patient1FhirUuid.toString());
+        fhirPersistenceService.updateFhirResourceInFhirStore(fhirPatient1);
+
+        org.hl7.fhir.r4.model.Patient fhirPatient2 = new org.hl7.fhir.r4.model.Patient();
+        fhirPatient2.addIdentifier().setSystem("urn:uuid").setValue(patient2FhirUuid.toString());
+        fhirPersistenceService.updateFhirResourceInFhirStore(fhirPatient2);
 
         // Verify patients now have FHIR UUIDs
         Patient p1WithFhir = patientDAO.getData(patient1.getId());
@@ -302,13 +314,11 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         request.setReason("Testing FHIR-enabled patient merge");
         request.setConfirmed(true);
 
-        // Act - Execute merge (FHIR integration will be attempted)
-        // Note: Actual FHIR store updates require external FHIR server
-        // This test verifies graceful degradation when FHIR store unavailable
+        // Act - Execute merge
         PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(request, "1");
 
         // Assert - Database merge should succeed
-        assertTrue("Merge should succeed even without FHIR store", result.isSuccess());
+        assertTrue("Merge should succeed with proper FHIR setup", result.isSuccess());
         assertNotNull("Should have merge audit ID", result.getMergeAuditId());
         assertEquals("Should return correct primary patient ID", patient1.getId(), result.getPrimaryPatientId());
         assertEquals("Should return correct merged patient ID", patient2.getId(), result.getMergedPatientId());
