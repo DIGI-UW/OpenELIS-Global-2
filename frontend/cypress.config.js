@@ -14,13 +14,14 @@ module.exports = defineConfig({
   watchForFileChanges: false,
   screenshotOnRunFailure: true, // Take screenshots on failure (required per Constitution V.5)
 
-  // Env-controlled fail-fast: Stop on first test failure
-  // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
-  // Set E2E_FAIL_FAST=false or unset to run all tests (default)
-  // Usage: E2E_FAIL_FAST=true npm run cy:run
-  bail: process.env.E2E_FAIL_FAST === "true",
-
   env: {
+    // Env-controlled fail-fast using cypress-fail-fast plugin
+    // Set E2E_FAIL_FAST=true to stop on first failure (saves CI time)
+    // Set E2E_FAIL_FAST=false or unset to run all tests (default)
+    // Usage: E2E_FAIL_FAST=true npm run cy:run
+    FAIL_FAST_ENABLED: process.env.E2E_FAIL_FAST === "true",
+    FAIL_FAST_STRATEGY: "spec", // Stop after first failing spec file
+
     // Control whether test fixtures are cleaned up after tests
     // Set CYPRESS_CLEANUP_FIXTURES=false to keep fixtures for manual testing/debugging
     // Default: false (cleanup disabled for faster iteration)
@@ -38,6 +39,10 @@ module.exports = defineConfig({
   },
   e2e: {
     setupNodeEvents(on, config) {
+      // Register cypress-fail-fast plugin for fail-fast support
+      // Controlled by FAIL_FAST_ENABLED env variable
+      require("cypress-fail-fast/plugin")(on, config);
+
       // NOTE: Storage E2E tests (001-sample-storage) are currently disabled
       // Storage tests excluded via excludeSpecPattern in e2e config
       // Storage support imports commented out in e2e.js
