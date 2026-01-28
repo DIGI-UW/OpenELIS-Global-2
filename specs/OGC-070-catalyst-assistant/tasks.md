@@ -18,9 +18,10 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 - **M0.0 (Foundation POC)**: 24 tasks (Gateway + Router + CatalystAgent + MCP
   skeleton + FR-004 validation)
 - **M0.1 (Provider Switching)**: 4 tasks
-- **M0.2 (Agent Specialization)**: 10 tasks (split CatalystAgent)
-- **M1 (RAG-based Schema)**: 20 tasks (RAG + MCP tools + evaluation harness +
-  ChromaDB ops)
+- **M0.2 (Agent Specialization)**: 16 tasks (split CatalystAgent + model
+  evaluation Tier A/B + trajectory validation)
+- **M1 (RAG-based Schema)**: 22 tasks (RAG + MCP tools + evaluation harness +
+  Recall@K, HitRate@K, groundedness + ChromaDB ops)
 - **M2 (Backend Core)**: 25 tasks (reduced - security deferred, includes
   @Transactional verification + read-only DB verification)
 - **M3 (Frontend Chat)**: 19 tasks (reduced - token handling deferred)
@@ -28,7 +29,7 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
   security)
 - **M5 (Security Features)**: ~17 tasks (RBAC, PHI detection, confirmation
   tokens, security tests)
-- **Total**: 175 tasks (sequentially renumbered, no duplicates)
+- **Total**: 183 tasks (sequentially renumbered, no duplicates)
 
 ---
 
@@ -305,6 +306,26 @@ fallback works
       flow works, verify fallback mode works, create PR
       `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
 
+### M0.2.9: Model Evaluation (FR-022, NFR-001)
+
+- [ ] T037a [P] [M0.2] Create golden query dataset in
+      `projects/catalyst/tests/fixtures/golden_queries.json` with 26 OpenELIS
+      questions (research.md Section 13)
+- [ ] T037b [M0.2] Run balanced scorecard evaluation on Tier A Orchestrator
+      candidates (Llama 3.1 8B, Gemma 2 9B) — document results in
+      `projects/catalyst/docs/model-evaluation-m0.2.md`
+- [ ] T037c [M0.2] Run balanced scorecard evaluation on Tier A SQLGen candidates
+      (CodeLlama 13B, Llama 3.1 8B fallback) — document results
+- [ ] T037d [M0.2] Write trajectory validation tests per research.md Section 14.2
+      in `projects/catalyst/catalyst-agents/tests/test_trajectory_validation.py`
+- [ ] T037e [M0.2] Run balanced scorecard evaluation on Tier B SQLGen candidates
+      (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available — document results
+      in `projects/catalyst/docs/model-evaluation-m0.2.md` (Tier B section)
+- [ ] T037f [M0.2] Document Tier B evaluation procedure in
+      `projects/catalyst/docs/model-evaluation-m0.2.md` (when Tier B hardware
+      unavailable, document skip rationale; NFR-001 satisfied by Tier A + Tier B
+      task presence)
+
 ### M0.2 Sign-off Checklist
 
 - [ ] All pytest unit tests pass
@@ -312,6 +333,11 @@ fallback works
 - [ ] Single-agent fallback: CatalystAgent works when SchemaAgent/SQLGenAgent
       unavailable
 - [ ] Both LLM providers work with multi-agent flow
+- [ ] **Trajectory validation**: Router → SchemaAgent → SQLGenAgent order verified
+- [ ] **Model evaluation**: At least one Tier A config evaluated using scorecard
+- [ ] **Tier B evaluation**: Tier B SQLGen scorecard run when 40GB+ GPU available;
+      otherwise procedure/skip documented (NFR-001)
+- [ ] **Deterministic guards**: 100% pass rate on non-ambiguous queries (18/18)
 
 ---
 
@@ -332,8 +358,9 @@ support via accurate schema metadata)
   authoritative FK/constraint data (actions, validation state, match types).
 - **ChromaDB ops**: Pin version, configure persistence volume, document index
   rebuild/backup procedure.
-- **Evaluation harness**: Add golden query set (25-50 NL→expected-result) +
-  Recall@K for schema retrieval + execution accuracy tests.
+- **Evaluation harness**: Add golden query set of 26 OpenELIS questions (FR-022,
+  research.md Section 13) with expected tables per query; Recall@K and HitRate@K
+  for schema retrieval; execution accuracy deferred to M2+.
 
 ### M1.1: Branch Setup
 
@@ -392,18 +419,22 @@ support via accurate schema metadata)
       `MCP-Protocol-Version` header, session ID handling, tool listing, tool
       invocation)
 
-### M1.6: Evaluation Harness (2026 Best Practice)
+### M1.6: Evaluation Harness (FR-022, research.md Sec 14.3)
 
-- [ ] T053b [P] [M1] Create golden query dataset in
-      `projects/catalyst/catalyst-mcp/tests/fixtures/golden_queries.json` (25-50
-      NL questions → expected results for "top 5" query types: counts, joins,
-      aggregations, date filters, turnaround times)
-- [ ] T053c [M1] Implement schema retrieval evaluation in
-      `projects/catalyst/catalyst-mcp/tests/test_retrieval_metrics.py` (Recall@K
-      for relevant tables given NL query)
+- [ ] T053b [P] [M1] Create/update golden query dataset in
+      `projects/catalyst/tests/fixtures/golden_queries.json` with expected
+      tables per query (for Recall@K measurement)
+- [ ] T053c [M1] Implement Recall@K calculation in
+      `projects/catalyst/catalyst-mcp/tests/test_retrieval_metrics.py`
+      (target: Recall@5 >= 80%)
+- [ ] T053ca [M1] Implement HitRate@K calculation in same file
+      (target: HitRate@5 >= 90%)
+- [ ] T053cb [M1] Implement groundedness check: verify generated SQL only
+      references tables/columns in provided schema context
 - [ ] T053d [M1] Implement SQL execution accuracy test in
       `projects/catalyst/catalyst-agents/tests/test_execution_accuracy.py`
-      (golden queries → generated SQL → actual results vs expected results)
+      (deferred to M2+ for full execution; M1 validates syntax + deterministic
+      guards only)
 
 ### M1.7: MCP Validation Tool
 
@@ -451,10 +482,10 @@ support via accurate schema metadata)
 - [ ] MCP connects to PostgreSQL and extracts schema
 - [ ] `get_relevant_tables` returns correct tables for sample queries
 - [ ] `validate_sql` correctly validates/rejects SQL
-- [ ] Evaluation harness: Recall@K runs and is reported (target threshold TBD in
-      future phase)
-- [ ] Evaluation harness: Execution accuracy runs and is reported (target
-      threshold TBD in future phase)
+- [ ] **Recall@5 >= 80%** on golden query set (18+ correct table retrievals)
+- [ ] **HitRate@5 >= 90%** on golden query set
+- [ ] **Groundedness**: No hallucinated tables in generated SQL for validation queries
+- [ ] MCP Streamable HTTP conformance: protocol version header + session ID
 
 ---
 
@@ -611,12 +642,13 @@ endpoint access) deferred to M5
 ### M2 Sign-off Checklist
 
 - [ ] ORM validation test passes (<5s, no database)
-- [ ] All JUnit unit tests pass (>80% coverage)
+- [ ] All JUnit unit tests pass (>80% coverage for new code)
 - [ ] CatalystGatewayClient integration test: calls Gateway, receives SQL
-- [ ] SQL guardrails test: blocked tables/DDL rejected
+- [ ] SQL guardrails test: blocked tables/DDL rejected (100% rejection rate)
 - [ ] Audit logging: CatalystQuery records created for each query
-- [ ] Read-only DB connection verified (INSERT/UPDATE fails)
+- [ ] Read-only DB connection verified (INSERT/UPDATE fails with permission denied)
 - [ ] @Transactional annotations ONLY in service layer (manual code review)
+- [ ] Row estimation (EXPLAIN-based) works for sample queries
 
 ---
 

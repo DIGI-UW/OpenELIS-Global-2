@@ -355,6 +355,34 @@ This delivers enhanced usability and workflow integration.
   (`UserRoleService.userInRole()`). Per-user row-level filtering within queries
   is deferred to Phase 2.
 
+- **FR-022**: System MUST include an evaluation harness for validating LLM
+  workflow quality. The harness MUST support:
+
+  - (a) **Golden query dataset**: 26 OpenELIS-focused natural language questions
+    covering counts, joins, aggregations, date filters, ambiguity handling, and
+    PHI-like inputs (see research.md Section 13 for full set)
+  - (b) **Deterministic validation**: SELECT-only guard, blocked table detection,
+    single-statement check, schema grounding verification
+  - (c) **Retrieval metrics**: Recall@K and HitRate@K for schema retrieval
+    (target: Recall@5 >= 80%, HitRate@5 >= 90%)
+  - (d) **Model comparison scorecard**: Standardized evaluation across candidate
+    LLMs using the balanced scorecard (research.md Section 15)
+
+  **Note**: Execution accuracy (comparing SQL results against expected outputs)
+  is deferred until M2+ when read-only database access is available.
+
+### Non-Functional Requirements
+
+- **NFR-001**: Local LLM deployment MUST support at least two hardware tiers:
+
+  - **Tier A** (12GB VRAM): Llama 3.1 8B / Gemma 2 9B for Orchestrator,
+    CodeLlama 13B for SQLGen (Q4_K_M quantization)
+  - **Tier B** (40GB+ VRAM): Same Orchestrator, CodeLlama 34B / Llama 3.1 70B
+    for SQLGen
+
+  Model selection MUST be validated against the evaluation harness (FR-022)
+  using the balanced scorecard (research.md Section 15).
+
 ### Constitution Compliance Requirements (OpenELIS Global)
 
 _Derived from `.specify/memory/constitution.md` - include only relevant
@@ -466,6 +494,13 @@ principles for this feature:_
   laboratory data questions (sample counts, test result queries, turnaround time
   analysis, date range filtering, aggregation queries) as demonstrated in
   end-to-end tests.
+
+- **SC-010**: Evaluation harness demonstrates Recall@5 >= 80% for schema
+  retrieval across the 26-question golden query set.
+
+- **SC-011**: At least one Tier A model configuration (Orchestrator + SQLGen)
+  passes all deterministic guards (SELECT-only, blocked tables, single statement)
+  on 100% of non-ambiguous queries.
 
 **Note**: Performance metrics, SQL accuracy thresholds, and evaluation
 benchmarks (e.g., response time targets, SQL generation success rates, query

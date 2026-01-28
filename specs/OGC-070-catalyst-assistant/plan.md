@@ -54,6 +54,16 @@ protocol + MCP for tools).
 - **Local**: LM Studio (exposes an OpenAI-compatible HTTP API for locally hosted
   models)
 
+**Local Model Selection Protocol** (per research.md Section 13):
+
+- **Tier A (RTX 4070 Super, 12GB)**: Orchestrator = Llama 3.1 8B / Gemma 2 9B
+  (Q4_K_M); SQLGen = CodeLlama 13B (Q4_K_M)
+- **Tier B (Server GPU, 40GB+)**: Same Orchestrator; SQLGen = CodeLlama 34B or
+  Llama 3.1 70B
+- **Evaluation**: Use balanced scorecard (research.md Section 15) with 26-question
+  golden query set
+- **Validation**: DB-free until M2; execution accuracy added in M2+
+
 **Storage**: PostgreSQL 14+ (OpenELIS database - read-only connection for
 Catalyst SQL query execution; audit logging writes to `catalyst_query` table via
 separate write connection)  
@@ -88,6 +98,8 @@ _GATE: Verified before research. Re-check after design._
   - ORM validation test for entity mappings
   - One E2E test for MVP (chat→SQL→results flow)
   - Cypress best practices (V.5): individual test execution, console log review
+  - **Validation pyramid** per research.md Section 14 (component → workflow → RAG → execution)
+  - **Evaluation harness** per FR-022 (golden queries, retrieval metrics, model scorecard)
 - [x] **Schema Management (VI)**: Liquibase changesets for audit log table
 - [x] **Internationalization (VII)**: All UI strings via React Intl (en, fr
       minimum)
@@ -115,9 +127,9 @@ _Features >3 days MUST define milestones per Constitution Principle IX._
 | ------ | ----------------------- | ----------------------------------------------- | ----------------------- | ---------------------------------- | ---------------- |
 | M0.0   | m0-foundation-poc       | Gateway + Router + CatalystAgent + MCP skeleton | US1 (partial), US2      | Router → Agent → MCP flow works    | -                |
 | M0.1   | m0-provider-switching   | LLM provider switching (Gemini + LM Studio)     | US3                     | Both providers work                | M0.0             |
-| M0.2   | m0-agent-specialization | Split into SchemaAgent + SQLGenAgent            | US1 (partial), US2      | Multi-agent flow works             | M0.1             |
-| [P] M1 | m1-rag-schema           | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | MCP tools with real schema work    | M0.2             |
-| [P] M2 | m2-backend-core         | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests pass, ORM test passes   | M0.2             |
+| M0.2   | m0-agent-specialization | Split into SchemaAgent + SQLGenAgent            | US1 (partial), US2      | Multi-agent flow + trajectory validation (Sec 14.2) | M0.1             |
+| [P] M1 | m1-rag-schema           | ChromaDB RAG-based schema retrieval             | US1 (partial), US2      | Retrieval metrics Recall@5 >= 80% (Sec 14.3)        | M0.2             |
+| [P] M2 | m2-backend-core         | Java OpenELIS integration, SQL execution        | US1 (partial), US2, US3 | Unit tests + ORM + guardrails (Sec 17)               | M0.2             |
 | [P] M3 | m3-frontend-chat        | Carbon chat sidebar, i18n, basic UI             | US1 (partial)           | Jest tests pass, renders correctly | -                |
 | M4     | m4-integration          | Wire agents + backend + frontend, basic E2E     | US1, US4                | Integration + basic E2E test pass  | M0.2, M1, M2, M3 |
 | M5     | m5-security             | Security features (PHI detection, RBAC, tokens) | US2                     | Security unit + integration tests  | M4               |
@@ -130,6 +142,20 @@ that validate the A2A + MCP architecture before full feature implementation.
 - **[P]**: Parallel milestone
 - **Sequential** (no prefix): M4 requires all parallel milestones (M1, M2, M3)
   to complete; M5 requires M4 to complete
+
+### Validation Framework Reference
+
+Each milestone's verification criteria align with research.md Sections 14-17:
+
+| Milestone | Validation Layer (Sec 14) | Key Metrics | Reference |
+| --------- | ------------------------- | ----------- | --------- |
+| M0.1 | Component (Layer 1) | Deterministic guards pass | Sec 14.1 |
+| M0.2 | Workflow (Layer 2) | Trajectory tests pass, model scorecard complete | Sec 14.2, Sec 15 |
+| M1 | RAG (Layer 3) | Recall@5 >= 80%, HitRate@5 >= 90% | Sec 14.3 |
+| M2+ | Execution (Layer 4) | SQL results match expected (seeded DB) | Sec 14.4 |
+
+**Model Comparison**: Use balanced scorecard template (research.md Section 15)
+to evaluate candidate models before finalizing selection for each tier.
 
 ### Milestone Details
 
@@ -275,6 +301,12 @@ LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 - Single-agent fallback mode (CatalystAgent still works)
 - NO PHI detection (defer to M5)
 - NO confirmation tokens (defer to M5)
+- **Model selection validation**: Run 26-question evaluation set against
+  candidate Tier A models (Llama 3.1 8B, Gemma 2 9B, CodeLlama 13B)
+- **Trajectory validation tests**: Verify Router → SchemaAgent → SQLGenAgent
+  delegation order per research.md Section 14.2
+- Document model comparison results using balanced scorecard template
+  (research.md Section 15)
 
 **Files to Create/Modify**:
 
@@ -352,8 +384,10 @@ projects/catalyst/catalyst-mcp/
   header + session ID)
 - SchemaAgent retrieves relevant tables based on query semantics
 - SQLGenAgent pre-validates SQL via MCP validate_sql before submitting
-- Evaluation harness exists with golden query set defined (metric thresholds
-  deferred to future phase)
+- **Retrieval metrics**: Recall@5 >= 80%, HitRate@5 >= 90% on golden query set
+- **Groundedness**: No hallucinated tables/columns in generated SQL
+- Evaluation harness tests pass (golden queries → retrieval → deterministic
+  checks)
 
 ---
 
