@@ -295,11 +295,19 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         // Create minimal FHIR Patient resources in the FHIR store
         org.hl7.fhir.r4.model.Patient fhirPatient1 = new org.hl7.fhir.r4.model.Patient();
         fhirPatient1.addIdentifier().setSystem("urn:uuid").setValue(patient1FhirUuid.toString());
-        fhirPersistenceService.updateFhirResourceInFhirStore(fhirPatient1);
+        try {
+            fhirPersistenceService.updateFhirResourceInFhirStore(fhirPatient1);
+        } catch (org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException e) {
+            throw new RuntimeException("Failed to create FHIR resource for patient 1 in test", e);
+        }
 
         org.hl7.fhir.r4.model.Patient fhirPatient2 = new org.hl7.fhir.r4.model.Patient();
         fhirPatient2.addIdentifier().setSystem("urn:uuid").setValue(patient2FhirUuid.toString());
-        fhirPersistenceService.updateFhirResourceInFhirStore(fhirPatient2);
+        try {
+            fhirPersistenceService.updateFhirResourceInFhirStore(fhirPatient2);
+        } catch (org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException e) {
+            throw new RuntimeException("Failed to create FHIR resource for patient 2 in test", e);
+        }
 
         // Verify patients now have FHIR UUIDs
         Patient p1WithFhir = patientDAO.getData(patient1.getId());
