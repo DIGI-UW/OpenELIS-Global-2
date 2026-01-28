@@ -102,6 +102,10 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
 
+        <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration
+            M2) -->
+        <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
+
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
 
