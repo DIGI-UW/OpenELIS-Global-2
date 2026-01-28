@@ -25,11 +25,11 @@ function ColorPickerSection({
   helperText,
 }) {
   const intl = useIntl();
-  const [colorValue, setColorValue] = useState(value || "#1d4ed8");
+  const [colorValue, setColorValue] = useState(value || "#0f62fe");
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    setColorValue(value || "#1d4ed8");
+    setColorValue(value || "#0f62fe");
   }, [value]);
 
   const handleColorPickerChange = (event) => {
@@ -112,7 +112,10 @@ function ColorPickerSection({
               })}
               value={colorValue}
               onChange={handleColorInputChange}
-              placeholder="#1d4ed8 or blue"
+              placeholder={intl.formatMessage({
+                id: "site.branding.colorPicker.placeholder",
+                defaultMessage: "#0f62fe or blue",
+              })}
               invalid={!!error}
               invalidText={error}
               helperText={
@@ -120,7 +123,7 @@ function ColorPickerSection({
                 intl.formatMessage({
                   id: "site.branding.colorPicker.helperText",
                   defaultMessage:
-                    "Enter any CSS color (e.g., #1d4ed8, blue, rgb(29, 78, 216))",
+                    "Enter any CSS color (e.g., #0f62fe, blue, rgb(15, 98, 254))",
                 })
               }
               style={{ flex: 1, maxWidth: "200px" }}

@@ -592,13 +592,14 @@ function SiteBrandingConfig() {
               )}
             </Button>
             <Button
+              data-testid="branding-cancel-button"
               onClick={handleCancel}
               kind="secondary"
               style={{ marginRight: "1rem" }}
             >
               <FormattedMessage id="site.branding.cancel" />
             </Button>
-            <Button kind="danger" onClick={handleReset}>
+            <Button data-testid="branding-reset-button" kind="danger" onClick={handleReset}>
               <FormattedMessage id="site.branding.reset.to.defaults" />
             </Button>
             {hasUnsavedChanges && (

@@ -10,21 +10,26 @@
 
 // ========== MOCKS (MUST be before imports - Jest hoisting) ==========
 
-jest.mock("../../../../components/utils/Utils", () => ({
+jest.mock("../../../../utils/Utils", () => ({
   postToOpenElisServerFormData: jest.fn(),
+}));
+
+jest.mock("../../../../utils/BrandingUtils", () => ({
+  removeLogo: jest.fn(),
 }));
 
 // ========== IMPORTS ==========
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom/extend-expect";
+import { render, screen, fireEvent, wait, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import LogoUploadSection from "../LogoUploadSection";
-import { postToOpenElisServerFormData } from "../../../../components/utils/Utils";
-import messages from "../../../../languages/en.json";
+import { postToOpenElisServerFormData } from "../../../../utils/Utils";
+import { removeLogo } from "../../../../utils/BrandingUtils";
+import messages from "../../../../../languages/en.json";
 
 // ========== HELPER FUNCTIONS ==========
 
@@ -77,19 +82,16 @@ describe("LogoUploadSection", () => {
    * Task Reference: T028
    */
   test("validates file format and shows error for invalid format", async () => {
-    const user = userEvent.setup();
     renderWithIntl(<LogoUploadSection type="header" currentLogoUrl={null} />);
 
     // Create a mock file with invalid format
     const file = new File(["test"], "test.txt", { type: "text/plain" });
     const input = screen.getByLabelText(/upload logo/i);
 
-    await user.upload(input, file);
+    fireEvent.change(input, { target: { files: [file] } });
 
     // Should show error message
-    await waitFor(() => {
-      expect(screen.getByText(/unsupported file format/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/unsupported file format/i)).toBeInTheDocument();
   });
 
   /**
@@ -97,7 +99,6 @@ describe("LogoUploadSection", () => {
    * Task Reference: T028
    */
   test("validates file size and shows error for oversized file", async () => {
-    const user = userEvent.setup();
     renderWithIntl(<LogoUploadSection type="header" currentLogoUrl={null} />);
 
     // Create a mock file larger than 2MB
@@ -106,12 +107,10 @@ describe("LogoUploadSection", () => {
     });
     const input = screen.getByLabelText(/upload logo/i);
 
-    await user.upload(input, largeFile);
+    fireEvent.change(input, { target: { files: [largeFile] } });
 
     // Should show error message
-    await waitFor(() => {
-      expect(screen.getByText(/file size exceeds/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/file size exceeds/i)).toBeInTheDocument();
   });
 
   /**
@@ -119,7 +118,6 @@ describe("LogoUploadSection", () => {
    * Task Reference: T028
    */
   test("uploads valid file and calls onLogoUploaded callback", async () => {
-    const user = userEvent.setup();
     const onLogoUploaded = jest.fn();
 
     postToOpenElisServerFormData.mockImplementation(
@@ -140,14 +138,14 @@ describe("LogoUploadSection", () => {
     const file = new File(["test"], "logo.png", { type: "image/png" });
     const input = screen.getByLabelText(/upload logo/i);
 
-    await user.upload(input, file);
+    fireEvent.change(input, { target: { files: [file] } });
 
     // Click upload button
-    const uploadButton = screen.getByText(/upload logo/i);
-    await user.click(uploadButton);
+    const uploadButton = screen.getByTestId("upload-logo-submit");
+    await userEvent.click(uploadButton);
 
     // Should call callback
-    await waitFor(() => {
+    await wait(() => {
       expect(postToOpenElisServerFormData).toHaveBeenCalled();
       expect(onLogoUploaded).toHaveBeenCalled();
     });
@@ -195,7 +193,6 @@ describe("LogoUploadSection", () => {
    * Task Reference: T037
    */
   test("toggles useHeaderLogoForLogin when checkbox is clicked", async () => {
-    const user = userEvent.setup();
     const onUseHeaderLogoChange = jest.fn();
 
     renderWithIntl(
@@ -208,8 +205,156 @@ describe("LogoUploadSection", () => {
     );
 
     const checkbox = screen.getByLabelText(/use same logo as header/i);
-    await user.click(checkbox);
+    await userEvent.click(checkbox);
 
     expect(onUseHeaderLogoChange).toHaveBeenCalledWith(true);
+  });
+
+  /**
+   * Test: Upload failure handling
+   */
+  test("shows error when upload fails", async () => {
+    postToOpenElisServerFormData.mockImplementation(
+      (url, formData, callback) => {
+        callback(500); // Server error
+      },
+    );
+
+    renderWithIntl(
+      <LogoUploadSection type="header" currentLogoUrl={null} />,
+    );
+
+    // Create a valid file
+    const file = new File(["test"], "logo.png", { type: "image/png" });
+    const input = screen.getByLabelText(/upload logo/i);
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    // Click upload button
+    const uploadButton = screen.getByTestId("upload-logo-submit");
+    await userEvent.click(uploadButton);
+
+    // Should show error message
+    expect(await screen.findByText(/error saving/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Test: Logo removal - shows confirmation modal
+   */
+  test("shows confirmation modal when remove button clicked", async () => {
+    renderWithIntl(
+      <LogoUploadSection
+        type="header"
+        currentLogoUrl="/rest/site-branding/logo/header"
+      />,
+    );
+
+    // Click remove button using test-id
+    const removeButton = screen.getByTestId("remove-logo-button");
+    await userEvent.click(removeButton);
+
+    // Should show confirmation modal
+    expect(await screen.findByText(/are you sure/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Test: Logo removal - successful removal
+   */
+  test("removes logo when confirmed", async () => {
+    const onLogoRemoved = jest.fn();
+
+    removeLogo.mockImplementation((type, callback) => {
+      callback({ status: 200, ok: true, json: () => Promise.resolve({}) });
+    });
+
+    renderWithIntl(
+      <LogoUploadSection
+        type="header"
+        currentLogoUrl="/rest/site-branding/logo/header"
+        onLogoRemoved={onLogoRemoved}
+      />,
+    );
+
+    // Click remove button using test-id
+    const removeButton = screen.getByTestId("remove-logo-button");
+    await userEvent.click(removeButton);
+
+    // Wait for confirmation modal
+    await screen.findByText(/are you sure/i);
+
+    // Find the modal's confirm button - it has exact text "Remove" (not "Remove Logo")
+    const removeButtons = screen.getAllByText(/^Remove$/);
+    await userEvent.click(removeButtons[0]);
+
+    // Should call onLogoRemoved callback
+    await wait(() => {
+      expect(removeLogo).toHaveBeenCalledWith("header", expect.any(Function));
+      expect(onLogoRemoved).toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Test: Logo removal - cancel removal
+   */
+  test("cancels removal when cancel clicked in modal", async () => {
+    renderWithIntl(
+      <LogoUploadSection
+        type="header"
+        currentLogoUrl="/rest/site-branding/logo/header"
+      />,
+    );
+
+    // Click remove button using test-id
+    const removeButton = screen.getByTestId("remove-logo-button");
+    await userEvent.click(removeButton);
+
+    // Click cancel in modal - use text matching
+    const cancelButton = await screen.findByText(/cancel/i);
+    await userEvent.click(cancelButton);
+
+    // Logo should still be displayed
+    const img = screen.getByAltText(/header logo/i);
+    expect(img).toBeInTheDocument();
+  });
+
+  /**
+   * Test: Logo removal - failure handling
+   */
+  test("shows error when removal fails", async () => {
+    removeLogo.mockImplementation((type, callback) => {
+      callback({ status: 500, ok: false });
+    });
+
+    renderWithIntl(
+      <LogoUploadSection
+        type="header"
+        currentLogoUrl="/rest/site-branding/logo/header"
+      />,
+    );
+
+    // Click remove button using test-id
+    const removeButton = screen.getByTestId("remove-logo-button");
+    await userEvent.click(removeButton);
+
+    // Wait for confirmation modal
+    await screen.findByText(/are you sure/i);
+
+    // Find the modal's confirm button - it has exact text "Remove" (not "Remove Logo")
+    const removeButtons = screen.getAllByText(/^Remove$/);
+    await userEvent.click(removeButtons[0]);
+
+    // Should show error message (the specific error text from messages)
+    expect(await screen.findByText(/error removing/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Test: Favicon type rendering
+   */
+  test("renders favicon upload section", () => {
+    renderWithIntl(
+      <LogoUploadSection type="favicon" currentLogoUrl={null} />,
+    );
+
+    expect(screen.getByText(/favicon/i)).toBeInTheDocument();
   });
 });

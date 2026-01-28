@@ -18,7 +18,7 @@ import {
   InlineLoading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { postToOpenElisServerFormData } from "../../../../components/utils/Utils";
+import { postToOpenElisServerFormData } from "../../../utils/Utils";
 import { TrashCan } from "@carbon/icons-react";
 import { removeLogo } from "../../../utils/BrandingUtils";
 import { Modal } from "@carbon/react";
@@ -220,6 +220,7 @@ function LogoUploadSection({
                 }}
               />
               <Button
+                data-testid="remove-logo-button"
                 kind="danger"
                 size="sm"
                 renderIcon={TrashCan}
@@ -256,6 +257,7 @@ function LogoUploadSection({
 
           {file && !preview?.startsWith("/rest/site-branding/logo/") && (
             <Button
+              data-testid="upload-logo-submit"
               onClick={handleUpload}
               disabled={isUploading}
               style={{ marginTop: "1rem" }}

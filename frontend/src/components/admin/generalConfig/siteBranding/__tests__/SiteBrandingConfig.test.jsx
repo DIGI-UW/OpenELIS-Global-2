@@ -19,10 +19,11 @@
 
 // ========== MOCKS (MUST be before imports - Jest hoisting) ==========
 
-// Mock utilities BEFORE imports that use them (Jest hoisting)
-jest.mock("../../../../components/utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServer: jest.fn(),
+// Mock BrandingUtils BEFORE imports that use them (Jest hoisting)
+jest.mock("../../../../utils/BrandingUtils", () => ({
+  getBranding: jest.fn(),
+  updateBranding: jest.fn(),
+  resetBranding: jest.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -31,19 +32,22 @@ jest.mock("../../../../components/utils/Utils", () => ({
 import React from "react";
 
 // 2. Testing Library
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, wait, fireEvent, within } from "@testing-library/react";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";
 
-// 4. jest-dom matchers (MUST be imported)
-import "@testing-library/jest-dom";
+// 4. jest-dom matchers
+import "@testing-library/jest-dom/extend-expect";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";
 
 // 6. Router (if component uses routing)
 import { BrowserRouter } from "react-router-dom";
+
+// Context
+import { NotificationContext } from "../../../../layout/Layout";
 
 // Mock react-router-dom useHistory
 const mockHistory = {
@@ -60,23 +64,33 @@ jest.mock("react-router-dom", () => ({
 // 7. Component under test
 import SiteBrandingConfig from "../SiteBrandingConfig";
 
-// 8. Utilities
+// 8. Mocked BrandingUtils
 import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-} from "../../../../components/utils/Utils";
+  getBranding,
+  updateBranding,
+  resetBranding,
+} from "../../../../utils/BrandingUtils";
 
 // 9. Messages/translations
-import messages from "../../../../languages/en.json";
+import messages from "../../../../../languages/en.json";
 
 // ========== HELPER FUNCTIONS ==========
 
-// Helper function: Standard render with IntlProvider
+// Mock notification context value
+const mockNotificationContext = {
+  notificationVisible: false,
+  setNotificationVisible: jest.fn(),
+  addNotification: jest.fn(),
+};
+
+// Helper function: Standard render with IntlProvider and NotificationContext
 const renderWithIntl = (component) => {
   return render(
     <BrowserRouter>
       <IntlProvider locale="en" messages={messages}>
-        {component}
+        <NotificationContext.Provider value={mockNotificationContext}>
+          {component}
+        </NotificationContext.Provider>
       </IntlProvider>
     </BrowserRouter>,
   );
@@ -104,18 +118,16 @@ describe("SiteBrandingConfig", () => {
       useHeaderLogoForLogin: false,
     };
 
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/site-branding")) {
-        callback(mockBranding);
-      }
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
     });
 
     // Act: Render component
     renderWithIntl(<SiteBrandingConfig />);
 
     // Assert: Page title should be visible
-    await waitFor(() => {
-      expect(screen.getByText(/site branding/i)).toBeInTheDocument();
+    await wait(() => {
+      expect(screen.getAllByText(/site branding/i)[0]).toBeInTheDocument();
     });
   });
 
@@ -134,22 +146,17 @@ describe("SiteBrandingConfig", () => {
       useHeaderLogoForLogin: false,
     };
 
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/site-branding")) {
-        callback(mockBranding);
-      }
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
     });
 
     // Act: Render component
     renderWithIntl(<SiteBrandingConfig />);
 
     // Assert: Branding values should be displayed
-    await waitFor(() => {
-      // Check that color inputs contain the values (implementation dependent)
-      expect(getFromOpenElisServer).toHaveBeenCalledWith(
-        expect.stringContaining("/rest/site-branding"),
-        expect.any(Function),
-      );
+    await wait(() => {
+      // Check that getBranding was called
+      expect(getBranding).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 
@@ -159,7 +166,7 @@ describe("SiteBrandingConfig", () => {
    */
   test("shows loading state while fetching branding", () => {
     // Arrange: Mock slow API response
-    getFromOpenElisServer.mockImplementation((url, callback) => {
+    getBranding.mockImplementation((callback) => {
       // Don't call callback immediately to simulate loading
     });
 
@@ -175,23 +182,18 @@ describe("SiteBrandingConfig", () => {
    * Task Reference: T019
    */
   test("handles API errors gracefully", async () => {
-    // Arrange: Mock API error
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/site-branding")) {
-        // Simulate error by not calling callback or calling with error
-        throw new Error("API Error");
-      }
+    // Arrange: Mock API that doesn't return data (simulates error/timeout)
+    getBranding.mockImplementation((callback) => {
+      // Simulate error by calling with null data
+      callback(null);
     });
 
     // Act: Render component
     renderWithIntl(<SiteBrandingConfig />);
 
-    // Assert: Component should handle error (show error message or default values)
-    // This test may need adjustment based on actual error handling implementation
-    await waitFor(() => {
-      // Component should still render (not crash)
-      expect(screen.getByText(/site branding/i)).toBeInTheDocument();
-    });
+    // Assert: Component should still render (not crash)
+    // When branding data is null, component should show loading or default state
+    expect(await screen.findByText(/save changes/i)).toBeInTheDocument();
   });
 
   /**
@@ -207,29 +209,30 @@ describe("SiteBrandingConfig", () => {
       headerColor: "#295785",
     };
 
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/site-branding")) {
-        callback(mockBranding);
-      }
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
     });
 
-    postToOpenElisServer.mockImplementation((url, payload, callback) => {
-      callback(200);
+    updateBranding.mockImplementation((formData, callback) => {
+      callback(200, null, formData);
     });
 
-    // Act: Render component and click save
+    // Act: Render component
     renderWithIntl(<SiteBrandingConfig />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/site branding/i)).toBeInTheDocument();
-    });
+    // Wait for the component to fully render
+    const primaryColorInput = await screen.findByLabelText(/primary color/i);
 
+    // Modify the color to trigger hasUnsavedChanges
+    fireEvent.change(primaryColorInput, { target: { value: "#ff0000" } });
+
+    // Click save button (should now be enabled since we made a change)
     const saveButton = screen.getByText(/save changes/i);
-    await userEvent.click(saveButton);
+    fireEvent.click(saveButton);
 
     // Assert: API should be called
-    await waitFor(() => {
-      expect(postToOpenElisServer).toHaveBeenCalled();
+    await wait(() => {
+      expect(updateBranding).toHaveBeenCalled();
     });
   });
 
@@ -244,17 +247,15 @@ describe("SiteBrandingConfig", () => {
       primaryColor: "#1d4ed8",
     };
 
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/site-branding")) {
-        callback(mockBranding);
-      }
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
     });
 
     // Act: Render component and modify color
     renderWithIntl(<SiteBrandingConfig />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/site branding/i)).toBeInTheDocument();
+    await wait(() => {
+      expect(screen.getAllByText(/site branding/i)[0]).toBeInTheDocument();
     });
 
     // Modify primary color (this will trigger unsaved changes detection)
@@ -277,28 +278,156 @@ describe("SiteBrandingConfig", () => {
       headerColor: "#295785",
     };
 
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/site-branding")) {
-        callback(mockBranding);
-      }
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
     });
 
     // Act: Render component, modify color, then cancel
     renderWithIntl(<SiteBrandingConfig />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/site branding/i)).toBeInTheDocument();
+    await wait(() => {
+      expect(screen.getAllByText(/site branding/i)[0]).toBeInTheDocument();
     });
 
     // Modify primary color (simulate change)
     // Then click cancel
-    const cancelButton = screen.getByText(/cancel/i);
+    const cancelButton = screen.getByTestId("branding-cancel-button");
     await userEvent.click(cancelButton);
 
     // Assert: No API call should be made (cancel doesn't save)
-    expect(postToOpenElisServer).not.toHaveBeenCalled();
+    expect(updateBranding).not.toHaveBeenCalled();
 
     // Form should be reset to original values
     // This test may need adjustment based on actual component implementation
+  });
+
+  /**
+   * Test: Save failure handling
+   */
+  test("shows error notification when save fails", async () => {
+    // Arrange: Mock API responses
+    const mockBranding = {
+      id: "test-id",
+      primaryColor: "#1d4ed8",
+      secondaryColor: "#64748b",
+      headerColor: "#295785",
+    };
+
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
+    });
+
+    updateBranding.mockImplementation((formData, callback) => {
+      callback(500, "Server error", null);
+    });
+
+    // Act: Render component
+    renderWithIntl(<SiteBrandingConfig />);
+
+    // Wait for the component to fully render
+    const primaryColorInput = await screen.findByLabelText(/primary color/i);
+
+    // Modify the color to trigger hasUnsavedChanges
+    fireEvent.change(primaryColorInput, { target: { value: "#ff0000" } });
+
+    // Click save button
+    const saveButton = screen.getByText(/save changes/i);
+    fireEvent.click(saveButton);
+
+    // Assert: API should be called
+    await wait(() => {
+      expect(updateBranding).toHaveBeenCalled();
+    });
+
+    // Error notification should be shown (via NotificationContext)
+    expect(mockNotificationContext.addNotification).toHaveBeenCalled();
+  });
+
+  /**
+   * Test: Reset to defaults - shows confirmation modal
+   */
+  test("shows confirmation modal when reset button clicked", async () => {
+    // Arrange: Mock API response
+    const mockBranding = {
+      id: "test-id",
+      primaryColor: "#1d4ed8",
+      secondaryColor: "#64748b",
+      headerColor: "#295785",
+    };
+
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
+    });
+
+    // Act: Render component
+    renderWithIntl(<SiteBrandingConfig />);
+
+    // Wait for the component to fully render
+    await wait(() => {
+      expect(screen.getAllByText(/site branding/i)[0]).toBeInTheDocument();
+    });
+
+    // Click reset button using test-id
+    const resetButton = screen.getByTestId("branding-reset-button");
+    fireEvent.click(resetButton);
+
+    // Should show confirmation modal - use text unique to reset modal
+    expect(await screen.findByText(/reset all branding/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Test: Reset to defaults - successful reset
+   */
+  test("resets branding to defaults when confirmed", async () => {
+    // Arrange: Mock API responses
+    const mockBranding = {
+      id: "test-id",
+      primaryColor: "#ff0000",
+      secondaryColor: "#00ff00",
+      headerColor: "#0000ff",
+    };
+
+    getBranding.mockImplementation((callback) => {
+      callback(mockBranding);
+    });
+
+    resetBranding.mockImplementation((callback) => {
+      callback(200);
+    });
+
+    // Act: Render component
+    renderWithIntl(<SiteBrandingConfig />);
+
+    // Wait for the component to fully render
+    await wait(() => {
+      expect(screen.getAllByText(/site branding/i)[0]).toBeInTheDocument();
+    });
+
+    // Click reset button using test-id
+    const resetButton = screen.getByTestId("branding-reset-button");
+    fireEvent.click(resetButton);
+
+    // Wait for reset confirmation modal to appear
+    await screen.findByText(/reset all branding/i);
+
+    // Find the reset modal by finding the confirm button with unique text "Reset"
+    // The confirm button in the reset modal has text matching label.button.reset
+    const allDialogs = screen.getAllByRole("dialog");
+    // Find the dialog containing reset text
+    let resetModal;
+    for (const dialog of allDialogs) {
+      if (within(dialog).queryByText(/reset all branding/i)) {
+        resetModal = dialog;
+        break;
+      }
+    }
+
+    const confirmButton = within(resetModal).getByText(/^Reset$/i);
+    fireEvent.click(confirmButton);
+
+    // Should call resetBranding
+    await wait(() => {
+      expect(resetBranding).toHaveBeenCalled();
+    });
   });
 });
