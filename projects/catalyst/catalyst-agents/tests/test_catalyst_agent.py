@@ -65,7 +65,7 @@ def test_fr004_llm_prompt_contains_only_schema_and_query_no_phi(monkeypatch):
     # FR-004: Verify prompt structure (should only have Schema, Question, SQL sections)
     prompt_sections = captured_prompt.split("\n\n")
     assert len(prompt_sections) >= 3, "Prompt should have Schema, Question, and SQL sections"
-    
+
     # Verify no PHI patterns in any section
     phi_patterns = [
         # Patient identifiers
@@ -100,13 +100,18 @@ def test_fr004_llm_prompt_contains_only_schema_and_query_no_phi(monkeypatch):
     # (This is a conservative check - we allow schema column types like "numeric(10,0)")
     # but we should not have actual numeric values that could be patient data
     import re
+
     # Check for standalone numeric values that could be patient IDs (6+ digits)
     # Allow numeric types in schema but not standalone large numbers
-    numeric_values = re.findall(r'\b\d{6,}\b', captured_prompt)
+    numeric_values = re.findall(r"\b\d{6,}\b", captured_prompt)
     # Filter out schema-related numbers (like "numeric(10,0)" which is a type definition)
     suspicious_numbers = [
-        n for n in numeric_values
-        if "numeric(" not in captured_prompt[max(0, captured_prompt.find(n) - 20):captured_prompt.find(n) + 20].lower()
+        n
+        for n in numeric_values
+        if "numeric("
+        not in captured_prompt[
+            max(0, captured_prompt.find(n) - 20) : captured_prompt.find(n) + 20
+        ].lower()
     ]
     assert len(suspicious_numbers) == 0, (
         f"FR-004 violation: Prompt contains suspicious numeric values that could be "
@@ -122,16 +127,16 @@ def test_fr004_llm_prompt_contains_only_schema_and_query_no_phi(monkeypatch):
 def test_provider_switching_lmstudio(monkeypatch):
     """
     FR-007: Integration test - Verify provider switching logic selects LM Studio correctly.
-    
+
     This tests the integration/orchestration layer (provider selection, config loading,
     prompt construction). The actual HTTP implementation is tested in test_llm_clients.py.
-    
+
     What this tests:
     - Config loading selects correct provider
     - _create_llm_client() instantiates correct client type
     - Prompt structure is correct (Schema + Question)
     - Integration flow works end-to-end
-    
+
     What this does NOT test (covered in test_llm_clients.py):
     - HTTP request format
     - Response parsing
@@ -163,16 +168,16 @@ def test_provider_switching_lmstudio(monkeypatch):
 def test_provider_switching_gemini(monkeypatch):
     """
     FR-007: Integration test - Verify provider switching logic selects Gemini correctly.
-    
+
     This tests the integration/orchestration layer (provider selection, config loading,
     prompt construction). The actual Gemini API implementation is tested in test_llm_clients.py.
-    
+
     What this tests:
     - Config loading selects correct provider
     - _create_llm_client() instantiates correct client type
     - Prompt structure is correct (Schema + Question)
     - Integration flow works end-to-end
-    
+
     What this does NOT test (covered in test_llm_clients.py):
     - Gemini API call format
     - Response parsing
@@ -285,9 +290,7 @@ def test_provider_switching_no_real_api_calls(monkeypatch):
     # Verify mock was used by checking the client type
     config = load_llm_config()
     client = catalyst_executor._create_llm_client(config)
-    assert isinstance(
-        client, MockLMStudioClient
-    ), "Should use mocked LMStudioClient, not real one"
+    assert isinstance(client, MockLMStudioClient), "Should use mocked LMStudioClient, not real one"
 
     # Test Gemini - should use mock, no real API call
     monkeypatch.setenv("CATALYST_LLM_PROVIDER", "gemini")
@@ -297,6 +300,4 @@ def test_provider_switching_no_real_api_calls(monkeypatch):
     # Verify mock was used
     config = load_llm_config()
     client = catalyst_executor._create_llm_client(config)
-    assert isinstance(
-        client, MockGeminiClient
-    ), "Should use mocked GeminiClient, not real one"
+    assert isinstance(client, MockGeminiClient), "Should use mocked GeminiClient, not real one"

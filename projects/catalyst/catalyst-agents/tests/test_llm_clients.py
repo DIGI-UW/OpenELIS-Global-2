@@ -18,12 +18,14 @@ What these tests do NOT verify (requires integration tests with real APIs):
 - Actual API response format
 - Network timeouts/retries
 """
-import pytest
+
 from unittest.mock import Mock, patch
+
 import httpx
+import pytest
 from google.genai import types
 
-from src.llm_clients import LMStudioClient, GeminiClient
+from src.llm_clients import GeminiClient, LMStudioClient
 
 
 class TestLMStudioClient:
@@ -58,7 +60,7 @@ class TestLMStudioClient:
         mock_client_instance.post.assert_called_once()
         call_args = mock_client_instance.post.call_args
         assert call_args[0][0] == "http://localhost:1234/v1/chat/completions"
-        
+
         request_json = call_args[1]["json"]
         assert request_json["model"] == "test-model"
         assert request_json["temperature"] == 0.1
@@ -104,13 +106,7 @@ class TestLMStudioClient:
         """Test that LMStudioClient parses OpenAI-compatible response format."""
         mock_response = Mock()
         mock_response.json.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        "content": "  SELECT * FROM test WHERE id = 1  \n"
-                    }
-                }
-            ]
+            "choices": [{"message": {"content": "  SELECT * FROM test WHERE id = 1  \n"}}]
         }
         mock_response.raise_for_status = Mock()
 
@@ -137,7 +133,7 @@ class TestGeminiClient:
             mock_client_class.return_value = mock_client_instance
 
             client = GeminiClient("test-api-key", "gemini-pro")
-            
+
             # Verify genai.Client was called with API key
             mock_client_class.assert_called_once_with(api_key="test-api-key")
             assert client._model == "gemini-pro"
@@ -160,7 +156,7 @@ class TestGeminiClient:
         # Verify API call was made with correct parameters
         mock_client_instance.models.generate_content.assert_called_once()
         call_kwargs = mock_client_instance.models.generate_content.call_args[1]
-        
+
         assert call_kwargs["model"] == "gemini-pro"
         assert call_kwargs["contents"] == "Schema:\ntest\n\nQuestion:\nHow many?"
         assert isinstance(call_kwargs["config"], types.GenerateContentConfig)

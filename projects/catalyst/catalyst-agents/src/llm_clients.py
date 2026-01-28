@@ -1,6 +1,7 @@
+from typing import Protocol
+
 import httpx
 from google import genai
-from typing import Protocol
 
 
 class LLMClient(Protocol):
@@ -30,7 +31,11 @@ class LMStudioClient:
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a SQL expert. Generate valid PostgreSQL SQL queries from natural language questions. Return only the SQL statement, no explanations.",
+                            "content": (
+                                "You are a SQL expert. Generate valid PostgreSQL SQL queries "
+                                "from natural language questions. Return only the SQL statement, "
+                                "no explanations."
+                            ),
                         },
                         {"role": "user", "content": prompt},
                     ],
@@ -55,7 +60,7 @@ class GeminiClient:
         # Use Gemini's structured output/function calling for reliable SQL JSON format
         # This reduces hallucination/format errors
         from google.genai import types
-        
+
         response = self._client.models.generate_content(
             model=self._model,
             contents=prompt,
