@@ -10,22 +10,31 @@ jobs:
   pull-translations-from-transifex:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
     name: pull-translations-from-transifex
-
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
 
     steps:
+      - name: 🔑 Generate GitHub App token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
-      - name: 🌐 Push source file using transifex client
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: 🌐 Pull translations from Transifex
         uses: transifex/cli-action@v2
         with:
           token: ${{ secrets.TRANSIFEX_TOKEN }}
           args: pull --force --all
+
       - name: 🔄 Create PR if necessary
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ steps.app-token.outputs.token }}
           commit-message: 'Update OpenELIS translations from Transifex'
           title: 'Update OpenELIS translations from Transifex'
           body: |
@@ -35,13 +44,13 @@ jobs:
 
             > This PR was automatically generated and will be automatically merged if checks pass.
           branch: 'chore/update-transifex'
-          author: 'OpenELIS Bot <ci@uwdigi.org>'
-          token: ${{ secrets.GH_BOT_TOKEN }}
+
       - name: ✅ Auto approve PR
         if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
         run: gh pr review --approve "${{ steps.cpr.outputs.pull-request-number }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_BOT_TOKEN }}
+
       - name: 🔀 Automerge PR
         if: steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated'
         run: gh pr merge --auto --squash "${{ steps.cpr.outputs.pull-request-number }}"
