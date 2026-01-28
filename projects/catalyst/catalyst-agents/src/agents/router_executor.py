@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import List
 
 import httpx
 from a2a.client import ClientConfig, ClientFactory
@@ -37,7 +36,7 @@ class RouterAgentExecutor(AgentExecutor):
         )
         return ClientFactory(client_config).create(agent_card)
 
-    async def _call_agent(self, agent_url: str, query: str) -> List[Part]:
+    async def _call_agent(self, agent_url: str, query: str) -> list[Part]:
         """Call an agent with a query and return response parts."""
         client = await self._create_client(agent_url)
         message = Message(
@@ -55,11 +54,11 @@ class RouterAgentExecutor(AgentExecutor):
 
         return [Part(root=TextPart(text=f"No response from agent at {agent_url}."))]
 
-    async def delegate_query_single_agent(self, query: str) -> List[Part]:
+    async def delegate_query_single_agent(self, query: str) -> list[Part]:
         """Single-agent mode: delegate directly to CatalystAgent."""
         return await self._call_agent(self.catalyst_url, query)
 
-    async def delegate_query_multi_agent(self, query: str) -> List[Part]:
+    async def delegate_query_multi_agent(self, query: str) -> list[Part]:
         """
         Multi-agent mode: orchestrate SchemaAgent → SQLGenAgent flow.
 

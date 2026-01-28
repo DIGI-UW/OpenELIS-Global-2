@@ -11,7 +11,7 @@ from typing import Any
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
-from a2a.types import Part, TextPart, TaskState
+from a2a.types import Part, TaskState, TextPart
 from a2a.utils import new_agent_text_message, new_task
 
 from ..config import load_llm_config
@@ -73,7 +73,7 @@ class SQLGenAgentExecutor(AgentExecutor):
         # For M0.2, we use a placeholder schema context (will be wired in router update)
         schema_context = {
             "tables": ["sample", "analysis"],
-            "schema": "sample(id, entered_date)\nanalysis(id, sample_id, test_name)"
+            "schema": "sample(id, entered_date)\nanalysis(id, sample_id, test_name)",
         }
 
         result = generate_sql_from_context(query, schema_context)

@@ -5,8 +5,8 @@ These tests verify that the RouterAgent correctly orchestrates the
 multi-agent workflow when in multi-agent mode.
 """
 
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 from a2a.types import Part, TextPart
 
 from src.agents.router_executor import RouterAgentExecutor
@@ -33,10 +33,8 @@ async def test_router_calls_schema_agent_then_sqlgen_agent(monkeypatch):
             schema_called = True
             call_order.append("schema")
             # Return mock schema context
-            return [Part(root=TextPart(text="{'tables': ['sample'], 'schema': 'sample(id)'}"))
-
-]
-        elif "9103" in agent_url:  # SQLGenAgent port
+            return [Part(root=TextPart(text="{'tables': ['sample'], 'schema': 'sample(id)'}"))]
+        if "9103" in agent_url:  # SQLGenAgent port
             sqlgen_called = True
             call_order.append("sqlgen")
             # Return mock SQL
@@ -69,12 +67,11 @@ async def test_router_multi_agent_mode_returns_sql(monkeypatch):
     """
     Test that multi-agent mode returns SQL from SQLGenAgent.
     """
+
     async def mock_call_agent(self, agent_url: str, query: str):
         if "9102" in agent_url:  # SchemaAgent
-            return [Part(root=TextPart(text="{'tables': ['test'], 'schema': 'test(id)'}"))
-
-]
-        elif "9103" in agent_url:  # SQLGenAgent
+            return [Part(root=TextPart(text="{'tables': ['test'], 'schema': 'test(id)'}"))]
+        if "9103" in agent_url:  # SQLGenAgent
             return [Part(root=TextPart(text="SELECT * FROM test"))]
         return []
 

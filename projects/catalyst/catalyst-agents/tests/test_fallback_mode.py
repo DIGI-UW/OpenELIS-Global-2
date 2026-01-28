@@ -5,8 +5,8 @@ These tests verify that RouterAgent can fall back to using CatalystAgent
 directly when CATALYST_AGENT_MODE=single.
 """
 
+
 import pytest
-from unittest.mock import AsyncMock
 from a2a.types import Part, TextPart
 
 from src.agents.router_executor import RouterAgentExecutor
@@ -32,10 +32,10 @@ async def test_router_single_agent_mode_calls_catalyst_agent(monkeypatch):
         if "9101" in agent_url:  # CatalystAgent port
             catalyst_called = True
             return [Part(root=TextPart(text="SELECT 1"))]
-        elif "9102" in agent_url:  # SchemaAgent port
+        if "9102" in agent_url:  # SchemaAgent port
             schema_called = True
             return []
-        elif "9103" in agent_url:  # SQLGenAgent port
+        if "9103" in agent_url:  # SQLGenAgent port
             sqlgen_called = True
             return []
 
@@ -63,7 +63,6 @@ async def test_router_mode_switch_via_env_var(monkeypatch):
     """
     Test that RouterAgent mode can be controlled via CATALYST_AGENT_MODE env var.
     """
-    import os
 
     # Test multi mode (default)
     executor_multi = RouterAgentExecutor()

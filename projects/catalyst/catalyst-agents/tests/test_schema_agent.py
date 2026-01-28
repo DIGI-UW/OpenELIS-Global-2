@@ -18,11 +18,12 @@ def test_schema_executor_calls_mcp_get_query_context(monkeypatch):
     - SchemaAgent calls MCP get_query_context with the query
     - SchemaAgent returns relevant schema metadata
     """
+
     # Mock MCP get_query_context to return sample schema
     def mock_get_query_context(query: str) -> dict:
         return {
             "tables": ["sample", "analysis"],
-            "schema": "sample(id, entered_date)\nanalysis(id, sample_id, test_name)"
+            "schema": "sample(id, entered_date)\nanalysis(id, sample_id, test_name)",
         }
 
     monkeypatch.setattr(mcp_client, "get_query_context", mock_get_query_context)
@@ -50,10 +51,7 @@ def test_schema_executor_passes_query_to_mcp(monkeypatch):
     def mock_get_query_context(query: str) -> dict:
         nonlocal captured_query
         captured_query = query
-        return {
-            "tables": ["test"],
-            "schema": "test(id, name)"
-        }
+        return {"tables": ["test"], "schema": "test(id, name)"}
 
     monkeypatch.setattr(mcp_client, "get_query_context", mock_get_query_context)
 
@@ -69,11 +67,9 @@ def test_schema_executor_returns_empty_on_no_tables(monkeypatch):
     """
     Test SchemaAgent handles case where MCP returns no relevant tables.
     """
+
     def mock_get_query_context(query: str) -> dict:
-        return {
-            "tables": [],
-            "schema": ""
-        }
+        return {"tables": [], "schema": ""}
 
     monkeypatch.setattr(mcp_client, "get_query_context", mock_get_query_context)
 

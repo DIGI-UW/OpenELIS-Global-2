@@ -39,7 +39,7 @@ def test_sqlgen_executor_generates_sql_from_schema_context(monkeypatch):
     # Call SQLGen with schema context
     schema_context = {
         "tables": ["sample", "analysis"],
-        "schema": "sample(id, entered_date)\nanalysis(id, sample_id)"
+        "schema": "sample(id, entered_date)\nanalysis(id, sample_id)",
     }
     user_query = "count samples"
 
@@ -77,10 +77,7 @@ def test_sqlgen_executor_uses_schema_context_in_prompt(monkeypatch):
 
     monkeypatch.setattr(sqlgen_executor, "LMStudioClient", PromptCaptureClient)
 
-    schema_context = {
-        "tables": ["sample"],
-        "schema": "sample(id, entered_date)"
-    }
+    schema_context = {"tables": ["sample"], "schema": "sample(id, entered_date)"}
     user_query = "get all samples"
 
     sqlgen_executor.generate_sql_from_context(user_query, schema_context)

@@ -20,5 +20,5 @@ def get_query_context(query: str) -> dict:
     # M1: Will call MCP server get_relevant_tables + get_table_ddl
     return {
         "tables": ["sample", "analysis"],
-        "schema": "sample(id, entered_date)\nanalysis(id, sample_id, test_name)"
+        "schema": "sample(id, entered_date)\nanalysis(id, sample_id, test_name)",
     }
