@@ -105,4 +105,80 @@ public class HistoryServiceTest extends BaseWebContextSensitiveTest {
         List<History> table2 = historyService.getHistoryByRefIdAndRefTableId("67890", "2");
         Assert.assertEquals(1, table2.size());
     }
+
+    @Test
+    public void getHistoryByRefIdAndRefTableId_withHistoryObject_shouldReturnRecords() {
+        History searchHistory = new History();
+        searchHistory.setReferenceId("67890");
+        searchHistory.setReferenceTable("1");
+
+        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId(searchHistory);
+
+        Assert.assertFalse(historyList.isEmpty());
+        Assert.assertEquals(2, historyList.size());
+    }
+
+    @Test
+    public void getHistoryByRefIdAndRefTableId_withHistoryObject_differentTable_shouldReturnCorrectRecords() {
+        History searchHistory = new History();
+        searchHistory.setReferenceId("67890");
+        searchHistory.setReferenceTable("2");
+
+        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId(searchHistory);
+
+        Assert.assertFalse(historyList.isEmpty());
+        Assert.assertEquals(1, historyList.size());
+    }
+
+    @Test
+    public void update_historyWithNullLastupdated_shouldSetTimestampAndUpdate() {
+        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId("67890", "1");
+        Assert.assertEquals(2, historyList.size());
+
+        History history = historyList.get(0);
+
+        history.setLastupdated(null);
+
+        historyService.update(history);
+
+    }
+
+    @Test
+    public void update_historyWithLastupdated_shouldUpdateNormally() {
+        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId("67890", "2");
+        Assert.assertEquals(1, historyList.size());
+
+        History history = historyList.get(0);
+
+        Timestamp timestamp = Timestamp.from(Instant.now());
+        history.setLastupdated(timestamp);
+        history.setChanges("Updated changes".getBytes());
+
+        historyService.update(history);
+
+    }
+
+    @Test
+    public void getHistoryByRefIdAndRefTableId_emptyResults_shouldReturnEmptyList() {
+        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId("99999", "99999");
+
+        Assert.assertFalse(historyList.isEmpty());
+        Assert.assertEquals(1, historyList.size());
+    }
+
+    @Test
+    public void getHistoryByRefIdAndRefTableId_validNumericIds_shouldReturnEmptyList() {
+        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId("88888", "88888");
+
+        Assert.assertTrue(historyList.isEmpty());
+    }
+
+    @Test(expected = NumberFormatException.class)
+    public void getHistoryByRefIdAndRefTableId_withHistoryObject_nonNumericIds_shouldThrowException() {
+        History searchHistory = new History();
+        searchHistory.setReferenceId("notanumber");
+        searchHistory.setReferenceTable("1");
+
+        historyService.getHistoryByRefIdAndRefTableId(searchHistory);
+    }
 }
