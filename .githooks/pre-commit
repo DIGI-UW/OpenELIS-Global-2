@@ -1,0 +1,73 @@
+#!/bin/bash
+# Auto-format hook: Runs formatters on staged files before commit
+# This prevents CI failures from formatting issues
+
+set -e
+
+echo "🎨 Running auto-formatters on staged files..."
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$STAGED_FILES" ]; then
+    echo "  → No staged files to format"
+    exit 0
+fi
+
+# Track if we formatted anything
+FORMATTED=false
+
+# Format Java files (Maven Spotless on specific files)
+JAVA_FILES=$(echo "$STAGED_FILES" | grep '\.java$' || true)
+if [ -n "$JAVA_FILES" ]; then
+    echo "  → Formatting $(echo "$JAVA_FILES" | wc -l) Java file(s) (spotless)..."
+    # Spotless applies to entire project, but we only re-stage modified files
+    mvn spotless:apply -q 2>/dev/null || true
+    FORMATTED=true
+fi
+
+# Format frontend files (Prettier on specific files)
+FRONTEND_FILES=$(echo "$STAGED_FILES" | grep -E 'frontend/.*\.(js|jsx|ts|tsx|css|scss)$' || true)
+if [ -n "$FRONTEND_FILES" ]; then
+    echo "  → Formatting $(echo "$FRONTEND_FILES" | wc -l) frontend file(s) (prettier)..."
+    # Format only staged frontend files
+    echo "$FRONTEND_FILES" | while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            (cd frontend && npx prettier --write "../$file" --silent 2>/dev/null) || true
+        fi
+    done
+    FORMATTED=true
+fi
+
+# Format Python files (Ruff on specific files)
+PYTHON_FILES=$(echo "$STAGED_FILES" | grep -E 'projects/catalyst/.*\.py$' || true)
+if [ -n "$PYTHON_FILES" ]; then
+    echo "  → Formatting $(echo "$PYTHON_FILES" | wc -l) Python file(s) (ruff)..."
+    # Format only staged Python files
+    echo "$PYTHON_FILES" | while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            # Determine which catalyst project this file belongs to
+            if echo "$file" | grep -q 'catalyst-agents'; then
+                (cd projects/catalyst/catalyst-agents && uv run ruff format "../../$file" 2>/dev/null) || true
+            elif echo "$file" | grep -q 'catalyst-gateway'; then
+                (cd projects/catalyst/catalyst-gateway && uv run ruff format "../../$file" 2>/dev/null) || true
+            elif echo "$file" | grep -q 'catalyst-mcp'; then
+                (cd projects/catalyst/catalyst-mcp && uv run ruff format "../../$file" 2>/dev/null) || true
+            fi
+        fi
+    done
+    FORMATTED=true
+fi
+
+# Re-stage all files that were formatted
+if [ "$FORMATTED" = true ]; then
+    echo "  → Re-staging formatted files..."
+    echo "$STAGED_FILES" | while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            git add "$file"
+        fi
+    done
+fi
+
+echo "✅ Formatting complete!"
+exit 0

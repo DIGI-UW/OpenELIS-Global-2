@@ -50,6 +50,21 @@ jobs:
         run: |
           uv sync --frozen --no-install-project --extra dev
 
+      - name: Check code formatting (Ruff)
+        working-directory: projects/catalyst/${{ matrix.project }}
+        run: |
+          uv run ruff format --check .
+
+      - name: Lint code (Ruff)
+        working-directory: projects/catalyst/${{ matrix.project }}
+        run: |
+          uv run ruff check .
+
+      - name: Type check (mypy)
+        working-directory: projects/catalyst/${{ matrix.project }}
+        run: |
+          uv run mypy src/ || true  # Non-blocking for now
+
       - name: Run tests
         working-directory: projects/catalyst/${{ matrix.project }}
         env:

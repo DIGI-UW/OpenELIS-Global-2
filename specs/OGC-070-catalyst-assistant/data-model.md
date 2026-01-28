@@ -313,7 +313,7 @@ erDiagram
 ## Liquibase Changeset
 
 **File**:
-`src/main/resources/liquibase/catalyst/catalyst-001-create-audit-table.xml`
+`src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -324,7 +324,7 @@ erDiagram
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
 
     <changeSet id="catalyst-001-create-audit-table" author="catalyst-team">
-        <comment>Create catalyst_query table for audit logging (M2 - without security fields phi_gated and confirmation_token, added in M4)</comment>
+        <comment>Create catalyst_query table for audit logging (M2 - without security fields phi_gated and confirmation_token, added in M5)</comment>
 
         <createTable tableName="catalyst_query">
             <column name="id" type="VARCHAR(36)">
@@ -343,7 +343,7 @@ erDiagram
             <column name="provider_type" type="VARCHAR(50)"/>
             <column name="provider_id" type="VARCHAR(50)"/>
             <column name="llm_model" type="VARCHAR(100)"/>
-            <!-- Note: phi_gated and confirmation_token added in M4 via catalyst-002-add-security-fields.xml -->
+            <!-- Note: phi_gated and confirmation_token added in M5 via 002-catalyst-add-security-fields.xml -->
             <column name="tables_used" type="TEXT"/>
             <column name="sys_user_id" type="INTEGER">
                 <constraints nullable="false" foreignKeyName="fk_catalyst_query_user"

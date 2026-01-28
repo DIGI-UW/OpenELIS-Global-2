@@ -1,5 +1,4 @@
 import pytest
-
 from a2a.types import Part, TextPart
 
 from src.agents.router_executor import RouterAgentExecutor

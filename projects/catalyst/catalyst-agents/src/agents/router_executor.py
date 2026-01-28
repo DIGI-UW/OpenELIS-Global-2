@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import List
 
 import httpx
 from a2a.client import ClientConfig, ClientFactory
@@ -8,7 +7,7 @@ from a2a.client.card_resolver import A2ACardResolver
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
-from a2a.types import Message, Part, Role, TextPart, TaskState, TransportProtocol
+from a2a.types import Message, Part, Role, TaskState, TextPart, TransportProtocol
 from a2a.utils import new_agent_text_message, new_task
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ class RouterAgentExecutor(AgentExecutor):
         )
         return ClientFactory(client_config).create(agent_card)
 
-    async def delegate_query(self, query: str) -> List[Part]:
+    async def delegate_query(self, query: str) -> list[Part]:
         client = await self._create_client()
         message = Message(
             messageId=os.urandom(16).hex(),

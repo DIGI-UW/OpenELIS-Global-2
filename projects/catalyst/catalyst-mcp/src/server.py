@@ -19,7 +19,7 @@ mcp = FastMCP(
 def get_query_context(user_query: str) -> dict[str, object]:
     """
     Get query context (schema bundle) for allowed tables only.
-    
+
     Provides the LLM with schema information (columns, primary keys, foreign keys)
     for tables in the allowlist, enabling accurate SQL generation within safe boundaries.
     """
@@ -30,7 +30,7 @@ def get_query_context(user_query: str) -> dict[str, object]:
 def validate_sql(sql: str) -> dict[str, object]:
     """
     Validate SQL against guardrails and allowlist.
-    
+
     Ensures generated SQL:
     - Uses only SELECT/WITH (no DDL/DML)
     - References only allowlisted tables

@@ -7,6 +7,40 @@
 
 ## Clarifications
 
+### Session 2026-01-27
+
+- Q: FR-009 specifies row estimation to warn users about queries
+  returning >10,000 rows, but states "M0.0-M0.2 uses placeholder (returns 0)".
+  This means warnings will never trigger in early milestones, creating
+  misleading UX. How should we handle row estimation in the MVP? → A: Defer
+  FR-009 entirely to M2 - Remove from M0 scope, implement only when DB access
+  available (cleaner UX).
+- Q: NFR-001 specifies "Llama 3.1 8B / Gemma 2 9B for Orchestrator" but doesn't
+  indicate which should be the primary default configuration. Which model should
+  be documented as the default? → A: Llama 3.1 8B as default, Gemma 2 9B as
+  fallback (stronger reasoning for orchestration).
+- Q: FR-018 requires detecting "likely PHI/identifiers" in user queries to
+  prevent sending sensitive data to external LLM providers. What approach should
+  MVP use for PHI detection? → A: Simple regex/keyword matching for MRN, DOB
+  patterns, patient identifiers, with configurable disable option (deployments
+  using only local models may turn off PHI detection).
+- Q: NFR-001 requires evaluating both Tier A (12GB VRAM) and Tier B (40GB+ VRAM)
+  configurations. Can MVP pass M0.2 sign-off without Tier B evaluation if
+  hardware unavailable? → A: Defer Tier B to post-MVP - Remove from M0.2,
+  validate after MVP deployment when hardware accessible.
+- Q: FR-022 golden query dataset needs proper infrastructure for validation.
+  Should this be simple hardcoded queries or structured dataset compatible with
+  LLM evaluation frameworks? → A: Build comprehensive golden query dataset (26+
+  robust, useful queries based on lit review + web research) in structured
+  format compatible with LLM validation frameworks/toolkits (e.g., ragas,
+  promptfoo, langfuse). Dataset must include ALL metadata fields these toolkits
+  expect: query text, expected tables, system prompts, model parameters,
+  expected SQL patterns, validation criteria, expected results. Store in
+  `projects/catalyst/tests/fixtures/golden_queries.json`. This allows plugging
+  into professional evaluation tooling for proper query management, prompt
+  versioning, and model comparison over time. UI example queries (FR-014) are
+  separate concern, deferred to post-MVP.
+
 ### Session 2026-01-21
 
 - Q: How do we prevent Catalyst from becoming a high-privilege reporting
@@ -226,9 +260,18 @@ This delivers enhanced usability and workflow integration.
   - System should return a user-friendly error message indicating the database
     is temporarily unavailable, without exposing technical details.
 
+- What happens when the LLM service (Catalyst Gateway or provider) is
+  unavailable?
+
+  - System should detect service unavailability (connection timeout, HTTP 503,
+    network error) and return a user-friendly error message: "The AI assistant
+    is temporarily unavailable. Please try again in a few moments." All failures
+    are logged for monitoring (FR-010 audit trail). No automatic retry in MVP;
+    user must resubmit query.
+
 - What happens when a user submits a query in a language other than English?
 
-  - **MVP Scope**: The MVP supports English natural language questions only.
+  - **MVP Scope**: The MVP supports English natural language queries only.
     Queries in other languages may not be processed correctly.
   - **Long-term Target**: The system is designed to natively support any
     language that OpenELIS supports (en, fr, ar, es, hi, pt, sw), consistent
@@ -278,9 +321,9 @@ This delivers enhanced usability and workflow integration.
   access to blocked tables (e.g., sys_user, login_user, user_role).
 
 - **FR-009**: System MUST estimate the number of rows a query will return before
-  execution and warn users if the estimate exceeds 10,000 rows. Estimation
-  method: M0.0-M0.2 uses placeholder (returns 0); M2+ uses PostgreSQL EXPLAIN to
-  estimate row count.
+  execution and warn users if the estimate exceeds 10,000 rows. **Implementation
+  deferred to M2** when read-only database access is available. Estimation uses
+  PostgreSQL EXPLAIN to calculate row count.
 
 - **FR-010**: System MUST log all generated SQL queries and their execution
   results for audit purposes, including user ID and timestamp.
@@ -294,10 +337,11 @@ This delivers enhanced usability and workflow integration.
   sys_user, login_user, user_role). Full row-level RBAC integration with
   OpenELIS permissions is deferred to Phase 2.
 
-- **FR-014**: System MUST provide example queries or prompts to help users
-  understand how to phrase their questions effectively. Minimum 3-5 example
-  queries covering: count queries, JOIN queries, aggregation queries, and date
-  filtering queries.
+- **FR-014**: System SHOULD provide example queries or prompts to help users
+  understand how to phrase their questions effectively. UI displays 3-5 simple
+  representative examples covering: count queries, JOIN queries, aggregation
+  queries, and date filtering queries. **Final examples deferred to post-MVP**
+  pending user testing; MVP may use placeholder examples.
 
 - **FR-015**: System MUST support queries that require JOINs across multiple
   tables, aggregations (COUNT, SUM, AVG), and date filtering.
@@ -314,10 +358,16 @@ This delivers enhanced usability and workflow integration.
 - **FR-017**: (Reserved for future use)
 
 - **FR-018**: System MUST detect likely PHI/identifiers in user-submitted
-  questions. If the configured AI provider is externally-hosted, the system MUST
-  NOT send the question to that provider. The system must either (a) route the
-  request to an on-premises provider (if configured and healthy) or (b) block
-  the request and prompt the user to remove PHI and retry.
+  questions using **regex/keyword matching** for common patterns (MRN formats,
+  DOB patterns, "patient name", accession numbers). **Default PHI detection
+  patterns** are included in the codebase (see plan.md Security section for
+  examples like `\b\d{6,10}\b` for MRN-like numbers, `\b\d{2}/\d{2}/\d{4}\b` for
+  DOB patterns). If the configured AI provider is externally-hosted, the system
+  MUST NOT send the question to that provider. The system must either (a) route
+  the request to an on-premises provider (if configured and healthy) or (b)
+  block the request and prompt the user to remove PHI and retry. **PHI detection
+  is configurable** - deployments using only local LLM providers may disable
+  this safeguard via configuration.
 
   **Note**: FR-018 is implemented in M5 (Security Features milestone), not in
   MVP POC milestones (M0.0-M0.2). This allows bare-bones POC validation before
@@ -355,6 +405,48 @@ This delivers enhanced usability and workflow integration.
   (`UserRoleService.userInRole()`). Per-user row-level filtering within queries
   is deferred to Phase 2.
 
+- **FR-022**: System MUST include an evaluation harness for validating LLM
+  workflow quality. The harness MUST support:
+
+  - (a) **Golden query dataset**: 26+ comprehensive, robust OpenELIS-focused
+    queries stored in **structured JSON format**
+    (`projects/catalyst/tests/fixtures/golden_queries.json`) based on
+    **literature review + web research** for text-to-SQL validation best
+    practices. Dataset MUST be **compatible with LLM validation
+    frameworks/toolkits** (e.g., ragas, promptfoo, langfuse) and include ALL
+    required metadata fields: query text, expected tables/columns, system
+    prompts, model parameters, expected SQL patterns, validation criteria,
+    expected results/row counts. This structured format enables integration with
+    professional evaluation tooling for query management, prompt versioning, and
+    model comparison over time. Covers: counts, joins, aggregations, date
+    filters, ambiguity handling, and PHI-like inputs (see research.md Section 13
+    for initial set).
+  - (b) **Deterministic validation**: SELECT-only guard, blocked table
+    detection, single-statement check, schema grounding verification
+  - (c) **Retrieval metrics**: Recall@K and HitRate@K for schema retrieval
+    (target: Recall@5 >= 80%, HitRate@5 >= 90%)
+  - (d) **Model comparison scorecard**: Standardized evaluation across candidate
+    LLMs using the balanced scorecard (research.md Section 15)
+
+  **Note**: The golden query dataset itself is comprehensive from the start.
+  Execution accuracy validation (running SQL against seeded DB, comparing
+  results) is deferred until M2+ when read-only database access is available.
+
+### Non-Functional Requirements
+
+- **NFR-001**: Local LLM deployment MUST support **Tier A** (12GB VRAM)
+  configuration for MVP:
+
+  - **Tier A** (12GB VRAM) - **MVP Scope**: **Default: Llama 3.1 8B** for
+    Orchestrator (fallback: Gemma 2 9B), CodeLlama 13B for SQLGen (Q4_K_M
+    quantization)
+  - **Tier B** (40GB+ VRAM) - **Post-MVP**: Same Orchestrator models, CodeLlama
+    34B / Llama 3.1 70B for SQLGen (deferred to post-MVP when hardware
+    available)
+
+  Tier A model selection MUST be validated against the evaluation harness
+  (FR-022) using the balanced scorecard (research.md Section 15).
+
 ### Constitution Compliance Requirements (OpenELIS Global)
 
 _Derived from `.specify/memory/constitution.md` - include only relevant
@@ -384,8 +476,8 @@ principles for this feature:_
   systems must follow FHIR standards.
 
 - **CR-006**: Configuration-driven variation for country-specific requirements
-  (NO code branching). LLM provider selection and guardrail settings must be
-  configurable, not hardcoded.
+  (NO code branching). LLM provider selection and guardrail settings (including
+  PHI detection enable/disable) must be configurable, not hardcoded.
 
 - **CR-007**: Security: MVP authorization is enforced at two levels:
 
@@ -467,6 +559,13 @@ principles for this feature:_
   analysis, date range filtering, aggregation queries) as demonstrated in
   end-to-end tests.
 
+- **SC-010**: Evaluation harness demonstrates Recall@5 >= 80% for schema
+  retrieval across the 26-question golden query set.
+
+- **SC-011**: At least one Tier A model configuration (Orchestrator + SQLGen)
+  passes all deterministic guards (SELECT-only, blocked tables, single
+  statement) on 100% of non-ambiguous queries.
+
 **Note**: Performance metrics, SQL accuracy thresholds, and evaluation
 benchmarks (e.g., response time targets, SQL generation success rates, query
 accuracy percentages) are deferred to future phases. MVP focuses on functional
@@ -487,7 +586,7 @@ validation that the core workflow operates correctly.
   based on results.
 - The MVP focuses on read-only queries - no data modification capabilities are
   needed.
-- **MVP Language Support**: The MVP supports English natural language questions
+- **MVP Language Support**: The MVP supports English natural language queries
   only. The long-term target is to natively support any language that OpenELIS
   supports (en, fr, ar, es, hi, pt, sw), consistent with Constitution Principle
   VII (Internationalization First). Note that UI strings must still be
@@ -523,6 +622,11 @@ validation that the core workflow operates correctly.
 - **Complex multi-agent orchestration** (Phase 2) - MVP implements a simple
   3-agent team (Router, Schema, SQLGen); advanced orchestration patterns,
   external agent federation, and dynamic agent discovery deferred
+- **Tier B (40GB+ VRAM) model evaluation** (Post-MVP) - MVP validates Tier A
+  (12GB VRAM) configuration only; Tier B evaluation deferred until appropriate
+  hardware available
+- **Polished UI example queries** (Post-MVP) - MVP may use placeholder examples;
+  final user-tested examples deferred pending user research (FR-014)
 - PDF or Excel export formats (Phase 3)
 - Wizard mode for query building (Phase 3)
 - Row-level RBAC integration with OpenELIS user permissions (Phase 2) - MVP
