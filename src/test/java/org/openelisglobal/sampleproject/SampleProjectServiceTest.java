@@ -2,6 +2,7 @@ package org.openelisglobal.sampleproject;
 
 import static org.junit.Assert.*;
 
+import jakarta.persistence.PersistenceException;
 import java.sql.Date;
 import java.util.List;
 import org.junit.Before;
