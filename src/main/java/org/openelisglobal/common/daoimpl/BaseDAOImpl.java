@@ -675,7 +675,12 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
             Predicate predicate;
             switch (comparisonOperation.getComparison()) {
             case EQ:
-                predicate = criteriaBuilder.equal(pathToProperty, propertyValue);
+                // Fix for bytea comparison error when null parameter is passed
+                if (propertyValue == null) {
+                    predicate = criteriaBuilder.isNull(pathToProperty);
+                } else {
+                    predicate = criteriaBuilder.equal(pathToProperty, propertyValue);
+                }
                 break;
             case LIKE:
                 predicate = criteriaBuilder.like(criteriaBuilder.lower(pathToProperty),
