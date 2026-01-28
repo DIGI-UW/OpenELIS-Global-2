@@ -398,16 +398,13 @@ public class PatientMergeServiceImpl implements PatientMergeService {
                     "Merged " + mergedDemoFields.size() + " demographic fields from patient " + mergedPatient.getId());
         }
 
-        // FR-016, FR-017: Update FHIR Patient links if both patients have FHIR resources
+        // FR-016, FR-017: Update FHIR Patient links if both patients have FHIR
+        // resources
         if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
                 && fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
             try {
-                fhirPatientLinkService.updatePatientLinks(
-                        primaryPatient.getId(),
-                        mergedPatient.getId(),
-                        primaryPatient.getFhirUuidAsString(),
-                        mergedPatient.getFhirUuidAsString()
-                );
+                fhirPatientLinkService.updatePatientLinks(primaryPatient.getId(), mergedPatient.getId(),
+                        primaryPatient.getFhirUuidAsString(), mergedPatient.getFhirUuidAsString());
                 LogEvent.logInfo(this.getClass().getName(), "executeMerge",
                         "Successfully updated FHIR Patient links for merge: " + primaryPatient.getId() + " <- "
                                 + mergedPatient.getId());
@@ -428,8 +425,8 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     }
 
     /**
-     * Validates FHIR resource consistency between two patients.
-     * Throws IllegalStateException if merge would create inconsistent state.
+     * Validates FHIR resource consistency between two patients. Throws
+     * IllegalStateException if merge would create inconsistent state.
      */
     private void validateFhirConsistency(Patient primaryPatient, Patient mergedPatient) {
         String primaryUuid = primaryPatient.getFhirUuidAsString();
@@ -450,12 +447,12 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
         // Case 3: Only one has FHIR → INCONSISTENT → ABORT
         throw new IllegalStateException(
-                "FHIR resource exists for only one patient. Merge aborted to prevent data inconsistency."
-        );
+                "FHIR resource exists for only one patient. Merge aborted to prevent data inconsistency.");
     }
 
     /**
-     * Checks if a FHIR resource actually exists on the FHIR server (not just UUID presence).
+     * Checks if a FHIR resource actually exists on the FHIR server (not just UUID
+     * presence).
      */
     private boolean hasActualFhirResource(String fhirUuid) {
         if (fhirUuid == null || fhirUuid.trim().isEmpty()) {
@@ -504,36 +501,36 @@ public class PatientMergeServiceImpl implements PatientMergeService {
             return "Unknown";
         }
         switch (identityType.toUpperCase()) {
-            case "SUBJECT":
-                return "Subject Number";
-            case "NATIONAL":
-                return "National ID";
-            case "ST":
-                return "ST Number";
-            case "INSURANCE":
-                return "Insurance ID";
-            case "OCCUPATION":
-                return "Occupation";
-            case "ORG_SITE":
-                return "Organization Site";
-            case "EDUCATION":
-                return "Education";
-            case "MARITIAL":
-                return "Marital Status";
-            case "NATIONALITY":
-                return "Nationality";
-            case "OTHER NATIONALITY":
-                return "Other Nationality";
-            case "HEALTH DISTRICT":
-                return "Health District";
-            case "HEALTH REGION":
-                return "Health Region";
-            case "OB_NUMBER":
-                return "OB Number";
-            case "PC_NUMBER":
-                return "PC Number";
-            default:
-                return identityType;
+        case "SUBJECT":
+            return "Subject Number";
+        case "NATIONAL":
+            return "National ID";
+        case "ST":
+            return "ST Number";
+        case "INSURANCE":
+            return "Insurance ID";
+        case "OCCUPATION":
+            return "Occupation";
+        case "ORG_SITE":
+            return "Organization Site";
+        case "EDUCATION":
+            return "Education";
+        case "MARITIAL":
+            return "Marital Status";
+        case "NATIONALITY":
+            return "Nationality";
+        case "OTHER NATIONALITY":
+            return "Other Nationality";
+        case "HEALTH DISTRICT":
+            return "Health District";
+        case "HEALTH REGION":
+            return "Health Region";
+        case "OB_NUMBER":
+            return "OB Number";
+        case "PC_NUMBER":
+            return "PC Number";
+        default:
+            return identityType;
         }
     }
 }
