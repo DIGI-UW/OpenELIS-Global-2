@@ -273,7 +273,8 @@ graph TD
 **Parallel Development Note**:
 
 - **Week 1**: M0, M1, M2, M3, M4 are ALL PARALLEL (no dependencies between them)
-- **Week 1-2**: M5, M6, M8, M9-M13 can start once their adapter dependency (M1/M2/M3) completes
+- **Week 1-2**: M5, M6, M8, M9-M13 can start once their adapter dependency
+  (M1/M2/M3) completes
 - **Week 2**: M7 (GeneXpert Multi) requires M0 + M1 + M3 for all 3 variants
 - **Week 3-4**: M15 depends on plugin milestones; M16, M17 can parallel with M15
 
@@ -468,13 +469,14 @@ tools/astm-mock-server/
 
 ### M0: ASTM Setup Validation (2 days)
 
-**Scope**: Validate existing ASTM infrastructure from Feature 004 works correctly
-with the mock analyzer. This is about testing what exists, not building new
-infrastructure.
+**Scope**: Validate existing ASTM infrastructure from Feature 004 works
+correctly with the mock analyzer. This is about testing what exists, not
+building new infrastructure.
 
 **Workstream**: A (ASTM)
 
 **What Already Exists** (from Feature 004):
+
 - Mock ASTM Server: `tools/astm-mock-server/` (Python, 1,221 lines)
 - Docker Setup: `docker-compose.astm-test.yml` (3 analyzer types)
 - Test Fixtures: `src/test/resources/astm-samples/` (7 files)
@@ -482,12 +484,14 @@ infrastructure.
 - Q-Segment Parser: TDD-implemented with tests
 
 **Deliverables**:
+
 - Integration tests: mock → OpenELIS → results stored
 - Analyzer configuration targeting mock (172.20.1.100)
 - Verified field mappings with existing fixtures
 - Error dashboard verification
 
 **Acceptance Criteria**:
+
 1. Mock server starts via `docker-compose.astm-test.yml`
 2. Integration test passes: mock → `/analyzer/astm` → results stored
 3. Field mappings work with hematology, chemistry, QC fixtures
