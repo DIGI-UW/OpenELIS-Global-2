@@ -15,6 +15,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.merge.dao.PatientMergeAuditDAO;
 import org.openelisglobal.patient.merge.dto.PatientMergeDataSummaryDTO;
@@ -73,6 +74,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
     @Autowired
     private IStatusService iStatusService;
+
+    @Autowired
+    private FhirPersistanceService fhirPersistanceService;
 
     /**
      * Validates if two patients can be merged. Checks: same patient, patient not
@@ -325,6 +329,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
      * failure.
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request, String sysUserId) {
         long startTime = System.currentTimeMillis();
 
@@ -344,6 +349,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         // Determine primary and merged patients
         Patient primaryPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient1 : patient2;
         Patient mergedPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient2 : patient1;
+
+        // Validate FHIR consistency AFTER determining primary/merged
+        validateFhirConsistency(primaryPatient, mergedPatient);
 
         // Mark merged patient as inactive
         mergedPatient.setIsMerged(true);
@@ -401,9 +409,7 @@ public class PatientMergeServiceImpl implements PatientMergeService {
                         "Successfully updated FHIR Patient links for merge: " + primaryPatient.getId() + " <- "
                                 + mergedPatient.getId());
             } catch (FhirLocalPersistingException e) {
-                // Log error but don't fail the entire merge if FHIR update fails
-                LogEvent.logError(this.getClass().getName(), "executeMerge",
-                        "FHIR link update failed but merge succeeded: " + e.getMessage());
+                throw new IllegalStateException("FHIR link update failed during patient merge", e);
             }
         }
 
@@ -416,6 +422,50 @@ public class PatientMergeServiceImpl implements PatientMergeService {
 
         return PatientMergeExecutionResultDTO.success(String.valueOf(auditId), primaryPatient.getId(),
                 mergedPatient.getId(), duration);
+    }
+
+    /**
+     * Validates FHIR resource consistency between two patients. Throws
+     * IllegalStateException if merge would create inconsistent state.
+     */
+    private void validateFhirConsistency(Patient primaryPatient, Patient mergedPatient) {
+        String primaryUuid = primaryPatient.getFhirUuidAsString();
+        String mergedUuid = mergedPatient.getFhirUuidAsString();
+
+        boolean primaryHasFhir = hasActualFhirResource(primaryUuid);
+        boolean mergedHasFhir = hasActualFhirResource(mergedUuid);
+
+        // Case 1: Both have FHIR → OK (will update links later)
+        if (primaryHasFhir && mergedHasFhir) {
+            return;
+        }
+
+        // Case 2: Neither has FHIR → OK (no FHIR sync needed)
+        if (!primaryHasFhir && !mergedHasFhir) {
+            return;
+        }
+
+        // Case 3: Only one has FHIR → INCONSISTENT → ABORT
+        throw new IllegalStateException(
+                "FHIR resource exists for only one patient. Merge aborted to prevent data inconsistency.");
+    }
+
+    /**
+     * Checks if a FHIR resource actually exists on the FHIR server (not just UUID
+     * presence).
+     */
+    private boolean hasActualFhirResource(String fhirUuid) {
+        if (fhirUuid == null || fhirUuid.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            var fhirPatient = fhirPersistanceService.getPatientByUuid(fhirUuid);
+            return fhirPatient.isPresent();
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "hasActualFhirResource",
+                    "Error checking FHIR resource for UUID " + fhirUuid + ": " + e.getMessage());
+            return false;
+        }
     }
 
     /**
