@@ -156,6 +156,7 @@ with the mock analyzer **User Stories**: US-6 **Depends On**: None (can run
 parallel with M1-M4) **Workstream**: A (ASTM)
 
 **What Already Exists** (from Feature 004):
+
 - Mock ASTM Server: `tools/astm-mock-server/` (Python 3.11, 1,221 lines)
 - Docker Setup: `docker-compose.astm-test.yml` (3 analyzer types configured)
 - Test Fixtures: `src/test/resources/astm-samples/` (7 files, 387 lines)
@@ -593,8 +594,8 @@ Stories**: US-1, US-6 **Depends On**: M1 (HL7 Adapter) **Workstream**: B (HL7)
       `feat/011-madagascar-analyzer-integration-m5-mindray-hl7` from
       `demo/madagascar`
 - [ ] T123 [M5] Ensure M1 is merged to `demo/madagascar`
-- [ ] T123a [M5] Check if Mindray plugin exists in `plugins/analyzers/` submodule;
-      if not, create new plugin or source from DIGI-UW
+- [ ] T123a [M5] Check if Mindray plugin exists in `plugins/analyzers/`
+      submodule; if not, create new plugin or source from DIGI-UW
 - [ ] T123b [M5] Build and verify Mindray plugin loads
 
 ### Tests for M5 (MANDATORY)
@@ -983,8 +984,8 @@ Stories**: US-1, US-6 **Depends On**: M5 (Mindray HL7) **Workstream**: B (HL7)
 - [ ] T215 [M14] Create branch
       `feat/011-madagascar-analyzer-integration-m14-p2-validation` from
       `demo/madagascar`
-- [ ] T215a [M14] Check if SysmexXN-L plugin exists; if not, adapt existing Sysmex
-      plugins (SysmeXT, Sysmex2000i, SysmexXT4000i) for XN-L series
+- [ ] T215a [M14] Check if SysmexXN-L plugin exists; if not, adapt existing
+      Sysmex plugins (SysmeXT, Sysmex2000i, SysmexXT4000i) for XN-L series
 - [ ] T215b [M14] Build and verify SysmexXN-L plugin loads
 
 ### Tests for M14 (MANDATORY)
@@ -1310,27 +1311,27 @@ tests pass
 
 ### Milestone Dependencies
 
-| Milestone | Depends On    | Workstream     | Parallel Group              |
-| --------- | ------------- | -------------- | --------------------------- |
-| **M0**    | -             | A (ASTM)       | Foundation (0-4) [PARALLEL] |
-| **M1**    | -             | B (HL7)        | Foundation (0-4) [PARALLEL] |
-| **M2**    | -             | C (RS232)      | Foundation (0-4) [PARALLEL] |
-| **M3**    | -             | D (File)       | Foundation (0-4) [PARALLEL] |
-| **M4**    | -             | E (Simulator)  | Foundation (0-4) [PARALLEL] |
-| M5        | M1            | B (HL7)        | Plugin Validation           |
-| M6        | M2            | C (RS232)      | Plugin Validation           |
-| M7        | M0, M1, M3    | A, B, D        | Plugin Validation           |
-| M8        | M3            | D (File)       | Plugin Validation           |
-| M9        | M2            | C (RS232)      | New Plugins (9-13) [P]      |
-| M10       | M2            | C (RS232)      | New Plugins (9-13) [P]      |
-| M11       | M1, M2        | B, C           | New Plugins (9-13) [P]      |
-| M12       | M1            | B (HL7)        | New Plugins (9-13) [P]      |
-| M13       | M3            | D (File)       | New Plugins (9-13) [P]      |
-| M14       | M5            | B (HL7)        | P2 Validation               |
-| M15       | M5-M14        | All            | Integration                 |
-| M16       | M15           | All            | Integration                 |
-| M17       | M4            | E (Simulator)  | Integration [P]             |
-| M18       | M15, M16, M17 | All            | Final Validation            |
+| Milestone | Depends On    | Workstream    | Parallel Group              |
+| --------- | ------------- | ------------- | --------------------------- |
+| **M0**    | -             | A (ASTM)      | Foundation (0-4) [PARALLEL] |
+| **M1**    | -             | B (HL7)       | Foundation (0-4) [PARALLEL] |
+| **M2**    | -             | C (RS232)     | Foundation (0-4) [PARALLEL] |
+| **M3**    | -             | D (File)      | Foundation (0-4) [PARALLEL] |
+| **M4**    | -             | E (Simulator) | Foundation (0-4) [PARALLEL] |
+| M5        | M1            | B (HL7)       | Plugin Validation           |
+| M6        | M2            | C (RS232)     | Plugin Validation           |
+| M7        | M0, M1, M3    | A, B, D       | Plugin Validation           |
+| M8        | M3            | D (File)      | Plugin Validation           |
+| M9        | M2            | C (RS232)     | New Plugins (9-13) [P]      |
+| M10       | M2            | C (RS232)     | New Plugins (9-13) [P]      |
+| M11       | M1, M2        | B, C          | New Plugins (9-13) [P]      |
+| M12       | M1            | B (HL7)       | New Plugins (9-13) [P]      |
+| M13       | M3            | D (File)      | New Plugins (9-13) [P]      |
+| M14       | M5            | B (HL7)       | P2 Validation               |
+| M15       | M5-M14        | All           | Integration                 |
+| M16       | M15           | All           | Integration                 |
+| M17       | M4            | E (Simulator) | Integration [P]             |
+| M18       | M15, M16, M17 | All           | Final Validation            |
 
 **Key**: M0-M4 are ALL parallel (no dependencies between them). M0 only blocks
 M7 (GeneXpert Multi requires M0 for ASTM variant).
@@ -1404,12 +1405,12 @@ M7 (GeneXpert Multi requires M0 for ASTM variant).
 
 **With 4+ developers** (M0-M4 all start Week 1):
 
-| Developer | Week 1           | Week 2-3         | Week 4-5 |
-| --------- | ---------------- | ---------------- | -------- |
-| Dev A     | M0 (ASTM) + M1   | M5 → M14 → M15   | M18      |
-| Dev B     | M2 (RS232)       | M6, M9, M10      | M18      |
-| Dev C     | M3 (File)        | M7, M8, M11, M12 | M16      |
-| Dev D     | M4 (Simulator)   | M13 → M17        | M18      |
+| Developer | Week 1         | Week 2-3         | Week 4-5 |
+| --------- | -------------- | ---------------- | -------- |
+| Dev A     | M0 (ASTM) + M1 | M5 → M14 → M15   | M18      |
+| Dev B     | M2 (RS232)     | M6, M9, M10      | M18      |
+| Dev C     | M3 (File)      | M7, M8, M11, M12 | M16      |
+| Dev D     | M4 (Simulator) | M13 → M17        | M18      |
 
 ---
 
@@ -1470,10 +1471,12 @@ M14). Plugin tasks added to respective milestones.
 
 ### Plugin Submodule
 
-The `plugins/` directory is a git submodule from `I-TECH-UW/openelisglobal-plugins`.
-Current analyzers: Cobas, FACS, Sysmex variants, Weber.
+The `plugins/` directory is a git submodule from
+`I-TECH-UW/openelisglobal-plugins`. Current analyzers: Cobas, FACS, Sysmex
+variants, Weber.
 
 **Madagascar-specific plugins NOT in submodule** (must be built):
+
 - Mindray (BC-5380, BA-88A, BS-360E)
 - GeneXpert (ASTM, HL7, File variants)
 - QuantStudio (7 Flex)
@@ -1484,9 +1487,8 @@ Current analyzers: Cobas, FACS, Sysmex variants, Weber.
 
 ---
 
-**Tasks Generated**: 2026-01-27 | **Updated**: 2026-01-28 (M0 scope clarification:
-ASTM mock validation only, M0-M4 parallel, plugin tasks distributed to milestones)
-**Total Tasks**: ~304 **Test Tasks**: 66 (22%)
-**Task ID Range**: T001-T314 (with T0##a/b additions)
-**Milestones**: 19 (M0-M18) **Parallel Milestones**: M0-M4 (all), M9-M13
-**Contract Deadline**: 2026-02-28
+**Tasks Generated**: 2026-01-27 | **Updated**: 2026-01-28 (M0 scope
+clarification: ASTM mock validation only, M0-M4 parallel, plugin tasks
+distributed to milestones) **Total Tasks**: ~304 **Test Tasks**: 66 (22%) **Task
+ID Range**: T001-T314 (with T0##a/b additions) **Milestones**: 19 (M0-M18)
+**Parallel Milestones**: M0-M4 (all), M9-M13 **Contract Deadline**: 2026-02-28
