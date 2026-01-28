@@ -19,6 +19,7 @@ import java.util.List;
 import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerLineInserter;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 /**
@@ -39,6 +40,7 @@ import org.springframework.stereotype.Component;
  * Reference: specs/011-madagascar-analyzer-integration/research.md Section 12
  */
 @Component
+@DependsOn("pluginAnalyzerService")
 public class HoribaPentra60Analyzer implements AnalyzerImporterPlugin {
 
     /** Analyzer name used for database registration and identification */
