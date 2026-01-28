@@ -62,12 +62,10 @@ sign-off checklist.
 
 **Prerequisites**
 
-- **LM Studio (M0.1+)**
-  For provider E2E with `CATALYST_LLM_PROVIDER=lmstudio`: run LM Studio and expose an
-  OpenAI-compatible API on `http://localhost:1234`.
-- **Gemini (M0.1+)**
-  For provider E2E with `CATALYST_LLM_PROVIDER=gemini`: set `GOOGLE_API_KEY` in `.env`
-  (see `env.recommended` for `GEMINI_MODEL`).
+- **LM Studio (M0.1+)** For provider E2E with `CATALYST_LLM_PROVIDER=lmstudio`:
+  run LM Studio and expose an OpenAI-compatible API on `http://localhost:1234`.
+- **Gemini (M0.1+)** For provider E2E with `CATALYST_LLM_PROVIDER=gemini`: set
+  `GOOGLE_API_KEY` in `.env` (see `env.recommended` for `GEMINI_MODEL`).
 
 **Commands**
 

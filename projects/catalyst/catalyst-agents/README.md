@@ -23,6 +23,7 @@ make check
 ### Code Quality
 
 This project uses modern Python tooling:
+
 - **Ruff**: Ultra-fast linting and formatting (replaces Black, Flake8, isort)
 - **mypy**: Static type checking
 - **pre-commit**: Automated git hooks
@@ -43,7 +44,8 @@ make check             # Run all checks (recommended before commits)
 
 ### Pre-commit Hooks
 
-Pre-commit hooks automatically run linting, formatting, and type checking before each commit:
+Pre-commit hooks automatically run linting, formatting, and type checking before
+each commit:
 
 ```bash
 # Install hooks (one-time setup)

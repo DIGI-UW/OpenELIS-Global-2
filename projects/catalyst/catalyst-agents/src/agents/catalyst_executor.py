@@ -22,9 +22,7 @@ def _create_llm_client(config):
         return GeminiClient(config.gemini_api_key, config.gemini_model)
     if config.provider == "lmstudio":
         return LMStudioClient(config.lmstudio_base_url, config.lmstudio_model)
-    raise ValueError(
-        f"Unsupported LLM provider: {config.provider}. Supported: gemini, lmstudio"
-    )
+    raise ValueError(f"Unsupported LLM provider: {config.provider}. Supported: gemini, lmstudio")
 
 
 def generate_sql(user_query: str) -> dict[str, Any]:

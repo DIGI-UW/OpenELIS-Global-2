@@ -2,7 +2,8 @@
 
 ## Auto-Format Hook
 
-A simple pre-commit hook that automatically formats code before commits to prevent CI failures.
+A simple pre-commit hook that automatically formats code before commits to
+prevent CI failures.
 
 ### Setup (One-Time)
 
@@ -47,6 +48,7 @@ git commit --no-verify
 ### Troubleshooting
 
 **Hook not running?**
+
 ```bash
 # Check hooks path
 git config core.hooksPath
@@ -56,5 +58,6 @@ git config core.hooksPath
 ```
 
 **Formatter not found?**
+
 - Ensure tools are installed (npm, maven, uv)
 - Hook gracefully skips missing formatters
