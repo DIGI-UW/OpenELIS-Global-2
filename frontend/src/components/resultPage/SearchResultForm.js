@@ -1178,6 +1178,7 @@ export function SearchResults(props) {
                 type="number"
                 value={row.resultValue}
                 style={validationState[row.id]?.style}
+                title={validationState[row.id]?.title}
                 onBlur={(e) => {
                   if (
                     validationState[row.id]?.isInvalid &&
@@ -1608,6 +1609,7 @@ export function SearchResults(props) {
       isNaN: false,
       outsideValid: false,
       newValue: value,
+      title: "",
     };
     //commented out for now
     let isSpecialCase = "XXXX" == actualValue.toUpperCase();
@@ -1636,27 +1638,23 @@ export function SearchResults(props) {
       (actualValue < row.lowerAbnormalRange ||
         actualValue > row.upperAbnormalRange)
     ) {
-      return { ...validation, isInvalid: true, outsideValid: true };
-      // resultBox.style.background = "#ffa0a0";
-      // resultBox.title = "En dehors de la plage valide"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = false;
-      // if( outOfValidRangeMsg ){
-      //   alert( outOfValidRangeMsg);
-      // }
+      return {
+              ...validation,
+              isInvalid: true,
+              outsideValid: true,
+              title: intl.formatMessage({ id: "result.validity.validRange" }),
+      };
     } else if (
       row.lowerNormalRange != row.upperNormalRange &&
       (actualValue < row.lowerNormalRange || actualValue > row.upperNormalRange)
     ) {
-      return { ...validation, outsideNormal: true };
-      // resultBox.style.background = "#ffffa0";
-      // resultBox.title = "En dehors de la plage normale"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = true;
+      return {
+              ...validation,
+              outsideNormal: true,
+              title: intl.formatMessage({ id: "result.validity.normalRange" }),
+      };
     } else {
-      return { ...validation, outsideNormal: false };
-      // resultBox.style.background = "#ffffff";
-      // resultBox.title = "";
-      // $("valid_" + row).value = true;
-    }
+      return { ...validation, outsideNormal: false, title: "" };
   };
 
   const validateNumberFormat = (value, row) => {

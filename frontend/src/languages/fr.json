@@ -1354,6 +1354,8 @@
   "result.noTestsFound": "Aucun test approprié trouvé",
   "result.nonconforming.item": "L'échantillon ou l'ordonnance est non conforme OU le test a été rejetée",
   "result.outOfValidRange.msg": "La valeur que vous avez entr\u00E9e (en champ rouge) est hors de la gamme des valeurs admissible pour ce bilan. Pri\u00E8re de v\u00E9rifier la valeur.",
+  "result.validity.validRange": "En dehors de la plage valide",
+  "result.validity.normalRange": "En dehors de la plage normale",
   "result.reject.warning": "Avertissement de rejet de résultat",
   "result.report.queue.size": "Taille de la file d'attente :",
   "result.search.noresult": "Aucun résultat trouvé",
