@@ -77,12 +77,18 @@ describe("Analyzer Pages Navigation", () => {
         $body.find('[data-testid="analyzers-table-container"] tbody tr')
           .length > 0
       ) {
-        // Click first field mappings action button
+        // Click the overflow menu trigger button to open the actions menu
+        // Carbon OverflowMenu requires clicking the trigger first
         cy.get('[data-testid="analyzers-table-container"]')
           .find("tbody")
           .find("tr")
           .first()
-          .find('[data-testid^="analyzer-action-field-mappings"]')
+          .find('[data-testid^="analyzer-actions-"]')
+          .find("button")
+          .click();
+
+        // Now click the field mappings menu item (visible after menu opens)
+        cy.get('[data-testid^="analyzer-action-mappings-"]')
           .should("be.visible")
           .click();
 
