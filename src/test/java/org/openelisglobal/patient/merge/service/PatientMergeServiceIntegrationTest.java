@@ -17,6 +17,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 
 /**
  * Integration tests for PatientMergeService. Tests the full service layer flow
