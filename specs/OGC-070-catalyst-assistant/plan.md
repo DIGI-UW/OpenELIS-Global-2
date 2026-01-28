@@ -253,10 +253,10 @@ projects/catalyst/catalyst-agents/
 
 ```bash
 # Test with LM Studio (local)
-CATALYST_LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
+LLM_PROVIDER=lmstudio pytest tests/test_provider_switching.py
 
 # Test with Gemini (cloud)
-CATALYST_LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
+LLM_PROVIDER=gemini pytest tests/test_provider_switching.py
 ```
 
 ---
@@ -388,7 +388,7 @@ src/main/java/org/openelisglobal/catalyst/
 │   └── CatalystQueryDAOImpl.java
 └── guardrails/SQLGuardrails.java          # Blocked tables, validation
 
-src/main/resources/liquibase/catalyst/     # Audit table changeset
+src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml  # Audit table; new version folder 3.4.x.x; add base.xml + include in base-changelog.xml
 volume/properties/catalyst.properties      # Agent + database configuration
 ```
 
@@ -489,8 +489,7 @@ src/test/java/org/openelisglobal/catalyst/
 
 frontend/cypress/e2e/catalyst-security.cy.js         # New: E2E test with security features
 
-src/main/resources/liquibase/catalyst/
-└── catalyst-002-add-security-fields.xml            # New: Add security fields to audit table
+src/main/resources/liquibase/3.4.x.x/002-catalyst-add-security-fields.xml  # New: Add security fields to audit table (include from 3.4.x.x/base.xml)
 ```
 
 **Files to Create (M4)**:
@@ -678,8 +677,7 @@ src/main/java/org/openelisglobal/catalyst/
 ├── service/             # Business logic
 └── valueholder/         # JPA entities
 
-src/main/resources/liquibase/catalyst/
-└── catalyst-001-create-audit-table.xml
+src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml
 
 src/test/java/org/openelisglobal/catalyst/
 ├── service/             # Unit tests

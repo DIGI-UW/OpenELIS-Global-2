@@ -9,15 +9,28 @@ from a2a.utils import new_agent_text_message, new_task
 
 from .. import mcp_client
 from ..config import load_llm_config
-from ..llm_clients import LMStudioClient
+from ..llm_clients import LMStudioClient, GeminiClient
 
 logger = logging.getLogger(__name__)
 
 
+def _create_llm_client(config):
+    """Create LLM client based on configured provider (provider-agnostic)."""
+    if config.provider == "gemini":
+        if not config.gemini_api_key:
+            raise ValueError("GOOGLE_API_KEY environment variable required for Gemini provider")
+        return GeminiClient(config.gemini_api_key, config.gemini_model)
+    elif config.provider == "lmstudio":
+        return LMStudioClient(config.lmstudio_base_url, config.lmstudio_model)
+    else:
+        raise ValueError(f"Unsupported LLM provider: {config.provider}. Supported: gemini, lmstudio")
+
+
 def generate_sql(user_query: str) -> dict[str, Any]:
+    """Generate SQL from natural language query using configured LLM provider."""
     schema = mcp_client.get_schema()
     config = load_llm_config()
-    client = LMStudioClient(config.lmstudio_base_url, config.lmstudio_model)
+    client = _create_llm_client(config)
     prompt = f"Schema:\n{schema}\n\nQuestion:\n{user_query}\n\nSQL:"
     sql = client.generate_sql(prompt)
     return {"sql": sql, "schema": schema}
