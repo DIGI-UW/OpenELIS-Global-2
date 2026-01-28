@@ -51,4 +51,6 @@
 
   <!-- ASTM Analyzer Field Mapping Feature (004-astm-analyzer-mapping) -->
   <include relativeToChangelogFile="true" file="../analyzer/base.xml"/>
+  <!-- Madagascar Analyzer Integration Feature (011-madagascar-analyzer-integration) -->
+  <include relativeToChangelogFile="true" file="011-004-create-file-import-configuration-table.xml"/>
 </databaseChangeLog>
