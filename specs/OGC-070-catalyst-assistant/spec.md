@@ -324,6 +324,7 @@ This delivers enhanced usability and workflow integration.
   execution and warn users if the estimate exceeds 10,000 rows.
 
   **Implementation (defense-in-depth)**:
+
   - M0.0-M0.2: Placeholder returns 0 (no estimation)
   - M1+: MCP `validate_sql` tool performs EXPLAIN-based estimation (agent
     pre-validation)
@@ -346,6 +347,7 @@ This delivers enhanced usability and workflow integration.
 - **FR-014**: System MUST provide example queries or prompts to help users
   understand how to phrase their questions effectively. Examples are served from
   the frontend (no backend endpoint required). Minimum 5 example queries:
+
   1. Count: "How many samples were entered today?"
   2. JOIN: "Show all HIV test results from last week"
   3. Aggregation: "What is the average turnaround time for malaria tests?"
@@ -559,8 +561,10 @@ principles for this feature:_
   audit logs).
 
 - **SC-007**: System provides error messages that:
+
   - Include suggested query reformulation when SQL generation fails
-  - Do NOT expose technical implementation details (stack traces, raw SQL errors)
+  - Do NOT expose technical implementation details (stack traces, raw SQL
+    errors)
   - Are internationalized (en/fr minimum per Constitution VII)
 
 - **SC-008**: Users can export query results in CSV or JSON format.

@@ -318,7 +318,9 @@ fallback works
 - [x] T037 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
       flow works, verify fallback mode works, create PR
       `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
-      **Status**: All 14 agent tests pass. Multi-agent flow (Router → SchemaAgent → SQLGenAgent) verified. Single-agent fallback mode verified. Ready for PR creation (manual step).
+      **Status**: All 14 agent tests pass. Multi-agent flow (Router →
+      SchemaAgent → SQLGenAgent) verified. Single-agent fallback mode verified.
+      Ready for PR creation (manual step).
 
 ### M0.2.9: Model Evaluation (FR-022, NFR-001)
 
