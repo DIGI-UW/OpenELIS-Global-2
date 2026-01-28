@@ -256,10 +256,6 @@ def test_provider_switching_no_real_api_calls(monkeypatch):
     mock_schema = "sample\nanalysis"
     monkeypatch.setattr(mcp_client, "get_schema", lambda: mock_schema)
 
-    # Track if real clients are instantiated
-    real_lmstudio_instantiated = False
-    real_gemini_instantiated = False
-
     class MockLMStudioClient:
         def __init__(self, base_url: str, model: str) -> None:
             # If real client was instantiated, this would try to connect
@@ -304,7 +300,3 @@ def test_provider_switching_no_real_api_calls(monkeypatch):
     assert isinstance(
         client, MockGeminiClient
     ), "Should use mocked GeminiClient, not real one"
-
-    # Verify no real API calls were attempted (mocks don't make HTTP requests)
-    assert not real_lmstudio_instantiated, "Real LMStudioClient should not be instantiated"
-    assert not real_gemini_instantiated, "Real GeminiClient should not be instantiated"

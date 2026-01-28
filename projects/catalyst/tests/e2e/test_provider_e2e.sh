@@ -29,7 +29,7 @@ fi
 
 # POST chat completion
 RESP_FILE=$(mktemp)
-HTTP_CODE=$(curl -sf -o "${RESP_FILE}" -w "%{http_code}" -X POST "${GATEWAY_URL}/v1/chat/completions" \
+HTTP_CODE=$(curl -s -o "${RESP_FILE}" -w "%{http_code}" -X POST "${GATEWAY_URL}/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"How many tests are there? Reply with a single SELECT SQL statement only."}]}')
 

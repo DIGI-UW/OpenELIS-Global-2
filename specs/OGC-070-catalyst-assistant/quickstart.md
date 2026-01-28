@@ -62,12 +62,12 @@ docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
 # Create projects/catalyst/catalyst.env file:
 cat > projects/catalyst/catalyst.env <<EOF
 GOOGLE_API_KEY=your-google-api-key
-LLM_PROVIDER=gemini  # or lmstudio
+CATALYST_LLM_PROVIDER=gemini  # or lmstudio
 EOF
 
 # Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
 #   llm:
-#     provider: ${LLM_PROVIDER}
+#     provider: ${CATALYST_LLM_PROVIDER}
 #     gemini:
 #       api_key: ${GOOGLE_API_KEY}
 

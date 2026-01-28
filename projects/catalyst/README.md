@@ -62,11 +62,11 @@ sign-off checklist.
 
 **Prerequisites**
 
-- **LM Studio (M0.1+)**  
-  For provider E2E with `LLM_PROVIDER=lmstudio`: run LM Studio and expose an
+- **LM Studio (M0.1+)**
+  For provider E2E with `CATALYST_LLM_PROVIDER=lmstudio`: run LM Studio and expose an
   OpenAI-compatible API on `http://localhost:1234`.
-- **Gemini (M0.1+)**  
-  For provider E2E with `LLM_PROVIDER=gemini`: set `GEMINI_API_KEY` in `.env`
+- **Gemini (M0.1+)**
+  For provider E2E with `CATALYST_LLM_PROVIDER=gemini`: set `GOOGLE_API_KEY` in `.env`
   (see `env.recommended` for `GEMINI_MODEL`).
 
 **Commands**
@@ -74,7 +74,7 @@ sign-off checklist.
 1. Copy env and configure provider:
    ```bash
    cp projects/catalyst/env.recommended projects/catalyst/.env
-   # Edit .env: set LLM_PROVIDER=lmstudio or gemini; add GEMINI_API_KEY if using Gemini.
+   # Edit .env: set CATALYST_LLM_PROVIDER=lmstudio or gemini; add GOOGLE_API_KEY if using Gemini.
    ```
 2. Start services (Gateway, Router, Catalyst Agent, MCP), e.g. via
    `Procfile.dev` or by running `./tests/run_tests.sh all` (it starts services

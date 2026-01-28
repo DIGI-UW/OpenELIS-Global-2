@@ -19,9 +19,8 @@ What these tests do NOT verify (requires integration tests with real APIs):
 - Network timeouts/retries
 """
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import httpx
-from google import genai
 from google.genai import types
 
 from src.llm_clients import LMStudioClient, GeminiClient
