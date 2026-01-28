@@ -24,35 +24,39 @@ implementation tasks.
 
 ## Parallel Workstreams Overview
 
-Per clarification session (2026-01-27), the implementation follows **5 parallel
-workstreams** with **ASTM-over-TCP finalization as PRIORITY**:
+Per clarification session (2026-01-28), the implementation follows **5 parallel
+workstreams** that **ALL START TOGETHER** in Week 1:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         PARALLEL WORKSTREAMS                                 │
+│                   PARALLEL WORKSTREAMS (ALL START WEEK 1)                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ★ Workstream A: ASTM-over-TCP Finalization (PRIORITY - existing infra)    │
+│  [P] Workstream A: ASTM Setup Validation                                    │
 │  ────────────────────────────────────────────────────────────────────────   │
-│  M0 → Stabilize existing ASTM bridge + GeneXpert validation                 │
+│  M0 → Validate existing ASTM mock setup (only blocks M7)                    │
 │                                                                             │
-│  Workstream B: HL7 Adapter + Plugins                                        │
+│  [P] Workstream B: HL7 Adapter + Plugins                                    │
 │  ────────────────────────────────────────────────────────────────────────   │
-│  M1 → M5 → M6 → M12 → M14 (HL7 adapter, then Mindray/Sysmex/Abbott)        │
+│  M1 → M5 → M12 → M14 (HL7 adapter, then Mindray/Abbott/Sysmex)             │
 │                                                                             │
-│  Workstream C: RS232 via ASTM-HTTP Bridge + Plugins                         │
+│  [P] Workstream C: RS232 via ASTM-HTTP Bridge + Plugins                     │
 │  ────────────────────────────────────────────────────────────────────────   │
 │  M2 → M6 → M9 → M10 → M11 (Bridge extension, then Horiba/Stago)            │
 │                                                                             │
-│  Workstream D: File Adapter + Plugins                                       │
+│  [P] Workstream D: File Adapter + Plugins                                   │
 │  ────────────────────────────────────────────────────────────────────────   │
-│  M3 → M7 → M8 → M13 (File adapter, then GeneXpert-File/QS7/Hain)           │
+│  M3 → M8 → M13 (File adapter, then QuantStudio/Hain)                       │
+│  M7: GeneXpert Multi requires M0 + M1 + M3 (all 3 protocol variants)       │
 │                                                                             │
-│  Workstream E: Simulator Development                                        │
+│  [P] Workstream E: Simulator Development                                    │
 │  ────────────────────────────────────────────────────────────────────────   │
 │  M4 → M17 (Multi-protocol simulator base → Advanced features)               │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
+
+KEY: [P] = Parallel - M0, M1, M2, M3, M4 all start in Week 1 with no
+dependencies between them. M0 only blocks M7 (GeneXpert ASTM variant).
 ```
 
 ---
@@ -60,93 +64,113 @@ workstreams** with **ASTM-over-TCP finalization as PRIORITY**:
 ## Milestone Dependency Graph
 
 ```
-                          ★ PRIORITY
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │ M0: ASTM Stabil │  ← Start HERE (Workstream A)
-                    │    (2 days)     │
-                    └────────┬────────┘
-                             │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-        ▼                    ▼                    ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│[P] M1: HL7   │   │[P] M2: RS232 │   │[P] M3: File  │   │[P] M4: Simul │
-│ Adapter (3d) │   │ Bridge (3d)  │   │ Adapter (2d) │   │  Base (3d)   │
-└──────┬───────┘   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘
-       │                  │                  │                  │
-       │   Workstream B   │   Workstream C   │   Workstream D   │
-       ▼                  ▼                  ▼                  │
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐         │
-│ M5: Mindray  │   │ M6: Mindray  │   │ M7: GeneXpert│         │
-│  HL7 (2d)    │   │ Serial (1d)  │   │  Multi (2d)  │         │
-└──────┬───────┘   └──────────────┘   └──────┬───────┘         │
-       │                  │                  │                  │
-       ▼                  ▼                  ▼                  │
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐         │
-│[P] M9-M12    │   │[P] M9-M11    │   │ M8: QS7 (2d) │         │
-│ New Plugins  │   │ Horiba/Stago │   │ M13: Hain    │         │
-└──────┬───────┘   └──────┬───────┘   └──────┬───────┘         │
-       │                  │                  │                  │
-       └──────────────────┼──────────────────┘                  │
-                          │                                     │
-                          ▼                                     ▼
-                 ┌──────────────┐                      ┌──────────────┐
-                 │ M14: P2 Val  │                      │ M17: Simul   │
-                 │    (1d)      │                      │  Adv (2d)    │
-                 └──────┬───────┘                      └──────┬───────┘
-                        │                                     │
-                        ▼                                     │
-                 ┌──────────────┐                              │
-                 │ M15: Order   │                              │
-                 │ Export (3d)  │                              │
-                 └──────┬───────┘                              │
-                        │                                     │
-                        ▼                                     │
-                 ┌──────────────┐                              │
-                 │ M16: Metadata│                              │
-                 │  Form (2d)   │                              │
-                 └──────┬───────┘                              │
-                        │                                     │
-                        └─────────────────┬───────────────────┘
-                                          │
-                                          ▼
-                                 ┌──────────────┐
-                                 │ M18: E2E Val │
-                                 │    (3d)      │
-                                 └──────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    WEEK 1: FOUNDATION (ALL PARALLEL)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│  │[P] M0: ASTM  │  │[P] M1: HL7   │  │[P] M2: RS232 │  │[P] M3: File  │    │
+│  │ Validate(2d) │  │ Adapter (3d) │  │ Bridge (3d)  │  │ Adapter (2d) │    │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    │
+│         │                 │                 │                 │             │
+│         │                 │                 │                 │             │
+│  ┌──────────────┐         │                 │                 │             │
+│  │[P] M4: Simul │         │                 │                 │             │
+│  │  Base (3d)   │         │                 │                 │             │
+│  └──────┬───────┘         │                 │                 │             │
+└─────────┼─────────────────┼─────────────────┼─────────────────┼─────────────┘
+          │                 │                 │                 │
+          │                 ▼                 ▼                 ▼
+          │          ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+          │          │ M5: Mindray  │  │ M6: Mindray  │  │ M8: QS7 (2d) │
+          │          │  HL7 (2d)    │  │ Serial (1d)  │  │ M13: Hain    │
+          │          └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+          │                 │                 │                 │
+          │                 │                 ▼                 │
+          │                 │          ┌──────────────┐         │
+          │                 │          │[P] M9-M11    │         │
+          │                 │          │ Horiba/Stago │         │
+          │                 │          └──────┬───────┘         │
+          │                 │                 │                 │
+          │                 ▼                 │                 │
+          │          ┌──────────────┐         │                 │
+          │          │[P] M12       │         │                 │
+          │          │ Abbott HL7   │         │                 │
+          │          └──────┬───────┘         │                 │
+          │                 │                 │                 │
+          │   ┌─────────────┴─────────────────┴─────────────────┘
+          │   │
+          │   │   M0 + M1 + M3 required for M7
+          │   │         │
+          │   │         ▼
+          │   │  ┌──────────────┐
+          └───┼──│ M7: GeneXpert│ ← Only milestone blocked by M0
+              │  │  Multi (2d)  │
+              │  └──────┬───────┘
+              │         │
+              ▼         ▼
+       ┌──────────────┐ │
+       │ M14: P2 Val  │ │
+       │    (1d)      │ │
+       └──────┬───────┘ │
+              │         │
+              └────┬────┘
+                   ▼
+            ┌──────────────┐
+            │ M15: Order   │
+            │ Export (3d)  │
+            └──────┬───────┘
+                   │
+                   ▼
+            ┌──────────────┐         ┌──────────────┐
+            │ M16: Metadata│         │ M17: Simul   │
+            │  Form (2d)   │         │  Adv (2d)    │
+            └──────┬───────┘         └──────┬───────┘
+                   │                        │
+                   └────────────┬───────────┘
+                                ▼
+                       ┌──────────────┐
+                       │ M18: E2E Val │
+                       │    (3d)      │
+                       └──────────────┘
 ```
+
+**Key Clarification**: M0 only blocks M7 (GeneXpert ASTM variant). All other
+milestones can proceed without waiting for M0.
 
 **Parallel Opportunities**:
 
-- **Week 1**: M0 FIRST (ASTM priority), then M1, M2, M3, M4 can proceed in
-  parallel (5 parallel tracks)
-- **Week 2**: M5, M6, M7, M8 as dependencies complete
-- **Week 2-3**: M9, M10, M11, M12, M13 can proceed in parallel once M1/M2/M3
-  complete
-- **Week 4**: M14, M15, M17 can proceed in parallel
-- **Week 5**: M16 after M15; M18 after all complete
+- **Week 1**: M0, M1, M2, M3, M4 ALL START IN PARALLEL (no dependencies)
+- **Week 1-2**: M5, M6, M8, M9-M13 start once their adapter (M1/M2/M3) completes
+- **Week 2**: M7 starts after M0 + M1 + M3 (GeneXpert needs all 3 protocols)
+- **Week 3-4**: M14, M15, M17 can proceed in parallel
+- **Week 4-5**: M16 after M15; M18 after all complete
 
 ---
 
-## ★ M0: ASTM Bridge Stabilization (2 days) - PRIORITY
+## [P] M0: ASTM Setup Validation (2 days)
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m0-astm-stabilize`
-**Goal**: Stabilize existing ASTM-over-TCP infrastructure; validate GeneXpert
-ASTM variant **User Stories**: US-6 **Depends On**: None (FOUNDATION - START
-HERE) **Workstream**: A (ASTM - PRIORITY)
+**Goal**: Validate existing ASTM infrastructure from Feature 004 works correctly
+with the mock analyzer **User Stories**: US-6 **Depends On**: None (can run
+parallel with M1-M4) **Workstream**: A (ASTM)
 
-**Why Priority**: The existing ASTM infrastructure from Feature 004 is the
-foundation for all other protocols. Stabilizing this first ensures we have a
-working baseline before adding HL7, RS232, and File adapters.
+**What Already Exists** (from Feature 004):
+- Mock ASTM Server: `tools/astm-mock-server/` (Python 3.11, 1,221 lines)
+- Docker Setup: `docker-compose.astm-test.yml` (3 analyzer types configured)
+- Test Fixtures: `src/test/resources/astm-samples/` (7 files, 387 lines)
+- ASTMAnalyzerReader: Implemented and working
+- Q-Segment Parser: TDD-implemented with unit + integration tests
+- API Endpoint: `POST /analyzer/astm` live in AnalyzerImportController
+
+**Scope**: Test and validate what exists. NOT building new infrastructure.
 
 **Acceptance Criteria**:
 
-1. ASTM-HTTP bridge handles messages reliably (no dropped frames)
-2. GeneXpert ASTM plugin validated with simulator
-3. Field mappings work correctly with existing infrastructure
-4. Error dashboard captures and displays ASTM-specific issues
+1. Mock server starts via `docker-compose.astm-test.yml`
+2. Integration test passes: mock → `/analyzer/astm` → results stored
+3. Field mappings work with existing fixtures (hematology, chemistry, QC)
+4. Error dashboard captures ASTM-specific issues
 5. Integration tests pass with >90% reliability
 
 ### Setup for M0
@@ -154,54 +178,37 @@ working baseline before adding HL7, RS232, and File adapters.
 - [ ] T001 [M0] Create branch
       `feat/011-madagascar-analyzer-integration-m0-astm-stabilize` from
       `demo/madagascar`
-- [ ] T002 [M0] Verify astm-http-bridge repository is accessible and builds
-      (`tools/astm-http-bridge/`)
+- [ ] T002 [M0] Verify `tools/astm-mock-server/` runs via docker-compose
 
 ### Tests for M0 (MANDATORY - Write FIRST)
 
-- [ ] T003 [P] [M0] Integration test for ASTM bridge stability in
-      `src/test/java/org/openelisglobal/analyzer/astm/ASTMBridgeStabilityTest.java`
-- [ ] T004 [P] [M0] Integration test for GeneXpert ASTM in
-      `src/test/java/org/openelisglobal/analyzer/genexpert/GeneXpertASTMIntegrationTest.java`
-- [ ] T005 [P] [M0] Create ASTM test fixtures in
-      `src/test/resources/testdata/astm/genexpert-astm-result.txt`
+- [ ] T003 [P] [M0] Integration test: mock server → `/analyzer/astm` → results
+      stored in
+      `src/test/java/org/openelisglobal/analyzer/astm/ASTMMockIntegrationTest.java`
+- [ ] T004 [P] [M0] Integration test: error dashboard captures ASTM failures in
+      `src/test/java/org/openelisglobal/analyzer/astm/ASTMErrorDashboardTest.java`
+- [ ] T005 [P] [M0] Verify existing fixtures work
+      (`src/test/resources/astm-samples/`)
 
 ### Implementation for M0
 
-- [ ] T006 [M0] Verify ASTM-HTTP bridge configuration is correct in
-      `tools/astm-http-bridge/src/main/resources/application.yml`
-- [ ] T007 [M0] Add connection retry logic to bridge if missing
-- [ ] T008 [M0] Validate GeneXpert ASTM plugin parses messages correctly
-- [ ] T009 [M0] Test field mappings with existing Feature 004 infrastructure
-- [ ] T010 [M0] Verify error dashboard captures ASTM errors (unmapped fields,
-      protocol errors)
-- [ ] T011 [M0] Document ASTM bridge deployment and configuration in
-      `docs/astm-bridge-setup.md`
-
-### External Plugin Integration for M0
-
-**Critical**: Plugins are in external repo, must be pulled before M5-M8
-validation.
-
-- [ ] T012 [M0] Clone openelisglobal-plugins repository from
-      `https://github.com/DIGI-UW/openelisglobal-plugins`
-- [ ] T013 [M0] Configure plugin build path in project (add to
-      `plugins/analyzers/`)
-- [ ] T014 [M0] Verify Mindray plugin loads and compiles
-- [ ] T015 [M0] Verify GeneXpert plugins (GeneXpert, GeneXpertHL7,
-      GeneXpertFile) load
-- [ ] T016 [M0] Verify QuantStudio3 and SysmexXN-L plugins load
-- [ ] T017 [M0] Document plugin integration steps in research.md
+- [ ] T006 [M0] Create/verify analyzer config targeting mock (docker static IP
+      172.20.1.100)
+- [ ] T007 [M0] Verify field mappings with existing ASTM fixtures
+- [ ] T008 [M0] Test with hematology, chemistry, immunology mock types
+- [ ] T009 [M0] Verify QC results (Q-segment) processing works
 
 ### Finalization for M0
 
-- [ ] T018 [M0] Verify all integration tests pass with simulator
-- [ ] T019 [M0] Run Spotless formatting (`mvn spotless:apply`)
-- [ ] T020 [M0] Create PR
+- [ ] T010 [M0] Run full integration test suite
+- [ ] T011 [M0] Run Spotless formatting (`mvn spotless:apply`)
+- [ ] T012 [M0] Create PR
       `feat/011-madagascar-analyzer-integration-m0-astm-stabilize` →
       `demo/madagascar`
 
-**Checkpoint**: ASTM infrastructure stable, GeneXpert ASTM works end-to-end
+**Checkpoint**: ASTM mock → OpenELIS flow validated, ready for plugin work
+
+**NOT in M0**: External plugin cloning (distributed to M5, M7, M8, M14)
 
 ---
 
@@ -209,8 +216,8 @@ validation.
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m1-hl7-adapter` **Goal**:
 Parse HL7 ORU^R01 results and generate HL7 ORM^O01 orders **User Stories**: US-1
-(HL7 Analyzer Results Import) **Depends On**: M0 (ASTM stable) **Workstream**: B
-(HL7)
+(HL7 Analyzer Results Import) **Depends On**: None (parallel with M0, M2-M4)
+**Workstream**: B (HL7)
 
 **Acceptance Criteria**:
 
@@ -278,8 +285,8 @@ Parse HL7 ORU^R01 results and generate HL7 ORM^O01 orders **User Stories**: US-1
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m2-rs232-bridge` **Goal**:
 Extend ASTM-HTTP Bridge to handle RS232→TCP conversion locally **User Stories**:
-US-3 (RS232 Serial Analyzer Connection) **Depends On**: M0 (ASTM stable)
-**Workstream**: C (RS232)
+US-3 (RS232 Serial Analyzer Connection) **Depends On**: None (parallel with M0,
+M1, M3-M4) **Workstream**: C (RS232)
 
 **IMPORTANT**: Per clarification session (2026-01-27), RS232 connectivity is
 provided via the **extended ASTM-HTTP Bridge** running on a lab PC with
@@ -374,8 +381,8 @@ passthrough complexity.
 
 **Branch**: `feat/011-madagascar-analyzer-integration-m3-file-adapter` **Goal**:
 Directory watcher and CSV/TXT file parsing **User Stories**: US-4 (File-Based
-PCR Thermocycler Integration) **Depends On**: M0 (ASTM stable) **Workstream**: D
-(File)
+PCR Thermocycler Integration) **Depends On**: None (parallel with M0-M2, M4)
+**Workstream**: D (File)
 
 **Acceptance Criteria**:
 
@@ -459,8 +466,8 @@ works
 **Branch**:
 `feat/011-madagascar-analyzer-integration-m4-simulator-multiprotocol` **Goal**:
 Expand astm-mock-server to support HL7, RS232, and file-based protocols **User
-Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: M0 (ASTM
-stable) **Workstream**: E (Simulator)
+Stories**: US-9 (Analyzer Simulator for Testing) **Depends On**: None (parallel
+with M0-M3) **Workstream**: E (Simulator)
 
 **Scope**: Extend astm-mock-server to cover 80%+ of 12 analyzers BEFORE
 milestone implementation, enabling developers to test M1-M3 adapters and M5-M13
@@ -586,6 +593,9 @@ Stories**: US-1, US-6 **Depends On**: M1 (HL7 Adapter) **Workstream**: B (HL7)
       `feat/011-madagascar-analyzer-integration-m5-mindray-hl7` from
       `demo/madagascar`
 - [ ] T123 [M5] Ensure M1 is merged to `demo/madagascar`
+- [ ] T123a [M5] Check if Mindray plugin exists in `plugins/analyzers/` submodule;
+      if not, create new plugin or source from DIGI-UW
+- [ ] T123b [M5] Build and verify Mindray plugin loads
 
 ### Tests for M5 (MANDATORY)
 
@@ -674,6 +684,9 @@ Stories**: US-6 **Depends On**: M0, M1, M3 **Workstream**: A, B, D
 - [ ] T143 [M7] Create branch
       `feat/011-madagascar-analyzer-integration-m7-genexpert-multi` from
       `demo/madagascar`
+- [ ] T143a [M7] Check if GeneXpert plugins exist in `plugins/analyzers/`
+      submodule; if not, create plugins for ASTM, HL7, and File variants
+- [ ] T143b [M7] Build and verify all 3 GeneXpert plugin variants load
 
 ### Tests for M7 (MANDATORY)
 
@@ -718,6 +731,9 @@ Adapt QuantStudio3 plugin for QuantStudio 7 Flex **User Stories**: US-4, US-6
 - [ ] T155 [M8] Create branch
       `feat/011-madagascar-analyzer-integration-m8-quantstudio` from
       `demo/madagascar`
+- [ ] T155a [M8] Check if QuantStudio plugin exists in `plugins/analyzers/`
+      submodule; if not, create new plugin for QuantStudio 7 Flex
+- [ ] T155b [M8] Build and verify QuantStudio plugin loads
 
 ### Tests for M8 (MANDATORY)
 
@@ -967,6 +983,9 @@ Stories**: US-1, US-6 **Depends On**: M5 (Mindray HL7) **Workstream**: B (HL7)
 - [ ] T215 [M14] Create branch
       `feat/011-madagascar-analyzer-integration-m14-p2-validation` from
       `demo/madagascar`
+- [ ] T215a [M14] Check if SysmexXN-L plugin exists; if not, adapt existing Sysmex
+      plugins (SysmeXT, Sysmex2000i, SysmexXT4000i) for XN-L series
+- [ ] T215b [M14] Build and verify SysmexXN-L plugin loads
 
 ### Tests for M14 (MANDATORY)
 
@@ -1291,38 +1310,42 @@ tests pass
 
 ### Milestone Dependencies
 
-| Milestone | Depends On    | Workstream          | Parallel Group         |
-| --------- | ------------- | ------------------- | ---------------------- |
-| **M0**    | -             | A (ASTM - PRIORITY) | ★ START HERE           |
-| M1        | M0            | B (HL7)             | Foundation (1-4)       |
-| M2        | M0            | C (RS232)           | Foundation (1-4)       |
-| M3        | M0            | D (File)            | Foundation (1-4)       |
-| M4        | M0            | E (Simulator)       | Foundation (1-4)       |
-| M5        | M1            | B (HL7)             | Plugin Validation      |
-| M6        | M2            | C (RS232)           | Plugin Validation      |
-| M7        | M0, M1, M3    | A, B, D             | Plugin Validation      |
-| M8        | M3            | D (File)            | Plugin Validation      |
-| M9        | M2            | C (RS232)           | New Plugins (9-13) [P] |
-| M10       | M2            | C (RS232)           | New Plugins (9-13) [P] |
-| M11       | M1, M2        | B, C                | New Plugins (9-13) [P] |
-| M12       | M1            | B (HL7)             | New Plugins (9-13) [P] |
-| M13       | M3            | D (File)            | New Plugins (9-13) [P] |
-| M14       | M5            | B (HL7)             | P2 Validation          |
-| M15       | M5-M14        | All                 | Integration            |
-| M16       | M15           | All                 | Integration            |
-| M17       | M4            | E (Simulator)       | Integration [P]        |
-| M18       | M15, M16, M17 | All                 | Final Validation       |
+| Milestone | Depends On    | Workstream     | Parallel Group              |
+| --------- | ------------- | -------------- | --------------------------- |
+| **M0**    | -             | A (ASTM)       | Foundation (0-4) [PARALLEL] |
+| **M1**    | -             | B (HL7)        | Foundation (0-4) [PARALLEL] |
+| **M2**    | -             | C (RS232)      | Foundation (0-4) [PARALLEL] |
+| **M3**    | -             | D (File)       | Foundation (0-4) [PARALLEL] |
+| **M4**    | -             | E (Simulator)  | Foundation (0-4) [PARALLEL] |
+| M5        | M1            | B (HL7)        | Plugin Validation           |
+| M6        | M2            | C (RS232)      | Plugin Validation           |
+| M7        | M0, M1, M3    | A, B, D        | Plugin Validation           |
+| M8        | M3            | D (File)       | Plugin Validation           |
+| M9        | M2            | C (RS232)      | New Plugins (9-13) [P]      |
+| M10       | M2            | C (RS232)      | New Plugins (9-13) [P]      |
+| M11       | M1, M2        | B, C           | New Plugins (9-13) [P]      |
+| M12       | M1            | B (HL7)        | New Plugins (9-13) [P]      |
+| M13       | M3            | D (File)       | New Plugins (9-13) [P]      |
+| M14       | M5            | B (HL7)        | P2 Validation               |
+| M15       | M5-M14        | All            | Integration                 |
+| M16       | M15           | All            | Integration                 |
+| M17       | M4            | E (Simulator)  | Integration [P]             |
+| M18       | M15, M16, M17 | All            | Final Validation            |
+
+**Key**: M0-M4 are ALL parallel (no dependencies between them). M0 only blocks
+M7 (GeneXpert Multi requires M0 for ASTM variant).
 
 ### Parallel Opportunities
 
-**Week 1**:
+**Week 1** (All Foundation Milestones Start Together):
 
-- **M0 FIRST** (ASTM priority - 2 days)
-- Then M1, M2, M3, M4 can proceed in parallel (5 developers max)
+- M0, M1, M2, M3, M4 ALL start in parallel (5 parallel tracks)
+- No dependencies between them
 
-**Week 2**:
+**Week 1-2**:
 
-- M5, M6, M7, M8 as dependencies complete
+- M5, M6, M8, M9-M13 start as their adapter dependencies complete
+- M7 starts after M0 + M1 + M3 (only milestone blocked by M0)
 
 **Week 2-3**:
 
@@ -1350,42 +1373,43 @@ tests pass
 
 ## Implementation Strategy
 
-### ASTM-First Strategy (Per Clarification)
+### Parallel Foundation Strategy (Per 2026-01-28 Clarification)
 
-1. **M0**: Stabilize existing ASTM infrastructure (PRIORITY)
-2. **M1-M4**: Build adapters in parallel once M0 complete
-3. **M5-M13**: Validate/build plugins by Romain's priority (P1 first)
+1. **M0-M4**: All start in parallel (no dependencies between them)
+   - M0: Validate existing ASTM mock setup
+   - M1-M4: Build adapters simultaneously
+2. **M5-M13**: Validate/build plugins as adapters complete (P1 first)
+3. **M7**: Requires M0 + M1 + M3 (only milestone blocked by M0)
 4. **M14**: P2 analyzers last
 5. **M15-M18**: Integration and validation
 
-### MVP First (M0 + M1-M5)
+### MVP First (M0-M4 parallel + M5)
 
-1. Complete M0: ASTM Stabilization (PRIORITY)
-2. Complete M1-M4 in parallel: Protocol Adapters
-3. Complete M5: Mindray HL7 (4 analyzers working)
-4. **STOP and VALIDATE**: 5+ analyzers receive results
-5. Deploy to staging for early testing
+1. Complete M0-M4 in parallel: Foundation (all start together)
+2. Complete M5: Mindray HL7 (4 analyzers working)
+3. **STOP and VALIDATE**: 5+ analyzers receive results
+4. Deploy to staging for early testing
 
 ### Incremental Delivery
 
-| Week | Milestones         | Cumulative Analyzers       |
-| ---- | ------------------ | -------------------------- |
-| 1    | M0, M1, M2, M3, M4 | 1 (GeneXpert ASTM)         |
-| 2    | M5, M6, M7, M8     | 7 analyzers                |
-| 3    | M9, M10, M11, M12  | 11 analyzers               |
-| 4    | M13, M14, M15      | 12 analyzers + export      |
-| 5    | M16, M17, M18      | + metadata + E2E validated |
+| Week | Milestones                 | Cumulative Analyzers       |
+| ---- | -------------------------- | -------------------------- |
+| 1    | M0, M1, M2, M3, M4 (all P) | Adapters ready             |
+| 2    | M5, M6, M7, M8             | 7 analyzers                |
+| 3    | M9, M10, M11, M12, M13     | 12 analyzers               |
+| 4    | M14, M15                   | + P2 validation + export   |
+| 5    | M16, M17, M18              | + metadata + E2E validated |
 
 ### Parallel Team Strategy
 
-**With 4+ developers**:
+**With 4+ developers** (M0-M4 all start Week 1):
 
-| Developer | Week 1         | Week 2-3         | Week 4-5 |
-| --------- | -------------- | ---------------- | -------- |
-| Dev A     | M0 → M1 (HL7)  | M5 → M14 → M15   | M18      |
-| Dev B     | M2 (RS232)     | M6, M9, M10      | M18      |
-| Dev C     | M3 (File)      | M7, M8, M11, M12 | M16      |
-| Dev D     | M4 (Simulator) | M13 → M17        | M18      |
+| Developer | Week 1           | Week 2-3         | Week 4-5 |
+| --------- | ---------------- | ---------------- | -------- |
+| Dev A     | M0 (ASTM) + M1   | M5 → M14 → M15   | M18      |
+| Dev B     | M2 (RS232)       | M6, M9, M10      | M18      |
+| Dev C     | M3 (File)        | M7, M8, M11, M12 | M16      |
+| Dev D     | M4 (Simulator)   | M13 → M17        | M18      |
 
 ---
 
@@ -1405,26 +1429,29 @@ The following are **intentionally deferred** to post-contract-deadline:
 
 | Milestone | Total Tasks | Test Tasks | Implementation Tasks |
 | --------- | ----------- | ---------- | -------------------- |
-| **M0**    | 20          | 3          | 17                   |
+| **M0**    | 12          | 3          | 9                    |
 | M1        | 18          | 5          | 13                   |
 | M2        | 27          | 4          | 23                   |
 | M3        | 24          | 5          | 19                   |
 | M4        | 32          | 5          | 27                   |
-| M5        | 12          | 3          | 9                    |
+| M5        | 14          | 3          | 11                   |
 | M6        | 9           | 2          | 7                    |
-| M7        | 12          | 4          | 8                    |
-| M8        | 10          | 3          | 7                    |
+| M7        | 14          | 4          | 10                   |
+| M8        | 12          | 3          | 9                    |
 | M9        | 10          | 2          | 8                    |
 | M10       | 10          | 2          | 8                    |
 | M11       | 10          | 2          | 8                    |
 | M12       | 10          | 2          | 8                    |
 | M13       | 10          | 2          | 8                    |
-| M14       | 10          | 3          | 7                    |
+| M14       | 12          | 3          | 9                    |
 | M15       | 29          | 5          | 24                   |
 | M16       | 29          | 5          | 24                   |
 | M17       | 14          | 3          | 11                   |
 | M18       | 18          | 6          | 12                   |
-| **TOTAL** | **314**     | **66**     | **248**              |
+| **TOTAL** | **~304**    | **66**     | **~238**             |
+
+**Note**: M0 reduced from 20 to 12 tasks (plugin cloning moved to M5, M7, M8,
+M14). Plugin tasks added to respective milestones.
 
 ---
 
@@ -1432,7 +1459,8 @@ The following are **intentionally deferred** to post-contract-deadline:
 
 - **[P]** = Can run in parallel (different files, no incomplete dependencies)
 - **[M#]** = Milestone tag for traceability
-- **★ M0** = PRIORITY - Start here per clarification session
+- **M0-M4 ALL PARALLEL** - No dependencies between foundation milestones
+- **M0 only blocks M7** - GeneXpert Multi requires M0 for ASTM variant
 - Tests are MANDATORY per Constitution Principle V
 - Each milestone = 1 PR per Constitution Principle IX
 - Run `mvn spotless:apply` and `cd frontend && npm run format` before every PR
@@ -1440,10 +1468,25 @@ The following are **intentionally deferred** to post-contract-deadline:
 - Run E2E tests individually during development:
   `npm run cy:run -- --spec "cypress/e2e/{test}.cy.js"`
 
+### Plugin Submodule
+
+The `plugins/` directory is a git submodule from `I-TECH-UW/openelisglobal-plugins`.
+Current analyzers: Cobas, FACS, Sysmex variants, Weber.
+
+**Madagascar-specific plugins NOT in submodule** (must be built):
+- Mindray (BC-5380, BA-88A, BS-360E)
+- GeneXpert (ASTM, HL7, File variants)
+- QuantStudio (7 Flex)
+- Horiba (Micros 60, Pentra 60)
+- Stago (STart 4)
+- Abbott (Architect)
+- Hain (FluoroCycler XT)
+
 ---
 
-**Tasks Generated**: 2026-01-27 | **Updated**: Clarification session updates +
-remediation (external plugin tasks, liquibase renumbering) (M0 priority, RS232
-via bridge, parallel workstreams) **Total Tasks**: 314 **Test Tasks**: 66 (20%)
-**Task ID Range**: T001-T314 **Milestones**: 19 (M0-M18) **Parallel
-Milestones**: M1-M4 (after M0), M9-M13 **Contract Deadline**: 2026-02-28
+**Tasks Generated**: 2026-01-27 | **Updated**: 2026-01-28 (M0 scope clarification:
+ASTM mock validation only, M0-M4 parallel, plugin tasks distributed to milestones)
+**Total Tasks**: ~304 **Test Tasks**: 66 (22%)
+**Task ID Range**: T001-T314 (with T0##a/b additions)
+**Milestones**: 19 (M0-M18) **Parallel Milestones**: M0-M4 (all), M9-M13
+**Contract Deadline**: 2026-02-28

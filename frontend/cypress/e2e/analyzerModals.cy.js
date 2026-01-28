@@ -356,12 +356,12 @@ describe("Analyzer Modals - Open/Close", () => {
       ) {
         // Click overflow menu button for first error row
         // Note: Carbon OverflowMenu aria-label is "Error actions" (lowercase 'a')
-        // Using case-insensitive selector for robustness
+        // Using multiple selectors for cross-environment compatibility (CSS4 :i flag not supported in jQuery/Sizzle)
         cy.get('[data-testid="error-table-container"]')
           .find("tbody")
           .find("tr")
           .first()
-          .find('button[aria-label*="actions" i]')
+          .find('button[aria-label*="actions"], button[aria-label*="Actions"]')
           .first()
           .should("be.visible")
           .click();
