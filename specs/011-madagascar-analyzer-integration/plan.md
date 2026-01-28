@@ -158,8 +158,8 @@ Per user request:
 
 | ID          | Branch Suffix      | Scope                                            | Workstream | User Stories | Verification                                     | Depends On    | Est. Days |
 | ----------- | ------------------ | ------------------------------------------------ | ---------- | ------------ | ------------------------------------------------ | ------------- | --------- |
-| **M0**      | m0-astm-stabilize  | Stabilize ASTM bridge, GeneXpert ASTM validation | A          | US-6         | GeneXpert ASTM works end-to-end                  | -             | 2         |
-| **[P] M1**  | m1-hl7-adapter     | HL7 v2.x protocol adapter (parser + generator)   | B          | US-1         | Unit tests: ORU^R01/ORM^O01; HL7 round-trip      | M0            | 3         |
+| **[P] M0**  | m0-astm-stabilize  | Validate ASTM mock setup, integration tests      | A          | US-6         | Mock→OpenELIS flow works end-to-end              | -             | 2         |
+| **[P] M1**  | m1-hl7-adapter     | HL7 v2.x protocol adapter (parser + generator)   | B          | US-1         | Unit tests: ORU^R01/ORM^O01; HL7 round-trip      | -             | 3         |
 | **[P] M2**  | m2-serial-bridge   | RS232 support in ASTM-HTTP Bridge (RS232→TCP)    | C          | US-3         | Bridge handles RS232; virtual serial tests       | -             | 3         |
 | **[P] M3**  | m3-file-adapter    | File-based import adapter (directory watcher)    | D          | US-4         | File detection, CSV parsing, archival            | -             | 2         |
 | **[P] M4**  | m4-simulator-base  | Multi-protocol simulator (HL7, RS232, File)      | E          | US-9         | Simulator supports all protocols; 80%+ templates | -             | 3         |
@@ -184,8 +184,8 @@ Per user request:
 
 ```mermaid
 graph TD
-    subgraph "Week 1: Foundation"
-        M0[M0: ASTM Stabilize<br/>2 days]
+    subgraph "Week 1: Foundation [All Parallel]"
+        M0[M0: ASTM Validate<br/>2 days]
         M1[M1: HL7 Adapter<br/>3 days]
         M2[M2: RS232 Bridge<br/>3 days]
         M3[M3: File Adapter<br/>2 days]
@@ -218,11 +218,13 @@ graph TD
         M18[M18: E2E Validation<br/>3 days]
     end
 
-    %% Workstream A: ASTM
+    %% M0-M4 are ALL PARALLEL (no dependencies between them)
+    %% M0 only blocks M7 (GeneXpert ASTM variant)
     M0 --> M7
 
     %% Workstream B: HL7
     M1 --> M5
+    M1 --> M7
     M1 --> M11
     M1 --> M12
     M5 --> M14
@@ -270,11 +272,13 @@ graph TD
 
 **Parallel Development Note**:
 
-- **Week 1**: M0, M1, M2, M3, M4 can proceed simultaneously (5 parallel tracks)
-- **Week 2-3**: M9, M10, M11, M12, M13 can proceed in parallel once dependencies
-  met
-- **Week 4**: M15 depends on all plugin milestones; M16, M17 can parallel with
-  M15
+- **Week 1**: M0, M1, M2, M3, M4 are ALL PARALLEL (no dependencies between them)
+- **Week 1-2**: M5, M6, M8, M9-M13 can start once their adapter dependency (M1/M2/M3) completes
+- **Week 2**: M7 (GeneXpert Multi) requires M0 + M1 + M3 for all 3 variants
+- **Week 3-4**: M15 depends on plugin milestones; M16, M17 can parallel with M15
+
+**Key Clarification**: M0 only blocks M7 (GeneXpert ASTM variant). All other
+work can proceed without waiting for M0.
 
 ## Tool Architecture (Critical Distinction)
 
@@ -462,27 +466,36 @@ tools/astm-mock-server/
 
 ## Milestone Details
 
-### M0: ASTM Bridge Stabilization (2 days)
+### M0: ASTM Setup Validation (2 days)
 
-**Scope**: Ensure existing ASTM-over-TCP infrastructure is stable; validate
-GeneXpert ASTM variant
+**Scope**: Validate existing ASTM infrastructure from Feature 004 works correctly
+with the mock analyzer. This is about testing what exists, not building new
+infrastructure.
 
-**Workstream**: A (ASTM - PRIORITY)
+**Workstream**: A (ASTM)
+
+**What Already Exists** (from Feature 004):
+- Mock ASTM Server: `tools/astm-mock-server/` (Python, 1,221 lines)
+- Docker Setup: `docker-compose.astm-test.yml` (3 analyzer types)
+- Test Fixtures: `src/test/resources/astm-samples/` (7 files)
+- ASTMAnalyzerReader: Working with plugin-based identification
+- Q-Segment Parser: TDD-implemented with tests
 
 **Deliverables**:
-
-- Verified ASTM-HTTP bridge configuration
-- GeneXpert ASTM plugin validation
-- Integration test with simulator
+- Integration tests: mock → OpenELIS → results stored
+- Analyzer configuration targeting mock (172.20.1.100)
+- Verified field mappings with existing fixtures
+- Error dashboard verification
 
 **Acceptance Criteria**:
+1. Mock server starts via `docker-compose.astm-test.yml`
+2. Integration test passes: mock → `/analyzer/astm` → results stored
+3. Field mappings work with hematology, chemistry, QC fixtures
+4. Error dashboard captures ASTM-specific issues
 
-1. ASTM bridge handles messages reliably
-2. GeneXpert ASTM variant receives results
-3. Field mappings work correctly
-4. Error dashboard captures issues
+**Dependencies**: None (can run parallel with M1-M4)
 
-**Dependencies**: None (foundation milestone)
+**NOT in M0**: External plugin cloning (distributed to M5-M14)
 
 ---
 
