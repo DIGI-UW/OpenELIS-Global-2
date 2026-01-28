@@ -22,7 +22,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -99,17 +98,12 @@ public class HoribaAnalyzerPluginTest {
                 pentra60Analyzer.isAnalyzerResult(pentra60Lines));
     }
 
-    // Note: Tests that instantiate LineInserter require Spring context (base class
-    // uses SpringContext.getBean)
-    // These are tested via integration tests with full Spring context
     @Test
-    @Ignore("Requires Spring context - AnalyzerLineInserter base class uses SpringContext.getBean()")
     public void testPentra60GetAnalyzerLineInserter_returnsNonNull() {
         assertNotNull("Pentra 60 should return a non-null line inserter", pentra60Analyzer.getAnalyzerLineInserter());
     }
 
     @Test
-    @Ignore("Requires Spring context - AnalyzerLineInserter base class uses SpringContext.getBean()")
     public void testPentra60GetAnalyzerLineInserter_returnsCorrectType() {
         assertTrue("Pentra 60 should return HoribaPentra60AnalyzerLineInserter",
                 pentra60Analyzer.getAnalyzerLineInserter() instanceof HoribaPentra60AnalyzerLineInserter);
@@ -147,13 +141,11 @@ public class HoribaAnalyzerPluginTest {
     }
 
     @Test
-    @Ignore("Requires Spring context - AnalyzerLineInserter base class uses SpringContext.getBean()")
     public void testMicros60GetAnalyzerLineInserter_returnsNonNull() {
         assertNotNull("Micros 60 should return a non-null line inserter", micros60Analyzer.getAnalyzerLineInserter());
     }
 
     @Test
-    @Ignore("Requires Spring context - AnalyzerLineInserter base class uses SpringContext.getBean()")
     public void testMicros60GetAnalyzerLineInserter_returnsCorrectType() {
         assertTrue("Micros 60 should return HoribaMicros60AnalyzerLineInserter",
                 micros60Analyzer.getAnalyzerLineInserter() instanceof HoribaMicros60AnalyzerLineInserter);
