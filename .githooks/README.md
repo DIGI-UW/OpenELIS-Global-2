@@ -2,8 +2,8 @@
 
 ## Auto-Format Hook
 
-A pre-commit hook that automatically formats **staged files only** before commits
-to prevent CI failures.
+A pre-commit hook that automatically formats **staged files only** before
+commits to prevent CI failures.
 
 ### Setup (One-Time)
 
