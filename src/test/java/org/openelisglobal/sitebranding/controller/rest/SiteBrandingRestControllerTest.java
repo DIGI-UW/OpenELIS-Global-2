@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import javax.sql.DataSource;
 import org.junit.After;
@@ -16,6 +17,7 @@ import org.openelisglobal.sitebranding.form.SiteBrandingForm;
 import org.openelisglobal.sitebranding.service.SiteBrandingService;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,14 +25,14 @@ import org.springframework.mock.web.MockMultipartFile;
 
 /**
  * Integration tests for SiteBrandingRestController
- * 
+ *
  * Following TDD approach: Write tests BEFORE implementation Tests based on
  * contracts/site-branding-api.json specification
- * 
+ *
  * Uses BaseWebContextSensitiveTest (legacy pattern) since project doesn't use
  * Spring Boot. Reference: Testing Roadmap > BaseWebContextSensitiveTest (Legacy
  * Integration)
- * 
+ *
  * Task Reference: T008
  */
 public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest {
@@ -40,6 +42,9 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Autowired
     private DataSource dataSource;
+
+    @Value("${org.openelisglobal.branding.dir:/var/lib/openelis-global/branding/}")
+    private String brandingDir;
 
     private ObjectMapper objectMapper;
     private JdbcTemplate jdbcTemplate;
@@ -59,8 +64,8 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
 
     private void cleanTestData() {
         try {
-            // Clean up test branding data
-            jdbcTemplate.execute("DELETE FROM site_branding WHERE id LIKE 'TEST-%'");
+            // Clean up ALL site branding data to ensure test isolation
+            jdbcTemplate.execute("DELETE FROM site_branding");
         } catch (Exception e) {
             // Ignore cleanup errors
         }
@@ -290,8 +295,9 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     @Test
     public void testGetHeaderLogo_WithExistingLogo_ReturnsFile() throws Exception {
         // Arrange: Create test branding with header logo
-        String logoPath = "/var/lib/openelis-global/branding/header-test.png";
-        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Path brandingPath = Paths.get(brandingDir);
+        Files.createDirectories(brandingPath);
+        String logoPath = brandingPath.resolve("header-test.png").toString();
         Files.write(Paths.get(logoPath), "test image content".getBytes());
 
         SiteBranding branding = new SiteBranding();
@@ -341,8 +347,9 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     @Test
     public void testGetLoginLogo_WithExistingLogo_ReturnsFile() throws Exception {
         // Arrange: Create test branding with login logo
-        String logoPath = "/var/lib/openelis-global/branding/login-test.png";
-        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Path brandingPath = Paths.get(brandingDir);
+        Files.createDirectories(brandingPath);
+        String logoPath = brandingPath.resolve("login-test.png").toString();
         Files.write(Paths.get(logoPath), "test login image content".getBytes());
 
         SiteBranding branding = new SiteBranding();
@@ -391,8 +398,9 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     @Test
     public void testGetFavicon_WithExistingFavicon_ReturnsFile() throws Exception {
         // Arrange: Create test branding with favicon
-        String faviconPath = "/var/lib/openelis-global/branding/favicon-test.ico";
-        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Path brandingPath = Paths.get(brandingDir);
+        Files.createDirectories(brandingPath);
+        String faviconPath = brandingPath.resolve("favicon-test.ico").toString();
         Files.write(Paths.get(faviconPath), "test favicon content".getBytes());
 
         SiteBranding branding = new SiteBranding();
@@ -418,8 +426,9 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     @Test
     public void testDeleteLogo_WithExistingLogo_Returns200() throws Exception {
         // Arrange: Create branding with header logo file
-        String logoPath = "/var/lib/openelis-global/branding/header-1234567890.png";
-        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Path brandingPath = Paths.get(brandingDir);
+        Files.createDirectories(brandingPath);
+        String logoPath = brandingPath.resolve("header-1234567890.png").toString();
         Files.write(Paths.get(logoPath), "test logo content".getBytes());
 
         SiteBranding branding = new SiteBranding();
@@ -462,10 +471,11 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     @Test
     public void testResetBranding_ResetsAllToDefaults() throws Exception {
         // Arrange: Create branding with custom values and logo files
-        String headerPath = "/var/lib/openelis-global/branding/header-123.png";
-        String loginPath = "/var/lib/openelis-global/branding/login-123.png";
-        String faviconPath = "/var/lib/openelis-global/branding/favicon-123.ico";
-        Files.createDirectories(Paths.get("/var/lib/openelis-global/branding/"));
+        Path brandingPath = Paths.get(brandingDir);
+        Files.createDirectories(brandingPath);
+        String headerPath = brandingPath.resolve("header-123.png").toString();
+        String loginPath = brandingPath.resolve("login-123.png").toString();
+        String faviconPath = brandingPath.resolve("favicon-123.ico").toString();
         Files.write(Paths.get(headerPath), "header content".getBytes());
         Files.write(Paths.get(loginPath), "login content".getBytes());
         Files.write(Paths.get(faviconPath), "favicon content".getBytes());

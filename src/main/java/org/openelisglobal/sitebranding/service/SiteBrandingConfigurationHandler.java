@@ -19,6 +19,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.yaml.snakeyaml.Yaml;
@@ -27,8 +28,8 @@ import org.yaml.snakeyaml.Yaml;
  * Configuration handler for loading site branding settings from YAML files.
  * Enables pre-configuration of branding via initializer packages.
  *
- * Configuration files should be placed in:
- * /var/lib/openelis-global/configuration/backend/site-branding/
+ * Configuration files should be placed in the site-branding subdirectory of the
+ * backend configuration directory.
  *
  * Example YAML format:
  *
@@ -46,13 +47,16 @@ import org.yaml.snakeyaml.Yaml;
  * </pre>
  *
  * Logo file paths are relative to the configuration directory. Files are copied
- * to the branding directory at /var/lib/openelis-global/branding/.
+ * to the branding directory.
  */
 @Component
 public class SiteBrandingConfigurationHandler implements DomainConfigurationHandler {
 
-    private static final String BRANDING_DIR = "/var/lib/openelis-global/branding/";
-    private static final String CONFIG_DIR = "/var/lib/openelis-global/configuration/backend/site-branding/";
+    @Value("${org.openelisglobal.branding.dir:/var/lib/openelis-global/branding/}")
+    private String brandingDir;
+
+    @Value("${org.openelisglobal.branding.config.dir:/var/lib/openelis-global/configuration/backend/site-branding/}")
+    private String configDir;
 
     @Autowired
     private SiteBrandingService siteBrandingService;
@@ -98,12 +102,6 @@ public class SiteBrandingConfigurationHandler implements DomainConfigurationHand
         // Get or create branding entity
         SiteBranding branding = siteBrandingService.getBranding();
         branding.setSysUserId("1"); // System user for configuration loading
-
-        // Ensure branding directory exists
-        Path brandingDir = Paths.get(BRANDING_DIR);
-        if (!Files.exists(brandingDir)) {
-            Files.createDirectories(brandingDir);
-        }
 
         // Process logo files
         processLogoFile(brandingConfig, "headerLogo", branding, LogoType.HEADER);
@@ -163,7 +161,7 @@ public class SiteBrandingConfigurationHandler implements DomainConfigurationHand
         }
 
         // Source file is relative to the configuration directory
-        Path sourcePath = Paths.get(CONFIG_DIR, relativePath);
+        Path sourcePath = Paths.get(configDir, relativePath);
         if (!Files.exists(sourcePath)) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processLogoFile",
                     "Logo file not found: " + sourcePath + " for " + key);
@@ -178,12 +176,18 @@ public class SiteBrandingConfigurationHandler implements DomainConfigurationHand
         }
 
         try {
+            // Ensure branding directory exists before copying
+            Path brandingPath = Paths.get(brandingDir);
+            if (!Files.exists(brandingPath)) {
+                Files.createDirectories(brandingPath);
+            }
+
             // Generate destination filename with timestamp to avoid caching issues
             String originalFilename = sourcePath.getFileName().toString();
             String extension = getFileExtension(originalFilename);
             String timestamp = String.valueOf(System.currentTimeMillis());
             String destFilename = type.getValue() + "-" + timestamp + "." + extension;
-            Path destPath = Paths.get(BRANDING_DIR, destFilename);
+            Path destPath = brandingPath.resolve(destFilename);
 
             // Copy file to branding directory
             Files.copy(sourcePath, destPath, StandardCopyOption.REPLACE_EXISTING);

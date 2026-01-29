@@ -21,6 +21,7 @@ import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,8 +39,10 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
 
     private static final Logger logger = LoggerFactory.getLogger(SiteBrandingServiceImpl.class);
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-    private static final String BRANDING_DIR = "/var/lib/openelis-global/branding/";
     private static final String[] ALLOWED_FORMATS = { "png", "svg", "jpg", "jpeg" };
+
+    @Value("${org.openelisglobal.branding.dir:/var/lib/openelis-global/branding/}")
+    private String brandingDir;
 
     @Autowired
     private SiteBrandingDAO siteBrandingDAO;
@@ -327,9 +330,9 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         }
 
         // Ensure branding directory exists
-        Path brandingDir = Paths.get(BRANDING_DIR);
-        if (!Files.exists(brandingDir)) {
-            Files.createDirectories(brandingDir);
+        Path brandingPath = Paths.get(brandingDir);
+        if (!Files.exists(brandingPath)) {
+            Files.createDirectories(brandingPath);
         }
 
         // Get current branding
@@ -365,7 +368,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
         String extension = getFileExtension(file.getOriginalFilename());
         String timestamp = String.valueOf(System.currentTimeMillis());
         String filename = type.getValue() + "-" + timestamp + "." + extension;
-        Path filePath = brandingDir.resolve(filename);
+        Path filePath = brandingPath.resolve(filename);
 
         // Save file
         file.transferTo(filePath.toFile());

@@ -47,8 +47,9 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
 
     private void cleanTestData() {
         try {
-            // Clean up test branding data
-            jdbcTemplate.execute("DELETE FROM site_branding WHERE id LIKE 'TEST-%'");
+            // Clean up ALL site branding data to ensure test isolation
+            // This is necessary because some tests create records with auto-generated UUIDs
+            jdbcTemplate.execute("DELETE FROM site_branding");
         } catch (Exception e) {
             // Ignore cleanup errors
         }
