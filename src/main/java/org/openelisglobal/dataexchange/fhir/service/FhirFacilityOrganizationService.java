@@ -37,7 +37,8 @@ public interface FhirFacilityOrganizationService {
     /**
      * Gets the identifier system used for facility identifiers.
      *
-     * @return the facility identifier system (e.g., "http://openelis-global.org/facility_id")
+     * @return the facility identifier system (e.g.,
+     *         "http://openelis-global.org/facility_id")
      */
     String getFacilityIdentifierSystem();
 

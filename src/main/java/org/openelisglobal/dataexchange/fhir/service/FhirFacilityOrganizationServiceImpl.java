@@ -159,7 +159,8 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
         }
         organization.setId(facilityUuid);
 
-        // Set facility ID: use configured value if provided, otherwise fall back to UUID
+        // Set facility ID: use configured value if provided, otherwise fall back to
+        // UUID
         if (StringUtils.isNotBlank(configuredFacilityId)) {
             facilityId = configuredFacilityId;
         } else {
@@ -219,7 +220,8 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
             }
         }
 
-        // Set facility ID: use configured value if provided, otherwise use existing or fall back to UUID
+        // Set facility ID: use configured value if provided, otherwise use existing or
+        // fall back to UUID
         if (StringUtils.isNotBlank(configuredFacilityId)) {
             facilityId = configuredFacilityId;
         } else if (existingFacilityId != null) {

@@ -934,8 +934,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
         } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.SampleRejected))) {
             serviceRequest.setStatus(ServiceRequestStatus.ENTEREDINERROR);
-        }
-        else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
             serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
         } else {
             serviceRequest.setStatus(ServiceRequestStatus.UNKNOWN);
@@ -1201,7 +1200,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private void addToOperations(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator, Resource resource) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "addToOperations", "addToOperations called");
 
-        // Use composite key (resourceType/id) to prevent collisions between different resource types
+        // Use composite key (resourceType/id) to prevent collisions between different
+        // resource types
         String compositeKey = resource.getResourceType() + "/" + resource.getIdElement().getIdPart();
 
         if (this.setTempIdIfMissing(resource, tempIdGenerator)) {
