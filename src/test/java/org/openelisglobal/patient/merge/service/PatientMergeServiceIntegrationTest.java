@@ -179,6 +179,58 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
     }
 
     /**
+     * Test: Validation fails when trying to merge INTO a patient that is already merged.
+     * Business Rule: Cannot merge a new patient to a petient that is already merged.
+     * A patient record can only be merged into a target patient record that is currently Active (Primary). 
+     * It is forbidden to merge a patient into a record that has itself already been merged into another record.
+     */
+   
+   @Test
+    public void testValidation_MergeIntoAlreadyMergedTarget_ShouldFail() {
+        
+        // Create person 3 for test patients
+        Person person3 = new Person();
+        person3.setFirstName("Alice");
+        person3.setLastName("Smith");
+        String person3Id = personService.insert(person3);
+        person3.setId(person3Id);
+
+        // Create patient 3 with unique identifiers
+        Patient patient3 = new Patient();
+        patient3.setPerson(person1);
+        patient3.setNationalId("INT-TEST-P3-" + System.currentTimeMillis());
+        patient3.setExternalId("INT-TEST-EXT-P3-" + System.currentTimeMillis());
+        patient3.setIsMerged(false);
+        String patient3Id = patientDAO.insert(patient3);
+        patient3.setId(patient3Id);
+
+        // Arrange - First merge patient2 into patient1
+        PatientMergeRequestDTO firstMerge = new PatientMergeRequestDTO();
+        firstMerge.setPatient1Id(patient1.getId());
+        firstMerge.setPatient2Id(patient2.getId());
+        firstMerge.setPrimaryPatientId(patient1.getId());
+        firstMerge.setReason("First merge");
+        firstMerge.setConfirmed(true);
+        patientMergeService.executeMerge(firstMerge, "1");
+
+        // Act - Try to merge patient3 to already merged patient 2 (should fail validation)
+        PatientMergeRequestDTO secondMerge = new PatientMergeRequestDTO();
+        secondMerge.setPatient1Id(patient2.getId()); // Target is P2 (which is already merged)
+        secondMerge.setPatient2Id(patient3.getId()); // Source is P3
+        secondMerge.setPrimaryPatientId(patient2.getId());
+        secondMerge.setReason("second merge attempt");
+        secondMerge.setConfirmed(true);
+
+
+        PatientMergeValidationResultDTO result = patientMergeService.validateMerge(secondMerge);
+
+        // Assert
+        assertFalse("Should not allow merging into a patient record that is already merged", result.isValid());
+        assertTrue("Error should indicate target patient is not active/primary", 
+            result.getErrors().stream().anyMatch(e -> e.toLowerCase().contains("merged") || e.toLowerCase().contains("target")));
+    }
+
+    /**
      * Test: Merge without confirmation fails. Business Rule: Merge requires
      * explicit confirmation.
      */
