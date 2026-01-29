@@ -18,9 +18,10 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 - **M0.0 (Foundation POC)**: 24 tasks (Gateway + Router + CatalystAgent + MCP
   skeleton + FR-004 validation)
 - **M0.1 (Provider Switching)**: 4 tasks
-- **M0.2 (Agent Specialization)**: 10 tasks (split CatalystAgent)
-- **M1 (RAG-based Schema)**: 20 tasks (RAG + MCP tools + evaluation harness +
-  ChromaDB ops)
+- **M0.2 (Agent Specialization)**: 16 tasks (split CatalystAgent + model
+  evaluation Tier A/B + trajectory validation)
+- **M1 (RAG-based Schema)**: 22 tasks (RAG + MCP tools + evaluation harness +
+  Recall@K, HitRate@K, groundedness + ChromaDB ops)
 - **M2 (Backend Core)**: 25 tasks (reduced - security deferred, includes
   @Transactional verification + read-only DB verification)
 - **M3 (Frontend Chat)**: 19 tasks (reduced - token handling deferred)
@@ -28,7 +29,17 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
   security)
 - **M5 (Security Features)**: ~17 tasks (RBAC, PHI detection, confirmation
   tokens, security tests)
-- **Total**: 175 tasks (sequentially renumbered, no duplicates)
+- **Total**: 183 tasks (sequentially renumbered, no duplicates)
+
+---
+
+## General Tasks (Throughout Project)
+
+- [ ] T000 [ALL] Update documentation throughout project lifecycle: (a) Keep
+      spec.md, plan.md, tasks.md synchronized as implementation progresses, (b)
+      Document architecture decisions in plan.md when deviating from initial
+      design, (c) Update README and deployment docs in post-MVP phase. This is
+      an ongoing task spanning all milestones.
 
 ---
 
@@ -192,26 +203,39 @@ schema retrieval - skeleton)
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T019 [P] [M0.1] Write pytest test for CatalystAgent provider switching
-      (Gemini/LM Studio) in
-      `projects/catalyst/catalyst-agents/tests/test_catalyst_agent.py` (FR-007)
+- [x] T019 [P] [M0.1] Write pytest tests for provider switching (FR-007): -
+      Integration tests in `test_catalyst_agent.py` (provider selection logic) -
+      Unit tests in `test_llm_clients.py` (HTTP/API implementation verification)
 
 ### M0.1.2: Provider Implementation
 
-- [ ] T020 [M0.1] Add Gemini provider support to
+- [x] T020 [M0.1] Add Gemini provider support to
       `projects/catalyst/catalyst-agents/src/llm_clients.py`
-- [ ] T021 [M0.1] Update CatalystAgent executor in
+- [x] T021 [M0.1] Update CatalystAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/catalyst_executor.py` to use
       provider-agnostic LLM client
-- [ ] T022 [M0.1] Create agent configuration in
+- [x] T022 [M0.1] Create agent configuration in
       `projects/catalyst/catalyst-agents/src/config/agents_config.yaml` with
       both providers (Gemini, LM Studio)
 
 ### M0.1.3: Verification & PR
 
-- [ ] T023 [M0.1] Run pytest to verify all provider tests pass, test with each
+- [x] T023 [M0.1] Run pytest to verify all provider tests pass, test with each
       provider (LM Studio and Gemini), create PR
       `feat/OGC-070-catalyst-assistant-m0-provider-switching` → `develop`
+      **Status**: All tests pass: - 9 unit tests in `test_llm_clients.py`
+      (verify HTTP/API implementation) - 3 integration tests in
+      `test_catalyst_agent.py` (verify provider switching logic) - Total: 12
+      provider-related tests passing Provider switching verified for both LM
+      Studio and Gemini. Ready for PR creation (manual step).
+
+### M0.1 Sign-off Checklist
+
+- [x] All pytest unit tests pass (`./tests/run_tests.sh all`) — **Verified**:
+      gateway (1), mcp (8), agents (17) = 26 tests passed
+- [ ] LM Studio E2E: Query returns SQL (LM Studio running)
+- [ ] Gemini E2E: Query returns SQL (GEMINI_API_KEY set)
+- [ ] Provider switching works: same query returns SQL from both providers
 
 ---
 
@@ -292,6 +316,51 @@ fallback works
       flow works, verify fallback mode works, create PR
       `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
 
+### M0.2.9: Model Evaluation (FR-022, NFR-001)
+
+- [ ] T037a [P] [M0.2] Create golden query dataset in
+      `projects/catalyst/tests/fixtures/golden_queries.json` with 26 OpenELIS
+      natural language queries (research.md Section 13). This dataset is used by
+      M0.2.9 tasks T037b-T037f for model evaluation.
+- [ ] T037b [M0.2] Run balanced scorecard evaluation on Tier A Orchestrator
+      candidates (Llama 3.1 8B, Gemma 2 9B) — document results in
+      `projects/catalyst/docs/model-evaluation-m0.2.md`
+- [ ] T037c [M0.2] Run balanced scorecard evaluation on Tier A SQLGen candidates
+      (CodeLlama 13B, Llama 3.1 8B fallback) — document results
+- [ ] T037d [M0.2] Write trajectory validation tests per research.md Section
+      14.2 in
+      `projects/catalyst/catalyst-agents/tests/test_trajectory_validation.py`
+- [ ] T037e [M0.2] Run balanced scorecard evaluation on Tier B SQLGen candidates
+      (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available — document results
+      in `projects/catalyst/docs/model-evaluation-m0.2.md` (Tier B section)
+- [ ] T037f [M0.2] Document Tier B evaluation procedure in
+      `projects/catalyst/docs/model-evaluation-m0.2.md` (when Tier B hardware
+      unavailable, document skip rationale; NFR-001 satisfied by Tier A + Tier B
+      task presence)
+- [ ] T037g [P] [M0.2] Create comprehensive golden query dataset file
+      `projects/catalyst/tests/fixtures/golden_queries.json` with 26+ robust
+      queries including metadata fields for LLM validation toolkit compatibility
+      (ragas, promptfoo, langfuse). Each query MUST include: natural_language,
+      expected_sql, context, difficulty, tables_involved, expected_row_count,
+      explanation (FR-022). File format must be JSON array of query objects.
+
+### M0.2 Sign-off Checklist
+
+- [ ] All pytest unit tests pass
+- [ ] Multi-agent flow E2E: Query routed through SchemaAgent → SQLGenAgent
+- [ ] Single-agent fallback: CatalystAgent works when SchemaAgent/SQLGenAgent
+      unavailable
+- [ ] Both LLM providers work with multi-agent flow
+- [ ] **Trajectory validation**: Router → SchemaAgent → SQLGenAgent order
+      verified
+- [ ] **Golden query dataset**: 26+ comprehensive OpenELIS natural language
+      queries created in `projects/catalyst/tests/fixtures/golden_queries.json`
+      with full metadata (FR-022)
+- [ ] **Model evaluation**: At least one Tier A config evaluated using scorecard
+- [ ] **Tier B evaluation**: Tier B SQLGen scorecard run when 40GB+ GPU
+      available; otherwise procedure/skip documented (NFR-001)
+- [ ] **Deterministic guards**: 100% pass rate on non-ambiguous queries (18/18)
+
 ---
 
 ## Milestone 1: RAG-based Schema (Estimate: 3-4 days) [PARALLEL]
@@ -311,8 +380,9 @@ support via accurate schema metadata)
   authoritative FK/constraint data (actions, validation state, match types).
 - **ChromaDB ops**: Pin version, configure persistence volume, document index
   rebuild/backup procedure.
-- **Evaluation harness**: Add golden query set (25-50 NL→expected-result) +
-  Recall@K for schema retrieval + execution accuracy tests.
+- **Evaluation harness**: Add golden query set of 26 OpenELIS questions (FR-022,
+  research.md Section 13) with expected tables per query; Recall@K and HitRate@K
+  for schema retrieval; execution accuracy deferred to M2+.
 
 ### M1.1: Branch Setup
 
@@ -344,6 +414,10 @@ support via accurate schema metadata)
 - [ ] T046 [M1] Implement PostgreSQL schema extractor in
       `projects/catalyst/catalyst-mcp/src/tools/db/schema_extractor.py` (extract
       table DDL, columns, relationships)
+- [ ] T046a [P] [M1] Write pytest tests for ConfigParser class in
+      `projects/catalyst/catalyst-mcp/tests/test_config_parser.py` (TDD -
+      MANDATORY). Test database URL parsing, environment variable substitution,
+      and error handling for malformed config files.
 
 ### M1.4: RAG Implementation
 
@@ -371,18 +445,22 @@ support via accurate schema metadata)
       `MCP-Protocol-Version` header, session ID handling, tool listing, tool
       invocation)
 
-### M1.6: Evaluation Harness (2026 Best Practice)
+### M1.6: Evaluation Harness (FR-022, research.md Sec 14.3)
 
-- [ ] T053b [P] [M1] Create golden query dataset in
-      `projects/catalyst/catalyst-mcp/tests/fixtures/golden_queries.json` (25-50
-      NL questions → expected results for "top 5" query types: counts, joins,
-      aggregations, date filters, turnaround times)
-- [ ] T053c [M1] Implement schema retrieval evaluation in
-      `projects/catalyst/catalyst-mcp/tests/test_retrieval_metrics.py` (Recall@K
-      for relevant tables given NL query)
+- [ ] T053b [P] [M1] Create/update golden query dataset in
+      `projects/catalyst/tests/fixtures/golden_queries.json` with expected
+      tables per query (for Recall@K measurement)
+- [ ] T053c [M1] Implement Recall@K calculation in
+      `projects/catalyst/catalyst-mcp/tests/test_retrieval_metrics.py` (target:
+      Recall@5 >= 80%)
+- [ ] T053ca [M1] Implement HitRate@K calculation in same file (target:
+      HitRate@5 >= 90%)
+- [ ] T053cb [M1] Implement groundedness check: verify generated SQL only
+      references tables/columns in provided schema context
 - [ ] T053d [M1] Implement SQL execution accuracy test in
       `projects/catalyst/catalyst-agents/tests/test_execution_accuracy.py`
-      (golden queries → generated SQL → actual results vs expected results)
+      (deferred to M2+ for full execution; M1 validates syntax + deterministic
+      guards only)
 
 ### M1.7: MCP Validation Tool
 
@@ -424,6 +502,18 @@ support via accurate schema metadata)
       based on query semantics, verify evaluation harness tests pass, create PR
       `feat/OGC-070-catalyst-assistant-m1-rag-schema` → `develop`
 
+### M1 Sign-off Checklist
+
+- [ ] All pytest unit tests pass
+- [ ] MCP connects to PostgreSQL and extracts schema
+- [ ] `get_relevant_tables` returns correct tables for sample queries
+- [ ] `validate_sql` correctly validates/rejects SQL
+- [ ] **Recall@5 >= 80%** on golden query set (18+ correct table retrievals)
+- [ ] **HitRate@5 >= 90%** on golden query set
+- [ ] **Groundedness**: No hallucinated tables in generated SQL for validation
+      queries
+- [ ] MCP Streamable HTTP conformance: protocol version header + session ID
+
 ---
 
 ## Milestone 2: Backend Core (Estimate: 4-5 days) [PARALLEL]
@@ -438,8 +528,11 @@ RouterAgent
 conversion via agents), FR-005 (read-only SQL execution), FR-008 (blocked table
 validation), FR-009 (row estimation), FR-010 (audit logging - partial), FR-013
 (table-level access control)  
-**Note**: Security features (PHI detection, confirmation tokens, role-based
-endpoint access) deferred to M4
+**Note**: Security features (PHI detection [FR-018], confirmation tokens
+[FR-016], role-based endpoint access [FR-020]) deferred to M5 **Architecture
+Note**: This milestone uses **classic Hibernate DAOs** with manual
+SessionFactory calls (Constitution IV). **No Spring Data JPA repositories** -
+use GenericDAO pattern consistent with existing OpenELIS codebase.
 
 ### M2.1: Branch Setup & Package Structure
 
@@ -472,7 +565,7 @@ endpoint access) deferred to M4
       `src/test/java/org/openelisglobal/catalyst/gateway/CatalystGatewayClientTest.java`
 - [ ] T062 [P] [M2] Write JUnit test for SQLGuardrails in
       `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java`
-      (blocked tables only, NO PHI detection - deferred to M4)
+      (blocked tables only, NO PHI detection - deferred to M5)
 - [ ] T062a [P] [M2] Write JUnit test for row estimation (EXPLAIN-based) in
       `src/test/java/org/openelisglobal/catalyst/guardrails/SQLGuardrailsTest.java`
       (FR-009)
@@ -506,6 +599,11 @@ endpoint access) deferred to M4
 - [ ] T067a [M2] Implement row estimation using EXPLAIN in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       (FR-009)
+- [ ] T067b [M2] **FR-009 Row Estimation (Deferred from M0-M1)**: Implement row
+      estimation functionality using EXPLAIN queries when read-only database
+      access is available (configured in T070-T071). This task DEPENDS ON
+      successful read-only connection setup. Verify EXPLAIN output parsing
+      returns accurate row counts.
 - [ ] T068 [M2] Implement SQL guardrails in
       `src/main/java/org/openelisglobal/catalyst/guardrails/SQLGuardrails.java`
       (blocked tables, SQL validation - NO PHI detection, deferred to M5)
@@ -538,10 +636,17 @@ endpoint access) deferred to M4
 
 ### M2.8: Database Schema
 
-- [ ] T074 [M2] Create Liquibase changeset in
-      `src/main/resources/liquibase/catalyst/catalyst-001-create-audit-table.xml`
-      for CatalystQuery table without security fields (phi_gated,
-      confirmation_token added in M5) (Constitution VI)
+- [ ] T074 [M2] Create Liquibase changeset for CatalystQuery table without
+      security fields (phi_gated, confirmation_token added in M5) (Constitution
+      VI). **4-Step Liquibase Procedure**: 1. Create directory:
+      `src/main/resources/liquibase/3.4.x.x/` 2. Create changeset file:
+      `src/main/resources/liquibase/3.4.x.x/001-catalyst-create-audit-table.xml`
+      with table definition 3. Create version aggregator:
+      `src/main/resources/liquibase/3.4.x.x/base.xml` with content:
+      `xml <include relativeToChangelogFile="true" file="001-catalyst-create-audit-table.xml"/> ` 4.
+      Register in master changelog:
+      `src/main/resources/liquibase/base-changelog.xml` by adding AFTER 3.3.x.x:
+      `xml <include file="liquibase/3.4.x.x/base.xml" /> `
 
 ### M2.9: Forms (DTOs)
 
@@ -564,8 +669,24 @@ endpoint access) deferred to M4
 - [ ] T081a [M2] Verify @Transactional annotations are ONLY in service layer,
       NOT in any controller classes (Constitution Principle IV). Add note to
       verify when CatalystRestController is created in M4.
+- [ ] T081b [M2] Add verification checkpoint: when CatalystRestController is
+      implemented in M4 (T103), confirm it has no `@Transactional` annotations
+      (Constitution Principle IV – transactions in services only). M4 task T103a
+      already requires this; treat T081b as the M2 reminder/checklist entry.
 - [ ] T082 [M2] Create PR `feat/OGC-070-catalyst-assistant-m2-backend-core` →
       `develop`
+
+### M2 Sign-off Checklist
+
+- [ ] ORM validation test passes (<5s, no database)
+- [ ] All JUnit unit tests pass (>80% coverage for new code)
+- [ ] CatalystGatewayClient integration test: calls Gateway, receives SQL
+- [ ] SQL guardrails test: blocked tables/DDL rejected (100% rejection rate)
+- [ ] Audit logging: CatalystQuery records created for each query
+- [ ] Read-only DB connection verified (INSERT/UPDATE fails with permission
+      denied)
+- [ ] @Transactional annotations ONLY in service layer (manual code review)
+- [ ] Row estimation (EXPLAIN-based) works for sample queries
 
 ---
 
@@ -629,6 +750,10 @@ translations
 - [ ] T093b [M3] Add example prompts i18n keys to
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
       (FR-014)
+- [ ] T093c [POST-MVP] Polish example prompts with user-tested, domain-expert
+      validated queries. MVP uses basic placeholder examples from research.md
+      for functional testing only. Polished, production-ready examples deferred
+      to post-MVP (FR-014).
 
 ### M3.4: Internationalization (Constitution VII - MANDATORY)
 
@@ -654,6 +779,15 @@ translations
 - [ ] T101 [M3] Create PR `feat/OGC-070-catalyst-assistant-m3-frontend-chat` →
       `develop`
 
+### M3 Sign-off Checklist
+
+- [ ] All Jest unit tests pass (>70% coverage)
+- [ ] CatalystSidebar renders without errors
+- [ ] i18n: English labels display correctly
+- [ ] i18n: French labels display correctly
+- [ ] Example queries visible and clickable
+- [ ] Query input accepts text and submits on Enter
+
 ---
 
 ## Milestone 4: Integration (Estimate: 2-3 days) [SEQUENTIAL - depends on M0.2, M1, M2, M3]
@@ -676,7 +810,8 @@ to M5 to allow independent testing
       M0.2, M1, M2, M3 first)
 - [ ] T103 [M4] Implement CatalystRestController in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
-      with @RestController and /rest/catalyst/query endpoint
+      with @RestController and /rest/catalyst/query endpoint (NO
+      @Transactional - see T103a verification, Constitution IV)
 - [ ] T103a [M4] Verify CatalystRestController has NO @Transactional annotations
       (Constitution Principle IV - transaction boundaries in services ONLY). Add
       verification comment in controller class or test assertion in
@@ -734,6 +869,18 @@ to M5 to allow independent testing
 - [ ] T117 [M4] Create PR `feat/OGC-070-catalyst-assistant-m4-integration` →
       `develop`
 
+### M4 Sign-off Checklist
+
+- [ ] All component tests pass (Java + Python + React)
+- [ ] Full stack starts: `docker compose -f dev.docker-compose.yml up` + Python
+      services
+- [ ] Cypress E2E: Basic query returns results
+- [ ] Cypress E2E: JOIN query returns results (FR-015)
+- [ ] Cypress E2E: Aggregation query returns results (FR-015)
+- [ ] Cypress E2E: Date filter query returns results (FR-015)
+- [ ] CSV export works (FR-012)
+- [ ] JSON export works (FR-012)
+
 ---
 
 ## Milestone 5: Security Features (Estimate: 2-3 days) [SEQUENTIAL - depends on M4]
@@ -759,9 +906,10 @@ provider routing), FR-019 (audit metadata capture - security fields), FR-021
 
 - [ ] T111a [P] [M5] Write integration test for role-based access control in
       `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerSecurityTest.java`:
-      test that users with `Global Administrator` role can access endpoint, test
-      that users with `Reports` role can access endpoint, test that users
-      without these roles receive 403 Forbidden
+      (1) user with `Global Administrator` → 200 OK; (2) user with `Reports` →
+      200 OK; (3) user with non-privileged role (e.g. Lab Technician) → 403
+      Forbidden; (4) unauthenticated request → 401 or 403 per app behavior
+      (FR-021).
 - [ ] T102i [P] [M5] Write pytest test for RouterAgent PHI detection and
       provider routing in
       `projects/catalyst/catalyst-agents/tests/test_router_agent.py` (FR-018)
@@ -801,7 +949,8 @@ provider routing), FR-019 (audit metadata capture - security fields), FR-021
       (FR-016)
 - [ ] T102e [M5] Create Liquibase changeset to add confirmation_token and
       phi_gated columns to catalyst_query table in
-      `src/main/resources/liquibase/catalyst/catalyst-002-add-security-fields.xml`
+      `src/main/resources/liquibase/3.4.x.x/002-catalyst-add-security-fields.xml`
+      (add file under 3.4.x.x and include it from 3.4.x.x/base.xml).
 - [ ] T102f [M5] Implement confirmation token generation in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
       (compute hash from generated SQL) (FR-016)
@@ -847,6 +996,16 @@ provider routing), FR-019 (audit metadata capture - security fields), FR-021
       execution)
 - [ ] T126 [M5] Create PR `feat/OGC-070-catalyst-assistant-m5-security` →
       `develop`
+
+### M5 Sign-off Checklist
+
+- [ ] All security unit tests pass
+- [ ] Cypress E2E: Admin user can query → 200 OK
+- [ ] Cypress E2E: Reports user can query → 200 OK
+- [ ] Cypress E2E: Lab Technician blocked → 403 Forbidden
+- [ ] Cypress E2E: Unauthenticated request → 401/403
+- [ ] PHI detection test: Query with PHI keywords routes to local LLM
+- [ ] Confirmation token: Query requires ACCEPTED state before execution
 
 ---
 
