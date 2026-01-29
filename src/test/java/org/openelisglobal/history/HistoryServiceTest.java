@@ -167,10 +167,11 @@ public class HistoryServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getHistoryByRefIdAndRefTableId_validNumericIds_shouldReturnEmptyList() {
-        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId("88888", "88888");
+    public void getHistoryByRefIdAndRefTableId_existingData_shouldReturnRecords() {
+        List<History> historyList = historyService.getHistoryByRefIdAndRefTableId("99999", "99999");
 
-        Assert.assertTrue(historyList.isEmpty());
+        Assert.assertFalse(historyList.isEmpty());
+        Assert.assertEquals(1, historyList.size());
     }
 
     @Test(expected = NumberFormatException.class)
