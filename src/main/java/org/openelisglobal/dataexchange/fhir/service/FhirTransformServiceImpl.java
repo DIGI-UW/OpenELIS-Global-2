@@ -76,6 +76,8 @@ import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
@@ -1710,5 +1712,28 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         } else {
             throw e;
         }
+    }
+
+    @Async
+    @Override
+    @Transactional(readOnly = true)
+    public void transformAnalysisByIds(List<String> analysisIds)
+            throws FhirTransformationException, FhirPersistanceException {
+        FhirOperations fhirOperations = new FhirOperations();
+        CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
+
+        for (String analysisId : analysisIds) {
+            Analysis analysis = analysisService.get(analysisId);
+            ServiceRequest serviceRequest = this.transformToServiceRequest(analysis);
+            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+
+            if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
+                DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
+                this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
+            }
+
+        }
+
+        fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
     }
 }
