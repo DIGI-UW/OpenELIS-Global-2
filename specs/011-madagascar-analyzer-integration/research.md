@@ -842,7 +842,11 @@ The plugins identify messages by examining the ASTM Header (H) segment:
 2. **Fallback**: Check for `PENTRA` or `MICROS` in the sender field
 3. **IP-based**: Use ASTM-HTTP bridge source IP for identification
 
-### Implementation Architecture
+### Implementation Architecture (Data Flow)
+
+> **NOTE**: This diagram shows RUNTIME data flow. For plugin DEPLOYMENT
+> architecture (where plugin files live, how they're built and loaded),
+> see the "Plugin Deployment Architecture" section below.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -924,8 +928,64 @@ Each Horiba plugin consists of:
 | BAS%      | 706-2      | Basophil %         | %       |
 | BAS#      | 704-7      | Basophil Count     | 10^3/μL |
 
+### Plugin Deployment Architecture (CRITICAL)
+
+Per `docs/analyzer.md` (lines 5-8):
+> "The older model, which we are phasing out, has the code for importing
+> analyzer results as part of the core of OpenELIS. **The newer model which
+> all new analyzers should use is a plugin model.**"
+
+**External Plugin JAR Pattern (MANDATORY for all new analyzers):**
+
+| Aspect             | Detail                                                          |
+| ------------------ | --------------------------------------------------------------- |
+| **Location**       | `plugins/analyzers/{PluginName}/` (git submodule)               |
+| **Build**          | Maven with `pom.xml` → standalone JAR                           |
+| **Deploy**         | Copy JAR to `/var/lib/openelis-global/plugins/`                 |
+| **Discovery**      | PluginLoader scans `/var/lib/openelis-global/plugins/` at startup |
+| **Registration**   | `connect()` method called by PluginLoader                       |
+| **Spring**         | NO `@Component`, `@PostConstruct`, or `@DependsOn`             |
+| **Package**        | `uw.edu.itech.{PluginName}` (convention from WeberAnalyzer)    |
+
+**Registration Code Pattern:**
+```java
+// In plugins/analyzers/{PluginName}/src/main/java/.../
+public class MyAnalyzer implements AnalyzerImporterPlugin {
+
+    @Override
+    public boolean connect() {
+        // Called by PluginLoader AFTER Spring context is ready
+        List<TestMapping> mappings = createTestMappings();
+        PluginAnalyzerService.getInstance()
+            .addAnalyzerDatabaseParts(name, desc, mappings, true);
+        PluginAnalyzerService.getInstance().registerAnalyzer(this);
+        return true;
+    }
+}
+```
+
+**Anti-Pattern (DO NOT USE):**
+```java
+// DO NOT put analyzer code in src/main/java/
+@Component  // ❌ WRONG
+@DependsOn("pluginAnalyzerService")  // ❌ WRONG
+public class MyAnalyzer implements AnalyzerImporterPlugin {
+    @PostConstruct  // ❌ WRONG
+    public void register() { ... }
+}
+```
+
+**Canonical References:**
+- `docs/analyzer.md` — External plugin model documentation
+- `docs/astm.md` — ASTM protocol and bridge setup
+- Commit 511754dae (2021) — Removed ALL bundled JARs from `src/main/resources/plugin/`
+- `plugins/analyzers/WeberAnalyzer/` — Reference implementation
+
 ### References
 
+- **`docs/analyzer.md`** — External plugin model (MANDATORY reading)
+- **`docs/astm.md`** — ASTM protocol configuration
+- **`plugins/analyzers/WeberAnalyzer/`** — Reference plugin implementation
 - [Horiba ABX Pentra 60 C+ Brochure](https://www.cardinalhealth.com/content/dam/corp/web/documents/brochure/horiba-hematology-ABX-pentra-60C-plus-brochure.pdf)
 - [ABX Micros 60 Product Page](https://www.horiba.com/usa/healthcare/products/detail/action/show/Product/abx-micros-60-1835/)
 - [CLSI LIS02-A2 Standard](https://clsi.org/shop/standards/lis02/)
