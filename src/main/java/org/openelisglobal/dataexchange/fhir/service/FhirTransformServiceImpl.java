@@ -76,6 +76,8 @@ import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
@@ -934,6 +936,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
         } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.SampleRejected))) {
             serviceRequest.setStatus(ServiceRequestStatus.ENTEREDINERROR);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
+            serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
         } else {
             serviceRequest.setStatus(ServiceRequestStatus.UNKNOWN);
         }
@@ -1198,18 +1202,20 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private void addToOperations(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator, Resource resource) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "addToOperations", "addToOperations called");
 
+        // Use composite key (resourceType/id) to prevent collisions between different
+        // resource types
+        String compositeKey = resource.getResourceType() + "/" + resource.getIdElement().getIdPart();
+
         if (this.setTempIdIfMissing(resource, tempIdGenerator)) {
-            if (fhirOperations.createResources.containsKey(resource.getIdElement().getIdPart())) {
-                LogEvent.logWarn("", "",
-                        "collision on id: " + resource.getResourceType() + "/" + resource.getIdElement().getIdPart());
+            if (fhirOperations.createResources.containsKey(compositeKey)) {
+                LogEvent.logWarn("", "", "collision on id: " + compositeKey);
             }
-            fhirOperations.createResources.put(resource.getIdElement().getIdPart(), resource);
+            fhirOperations.createResources.put(compositeKey, resource);
         } else {
-            if (fhirOperations.updateResources.containsKey(resource.getIdElement().getIdPart())) {
-                LogEvent.logWarn("", "",
-                        "collision on id: " + resource.getResourceType() + "/" + resource.getIdElement().getIdPart());
+            if (fhirOperations.updateResources.containsKey(compositeKey)) {
+                LogEvent.logWarn("", "", "collision on id: " + compositeKey);
             }
-            fhirOperations.updateResources.put(resource.getIdElement().getIdPart(), resource);
+            fhirOperations.updateResources.put(compositeKey, resource);
         }
     }
 
@@ -1611,23 +1617,24 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
     /**
      * Creates a facility identifier that links a FHIR resource to this OpenELIS
-     * facility. This identifier uses the facility UUID and includes the facility
+     * facility. This identifier uses the facility ID and includes the facility
      * Organization as the assigner.
      *
      * @return the facility identifier, or null if facility is not initialized
      */
     private Identifier createFacilityIdentifier() {
-        String facilityUuid = facilityOrganizationService.getFacilityUuid();
+        String facilityId = facilityOrganizationService.getFacilityId();
+        String identifierSystem = facilityOrganizationService.getFacilityIdentifierSystem();
         Reference assignerRef = facilityOrganizationService.getFacilityOrganizationReference();
 
-        if (facilityUuid == null) {
+        if (facilityId == null) {
             return null;
         }
 
         Identifier identifier = new Identifier();
         identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
-        identifier.setSystem(fhirConfig.getOeFhirSystem() + "/facility_uuid");
-        identifier.setValue(facilityUuid);
+        identifier.setSystem(identifierSystem);
+        identifier.setValue(facilityId);
 
         if (assignerRef != null) {
             identifier.setAssigner(assignerRef);
@@ -1705,5 +1712,28 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         } else {
             throw e;
         }
+    }
+
+    @Async
+    @Override
+    @Transactional(readOnly = true)
+    public void transformAnalysisByIds(List<String> analysisIds)
+            throws FhirTransformationException, FhirPersistanceException {
+        FhirOperations fhirOperations = new FhirOperations();
+        CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
+
+        for (String analysisId : analysisIds) {
+            Analysis analysis = analysisService.get(analysisId);
+            ServiceRequest serviceRequest = this.transformToServiceRequest(analysis);
+            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+
+            if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
+                DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
+                this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
+            }
+
+        }
+
+        fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
     }
 }

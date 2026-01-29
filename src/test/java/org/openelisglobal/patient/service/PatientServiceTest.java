@@ -1,4 +1,4 @@
-package org.openelisglobal.patient;
+package org.openelisglobal.patient.service;
 
 import static org.junit.Assert.assertEquals;
 
@@ -17,8 +17,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.patient.service.PatientService;
-import org.openelisglobal.patient.service.PatientTypeService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patienttype.valueholder.PatientType;
 import org.openelisglobal.person.service.PersonService;

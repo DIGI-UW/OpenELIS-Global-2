@@ -56,16 +56,60 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
     @Value("${org.openelisglobal.facility.postalcode:}")
     private String facilityPostalCode;
 
+    @Value("${org.openelisglobal.facility.id:}")
+    private String configuredFacilityId;
+
     private Organization facilityOrganization;
     private String facilityUuid;
+    private String facilityId;
     private Reference facilityReference;
     private boolean initialized = false;
 
+    @Override
+    public String getFacilityIdentifierSystem() {
+        return fhirConfig.getOeFhirSystem() + "/facility_id";
+    }
+
+    @Override
+    public String getFacilityId() {
+        if (!initialized) {
+            initialize();
+        }
+        return facilityId;
+    }
+
     /**
-     * Gets the identifier system used for facility Organization resources.
+     * Builds the facility Address from configured properties.
+     *
+     * @return the Address, or null if no address fields are populated
      */
-    private String getFacilityIdentifierSystem() {
-        return fhirConfig.getOeFhirSystem() + "/facility_uuid";
+    private Address buildFacilityAddress() {
+        Address address = new Address();
+        address.setUse(Address.AddressUse.WORK);
+
+        if (StringUtils.isNotBlank(facilityCity)) {
+            address.setCity(facilityCity);
+        }
+        if (StringUtils.isNotBlank(facilityDistrict)) {
+            address.setDistrict(facilityDistrict);
+        }
+        if (StringUtils.isNotBlank(facilityState)) {
+            address.setState(facilityState);
+        }
+        if (StringUtils.isNotBlank(facilityPostalCode)) {
+            address.setPostalCode(facilityPostalCode);
+        }
+        if (StringUtils.isNotBlank(facilityCountry)) {
+            address.setCountry(facilityCountry);
+        }
+
+        // Return null if no address fields are populated
+        if (!address.hasCity() && !address.hasDistrict() && !address.hasState() && !address.hasPostalCode()
+                && !address.hasCountry()) {
+            return null;
+        }
+
+        return address;
     }
 
     /**
@@ -115,6 +159,14 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
         }
         organization.setId(facilityUuid);
 
+        // Set facility ID: use configured value if provided, otherwise fall back to
+        // UUID
+        if (StringUtils.isNotBlank(configuredFacilityId)) {
+            facilityId = configuredFacilityId;
+        } else {
+            facilityId = facilityUuid;
+        }
+
         // Set the name from BANNER_TEXT configuration
         String bannerTextId = ConfigurationProperties.getInstance().getPropertyValue(Property.BANNER_TEXT);
         String facilityName = "OpenELIS Global";
@@ -129,33 +181,13 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
         // Add identifier with system and value
         Identifier identifier = new Identifier();
         identifier.setSystem(getFacilityIdentifierSystem());
-        identifier.setValue(facilityUuid);
+        identifier.setValue(facilityId);
         identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
         organization.addIdentifier(identifier);
 
-        // Build the address from facility properties
-        Address address = new Address();
-        address.setUse(Address.AddressUse.WORK);
-
-        if (StringUtils.isNotBlank(facilityCity)) {
-            address.setCity(facilityCity);
-        }
-        if (StringUtils.isNotBlank(facilityDistrict)) {
-            address.setDistrict(facilityDistrict);
-        }
-        if (StringUtils.isNotBlank(facilityState)) {
-            address.setState(facilityState);
-        }
-        if (StringUtils.isNotBlank(facilityPostalCode)) {
-            address.setPostalCode(facilityPostalCode);
-        }
-        if (StringUtils.isNotBlank(facilityCountry)) {
-            address.setCountry(facilityCountry);
-        }
-
-        // Only add address if at least one field is populated
-        if (address.hasCity() || address.hasDistrict() || address.hasState() || address.hasPostalCode()
-                || address.hasCountry()) {
+        // Build and add address from facility properties
+        Address address = buildFacilityAddress();
+        if (address != null) {
             organization.addAddress(address);
         }
 
@@ -176,20 +208,27 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
         LogEvent.logTrace(this.getClass().getSimpleName(), "updateExistingOrganization",
                 "Updating existing facility Organization");
 
-        // Preserve the existing ID
-        String existingId = existingOrg.getIdElement().getIdPart();
+        // Preserve the existing ID as the UUID
+        facilityUuid = existingOrg.getIdElement().getIdPart();
 
-        // Get existing facility UUID from identifier
-        String existingFacilityUuid = null;
+        // Get existing facility ID from identifier if present
+        String existingFacilityId = null;
         for (Identifier id : existingOrg.getIdentifier()) {
             if (getFacilityIdentifierSystem().equals(id.getSystem())) {
-                existingFacilityUuid = id.getValue();
+                existingFacilityId = id.getValue();
                 break;
             }
         }
 
-        // Use existing UUID
-        facilityUuid = existingFacilityUuid != null ? existingFacilityUuid : existingId;
+        // Set facility ID: use configured value if provided, otherwise use existing or
+        // fall back to UUID
+        if (StringUtils.isNotBlank(configuredFacilityId)) {
+            facilityId = configuredFacilityId;
+        } else if (existingFacilityId != null) {
+            facilityId = existingFacilityId;
+        } else {
+            facilityId = facilityUuid;
+        }
 
         // Update the name from current BANNER_TEXT configuration
         String bannerTextId = ConfigurationProperties.getInstance().getPropertyValue(Property.BANNER_TEXT);
@@ -204,28 +243,8 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
         // Clear and rebuild address from current facility properties
         existingOrg.getAddress().clear();
-        Address address = new Address();
-        address.setUse(Address.AddressUse.WORK);
-
-        if (StringUtils.isNotBlank(facilityCity)) {
-            address.setCity(facilityCity);
-        }
-        if (StringUtils.isNotBlank(facilityDistrict)) {
-            address.setDistrict(facilityDistrict);
-        }
-        if (StringUtils.isNotBlank(facilityState)) {
-            address.setState(facilityState);
-        }
-        if (StringUtils.isNotBlank(facilityPostalCode)) {
-            address.setPostalCode(facilityPostalCode);
-        }
-        if (StringUtils.isNotBlank(facilityCountry)) {
-            address.setCountry(facilityCountry);
-        }
-
-        // Only add address if at least one field is populated
-        if (address.hasCity() || address.hasDistrict() || address.hasState() || address.hasPostalCode()
-                || address.hasCountry()) {
+        Address address = buildFacilityAddress();
+        if (address != null) {
             existingOrg.addAddress(address);
         }
 

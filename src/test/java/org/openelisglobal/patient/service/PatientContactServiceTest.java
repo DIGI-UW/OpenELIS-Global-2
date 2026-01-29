@@ -1,4 +1,4 @@
-package org.openelisglobal.patient;
+package org.openelisglobal.patient.service;
 
 import static org.junit.Assert.*;
 
@@ -11,7 +11,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.valueholder.PatientContact;
 import org.springframework.beans.factory.annotation.Autowired;
 

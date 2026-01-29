@@ -8,6 +8,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -22,6 +23,7 @@ import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -110,6 +112,8 @@ public class SampleEditServiceImpl implements SampleEditService {
     NoteService noteService;
     @Autowired
     private SampleStorageService sampleStorageService;
+    @Autowired
+    private FhirTransformService fhirTransformService;
 
     @Transactional
     @Override
@@ -169,9 +173,11 @@ public class SampleEditServiceImpl implements SampleEditService {
             sampleItemService.update(sampleItem);
         }
 
+        List<String> analysisIds = new ArrayList<>();
         for (Analysis analysis : cancelAnalysisList) {
             analysisService.update(analysis);
             addExternalResultsToDeleteList(analysis, patient, updatedSample, actionDataSet);
+            analysisIds.add(analysis.getId());
         }
 
         for (IResultUpdate updater : updaters) {
@@ -179,11 +185,13 @@ public class SampleEditServiceImpl implements SampleEditService {
         }
 
         for (Analysis analysis : addAnalysisList) {
-            if (analysis.getId() == null) {
-                analysisService.insert(analysis);
+            String analysisId = analysis.getId();
+            if (analysisId == null) {
+                analysisId = analysisService.insert(analysis);
             } else {
                 analysisService.update(analysis);
             }
+            analysisIds.add(analysisId);
         }
 
         for (SampleItem sampleItem : cancelSampleItemList) {
@@ -222,7 +230,8 @@ public class SampleEditServiceImpl implements SampleEditService {
 
                 Analysis analysis = populateAnalysis(sampleTestCollection, test,
                         sampleTestCollection.testIdToUserSectionMap.get(test.getId()), sampleAddService);
-                analysisService.insert(analysis);
+                String analysisId = analysisService.insert(analysis);
+                analysisIds.add(analysisId);
             }
 
             if (sampleTestCollection.initialSampleConditionIdList != null) {
@@ -303,6 +312,12 @@ public class SampleEditServiceImpl implements SampleEditService {
 
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", patient.getId());
+
+        try {
+            fhirTransformService.transformAnalysisByIds(analysisIds);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+        }
     }
 
     private void addExternalResultsToDeleteList(Analysis analysis, Patient patient, Sample updatedSample,
