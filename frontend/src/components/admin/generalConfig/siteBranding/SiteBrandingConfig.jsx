@@ -599,7 +599,11 @@ function SiteBrandingConfig() {
             >
               <FormattedMessage id="site.branding.cancel" />
             </Button>
-            <Button data-testid="branding-reset-button" kind="danger" onClick={handleReset}>
+            <Button
+              data-testid="branding-reset-button"
+              kind="danger"
+              onClick={handleReset}
+            >
               <FormattedMessage id="site.branding.reset.to.defaults" />
             </Button>
             {hasUnsavedChanges && (

@@ -32,7 +32,13 @@ jest.mock("../../../../utils/BrandingUtils", () => ({
 import React from "react";
 
 // 2. Testing Library
-import { render, screen, wait, fireEvent, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  wait,
+  fireEvent,
+  within,
+} from "@testing-library/react";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";

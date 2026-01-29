@@ -64,6 +64,9 @@
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
 
+        <!-- Site Branding entity (001-site-branding) -->
+        <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

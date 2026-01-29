@@ -22,7 +22,13 @@ jest.mock("../../../../utils/BrandingUtils", () => ({
 
 import React from "react";
 import "@testing-library/jest-dom/extend-expect";
-import { render, screen, fireEvent, wait, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  wait,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
@@ -91,7 +97,9 @@ describe("LogoUploadSection", () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     // Should show error message
-    expect(await screen.findByText(/unsupported file format/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/unsupported file format/i),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -220,9 +228,7 @@ describe("LogoUploadSection", () => {
       },
     );
 
-    renderWithIntl(
-      <LogoUploadSection type="header" currentLogoUrl={null} />,
-    );
+    renderWithIntl(<LogoUploadSection type="header" currentLogoUrl={null} />);
 
     // Create a valid file
     const file = new File(["test"], "logo.png", { type: "image/png" });
@@ -351,9 +357,7 @@ describe("LogoUploadSection", () => {
    * Test: Favicon type rendering
    */
   test("renders favicon upload section", () => {
-    renderWithIntl(
-      <LogoUploadSection type="favicon" currentLogoUrl={null} />,
-    );
+    renderWithIntl(<LogoUploadSection type="favicon" currentLogoUrl={null} />);
 
     expect(screen.getByText(/favicon/i)).toBeInTheDocument();
   });
