@@ -320,8 +320,9 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Override
-    public void configureMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
-        WebMvcConfigurer.super.configureMessageConverters(converters);
+    public void extendMessageConverters(@NonNull List<HttpMessageConverter<?>> converters) {
+        // Add custom converters while keeping default converters
+        // (including ResourceHttpMessageConverter for serving files)
         converters.add(new StringHttpMessageConverter());
         converters.add(jsonConverter());
     }
