@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.sitebranding.form.SiteBrandingForm;
 import org.openelisglobal.sitebranding.service.LogoType;
 import org.openelisglobal.sitebranding.service.SiteBrandingService;
@@ -38,7 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * REST Controller for Site Branding configuration
- * 
+ *
  * Task Reference: T017
  */
 @RestController
@@ -49,24 +48,6 @@ public class SiteBrandingRestController extends BaseRestController {
 
     @Autowired
     private SiteBrandingService siteBrandingService;
-
-    @Autowired
-    private UserModuleService userModuleService;
-
-    /**
-     * Helper method to check admin status
-     * 
-     * @param request HTTP request containing session information
-     * @return true if user is admin, false otherwise
-     */
-    private boolean checkAdminStatus(HttpServletRequest request) {
-        try {
-            return userModuleService.isUserAdmin(request);
-        } catch (Exception e) {
-            logger.debug("Could not determine admin status, treating as non-admin: " + e.getMessage());
-            return false;
-        }
-    }
 
     /**
      * GET /rest/site-branding - Get current branding configuration Returns default
@@ -319,13 +300,13 @@ public class SiteBrandingRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Calculate ETag from file modification time
+            // Calculate ETag and Last-Modified from file modification time
             long lastModified = java.nio.file.Files.getLastModifiedTime(java.nio.file.Paths.get(logoPath)).toMillis();
             String etag = "\"" + lastModified + "\"";
 
-            // Check If-None-Match header - return 304 Not Modified if client's cached
+            // Check If-None-Match and If-Modified-Since headers - return 304 if cached
             // version is current
-            if (request.checkNotModified(etag)) {
+            if (request.checkNotModified(etag, lastModified)) {
                 return null;
             }
 
@@ -338,6 +319,8 @@ public class SiteBrandingRestController extends BaseRestController {
             headers.setContentDispositionFormData("inline", resource.getFilename());
             headers.setCacheControl("public, max-age=300");
             headers.setETag(etag);
+            headers.setLastModified(lastModified);
+            headers.set("X-Content-Type-Options", "nosniff");
 
             return ResponseEntity.ok().headers(headers).body(resource);
         } catch (Exception e) {
