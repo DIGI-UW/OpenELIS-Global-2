@@ -17,6 +17,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
+import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -29,10 +30,13 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.scriptlet.service.ScriptletService;
+import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
@@ -53,13 +57,24 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
     SystemUserService systemUserService;
     @Autowired
     AnalyteService analyteService;
+    @Autowired
+    ScriptletService scriptletService;
 
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/inventory.xml");
+
+        Scriptlet cd4Scriptlet = new Scriptlet();
+        cd4Scriptlet.setScriptletName("Calculate CD4");
+        cd4Scriptlet = scriptletService.getScriptletByName(cd4Scriptlet);
+
+        if (cd4Scriptlet != null && cd4Scriptlet.getId() != null) {
+            TestReflexUtil.CD4_SCRIPTLET_ID = cd4Scriptlet.getId();
+        }
     }
 
     private TestResultItem getTestResultItem() {
+        Result result = resultService.getAll().get(0);
         DemoData demoData = new DemoData();
         TestResultItem item = new TestResultItem();
         item.setAccessionNumber(demoData.getAnalyses().get(0).getSampleItem().getSample().getAccessionNumber());
@@ -70,6 +85,8 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
         item.setValid(true);
         item.setShadowRejected(false);
         item.setRefer(false);
+        item.setResult(result);
+        item.setResultId(result.getId());
         item.setTestDate(demoData.getAnalyses().get(0).getTest().getActiveBeginDateForDisplay());
         item.setTestMethod(demoData.getAnalyses().get(0).getTest().getMethod().getMethodName());
         item.setAnalysisId(demoData.getAnalyses().get(0).getId());
@@ -125,5 +142,52 @@ public class LogBookPersistServiceTest extends BaseWebContextSensitiveTest {
         List<Result> savedResults = resultService.getAll();
         assertEquals("6.8", savedResults.get(0).getValue());
         assertFalse("Results should be persisted", savedResults.isEmpty());
+    }
+
+    @Test
+    public void modifyResult_shouldUpdateResultIntheDatabase() {
+        Map<String, List<String>> reflexMap = new HashMap<>();
+
+        SystemUser systemUser = systemUserService.getAll().get(0);
+        Analysis analysis = analysisService.getAll().get(0);
+
+        TestResultItem testResultItem = getTestResultItem();
+
+        ResultSaveBean saveBean = new ResultSaveBean();
+        saveBean.setResultType(testResultItem.getResultType());
+        saveBean.setResultValue(testResultItem.getResultValue());
+        saveBean.setTestId(analysis.getTest().getId());
+        saveBean.setReportable("Y");
+        saveBean.setHasQualifiedResult(false);
+        saveBean.setResultId(testResultItem.getResultId());
+
+        ResultSaveService resultSaveService = SpringContext.getBean(ResultSaveService.class);
+        resultSaveService.setAnalysis(analysis);
+        resultSaveService.setCurrentUserId(systemUser.getId());
+
+        List<Result> deletableResults = new ArrayList<>();
+        List<Result> results = resultSaveService.createResultsFromTestResultItem(saveBean, deletableResults);
+
+        Patient patient = patientService.getAll().get(0);
+        String sampleTestingStartedId = SpringContext.getBean(IStatusService.class)
+                .getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Started);
+        Sample sample = analysis.getSampleItem().getSample();
+        sample.setStatusId(sampleTestingStartedId);
+
+        ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet("");
+        for (Result result : results) {
+            ResultSet rs = new ResultSet(result, null, null, patient, sample, reflexMap, false);
+            rs.result.setResultEvent(Event.RESULT);
+
+            dataSet.getModifiedResults().add(rs);
+        }
+
+        List<IResultUpdate> resultUpdates = new ArrayList<>();
+        logbookPersistService.persistDataSet(dataSet, resultUpdates, systemUser.getId());
+
+        List<Result> savedResults = resultService.getAll();
+        assertEquals("6.8", savedResults.get(0).getValue());
+        assertFalse("Results should be persisted", savedResults.isEmpty());
+
     }
 }
